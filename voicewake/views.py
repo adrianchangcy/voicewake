@@ -1,5 +1,5 @@
 from django import views
-from django.http import JsonResponse
+from django.http import JsonResponse, QueryDict
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -15,6 +15,10 @@ from rest_framework.authentication import SessionAuthentication, BasicAuthentica
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic.edit import FormView
+from django.views.generic.list import ListView
+
+#Python libraries
+from datetime import datetime, timezone, timedelta
 
 from voicewake.forms import *
 
@@ -174,6 +178,7 @@ def sign_up(request):
     return render(request, 'registration/sign_up.html', {"form":form})
 
 
+#TBD
 #TEST SETTING TIME ZONE
 common_timezones = {
     'London': 'Europe/London',
@@ -223,16 +228,68 @@ class UserVerificationOptionsViewSet(PermissionPolicyMixin, viewsets.ModelViewSe
 #PROGESS STARTS HERE
 
 #create event
-class CreateEventView(FormView):
+class EventFormView(FormView):
 
     template_name = 'voicewake/create_event.html'
     form_class = CreateEventForm
     success_url = '/'
 
-
-
     def form_valid(self, form):
 
-        #do extra code if form is valid
-        return super().form_valid(form)
+        #by inheriting ProcessFormView, during post(), it already checks for is_valid()
+            #clean() is part of the validation in is_valid()
+        #when is_valid() is True, it then calls form_valid(), else form_invalid()
+        #this applies to CreateView, FormView, UpdateView
 
+        user_event_role = UserEventRoles.objects.get(
+                                                    user=self.request.user.id,
+                                                    event_role__event_role_name='listener'
+                                                    )
+
+        event_status = EventStatuses.objects.filter(event_status_name='available').first()
+
+        #combine datetime then create schedule at separate table
+        event_date = form.cleaned_data['event_date'].strftime('%Y-%m-%d')
+        event_time = form.cleaned_data['event_time'].strftime('%H:%M:%S')
+        event_datetime = event_date + ' ' + event_time
+
+        #have to use .first() because model-based fields give .filter() QuerySet object
+        new_event = Events.objects.create(
+            user_event_role=user_event_role,
+            event_name=form.cleaned_data['event_name'],
+            event_purpose=form.cleaned_data['event_purpose'].first(),
+            event_tone=form.cleaned_data['event_tone'].first(),
+            event_message=form.cleaned_data['event_message'],
+            language=form.cleaned_data['language'].first(),
+            event_status=event_status,
+            when_trigger=event_datetime,
+        )
+
+        #form currently does not handle EventRepeatDetails
+        #only create new EventRepeatDetails obj in db if one of those columns are specified
+
+        #to-do: please clarify that timezone adjustments are accurate
+
+        #don't return super().form_valid(form), else it goes though form.save() again
+        return redirect('/create-event')
+
+
+
+class EventListView(ListView):
+
+    template_name = 'voicewake/view_events.html'
+
+    def get_queryset(self):
+
+        user_event_role = UserEventRoles.objects.get(
+                                                    user=self.request.user.id,
+                                                    event_role__event_role_name='listener'
+                                                    )
+
+        # queryset = EventSchedules.objects.select_ related('event').filter(event__user_event_role=user_event_role)
+        events = Events.objects.filter(user_event_role=user_event_role)
+
+        print(events.values())
+        return events
+
+    

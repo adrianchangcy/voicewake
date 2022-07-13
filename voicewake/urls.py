@@ -41,7 +41,8 @@ urlpatterns = [
     # templates
     path('', views.home, name='home'),
     path('sign-up', views.sign_up, name='sign_up'),
-    path('create-event', views.CreateEventView.as_view(), name='create_event'),
+    path('create-event', views.EventFormView.as_view(), name='create_event'),
+    path('view-event', views.EventListView.as_view(), name='view_event'),
     path('set-timezone', views.set_timezone, name='set_timezone'),
     
 ]
