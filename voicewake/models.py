@@ -208,6 +208,20 @@ class EventPurposes(models.Model):
         return self.event_purpose_name
 
 
+class EventRepeatDetails(models.Model):
+    #no new row if none of these are specified at form
+    id = models.BigAutoField(primary_key=True)
+    event = models.OneToOneField('Events', on_delete=models.CASCADE)
+    is_repeat = models.BooleanField()
+    trigger_mon_to_sun = models.TextField(blank=True, null=True)
+    last_modified = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = 'voicewake'
+        managed = False
+        db_table = 'event_repeat_details'
+
+
 class EventRequestStatuses(models.Model):
     id = models.BigAutoField(primary_key=True)
     event_request_status_name = models.TextField()
@@ -304,20 +318,6 @@ class EventRooms(models.Model):
         db_table = 'event_rooms'
 
 
-class EventSchedules(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    event = models.ForeignKey('Events', on_delete=models.CASCADE)
-    is_repeat = models.BooleanField()
-    when_trigger = models.DateTimeField()
-    trigger_mon_to_sun = models.TextField(blank=True, null=True)  # This field type is a guess.
-    last_modified = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        app_label = 'voicewake'
-        managed = False
-        db_table = 'event_schedules'
-
-
 class EventStatuses(models.Model):
     id = models.BigAutoField(primary_key=True)
     event_status_name = models.TextField()
@@ -354,6 +354,9 @@ class EventTones(models.Model):
         managed = False
         db_table = 'event_tones'
 
+    def __str__(self):
+        return self.event_tone_name
+
 
 class Events(models.Model):
     #when any FK field below is null, interpret as 'any' later
@@ -367,6 +370,9 @@ class Events(models.Model):
         #not null means if a talker broadcasts to a group, this one receives it as well
     event_status = models.ForeignKey(EventStatuses, on_delete=models.PROTECT)
     event_name = models.TextField()
+    when_trigger = models.DateTimeField(blank=True, null=True)
+        #only null if user directly intends it to be
+        #event repeater shall respect this and do nothing
     event_message = models.TextField(blank=True, null=True)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)

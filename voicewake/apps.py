@@ -55,7 +55,7 @@ class VoicewakeConfig(AppConfig):
                 #0 to 500 to 1000
                 DEFAULT_PERFORMANCE_RATING = 500
 
-                event_roles, ok = EventRoles.objects.get_or_create(event_role_name='listener')
+                event_role, ok = EventRoles.objects.get_or_create(event_role_name='listener')
 
                 user_event_role, ok = UserEventRoles.objects.get_or_create(
                     user=AuthUser(pk=getattr(user, 'id')),
