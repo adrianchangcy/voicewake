@@ -49,6 +49,9 @@ INSTALLED_APPS = [
 
     #apps.py
     'voicewake.apps.VoicewakeConfig',
+
+    #token for DRF
+    'rest_framework.authtoken',
 ]
 
 #if you have issues with bootstrap, try this:
@@ -153,3 +156,12 @@ LOGOUT_REDIRECT_URL = '/'
 #timezone management
 TIME_ZONE = 'UTC'
 USE_TZ = True
+
+
+#DRF
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ]
+}

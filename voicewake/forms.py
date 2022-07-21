@@ -9,7 +9,9 @@ from django.utils import timezone
 from voicewake.models import *
 
 
-#use forms.py only for validation
+#we use forms.py for html form construction and basic validation
+#you will have to use JS for auto-complete dropdown on these CharFields
+
 
 
 class UserSignUpForm(UserCreationForm):
@@ -25,9 +27,7 @@ class UserSignUpForm(UserCreationForm):
 
 
 
-
-
-class CreateEventForm(forms.Form):
+class CreateEventsForm(forms.Form):
 
     event_name = forms.CharField(
                     required=False,
@@ -95,3 +95,69 @@ class CreateEventForm(forms.Form):
                     )
 
     event_message = forms.CharField(required=False)
+
+
+
+class SeekEventsForm(forms.Form):
+
+    EVENT_MODE_CHOICES = [(1, 'live'), (2, 'pre-record'), (3, 'any')]
+
+    event_mode_choice = forms.ChoiceField(
+                    label='Mode',
+                    required=False,
+                    choices=EVENT_MODE_CHOICES,
+                    initial=3,
+                    widget=forms.Select(
+                        attrs={
+                            'required':'True',
+                        }
+                    )
+                )
+
+    EVENT_SCOPE_CHOICES = [(1,'individual'), (2,'group'), (3,'any')]
+
+    event_scope_choice = forms.ChoiceField(
+                    label='Scope',
+                    required=False,
+                    choices=EVENT_SCOPE_CHOICES,
+                    initial=3,
+                    widget=forms.Select(
+                        attrs={
+                            'required':'True',
+                        }
+                    )
+                )
+    
+    language = forms.CharField(
+                label='Language',
+                required=False,
+                widget=forms.TextInput(
+                    attrs={
+                        'placeholder':'Your spoken language',
+                        'required':'True',
+                    }
+                )
+            )
+
+    event_purpose = forms.CharField(
+                label='Purpose',
+                required=False,
+                widget=forms.TextInput(
+                    attrs={
+                        'placeholder':'Purpose',
+                        'required':'True',
+                    }
+                )
+            )
+
+    event_tone = forms.CharField(
+                label='Tone',
+                required=False,
+                widget=forms.TextInput(
+                    attrs={
+                        'id':'event_tone_search',
+                        'placeholder':'Tone',
+                        'required':'True',
+                    }
+                )
+            )

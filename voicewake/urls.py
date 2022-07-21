@@ -23,6 +23,7 @@ from voicewake import views
 #register API URLs for auto-create
 router = routers.SimpleRouter(trailing_slash=False)
 router.register(r'api/user_verification_options', views.UserVerificationOptionsViewSet)
+router.register(r'api/event_purposes', views.EventPurposesViewSet)
 
 #original URL
 urlpatterns = [
@@ -39,12 +40,13 @@ urlpatterns = [
     path('', include('django.contrib.auth.urls')),
 
     # templates
+    #still need to make these pretty, but leave it for last
     path('', views.home, name='home'),
     path('sign-up', views.sign_up, name='sign_up'),
-    path('create-event', views.EventFormView.as_view(), name='create_event'),
-    path('view-event', views.EventListView.as_view(), name='view_event'),
     path('set-timezone', views.set_timezone, name='set_timezone'),
-    
+    path('create-event', views.CreateEventsFormView.as_view(), name='create_event'),
+    path('view-event', views.ViewEventsListView.as_view(), name='view_event'),
+    path('seek-event', views.SeekEventsFormView.as_view(), name='seek_event'),
 ]
 
 

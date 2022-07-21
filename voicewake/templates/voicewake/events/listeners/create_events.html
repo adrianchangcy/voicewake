@@ -1,12 +1,12 @@
 {% extends 'voicewake/base.html'%}
-{% block title %}Create Event{% endblock %}
+{% block title %}Create Events{% endblock %}
 
 {% block content %}
 <div>
     <form method="POST">
         {% csrf_token %}
         {{form.as_p}}
-        <button type="submit" class="btn btn-confirm" name="create_event">Create</button>
+        <button type="submit" class="btn btn-confirm" name="create_events">Create</button>
     </form>
 </div>
 {% endblock %}

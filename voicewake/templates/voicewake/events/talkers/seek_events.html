@@ -1,0 +1,69 @@
+{% extends 'voicewake/base.html'%}
+{% block title %}Seek Events{% endblock %}
+
+{% comment %} use AJAX to call JSON from REST API {% endcomment %}
+
+
+{% block content %}
+
+<link href= "http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/ui-lightness/jquery-ui.css"
+rel="stylesheet" type="text/css" />
+
+<div>
+    <form method="POST">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-confirm" name="seek_events">Find Event</button>
+        {{form.as_p}}
+    </form>
+</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.13.2/jquery-ui.min.js"></script>
+<script>
+    jQuery(document).ready(function($){
+
+        //ready GET event_purposes
+        async function getEventPurposes(search=''){
+
+            let response = await fetch('http://127.0.0.1:8000/api/event_purposes?search='+search,
+                {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                }
+            );
+            let data = await response.json();
+
+            return data;
+        }
+
+        //test
+        $('#id_event_purpose').autocomplete({
+            delay: 300,
+            minLength: 2,
+            source: function(request, response) {
+                var search_string = request.term;
+                var songList = [];
+                $.ajax({
+                    url: 'http://127.0.0.1:8000/api/event_purposes',
+                    data: {
+                        search: search_string,
+                    },
+                    method: 'GET',
+                    headers: {
+                        'credentials': 'same-origin',
+                    },
+                    success: function(data) {
+                        console.log(data);
+                        $.each(data, function(key, value) {
+                            songList.push(value.event_purpose_name);
+                        });
+                        response(songList);
+                    },
+                })
+            }
+
+        });
+
+    });
+</script>
+{% endblock %}

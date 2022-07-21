@@ -3,10 +3,12 @@ from django.http import JsonResponse, QueryDict
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
+from django.db.models import Q
 
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required, permission_required
+from rest_framework.authtoken.models import Token
 
 #class-based view
 from rest_framework import viewsets
@@ -20,8 +22,8 @@ from django.views.generic.list import ListView
 #Python libraries
 from datetime import datetime, timezone, timedelta
 
+#app files
 from voicewake.forms import *
-
 from .models import *
 from .serializers import *
 
@@ -167,6 +169,9 @@ def sign_up(request):
         if form.is_valid():
 
             user = form.save()
+
+            token = Token.objects.create(user=user)
+
             login(request, user)
             return redirect('/')
 
@@ -227,11 +232,41 @@ class UserVerificationOptionsViewSet(PermissionPolicyMixin, viewsets.ModelViewSe
 
 #PROGESS STARTS HERE
 
-#create event
-class EventFormView(FormView):
+#=====REST APIs=====
+class EventPurposesViewSet(viewsets.ModelViewSet):
 
-    template_name = 'voicewake/create_event.html'
-    form_class = CreateEventForm
+    serializer_class = EventPurposesSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = EventPurposes.objects.all()
+
+    def get_queryset(self):
+
+        queryset = EventPurposes.objects.all()
+
+        search = self.request.query_params.get('search')
+
+        if search is not None:
+
+            #part of search optimisation is "... field_name LIKE 'string%' OR field_name LIKE '%string%'"
+            #Q is used to encapsulate a collection of keyword arguments
+            queryset = EventPurposes.objects.filter(
+                        Q(event_purpose_name__istartswith=search)|Q(event_purpose_name__icontains=search)
+                        )[:5]
+
+        return queryset
+
+
+
+#=====END OF REST APIs=====
+
+
+#=====WEB PAGES=====
+
+#create listener event
+class CreateEventsFormView(FormView):
+
+    template_name = 'voicewake/events/listeners/create_events.html'
+    form_class = CreateEventsForm
     success_url = '/'
 
     def form_valid(self, form):
@@ -275,9 +310,9 @@ class EventFormView(FormView):
 
 
 
-class EventListView(ListView):
+class ViewEventsListView(ListView):
 
-    template_name = 'voicewake/view_events.html'
+    template_name = 'voicewake/events/listeners/view_events.html'
 
     def get_queryset(self):
 
@@ -293,3 +328,19 @@ class EventListView(ListView):
         return events
 
     
+
+class SeekEventsFormView(FormView):
+
+    template_name = 'voicewake/events/talkers/seek_events.html'
+    form_class = SeekEventsForm
+    success_url = '/'
+
+    def form_valid(self, form):
+
+        print(form.cleaned_data['event_scope_choice'])
+
+        return redirect('/seek-event')
+
+
+
+#=====END OF WEB PAGES=====
