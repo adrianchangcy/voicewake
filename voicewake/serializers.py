@@ -20,7 +20,7 @@ class EventTonesSerializer(serializers.ModelSerializer):
 class EventPurposesSerializer(serializers.ModelSerializer):
     class Meta:
         model = EventPurposes
-        fields = ['id', 'event_purpose_name', 'when_created']
+        exclude = ['when_created']
 
 
 class UserVerificationOptionsSerializer(serializers.ModelSerializer):
