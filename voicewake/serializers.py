@@ -14,7 +14,7 @@ class CountriesSerializer(serializers.ModelSerializer):
 class EventTonesSerializer(serializers.ModelSerializer):
     class Meta:
         model = EventTones
-        fields = ['id', 'event_tone_name', 'when_created']
+        exclude = ['when_created']
 
 
 class EventPurposesSerializer(serializers.ModelSerializer):
@@ -32,7 +32,7 @@ class UserVerificationOptionsSerializer(serializers.ModelSerializer):
 class LanguagesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Languages
-        fields = ['id', 'language_name', 'language_name_shortened', 'when_created']
+        exclude = ['when_created']
 
 
 

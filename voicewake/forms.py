@@ -133,6 +133,9 @@ class SeekEventsForm(forms.Form):
                 required=False,
                 widget=forms.TextInput(
                     attrs={
+                        'class':'reuse_basic_autocomplete',
+                        'table_name':'languages',
+                        'column_name':'language_name',
                         'placeholder':'Your spoken language',
                         'required':'True',
                     }
@@ -144,6 +147,9 @@ class SeekEventsForm(forms.Form):
                 required=False,
                 widget=forms.TextInput(
                     attrs={
+                        'class':'reuse_basic_autocomplete',
+                        'table_name':'event_purposes',
+                        'column_name':'event_purpose_name',
                         'placeholder':'Purpose',
                         'required':'True',
                     }
@@ -155,7 +161,9 @@ class SeekEventsForm(forms.Form):
                 required=False,
                 widget=forms.TextInput(
                     attrs={
-                        'id':'event_tone_search',
+                        'class':'reuse_basic_autocomplete',
+                        'table_name':'event_tones',
+                        'column_name':'event_tone_name',
                         'placeholder':'Tone',
                         'required':'True',
                     }
