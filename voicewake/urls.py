@@ -24,6 +24,8 @@ from voicewake import views
 router = routers.SimpleRouter(trailing_slash=False)
 router.register(r'api/user_verification_options', views.UserVerificationOptionsViewSet)
 router.register(r'api/event_purposes', views.EventPurposesViewSet)
+router.register(r'api/event_tones', views.EventTonesViewSet)
+router.register(r'api/languages', views.LanguagesViewSet)
 
 #original URL
 urlpatterns = [

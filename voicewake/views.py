@@ -233,6 +233,7 @@ class UserVerificationOptionsViewSet(PermissionPolicyMixin, viewsets.ModelViewSe
 #PROGESS STARTS HERE
 
 #=====REST APIs=====
+
 class EventPurposesViewSet(viewsets.ModelViewSet):
 
     serializer_class = EventPurposesSerializer
@@ -241,7 +242,8 @@ class EventPurposesViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
 
-        queryset = EventPurposes.objects.all()
+        #allow max 50 rows
+        queryset = EventPurposes.objects.all()[:50]
 
         search = self.request.query_params.get('search')
 
@@ -251,11 +253,57 @@ class EventPurposesViewSet(viewsets.ModelViewSet):
             #Q is used to encapsulate a collection of keyword arguments
             queryset = EventPurposes.objects.filter(
                         Q(event_purpose_name__istartswith=search)|Q(event_purpose_name__icontains=search)
-                        )[:5]
+                        )[:10]
 
         return queryset
 
 
+class EventTonesViewSet(viewsets.ModelViewSet):
+
+    serializer_class = EventTonesSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = EventTones.objects.all()
+
+    def get_queryset(self):
+
+        #allow max 50 rows
+        queryset = EventTones.objects.all()[:50]
+
+        search = self.request.query_params.get('search')
+
+        if search is not None:
+
+            #part of search optimisation is "... field_name LIKE 'string%' OR field_name LIKE '%string%'"
+            #Q is used to encapsulate a collection of keyword arguments
+            queryset = EventTones.objects.filter(
+                        Q(event_tone_name__istartswith=search)|Q(event_tone_name__icontains=search)
+                        )[:10]
+
+        return queryset
+
+
+class LanguagesViewSet(viewsets.ModelViewSet):
+
+    serializer_class = LanguagesSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = Languages.objects.all()
+
+    def get_queryset(self):
+
+        #allow max 50 rows
+        queryset = Languages.objects.all()[:50]
+
+        search = self.request.query_params.get('search')
+
+        if search is not None:
+
+            #part of search optimisation is "... field_name LIKE 'string%' OR field_name LIKE '%string%'"
+            #Q is used to encapsulate a collection of keyword arguments
+            queryset = Languages.objects.filter(
+                        Q(language_name__istartswith=search)|Q(language_name__icontains=search)
+                        )[:10]
+
+        return queryset
 
 #=====END OF REST APIs=====
 
