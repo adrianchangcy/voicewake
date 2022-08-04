@@ -49,6 +49,9 @@ urlpatterns = [
     path('create-event', views.CreateEventsFormView.as_view(), name='create_event'),
     path('view-event', views.ViewEventsListView.as_view(), name='view_event'),
     path('seek-event', views.SeekEventsFormView.as_view(), name='seek_event'),
+    
+    #test
+    path('record', views.RecordAudioFormView.as_view(), name='record'),
 ]
 
 

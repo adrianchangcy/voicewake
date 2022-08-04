@@ -4,6 +4,7 @@
 //https://docs.djangoproject.com/en/4.0/howto/static-files/deployment/
 jQuery(document).ready(function($){
 
+    //AUTOCOMPLETE FOR TEXT FIELDS WITH AJAX QUERY TO DB
     $('.reuse_basic_autocomplete').autocomplete({
         //standard autocomplete is 300ms delay (after last keystroke)
         //and 3 or 4 minimum string length before it starts doing API requests
@@ -11,10 +12,10 @@ jQuery(document).ready(function($){
         minLength: 3,
         source: function(request, response) {
             //use table_name and column_name attribute to make this autocomplete reusable
-            var table_name = $(this.element).attr('table_name');
-            var column_name = $(this.element).attr('column_name');
-            var search_string = request.term;
-            var search_result = [];
+            let table_name = $(this.element).attr('table_name');
+            let column_name = $(this.element).attr('column_name');
+            let search_string = request.term;
+            let search_result = [];
             $.ajax({
                 url: 'http://127.0.0.1:8000/api/'+table_name,
                 data: {
@@ -42,4 +43,8 @@ jQuery(document).ready(function($){
             })
         }
     });
+
+
+    //AUDIO CAPTURE
+    
 });

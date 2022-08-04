@@ -21,12 +21,15 @@ from django.views.generic.list import ListView
 
 #Python libraries
 from datetime import datetime, timezone, timedelta
+import zoneinfo
 
 #app files
 from voicewake.forms import *
 from .models import *
 from .serializers import *
 
+#static values for configuring throughout the app
+from .static.values.values import *
 
 #overriding ModelViewSet's check_permissions() via super() to allow permission_classes_per_method
 class PermissionPolicyMixin():
@@ -329,22 +332,21 @@ class CreateEventsFormView(FormView):
                                                     event_role__event_role_name='listener'
                                                     )
 
-        event_status = EventStatuses.objects.filter(event_status_name='available').first()
+        #for USE_TZ=True, use tzinfo attr for timezone-aware, else warning
+        #make sure JS processes form datetime into UTC before this
+        event_datetime = datetime.combine(
+                            form.cleaned_data['event_date'],
+                            form.cleaned_data['event_time'],
+                            tzinfo=zoneinfo.ZoneInfo('UTC'))
 
-        #combine datetime then create schedule at separate table
-        event_date = form.cleaned_data['event_date'].strftime('%Y-%m-%d')
-        event_time = form.cleaned_data['event_time'].strftime('%H:%M:%S')
-        event_datetime = event_date + ' ' + event_time
-
-        #have to use .first() because model-based fields give .filter() QuerySet object
         new_event = Events.objects.create(
             user_event_role=user_event_role,
             event_name=form.cleaned_data['event_name'],
-            event_purpose=form.cleaned_data['event_purpose'].first(),
-            event_tone=form.cleaned_data['event_tone'].first(),
+            event_purpose=EventPurposes.objects.get_or_create(event_purpose_name=form.cleaned_data['event_purpose'])[0],
+            event_tone=EventTones.objects.get_or_create(event_tone_name=form.cleaned_data['event_tone'])[0],
+            language=Languages.objects.get_or_create(language_name=form.cleaned_data['language'])[0],
             event_message=form.cleaned_data['event_message'],
-            language=form.cleaned_data['language'].first(),
-            event_status=event_status,
+            event_status=EventStatuses.objects.filter(event_status_name='available')[:1].get(),
             when_trigger=event_datetime,
         )
 
@@ -372,11 +374,9 @@ class ViewEventsListView(ListView):
         # queryset = EventSchedules.objects.select_ related('event').filter(event__user_event_role=user_event_role)
         events = Events.objects.filter(user_event_role=user_event_role)
 
-        print(events.values())
         return events
 
-    
-
+#find match
 class SeekEventsFormView(FormView):
 
     template_name = 'voicewake/events/talkers/seek_events.html'
@@ -385,9 +385,58 @@ class SeekEventsFormView(FormView):
 
     def form_valid(self, form):
 
-        print(form.cleaned_data['event_scope_choice'])
+        global QUALIFY_FOR_LIVE_TIME_WINDOW
+        listener_timeframe_left = timezone.now() - timedelta(seconds=QUALIFY_FOR_LIVE_TIME_WINDOW)
+        listener_timeframe_right = timezone.now() + timedelta(seconds=QUALIFY_FOR_LIVE_TIME_WINDOW)
 
         return redirect('/seek-event')
+
+        user_event_role = UserEventRoles.objects.get(
+                                                    user=self.request.user.id,
+                                                    event_role__event_role_name='talker'
+                                                    )
+
+        #search for listeners to match first
+        #the rest of the code can be skipped if no rows found
+        event_mode_choice = form.cleaned_data['event_mode_choice']
+        event_scope_choice = form.cleaned_data['event_scope_choice']
+
+        #on live 1-1 search (not doing 1-many for live)
+        """
+        SELECT id FROM events WHERE 
+            event_status_id=(SELECT id FROM event_statuses WHERE event_status_name='available')
+            AND when_trigger < yourdatetime_after_60_secs_from_now
+        LIMIT 1;
+
+        INSERT INTO event_rooms DEFAULT VALUES;
+
+        """
+
+        #on group search
+        """
+        
+        """
+
+
+        #create event
+        #not specifying when_trigger here to use auto_add_now=True
+        # new_event = Events.objects.create(
+        #     user_event_role=user_event_role,
+        #     event_purpose=EventPurposes.objects.get_or_create(event_purpose_name=form.cleaned_data['event_purpose']),
+        #     event_tone=EventTones.objects.get_or_create(event_tone_name=form.cleaned_data['event_tone']),
+        #     language=Languages.objects.get_or_create(language_name=form.cleaned_data['language']),
+        #     event_status=EventStatuses.objects.filter(event_status_name='available').first(),
+        # )
+
+        return redirect('/seek-event')
+
+
+#test record
+class RecordAudioFormView(FormView):
+
+    template_name = 'voicewake/events/talkers/record_audio.html'
+    form_class = RecordAudioForm
+    success_url = '/record'
 
 
 
