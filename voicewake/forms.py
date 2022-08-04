@@ -8,10 +8,10 @@ from django.utils import timezone
 
 from voicewake.models import *
 
+#static values for configuring throughout the app
+from .static.values.values import *
 
 #we use forms.py for html form construction and basic validation
-#you will have to use JS for auto-complete dropdown on these CharFields
-
 
 
 class UserSignUpForm(UserCreationForm):
@@ -38,61 +38,73 @@ class CreateEventsForm(forms.Form):
                             ),
                 )
     
-    event_date_minimum_value = timezone.now().strftime("%Y-%m-%d")
+    #use JS to manipulate 'min' date attr
     event_date = forms.DateField(
                     required=False,
                     widget=forms.DateInput(
                                 attrs={
                                     'type': 'date',
                                     'required': 'True',
-                                    'min': event_date_minimum_value,
                                     }
                             ),
                     initial=timezone.now().strftime("%Y-%m-%d"),
                 )
     
-    #do 10 min headstart
-    event_time_initial_value = (timezone.now() + timedelta(minutes=10)).strftime("%H:%M")
+    #make default value be 2 mins ahead, to be received by JS
+    global LISTENER_NEW_EVENT_EXTRA_MINUTES
     event_time = forms.TimeField(
                     required=False,
                     widget=forms.TimeInput(
                         attrs={
                             'type': 'time',
                             'required': 'True',
+                            'initial_event_time_extra_minutes': LISTENER_NEW_EVENT_EXTRA_MINUTES,
                             }
                         ),
-                    initial=event_time_initial_value,
-                    label='this is how you customise label content'
+                    label='When',
                 )
 
-    #we do radios like this, else "enter a list of values" error
-    #many-to-many field handler is expecting [] or [valid str IDs to convert to actual model instance], but is getting only str
-    class ModelCommaSeparatedChoiceField(forms.ModelMultipleChoiceField):
-        widget = forms.RadioSelect(
+    language = forms.CharField(
+                label='Language',
+                required=False,
+                widget=forms.TextInput(
                     attrs={
-                        'required': 'True'
+                        'class':'reuse_basic_autocomplete',
+                        'table_name':'languages',
+                        'column_name':'language_name',
+                        'placeholder':'Your spoken language',
+                        'required':'True',
                     }
                 )
-        def clean(self, value):
-            if value is not None:
-                value = [item.strip() for item in value.split(',')] #remove padding, encase in []
-            return super().clean(value)
+            )
 
-    event_purpose = ModelCommaSeparatedChoiceField(
-                        required=False,
-                        queryset=EventPurposes.objects.all(),
-                        
-                    )
+    event_purpose = forms.CharField(
+                label='Purpose',
+                required=False,
+                widget=forms.TextInput(
+                    attrs={
+                        'class':'reuse_basic_autocomplete',
+                        'table_name':'event_purposes',
+                        'column_name':'event_purpose_name',
+                        'placeholder':'Purpose',
+                        'required':'True',
+                    }
+                )
+            )
 
-    event_tone = ModelCommaSeparatedChoiceField(
-                    required=False,
-                    queryset=EventTones.objects.all(),
-    )
-
-    language = ModelCommaSeparatedChoiceField(
-                        required=False,
-                        queryset=Languages.objects.all(),
-                    )
+    event_tone = forms.CharField(
+                label='Tone',
+                required=False,
+                widget=forms.TextInput(
+                    attrs={
+                        'class':'reuse_basic_autocomplete',
+                        'table_name':'event_tones',
+                        'column_name':'event_tone_name',
+                        'placeholder':'Tone',
+                        'required':'True',
+                    }
+                )
+            )
 
     event_message = forms.CharField(required=False)
 
@@ -169,3 +181,10 @@ class SeekEventsForm(forms.Form):
                     }
                 )
             )
+
+
+class RecordAudioForm(forms.Form):
+
+    useless_element = forms.CharField(
+                        required=False,
+                    )

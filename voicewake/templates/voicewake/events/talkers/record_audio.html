@@ -1,0 +1,181 @@
+{% extends 'voicewake/base.html'%}
+{% block title %}DJ KHALED{% endblock %}
+
+
+{% block content %}
+<div>
+
+    <br>
+    <button type="button" id="start_recording_btn" class="btn btn-danger">HIT TO RECORD</button>
+    <br>
+    <br>
+    <div id="start_recording">
+        <button type="button" id="pause_resume_recording_btn" class="btn btn-danger">PAUSE OR RESUME</button>
+        <button type="button" id="stop_recording_btn" class="btn btn-danger">DONE</button>
+    </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/RecordRTC/5.6.2/RecordRTC.js"></script>
+<script>
+
+    let start_recording_btn = document.getElementById('start_recording_btn');
+    let pause_resume_recording_btn = document.getElementById('pause_resume_recording_btn');
+    let stop_recording_btn = document.getElementById('stop_recording_btn');
+    
+    //click to enable recording
+    start_recording_btn.addEventListener('click', async function(){
+
+        let stream;
+
+        try{
+
+            stream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
+
+        }catch(err){
+
+            switch(err.name){
+
+                case 'NotFoundError':
+                    console.log('No input device detected.');
+                    break;
+
+                default:
+                    console.log(err.name);
+                    console.log(err.message);
+                    break;
+            }
+
+            return;
+        }
+
+        //ok, now enable all recording-related buttons
+        pause_resume_recording_btn.textContent='PAUSE';
+
+        //https://github.com/muaz-khan/RecordRTC
+        const recorder = RecordRTC(stream, {
+    
+            // audio, video, canvas, gif
+            type: 'audio',
+        
+            // audio/webm
+            // audio/webm;codecs=pcm
+            // video/mp4
+            // video/webm;codecs=vp9
+            // video/webm;codecs=vp8
+            // video/webm;codecs=h264
+            // video/x-matroska;codecs=avc1
+            // video/mpeg -- NOT supported by any browser, yet
+            // audio/wav
+            // audio/ogg  -- ONLY Firefox
+            // demo: simple-demos/isTypeSupported.html
+            mimeType: 'audio/webm',
+        
+            // MediaStreamRecorder, StereoAudioRecorder, WebAssemblyRecorder
+            // CanvasRecorder, GifRecorder, WhammyRecorder
+            recorderType: MediaStreamRecorder,
+        
+            // disable logs
+            disableLogs: false,
+        
+            // get intervals based blobs
+            // value in milliseconds
+            timeSlice: 1000,
+        
+            // requires timeSlice above
+            // returns blob via callback function
+            ondataavailable: function(blob) {},
+        
+            // auto stop recording if camera stops
+            checkForInactiveTracks: false,
+        
+            // requires timeSlice above
+            onTimeStamp: function(timestamp) {},
+        
+            // both for audio and video tracks
+            bitsPerSecond: 128000,
+        
+            // only for audio track
+            // ignored when codecs=pcm
+            audioBitsPerSecond: 128000,
+        
+            // if you are recording multiple streams into single file
+            // this helps you see what is being recorded
+            previewStream: function(stream) {},
+        
+            // used by StereoAudioRecorder
+            // the range 22050 to 96000.
+            sampleRate: 96000,
+        
+            // used by StereoAudioRecorder
+            // the range 22050 to 96000.
+            // let us force 16khz recording:
+            desiredSampRate: 16000,
+        
+            // used by StereoAudioRecorder
+            // Legal values are (256, 512, 1024, 2048, 4096, 8192, 16384).
+            bufferSize: 1024,
+        
+            // used by StereoAudioRecorder
+            // 1 or 2
+            numberOfAudioChannels: 2,
+        
+            // used by WebAssemblyRecorder
+            frameRate: 30,
+        
+            // used by WebAssemblyRecorder
+            bitrate: 128000,
+        
+            // used by MultiStreamRecorder - to access HTMLCanvasElement
+            elementClass: 'multi-streams-mixer',
+    
+        });
+
+        recorder.startRecording();
+
+        //click to pause/resume recording
+        pause_resume_recording_btn.addEventListener('click', async function(){
+
+            if(recorder.state == 'recording'){
+
+                await recorder.pauseRecording();
+                pause_resume_recording_btn.textContent='RESUME';
+
+            }else if(recorder.state == 'paused'){
+
+                await recorder.resumeRecording();
+                pause_resume_recording_btn.textContent='PAUSE';
+
+            }else{
+
+                return;
+            }
+        });
+
+        //click to stop recording
+        stop_recording_btn.addEventListener('click', async function(){
+
+            await recorder.stopRecording(async function(){
+                let blob = await this.getBlob();
+                console.log(blob);
+                //handle audio file here
+                //invokeSaveAsDialog(blob);
+                recorder.destroy();
+            });
+            //let blob = await recorder.getBlob();
+            //console.log(blob);
+
+        });
+    });
+
+
+
+
+
+
+</script>
+
+
+
+
+{% endblock %}

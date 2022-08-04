@@ -157,29 +157,6 @@ class DjangoSession(models.Model):
         db_table = 'django_session'
 
 
-class EventInstances(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    event = models.ForeignKey('Events', on_delete=models.CASCADE)
-    audio_file_path = models.TextField(blank=True, null=True)
-    when_created = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        app_label = 'voicewake'
-        managed = False
-        db_table = 'event_instances'
-
-
-class EventGroups(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    event_group_name = models.TextField()
-    when_created = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        app_label = 'voicewake'
-        managed = False
-        db_table = 'event_groups'
-
-
 class EventPurposeTranslations(models.Model):
     id = models.BigAutoField(primary_key=True)
     event_purpose = models.ForeignKey('EventPurposes', on_delete=models.CASCADE)
@@ -292,7 +269,7 @@ class EventRoomMatchReports(models.Model):
 
 class EventRoomMatches(models.Model):
     id = models.BigAutoField(primary_key=True)
-    event_instance = models.ForeignKey('EventInstances', on_delete=models.PROTECT)
+    event = models.ForeignKey('Events', on_delete=models.PROTECT)
     event_room = models.ForeignKey('EventRooms', on_delete=models.PROTECT)
     when_joined = models.DateTimeField()
     when_left = models.DateTimeField()
@@ -308,7 +285,6 @@ class EventRoomMatches(models.Model):
 class EventRooms(models.Model):
     id = models.BigAutoField(primary_key=True)
     when_created = models.DateTimeField(auto_now_add=True)
-    when_ended = models.DateTimeField(blank=True, null=True)
     audio_file_path = models.TextField(blank=True, null=True)
     last_modified = models.DateTimeField(auto_now=True)
 
@@ -365,17 +341,13 @@ class Events(models.Model):
     language = models.ForeignKey('Languages', on_delete=models.SET_NULL, blank=True, null=True)
     event_tone = models.ForeignKey('EventTones', on_delete=models.SET_NULL, blank=True, null=True)
     event_purpose = models.ForeignKey('EventPurposes', on_delete=models.SET_NULL, blank=True, null=True)
-    event_group = models.ForeignKey('EventGroups', on_delete=models.SET_NULL, blank=True, null=True)
-        #null means won't belong to any group, i.e. talker must be personal
-        #not null means if a talker broadcasts to a group, this one receives it as well
     event_status = models.ForeignKey(EventStatuses, on_delete=models.PROTECT)
     event_name = models.TextField()
-    when_trigger = models.DateTimeField(blank=True, null=True)
-        #only null if user directly intends it to be
-        #event repeater shall respect this and do nothing
+    when_trigger = models.DateTimeField()
     event_message = models.TextField(blank=True, null=True)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
+    audio_file_path = models.TextField(blank=True, null=True)
 
     class Meta:
         app_label = 'voicewake'

@@ -52,6 +52,9 @@ INSTALLED_APPS = [
 
     #token for DRF
     'rest_framework.authtoken',
+
+    #channels for websocket
+    'channels',
 ]
 
 #if you have issues with bootstrap, try this:
@@ -154,8 +157,7 @@ LOGOUT_REDIRECT_URL = '/'
 
 
 #timezone management
-TIME_ZONE = 'UTC'
-USE_TZ = True
+USE_TZ = True   #no longer relies on TIME_ZONE
 
 
 #DRF
@@ -164,4 +166,15 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ]
+}
+
+
+ASGI_APPLICATION = 'voicewake.asgi.application'
+
+
+#on deploy, use Redis, not the current one below
+CHANNEL_LAYERS = {
+    'default': {
+                'BACKEND': 'channels.layers.InMemoryChannelLayer',
+                },
 }
