@@ -23,8 +23,12 @@
     let pause_resume_recording_btn = document.getElementById('pause_resume_recording_btn');
     let stop_recording_btn = document.getElementById('stop_recording_btn');
     
-    //click to enable recording
-    start_recording_btn.addEventListener('click', async function(){
+    //code below allows us to precisely track a single recorder instance
+    //via arg passing and manual 'recorder' assigning
+    let recorder;
+
+    //start recording
+    async function recorder_start(){
 
         let stream;
 
@@ -32,17 +36,17 @@
 
             stream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
 
-        }catch(err){
+        }catch(error){
 
-            switch(err.name){
+            switch(error.name){
 
                 case 'NotFoundError':
                     console.log('No input device detected.');
                     break;
 
                 default:
-                    console.log(err.name);
-                    console.log(err.message);
+                    console.log(error.name);
+                    console.log(error.message);
                     break;
             }
 
@@ -53,7 +57,7 @@
         pause_resume_recording_btn.textContent='PAUSE';
 
         //https://github.com/muaz-khan/RecordRTC
-        const recorder = RecordRTC(stream, {
+        passed_recorder = RecordRTC(stream, {
     
             // audio, video, canvas, gif
             type: 'audio',
@@ -131,42 +135,82 @@
     
         });
 
-        recorder.startRecording();
+        passed_recorder.startRecording();
 
-        //click to pause/resume recording
-        pause_resume_recording_btn.addEventListener('click', async function(){
+        return passed_recorder;
+    }
 
-            if(recorder.state == 'recording'){
 
-                await recorder.pauseRecording();
-                pause_resume_recording_btn.textContent='RESUME';
+    //pause or resume recording
+    async function recorder_pause_resume(passed_recorder){
 
-            }else if(recorder.state == 'paused'){
+        if(passed_recorder.state == 'recording'){
 
-                await recorder.resumeRecording();
-                pause_resume_recording_btn.textContent='PAUSE';
+            await passed_recorder.pauseRecording();
+            pause_resume_recording_btn.textContent='RESUME';
 
-            }else{
+        }else if(recorder.state == 'paused'){
 
-                return;
-            }
+            await passed_recorder.resumeRecording();
+            pause_resume_recording_btn.textContent='PAUSE';
+
+        }
+
+        return passed_recorder;
+    }
+
+
+    //handle recorded blob here
+    async function package_blob_and_upload(blob){
+
+        //transform blob into file
+        //var file = new File([blob], 'filename.webm', {
+        //    type: 'video/webm'
+        //});
+        
+        //upload
+        //var formData = new FormData();
+        //formData.append('file', file); // upload "File" object rather than a "Blob"
+        //uploadToServer(formData);
+        console.log(blob);
+        return;
+    }
+
+
+    //stop recording
+    async function recorder_stop(passed_recorder){
+        
+        await passed_recorder.stopRecording(async function(){
+
+            let blob = await this.getBlob();
+            package_blob_and_upload(blob);
+            this.destroy();
         });
 
-        //click to stop recording
-        stop_recording_btn.addEventListener('click', async function(){
+        //here, retire the recorder until next use
+        return null;
+    }
 
-            await recorder.stopRecording(async function(){
-                let blob = await this.getBlob();
-                console.log(blob);
-                //handle audio file here
-                //invokeSaveAsDialog(blob);
-                recorder.destroy();
-            });
-            //let blob = await recorder.getBlob();
-            //console.log(blob);
 
-        });
+    //click to enable recording
+    start_recording_btn.addEventListener('click', async function(){
+
+        recorder = await recorder_start();
     });
+
+
+    //click to pause/resume recording
+    pause_resume_recording_btn.addEventListener('click', async function(){
+
+        recorder = await recorder_pause_resume(recorder);
+    });
+
+    //click to stop recording
+    stop_recording_btn.addEventListener('click', async function(){
+
+        recorder = await recorder_stop(recorder);
+    });
+
 
 
 
