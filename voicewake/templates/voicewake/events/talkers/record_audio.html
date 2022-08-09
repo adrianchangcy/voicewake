@@ -38,12 +38,14 @@
     let audio_file_upload = document.getElementById('id_audio_file_upload');
     let submit_recording_btn = document.getElementById('submit_recording_btn');
     
-    //code below allows us to precisely track a single recorder instance
-    //via arg passing and manual 'recorder' assigning
+    //with recordRTC instance, we use function arg passing and manual 'recorder' assigning
+    //to precisely track a single recorder instance
     let recorder;
 
+    //webm, despite being able to contain video media, is seamlessly handled by <audio>
     const max_audio_file_size_mb = 200;
     const audio_file_extensions_allowed = ['webm', 'mp3', 'aac'];
+    const max_recording_duration_ms = 3000;
 
     //start recording
     async function recorder_start(){
@@ -72,7 +74,8 @@
         }
 
         //https://github.com/muaz-khan/RecordRTC
-        new_recorder = RecordRTC(stream, {
+        //note that RecordRTC uses Promise in some parts
+        recorder = RecordRTC(stream, {
     
             // audio, video, canvas, gif
             type: 'audio',
@@ -151,23 +154,29 @@
     
         });
 
-        return new_recorder.startRecording();
+        //set hard limit on recording duration for auto-stop
+        //this will still execute after .stopRecording() (not good), but it is already taken care of
+        recorder.setRecordingDuration(max_recording_duration_ms).onRecordingStopped(recorder_stop);
+
+        recorder.startRecording();
+
+        return true;
     }
 
 
     //pause or resume recording
-    async function recorder_pause_resume(passed_recorder){
+    function recorder_pause_resume(){
 
-        if(passed_recorder.state == 'recording'){
+        if(recorder.state == 'recording'){
 
-            await passed_recorder.pauseRecording();
+            recorder.pauseRecording();
 
-        }else if(passed_recorder.state == 'paused'){
+        }else if(recorder.state == 'paused'){
 
-            await passed_recorder.resumeRecording();
+            recorder.resumeRecording();
         }
 
-        return passed_recorder;
+        return recorder;
     }
 
 
@@ -181,14 +190,14 @@
 
 
     //turn blob into file from recordRTC recording
-    async function get_recorder_audio_as_file(passed_recorder){
+    async function get_recorder_audio_as_file(){
 
         //transform blob into file
         let blob, file;
 
         try{
 
-            blob = passed_recorder.getBlob();
+            blob = recorder.getBlob();
             file = new File([blob], 'this_recording.webm', {
                             type: 'audio/webm'
                         });
@@ -227,34 +236,50 @@
         audio_playback.src = URL.createObjectURL(file);
 
         audio_playback.onload = function(){
-            //free the memory
-            URL.revokeObjectURL(audio_playback.src);
-        }
+                                    //free the memory
+                                    return URL.revokeObjectURL(audio_playback.src);
+                                };
     
         return true;
     }
 
 
     //stop recording
-    async function recorder_stop(passed_recorder){
-        
-        await passed_recorder.stopRecording(async function(){
+    async function recorder_stop(){
 
-            //get file
-            let file = await get_recorder_audio_as_file(passed_recorder);
+        //to debug: when user manually .stopRecording(), .onRecordingStopped() still runs
+        //progress so far:
+        //even though it looks like the problem's here (attempting to read 'state' on null),
+        //it may be that somewhere else is accessing recorder unintentionally
+        //UPDATE: partially solved, must now find a better place to put destroy()
 
-            //attach recorded audio to file input
-            await attach_recorded_audio_to_file_input(file);
-
-            //attach recorded audio to playback
-            await attach_recorded_audio_to_playback(file);
+        if(recorder.state == 'stopped'){
             
-            this.destroy();
+            //if triggered by .onRecordingStopped(), do nothing
 
-            submit_recording_btn.disabled = false;
+        }else{
+
+            recorder.stopRecording();
+        }
+
+        //get file
+        let file = await get_recorder_audio_as_file(recorder);
+
+        //attach recorded audio to file input and playback
+        Promise.all(
+            [
+                await attach_recorded_audio_to_file_input(file),
+                await attach_recorded_audio_to_playback(file),
+            ]
+        ).then((values) => {
+            
+            //all should be true
+            if(values.includes(false)){
+                console.log('Something went wrong when trying to attach recorded audio');
+            }
         });
-
-        //remember to set recorder to null to retire it until next use
+        
+        submit_recording_btn.disabled = false;
         return true;
     }
 
@@ -294,9 +319,7 @@
     //click to enable recording
     start_recording_btn.addEventListener('click', async function(){
 
-        recorder = await recorder_start();
-
-        if(recorder){
+        if(recorder_start()){
 
             //ok, now enable all recording-related buttons
             pause_resume_recording_btn.textContent = 'PAUSE';
@@ -307,9 +330,7 @@
     //click to pause/resume recording
     pause_resume_recording_btn.addEventListener('click', async function(){
 
-        recorder = await recorder_pause_resume(recorder);
-
-        if(recorder){
+        if(recorder_pause_resume()){
 
             if(recorder.state == 'recording'){
 
@@ -322,17 +343,14 @@
         }
     });
 
-    
+
     //click to stop recording
     stop_recording_btn.addEventListener('click', async function(){
-
-        if(await recorder_stop(recorder)){
-
-            //retire this recorder instance
-            recorder = null;
+        
+        if(recorder_stop()){
 
             start_recording_btn.textContent = 'RECORD AGAIN';
-        }
+        };
     });
 
 
@@ -347,7 +365,7 @@
             let file = audio_file_upload.files.item(0);
             
             //check file size
-            if(!await check_file_size_is_valid(file)){
+            if(!check_file_size_is_valid(file)){
 
                 alert('Uploaded file has exceeded limit of '+max_audio_file_size_mb+'MB!');
                 audio_file_upload.value = null;
@@ -375,7 +393,10 @@
                 return;
             }
 
+            //ok
             alert('Success! Uploaded file meets requirements.');
+            //attach recorded audio to playback
+            await attach_recorded_audio_to_playback(file);
             submit_recording_btn.disabled = false;
         }
 
