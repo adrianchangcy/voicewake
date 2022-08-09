@@ -308,6 +308,8 @@ class LanguagesViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+
+
 #=====END OF REST APIs=====
 
 
@@ -359,7 +361,7 @@ class CreateEventsFormView(FormView):
         return redirect('/create-event')
 
 
-
+#view personal events
 class ViewEventsListView(ListView):
 
     template_name = 'voicewake/events/listeners/view_events.html'
@@ -437,7 +439,7 @@ class RecordAudioFormView(FormView):
     template_name = 'voicewake/events/talkers/record_audio.html'
     form_class = RecordAudioForm
     success_url = '/record'
-
-
+    
+    # def form_valid(self, form):
 
 #=====END OF WEB PAGES=====
