@@ -6,26 +6,44 @@
 <div>
 
     <br>
-    <button type="button" id="start_recording_btn" class="btn btn-danger">HIT TO RECORD</button>
+    <audio id="audio_playback" controls></audio>
+    <br>
+    <button type="button" id="start_recording_btn" class="btn btn-danger">RECORD</button>
     <br>
     <br>
     <div id="start_recording">
         <button type="button" id="pause_resume_recording_btn" class="btn btn-danger">PAUSE OR RESUME</button>
         <button type="button" id="stop_recording_btn" class="btn btn-danger">DONE</button>
     </div>
+    <br>
+    <form>
+        {% csrf_token %}
+        {{form.as_p}}
+        <input type="submit" id="submit_recording_btn" class="btn btn-danger" value="SEND" disabled></input>
+    </form>
 
+    <br>
+    <br>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/RecordRTC/5.6.2/RecordRTC.js"></script>
 <script>
 
+    let audio_playback = document.getElementById('audio_playback');
+
     let start_recording_btn = document.getElementById('start_recording_btn');
     let pause_resume_recording_btn = document.getElementById('pause_resume_recording_btn');
     let stop_recording_btn = document.getElementById('stop_recording_btn');
+
+    let audio_file_upload = document.getElementById('id_audio_file_upload');
+    let submit_recording_btn = document.getElementById('submit_recording_btn');
     
     //code below allows us to precisely track a single recorder instance
     //via arg passing and manual 'recorder' assigning
     let recorder;
+
+    const max_audio_file_size_mb = 200;
+    const audio_file_extensions_allowed = ['webm', 'mp3', 'aac'];
 
     //start recording
     async function recorder_start(){
@@ -50,14 +68,11 @@
                     break;
             }
 
-            return;
+            return null;
         }
 
-        //ok, now enable all recording-related buttons
-        pause_resume_recording_btn.textContent='PAUSE';
-
         //https://github.com/muaz-khan/RecordRTC
-        passed_recorder = RecordRTC(stream, {
+        new_recorder = RecordRTC(stream, {
     
             // audio, video, canvas, gif
             type: 'audio',
@@ -84,11 +99,11 @@
         
             // get intervals based blobs
             // value in milliseconds
-            timeSlice: 1000,
+            //timeSlice: 1000,
         
             // requires timeSlice above
             // returns blob via callback function
-            ondataavailable: function(blob) {},
+            //ondataavailable: function(blob) {},
         
             // auto stop recording if camera stops
             checkForInactiveTracks: false,
@@ -109,12 +124,12 @@
         
             // used by StereoAudioRecorder
             // the range 22050 to 96000.
-            sampleRate: 96000,
+            //recommended lower limit of 32000 for vocal-only
+            sampleRate: 32000,
         
             // used by StereoAudioRecorder
             // the range 22050 to 96000.
-            // let us force 16khz recording:
-            desiredSampRate: 16000,
+            desiredSampRate: 32000,
         
             // used by StereoAudioRecorder
             // Legal values are (256, 512, 1024, 2048, 4096, 8192, 16384).
@@ -122,6 +137,7 @@
         
             // used by StereoAudioRecorder
             // 1 or 2
+            //recommended lower limit of 1 for vocal-only
             numberOfAudioChannels: 2,
         
             // used by WebAssemblyRecorder
@@ -135,9 +151,7 @@
     
         });
 
-        passed_recorder.startRecording();
-
-        return passed_recorder;
+        return new_recorder.startRecording();
     }
 
 
@@ -147,33 +161,77 @@
         if(passed_recorder.state == 'recording'){
 
             await passed_recorder.pauseRecording();
-            pause_resume_recording_btn.textContent='RESUME';
 
-        }else if(recorder.state == 'paused'){
+        }else if(passed_recorder.state == 'paused'){
 
             await passed_recorder.resumeRecording();
-            pause_resume_recording_btn.textContent='PAUSE';
-
         }
 
         return passed_recorder;
     }
 
 
-    //handle recorded blob here
-    async function package_blob_and_upload(blob){
-
-        //transform blob into file
-        //var file = new File([blob], 'filename.webm', {
-        //    type: 'video/webm'
-        //});
-        
+    //ajax upload recorded blob
+    async function upload_recorded_media(file){
         //upload
         //var formData = new FormData();
         //formData.append('file', file); // upload "File" object rather than a "Blob"
         //uploadToServer(formData);
-        console.log(blob);
-        return;
+    }
+
+
+    //turn blob into file from recordRTC recording
+    async function get_recorder_audio_as_file(passed_recorder){
+
+        //transform blob into file
+        let blob, file;
+
+        try{
+
+            blob = passed_recorder.getBlob();
+            file = new File([blob], 'this_recording.webm', {
+                            type: 'audio/webm'
+                        });
+
+            return file;
+
+        }catch(error){
+
+            alert('Could not retrieve recorded audio.');
+            console.log(error);
+            return false;
+        }
+    }
+
+
+    //attach recorded audio file to file input
+    async function attach_recorded_audio_to_file_input(file){
+        
+        //create new container to replace <input type="file"> container later
+        let container = new DataTransfer();
+
+        //add
+        container.items.add(file);
+
+        //replace files of <input type="file"> with DataTransfer() files
+        audio_file_upload.files = container.files;
+
+        return true;
+    }
+
+
+    //attach recorded audio to playback
+    async function attach_recorded_audio_to_playback(file){
+
+        //attach file into <audio>
+        audio_playback.src = URL.createObjectURL(file);
+
+        audio_playback.onload = function(){
+            //free the memory
+            URL.revokeObjectURL(audio_playback.src);
+        }
+    
+        return true;
     }
 
 
@@ -182,20 +240,67 @@
         
         await passed_recorder.stopRecording(async function(){
 
-            let blob = await this.getBlob();
-            package_blob_and_upload(blob);
+            //get file
+            let file = await get_recorder_audio_as_file(passed_recorder);
+
+            //attach recorded audio to file input
+            await attach_recorded_audio_to_file_input(file);
+
+            //attach recorded audio to playback
+            await attach_recorded_audio_to_playback(file);
+            
             this.destroy();
+
+            submit_recording_btn.disabled = false;
         });
 
-        //here, retire the recorder until next use
-        return null;
+        //remember to set recorder to null to retire it until next use
+        return true;
     }
+
+    
+    //check for file size
+    //works with File() and files uploaded through <input type="file">
+    function check_file_size_is_valid(file, max_size_mb=max_audio_file_size_mb){
+
+        let file_size_mb = file.size / 1024 **2;
+
+        if(file_size_mb > max_size_mb){
+
+            return false;
+        }
+        
+        return true;
+    }
+
+    //handles names with no extension, and names that start with '.', while also being most performant
+    function check_file_type_is_valid(file, extensions_allowed=audio_file_extensions_allowed){
+
+        let file_name =  file.name;
+        let file_extension = file_name.slice((file_name.lastIndexOf(".") - 1 >>> 0) + 2);
+
+        if(!extensions_allowed.includes(file_extension)){
+           
+            return false;
+        }
+
+        return true;
+    }
+
+
+    //==========EVENTS BELOW==========
 
 
     //click to enable recording
     start_recording_btn.addEventListener('click', async function(){
 
         recorder = await recorder_start();
+
+        if(recorder){
+
+            //ok, now enable all recording-related buttons
+            pause_resume_recording_btn.textContent = 'PAUSE';
+        }
     });
 
 
@@ -203,15 +308,84 @@
     pause_resume_recording_btn.addEventListener('click', async function(){
 
         recorder = await recorder_pause_resume(recorder);
+
+        if(recorder){
+
+            if(recorder.state == 'recording'){
+
+                pause_resume_recording_btn.textContent = 'PAUSE';
+
+            }else if(recorder.state == 'paused'){
+
+                pause_resume_recording_btn.textContent = 'RESUME';
+            }
+        }
     });
 
+    
     //click to stop recording
     stop_recording_btn.addEventListener('click', async function(){
 
-        recorder = await recorder_stop(recorder);
+        if(await recorder_stop(recorder)){
+
+            //retire this recorder instance
+            recorder = null;
+
+            start_recording_btn.textContent = 'RECORD AGAIN';
+        }
     });
 
 
+    //on file upload to submit, listen for file size and type
+    //note that this is not fired when file is dynamically loaded
+    audio_file_upload.addEventListener('change', async function(){
+
+        submit_recording_btn.disabled = true;
+
+        if(audio_file_upload.files.length > 0){
+            
+            let file = audio_file_upload.files.item(0);
+            
+            //check file size
+            if(!await check_file_size_is_valid(file)){
+
+                alert('Uploaded file has exceeded limit of '+max_audio_file_size_mb+'MB!');
+                audio_file_upload.value = null;
+                return;
+            }
+
+            //check file format
+            if(!check_file_type_is_valid(file)){
+
+                let temp_string = '';
+
+                for(let x = 0; x < audio_file_extensions_allowed.length; x++){
+    
+                    temp_string += audio_file_extensions_allowed[x].toUpperCase();
+    
+                    if(x < audio_file_extensions_allowed.length - 1){
+    
+                        temp_string += ', ';
+                    }
+                
+                }
+
+                alert('Uploaded file type is not supported. Please use one of the following: '+temp_string);
+                audio_file_upload.value = null;
+                return;
+            }
+
+            alert('Success! Uploaded file meets requirements.');
+            submit_recording_btn.disabled = false;
+        }
+
+    });
+
+
+    //click to submit recording
+    submit_recording_btn.addEventListener('click', async function(event){
+        //event.preventDefault();
+    })
 
 
 

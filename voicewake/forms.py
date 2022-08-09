@@ -5,6 +5,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from datetime import datetime, timedelta
 from django.utils import timezone
+from pkg_resources import require
 
 from voicewake.models import *
 
@@ -73,7 +74,7 @@ class CreateEventsForm(forms.Form):
                         'table_name':'languages',
                         'column_name':'language_name',
                         'placeholder':'Your spoken language',
-                        'required':'True',
+                        'required':'False',
                     }
                 )
             )
@@ -101,7 +102,7 @@ class CreateEventsForm(forms.Form):
                         'table_name':'event_tones',
                         'column_name':'event_tone_name',
                         'placeholder':'Tone',
-                        'required':'True',
+                        'required':'False',
                     }
                 )
             )
@@ -185,6 +186,13 @@ class SeekEventsForm(forms.Form):
 
 class RecordAudioForm(forms.Form):
 
-    useless_element = forms.CharField(
-                        required=False,
+    audio_file_upload = forms.FileField(
+                    label='File to upload',
+                    allow_empty_file=False,
+                    max_length=50,
+                    widget=forms.ClearableFileInput(
+                        attrs={
+                            'accept':'.mp3',
+                        }
                     )
+                )

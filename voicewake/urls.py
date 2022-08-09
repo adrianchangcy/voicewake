@@ -17,6 +17,8 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.urlpatterns import format_suffix_patterns
 from rest_framework import routers
+from django.contrib.staticfiles.storage import staticfiles_storage
+from django.views.generic.base import RedirectView
 
 from voicewake import views
 
@@ -52,6 +54,9 @@ urlpatterns = [
     
     #test
     path('record', views.RecordAudioFormView.as_view(), name='record'),
+
+    #favicon
+    path('favicon.ico', RedirectView.as_view(url=staticfiles_storage.url('favicon.ico'))),
 ]
 
 
