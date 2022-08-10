@@ -441,5 +441,13 @@ class RecordAudioFormView(FormView):
     success_url = '/record'
     
     # def form_valid(self, form):
-
+        #maybe run codes from services.py, i.e. our self-made middle layer for business logic
+        #check these two links for looping on query rows
+            #https://stackoverflow.com/questions/6069024/syntax-of-for-loop-in-sql-server
+            #https://stackoverflow.com/questions/32668201/postgresql-iterate-over-results-of-query
+        #for more docs on consumer for websocket
+            #https://channels.readthedocs.io/en/latest/topics/consumers.html
+        #for more docs on file upload
+            #https://docs.djangoproject.com/en/4.1/topics/http/file-uploads/
+            
 #=====END OF WEB PAGES=====

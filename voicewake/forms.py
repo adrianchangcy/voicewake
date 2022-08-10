@@ -191,8 +191,10 @@ class RecordAudioForm(forms.Form):
                     allow_empty_file=False,
                     max_length=50,
                     widget=forms.ClearableFileInput(
+                        #until we're sure we can handle more options at server conversion/compression,
+                        #only use 3 options
                         attrs={
-                            'accept':'.mp3',
+                            'accept':'.webm, .mp3, .aac',
                         }
                     )
                 )
