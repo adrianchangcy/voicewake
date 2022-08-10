@@ -52,6 +52,13 @@
 
         let stream;
 
+        //if not undefined, i.e. has clicked 'record' before, destroy the instance
+        //probably not necessary, but doing this for slight precaution on memory management
+        if(recorder !== undefined){
+
+            recorder.destroy();
+        }
+
         try{
 
             stream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
@@ -70,7 +77,7 @@
                     break;
             }
 
-            return null;
+            return false;
         }
 
         //https://github.com/muaz-khan/RecordRTC
@@ -156,7 +163,8 @@
 
         //set hard limit on recording duration for auto-stop
         //this will still execute after .stopRecording() (not good), but it is already taken care of
-        recorder.setRecordingDuration(max_recording_duration_ms).onRecordingStopped(recorder_stop);
+        recorder.setRecordingDuration(max_recording_duration_ms)
+                .onRecordingStopped(recorder_stop);
 
         recorder.startRecording();
 
@@ -176,7 +184,7 @@
             recorder.resumeRecording();
         }
 
-        return recorder;
+        return true;
     }
 
 
@@ -247,40 +255,52 @@
     //stop recording
     async function recorder_stop(){
 
-        //to debug: when user manually .stopRecording(), .onRecordingStopped() still runs
-        //progress so far:
-        //even though it looks like the problem's here (attempting to read 'state' on null),
-        //it may be that somewhere else is accessing recorder unintentionally
-        //UPDATE: partially solved, must now find a better place to put destroy()
-
-        if(recorder.state == 'stopped'){
+        async function handle_recorder_stop(){
             
-            //if triggered by .onRecordingStopped(), do nothing
+            //get file
+            let file = await get_recorder_audio_as_file(recorder);
 
-        }else{
+            //attach recorded audio to file input and playback
+            Promise.all(
+                [
+                    await attach_recorded_audio_to_file_input(file),
+                    await attach_recorded_audio_to_playback(file),
+                ]
+            ).then((values) => {
+                
+                if(values.includes(false)){
 
-            recorder.stopRecording();
+                    //has error
+                    console.log('Something went wrong when trying to attach recorded audio.');
+                    submit_recording_btn.disabled = true;
+
+                }else{
+
+                    submit_recording_btn.disabled = false;
+                }
+            });
         }
 
-        //get file
-        let file = await get_recorder_audio_as_file(recorder);
+        try{
 
-        //attach recorded audio to file input and playback
-        Promise.all(
-            [
-                await attach_recorded_audio_to_file_input(file),
-                await attach_recorded_audio_to_playback(file),
-            ]
-        ).then((values) => {
-            
-            //all should be true
-            if(values.includes(false)){
-                console.log('Something went wrong when trying to attach recorded audio');
+            if(recorder.state === 'stopped'){
+                
+                //if auto-stop, state will be 'stopped'
+                await handle_recorder_stop();
+
+            }else{
+
+                //stopRecording() bug dictates that we must run codes in it to getBlob() properly
+                recorder.stopRecording(async () => {await handle_recorder_stop();});
             }
-        });
-        
-        submit_recording_btn.disabled = false;
-        return true;
+
+            return true;
+
+        }catch(error){
+
+            console.log(error);
+            return false;
+        }        
     }
 
     
@@ -319,7 +339,7 @@
     //click to enable recording
     start_recording_btn.addEventListener('click', async function(){
 
-        if(recorder_start()){
+        if(await recorder_start()){
 
             //ok, now enable all recording-related buttons
             pause_resume_recording_btn.textContent = 'PAUSE';
@@ -347,7 +367,7 @@
     //click to stop recording
     stop_recording_btn.addEventListener('click', async function(){
         
-        if(recorder_stop()){
+        if(await recorder_stop()){
 
             start_recording_btn.textContent = 'RECORD AGAIN';
         };
@@ -357,7 +377,7 @@
     //on file upload to submit, listen for file size and type
     //note that this is not fired when file is dynamically loaded
     audio_file_upload.addEventListener('change', async function(){
-
+        
         submit_recording_btn.disabled = true;
 
         if(audio_file_upload.files.length > 0){
@@ -395,6 +415,7 @@
 
             //ok
             alert('Success! Uploaded file meets requirements.');
+
             //attach recorded audio to playback
             await attach_recorded_audio_to_playback(file);
             submit_recording_btn.disabled = false;
@@ -405,7 +426,14 @@
 
     //click to submit recording
     submit_recording_btn.addEventListener('click', async function(event){
-        //event.preventDefault();
+        
+        event.preventDefault();
+
+        //if not undefined, i.e. has clicked 'record' before, destroy the instance
+        if(recorder !== undefined){
+
+            recorder.destroy();
+        }
     })
 
 
