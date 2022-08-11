@@ -16,10 +16,10 @@
         <button type="button" id="stop_recording_btn" class="btn btn-danger">DONE</button>
     </div>
     <br>
-    <form>
+    <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
         {{form.as_p}}
-        <input type="submit" id="submit_recording_btn" class="btn btn-danger" value="SEND" disabled></input>
+        <button type="submit" id="submit_recording_btn" class="btn btn-danger" disabled>SEND</button>
     </form>
 
     <br>
@@ -425,10 +425,8 @@
 
 
     //click to submit recording
-    submit_recording_btn.addEventListener('click', async function(event){
+    submit_recording_btn.addEventListener('click', function(event){
         
-        event.preventDefault();
-
         //if not undefined, i.e. has clicked 'record' before, destroy the instance
         if(recorder !== undefined){
 
