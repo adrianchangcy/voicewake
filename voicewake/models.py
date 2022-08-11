@@ -16,8 +16,37 @@ def get_default_country():
     #should get user's geolocation
     return Countries.objects.get_or_create(country_name='United States of America', country_name_shortened='USA')[0]
 
+
 def get_default_language():
     return Languages.objects.get_or_create(country_name='English', country_name_shortened='ENG')[0]
+
+
+#determine appropriate file path
+def determine_talker_file_path_and_name(instance, filename):
+    
+    #FYI, no need to have separate audio and video directory
+    #will always have only one or the other, not both
+
+    #e.g.:
+    #MEDIA_ROOT/talkers/year_2022/month_08/uer_7
+    #no need to type out MEDIA_ROOT here, as it is determined in settings.py
+    file_path = 'talkers/year_{0}/month_{1}/uer_{2}'.format(
+        instance.when_created.strftime('%Y'),
+        instance.when_created.strftime('%m'),
+        instance.user_event_role.id
+    )
+
+    #e.g.:
+    #adrian_uer_7_e_9
+    new_file_name = '{0}_uer_{1}_e_{2}'.format(
+        instance.user_event_role.user.username,
+        instance.user_event_role.id,
+        instance.id
+    )
+
+    file_extension = filename.rsplit('.', 1)[-1]
+
+    return file_path + '/' + new_file_name + '.' + file_extension
 
 
 
@@ -347,7 +376,7 @@ class Events(models.Model):
     event_message = models.TextField(blank=True, null=True)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
-    audio_file_path = models.TextField(blank=True, null=True)
+    audio_file_path = models.FileField(blank=True, null=True, upload_to=determine_talker_file_path_and_name)
 
     class Meta:
         app_label = 'voicewake'

@@ -10,26 +10,31 @@ from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required, permission_required
 from rest_framework.authtoken.models import Token
 
-#class-based view
+#class-based views
 from rest_framework import viewsets
     #ModelViewSet has: list, create, retrieve, update, partial_update, destroy
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic.edit import FormView
 from django.views.generic.list import ListView
+
+#mixins
+from django.contrib.auth.mixins import PermissionRequiredMixin
 
 #Python libraries
 from datetime import datetime, timezone, timedelta
 import zoneinfo
+import os
 
 #app files
 from voicewake.forms import *
 from .models import *
 from .serializers import *
+from .services import *
 
 #static values for configuring throughout the app
 from .static.values.values import *
+
 
 #overriding ModelViewSet's check_permissions() via super() to allow permission_classes_per_method
 class PermissionPolicyMixin():
@@ -440,14 +445,39 @@ class RecordAudioFormView(FormView):
     form_class = RecordAudioForm
     success_url = '/record'
     
-    # def form_valid(self, form):
+    def form_valid(self, form):
+
+        #next to-dos for this week:
+        #make success on receiving sent file here (DONE)
+        #do file directory logic on storing received file (DONE)
+        #replace existing file with new file if found (currently does not do so)
+        #summon this page through submit button on an event
+            #make that event pass its data here so we can tie that event and this record session
+
+        #TEST ON FILE LOGIC
+
+        #sample data
+        #in reality, event (id or object) is passed to here,
+        #and this form only shows on per-event basis
+        event = Events.objects.all().first()
+
+        #store file
+        event.audio_file_path = self.request.FILES['audio_file_upload']
+        event.save()
+
+
+        #convert file
+
+
+
+        return redirect('/record')
+
         #maybe run codes from services.py, i.e. our self-made middle layer for business logic
         #check these two links for looping on query rows
             #https://stackoverflow.com/questions/6069024/syntax-of-for-loop-in-sql-server
             #https://stackoverflow.com/questions/32668201/postgresql-iterate-over-results-of-query
         #for more docs on consumer for websocket
             #https://channels.readthedocs.io/en/latest/topics/consumers.html
-        #for more docs on file upload
-            #https://docs.djangoproject.com/en/4.1/topics/http/file-uploads/
-            
+
+
 #=====END OF WEB PAGES=====

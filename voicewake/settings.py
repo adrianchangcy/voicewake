@@ -178,3 +178,9 @@ CHANNEL_LAYERS = {
                 'BACKEND': 'channels.layers.InMemoryChannelLayer',
                 },
 }
+
+
+MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')
+
+
+MEDIA_URL = 'http://www.127.0.0.0:8000/'
