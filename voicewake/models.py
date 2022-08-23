@@ -3,9 +3,10 @@
 #   * Rearrange models' order
 #   * Make sure each model has one field with primary_key=True
 #   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
-#   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
+#   * Remove `managed = True` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
+from django.contrib.postgres.fields import ArrayField
 # from django.contrib.auth.models import PermissionsMixin
 
 
@@ -22,7 +23,7 @@ def get_default_language():
 
 
 #determine appropriate file path
-def determine_talker_file_path_and_name(instance, filename):
+def determine_event_audio_file_path_and_name(instance, filename):
     
     #FYI, no need to have separate audio and video directory
     #will always have only one or the other, not both
@@ -133,7 +134,7 @@ class Countries(models.Model):
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'countries'
 
 
@@ -196,7 +197,7 @@ class EventPurposeTranslations(models.Model):
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'event_purpose_translations'
 
 
@@ -207,7 +208,7 @@ class EventPurposes(models.Model):
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'event_purposes'
 
     def __str__(self):
@@ -224,7 +225,7 @@ class EventRepeatDetails(models.Model):
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'event_repeat_details'
 
 
@@ -236,23 +237,24 @@ class EventRequestStatuses(models.Model):
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'event_request_statuses'
 
 
 class EventRequests(models.Model):
     id = models.BigAutoField(primary_key=True)
     user_event_role = models.ForeignKey('UserEventRoles', on_delete=models.CASCADE, related_name='user_event_roles1')
+    event = models.ForeignKey('Events', on_delete=models.CASCADE)
     requested_user_event_role = models.ForeignKey('UserEventRoles', on_delete=models.CASCADE, related_name='user_event_roles2')
     event_request_status = models.ForeignKey(EventRequestStatuses, on_delete=models.PROTECT)
-    event = models.ForeignKey('Events', on_delete=models.CASCADE)
     payment_id = models.BigIntegerField(blank=True, null=True)  #should be FK, but until further notice
+        #any initial request money offered is already a payment (to the company, to be held)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'event_requests'
 
 
@@ -263,7 +265,7 @@ class EventRoles(models.Model):
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'event_roles'
 
 
@@ -274,7 +276,7 @@ class EventRoomMatchReportChoices(models.Model):
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'event_room_match_report_choices'
 
 
@@ -292,34 +294,35 @@ class EventRoomMatchReports(models.Model):
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'event_room_match_reports'
 
 
+#a user that submits a score/message stores it in his/her own row, not the other's
 class EventRoomMatches(models.Model):
     id = models.BigAutoField(primary_key=True)
     event = models.ForeignKey('Events', on_delete=models.PROTECT)
     event_room = models.ForeignKey('EventRooms', on_delete=models.PROTECT)
-    when_joined = models.DateTimeField()
-    when_left = models.DateTimeField()
-    ending_score = models.IntegerField()
+    when_created = models.DateTimeField()
+    when_left = models.DateTimeField(blank=True, null=True)
+    ending_score = models.IntegerField(blank=True, null=True)
     ending_message = models.TextField(blank=True, null=True)
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'event_room_matches'
 
 
 class EventRooms(models.Model):
     id = models.BigAutoField(primary_key=True)
     when_created = models.DateTimeField(auto_now_add=True)
-    audio_file_path = models.TextField(blank=True, null=True)
+    audio_file = models.TextField(blank=True, null=True)
     last_modified = models.DateTimeField(auto_now=True)
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'event_rooms'
 
 
@@ -331,7 +334,7 @@ class EventStatuses(models.Model):
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'event_statuses'
 
 
@@ -345,7 +348,7 @@ class EventToneTranslations(models.Model):
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'event_tone_translations'
 
 
@@ -356,7 +359,7 @@ class EventTones(models.Model):
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'event_tones'
 
     def __str__(self):
@@ -364,7 +367,7 @@ class EventTones(models.Model):
 
 
 class Events(models.Model):
-    #when any FK field below is null, interpret as 'any' later
+    #when language/tone/purpose is null, interpret as 'any' later
     id = models.BigAutoField(primary_key=True)
     user_event_role = models.ForeignKey('UserEventRoles', on_delete=models.CASCADE)
     language = models.ForeignKey('Languages', on_delete=models.SET_NULL, blank=True, null=True)
@@ -376,23 +379,25 @@ class Events(models.Model):
     event_message = models.TextField(blank=True, null=True)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
-    audio_file_path = models.FileField(blank=True, null=True, upload_to=determine_talker_file_path_and_name)
+    audio_file = models.FileField(blank=True, null=True, upload_to=determine_event_audio_file_path_and_name)
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'events'
 
 
 class Languages(models.Model):
     id = models.BigAutoField(primary_key=True)
-    language_name = models.TextField()
+    language_name = models.TextField(max_length=20)
     language_name_shortened = models.TextField(blank=True, null=True, max_length=10)
+    is_legitimate = models.BooleanField(default=False)
+        #when False, means for fun
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'languages'
 
     def __str__(self):
@@ -403,13 +408,17 @@ class UserEventRoles(models.Model):
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey('AuthUser', on_delete=models.CASCADE)
     event_role = models.ForeignKey(EventRoles, on_delete=models.PROTECT)
-    performance_rating = models.IntegerField()
+    given_scores = ArrayField(
+        models.IntegerField(default=0),
+        size=5,
+        blank=True, null=True
+    )
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'user_event_roles'
 
 
@@ -421,7 +430,7 @@ class UserFavourites(models.Model):
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'user_favourites'
 
 
@@ -432,7 +441,7 @@ class UserPermissions(models.Model):
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'user_permissions'
 
 
@@ -443,7 +452,7 @@ class UserVerificationOptions(models.Model):
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'user_verification_options'
 
 
@@ -455,7 +464,7 @@ class UserVerificationStatuses(models.Model):
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'user_verification_statuses'
 
 
@@ -472,5 +481,5 @@ class UserDetails(models.Model):
 
     class Meta:
         app_label = 'voicewake'
-        managed = False
+        managed = True
         db_table = 'user_details'

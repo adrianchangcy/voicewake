@@ -3,7 +3,7 @@
 //refer to link below:
 //https://docs.djangoproject.com/en/4.0/howto/static-files/deployment/
 jQuery(document).ready(function($){
-
+    
     //AUTOCOMPLETE FOR TEXT FIELDS WITH AJAX QUERY TO DB
     $('.reuse_basic_autocomplete').autocomplete({
         //standard autocomplete is 300ms delay (after last keystroke)
@@ -33,7 +33,7 @@ jQuery(document).ready(function($){
                         for(let x = 0; x < data.length; x++){
                             let datum = data[x];
                             search_result.push({
-                                data: datum[x],
+                                data: datum,
                                 value: datum[column_name],
                             });
                         }
