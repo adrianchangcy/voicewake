@@ -194,7 +194,34 @@ class RecordAudioForm(forms.Form):
                         #until we're sure we can handle more options at server conversion/compression,
                         #only use 3 options
                         attrs={
-                            'accept':'.webm, .mp3, .aac',
+                            'accept':HTML_FILE_INPUT_ACCEPT,
                         }
                     )
                 )
+
+    def clean_audio_file_upload(self):
+
+        file = self.cleaned_data.get('audio_file_upload')
+
+        #validate file size
+        if ((file.size) / 1000 ** 2) > MAX_AUDIO_FILE_SIZE_MB:
+
+            raise forms.ValidationError(
+                message='Uploaded file size exceeds limit of %(file_size)sMB.',
+                params={'file_size' : str(MAX_AUDIO_FILE_SIZE_MB)},
+                code='invalid',
+            )
+        
+        #validate file extension (although supposedly useless for security)
+        #able to handle '.htaccess', '', 'filename' appropriately
+        file_name_extension = (file.name.rsplit('.', 1)[-1]).lower()
+
+        if AUDIO_FILE_EXTENSIONS_ALLOWED.count(file_name_extension) == 0:
+
+            raise forms.ValidationError(
+                message='Uploaded file is not supported. Please use: %(file_extensions)s',
+                params={'file_extensions' : HTML_FILE_INPUT_ACCEPT},
+                code='invalid',
+            )
+
+        return file

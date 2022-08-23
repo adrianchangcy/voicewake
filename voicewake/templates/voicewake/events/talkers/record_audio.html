@@ -43,9 +43,9 @@
     let recorder;
 
     //webm, despite being able to contain video media, is seamlessly handled by <audio>
-    const max_audio_file_size_mb = 200;
-    const audio_file_extensions_allowed = ['webm', 'mp3', 'aac'];
-    const max_recording_duration_ms = 3000;
+    const MAX_AUDIO_FILE_SIZE_MB = 200;
+    const AUDIO_FILE_EXTENSIONS_ALLOWED = ['mp3', 'webm']
+    const MAX_RECORDING_DURATION_MS = 1000 * 60 * 2;    //2 minutes
 
     //start recording
     async function recorder_start(){
@@ -126,7 +126,7 @@
         
             // only for audio track
             // ignored when codecs=pcm
-            audioBitsPerSecond: 128000,
+            audioBitsPerSecond: 192000,
         
             // if you are recording multiple streams into single file
             // this helps you see what is being recorded
@@ -154,7 +154,7 @@
             frameRate: 30,
         
             // used by WebAssemblyRecorder
-            bitrate: 128000,
+            bitrate: 192000,
         
             // used by MultiStreamRecorder - to access HTMLCanvasElement
             elementClass: 'multi-streams-mixer',
@@ -163,7 +163,7 @@
 
         //set hard limit on recording duration for auto-stop
         //this will still execute after .stopRecording() (not good), but it is already taken care of
-        recorder.setRecordingDuration(max_recording_duration_ms)
+        recorder.setRecordingDuration(MAX_RECORDING_DURATION_MS)
                 .onRecordingStopped(recorder_stop);
 
         recorder.startRecording();
@@ -306,9 +306,9 @@
     
     //check for file size
     //works with File() and files uploaded through <input type="file">
-    function check_file_size_is_valid(file, max_size_mb=max_audio_file_size_mb){
+    function check_file_size_is_valid(file, max_size_mb=MAX_AUDIO_FILE_SIZE_MB){
 
-        let file_size_mb = file.size / 1024 **2;
+        let file_size_mb = file.size / (1000 * 1000);   //** not supported in IE browser
 
         if(file_size_mb > max_size_mb){
 
@@ -319,13 +319,13 @@
     }
 
     //handles names with no extension, and names that start with '.', while also being most performant
-    function check_file_type_is_valid(file, extensions_allowed=audio_file_extensions_allowed){
-
+    function check_file_type_is_valid(file, extensions_allowed=AUDIO_FILE_EXTENSIONS_ALLOWED){
+        
         let file_name =  file.name;
-        let file_extension = file_name.slice((file_name.lastIndexOf(".") - 1 >>> 0) + 2);
+        let file_extension = (file_name.slice((file_name.lastIndexOf(".") - 1 >>> 0) + 2)).toLowerCase();
 
         if(!extensions_allowed.includes(file_extension)){
-           
+            
             return false;
         }
 
@@ -387,7 +387,7 @@
             //check file size
             if(!check_file_size_is_valid(file)){
 
-                alert('Uploaded file has exceeded limit of '+max_audio_file_size_mb+'MB!');
+                alert('Uploaded file has exceeded limit of '+MAX_AUDIO_FILE_SIZE_MB+'MB!');
                 audio_file_upload.value = null;
                 return;
             }
@@ -397,11 +397,11 @@
 
                 let temp_string = '';
 
-                for(let x = 0; x < audio_file_extensions_allowed.length; x++){
+                for(let x = 0; x < AUDIO_FILE_EXTENSIONS_ALLOWED.length; x++){
     
-                    temp_string += audio_file_extensions_allowed[x].toUpperCase();
+                    temp_string += AUDIO_FILE_EXTENSIONS_ALLOWED[x].toUpperCase();
     
-                    if(x < audio_file_extensions_allowed.length - 1){
+                    if(x < AUDIO_FILE_EXTENSIONS_ALLOWED.length - 1){
     
                         temp_string += ', ';
                     }

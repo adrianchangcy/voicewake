@@ -1,13 +1,14 @@
 from django import views
 from django.http import JsonResponse, QueryDict
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework import status
 from django.db.models import Q
-
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required, permission_required
+from django.db import connection
+
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from rest_framework import status
 from rest_framework.authtoken.models import Token
 
 #class-based views
@@ -144,6 +145,9 @@ class PermissionPolicyMixin():
 
 @login_required(login_url='/login')
 def home(request):
+
+
+
 
     user_verification_options = UserVerificationOptions.objects.all()
 
@@ -335,9 +339,9 @@ class CreateEventsFormView(FormView):
         #this applies to CreateView, FormView, UpdateView
 
         user_event_role = UserEventRoles.objects.get(
-                                                    user=self.request.user.id,
-                                                    event_role__event_role_name='listener'
-                                                    )
+            user=self.request.user.id,
+            event_role__event_role_name='listener'
+        )
 
         #for USE_TZ=True, use tzinfo attr for timezone-aware, else warning
         #make sure JS processes form datetime into UTC before this
@@ -393,8 +397,7 @@ class SeekEventsFormView(FormView):
     def form_valid(self, form):
 
         global QUALIFY_FOR_LIVE_TIME_WINDOW
-        listener_timeframe_left = timezone.now() - timedelta(seconds=QUALIFY_FOR_LIVE_TIME_WINDOW)
-        listener_timeframe_right = timezone.now() + timedelta(seconds=QUALIFY_FOR_LIVE_TIME_WINDOW)
+
 
         return redirect('/seek-event')
 
@@ -437,7 +440,6 @@ class SeekEventsFormView(FormView):
 
         return redirect('/seek-event')
 
-
 #test record
 class RecordAudioFormView(FormView):
 
@@ -447,30 +449,18 @@ class RecordAudioFormView(FormView):
     
     def form_valid(self, form):
 
-        #next to-dos for this week:
-        #make success on receiving sent file here (DONE)
-        #do file directory logic on storing received file (DONE)
-        #replace existing file with new file if found (currently does not do so)
+        #remaining to-dos this week:
+            #write logic for talker finding listener event
+            #write logic for establishing db connection via event_room and event.event_status
         #summon this page through submit button on an event
             #make that event pass its data here so we can tie that event and this record session
-
-        #TEST ON FILE LOGIC
-
-        #sample data
-        #in reality, event (id or object) is passed to here,
-        #and this form only shows on per-event basis
-        event = Events.objects.all().first()
-
-        #store file
-        event.audio_file_path = self.request.FILES['audio_file_upload']
-        event.save()
-
-
-        #convert file
 
 
 
         return redirect('/record')
+        #when you want to open the file, use chunks in loop instead of read()
+        #https://docs.djangoproject.com/en/4.1/ref/files/uploads/
+        # convert_audio_files_to_mp3()
 
         #maybe run codes from services.py, i.e. our self-made middle layer for business logic
         #check these two links for looping on query rows
