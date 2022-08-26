@@ -9,10 +9,18 @@ from django.db import models
 from django.contrib.postgres.fields import ArrayField
 # from django.contrib.auth.models import PermissionsMixin
 
+#Python packages
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
 
 #defaults
 #'any' means randomise later
 #pass others to set it as default
+def get_current_datetime_with_tz():
+    return datetime.now().astimezone(tz=ZoneInfo('UTC'))
+
+
 def get_default_country():
     #should get user's geolocation
     return Countries.objects.get_or_create(country_name='United States of America', country_name_shortened='USA')[0]
@@ -189,8 +197,8 @@ class DjangoSession(models.Model):
 
 class EventPurposeTranslations(models.Model):
     id = models.BigAutoField(primary_key=True)
-    event_purpose = models.ForeignKey('EventPurposes', on_delete=models.CASCADE)
-    language = models.ForeignKey('Languages', on_delete=models.CASCADE)
+    event_purpose = models.ForeignKey('EventPurposes', on_delete=models.CASCADE, blank=True, null=True, default=None)
+    language = models.ForeignKey('Languages', on_delete=models.CASCADE, blank=True, null=True, default=None)
     translation = models.TextField()
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
@@ -218,9 +226,13 @@ class EventPurposes(models.Model):
 class EventRepeatDetails(models.Model):
     #no new row if none of these are specified at form
     id = models.BigAutoField(primary_key=True)
-    event = models.OneToOneField('Events', on_delete=models.CASCADE)
+    event = models.OneToOneField('Events', on_delete=models.CASCADE, blank=True, null=True, default=None)
     is_repeat = models.BooleanField()
-    trigger_mon_to_sun = models.TextField(blank=True, null=True)
+    trigger_mon_to_sun = ArrayField(
+        models.BooleanField(default=False),
+        size=7,
+        blank=True, null=True
+    )
     last_modified = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -231,8 +243,8 @@ class EventRepeatDetails(models.Model):
 
 class EventRequestStatuses(models.Model):
     id = models.BigAutoField(primary_key=True)
-    event_request_status_name = models.TextField()
-    description = models.TextField(blank=True, null=True)
+    event_request_status_name = models.TextField(unique=True)
+    description = models.TextField(blank=True)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -243,10 +255,30 @@ class EventRequestStatuses(models.Model):
 
 class EventRequests(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user_event_role = models.ForeignKey('UserEventRoles', on_delete=models.CASCADE, related_name='user_event_roles1')
-    event = models.ForeignKey('Events', on_delete=models.CASCADE)
-    requested_user_event_role = models.ForeignKey('UserEventRoles', on_delete=models.CASCADE, related_name='user_event_roles2')
-    event_request_status = models.ForeignKey(EventRequestStatuses, on_delete=models.PROTECT)
+    user_event_role = models.ForeignKey(
+        'UserEventRoles',
+        on_delete=models.CASCADE,
+        related_name='user_event_roles1',
+        blank=True,
+        null=True,
+        default=None
+    )
+    event = models.ForeignKey('Events', on_delete=models.CASCADE, blank=True, null=True)
+    requested_user_event_role = models.ForeignKey(
+        'UserEventRoles',
+        on_delete=models.CASCADE,
+        related_name='user_event_roles2',
+        blank=True,
+        null=True,
+        default=None
+    )
+    event_request_status = models.ForeignKey(
+        EventRequestStatuses,
+        on_delete=models.PROTECT,
+        blank=True,
+        null=True,
+        default=None
+    )
     payment_id = models.BigIntegerField(blank=True, null=True)  #should be FK, but until further notice
         #any initial request money offered is already a payment (to the company, to be held)
     when_created = models.DateTimeField(auto_now_add=True)
@@ -282,9 +314,29 @@ class EventRoomMatchReportChoices(models.Model):
 
 class EventRoomMatchReports(models.Model):
     id = models.BigAutoField(primary_key=True)
-    event_room_match = models.ForeignKey('EventRoomMatches', on_delete=models.PROTECT, related_name='event_room_matches1')
-    reported_event_room_match = models.ForeignKey('EventRoomMatches', on_delete=models.PROTECT, related_name='event_room_matches2')
-    event_room_match_report_choice = models.ForeignKey(EventRoomMatchReportChoices, on_delete=models.SET_NULL, blank=True, null=True)
+    event_room_match = models.ForeignKey(
+        'EventRoomMatches',
+        on_delete=models.PROTECT,
+        related_name='event_room_matches1',
+        blank=True,
+        null=True,
+        default=None
+    )
+    reported_event_room_match = models.ForeignKey(
+        'EventRoomMatches',
+        on_delete=models.PROTECT,
+        related_name='event_room_matches2',
+        blank=True,
+        null=True,
+        default=None
+    )
+    event_room_match_report_choice = models.ForeignKey(
+        EventRoomMatchReportChoices,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        default=None
+    )
     reported_message = models.TextField()
     when_created = models.DateTimeField(auto_now_add=True)
     is_valid = models.BooleanField(blank=True, null=True)
@@ -301,8 +353,8 @@ class EventRoomMatchReports(models.Model):
 #a user that submits a score/message stores it in his/her own row, not the other's
 class EventRoomMatches(models.Model):
     id = models.BigAutoField(primary_key=True)
-    event = models.ForeignKey('Events', on_delete=models.PROTECT)
-    event_room = models.ForeignKey('EventRooms', on_delete=models.PROTECT)
+    event = models.ForeignKey('Events', on_delete=models.PROTECT, blank=True, null=True, default=None)
+    event_room = models.ForeignKey('EventRooms', on_delete=models.PROTECT, blank=True, null=True, default=None)
     when_created = models.DateTimeField()
     when_left = models.DateTimeField(blank=True, null=True)
     ending_score = models.IntegerField(blank=True, null=True)
@@ -317,7 +369,7 @@ class EventRoomMatches(models.Model):
 class EventRooms(models.Model):
     id = models.BigAutoField(primary_key=True)
     when_created = models.DateTimeField(auto_now_add=True)
-    audio_file = models.TextField(blank=True, null=True)
+    audio_file = models.TextField(blank=True)
     last_modified = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -328,8 +380,8 @@ class EventRooms(models.Model):
 
 class EventStatuses(models.Model):
     id = models.BigAutoField(primary_key=True)
-    event_status_name = models.TextField()
-    description = models.TextField(blank=True, null=True)
+    event_status_name = models.TextField(unique=True)
+    description = models.TextField(blank=True)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -340,8 +392,8 @@ class EventStatuses(models.Model):
 
 class EventToneTranslations(models.Model):
     id = models.BigAutoField(primary_key=True)
-    event_tone = models.ForeignKey('EventTones', on_delete=models.CASCADE)
-    language = models.ForeignKey('Languages', on_delete=models.CASCADE)
+    event_tone = models.ForeignKey('EventTones', on_delete=models.CASCADE, blank=True, null=True, default=None)
+    language = models.ForeignKey('Languages', on_delete=models.CASCADE, blank=True, null=True, default=None)
     translation = models.TextField()
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
@@ -369,14 +421,13 @@ class EventTones(models.Model):
 class Events(models.Model):
     #when language/tone/purpose is null, interpret as 'any' later
     id = models.BigAutoField(primary_key=True)
-    user_event_role = models.ForeignKey('UserEventRoles', on_delete=models.CASCADE)
-    language = models.ForeignKey('Languages', on_delete=models.SET_NULL, blank=True, null=True)
-    event_tone = models.ForeignKey('EventTones', on_delete=models.SET_NULL, blank=True, null=True)
-    event_purpose = models.ForeignKey('EventPurposes', on_delete=models.SET_NULL, blank=True, null=True)
-    event_status = models.ForeignKey(EventStatuses, on_delete=models.PROTECT)
+    user_event_role = models.ForeignKey('UserEventRoles', on_delete=models.CASCADE, blank=True, null=True, default=None)
+    event_tone = models.ForeignKey('EventTones', on_delete=models.SET_NULL, blank=True, null=True, default=None)
+    event_purpose = models.ForeignKey('EventPurposes', on_delete=models.SET_NULL, blank=True, null=True, default=None)
+    event_status = models.ForeignKey(EventStatuses, on_delete=models.PROTECT, blank=True, null=True, default=None)
     event_name = models.TextField()
-    when_trigger = models.DateTimeField()
-    event_message = models.TextField(blank=True, null=True)
+    when_trigger = models.DateTimeField(default=get_current_datetime_with_tz)
+    event_message = models.TextField(blank=True)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
     audio_file = models.FileField(blank=True, null=True, upload_to=determine_event_audio_file_path_and_name)
@@ -390,8 +441,7 @@ class Events(models.Model):
 class Languages(models.Model):
     id = models.BigAutoField(primary_key=True)
     language_name = models.TextField(max_length=20)
-    language_name_shortened = models.TextField(blank=True, null=True, max_length=10)
-    is_legitimate = models.BooleanField(default=False)
+    language_name_shortened = models.TextField(blank=True, max_length=10)
         #when False, means for fun
     when_created = models.DateTimeField(auto_now_add=True)
 
@@ -406,8 +456,8 @@ class Languages(models.Model):
 
 class UserEventRoles(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey('AuthUser', on_delete=models.CASCADE)
-    event_role = models.ForeignKey(EventRoles, on_delete=models.PROTECT)
+    user = models.ForeignKey('AuthUser', on_delete=models.CASCADE, blank=True, null=True, default=None)
+    event_role = models.ForeignKey(EventRoles, on_delete=models.PROTECT, blank=True, null=True, default=None)
     given_scores = ArrayField(
         models.IntegerField(default=0),
         size=5,
@@ -424,8 +474,22 @@ class UserEventRoles(models.Model):
 
 class UserFavourites(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey('AuthUser', on_delete=models.CASCADE, related_name='primary_users')
-    favourited_user = models.ForeignKey('AuthUser', on_delete=models.CASCADE, related_name='secondary_users')
+    user = models.ForeignKey(
+        'AuthUser',
+        on_delete=models.CASCADE,
+        related_name='primary_users',
+        blank=True,
+        null=True,
+        default=None
+    )
+    favourited_user = models.ForeignKey(
+        'AuthUser',
+        on_delete=models.CASCADE,
+        related_name='secondary_users',
+        blank=True,
+        null=True,
+        default=None
+    )
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -458,8 +522,8 @@ class UserVerificationOptions(models.Model):
 
 class UserVerificationStatuses(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user_verification_status_name = models.TextField()
-    description = models.TextField(blank=True, null=True)
+    user_verification_status_name = models.TextField(unique=True)
+    description = models.TextField(blank=True)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -470,9 +534,9 @@ class UserVerificationStatuses(models.Model):
 
 class UserDetails(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey('AuthUser', on_delete=models.CASCADE)
-    country = models.ForeignKey('Countries', on_delete=models.SET(get_default_country))
-    language = models.ForeignKey('Languages', on_delete=models.SET(get_default_language))
+    user = models.ForeignKey('AuthUser', on_delete=models.CASCADE, blank=True, null=True, default=None)
+    country = models.ForeignKey('Countries', on_delete=models.SET(get_default_country), blank=True, null=True, default=None)
+    language = models.ForeignKey('Languages', on_delete=models.SET(get_default_language), blank=True, null=True, default=None)
     user_display_name = models.TextField()
     user_birthdate = models.DateField()
     when_created = models.DateTimeField(auto_now_add=True)
