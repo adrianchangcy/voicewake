@@ -65,20 +65,6 @@ class CreateEventsForm(forms.Form):
                     label='When',
                 )
 
-    language = forms.CharField(
-                label='Language',
-                required=False,
-                widget=forms.TextInput(
-                    attrs={
-                        'class':'reuse_basic_autocomplete',
-                        'table_name':'languages',
-                        'column_name':'language_name',
-                        'placeholder':'Your spoken language',
-                        'required':'False',
-                    }
-                )
-            )
-
     event_purpose = forms.CharField(
                 label='Purpose',
                 required=False,
@@ -141,20 +127,6 @@ class SeekEventsForm(forms.Form):
                     )
                 )
     
-    language = forms.CharField(
-                label='Language',
-                required=False,
-                widget=forms.TextInput(
-                    attrs={
-                        'class':'reuse_basic_autocomplete',
-                        'table_name':'languages',
-                        'column_name':'language_name',
-                        'placeholder':'Your spoken language',
-                        'required':'True',
-                    }
-                )
-            )
-
     event_purpose = forms.CharField(
                 label='Purpose',
                 required=False,

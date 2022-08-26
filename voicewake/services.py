@@ -1,7 +1,7 @@
 #here, we define business logic
 
 #Django libraries
-from django.db.models import Q
+from django.db.models import Q, Case, When, Value
 from django.db import connection
 from django.core.files.base import File
 
@@ -18,7 +18,7 @@ from .serializers import *
 from .settings import MEDIA_ROOT
 
 #miscellaneous
-from .static.values.values import SEEK_LISTENERS_CHOICE_LIMIT
+from .static.values.values import LISTENER_EVENT_SEARCH_LIMIT
 
 
 #check Model.FileField object for malicious code
@@ -112,8 +112,8 @@ class TalkerActions():
 
     #when modifying this to handle 1-many, store records in []
     def __init__(
-        self, user,
-        form_event_purpose=None, form_language=None, form_event_tone=None,
+        self, user=None,
+        form_event_purpose=None, form_event_tone=None,
         talker=None, talker_event=None, event_request=None,
         listener=None, listener_event=None,
         event_room=None, talker_event_room_match=None, listener_event_room_match=None,
@@ -125,7 +125,6 @@ class TalkerActions():
         #these event preferences are only from form submit
         #passing form directly makes it harder to test
         self.form_event_purpose = form_event_purpose
-        self.form_language = form_language
         self.form_event_tone = form_event_tone
 
         self.talker = talker
@@ -140,12 +139,12 @@ class TalkerActions():
         self.listener_event_room_match = listener_event_room_match
 
 
-    def set_user_and_talker(self, request_user):
+    def set_user_and_talker(self, request_user_id):
 
-        self.user = request_user
+        self.user = AuthUser.objects.get(pk=request_user_id)
 
         self.talker = UserEventRoles.objects.get(
-            user=AuthUser.objects.get(pk=self.user.id),
+            user=self.user,
             event_role__event_role_name='talker'
         )
 
@@ -153,63 +152,41 @@ class TalkerActions():
 
 
     #pre-queries model instances based on form submit for coding convenience
-    def set_event_preferences(self, event_purpose=None, language=None, event_tone=None):
+    def set_event_preferences(self, event_purpose_name=None, event_tone_name=None):
 
         #currently does not handle 'a', 'a   ', '', '   ', 'English' and 'english', etc.
         #when None, it implicitly means 'any', a.k.a. this column doesn't matter in QuerySet
 
-        if event_purpose is not None:
+        if event_purpose_name is not None:
 
-            self.form_event_purpose = EventPurposes.objects.get(event_purpose_name=event_purpose)
+            self.form_event_purpose = EventPurposes.objects.get(event_purpose_name=event_purpose_name)
 
-        if language is not None:
+        if event_tone_name is not None:
 
-            self.form_language = Languages.objects.get_or_create(language_name=language)[0]
-
-        if event_tone is not None:
-
-            self.form_event_tone = EventTones.objects.get_or_create(event_tone_name=event_tone)[0]
+            self.form_event_tone = EventTones.objects.get_or_create(event_tone_name=event_tone_name)[0]
 
         return True
 
 
-    def seek_listener_events(self, max_listener_options=SEEK_LISTENERS_CHOICE_LIMIT):
-
-        #handle event_purpose
-        #only event_purpose has fixed selection, hence get()
-        qs_event_purpose = Q()
-
-        if self.form_event_purpose is not None:
-
-            qs_event_purpose = Q(event_purpose=self.form_event_purpose)
-
-        #handle language
-        qs_language = Q()
-
-        if self.form_language is not None:
-
-            qs_language = Q(event_purpose=self.form_language)
-
-        #handle event_tone
-        qs_event_tone = Q()
-
-        if self.form_event_tone is not None:
-
-            qs_event_tone = Q(event_tone=self.form_event_tone)
+    def seek_listener_events(self, max_listeners_to_find=LISTENER_EVENT_SEARCH_LIMIT):
 
         #query
-        events = Events.objects.exclude(
-            Q(user_event_role=self.talker),
-            Q(user_event_role__event_role=EventRoles.objects.get(event_role_name='talker'))
-        ).filter(
-            Q(event_status=EventStatuses.objects.get(event_status_name='available')) &
-            Q(event_room_matches_set__isnull=False) &
-            qs_event_purpose &
-            qs_language &
-            Q(qs_event_tone | Q())  #not sure if successful
-        ).order_by('when_created')[:max_listener_options]
-
+        events = Events.objects.filter(
+            user_event_role__event_role__event_role_name = 'listener',
+            event_status__event_status_name = 'available',
+            event_purpose__event_purpose_name = self.form_event_purpose,
+        ).order_by(
+            Case(
+                When(event_tone__event_tone_name=self.form_event_tone, then=Value(0)),
+                When(event_tone__event_tone_name__istartswith=self.form_event_tone, then=Value(1)),
+                When(event_tone__event_tone_name__icontains=self.form_event_tone, then=Value(2)),
+            ),
+            'when_trigger'
+        )[:max_listeners_to_find]
+    
         print(events.query)
+        print(list(events))
+        #how to handle null event preferences
         return events
 
 
@@ -223,7 +200,6 @@ class TalkerActions():
         #create talker event
         self.talker_event = Events.objects.create(
             user_event_role=self.talker,
-            language=Languages.objects.get(language_name=self.form_language),
             event_purpose=EventPurposes.objects.get(event_purpose_name=self.form_event_purpose),
             event_tone=EventTones.objects.get(event_tone_name=self.form_event_tone),
             event_status=EventStatuses.objects.get(event_status_name='is_matched'),
@@ -267,7 +243,6 @@ class TalkerActions():
         self.talker_event = Events.objects.create(
             user_event_role = self.talker,
             event_purpose = self.form_event_purpose,
-            language = self.form_language,
             event_tone = self.form_event_tone,
             event_status = event_status
         )
@@ -309,8 +284,8 @@ class ListenerActions():
 
     #when modifying this to handle 1-many, store records in []
     def __init__(
-        self, user,
-        form_event_purpose=None, form_language=None, form_event_tone=None,
+        self, user=None,
+        form_event_purpose=None, form_event_tone=None,
         listener=None, listener_event=None, listener_event_room_match=None,
         talker=None, talker_event=None,
         event_request=None
@@ -323,7 +298,6 @@ class ListenerActions():
         #these event preferences are only from form submit
         #passing form directly makes it harder to test
         self.form_event_purpose = form_event_purpose
-        self.form_language = form_language
         self.form_event_tone = form_event_tone
 
         self.listener = listener
@@ -335,12 +309,12 @@ class ListenerActions():
         self.event_request = event_request
 
 
-    def set_user_and_listener(self, request_user):
+    def set_user_and_listener(self, request_user_id):
 
-        self.user = request_user
+        self.user = AuthUser.objects.get(pk=request_user_id)
 
         self.listener = UserEventRoles.objects.get(
-            user=AuthUser.objects.get(pk=self.user.id),
+            user=self.user,
             event_role__event_role_name='listener'
         )
 
@@ -348,46 +322,36 @@ class ListenerActions():
 
 
     #pre-queries model instances based on form submit for coding convenience
-    def set_event_preferences(self, event_purpose=None, language=None, event_tone=None):
+    def set_event_preferences(self, event_purpose_name=None, event_tone_name=None):
 
         #currently does not handle 'a', 'a   ', '', '   ', 'English' and 'english', etc.
         #when None, it implicitly means 'any', a.k.a. this column doesn't matter in QuerySet
 
-        if event_purpose is not None:
+        if event_purpose_name is not None:
 
-            self.form_event_purpose = EventPurposes.objects.get(event_purpose_name=event_purpose)
+            self.form_event_purpose = EventPurposes.objects.get(event_purpose_name=event_purpose_name)
 
-        if language is not None:
+        if event_tone_name is not None:
 
-            self.form_language = Languages.objects.get_or_create(language_name=language)[0]
-
-        if event_tone is not None:
-
-            self.form_event_tone = EventTones.objects.get_or_create(event_tone_name=event_tone)[0]
+            self.form_event_tone = EventTones.objects.get_or_create(event_tone_name=event_tone_name)[0]
 
         return True
 
 
-    def create_event(self, form_date, form_time, form_event_name, form_event_message=None):
+    def create_event(self, form_datetime, form_event_name, form_event_message=None):
 
-        if isinstance(form_date, datetime) is False or isinstance(form_time, datetime) is False:
+        if isinstance(form_datetime, datetime) is False:
 
             return False
-
-        event_datetime = datetime.combine(
-                            form_date,
-                            form_time,
-                            tzinfo=ZoneInfo('UTC'))
 
         self.listener_event = Events.objects.create(
             user_event_role = self.listener,
             event_name = form_event_name,
             event_purpose = self.form_event_purpose,
-            language = self.form_language,
             event_tone = self.form_event_tone,
             event_message = form_event_message,
             event_status = EventStatuses.objects.filter(event_status_name='available')[:1].get(),
-            when_trigger = event_datetime,
+            when_trigger = form_datetime,
         )
 
         return True

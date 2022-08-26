@@ -146,9 +146,6 @@ class PermissionPolicyMixin():
 @login_required(login_url='/login')
 def home(request):
 
-
-
-
     user_verification_options = UserVerificationOptions.objects.all()
 
     #HTML forms only accept GET and POST methods, hence this workaround for deletion
@@ -294,28 +291,7 @@ class EventTonesViewSet(viewsets.ModelViewSet):
         return queryset
 
 
-class LanguagesViewSet(viewsets.ModelViewSet):
 
-    serializer_class = LanguagesSerializer
-    permission_classes = [IsAuthenticated]
-    queryset = Languages.objects.all()
-
-    def get_queryset(self):
-
-        #allow max 50 rows
-        queryset = Languages.objects.all()[:50]
-
-        search = self.request.query_params.get('search')
-
-        if search is not None:
-
-            #part of search optimisation is "... field_name LIKE 'string%' OR field_name LIKE '%string%'"
-            #Q is used to encapsulate a collection of keyword arguments
-            queryset = Languages.objects.filter(
-                        Q(language_name__istartswith=search)|Q(language_name__icontains=search)
-                        )[:10]
-
-        return queryset
 
 
 
@@ -355,7 +331,6 @@ class CreateEventsFormView(FormView):
             event_name=form.cleaned_data['event_name'],
             event_purpose=EventPurposes.objects.get_or_create(event_purpose_name=form.cleaned_data['event_purpose'])[0],
             event_tone=EventTones.objects.get_or_create(event_tone_name=form.cleaned_data['event_tone'])[0],
-            language=Languages.objects.get_or_create(language_name=form.cleaned_data['language'])[0],
             event_message=form.cleaned_data['event_message'],
             event_status=EventStatuses.objects.filter(event_status_name='available')[:1].get(),
             when_trigger=event_datetime,
@@ -434,7 +409,6 @@ class SeekEventsFormView(FormView):
         #     user_event_role=user_event_role,
         #     event_purpose=EventPurposes.objects.get_or_create(event_purpose_name=form.cleaned_data['event_purpose']),
         #     event_tone=EventTones.objects.get_or_create(event_tone_name=form.cleaned_data['event_tone']),
-        #     language=Languages.objects.get_or_create(language_name=form.cleaned_data['language']),
         #     event_status=EventStatuses.objects.filter(event_status_name='available').first(),
         # )
 
