@@ -5,8 +5,11 @@ QUALIFY_FOR_LIVE_TIME_WINDOW = 60
 #extra minutes for initial time during listener new event
 LISTENER_NEW_EVENT_EXTRA_MINUTES = 2
 
-
+#max listener events to show to talker
 LISTENER_EVENT_SEARCH_LIMIT = 3
+
+#maximum wait time given to talker on selecting a listener event
+TALKER_EVENT_CHOICE_MAX_DURATION_SECONDS = 10
 
 
 #file extensions allowed

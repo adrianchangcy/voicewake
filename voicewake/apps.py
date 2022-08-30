@@ -19,15 +19,9 @@ class VoicewakeConfig(AppConfig):
 
             def create_user_details(user):
 
-                #should get user's geolocation
-                DEFAULT_COUNTRY, ok = Countries.objects.get_or_create(
-                                                        country_name='United States of America',
-                                                        country_name_shortened='USA'
-                                                    )
-                DEFAULT_LANGUAGE, ok = Languages.objects.get_or_create(
-                                                        language_name='English',
-                                                        language_name_shortened='ENG'
-                                                    )
+                #should get user's geolocation instead of these
+                DEFAULT_COUNTRY = Countries.objects.get(country_name='United States of America')
+                DEFAULT_LANGUAGE = Languages.objects.get(language_name='English')
 
                 #check if user_id exists instead of direct get_or_create()
                 #only want one row for one user

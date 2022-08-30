@@ -44,6 +44,7 @@ urlpatterns = [
 
     # templates
     #still need to make these pretty, but leave it for last
+    #we specify 'name' arg for auto-construction of full URL via reverse()
     path('', views.home, name='home'),
     path('sign-up', views.sign_up, name='sign_up'),
     path('set-timezone', views.set_timezone, name='set_timezone'),
