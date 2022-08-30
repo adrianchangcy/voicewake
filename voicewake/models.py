@@ -136,8 +136,8 @@ class AuthUserUserPermissions(models.Model):
 
 class Countries(models.Model):
     id = models.BigAutoField(primary_key=True)
-    country_name = models.TextField()
-    country_name_shortened = models.TextField(blank=True, null=True, max_length=10)
+    country_name = models.TextField(unique=True, max_length=30)
+    country_name_shortened = models.TextField(blank=True, null=True, unique=True, max_length=10)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -211,7 +211,7 @@ class EventPurposeTranslations(models.Model):
 
 class EventPurposes(models.Model):
     id = models.BigAutoField(primary_key=True)
-    event_purpose_name = models.TextField()
+    event_purpose_name = models.TextField(max_length=20, unique=True)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -243,7 +243,7 @@ class EventRepeatDetails(models.Model):
 
 class EventRequestStatuses(models.Model):
     id = models.BigAutoField(primary_key=True)
-    event_request_status_name = models.TextField(unique=True)
+    event_request_status_name = models.TextField(max_length=30, unique=True)
     description = models.TextField(blank=True)
     when_created = models.DateTimeField(auto_now_add=True)
 
@@ -292,7 +292,7 @@ class EventRequests(models.Model):
 
 class EventRoles(models.Model):
     id = models.BigAutoField(primary_key=True)
-    event_role_name = models.TextField()
+    event_role_name = models.TextField(max_length=20, unique=True)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -303,7 +303,7 @@ class EventRoles(models.Model):
 
 class EventRoomMatchReportChoices(models.Model):
     id = models.BigAutoField(primary_key=True)
-    event_room_match_report_choice_name = models.TextField()
+    event_room_match_report_choice_name = models.TextField(max_length=100, unique=True)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -380,7 +380,7 @@ class EventRooms(models.Model):
 
 class EventStatuses(models.Model):
     id = models.BigAutoField(primary_key=True)
-    event_status_name = models.TextField(unique=True)
+    event_status_name = models.TextField(max_length=50, unique=True)
     description = models.TextField(blank=True)
     when_created = models.DateTimeField(auto_now_add=True)
 
@@ -406,7 +406,7 @@ class EventToneTranslations(models.Model):
 
 class EventTones(models.Model):
     id = models.BigAutoField(primary_key=True)
-    event_tone_name = models.TextField()
+    event_tone_name = models.TextField(max_length=50)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -422,14 +422,17 @@ class Events(models.Model):
     #when language/tone/purpose is null, interpret as 'any' later
     id = models.BigAutoField(primary_key=True)
     user_event_role = models.ForeignKey('UserEventRoles', on_delete=models.CASCADE, blank=True, null=True, default=None)
+    language = models.ForeignKey('Languages', on_delete=models.SET_NULL, blank=True, null=True, default=None)
     event_tone = models.ForeignKey('EventTones', on_delete=models.SET_NULL, blank=True, null=True, default=None)
     event_purpose = models.ForeignKey('EventPurposes', on_delete=models.SET_NULL, blank=True, null=True, default=None)
     event_status = models.ForeignKey(EventStatuses, on_delete=models.PROTECT, blank=True, null=True, default=None)
-    event_name = models.TextField()
+    event_name = models.TextField(max_length=40)
     when_trigger = models.DateTimeField(default=get_current_datetime_with_tz)
     event_message = models.TextField(blank=True)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
+    when_locked = models.DateTimeField(blank=True, null=True, default=None)
+        #should only have non-null when event_status is also 'locked_for_talker_choice'
     audio_file = models.FileField(blank=True, null=True, upload_to=determine_event_audio_file_path_and_name)
 
     class Meta:
@@ -440,8 +443,8 @@ class Events(models.Model):
 
 class Languages(models.Model):
     id = models.BigAutoField(primary_key=True)
-    language_name = models.TextField(max_length=20)
-    language_name_shortened = models.TextField(blank=True, max_length=10)
+    language_name = models.TextField(max_length=20, unique=True)
+    language_name_shortened = models.TextField(blank=True, max_length=10, unique=True)
         #when False, means for fun
     when_created = models.DateTimeField(auto_now_add=True)
 
@@ -511,7 +514,7 @@ class UserPermissions(models.Model):
 
 class UserVerificationOptions(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user_verification_option_name = models.TextField()
+    user_verification_option_name = models.TextField(max_length=20, unique=True)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -522,7 +525,7 @@ class UserVerificationOptions(models.Model):
 
 class UserVerificationStatuses(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user_verification_status_name = models.TextField(unique=True)
+    user_verification_status_name = models.TextField(max_length=20, unique=True)
     description = models.TextField(blank=True)
     when_created = models.DateTimeField(auto_now_add=True)
 
@@ -534,10 +537,10 @@ class UserVerificationStatuses(models.Model):
 
 class UserDetails(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey('AuthUser', on_delete=models.CASCADE, blank=True, null=True, default=None)
+    user = models.OneToOneField('AuthUser', on_delete=models.CASCADE, blank=True, null=True, default=None, unique=True)
     country = models.ForeignKey('Countries', on_delete=models.SET(get_default_country), blank=True, null=True, default=None)
     language = models.ForeignKey('Languages', on_delete=models.SET(get_default_language), blank=True, null=True, default=None)
-    user_display_name = models.TextField()
+    user_display_name = models.TextField(max_length=20)
     user_birthdate = models.DateField()
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)

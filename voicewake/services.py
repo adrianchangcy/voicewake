@@ -18,12 +18,44 @@ from .serializers import *
 from .settings import MEDIA_ROOT
 
 #miscellaneous
-from .static.values.values import LISTENER_EVENT_SEARCH_LIMIT
+from .static.values.values import LISTENER_EVENT_SEARCH_LIMIT, TALKER_EVENT_CHOICE_MAX_DURATION_SECONDS
 
 
 #check Model.FileField object for malicious code
 def validate_audio_file(file):
     pass
+
+
+#run this to catch those 'locked_for_talker_choice' rows that were not reverted properly
+#e.g. user exits website
+def unlock_overdue_listener_events(
+    minimum_seconds_passed=TALKER_EVENT_CHOICE_MAX_DURATION_SECONDS,
+    max_rows=200
+):
+
+    #add precautionary extra seconds
+    minimum_seconds_passed += 10
+
+    datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC')) - timedelta(seconds=minimum_seconds_passed)
+
+    events = Events.objects.filter(
+        user_event_role__event_role__event_role_name = 'listener',
+        event_status__event_status_name = 'locked_for_talker_choice',
+        when_locked__lt = datetime_now
+    ).order_by(
+        'when_locked'
+    )[:max_rows]
+
+    #has events, update their event_status to 'available'
+    for event in events:
+
+        event.event_status = EventStatuses.objects.get(event_status_name='available')
+        event.when_locked = None
+
+    Events.objects.bulk_update(events, ['event_status', 'when_locked'])
+
+    return True
+
 
 
 #call this function as REST API via a standalone script, then run that script via cronjob
@@ -32,12 +64,9 @@ def convert_event_audio_files_to_mp3():
 
     #find files to convert to mp3
     events = Events.objects.filter(
-                                Q(audio_file__isnull=False) &
-                                Q(event_status=EventStatuses.objects.get_or_create(
-                                                                        event_status_name='waiting_for_mp3_conversion'
-                                                                        )[0]
-                                )
-                            ).order_by('when_created')[:10]
+        Q(audio_file__isnull=False) &
+        Q(event_status__event_status_name='waiting_for_mp3_conversion')
+    ).order_by('when_created')[:10]
     
     if len(events) == 0:
         
@@ -113,7 +142,7 @@ class TalkerActions():
     #when modifying this to handle 1-many, store records in []
     def __init__(
         self, user=None,
-        form_event_purpose=None, form_event_tone=None,
+        form_event_purpose=None, form_language=None, form_event_tone=None,
         talker=None, talker_event=None, event_request=None,
         listener=None, listener_event=None,
         event_room=None, talker_event_room_match=None, listener_event_room_match=None,
@@ -125,6 +154,7 @@ class TalkerActions():
         #these event preferences are only from form submit
         #passing form directly makes it harder to test
         self.form_event_purpose = form_event_purpose
+        self.form_language = form_language
         self.form_event_tone = form_event_tone
 
         self.talker = talker
@@ -152,16 +182,25 @@ class TalkerActions():
 
 
     #pre-queries model instances based on form submit for coding convenience
-    def set_event_preferences(self, event_purpose_name=None, event_tone_name=None):
+        #only event_tone is optional
+    #accept and set as pure strings, as model objects are not necessary
+    #currently has no regex
+    def set_event_preferences(self, event_purpose_name, language_name, event_tone_name=''):
 
         #currently does not handle 'a', 'a   ', '', '   ', 'English' and 'english', etc.
         #when None, it implicitly means 'any', a.k.a. this column doesn't matter in QuerySet
 
-        if event_purpose_name is not None:
+        if event_purpose_name and language_name:
 
             self.form_event_purpose = EventPurposes.objects.get(event_purpose_name=event_purpose_name)
+            self.form_language = Languages.objects.get(language_name=language_name)
 
-        if event_tone_name is not None:
+        else:
+
+            return False
+
+        #self.form_event_tone is already None by default
+        if event_tone_name:
 
             self.form_event_tone = EventTones.objects.get_or_create(event_tone_name=event_tone_name)[0]
 
@@ -175,19 +214,43 @@ class TalkerActions():
             user_event_role__event_role__event_role_name = 'listener',
             event_status__event_status_name = 'available',
             event_purpose__event_purpose_name = self.form_event_purpose,
+            language__language_name = self.form_language,
         ).order_by(
-            Case(
-                When(event_tone__event_tone_name=self.form_event_tone, then=Value(0)),
-                When(event_tone__event_tone_name__istartswith=self.form_event_tone, then=Value(1)),
-                When(event_tone__event_tone_name__icontains=self.form_event_tone, then=Value(2)),
-            ),
             'when_trigger'
         )[:max_listeners_to_find]
-    
-        print(events.query)
-        print(list(events))
-        #how to handle null event preferences
+
+        #has events, update their event_status to 'locked_for_talker_choice'
+        if len(events) > 0:
+
+            datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
+
+            for event in events:
+
+                event.event_status = EventStatuses.objects.get(event_status_name='locked_for_talker_choice')
+                event.when_locked = datetime_now
+
+            Events.objects.bulk_update(events, ['event_status', 'when_locked'])
+
         return events
+
+
+    #pass a list of event id to unlock,
+    #of which are listener events presented as choices just moments ago that were not chosen
+    #can pass no id for easy use of function
+    def unlock_not_chosen_listener_events(self, all_event_id=[]):
+
+        if isinstance(all_event_id, list) and len(all_event_id) > 0:
+
+            events = Events.objects.filter(pk__in=all_event_id)
+
+            for event in events:
+
+                event.event_status = EventStatuses.objects.get(event_status_name='available')
+                event.when_locked = None
+
+            events.save()
+        
+        return True
 
 
     def create_talker_listener_match(self):
@@ -198,16 +261,18 @@ class TalkerActions():
             return False
 
         #create talker event
+        #when_trigger will create timezone-aware datetime object as default
         self.talker_event = Events.objects.create(
             user_event_role=self.talker,
+            language=Languages.objects.get(language_name=self.form_language),
             event_purpose=EventPurposes.objects.get(event_purpose_name=self.form_event_purpose),
             event_tone=EventTones.objects.get(event_tone_name=self.form_event_tone),
-            event_status=EventStatuses.objects.get(event_status_name='is_matched'),
+            event_status=EventStatuses.objects.get(event_status_name='talking_recording'),
             audio_file=None
         )
 
         #update listener status
-        self.listener_event.event_status = EventStatuses.objects.get(event_status_name='is_matched')
+        self.listener_event.event_status = EventStatuses.objects.get(event_status_name='has_match')
         self.listener_event.save()
 
         #create event_room
@@ -223,40 +288,6 @@ class TalkerActions():
         EventRoomMatches.objects.create(
             event=self.listener_event,
             event_room=self.event_room
-        )
-
-        return True
-
-
-    def make_event_request(self, listener):
-
-        #we do not check for pending requests when creating new requests
-        #if needed, in the future, we can do grouping on different users with identical event requests
-
-        #pass listener
-        self.listener = listener
-
-        #handle event_status
-        event_status = EventStatuses.objects.get(event_status_name='request_pending')
-
-        #create talker event
-        self.talker_event = Events.objects.create(
-            user_event_role = self.talker,
-            event_purpose = self.form_event_purpose,
-            event_tone = self.form_event_tone,
-            event_status = event_status
-        )
-
-        #handle event_request_status
-        event_request_status = EventRequestStatuses.objects.get(event_request_status_name='request_pending')
-
-        #create event request
-        self.event_request = EventRequests.objects.create(
-            user_event_role = self.talker,
-            requested_user_event_role = self.listener,
-            event_request_status = event_request_status,
-            event = self.talker_event,
-            payment_id = None,
         )
 
         return True
@@ -285,7 +316,7 @@ class ListenerActions():
     #when modifying this to handle 1-many, store records in []
     def __init__(
         self, user=None,
-        form_event_purpose=None, form_event_tone=None,
+        form_event_purpose=None, form_language=None, form_event_tone=None,
         listener=None, listener_event=None, listener_event_room_match=None,
         talker=None, talker_event=None,
         event_request=None
@@ -298,6 +329,7 @@ class ListenerActions():
         #these event preferences are only from form submit
         #passing form directly makes it harder to test
         self.form_event_purpose = form_event_purpose
+        self.form_language = form_language
         self.form_event_tone = form_event_tone
 
         self.listener = listener
@@ -322,43 +354,100 @@ class ListenerActions():
 
 
     #pre-queries model instances based on form submit for coding convenience
-    def set_event_preferences(self, event_purpose_name=None, event_tone_name=None):
+        #only event_tone is optional
+    def set_event_preferences(self, event_purpose_name, language_name, event_tone_name=''):
 
         #currently does not handle 'a', 'a   ', '', '   ', 'English' and 'english', etc.
         #when None, it implicitly means 'any', a.k.a. this column doesn't matter in QuerySet
 
-        if event_purpose_name is not None:
+        if event_purpose_name and language_name:
 
             self.form_event_purpose = EventPurposes.objects.get(event_purpose_name=event_purpose_name)
+            self.form_language = Languages.objects.get(language_name=language_name)
 
-        if event_tone_name is not None:
+        else:
+
+            return False
+
+        #self.form_event_tone is already None by default
+        if event_tone_name:
 
             self.form_event_tone = EventTones.objects.get_or_create(event_tone_name=event_tone_name)[0]
 
         return True
 
 
-    def create_event(self, form_datetime, form_event_name, form_event_message=None):
+    def create_event(
+        self, form_when_trigger, form_event_name, form_event_message='',
+        with_request=False, talker_user_id=None
+    ):
 
-        if isinstance(form_datetime, datetime) is False:
+        #when_trigger only accepts datetime object that is timezone-aware
+        #event_name is required
+        if\
+            isinstance(form_when_trigger, datetime) is True and form_when_trigger.tzinfo == ZoneInfo('UTC')\
+            and form_event_name\
+            and (\
+                (with_request is True and isinstance(talker_user_id, int)) or\
+                (with_request is False and talker_user_id is None)\
+            )\
+        :
 
-            return False
+            pass
 
+        else:
+
+            raise ValueError('Arguments did not meet ListenerActions.create_event_with_request() requirements.')
+
+        #we do not check for pending requests when creating new requests
+        #if needed, in the future, we can do grouping on different users with identical event requests
+
+        #handle event_status based on with_request
+        event_status = None
+
+        if with_request:
+
+            event_status = EventStatuses.objects.get(event_status_name='request_pending')
+
+        else:
+
+            event_status = EventStatuses.objects.get(event_status_name='available')
+
+        #create listener event
         self.listener_event = Events.objects.create(
             user_event_role = self.listener,
-            event_name = form_event_name,
             event_purpose = self.form_event_purpose,
+            language = self.form_language,
             event_tone = self.form_event_tone,
+            event_status = event_status,
+            event_name = form_event_name,
             event_message = form_event_message,
-            event_status = EventStatuses.objects.filter(event_status_name='available')[:1].get(),
-            when_trigger = form_datetime,
+            when_trigger = form_when_trigger
         )
+
+        #create event request
+        if with_request:
+
+            #find talker UserEventRole based on AuthUser.id given
+            self.talker = UserEventRoles.objects.get(
+                user__id = talker_user_id,
+                event_role__event_role_name = 'talker'
+            )
+
+            #create
+            self.event_request = EventRequests.objects.create(
+                user_event_role = self.listener,
+                requested_user_event_role = self.talker,
+                event_request_status = EventRequestStatuses.objects.get(event_request_status_name='request_pending'),
+                event = self.listener_event,
+                payment_id = None,
+            )
 
         return True
 
-    
+
     #save listener ending_score and ending_message
-    def save_listener_score_and_message(self, ending_score=None, ending_message=None):
+    def save_listener_score_and_message(self, ending_score=None, ending_message=''):
 
         self.listener_event_room_match.ending_score = ending_score
         self.listener_event_room_match.ending_message = ending_message
