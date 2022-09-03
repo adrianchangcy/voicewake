@@ -3,7 +3,7 @@
 #Django libraries
 from django.db.models import Q, Case, When, Value
 from django.db import connection
-from django.core.files.base import File
+from django.core.files import File
 
 #Python libraries
 from datetime import datetime, timezone, timedelta, tzinfo
@@ -100,7 +100,7 @@ def convert_event_audio_files_to_mp3():
                 
                 new_name = (event.audio_file.name).rsplit('.', 1)[0] + '.' + 'mp3'
                 event.audio_file = File(f, name=new_name)
-                event.event_status = EventStatuses.objects.get_or_create(event_status_name='file_ready')[0]
+                event.event_status = EventStatuses.objects.get(event_status_name='file_ready')
 
                 f.close()
 
@@ -108,7 +108,7 @@ def convert_event_audio_files_to_mp3():
 
             #handle faulty file
             event.audio_file = None
-            event.event_status = EventStatuses.objects.get_or_create(event_status_name='file_error')[0]
+            event.event_status = EventStatuses.objects.get(event_status_name='file_error')
 
             continue
 
@@ -120,12 +120,29 @@ def convert_event_audio_files_to_mp3():
 
             os.remove(old_file)
 
-    print(connection.queries)
     return True
 
 
 
+#also deletes uer_x folder if empty after deletion
+#meant to serve as 'always replace' logic on "record again" action
+def delete_audio_file(absolute_path):
 
+    if os.path.exists(absolute_path) and os.path.isfile(absolute_path):
+
+        #delete precisely the file in source path
+        os.remove(absolute_path)
+
+        #delete uer_x folder if it now has 0 files
+        for root, dirs, files in os.walk(os.path.dirname(absolute_path), topdown=True):
+
+            if len(dirs) == 0 and len(files) == 0:
+
+                shutil.rmtree(root)
+
+        return True
+
+    return False
 
     
 
@@ -237,37 +254,38 @@ class TalkerActions():
     #pass a list of event id to unlock,
     #of which are listener events presented as choices just moments ago that were not chosen
     #can pass no id for easy use of function
-    def unlock_not_chosen_listener_events(self, all_event_id=[]):
+    def unlock_skipped_listener_events(self, skipped_event_id=[]):
 
-        if isinstance(all_event_id, list) and len(all_event_id) > 0:
+        if isinstance(skipped_event_id, list) and len(skipped_event_id) > 0:
 
-            events = Events.objects.filter(pk__in=all_event_id)
+            events = Events.objects.filter(pk__in=skipped_event_id)
 
             for event in events:
 
                 event.event_status = EventStatuses.objects.get(event_status_name='available')
                 event.when_locked = None
 
-            events.save()
+            Events.objects.bulk_update(
+                events,
+                fields=['event_status', 'when_locked']
+            )
         
         return True
 
 
-    def create_talker_listener_match(self):
+    #this will set self.listener_event and self.talker_event too
+    def create_talker_listener_match(self, listener_event_id):
 
-        #expect the listener event selected by talker to exist
-        if self.listener_event is None:
-
-            return False
+        self.listener_event = Events.objects.get(pk=listener_event_id)
 
         #create talker event
         #when_trigger will create timezone-aware datetime object as default
         self.talker_event = Events.objects.create(
             user_event_role=self.talker,
-            language=Languages.objects.get(language_name=self.form_language),
-            event_purpose=EventPurposes.objects.get(event_purpose_name=self.form_event_purpose),
-            event_tone=EventTones.objects.get(event_tone_name=self.form_event_tone),
-            event_status=EventStatuses.objects.get(event_status_name='talking_recording'),
+            event_purpose=self.listener_event.event_purpose,
+            language=self.listener_event.language,
+            event_tone=self.listener_event.event_tone,
+            event_status=EventStatuses.objects.get(event_status_name='recording'),
             audio_file=None
         )
 
@@ -293,7 +311,16 @@ class TalkerActions():
         return True
 
 
-    def end_match_as_talker(self, audio_file):
+    def save_talker_audio_and_end_match(self, talker_event_id, audio_file):
+
+        #expect talker's Events object to already exist
+        self.talker_event = Events.objects.get(pk=talker_event_id)
+
+        #delete existing file if any
+        #allows "record again" to just reuse this function
+        if self.talker_event.audio_file:
+
+            delete_audio_file(self.talker_event.audio_file.path)
 
         #save file
         self.talker_event.audio_file = audio_file

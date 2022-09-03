@@ -12,7 +12,8 @@ from django.contrib.postgres.fields import ArrayField
 #Python packages
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-
+import os
+import shutil
 
 #defaults
 #'any' means randomise later
@@ -355,7 +356,7 @@ class EventRoomMatches(models.Model):
     id = models.BigAutoField(primary_key=True)
     event = models.ForeignKey('Events', on_delete=models.PROTECT, blank=True, null=True, default=None)
     event_room = models.ForeignKey('EventRooms', on_delete=models.PROTECT, blank=True, null=True, default=None)
-    when_created = models.DateTimeField()
+    when_created = models.DateTimeField(auto_now_add=True)
     when_left = models.DateTimeField(blank=True, null=True)
     ending_score = models.IntegerField(blank=True, null=True)
     ending_message = models.TextField(blank=True, null=True)

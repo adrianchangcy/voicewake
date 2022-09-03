@@ -1,18 +1,22 @@
 #this is where you write unit testing as per Django's ways
 #proper ways coming soon
 #Django
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from rest_framework import status
+from django.core.files import File
 
 #apps
 from voicewake.services import *
 from voicewake.models import *
+from voicewake.settings import BASE_DIR
 
 #py packages
 import json
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
+import os
+import shutil
 
 
 class User_SignUp_TestCase(TestCase):
@@ -556,15 +560,11 @@ class TalkerActions_Basics_TestCase(TestCase):
     #ListenerActions_CreateEvent_TestCase
     #ListenerActions_CreateEventWithRequest_TestCase
     #TalkerActions_Basics_TestCase
-class TalkerActions_SeekEvents_TestCase(TestCase):
+@override_settings(MEDIA_ROOT=os.path.join(BASE_DIR, 'test_uploads'))
+class TalkerActions_ListenerActions_IntegrationTest(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-
-        Languages.objects.bulk_create([
-            Languages(language_name='English', language_name_shortened='ENG'),
-            Languages(language_name='Japanese', language_name_shortened='JPY'),
-        ])
 
         Countries.objects.bulk_create([
             Countries(country_name='United States of America'),
@@ -574,17 +574,66 @@ class TalkerActions_SeekEvents_TestCase(TestCase):
         EventStatuses.objects.bulk_create([
             EventStatuses(event_status_name='available'),
             EventStatuses(event_status_name='locked_for_talker_choice'),
+            EventStatuses(event_status_name='request_pending'),
+            EventStatuses(event_status_name='recording'),
+            EventStatuses(event_status_name='has_match'),
+            EventStatuses(event_status_name='waiting_for_mp3_conversion'),
+            EventStatuses(event_status_name='file_ready'),
+            EventStatuses(event_status_name='file_error'),
         ])
 
-        EventPurposes.objects.bulk_create([
+        EventRequestStatuses.objects.create(event_request_status_name='request_pending')
+
+        event_purposes = EventPurposes.objects.bulk_create([
             EventPurposes(event_purpose_name='motivation'),
             EventPurposes(event_purpose_name='insult'),
         ])
 
+        languages = Languages.objects.bulk_create([
+            Languages(language_name='English', language_name_shortened='ENG'),
+            Languages(language_name='Japanese', language_name_shortened='JPY'),
+        ])
+
+        #event tones have get_or_create, as they are optional
+        event_tones = ['', 'clown']
+
         cls.datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
 
+        #create all combinations of preferences
+        cls.event_preferences = []
+        
+        for i in range(len(event_purposes)):
+            for j in range(len(languages)):
+                for k in range(len(event_tones)):
+                    
+                    cls.event_preferences.append({
+                        'event_purpose_name': event_purposes[i].event_purpose_name,
+                        'language_name': languages[j].language_name,
+                        'event_tone_name': event_tones[k]
+                    })
 
-    def test_seek_events(self):
+
+    def tearDown(self):
+        
+        test_directory = os.path.join(BASE_DIR, 'test_uploads')
+
+        if os.path.isdir(test_directory):
+
+            return
+            shutil.rmtree(test_directory)
+
+
+    def test_match_talker_and_listener_no_request(self):
+
+        #create talker
+        self.client.post(reverse('sign_up'), data={
+            'username': 'talker_here',
+            'email': 'abc@gmail.com',
+            'password1': 'tarantula123',
+            'password2': 'tarantula123'
+        })
+
+        talker_user = AuthUser.objects.get(username='talker_here')
 
         #create user and use it as listener
         self.client.post(reverse('sign_up'), data={
@@ -594,59 +643,39 @@ class TalkerActions_SeekEvents_TestCase(TestCase):
             'password2': 'tarantula123'
         })
 
-        user = AuthUser.objects.get(username='listener_here')
+        listener_user = AuthUser.objects.get(username='listener_here')
 
         #init listener
         listener_actions = ListenerActions()
-        listener_actions.set_user_and_listener(request_user_id=user.id)
+        listener_actions.set_user_and_listener(request_user_id=listener_user.id)
 
-        #set preferences on submit to create listener event 1
-        listener_actions.set_event_preferences(
-            event_purpose_name='motivation',
-            language_name='English',
-            event_tone_name=''
-        )
+        #loop through event preferences to create listener events
+        for x in range(len(self.event_preferences)):
 
-        #create listener event 1
-        listener_actions.create_event(
-            form_when_trigger=self.datetime_now,
-            form_event_name='aaa',
-            form_event_message='',
-            with_request=False,
-            talker_user_id=None
-        )
+            #set preferences on submit to create listener event
+            listener_actions.set_event_preferences(
+                event_purpose_name = self.event_preferences[x]['event_purpose_name'],
+                language_name = self.event_preferences[x]['language_name'],
+                event_tone_name = self.event_preferences[x]['event_tone_name']
+            )
 
-        #set preferences on submit to create listener event 2
-        listener_actions.set_event_preferences(
-            event_purpose_name='motivation',
-            language_name='Japanese',
-            event_tone_name='Megatron'
-        )
+            #create listener event
+            listener_actions.create_event(
+                form_when_trigger=self.datetime_now,
+                form_event_name='aaa',
+                form_event_message='',
+                with_request=False,
+                talker_user_id=None
+            )
 
-        #create listener event 2
-        listener_actions.create_event(
-            form_when_trigger=self.datetime_now,
-            form_event_name='bbb',
-            form_event_message='',
-            with_request=False,
-            talker_user_id=None
-        )
-
-        #set preferences on submit to create listener event 3
-        listener_actions.set_event_preferences(
-            event_purpose_name='insult',
-            language_name='Japanese',
-            event_tone_name=''
-        )
-
-        #create listener event 3
-        listener_actions.create_event(
-            form_when_trigger=self.datetime_now,
-            form_event_name='bbb',
-            form_event_message='',
-            with_request=False,
-            talker_user_id=None
-        )
+            #create listener event with request
+            listener_actions.create_event(
+                form_when_trigger=self.datetime_now,
+                form_event_name='aaa',
+                form_event_message='',
+                with_request=True,
+                talker_user_id=talker_user.id
+            )
 
         #create user and use it as talker
         self.client.post(reverse('sign_up'), data={
@@ -656,21 +685,400 @@ class TalkerActions_SeekEvents_TestCase(TestCase):
             'password2': 'tarantula123'
         })
 
-        user = AuthUser.objects.get(username='talker_here')
+        talker_user = AuthUser.objects.get(username='talker_here')
+
+
+        #CHECKPOINT
+        #talker searches for listener events
+        #expect these values
+        talker_user_id = talker_user.id
+        event_purpose_name = 'motivation'
+        language_name = 'English'
+        event_tone_name = ''
 
         #init talker
         talker_actions = TalkerActions()
-        talker_actions.set_user_and_talker(request_user_id=user.id)
+        talker_actions.set_user_and_talker(request_user_id=talker_user_id)
 
-        #set preferences on submit
+        #set preferences
         talker_actions.set_event_preferences(
-            event_purpose_name='motivation',
-            language_name='English',
-            event_tone_name=''
+            event_purpose_name=event_purpose_name,
+            language_name=language_name,
+            event_tone_name=event_tone_name
         )
 
         #get found listener events
-        print(len(talker_actions.seek_listener_events()))
+        found_events = talker_actions.seek_listener_events(max_listeners_to_find=3)
+
+        #check that limit works
+        self.assertTrue(len(found_events) <= 3)
+
+        #check events themselves
+        for event in found_events:
+
+            self.assertEqual(event.user_event_role.event_role.event_role_name, 'listener')
+            self.assertEqual(event.event_purpose.event_purpose_name, event_purpose_name)
+            self.assertEqual(event.language.language_name, language_name)
+            self.assertIn(event.event_tone, [None, EventTones.objects.get(event_tone_name='clown')])
+            self.assertEqual(event.event_status.event_status_name, 'locked_for_talker_choice')
+            self.assertTrue(isinstance(event.when_locked, datetime))
+            self.assertEqual(EventRequests.objects.filter(event=event).count(), 0)
+
+        #CHECKPOINT
+        #talker has decided on the selected event
+        #expect this data structure from talker form submit
+        talker_selection_data = {'selected': None, 'skipped': []}
+
+        for x, event in enumerate(found_events):
+
+            #assumes talker selected first choice    
+            if x == 0:
+                
+                talker_selection_data['selected'] = event.id
+
+            else:
+
+                talker_selection_data['skipped'].append(event.id)
+
+        #can pass zero events to unlock
+        self.assertTrue(talker_actions.unlock_skipped_listener_events(skipped_event_id=[]))
+
+        #unlock skipped events
+        self.assertTrue(talker_actions.unlock_skipped_listener_events(skipped_event_id=talker_selection_data['skipped']))
+
+        #check that skipped events are unlocked
+        for id in talker_selection_data['skipped']:
+
+            event = Events.objects.get(pk=id)
+            self.assertEqual(event.event_status.event_status_name, 'available')
+            self.assertEqual(event.when_locked, None)
+
+        #create talker and listener match
+        self.assertTrue(talker_actions.create_talker_listener_match(listener_event_id=talker_selection_data['selected']))
+
+        #check for EventRooms and EventRoomMatches created
+        self.assertEqual(EventRooms.objects.count(), 1)
+        self.assertEqual(EventRoomMatches.objects.count(), 2)
+
+        #prepare for check
+        matched_listener_event = getattr(talker_actions, 'listener_event')
+        matched_talker_event = getattr(talker_actions, 'talker_event')
+
+        #check talker and talker event
+        self.assertTrue(isinstance(matched_talker_event, Events))
+        self.assertEqual(matched_talker_event.user_event_role.event_role.event_role_name, 'talker')
+        self.assertEqual(matched_talker_event.user_event_role.user, talker_user)
+        self.assertEqual(matched_talker_event.event_status.event_status_name, 'recording')
+        self.assertEqual(matched_talker_event.audio_file, None)
+        self.assertEqual(EventRoomMatches.objects.filter(event=matched_talker_event).count(), 1)
+
+        #check listener and listener event
+        self.assertTrue(isinstance(matched_listener_event, Events))
+        self.assertEqual(matched_listener_event.user_event_role.event_role.event_role_name, 'listener')
+        self.assertEqual(matched_listener_event.user_event_role.user, listener_user)
+        self.assertEqual(matched_listener_event.event_status.event_status_name, 'has_match')
+        self.assertEqual(matched_talker_event.audio_file, None)
+        self.assertEqual(EventRoomMatches.objects.filter(event=matched_listener_event).count(), 1)
+
+        #check critical similarities between listener and talker events
+        self.assertEqual(
+            matched_talker_event.event_purpose,
+            matched_listener_event.event_purpose
+        )
+        self.assertEqual(
+            matched_talker_event.language,
+            matched_listener_event.language
+        )
+        self.assertEqual(
+            EventRoomMatches.objects.get(event=matched_talker_event).event_room.id,
+            EventRoomMatches.objects.get(event=matched_listener_event).event_room.id
+        )
+
+
+    def test_match_talker_uploads_file_no_request(self):
+
+        #create talker
+        self.client.post(reverse('sign_up'), data={
+            'username': 'talker_here',
+            'email': 'abc@gmail.com',
+            'password1': 'tarantula123',
+            'password2': 'tarantula123'
+        })
+
+        talker_user = AuthUser.objects.get(username='talker_here')
+
+        #create user and use it as listener
+        self.client.post(reverse('sign_up'), data={
+            'username': 'listener_here',
+            'email': 'abc@gmail.com',
+            'password1': 'tarantula123',
+            'password2': 'tarantula123'
+        })
+
+        listener_user = AuthUser.objects.get(username='listener_here')
+
+        #init listener
+        listener_actions = ListenerActions()
+        listener_actions.set_user_and_listener(request_user_id=listener_user.id)
+
+        #loop through event preferences to create listener events
+        for x in range(len(self.event_preferences)):
+
+            #set preferences on submit to create listener event
+            listener_actions.set_event_preferences(
+                event_purpose_name = self.event_preferences[x]['event_purpose_name'],
+                language_name = self.event_preferences[x]['language_name'],
+                event_tone_name = self.event_preferences[x]
+            )
+
+            #create listener event
+            listener_actions.create_event(
+                form_when_trigger=self.datetime_now,
+                form_event_name='aaa',
+                form_event_message='',
+                with_request=False,
+                talker_user_id=None
+            )
+
+            #create listener event with request
+            listener_actions.create_event(
+                form_when_trigger=self.datetime_now,
+                form_event_name='aaa',
+                form_event_message='',
+                with_request=True,
+                talker_user_id=talker_user.id
+            )
+
+        #create user and use it as talker
+        self.client.post(reverse('sign_up'), data={
+            'username': 'talker_here',
+            'email': 'abc@gmail.com',
+            'password1': 'tarantula123',
+            'password2': 'tarantula123'
+        })
+
+        talker_user = AuthUser.objects.get(username='talker_here')
+
+
+        #CHECKPOINT
+        #talker searches for listener events
+        #expect these values
+        talker_user_id = talker_user.id
+        event_purpose_name = 'motivation'
+        language_name = 'English'
+        event_tone_name = ''
+
+        #init talker
+        talker_actions = TalkerActions()
+        talker_actions.set_user_and_talker(request_user_id=talker_user.id)
+
+        #set preferences
+        talker_actions.set_event_preferences(
+            event_purpose_name=event_purpose_name,
+            language_name=language_name,
+            event_tone_name=event_tone_name
+        )
+
+        #get found listener events
+        found_events = talker_actions.seek_listener_events(max_listeners_to_find=3)
+
+
+        #CHECKPOINT
+        #talker has decided on the selected event
+        #expect these values
+        talker_user_id = talker_user_id
+        talker_selection_data = {'selected': None, 'skipped': []}   #['selected'] will be int
+
+        for x, event in enumerate(found_events):
+
+            #assumes talker selected first choice    
+            if x == 0:
+                
+                talker_selection_data['selected'] = event.id
+
+            else:
+
+                talker_selection_data['skipped'].append(event.id)
+
+        #unlock skipped events
+        talker_actions.unlock_skipped_listener_events(skipped_event_id=talker_selection_data['skipped'])
+
+        #create talker and listener match
+        talker_actions.create_talker_listener_match(listener_event_id=talker_selection_data['selected'])
+
+
+        #CHECKPOINT
+        #talker submits audio file on selected listener event
+        #expect these values
+        talker_user_id = talker_user_id
+        talker_event_id = getattr(talker_actions, 'talker_event').id
+        audio_file = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            'uploads/test_upload_file.mp3'
+        )
+
+        #first submit
+        def audio_submit_1():
+
+            with open(audio_file, 'rb') as f:
+
+                #save file and let Events.audio_file 'upload_to' arg construct our file path
+                self.assertTrue(
+                    talker_actions.save_talker_audio_and_end_match(
+                        talker_event_id=talker_event_id,
+                        audio_file=File(f, name='test_upload_file.mp3')
+                    )
+                )
+
+                f.close()
+
+                #check
+                event = Events.objects.get(pk=talker_event_id)
+                self.assertEqual(
+                    event.event_status.event_status_name,
+                    'waiting_for_mp3_conversion'
+                )
+                self.assertTrue(
+                    os.path.exists(event.audio_file.path)
+                )
+                self.assertTrue(
+                    isinstance(EventRoomMatches.objects.get(event=event).when_left, datetime)
+                )
+
+                #check with os in case of sudden case where it cannot recognise file format
+                #we should also now have the file in uer_x folder
+                self.assertTrue(
+                    os.path.exists(event.audio_file.path)
+                )
+                self.assertTrue(
+                    os.path.isfile(event.audio_file.path)
+                )
+        audio_submit_1()
+
+        #second submit, to see if it replaces existing file (should always replace)
+        #note that if test files are not deleted, non-replacement is normal
+        def audio_submit_2():
+
+            with open(audio_file, 'rb') as f:
+
+                #save file and let Events.audio_file 'upload_to' arg construct our file path
+                self.assertTrue(
+                    talker_actions.save_talker_audio_and_end_match(
+                        talker_event_id=talker_event_id,
+                        audio_file=File(f, name='test_upload_file.mp3')
+                    )
+                )
+
+                f.close()
+
+                #check
+                event = Events.objects.get(pk=talker_event_id)
+                self.assertEqual(
+                    event.event_status.event_status_name,
+                    'waiting_for_mp3_conversion'
+                )
+                self.assertTrue(
+                    os.path.exists(event.audio_file.path)
+                )
+                self.assertTrue(
+                    isinstance(EventRoomMatches.objects.get(event=event).when_left, datetime)
+                )
+
+                #check with os in case of sudden case where it cannot recognise file format
+                #we should also now have the file in uer_x folder
+                self.assertTrue(
+                    os.path.exists(event.audio_file.path)
+                )
+                self.assertTrue(
+                    os.path.isfile(event.audio_file.path)
+                )
+        audio_submit_2()
+
+        #trigger the conversion
+        self.assertTrue(convert_event_audio_files_to_mp3())
+
+        #check
+        event = Events.objects.get(pk=talker_event_id)
+        self.assertEqual(
+            event.event_status.event_status_name,
+            'file_ready'
+        )
+        self.assertTrue(
+            os.path.exists(event.audio_file.path)
+        )
+        self.assertTrue(
+            os.path.isfile(event.audio_file.path)
+        )
+
+        #third submit, observe handling of non-mp3 files
+        def audio_submit_3():
+
+            audio_file = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                'uploads/test_upload_file.webm'
+            )
+
+            with open(audio_file, 'rb') as f:
+
+                #save file and let Events.audio_file 'upload_to' arg construct our file path
+                self.assertTrue(
+                    talker_actions.save_talker_audio_and_end_match(
+                        talker_event_id=talker_event_id,
+                        audio_file=File(f, name='test_upload_file.webm')
+                    )
+                )
+
+                f.close()
+
+                #check
+                event = Events.objects.get(pk=talker_event_id)
+                self.assertEqual(
+                    event.event_status.event_status_name,
+                    'waiting_for_mp3_conversion'
+                )
+                self.assertTrue(
+                    os.path.exists(event.audio_file.path)
+                )
+                self.assertTrue(
+                    isinstance(EventRoomMatches.objects.get(event=event).when_left, datetime)
+                )
+
+                #check with os in case of sudden case where it cannot recognise file format
+                #we should also now have the file in uer_x folder
+                self.assertTrue(
+                    os.path.exists(event.audio_file.path)
+                )
+                self.assertTrue(
+                    os.path.isfile(event.audio_file.path)
+                )
+
+            #trigger the conversion
+            self.assertTrue(convert_event_audio_files_to_mp3())
+
+            #check
+            event = Events.objects.get(pk=talker_event_id)
+            self.assertEqual(
+                event.event_status.event_status_name,
+                'file_ready'
+            )
+            self.assertTrue(
+                os.path.exists(event.audio_file.path)
+            )
+            self.assertTrue(
+                os.path.isfile(event.audio_file.path)
+            )
+        audio_submit_3()
+
+
+
+
+
+
+
+
+
+
+
 
 
 
