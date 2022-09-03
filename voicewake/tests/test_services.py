@@ -917,7 +917,7 @@ class TalkerActions_ListenerActions_IntegrationTest(TestCase):
             'uploads/test_upload_file.mp3'
         )
 
-        #first submit
+        #first submit, mp3
         def audio_submit_1():
 
             with open(audio_file, 'rb') as f:
@@ -932,30 +932,31 @@ class TalkerActions_ListenerActions_IntegrationTest(TestCase):
 
                 f.close()
 
-                #check
-                event = Events.objects.get(pk=talker_event_id)
-                self.assertEqual(
-                    event.event_status.event_status_name,
-                    'waiting_for_mp3_conversion'
-                )
-                self.assertTrue(
-                    os.path.exists(event.audio_file.path)
-                )
-                self.assertTrue(
-                    isinstance(EventRoomMatches.objects.get(event=event).when_left, datetime)
-                )
+            #check
+            event = Events.objects.get(pk=talker_event_id)
+            self.assertEqual(
+                event.event_status.event_status_name,
+                'waiting_for_mp3_conversion'
+            )
+            self.assertTrue(
+                os.path.exists(event.audio_file.path)
+            )
+            self.assertTrue(
+                isinstance(EventRoomMatches.objects.get(event=event).when_left, datetime)
+            )
 
-                #check with os in case of sudden case where it cannot recognise file format
-                #we should also now have the file in uer_x folder
-                self.assertTrue(
-                    os.path.exists(event.audio_file.path)
-                )
-                self.assertTrue(
-                    os.path.isfile(event.audio_file.path)
-                )
+            #check with os in case of sudden case where it cannot recognise file format
+            #we should also now have the file in uer_x folder
+            self.assertTrue(
+                os.path.exists(event.audio_file.path)
+            )
+            self.assertTrue(
+                os.path.isfile(event.audio_file.path)
+            )
         audio_submit_1()
 
-        #second submit, to see if it replaces existing file (should always replace)
+        #second submit, mp3, to see if it replaces existing file (should always replace)
+        #will also trigger conversion to mp3
         #note that if test files are not deleted, non-replacement is normal
         def audio_submit_2():
 
@@ -971,46 +972,49 @@ class TalkerActions_ListenerActions_IntegrationTest(TestCase):
 
                 f.close()
 
-                #check
-                event = Events.objects.get(pk=talker_event_id)
-                self.assertEqual(
-                    event.event_status.event_status_name,
-                    'waiting_for_mp3_conversion'
-                )
-                self.assertTrue(
-                    os.path.exists(event.audio_file.path)
-                )
-                self.assertTrue(
-                    isinstance(EventRoomMatches.objects.get(event=event).when_left, datetime)
-                )
+            #check
+            event = Events.objects.get(pk=talker_event_id)
+            self.assertEqual(
+                event.event_status.event_status_name,
+                'waiting_for_mp3_conversion'
+            )
+            self.assertTrue(
+                os.path.exists(event.audio_file.path)
+            )
+            self.assertTrue(
+                isinstance(EventRoomMatches.objects.get(event=event).when_left, datetime)
+            )
 
-                #check with os in case of sudden case where it cannot recognise file format
-                #we should also now have the file in uer_x folder
-                self.assertTrue(
-                    os.path.exists(event.audio_file.path)
-                )
-                self.assertTrue(
-                    os.path.isfile(event.audio_file.path)
-                )
+            #check with os in case of sudden case where it cannot recognise file format
+            #we should also now have the file in uer_x folder
+            self.assertTrue(
+                os.path.exists(event.audio_file.path)
+            )
+            self.assertTrue(
+                os.path.isfile(event.audio_file.path)
+            )
+
+            #trigger the conversion on mp3 file
+            self.assertTrue(convert_event_audio_files_to_mp3())
+
+            #check
+            event = Events.objects.get(pk=talker_event_id)
+            self.assertEqual(
+                event.event_status.event_status_name,
+                'file_ready'
+            )
+            self.assertTrue(
+                os.path.exists(event.audio_file.path)
+            )
+            self.assertTrue(
+                os.path.isfile(event.audio_file.path)
+            )
         audio_submit_2()
 
-        #trigger the conversion
-        self.assertTrue(convert_event_audio_files_to_mp3())
 
-        #check
-        event = Events.objects.get(pk=talker_event_id)
-        self.assertEqual(
-            event.event_status.event_status_name,
-            'file_ready'
-        )
-        self.assertTrue(
-            os.path.exists(event.audio_file.path)
-        )
-        self.assertTrue(
-            os.path.isfile(event.audio_file.path)
-        )
 
         #third submit, observe handling of non-mp3 files
+        #will also trigger conversion to mp3
         def audio_submit_3():
 
             audio_file = os.path.join(
@@ -1030,27 +1034,27 @@ class TalkerActions_ListenerActions_IntegrationTest(TestCase):
 
                 f.close()
 
-                #check
-                event = Events.objects.get(pk=talker_event_id)
-                self.assertEqual(
-                    event.event_status.event_status_name,
-                    'waiting_for_mp3_conversion'
-                )
-                self.assertTrue(
-                    os.path.exists(event.audio_file.path)
-                )
-                self.assertTrue(
-                    isinstance(EventRoomMatches.objects.get(event=event).when_left, datetime)
-                )
+            #check
+            event = Events.objects.get(pk=talker_event_id)
+            self.assertEqual(
+                event.event_status.event_status_name,
+                'waiting_for_mp3_conversion'
+            )
+            self.assertTrue(
+                os.path.exists(event.audio_file.path)
+            )
+            self.assertTrue(
+                isinstance(EventRoomMatches.objects.get(event=event).when_left, datetime)
+            )
 
-                #check with os in case of sudden case where it cannot recognise file format
-                #we should also now have the file in uer_x folder
-                self.assertTrue(
-                    os.path.exists(event.audio_file.path)
-                )
-                self.assertTrue(
-                    os.path.isfile(event.audio_file.path)
-                )
+            #check with os in case of sudden case where it cannot recognise file format
+            #we should also now have the file in uer_x folder
+            self.assertTrue(
+                os.path.exists(event.audio_file.path)
+            )
+            self.assertTrue(
+                os.path.isfile(event.audio_file.path)
+            )
 
             #trigger the conversion
             self.assertTrue(convert_event_audio_files_to_mp3())
@@ -1068,6 +1072,9 @@ class TalkerActions_ListenerActions_IntegrationTest(TestCase):
                 os.path.isfile(event.audio_file.path)
             )
         audio_submit_3()
+
+
+
 
 
 
