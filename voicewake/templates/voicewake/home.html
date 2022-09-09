@@ -2,7 +2,13 @@
 {% block title %}Home Page{% endblock %}
 
 {% block content %}
-<div class="card mt-2">
+
+
+
+
+
+
+{% comment %} <div class="card mt-2">
     {% for option in user_verification_options %}
         <div class="card-header">
             <strong>@{{option.id}}</strong>
@@ -27,5 +33,5 @@
     {% empty %}
         <p>Nothing yet :(</p>
     {% endfor %}
-</div>
+</div> {% endcomment %}
 {% endblock %}

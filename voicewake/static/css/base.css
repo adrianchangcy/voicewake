@@ -1,0 +1,28 @@
+:root {
+    font-size: 3vh;
+    font-family: 'Open Sans';
+    --text-primary: #b6b6b6;
+    --text-secondary: #ececec;
+    --bg-primary: #23232e;
+    --bg-secondary: #141418;
+    --transition-speed: 600ms;
+  }
+
+.navbar{
+    position: static;
+    margin-top: 0;
+    padding: 0;
+    background-color: var(--bg-primary);
+    width: 100vw;
+    height: 14vh;
+    transition: width 600ms ease;
+}
+
+.navbar-nav{
+    display: flex;
+    flex-direction: row;
+}
+
+.record_container{
+    position: static;
+}

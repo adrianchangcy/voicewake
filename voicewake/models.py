@@ -7,6 +7,8 @@
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
 from django.contrib.postgres.fields import ArrayField
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
 # from django.contrib.auth.models import PermissionsMixin
 
 #Python packages
@@ -58,6 +60,19 @@ def determine_event_audio_file_path_and_name(instance, filename):
 
     return file_path + '/' + new_file_name + '.' + file_extension
 
+
+def validate_rating(value):
+
+    if isinstance(value, int) and value >= 1 and value <= 5:
+
+        return True
+
+    else:
+
+        raise ValidationError(
+            _('%(value)s is not a valid rating between 1 and 5.'),
+            params={'value': value}
+        )
 
 
 class AuthGroup(models.Model):
@@ -318,7 +333,7 @@ class EventRoomMatchReports(models.Model):
     event_room_match = models.ForeignKey(
         'EventRoomMatches',
         on_delete=models.PROTECT,
-        related_name='event_room_matches1',
+        related_name='event_room_match_reports1',
         blank=True,
         null=True,
         default=None
@@ -326,7 +341,7 @@ class EventRoomMatchReports(models.Model):
     reported_event_room_match = models.ForeignKey(
         'EventRoomMatches',
         on_delete=models.PROTECT,
-        related_name='event_room_matches2',
+        related_name='event_room_match_reports2',
         blank=True,
         null=True,
         default=None
@@ -358,8 +373,6 @@ class EventRoomMatches(models.Model):
     event_room = models.ForeignKey('EventRooms', on_delete=models.PROTECT, blank=True, null=True, default=None)
     when_created = models.DateTimeField(auto_now_add=True)
     when_left = models.DateTimeField(blank=True, null=True)
-    ending_score = models.IntegerField(blank=True, null=True)
-    ending_message = models.TextField(blank=True, null=True)
 
     class Meta:
         app_label = 'voicewake'
@@ -367,8 +380,34 @@ class EventRoomMatches(models.Model):
         db_table = 'event_room_matches'
 
 
+#for best user experience, this won't be compulsory
+class EventRoomMatchRatings(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    event_room_match = models.ForeignKey(
+        'EventRoomMatches',
+        on_delete=models.CASCADE,
+        related_name='event_room_match_ratings1'
+    )
+    rated_event_room_match = models.ForeignKey(
+        'EventRoomMatches',
+        on_delete=models.CASCADE,
+        related_name='event_room_match_ratings2'
+    )
+    rating = models.IntegerField(default=3, validators=[validate_rating])
+        #1 to 5
+    message = models.TextField(blank=True, null=True, max_length=300)
+    when_created = models.DateTimeField(auto_now_add=True)
+    last_modified = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = 'voicewake'
+        managed = True
+        db_table = 'event_room_match_ratings'
+
+
 class EventRooms(models.Model):
     id = models.BigAutoField(primary_key=True)
+    event_room_name = models.TextField(blank=True, max_length=50)
     when_created = models.DateTimeField(auto_now_add=True)
     audio_file = models.TextField(blank=True)
     last_modified = models.DateTimeField(auto_now=True)
@@ -462,7 +501,7 @@ class UserEventRoles(models.Model):
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey('AuthUser', on_delete=models.CASCADE, blank=True, null=True, default=None)
     event_role = models.ForeignKey(EventRoles, on_delete=models.PROTECT, blank=True, null=True, default=None)
-    given_scores = ArrayField(
+    given_ratings = ArrayField(
         models.IntegerField(default=0),
         size=5,
         blank=True, null=True

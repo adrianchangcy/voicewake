@@ -51,7 +51,7 @@ class VoicewakeConfig(AppConfig):
                 user_event_role, ok = UserEventRoles.objects.get_or_create(
                     user=AuthUser(pk=getattr(user, 'id')),
                     event_role=EventRoles(pk=getattr(event_role, 'id')),
-                    defaults={'given_scores':None}
+                    defaults={'given_ratings':None}
                 )
 
                 event_role, ok = EventRoles.objects.get_or_create(event_role_name='talker')
@@ -59,7 +59,7 @@ class VoicewakeConfig(AppConfig):
                 user_event_role, ok = UserEventRoles.objects.get_or_create(
                     user=AuthUser(pk=getattr(user, 'id')),
                     event_role=EventRoles(pk=getattr(event_role, 'id')),
-                    defaults={'given_scores':[0,0,0,0,0]},
+                    defaults={'given_ratings':[0,0,0,0,0]},
                 )
 
             #run nested functions

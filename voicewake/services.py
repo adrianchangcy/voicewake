@@ -473,26 +473,28 @@ class ListenerActions():
         return True
 
 
-    #save listener ending_score and ending_message
-    def save_listener_score_and_message(self, ending_score=None, ending_message=''):
+    #listener rates talker
+    def save_listener_rating(self, listener_event_id, talker_event_id, rating=3, message=''):
 
-        self.listener_event_room_match.ending_score = ending_score
-        self.listener_event_room_match.ending_message = ending_message
+        #save rating via get_or_create(), for only one can exist
+        event_room_match_ratings = EventRoomMatchRatings.objects.get_or_create(
+            event_room_match = EventRoomMatches.objects.get(event=Events.objects.get(pk=listener_event_id)),
+            rated_event_room_match = EventRoomMatches.objects.get(event=Events.objects.get(pk=talker_event_id)),
+            rating = rating,
+            message = message
+        )
 
-        if ending_score is not None or ending_message is not None:
+        #proceed if created
+        if event_room_match_ratings[1]:
 
-            self.listener_event_room_match.save()
-        
-        return True
+            #update talker's UserEventRoles rating
+            talker = UserEventRoles.objects.get(pk = Events.objects.get(pk=talker_event_id).user_event_role.id)
+            talker.given_ratings[rating - 1] += 1
 
+            #handle potential banning here
+            
 
-    #contribute to talker's given_scores
-    def apply_score_to_talker(self, ending_score=None):
-
-        if ending_score is not None:
-
-            self.talker.given_scores[ending_score] += 1
-            self.talker.save()
+            talker.save()
 
         return True
 
