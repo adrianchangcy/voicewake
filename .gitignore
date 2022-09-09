@@ -8,8 +8,11 @@ media
 uploads
 test_uploads
 
+# Bulma CSS, manually downloaded
+bulma/
+
 # Backup files # 
-*.bak 
+*.bak
 
 # If you are using PyCharm # 
 # User-specific stuff

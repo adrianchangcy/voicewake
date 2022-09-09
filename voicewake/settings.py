@@ -9,7 +9,9 @@ https://docs.djangoproject.com/en/4.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
+#Django
 
+#Python packages
 from pathlib import Path
 import os
 
@@ -38,10 +40,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
-    #bootstrap to ease workload on CSS
-    'crispy_bootstrap5',
-    'crispy_forms',
 
     'rest_framework',
     #optional, provides template when returning Response() and not JsonResponse()
@@ -184,3 +182,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')
 
 
 MEDIA_URL = 'http://www.127.0.0.0:8000/'
+
+
+STRIPE_PUBLIC_KEY = 'pk_test_51LeYM2GvCzbfbfazgRmGuWQQqOteutZEHYFN6FSfe95fWKqHxbUAAg33EC6Yi8fGdOcg7xQoB0DhHrLuKfgD7hDt00L2kqSIYq'
+STRIPE_SECRET_KEY = 'sk_test_51LeYM2GvCzbfbfazCqq0CeroacrDD2QWEFxrhainIb047gprAu4yEsVLG8RhfoCHcqGcLxBX6VeR2zuTFiijf0Z900aZi78B7n'
+STRIPE_WEBHOOK_SECRET = ''

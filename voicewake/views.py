@@ -143,28 +143,11 @@ class PermissionPolicyMixin():
 #     return Response(status=status.HTTP_418_IM_A_TEAPOT)
 
 
-@login_required(login_url='/login')
+
+# @login_required(login_url='/login')
 def home(request):
 
-    user_verification_options = UserVerificationOptions.objects.all()
-
-    #HTML forms only accept GET and POST methods, hence this workaround for deletion
-    if request.method == 'POST':
-
-        user_verification_option_id = request.POST.get("delete_user_verification_option")
-        
-        if user_verification_option_id is not None:
-
-            user_verification_option = UserVerificationOptions.objects.filter(id=user_verification_option_id).first()
-
-            if user_verification_option:
-
-                user_verification_option.delete()
-
-                #redirect to remove 'confirm form submission' dialog on manual refresh
-                return redirect('/')
-
-    return render(request, 'voicewake/home.html', {"user_verification_options":user_verification_options})
+    return render(request, template_name='voicewake/home.html')
 
 
 def sign_up(request):

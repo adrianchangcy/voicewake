@@ -1,10 +1,12 @@
 #this is where you write unit testing as per Django's ways
 #proper ways coming soon
 #Django
+from time import sleep
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from rest_framework import status
 from django.core.files import File
+from django.http import StreamingHttpResponse
 
 #apps
 from voicewake.services import *
@@ -77,28 +79,28 @@ class User_SignUp_TestCase(TestCase):
 
                 raise ValueError('Existing event_role_name is unexpected, as dictated by "to_expect" list.')
         
-        #check for user's given_score for talker or null for listener, as created by AppConfig
+        #check for user's given_ratings for talker or null for listener, as created by AppConfig
         for uer in user_event_roles:
 
             if uer.event_role.event_role_name == 'talker':
 
-                if uer.given_scores == [0,0,0,0,0]:
+                if uer.given_ratings == [0,0,0,0,0]:
 
                     pass
 
                 else:
 
-                    raise ValueError('Expected [0,0,0,0,0] for given_score of talker, but did not get it.')
+                    raise ValueError('Expected [0,0,0,0,0] for given_ratings of talker, but did not get it.')
 
             elif uer.event_role.event_role_name == 'listener':
 
-                if uer.given_scores is None:
+                if uer.given_ratings is None:
 
                     pass
 
                 else:
 
-                    raise ValueError('Expected null for given_score of listener, but got something else.')
+                    raise ValueError('Expected null for given_ratings of listener, but got something else.')
 
 
 #note that for ListenerActions() and TalkerActions(),
@@ -618,8 +620,8 @@ class TalkerActions_ListenerActions_IntegrationTest(TestCase):
         test_directory = os.path.join(BASE_DIR, 'test_uploads')
 
         if os.path.isdir(test_directory):
-
-            return
+            
+            sleep(10)
             shutil.rmtree(test_directory)
 
 
@@ -635,7 +637,7 @@ class TalkerActions_ListenerActions_IntegrationTest(TestCase):
 
         talker_user = AuthUser.objects.get(username='talker_here')
 
-        #create user and use it as listener
+        #create listener
         self.client.post(reverse('sign_up'), data={
             'username': 'listener_here',
             'email': 'abc@gmail.com',
@@ -807,7 +809,7 @@ class TalkerActions_ListenerActions_IntegrationTest(TestCase):
 
         talker_user = AuthUser.objects.get(username='talker_here')
 
-        #create user and use it as listener
+        #create listener
         self.client.post(reverse('sign_up'), data={
             'username': 'listener_here',
             'email': 'abc@gmail.com',
@@ -1011,8 +1013,6 @@ class TalkerActions_ListenerActions_IntegrationTest(TestCase):
             )
         audio_submit_2()
 
-
-
         #third submit, observe handling of non-mp3 files
         #will also trigger conversion to mp3
         def audio_submit_3():
@@ -1074,12 +1074,68 @@ class TalkerActions_ListenerActions_IntegrationTest(TestCase):
         audio_submit_3()
 
 
+        #CHECKPOINT
+        #listener opens talker audio, and gives rating
+        #expect these values
+        talker_event_id = talker_event_id
+
+        event = Events.objects.get(pk=talker_event_id)
+        
+        #send file to request point
+        from wsgiref.util import FileWrapper
+        with open(event.audio_file.path, 'rb') as f:
+
+            response = StreamingHttpResponse(
+                FileWrapper(f, blksize=8192),
+                content_type='audio/mp3'
+            )
+
+            #FileField.size returns int(byte size), and Content-Length requires int(byte size)
+            response['Content-Length'] = event.audio_file.size
+            response['Content-Disposition'] = "attachment; filename=%s" % os.path.basename(event.audio_file.path)
+
+            f.close()
 
 
+        #CHECKPOINT
+        #listener gives score and leaves messsage
+        #expect these values
+        listener_event_id = talker_selection_data['selected']
+        talker_event_id = talker_event_id
+        rating = 3
+        message = 'haha ty'
+    
+        self.assertTrue(
+            listener_actions.save_listener_rating(
+                listener_event_id=listener_event_id,
+                talker_event_id=talker_event_id,
+                rating=rating,
+                message=message
+            )
+        )
 
+        #check
+        self.assertEqual(
+            EventRoomMatchRatings.objects.filter(
+                event_room_match=EventRoomMatches.objects.get(event__id=listener_event_id),
+                rated_event_room_match=EventRoomMatches.objects.get(event__id=talker_event_id)
+            ).count(),
+            1
+        )
 
+        #check
+        event_room_match_rating = EventRoomMatchRatings.objects.get(
+            event_room_match=EventRoomMatches.objects.get(event__id=listener_event_id),
+            rated_event_room_match=EventRoomMatches.objects.get(event__id=talker_event_id)
+        )
+        self.assertEqual(event_room_match_rating.rating, rating)
+        self.assertEqual(event_room_match_rating.message, message)
 
-
+        #check
+        self.assertEqual(
+            Events.objects.get(pk=talker_event_id).user_event_role.given_ratings,
+            [0,0,1,0,0]
+        )
 
 
 
