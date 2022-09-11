@@ -8,8 +8,10 @@ media
 uploads
 test_uploads
 
-# Bulma CSS, manually downloaded
-bulma/
+#node_modules from npm installs
+#we put it in 'static' folder so that Django's STATICFILES_DIRS can find it
+static/node_modules/*
+!static/node_modules/.package-lock.json
 
 # Backup files # 
 *.bak

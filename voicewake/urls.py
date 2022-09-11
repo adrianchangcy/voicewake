@@ -56,7 +56,7 @@ urlpatterns = [
     path('record', views.RecordAudioFormView.as_view(), name='record'),
 
     #favicon
-    path('favicon.ico', RedirectView.as_view(url=staticfiles_storage.url('favicon.ico'))),
+    path('favicon.ico', RedirectView.as_view(url=staticfiles_storage.url('website-logo.svg'))),
 ]
 
 
