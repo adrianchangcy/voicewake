@@ -1,4 +1,4 @@
-:root {
+/* :root {
     font-size: 3vh;
     font-family: 'Open Sans';
     --text-primary: #b6b6b6;
@@ -8,21 +8,12 @@
     --transition-speed: 600ms;
   }
 
-.navbar{
-    position: static;
-    margin-top: 0;
-    padding: 0;
-    background-color: var(--bg-primary);
-    width: 100vw;
-    height: 14vh;
-    transition: width 600ms ease;
-}
 
-.navbar-nav{
-    display: flex;
-    flex-direction: row;
-}
 
-.record_container{
-    position: static;
-}
+/* change background-color hover from here, but also specify color that matches with filter, else drop-down 0 change */
+/* .navbar-item:hover{
+    background-color: black !important;
+    color: greenyellow !important;
+} */
+
+
