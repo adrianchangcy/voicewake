@@ -3,6 +3,13 @@
 //refer to link below:
 //https://docs.djangoproject.com/en/4.0/howto/static-files/deployment/
 jQuery(document).ready(function($){
+
+    //NAVBAR
+    // Check for click events on the navbar burger icon
+    $("#dropdownNavbarLink").click(function(){
+        $("#dropdownNavbar").toggleClass("hidden");
+    })
+
     
     //AUTOCOMPLETE FOR TEXT FIELDS WITH AJAX QUERY TO DB
     $('.reuse_basic_autocomplete').autocomplete({

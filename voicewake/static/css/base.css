@@ -1,19 +1,27 @@
-/* :root {
-    font-size: 3vh;
-    font-family: 'Open Sans';
-    --text-primary: #b6b6b6;
-    --text-secondary: #ececec;
-    --bg-primary: #23232e;
-    --bg-secondary: #141418;
-    --transition-speed: 600ms;
-  }
+/*put these here so tailwind can listen*/
+/*ignore syntax error, they are a non-issue*/
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+/*this is to save vertical space via hiding labels, while still readable to screen readers*/
+.hide-but-readable {
+    position:absolute;
+    left:-10000px;
+    top:auto;
+    width:1px;
+    height:1px;
+    overflow:hidden;
+}
 
-
-/* change background-color hover from here, but also specify color that matches with filter, else drop-down 0 change */
-/* .navbar-item:hover{
-    background-color: black !important;
-    color: greenyellow !important;
-} */
-
-
+/*since we use placeholders for label, make them more visible*/
+::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
+    color: rgb(160, 160, 160) !important;
+    opacity: 1 !important; /* Firefox */
+}
+:-ms-input-placeholder { /* Internet Explorer 10-11 */
+    color: rgb(100, 100, 100) !important;
+}
+::-ms-input-placeholder { /* Microsoft Edge */
+    color: rgb(24,24,24) !important;
+}
