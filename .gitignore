@@ -9,9 +9,12 @@ uploads
 test_uploads
 
 #node_modules from npm installs
-#we put it in 'static' folder so that Django's STATICFILES_DIRS can find it
-static/node_modules/*
-!static/node_modules/.package-lock.json
+node_modules/*
+!node_modules/.package-lock.json
+
+#Vue
+frontend/node_modules/*
+!frontend/node_modules/.package-lock.json
 
 # Backup files # 
 *.bak

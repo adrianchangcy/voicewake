@@ -141,10 +141,12 @@ USE_I18N = True
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 STATIC_URL = 'static/'  #my_app/static
 
-#note that for Bulma CSS, we do this because django-bulma does not update its own Bulma as frequently
+#extra static directories
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static/'),  #project/static for npm packages
+    os.path.join(BASE_DIR, 'static'),   #this is where Django can find our Vue content
 ]
+
+STATIC_ROOT = 'deploy/static_root'  #collect all static files for live server
 
 
 # Default primary key field type

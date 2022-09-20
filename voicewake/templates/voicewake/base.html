@@ -1,85 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    {% block head %}
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    {% endblock %}
     <title>{% block title %}My Site{% endblock %}</title>
+
 </head>
 
 {% load static %}
 
-<body class="w-full bg-theme-light text-black font-sans">
+{% block body %}
+    <body class="w-full bg-theme-light text-black font-sans">
 
-    {%block navbar%}
-    <!--if light mode, hover has shadow under, and if dark mode, hover has light above-->
+        {% block navbar %}
 
-    <nav class="sticky top-0 w-auto h-auto py-2 backdrop-blur text-center leading-none text-2xl bg-gradient-to-r from-theme-light/40 via-theme-light/100 to-theme-light/40">
-        <ul class="w-auto rounded-b-lg grid grid-flow-col gap-2 grid-cols-4 grid-rows-1 content-around">
-            <li class="col-span-1 flex flex-nowrap items-center border-none">
-                <a href="/" class="flex-1 mx-10 py-5 grid grid-flow-col grid-cols-2 border-l-2 border-t-2 border-white shadow-md hover:shadow-lg transition duration-100 ease-in-out hover:translate-x-1 hover:translate-y-1 rounded-lg hover:scale-100">
-                    <div class="col-span-1 text-right px-2">
-                        <i class="fas fa-microphone-lines"></i>
-                    </div>
-                    <div class="col-span-1 text-left px-2">
-                        <span>Talk</span>
-                    </div>
-                </a>
-            </li>
-            <li class="col-span-1 flex flex-nowrap items-center">
-                <a href="/" class="flex-1 mx-10 py-5 grid grid-flow-col grid-cols-2 border-l-2 border-t-2 border-white shadow-md hover:shadow-lg transition duration-100 ease-in-out hover:translate-x-1 hover:translate-y-1 rounded-lg hover:scale-100">
-                    <div class="col-span-1 text-right px-2">
-                        <i class="fas fa-calendar-plus"></i>
-                    </div>
-                    <div class="col-span-1 text-left px-2">
-                        <span>Request</span>
-                    </div>
-                </a>
-            </li>
-            <li class="col-span-1 flex flex-nowrap items-center">
-                <a href="/" class="flex-1 mx-10 py-5 grid grid-flow-col grid-cols-2 border-l-2 border-t-2 border-white shadow-md hover:shadow-lg transition duration-100 ease-in-out hover:translate-x-1 hover:translate-y-1 rounded-lg hover:scale-100">
-                    <div class="col-span-1 text-right px-2">
-                        <i class="fas fa-door-open"></i>
-                    </div>
-                    <div class="col-span-1 text-left px-2">
-                        <span>Log In</span>
-                    </div>
-                </a>
-            </li>
-            <li class="col-span-1 flex flex-nowrap items-center">
-                <a href="/" class="flex-1 mx-10 py-5 grid grid-flow-col grid-cols-2 border-l-2 border-t-2 border-white shadow-md hover:shadow-lg transition duration-100 ease-in-out hover:translate-x-1 hover:translate-y-1 rounded-lg hover:scale-100">
-                    <div class="col-span-1 text-right px-2">
-                        <i class="fas fa-hat-wizard"></i>
-                    </div>
-                    <div class="col-span-1 text-left px-2">
-                        <span>Sign Up</span>
-                    </div>
-                </a>
-            </li>
-        </ul>
-    </nav>
+            <div id="navbar"></div>
+
+        {% endblock %}
+
+        {% block content %}
+
+        {% endblock %}
+
+        {% comment %}
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.13.2/jquery-ui.min.js"></script>
+        <link
+            href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/ui-lightness/jquery-ui.css"
+            rel="stylesheet"
+            type="text/css"
+        />
+        <script src="{%static 'js/base.js' %}"></script>
+        {% endcomment %}
+
+        <link rel="stylesheet" href="{%static 'css/output.css' %}"/>
+
+        <!--Vue-->
+        <script type="text/javascript" src="{% static 'src/vue/dist/js/chunk-vendors.js' %}"></script>
+        <script type="text/javascript" src="{% static 'src/vue/dist/js/app.js' %}"></script>
+
+        <!--importing separate styles is slightly more performant than all.css, as per docs-->
+        <!--if you want to use fa-regular, import fontawesomefree/css/regular.css, etc.-->
+        <link href="{% static 'fontawesomefree/css/fontawesome.css' %}" rel="stylesheet" type="text/css">
+        <link href="{% static 'fontawesomefree/css/brands.css' %}" rel="stylesheet" type="text/css">
+        <link href="{% static 'fontawesomefree/css/solid.css' %}" rel="stylesheet" type="text/css">
+        <link href="{% static 'fontawesomefree/css/regular.css' %}" rel="stylesheet" type="text/css">
 
 
-    {%endblock%}
-
-    {%block content%}
-    {%endblock%}
-
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.13.2/jquery-ui.min.js"></script>
-    <link
-        href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/ui-lightness/jquery-ui.css"
-        rel="stylesheet"
-        type="text/css"
-    />
-    <link rel="stylesheet" href="{%static 'css/output.css' %}"/>
-    <script src="{%static 'js/base.js' %}"></script>
-    <!--importing separate styles is slightly more performant than all.css, as per docs-->
-    <!--if you want to use fa-regular, import fontawesomefree/css/regular.css, etc.-->
-    <link href="{% static 'fontawesomefree/css/fontawesome.css' %}" rel="stylesheet" type="text/css">
-    <link href="{% static 'fontawesomefree/css/brands.css' %}" rel="stylesheet" type="text/css">
-    <link href="{% static 'fontawesomefree/css/solid.css' %}" rel="stylesheet" type="text/css">
-    <link href="{% static 'fontawesomefree/css/regular.css' %}" rel="stylesheet" type="text/css">
-</body>
-
+    </body>
+{% endblock %}
 </html>
