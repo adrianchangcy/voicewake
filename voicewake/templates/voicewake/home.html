@@ -3,11 +3,14 @@
 
 {% block content %}
 
-<div class="w-auto">
-{% for i in "x"|rjust:"100" %}
-    <h1 class="overflow-hidden break-words text-5xl">HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO</h1>
-{%endfor%}
-</div>
+
+    <div class="w-auto">
+    {% for i in "x"|rjust:"20" %}
+        <h1 class="overflow-hidden break-words text-2xl">HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO</h1>
+        <h1 class="overflow-hidden break-words text-xl">HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO</h1>
+        <h1 class="overflow-hidden break-words text-lg">HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO HELLO</h1>
+    {%endfor%}
+    </div>
 
 
 
