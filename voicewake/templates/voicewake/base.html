@@ -8,21 +8,19 @@
     {% endblock %}
     <title>{% block title %}My Site{% endblock %}</title>
 
+    <!--for nav bar-->
+    {{user.username | json_script:"data-username"}}
+
 </head>
 
 {% load static %}
 
 {% block body %}
-    <body class="w-full bg-theme-light text-black font-sans">
+    <body>
 
-        {% block navbar %}
-
-            <div id="app" class="sticky top-0"></div>
-
-        {% endblock %}
+        <div id="base-app"></div>
 
         {% block content %}
-
         {% endblock %}
 
         {% comment %}
@@ -48,9 +46,7 @@
         <link href="{% static 'fontawesomefree/css/brands.css' %}" rel="stylesheet" type="text/css">
         <link href="{% static 'fontawesomefree/css/solid.css' %}" rel="stylesheet" type="text/css">
         <link href="{% static 'fontawesomefree/css/regular.css' %}" rel="stylesheet" type="text/css">
-
-
-
     </body>
+
 {% endblock %}
 </html>

@@ -4,6 +4,11 @@ from rest_framework import serializers
 
 from .models import *
 
+class AuthUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AuthUser
+        fields = ['username']
+
 
 class CountriesSerializer(serializers.ModelSerializer):
     class Meta:
