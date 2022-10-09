@@ -3,6 +3,7 @@ import { createApp } from 'vue';
 import BaseApp from './BaseApp.vue';
 
 const clickOutside = {
+    
     beforeMount: (element, binding) => {
         
         element.clickOutsideEvent = event => {
