@@ -25,3 +25,11 @@
 ::-ms-input-placeholder { /* Microsoft Edge */
     color: rgb(24,24,24) !important;
 }
+
+textarea {
+    resize: none;
+}
+
+/* * {
+    outline: 1px solid #f00 !important;
+  } */
