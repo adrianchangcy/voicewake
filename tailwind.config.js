@@ -8,9 +8,20 @@ module.exports = {
     ],
     theme: {
         extend: {
+            //for transition duration
+            //hover, e.g. button, is duration-150
+            //open/close, e.g. menu, is duration-200
             colors: {
                 'theme-light': '#F2F4F3',
+                'theme-light-trim': '#FDFDFD',
                 'theme-dark': '#22333B',
+
+                'theme-focus': '#FFE178',
+                'theme-ok': '#3fce31',
+                'theme-warning': '#FFE178',
+                'theme-danger': '#A4243B',
+
+                'theme-black': '#444444',
 
                 'theme-cream': '#F8F9F0',
                 'theme-red': '#A4243B',
