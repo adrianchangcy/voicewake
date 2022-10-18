@@ -1,29 +1,39 @@
 <template>
     <div class="w-full h-full flex flex-col">
-        <div class="w-full h-full grid grid-cols-4 grid-flow-col items-center place-items-center">
-            <button
-                ref="pick_emoji"
-                @click.prevent="toggleEmojiPicker"
-                class="col-span-1 w-full h-full text-4xl items-center border-2 border-theme-black"
+        <button
+            v-click-outside="{
+                related_data: 'is_emoji_picker_open',
+                exclude: ['left_emoji_button']
+            }"
+            @click.self="toggleEmojiPicker()"
+            :disabled="is_emoji_picker_open"
+            class="w-full h-full grid grid-cols-4 grid-flow-col items-center"
+        >
+            <!-- <div class="col-span-1 w-full h-full flex flex-nowrap text-4xl text-center items-center"> -->
+            <div
+                :class="[
+                    is_emoji_picker_open ? 'w-full' : 'w-0',
+                    'col-span-1 w-full h-full flex flex-nowrap text-4xl text-center items-center place-items-start transition-all duration-300 ease-in-out'
+                ]"
             >
-                <span
+                <button
                     v-if="picked_emoji !== null"
+                    ref="left_emoji_button"
+                    @click.prevent="toggleEmojiPicker()"
                     :aria-label="'Current choice is '+picked_emoji.index"
+                    class="flex-1"
                 >
                     {{picked_emoji.emoji}}
-                </span>
-            </button>
-            <TransitionFade>
+                </button>
+            </div>
+            <TransitionFadeSlow>
+                <!--we use the left border here as divider instead of main button's, with box-content for true divider position-->
                 <div
                     v-show="is_emoji_picker_open"
-                    v-click-outside="{
-                        related_data: 'is_emoji_picker_open',
-                        exclude: ['pick_emoji']
-                    }"
-                    class="col-span-3 w-full h-full overflow-x-hidden overflow-y-auto bg-theme-light border-2 border-theme-black text-2xl"
+                    class="col-span-3 w-full h-full overflow-x-hidden overflow-y-auto bg-theme-light text-2xl border-l-2 border-theme-black box-content"
                 >
                     <div
-                        class="w-auto h-full place-items-center grid grid-flow-row grid-cols-4 gap-x-2 text-center"
+                        class="items-center place-items-center grid grid-flow-row grid-cols-4 text-center"
                         v-for="category in emojiCategories" :key="category"
                     >
                         <div
@@ -40,14 +50,14 @@
                         </div>
                     </div>
                 </div>
-            </TransitionFade>
-        </div>
+            </TransitionFadeSlow>
+        </button>
     </div>
 </template>
 
 <script setup>
 
-    import TransitionFade from '/src/transitions/TransitionFade.vue';
+    import TransitionFadeSlow from '/src/transitions/TransitionFadeSlow.vue';
 
 </script>
 
@@ -73,13 +83,18 @@
         },
         methods: {
             toggleEmojiPicker(){
-                this.is_emoji_picker_open = !this.is_emoji_picker_open;
 
+                this.is_emoji_picker_open = !this.is_emoji_picker_open;
+            },
+            //prevent click from registering during transition
+            closeEmojiPicker(){
+
+                this.is_emoji_picker_open = false;
             },
             handleEmojiClick(event, emoji, index){
+                this.closeEmojiPicker();
                 this.picked_emoji = {'index': index, 'emoji': emoji};
                 this.$emit('emoji_click', this.picked_emoji);
-                this.toggleEmojiPicker();
             },
         },
         mounted(){

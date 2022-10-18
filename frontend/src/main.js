@@ -44,7 +44,13 @@ const clickOutside = {
 };
 
 createApp(BaseApp).directive('click-outside', clickOutside).mount('#base-app');
-createApp(ListenCreateEventsApp).directive('click-outside', clickOutside).mount('#listen-create-events-app');
+
+//this might not be the most efficient fix
+//https://vuejs.org/guide/essentials/application.html#the-root-component
+if(document.querySelector('#listen-create-events-app')){
+
+    createApp(ListenCreateEventsApp).directive('click-outside', clickOutside).mount('#listen-create-events-app');
+}
 
 
 
