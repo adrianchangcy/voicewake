@@ -1,7 +1,7 @@
 <template>
-    <nav class="w-full h-fit    text-center text-xl xl:text-2xl text-black leading-none">
-        <div ref="navMain" class="w-full h-fit p-2 lg:px-8   flex flex-nowrap     backdrop-blur bg-theme-light/60 border-b border-black/5">
-            <ul class="w-full h-fit      grid gap-2 grid-flow-col grid-rows-1 grid-cols-4 lg:grid-cols-10">
+    <nav class="text-center text-xl xl:text-2xl text-black leading-none">
+        <div ref="navMain" class="p-2 lg:px-8   flex flex-nowrap     backdrop-blur bg-theme-light/60 border-b border-black/5">
+            <ul class="w-full      grid gap-2 grid-flow-col grid-rows-1 grid-cols-4 lg:grid-cols-10">
                 <li class="col-span-1 flex flex-nowrap justify-center">
                     <a href="/" aria-label="home" class="flex-1 p-4 lg:p-2      grid items-center">
                         <i class="fas fa-wave-square"></i>
@@ -9,14 +9,14 @@
                 </li>
                 <li class="col-span-1 lg:col-span-2 flex flex-nowrap">
                     <a href="/" class="flex-1 p-4 lg:p-2      items-center      border-l-2 border-t-2 border-theme-light-trim     hover:bg-theme-light/80 shadow-md rounded-lg    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out">
-                        <i class="fas fa-microphone-lines"></i>
-                        <span class="hidden lg:block">Talk</span>
+                        <i class="fas fa-ear-listen"></i>
+                        <span class="hidden lg:block">Hear</span>
                     </a>
                 </li>
                 <li class="col-span-1 lg:col-span-2 flex flex-nowrap">
                     <a href="/" class="flex-1 p-4 lg:p-2      items-center      border-l-2 border-t-2 border-theme-light-trim     hover:bg-theme-light/80 shadow-md rounded-lg    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out">
-                        <i class="fas fa-ear-listen"></i>
-                        <span class="hidden lg:block">Listen</span>
+                        <i class="fas fa-microphone-lines"></i>
+                        <span class="hidden lg:block">Say</span>
                     </a>
                 </li>
                 <li :class="[
@@ -70,7 +70,7 @@
                             </div>
                             <div
                                 :class="[
-                                    is_nav_main_more_open ? 'mb-0 -rotate-45' : 'mt-4 rotate-0',
+                                    is_nav_main_more_open ? 'mt-0 -rotate-45' : 'mt-4 rotate-0',
                                     'row-span-1 bg-theme-black absolute   w-5 h-1     transition-all duration-200 ease-in-out',
                                 ]"
                             >
@@ -82,14 +82,14 @@
         </div>
         <TransitionFade>
             <div 
-                v-if="is_nav_main_more_open"
+                v-show="is_nav_main_more_open"
                 v-click-outside="{
                     related_data: 'is_nav_main_more_open',
                     exclude: ['nav_main_more_button', 'nav_main_more_mobile_button']
                 }"
                 class="w-screen h-screen absolute right-0 lg:max-w-fit lg:border-l border-black/5      backdrop-blur bg-theme-light/60"
             >
-                <div class="w-auto max-h-full p-4 lg:p-8 overflow-y-auto">
+                <div class="p-4 lg:p-8 overflow-y-auto">
                     <div v-if="is_logged_in" class="p-4 grid gap-y-2">
                         <i class="col-span-1 fas fa-circle-user text-4xl"></i>
                         <p>{{username}}</p>
