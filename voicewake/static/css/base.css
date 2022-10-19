@@ -26,11 +26,31 @@
     color: rgb(24,24,24) !important;
 }
 
+/*
+    FONT STANDARDS
+current hierarchy of text sizes
+form title is text-3xl
+form input label is text-xl
+form input is text-lg
+form miscellaneous, e.g. character counter, is text-sm
+*/
+
+/*
+    NAMING STANDARDS
+    for ref, use "refName", so we can do this.$refs.refName with no issue
+    for functions, use "functionName"
+    for props, use "propName"
+    for emit, use "hasClick"
+    
+    for data and variables, use "variable_name"
+    for column names from data source, expect "col_name"
+
+    for custom directives, css classes, etc., use "the-name"
+*/
+
 textarea {
     resize: none;
 }
-
-
 
 /* * {
     outline: 1px solid #f00 !important;
