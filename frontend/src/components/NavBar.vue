@@ -8,13 +8,13 @@
                     </a>
                 </li>
                 <li class="col-span-1 lg:col-span-2 flex flex-nowrap">
-                    <a href="/" class="flex-1 p-4 lg:p-2      items-center      border-l-2 border-t-2 border-theme-light-trim     hover:bg-theme-light/80 shadow-md rounded-lg    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out">
+                    <a href="/" class="flex-1 p-4 lg:p-2      items-center       border-t-2 border-theme-light-trim hover:border-theme-light-trim/40     hover:bg-theme-light/80 shadow-md rounded-lg    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out">
                         <i class="fas fa-ear-listen"></i>
                         <span class="hidden lg:block">Hear</span>
                     </a>
                 </li>
                 <li class="col-span-1 lg:col-span-2 flex flex-nowrap">
-                    <a href="/" class="flex-1 p-4 lg:p-2      items-center      border-l-2 border-t-2 border-theme-light-trim     hover:bg-theme-light/80 shadow-md rounded-lg    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out">
+                    <a href="/" class="flex-1 p-4 lg:p-2      items-center       border-t-2 border-theme-light-trim hover:border-theme-light-trim/40     hover:bg-theme-light/80 shadow-md rounded-lg    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out">
                         <i class="fas fa-microphone-lines"></i>
                         <span class="hidden lg:block">Say</span>
                     </a>
@@ -25,13 +25,13 @@
                 ]">
                 </li>
                 <li v-if="!is_logged_in" class="hidden lg:col-span-1 lg:flex flex-nowrap">
-                    <a href="/" class="flex-1 p-4 lg:p-2      items-center      border-l-2 border-t-2 border-theme-light-trim     hover:bg-theme-light/80 shadow-md rounded-lg    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out">
+                    <a href="/" class="flex-1 p-4 lg:p-2      items-center       border-t-2 border-theme-light-trim hover:border-theme-light-trim/40     hover:bg-theme-light/80 shadow-md rounded-lg    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out">
                         <i class="fas fa-user"></i>
                         <span class="hidden lg:block">Login</span>
                     </a>
                 </li>
                 <li v-if="!is_logged_in" class="hidden lg:col-span-1 lg:flex flex-nowrap">
-                    <a href="/" class="flex-1 p-4 lg:p-2      items-center      border-l-2 border-t-2 border-theme-light-trim     hover:bg-theme-light/80 shadow-md rounded-lg    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out">
+                    <a href="/" class="flex-1 p-4 lg:p-2      items-center       border-t-2 border-theme-light-trim hover:border-theme-light-trim/40     hover:bg-theme-light/80 shadow-md rounded-lg    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out">
                         <i class="fas fa-right-to-bracket"></i>
                         <span class="hidden lg:block">Sign Up</span>
                     </a>
@@ -41,7 +41,7 @@
                         ref="nav_main_more_button"
                         aria-label="more options"
                         @click="toggle_nav_main_more"
-                        class="flex-none p-4 lg:p-2      items-center      border-l-2 border-t-2 border-theme-light-trim     hover:bg-theme-light/80 shadow-md rounded-full    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out"
+                        class="flex-none p-4 lg:p-2      items-center       border-t-2 border-theme-light-trim hover:border-theme-light-trim/40     hover:bg-theme-light/80 shadow-md rounded-full    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out"
                     >
                         <i class="fas fa-circle-user"></i>
                     </button>
@@ -50,7 +50,7 @@
                     <button
                         ref="nav_main_more_mobile_button"
                         aria-label="more options"
-                        class="flex-1 p-4 lg:p-2      items-center      border-l-2 border-t-2 border-theme-light-trim     hover:bg-theme-light/80 shadow-md rounded-lg    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out"
+                        class="flex-1 p-4 lg:p-2      items-center       border-t-2 border-theme-light-trim hover:border-theme-light-trim/40     hover:bg-theme-light/80 shadow-md rounded-lg    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out"
                         @click="toggle_nav_main_more"
                     >
                         <div class="grid grid-rows-3 grid-flow-row      justify-items-center place-items-center">
@@ -97,7 +97,7 @@
                     <div v-if="is_logged_in" class="flex flex-nowrap flex-col gap-y-2">
                         <a
                             href="/"
-                            class="flex-1 p-4 lg:p-2    items-center      grid grid-cols-4 grid-flow-col      border-l-2 border-t-2 border-theme-light-trim     hover:bg-theme-light/80 shadow-md rounded-lg    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out"
+                            class="flex-1 p-4 lg:p-2    items-center      grid grid-cols-4 grid-flow-col       border-t-2 border-theme-light-trim hover:border-theme-light-trim/40     hover:bg-theme-light/80 shadow-md rounded-lg    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out"
                         >
                             <i class="col-span-1 fas fa-door-open"></i>
                             <span class="col-span-2">Logout</span>
@@ -106,14 +106,14 @@
                     <div v-else class="flex flex-nowrap flex-col gap-y-2">
                         <a
                             href="/"
-                            class="flex-1 p-4 lg:p-2    items-center      grid grid-cols-4 grid-flow-col      border-l-2 border-t-2 border-theme-light-trim     hover:bg-theme-light/80 shadow-md rounded-lg    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out"
+                            class="flex-1 p-4 lg:p-2    items-center      grid grid-cols-4 grid-flow-col       border-t-2 border-theme-light-trim hover:border-theme-light-trim/40     hover:bg-theme-light/80 shadow-md rounded-lg    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out"
                         >
                             <i class="col-span-1    fas fa-user"></i>
                             <span class="col-span-2">Login</span>
                         </a>
                         <a
                             href="/"
-                            class="flex-1 p-4 lg:p-2    items-center      grid grid-cols-4 grid-flow-col      border-l-2 border-t-2 border-theme-light-trim     hover:bg-theme-light/80 shadow-md rounded-lg    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out"
+                            class="flex-1 p-4 lg:p-2    items-center      grid grid-cols-4 grid-flow-col       border-t-2 border-theme-light-trim hover:border-theme-light-trim/40     hover:bg-theme-light/80 shadow-md rounded-lg    bg-theme-light/60 hover:shadow-sm transition duration-150 ease-in-out"
                         >
                             <i class="col-span-1    fas fa-right-to-bracket"></i>
                             <span class="col-span-2">Sign Up</span>
