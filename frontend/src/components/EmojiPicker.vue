@@ -12,7 +12,7 @@
             <div
                 :class="[
                     is_emoji_picker_open ? 'w-full' : 'w-0',
-                    'col-span-1 w-full h-full flex flex-nowrap text-4xl text-center items-center place-items-start transition-all duration-300 ease-in-out'
+                    'col-span-1 h-full flex flex-nowrap text-4xl text-center items-center transition-all duration-500 ease-in-out'
                 ]"
             >
                 <button

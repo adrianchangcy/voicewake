@@ -17,10 +17,22 @@ const clickOutside = {
             let is_clicked_element_excluded = false;
 
             exclude.forEach((element)=>{
+                
+                try{
 
-                if(binding.instance.$refs[element].contains(event.target)){
+                    if(binding.instance.$refs[element].contains(event.target)){
+                        
+                        is_clicked_element_excluded = true;
+                    }
 
-                    is_clicked_element_excluded = true;
+                }catch(error){
+
+                    console.log(error);
+                    console.log(
+                        "Your ref element is probably not available."
+                        +" Try putting your ref attribute at an element without v-if and v-show."
+                        +" Parent element works if it's purely a container for only this element."
+                    );
                 }
             });
 
