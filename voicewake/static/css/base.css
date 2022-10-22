@@ -4,6 +4,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/*enable this to troubleshoot css errors*/
+/* * {
+    outline: 1px solid #f00 !important;
+  } */
+
 /*this is to save vertical space via hiding labels, while still readable to screen readers*/
 .hide-but-readable {
     position:absolute;
@@ -32,7 +37,7 @@ current hierarchy of text sizes
 form title is text-3xl
 form input label is text-xl
 form input is text-lg
-form miscellaneous, e.g. character counter, is text-sm
+form miscellaneous, e.g. character counter and input status text, is text-sm
 */
 
 /*
@@ -41,17 +46,20 @@ form miscellaneous, e.g. character counter, is text-sm
     for functions, use "functionName"
     for props, use "propName"
     for emit, use "hasClick"
-    
+
     for data and variables, use "variable_name"
     for column names from data source, expect "col_name"
 
     for custom directives, css classes, etc., use "the-name"
 */
 
+/*
+    TO-DO
+    -style highlight colour
+    -style focus
+*/
+
 textarea {
     resize: none;
 }
 
-/* * {
-    outline: 1px solid #f00 !important;
-  } */

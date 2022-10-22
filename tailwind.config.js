@@ -16,6 +16,10 @@ module.exports = {
                 'theme-light-trim': '#FDFDFD',
                 'theme-dark': '#22333B',
 
+                'theme-yolo1': '#FFD60A',
+                'theme-yolo2': '#FFC300',
+                'theme-yolo3': '#003566',
+
                 'theme-focus': '#FFE178',
                 'theme-ok': '#3fce31',
                 'theme-warning': '#FFE178',
