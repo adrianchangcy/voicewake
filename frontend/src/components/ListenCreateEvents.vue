@@ -6,6 +6,7 @@
         https://docs.djangoproject.com/en/dev/howto/csrf/
     -->
 
+    <VRecorder/>
 
     <div class="bg-theme-light text-left text-lg">
         <form spellcheck="false" class="h-fit m-4 md:w-2/4 lg:w-2/6 md:mx-auto bg-theme-light flex flex-nowrap flex-col       rounded-md shadow-inner">
@@ -71,6 +72,7 @@
 
 <script setup>
 
+    import VRecorder from '/src/components/VRecorder.vue';
     import VInput from '/src/components/VInput.vue';
     import VActionButton from '/src/components/VActionButton.vue';
     import EmojiPicker from '/src/components/EmojiPicker.vue';
@@ -93,6 +95,7 @@
             };
         },
         components: {
+            VRecorder,
             VInput,
             VActionButton,
             EmojiPicker,

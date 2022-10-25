@@ -1,6 +1,6 @@
 <template>
     <nav class="text-center text-xl text-black leading-none">
-        <div ref="navMain" class="p-2 lg:px-8   flex flex-nowrap     backdrop-blur bg-theme-light/60 border-b border-black/5">
+        <div ref="nav_main" class="p-2 lg:px-8   flex flex-nowrap     backdrop-blur bg-theme-light/60 border-b border-black/5">
             <ul class="w-full      grid gap-2 grid-flow-col grid-rows-1 grid-cols-4 lg:grid-cols-10">
                 <li class="col-span-1 flex flex-nowrap justify-center">
                     <a href="/" aria-label="home" class="flex-1 p-4 lg:p-2      grid items-center">
