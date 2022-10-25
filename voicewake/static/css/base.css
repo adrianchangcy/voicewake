@@ -42,7 +42,7 @@ form miscellaneous, e.g. character counter and input status text, is text-sm
 
 /*
     NAMING STANDARDS
-    for ref, use "refName", so we can do this.$refs.refName with no issue
+    for ref, use "ref_name", so we can do this.$refs.ref_name with no issue
     for functions, use "functionName"
     for props, use "propName"
     for emit, use "hasClick"

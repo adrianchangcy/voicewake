@@ -1,15 +1,26 @@
 <template>
-    <audio id="audio_playback" controls></audio>
-    <button type="button" id="start_recording_btn" class="bg-red-400">RECORD</button>
-    <div class="grid grid-cols-2 grid-flow-col">
-        <button id="pause_resume_recording_btn" class="col-span-1 bg-red-400">PAUSE OR RESUME</button>
-        <button id="stop_recording_btn" class="col-span-1 bg-red-400">DONE</button>
+    <div class="w-2/4 h-fit p-4 mx-auto border-2 border-theme-black flex flex-col gap-y-2">
+        <audio ref="audio_playback" controls></audio>
+        <VActionButton @click.self="recorderStart()">RECORD</VActionButton>
+        <div class="grid grid-cols-2 grid-flow-col">
+            <VActionButton @click.prevent="recorderPauseResume()" class="col-span-1">PAUSE OR RESUME</VActionButton>
+            <VActionButton @click.prevent="recorderStop()" class="col-span-1">DONE</VActionButton>
+        </div>
+        <!-- for file submission: <form method="POST" enctype="multipart/form-data"></form> -->
+        <input type="file" ref="audio_upload" accept=".mp3, .webm" required>
     </div>
-    <!-- for file submission: <form method="POST" enctype="multipart/form-data"> -->
 </template>
 
 
+<script setup>
+
+    import VActionButton from './VActionButton.vue';
+</script>
+
 <script>
+
+    const RecordRTC = require('/node_modules/recordrtc/RecordRTC.min.js');
+
     export default {
         data(){
             return {
@@ -17,36 +28,32 @@
                 recorder: undefined,
                 final_blob: null,
                 final_file: null,
+
+                //default values
+                //webm, despite being able to contain video media, is seamlessly handled by <audio>
+                max_audio_file_size_mb: 200,
+                audio_file_extensions_allowed: ['mp3','webm'],
+                // max_recording_duration_ms: 1000 * 60 * 2,    //2 minutes
+                max_recording_duration_ms: 5000,    //2 minutes
             };
-        },
-        props: {
-            propMaxAudioFileSizeMb: Number,
-            propAudioFileExtensionsAllowed: Array,
-            propMaxRecordingDurationMs: Number,
         },
         mounted(){
 
-            //script, npm install when ready
-            let recorderRTCScript = document.createElement('script');
-            recorderRTCScript.setAttribute('src', 'https://cdnjs.cloudflare.com/ajax/libs/RecordRTC/5.6.2/RecordRTC.js');
-            document.head.appendChild(recorderRTCScript);
-
-            //default prop values
-            //webm, despite being able to contain video media, is seamlessly handled by <audio>
-            this.propMaxAudioFileSizeMb = 200;
-            this.propAudioFileExtensionsAllowed = ['mp3','webm'];
-            this.propMaxRecordingDurationMs = 1000 * 60 * 2;    //2 minutes
-
-            //get stream ready to create recorder instances from it
-            this.initiate_stream();
         },
         methods: {
+            async initiateStream(){
 
-            initiate_stream(){
+                //if not undefined, i.e. has clicked 'record' before, destroy the instance
+                //probably not necessary, but doing this for slight precaution on memory management
+                if(this.recorder !== undefined){
+
+                    this.recorder.destroy();
+                }
 
                 try{
 
-                    this.stream = navigator.mediaDevices.getUserMedia({video: false, audio: true});
+                    //getUserMedia is a Promise
+                    this.stream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
 
                 }catch(error){
 
@@ -60,32 +67,25 @@
                             console.log(error.name);
                             console.log(error.message);
                             break;
-                    };
+                    }
 
                     return false;
-                };
+                }
 
                 return true;
             },
-            recorder_start(){
-
-                //if not undefined, i.e. has clicked 'record' before, destroy the instance
-                //probably not necessary, but doing this for slight precaution on memory management
-                if(this.recorder !== undefined){
-
-                    this.recorder.destroy();
-                }
+            async recorderStart(){
 
                 //reinitiate stream
                 //ensures user has device ready on every recording instance
-                if(this.initiate_stream() === false){
+                if(await this.initiateStream() === false){
 
                     return false;
                 }
 
                 //https://github.com/muaz-khan/RecordRTC
                 //note that RecordRTC uses Promise in some parts
-                recorder = RecordRTC(stream, {
+                this.recorder = RecordRTC(this.stream, {
             
                     // audio, video, canvas, gif
                     type: 'audio',
@@ -105,18 +105,18 @@
                 
                     // MediaStreamRecorder, StereoAudioRecorder, WebAssemblyRecorder
                     // CanvasRecorder, GifRecorder, WhammyRecorder
-                    recorderType: MediaStreamRecorder,
+                    recorderType: this.MediaStreamRecorder,
                 
                     // disable logs
                     disableLogs: false,
                 
                     // get intervals based blobs
                     // value in milliseconds
-                    //timeSlice: 1000,
+                    // timeSlice: 1000,
                 
                     // requires timeSlice above
                     // returns blob via callback function
-                    //ondataavailable: function(blob) {},
+                    // ondataavailable: function(blob) {},
                 
                     // auto stop recording if camera stops
                     checkForInactiveTracks: false,
@@ -133,7 +133,7 @@
                 
                     // if you are recording multiple streams into single file
                     // this helps you see what is being recorded
-                    // previewStream: function(stream) {},
+                    // previewStream: function(this.stream) {},
                 
                     // used by StereoAudioRecorder
                     // the range 22050 to 96000.
@@ -161,19 +161,18 @@
                 
                     // used by MultiStreamRecorder - to access HTMLCanvasElement
                     elementClass: 'multi-streams-mixer',
+            
                 });
 
                 //set hard limit on recording duration for auto-stop
                 //this will still execute after .stopRecording() (not good), but it is already taken care of
-                this.recorder.setRecordingDuration(propMaxRecordingDurationMs)
-                    .onRecordingStopped(recorder_stop);
-
+                this.recorder.setRecordingDuration(this.max_recording_duration_ms)
+                    .onRecordingStopped(this.recorderStop);
+                
                 this.recorder.startRecording();
-
                 return true;
             },
-            recorder_pause_resume(){
-
+            recorderPauseResume(){
                 if(this.recorder.state == 'recording'){
 
                     this.recorder.pauseRecording();
@@ -185,26 +184,26 @@
 
                 return true;
             },
-            recorder_stop(){
-
-                //get file
-                this.final_file = save_and_get_recorder_audio_as_file();
+            recorderStop(){
 
                 //attach recorded audio to file input and playback
-                    attach_recorded_audio_to_file_input(file);
-                    this.attach_file_to_playback();
-
                 try{
 
                     if(this.recorder.state === 'stopped'){
                         
                         //if auto-stop, state will be 'stopped'
-                        this.handle_recorder_stop();
+                        this.saveRecorderAudioAsFile();
+                        this.attachRecordedAudioToInput();
+                        this.attachRecordedAudioToPlayback();
 
                     }else{
 
                         //stopRecording() bug dictates that we must run codes in it to getBlob() properly
-                        this.recorder.stopRecording( () => { handle_recorder_stop(); });
+                        this.recorder.stopRecording( () => {
+                            this.saveRecorderAudioAsFile();
+                            this.attachRecordedAudioToInput();
+                            this.attachRecordedAudioToPlayback();
+                        });
                     }
 
                     return true;
@@ -213,19 +212,21 @@
 
                     console.log(error);
                     return false;
-                }        
+                }
             },
-            save_and_get_recorder_audio_as_file(){
+            saveRecorderAudioAsFile(){
+
+                //to use getBlob(), you must run it in either onRecordingStopped() or stopRecording()
+                //else your first blob is unplayable (too small), and user has to click a second time
 
                 //transform blob into file
                 try{
 
                     this.final_blob = this.recorder.getBlob();
                     this.final_file = new File([this.final_blob], 'this_recording.webm', {
-                                    type: 'audio/webm'
-                                });
-
-                    return this.final_file;
+                        type: 'audio/webm'
+                    });
+                    return true;
 
                 }catch(error){
 
@@ -234,34 +235,34 @@
                     return false;
                 }
             },
-            attach_recorded_audio_to_file_input(file){
+            attachRecordedAudioToInput(){
                     
                 //create new container to replace <input type="file"> container later
                 let container = new DataTransfer();
 
                 //add
-                container.items.add(file);
+                container.items.add(this.final_file);
 
                 //replace files of <input type="file"> with DataTransfer() files
-                audio_file_upload.files = container.files;
+                this.$refs.audio_upload.files = container.files;
 
                 return true;
             },
-            attach_file_to_playback(){
+            attachRecordedAudioToPlayback(){
 
                 //attach file into <audio>
-                audio_playback.src = URL.createObjectURL(file);
+                this.$refs.audio_playback.src = URL.createObjectURL(this.final_file);
 
-                audio_playback.onload = function(){
+                this.$refs.audio_playback.onload = function(){
                     //free the memory
-                    return URL.revokeObjectURL(audio_playback.src);
+                    return URL.revokeObjectURL(this.$refs.audio_playback.src);
                 };
 
                 return true;
             },
-            check_file_size_is_valid(file=this.final_file, max_size_mb=this.propMaxAudioFileSizeMb){
-                
-                //works with File() and files uploaded through <input type="file">
+            checkFileSizeIsValid(file=this.final_file, max_size_mb=this.max_audio_file_size_mb){
+
+                //mks with File() and files uploaded through <input type="file">
 
                 let file_size_mb = file.size / (1000 * 1000);   //** not supported in IE browser
 
@@ -272,7 +273,7 @@
                 
                 return true;
             },
-            check_file_type_is_valid(file=this.final_file, extensions_allowed=this.propAudioFileExtensionsAllowed){
+            checkFileTypeIsValid(file=this.final_file, extensions_allowed=this.audio_file_extensions_allowed){
 
                 //handles names with no extension, and names that start with '.', while also being most performant
                 
@@ -286,40 +287,52 @@
 
                 return true;
             },
-            do_final_validation(file=this.final_file){
+            validateInputUpload(){
+                
+                if(this.$refs.audio_upload.files.length > 0){
+                    
+                    this.final_file = this.$refs.audio_upload.files.item(0);
+                    
+                    //check file size
+                    if(this.checkFileSizeIsValid() === false){
 
-                //check file size
-                if(check_file_size_is_valid() === false){
-
-                    alert('Uploaded file has exceeded limit of '+MAX_AUDIO_FILE_SIZE_MB+'MB!');
-                    return false;
-                }
-
-                //check file format
-                if(check_file_type_is_valid() === false){
-
-                    let temp_string = '';
-
-                    for(let x = 0; x < propAudioFileExtensionsAllowed.length; x++){
-            
-                        temp_string += propAudioFileExtensionsAllowed[x].toUpperCase();
-            
-                        if(x < propAudioFileExtensionsAllowed.length - 1){
-            
-                            temp_string += ', ';
-                        }
+                        alert('Uploaded file has exceeded limit of '+this.max_audio_file_size_mb+'MB!');
+                        this.$refs.audio_upload.value = null;
+                        return false;
                     }
 
-                    alert('Uploaded file type is not supported. Please use one of the following: '+temp_string);
-                    audio_file_upload.value = null;
-                    return false;
-                }
+                    //check file format
+                    if(this.checkFileTypeIsValid() === false){
 
-                //ok
-                alert('Success! Uploaded file meets requirements.');
+                        let temp_string = '';
+
+                        for(let x = 0; x < this.audio_file_extensions_allowed.length; x++){
+            
+                            temp_string += this.audio_file_extensions_allowed[x].toUpperCase();
+            
+                            if(x < this.audio_file_extensions_allowed.length - 1){
+            
+                                temp_string += ', ';
+                            }
+                        
+                        }
+
+                        alert('Uploaded file type is not supported. Please use one of the following: '+temp_string);
+                        this.$refs.audio_upload.value = null;
+                        return false;
+                    }
+
+                    //ok
+                    alert('Success! Uploaded file meets requirements.');
+
+                    //attach recorded audio to playback
+                    this.attachRecordedAudioToPlayback();
+
+                    return true;
+                }
             },
             //to be called from parent as ultimate function
-            retrieve_file_for_input_file_attach(){
+            retrieveFileForInputAttach(){
                 
                 //create new container to replace <input type="file"> container later
                 let container = new DataTransfer();
@@ -327,7 +340,7 @@
                 container.items.add(this.final_file);
 
                 //validate
-                if(this.do_final_validation() === false){
+                if(this.doFinalValidation() === false){
 
                     return false;
                 }
@@ -352,4 +365,4 @@
         }
     }
 
-<script>
+</script>
