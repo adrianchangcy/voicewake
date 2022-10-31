@@ -6,18 +6,19 @@
         https://docs.djangoproject.com/en/dev/howto/csrf/
     -->
 
-    <VRecorder/>
-
     <div class="bg-theme-light text-left text-lg">
         <form spellcheck="false" class="h-fit m-4 md:w-2/4 lg:w-2/6 md:mx-auto bg-theme-light flex flex-nowrap flex-col       rounded-md shadow-inner">
             <div class="flex-1 p-4 flex flex-col gap-y-4">
                 <span class="text-3xl pb-4">???</span>
                 <div class="flex flex-col">
+                    <VRecorder/>
+                </div>
+                <div class="flex flex-col">
                     <VInput
                         :propIsRequired="true"
                         propElementId="event_name"
                         propLabel="Title"
-                        propPlaceholder="Trip, diarrhea, etc."
+                        propPlaceholder="Fun trip, sad midnight, etc."
                         :propMaxLength="40"
                         :propHasTextCounter="true"
                         :propStatusText="event_name_input_status"
@@ -58,6 +59,7 @@
                 <div class="pt-8">
                     <VActionButton
                         @click.prevent="handleSubmit()"
+                        class="p-4 w-full"
                     >
                         <span class="text-2xl">Start hearing from others</span>
                     </VActionButton>

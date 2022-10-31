@@ -9,20 +9,20 @@
                 </li>
                 <li class="col-span-2 hidden lg:flex"></li>
                 <li class="col-span-1 lg:col-span-2 flex flex-nowrap">
-                    <VNavigationButton propElement="a" propUrl="/">
+                    <VNavigationButton propElement="a" propUrl="/" class="w-full h-full p-4 lg:p-2">
                         <i class="col-span-1 fas fa-ear-listen"></i>
                         <span class="hidden lg:block">Hear</span>
                     </VNavigationButton>
                 </li>
                 <li class="col-span-1 lg:col-span-2 flex flex-nowrap">
-                    <VNavigationButton propElement="a" propUrl="/">
+                    <VNavigationButton propElement="a" propUrl="/" class="w-full h-full p-4 lg:p-2">
                         <i class="col-span-1 fas fa-microphone-lines"></i>
                         <span class="hidden lg:block">Say</span>
                     </VNavigationButton>
                 </li>
                 <li class="col-span-2 hidden lg:flex"></li>
                 <li v-if="!is_logged_in" class="hidden lg:col-span-1 lg:flex flex-nowrap">
-                    <VNavigationButton propElement="a" propUrl="/">
+                    <VNavigationButton propElement="a" propUrl="/" class="w-full h-full p-4 lg:p-2">
                         <i class="col-span-1 fas fa-user"></i>
                         <span class="hidden lg:block">Login</span>
                     </VNavigationButton>
@@ -37,6 +37,7 @@
                     <VActionButtonWeird
                         aria-label="more options"
                         @click="toggle_nav_main_more"
+                        class="w-fit h-full p-4 lg:p-2"
                     >
                         <i class="fas fa-circle-user"></i>
                     </VActionButtonWeird>
@@ -46,6 +47,7 @@
                         propElement="button"
                         aria-label="more options"
                         @click="toggle_nav_main_more"
+                        class="w-full h-full p-4 lg:p-2"
                     >
                         <div class="grid grid-rows-3 grid-flow-row      justify-items-center place-items-center">
                             <div
@@ -89,7 +91,7 @@
                         <p>{{username}}</p>
                     </div>
                     <div v-if="is_logged_in" class="flex flex-nowrap flex-col gap-y-2">
-                        <VNavigationButton propElement="a" propUrl="/">
+                        <VNavigationButton propElement="a" propUrl="/" class="w-full h-full p-4 lg:p-2">
                             <div class="grid grid-cols-4 grid-flow-col">
                                 <i class="col-span-1 fas fa-door-open"></i>
                                 <span class="col-span-2">Logout</span>
@@ -97,13 +99,13 @@
                         </VNavigationButton>
                     </div>
                     <div v-else class="flex flex-nowrap flex-col gap-y-2">
-                        <VNavigationButton propElement="button">
+                        <VNavigationButton propElement="button" class="w-full h-full p-4 lg:p-2">
                             <div class="grid grid-cols-4 grid-flow-col">
                                 <i class="col-span-1 fas fa-user"></i>
                                 <span class="col-span-2">Login</span>
                             </div>
                         </VNavigationButton>
-                        <VNavigationButton propElement="button">
+                        <VNavigationButton propElement="button" class="w-full h-full p-4 lg:p-2">
                             <div class="grid grid-cols-4 grid-flow-col">
                                 <i class="col-span-1 fas fa-right-to-bracket"></i>
                                 <span class="col-span-2">Sign Up</span>

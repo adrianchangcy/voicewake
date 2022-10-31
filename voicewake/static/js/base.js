@@ -2,6 +2,8 @@
 //remember that current way of referencing static/base.js is unsecure for production
 //refer to link below:
 //https://docs.djangoproject.com/en/4.0/howto/static-files/deployment/
+
+
 jQuery(document).ready(function($){
 
     //NAVBAR
