@@ -1,13 +1,51 @@
 <template>
-    <div class="w-2/4 h-fit p-4 mx-auto border-2 border-theme-black flex flex-col gap-y-2">
-        <audio ref="audio_playback" controls></audio>
-        <VActionButton @click.self="recorderStart()">RECORD</VActionButton>
-        <div class="grid grid-cols-2 grid-flow-col">
-            <VActionButton @click.prevent="recorderPauseResume()" class="col-span-1">PAUSE OR RESUME</VActionButton>
-            <VActionButton @click.prevent="recorderStop()" class="col-span-1">DONE</VActionButton>
+    <div class="w-full h-fit mx-auto py-2 items-center text-2xl text-theme-black      border-2 border-theme-black flex flex-col gap-y-2">
+        <VAudioPlayback :propFile="final_file"/>
+        <audio ref="audio_playback" controls class="w-full p-2"></audio>
+        <div class="grid grid-cols-4 grid-flow-col place-items-center gap-x-2">
+            <TransitionFade>
+                <VActionButton
+                    v-show="recorder_state !== undefined && recorder_state !== 'stopped'"
+                    @click.prevent="recorderPauseResume()"
+                    :disabled="recorder_state === undefined || recorder_state === 'stopped'"
+                    aria-label="pause or resume"
+                    class="col-span-1 col-start-1 w-full h-full p-4"
+
+                >
+                    <i
+                        :class="[
+                            (recorder_state === 'recording' ? 'fas fa-pause' : 'fas fa-pause'),
+                            (recorder_state === 'paused' ? 'fas fa-play' : 'fas fa-pause'),
+                            ''
+                        ]"
+                    ></i>
+                </VActionButton>
+            </TransitionFade>
+            <VActionButton
+                @click.prevent="recorderStart()"
+                aria-label="record"
+                :class="[
+                    recorder_state !== undefined && recorder_state !== 'stopped' ? 'text-theme-disabled' : 'text-theme-black',
+                    'col-span-2 col-start-2 w-full h-full p-4 transition-colors duration-200 ease-in-out'
+                ]"
+                :disabled="recorder_state !== undefined && recorder_state !== 'stopped'"
+            >
+                <i class="fas fa-microphone-lines"></i>
+            </VActionButton>
+            <TransitionFade>
+                <VActionButton
+                    v-show="recorder_state !== undefined && recorder_state !== 'stopped'"
+                    @click.prevent="recorderStop()"
+                    aria-label="end recording"
+                    class="col-span-1 col-start-4 w-full h-full p-4"
+                >
+                    <i class="fas fa-check"></i>
+                </VActionButton>
+            </TransitionFade>
         </div>
+        <!-- currently don't allow file submission, but store file here for final form submit -->
         <!-- for file submission: <form method="POST" enctype="multipart/form-data"></form> -->
-        <input type="file" ref="audio_upload" accept=".mp3, .webm" required>
+        <input type="file" ref="audio_upload" accept=".mp3, .webm" class="hidden" required>
     </div>
 </template>
 
@@ -15,17 +53,20 @@
 <script setup>
 
     import VActionButton from './VActionButton.vue';
+    import TransitionFade from '/src/transitions/TransitionFade.vue';
+    import VAudioPlayback from './VAudioPlayback.vue';
 </script>
 
 <script>
 
-    const RecordRTC = require('/node_modules/recordrtc/RecordRTC.min.js');
+    const recordRTC = require('/node_modules/recordrtc/RecordRTC.min.js');
 
     export default {
         data(){
             return {
                 stream: undefined,  //for defining recorder instances
                 recorder: undefined,
+                recorder_state: undefined,
                 final_blob: null,
                 final_file: null,
 
@@ -39,8 +80,11 @@
         },
         mounted(){
 
+            //NOTE
+            //don't be alarmed if it picks up nothing from browser audio
         },
         methods: {
+
             async initiateStream(){
 
                 //if not undefined, i.e. has clicked 'record' before, destroy the instance
@@ -48,6 +92,7 @@
                 if(this.recorder !== undefined){
 
                     this.recorder.destroy();
+                    this.recorder = undefined;  //need to do this, else TypeError when record->stop->record
                 }
 
                 try{
@@ -85,7 +130,7 @@
 
                 //https://github.com/muaz-khan/RecordRTC
                 //note that RecordRTC uses Promise in some parts
-                this.recorder = RecordRTC(this.stream, {
+                this.recorder = recordRTC(this.stream, {
             
                     // audio, video, canvas, gif
                     type: 'audio',
@@ -170,6 +215,7 @@
                     .onRecordingStopped(this.recorderStop);
                 
                 this.recorder.startRecording();
+                this.recorder_state = this.recorder.state;
                 return true;
             },
             recorderPauseResume(){
@@ -182,6 +228,7 @@
                     this.recorder.resumeRecording();
                 }
 
+                this.recorder_state = this.recorder.state;
                 return true;
             },
             recorderStop(){
@@ -205,7 +252,10 @@
                             this.attachRecordedAudioToPlayback();
                         });
                     }
-
+                    
+                    //we manually store 'stopped' instead of this.recorder.state
+                    //fix for bug where on pause->stop, you get 'recording'
+                    this.recorder_state = 'stopped';
                     return true;
 
                 }catch(error){

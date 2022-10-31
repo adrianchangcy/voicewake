@@ -12,7 +12,7 @@
             type="text"
             :id="propElementId"
             v-model="input_value"
-            class="w-full h-10 p-2 pr-10 bg-theme-light rounded-lg border-2 border-theme-black"
+            class="w-full h-10 p-2 pr-10 bg-theme-light rounded-lg border-2 border-theme-idle focus:outline-none focus:ring-1 focus:ring-theme-black focus:border-theme-black"
             :placeholder="propPlaceholder"
             autocomplete="off"
             :maxlength="propMaxLength"
