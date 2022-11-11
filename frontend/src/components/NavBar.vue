@@ -28,19 +28,20 @@
                     </VNavigationButton>
                 </li>
                 <li
-                    ref="nav_main_more_button"
                     :class="[
                         is_logged_in ? 'hidden lg:flex' : 'hidden',
                         'col-span-1 flex-nowrap justify-center'
                     ]"
                 >
-                    <VActionButtonWeird
-                        aria-label="more options"
-                        @click="toggle_nav_main_more"
-                        class="w-fit h-full p-4 lg:p-2"
-                    >
-                        <i class="fas fa-circle-user"></i>
-                    </VActionButtonWeird>
+                    <div ref="nav_main_more_button">
+                        <VActionButtonWeird
+                            aria-label="more options"
+                            @click="toggle_nav_main_more"
+                            class="w-fit h-full p-4 lg:p-2"
+                        >
+                            <i class="fas fa-circle-user"></i>
+                        </VActionButtonWeird>
+                    </div>
                 </li>
                 <li ref="nav_main_more_mobile_button" class="col-span-1 flex flex-nowrap lg:hidden">
                     <VNavigationButton

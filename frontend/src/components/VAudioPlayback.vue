@@ -1,12 +1,96 @@
 <template>
-    <div ref="audio_visualiser" class="w-full h-20 p-2 grid grid-cols-max grid-flow-col place-items-center">
-        <div
-            v-for="volume_ripple in bucket_quantity" :key="volume_ripple"
-            :class="['volume-ripple-'+volume_ripple+' col-span-1 w-2 bg-theme-black']"
-            ref="volume_ripple"
-        ></div>
+    <audio
+        ref="audio_playback"
+        controls
+        class="w-full p-2 hidden"
+        @loadedmetadata="processPlaybackDuration()"
+        @ended="is_playing = false"
+    ></audio>
+    <div class="h-fit border-2 border-theme-black/5 p-2 grid gap-2">
+        <div class="w-full h-20 relative border-2 border-theme-black/5 p-2">
+            <!-- <div class="bg-teal-400/50 w-1 h-full left-0"></div> -->
+            <div
+                ref="audio_visualiser"
+                :class="[
+                    final_file !== null ? 'cursor-pointer' : '',
+                    'w-full h-full py-2 grid grid-cols-max grid-flow-col gap-x-1 place-items-center'
+                ]"
+                @click.prevent="navigateAudioVisualiser($event)"
+            >
+                <div
+                    v-for="volume_ripple in bucket_quantity" :key="volume_ripple"
+                    :class="[
+                        (current_playback_state === null ? 'hidden' : ''),
+                        (current_playback_state === 'empty' ? 'bg-theme-idle' : ''),
+                        (current_playback_state === 'recording' ? 'bg-red-600' : ''),
+                        (current_playback_state === 'has_file' ? 'bg-theme-black' : ''),
+                        'col-span-1 w-1'
+                    ]"
+                    ref="volume_ripple"
+                ></div>
+            </div>
+        </div>
+        <TransitionFade>
+            <div v-show="final_file !== null">
+                <div
+                    class="w-full h-fit text-center"
+                >
+                    <span>0:00/0:00</span>
+                </div>
+                <div class="grid grid-rows-3 grid-cols-4 grid-flow-col gap-2">
+                    <TransitionFade>
+                        <VActionButtonSmall
+                            v-show="is_playback_options_open"
+                            @click.prevent=""
+                            class="row-start-1 col-start-1 row-span-1 col-span-1"
+                        >
+                            <i class="fas fa-forward"></i>
+                        </VActionButtonSmall>
+                    </TransitionFade>
+                    <VActionButtonMedium
+                        @click.prevent="togglePlaybackPlayPause()"
+                        class="row-start-1 col-start-2 row-span-2 col-span-2 h-full"
+                    >
+                        <i v-if="is_playing" class="fas fa-pause"></i>
+                        <i v-else class="fas fa-play"></i>
+                    </VActionButtonMedium>
+                    <TransitionFade>
+                        <VActionButtonSmall
+                            v-show="is_playback_options_open"
+                            @click.prevent=""
+                            class="row-start-1 col-start-4 row-span-1 col-span-1"
+                        >
+                            <i class="fas fa-volume-high"></i>
+                        </VActionButtonSmall>
+                    </TransitionFade>
+                    <TransitionFade>
+                        <VActionButtonSmall
+                            v-show="is_playback_options_open"
+                            @click.prevent=""
+                            class="row-start-2 col-start-1 row-span-1 col-span-1"
+                        >
+                            <i class="fas fa-repeat"></i>
+                        </VActionButtonSmall>
+                    </TransitionFade>
+                    <VActionButtonSmall
+                        @click.prevent="togglePlaybackOptions()"
+                        class="row-start-3 col-start-2 row-span-1 col-span-2"
+                    >
+                        <i class="fas fa-ellipsis"></i>
+                    </VActionButtonSmall>
+                </div>
+            </div>
+        </TransitionFade>
     </div>
 </template>
+
+
+<script setup>
+
+    import VActionButtonSmall from './VActionButtonSmall.vue';
+    import VActionButtonMedium from './VActionButtonMedium.vue';
+    import TransitionFade from '/src/transitions/TransitionFade.vue';
+</script>
 
 <script>
 
@@ -15,78 +99,155 @@
     export default{
         data(){
             return {
+                final_file: null,
+                final_file_duration: 0, //float seconds
+
+                is_playback_options_open: false,
+                is_playing: false,
+
+                lowest_volume: null,
+                highest_volume: null,
+                is_ready_to_navigate: false,
+                playback_states: ['empty', 'recording', 'has_file'],
+                current_playback_state: null,
                 bucket_quantity: 20,
                 file_volumes: [],
                 min_volume: -1,     //samples are in Float32Array, from -1 to 1
                 max_volume: 1,      //samples are in Float32Array, from -1 to 1
             };
         },
+        components: {
+            
+            VActionButtonSmall,
+            VActionButtonMedium,
+            TransitionFade,
+        },
         mounted(){
 
             //bar is 2/4, so 1/4 space on both sides
+            for(let x=0; x < this.bucket_quantity; x++){
+
+                this.$refs.volume_ripple[x].style.height = '50%';
+            }
+            
+            //initialise with 'empty' state
+            this.current_playback_state = this.playback_states[0];
+            this.animePlayback();
+
         },
         props: {
             propFile: Object,
+            propIsRecording: Boolean,
         },
         watch: {
             async propFile(new_value){
+
+                this.final_file = new_value;
 
                 const context = new AudioContext();
 
                 await new_value.arrayBuffer()
                     .then(buffer => context.decodeAudioData(buffer))
                     .then(decoded_audio => decoded_audio.getChannelData(0)) //specified 2 but got 1
-                    .then(audio_data => this.getVolumes(audio_data));
+                    .then(audio_data => this.getVolumes(audio_data))
+                    .then(() => this.current_playback_state = this.playback_states[2])
+                    .then(() => this.animePlayback())
+                    .then(() => this.adjustVolumeRipples())
+                    .then(() => this.attachRecordedAudioToPlayback());
+            },
+            propIsRecording(new_value){
 
-                this.adjustVolumeRipples();
+                if(new_value === false){
+
+                    return false;
+                }
+
+                this.current_playback_state = this.playback_states[1];
+                this.animePlayback();
             },
         },
         methods: {
-            animeLoading(target, translateY_start) {
+            togglePlaybackPlayPause(){
 
-                let starting_point = translateY_start.toString() + '%';
+                const target = this.$refs.audio_playback;
 
-                anime({
-                    targets: target,
-                    translateY: ['0%', starting_point, '-'+starting_point, '0%'],
-                    autoplay: true,
-                    easing: 'linear',
-                    loop: true,
-                    direction: 'alternate',
-                });
-            },
-            adjustVolumeRipples(){
-
-                //since samples are between -1 and 1, 0 means 50%
-                let current_height = 0;
-
-                for(let x=0; x < this.bucket_quantity; x++){
+                //note that when .ended is true, .paused is also true
+                //seems not possible to handle .ended here, so we handle it at element
+                if(target.paused === true){
                     
-                    if(this.file_volumes[x] >= 0 && this.file_volumes[x] < 0.1){
+                    target.play();
+                    this.is_playing = true;
 
-                        current_height = (this.file_volumes[x] * 100) + 20;
+                }else if(target.playing === true){
 
-                    }else if(this.file_volumes[x] >= 0.1){
-
-                        current_height = (this.file_volumes[x] * 100) + 50;
-                        
-                    }else{
-                            
-                        current_height = ((this.file_volumes[x] * -1) * 100) - 50;
-                    }
-                    this.$refs.volume_ripple[x].style.height = current_height.toString() + '%';
+                    target.pause();
+                    this.is_playing = false;
                 }
+            },
+            togglePlaybackOptions(){
+
+                this.is_playback_options_open = !this.is_playback_options_open;
+            },
+            animePlayback(){
+
+                const targets = this.$refs.volume_ripple;
+
+                //reset all elements
+                //reset all translates to 0
+                anime.remove(targets);
+
+
+                // let starting_point = translateY_start.toString() + '%';
+                switch(this.current_playback_state){
+
+                    case this.playback_states[0]:
+                        anime({
+                            targets: targets,
+                            translateY: ['0%', '-50%', '50%', '0%'],
+                            autoplay: true,
+                            delay: anime.stagger(100),
+                            easing: 'linear',
+                            loop: true,
+                        });
+                        break;
+                    
+                    case this.playback_states[1]:
+                        //'recording'
+                        //reset height
+                        anime({
+                            targets: targets,
+                            translateY: ['0%'],
+                            height: '50%',
+                            autoplay: true,
+                            easing: 'linear',
+                            loop: false,
+                            duration: 200,
+                        });
+                        break;
+
+                    case this.playback_states[2]:
+                        //'has_file'
+                        //handled by adjustVolumeRipples()
+
+                        //use opacity instead of transition-all for better performance
+                        break;
+
+                    default:
+                        console.log('State is currently null or not one of the declared playback_states.');
+                        return false;
+                }
+
             },
             getVolumes(audio_data){
 
                 let bucket_peaks = [];
-                let bucket_threshold = audio_data.length / this.bucket_quantity;
+                let bucket_threshold = Math.round(audio_data.length / this.bucket_quantity);
                 //-1 to adjust for for-loop and lets us run code on last sample of each bucket (avoids < _ -1)
                 let bucket_threshold_count = bucket_threshold - 1;
                 let bucket_max = 0;
 
                 for(let x = 0; x < audio_data.length; x++){
-                    
+
                     //check if we are at last sample of current bucket
                     if(x === bucket_threshold_count){
 
@@ -109,7 +270,125 @@
 
                 //store highest peaks
                 this.file_volumes = bucket_peaks;
+
+                //store lowest and highest volumes
+                this.lowest_volume = this.arrayMin(audio_data);
+                this.highest_volume = this.arrayMax(audio_data);
             },
+            adjustVolumeRipples(){
+
+                //we calculate height relative to most quiet and loudest parts
+                //samples are between -1 and 1
+                // const volume_range = this.highest_volume - this.lowest_volume;
+                const volume_range = 2;
+
+                // //now we find the highest volume, and its distance from max height
+                // //we will shift everything based on this difference
+                // let volume_range_deficit = 0;
+                // let highest_file_volume = null;
+
+                // highest_file_volume = this.arrayMax(this.file_volumes);
+
+                // if(highest_file_volume < 0){
+
+                //     volume_range_deficit = 100 - 50 - (((highest_file_volume * -1) / volume_range) * 100);
+                    
+                // }else{
+
+                //     volume_range_deficit = 100 - ((highest_file_volume / volume_range) * 100);
+                // }
+
+                //shift half to make it readable, not full, else it'll be globally inconsistent for user
+                // volume_range_deficit = volume_range_deficit / 2;
+
+                let current_height = 0;
+
+                for(let x=0; x < this.bucket_quantity; x++){
+
+                    if(this.file_volumes[x] < 0){
+                        
+                        //we keep <0 below 50%, because -1 to 0 is 0% to 50%
+                        current_height = (((this.file_volumes[x] * -1) / volume_range) * 100) - 50;
+
+                    }else{
+
+                        current_height = (this.file_volumes[x] / volume_range) * 100;
+                    }
+
+                    //add the deficit
+                    // current_height += volume_range_deficit;
+
+                    //this performs fine, so do not add Tailwind transition, else it interferes
+                    anime({
+                        targets: this.$refs.volume_ripple[x],
+                        height: current_height.toString() + '%',
+                        autoplay: true,
+                        loop: false,
+                        easing: 'easeInOutQuad',
+                        duration: 200,
+                    });
+                }
+            },
+            attachRecordedAudioToPlayback(){
+
+                //attach file into <audio>
+                this.$refs.audio_playback.src = URL.createObjectURL(this.final_file);
+
+                this.$refs.audio_playback.onload = function(){
+                    //free the memory
+                    return URL.revokeObjectURL(this.$refs.audio_playback.src);
+                };
+
+                return true;
+            },
+            navigateAudioVisualiser(event){
+
+                if(this.is_ready_to_navigate === false){
+                    
+                    return false;
+                }
+
+                let rect = event.currentTarget.getBoundingClientRect();
+
+                //get user's x relative to screen - element's x relative to screen
+                let clicked_element_x = event.clientX - rect.left;
+                // let y = event.clientY - rect.top;
+
+                this.$refs.audio_playback.currentTime = (clicked_element_x / (rect.right - rect.left)) * this.final_file_duration;
+            },
+            processPlaybackDuration(){
+
+                this.is_ready_to_navigate = false;
+
+                //there's a bug that gives us 'Infinity'
+                //this is how we fix it
+                //https://stackoverflow.com/a/69512775
+
+                //function needs a name to add/remove event listener
+                //need to use ()=>{} to preserve 'this' reference
+                const handler = ()=>{
+                    this.$refs.audio_playback.currentTime = 0;
+                    this.$refs.audio_playback.removeEventListener('timeupdate', handler);
+                    this.final_file_duration = this.$refs.audio_playback.duration;
+                    this.is_ready_to_navigate = true;
+                };
+
+                if(this.$refs.audio_playback.duration == 'Infinity'){
+
+                    this.$refs.audio_playback.currentTime = 1e101;
+                    this.$refs.audio_playback.addEventListener('timeupdate', handler);
+
+                }else{
+
+                    this.final_file_duration = this.$refs.audio_playback.duration;
+                    this.is_ready_to_navigate = true;
+                }
+
+                
+                //don't try to access this.final_file_duration precisely here
+                //you'll get 0, but if you check via watch, the value does change
+            },
+
         }
     }
 </script>

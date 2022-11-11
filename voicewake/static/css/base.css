@@ -51,6 +51,24 @@ form miscellaneous, e.g. character counter and input status text, is text-sm
     for column names from data source, expect "col_name"
 
     for custom directives, css classes, etc., use "the-name"
+
+
+    Z-INDEX
+    nav bar, z-50
+    anything on top of everything else, z-10
+    everything else, nothing, i.e. z-0 by default
+
+    FONT SIZES
+    main title, text-4xl
+    label for input, text-2xl
+    input, text-xl
+    details, text-base
+
+    BUTTON SIZES
+    biggest page button, h-?
+    component main button, h-20
+    component smaller buttons, h-?
+
 */
 
 /*
