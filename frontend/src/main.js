@@ -1,5 +1,5 @@
 import { createApp } from 'vue';
-
+import { mixinGeneral } from './mixin_general.js';
 
 import BaseApp from './BaseApp.vue';
 import ListenCreateEventsApp from './ListenCreateEventsApp.vue';
@@ -30,9 +30,10 @@ const clickOutside = {
 
                     console.log(error);
                     console.log(
-                        "Your ref element is probably not available."
-                        +" Try putting your ref attribute at an element without v-if and v-show."
-                        +" Parent element works if it's purely a container for only this element."
+                        "Your excluded ref element is probably not available when referenced."
+                        +" Your element to exclude for ref must be static and not Vue-generated."
+                        +" An easy fix is to wrap your excluded element in another div, and put your ref at this now-sibling div."
+                        +" With this now-sibling div, avoid styling it so it wraps its child completely."
                     );
                 }
             });
@@ -66,6 +67,7 @@ if(document.querySelector('#listen-create-events-app')){
 
     createApp(ListenCreateEventsApp)
         .directive('click-outside', clickOutside)
+        .mixin(mixinGeneral)
         .mount('#listen-create-events-app');
 
 }

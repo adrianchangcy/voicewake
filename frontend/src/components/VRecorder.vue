@@ -1,16 +1,29 @@
 <template>
-    <div class="w-full h-fit mx-auto py-2 items-center text-2xl text-theme-black      border-2 border-theme-black flex flex-col gap-y-2">
-        <VAudioPlayback :propFile="final_file"/>
-        <audio ref="audio_playback" controls class="w-full p-2"></audio>
-        <div class="grid grid-cols-4 grid-flow-col place-items-center gap-x-2">
+    <div class="text-2xl text-theme-black text-center">
+        <div class="w-fit h-fit text-left">
+            <VInputLabel for="click-to-record">{{propLabelText}}</VInputLabel>
+        </div>
+        <div class="grid grid-cols-4 grid-flow-col place-items-center text-center gap-x-2">
+            <VActionButtonMedium
+                id="click-to-record"
+                @click.prevent="recorderStart()"
+                aria-label="record"
+                :class="[
+                    recorder_state !== undefined && recorder_state !== 'stopped' ? 'text-theme-disabled col-span-2' : 'text-theme-black col-span-4',
+                    'w-full p-2 transition-colors duration-200 ease-in-out'
+                ]"
+                :disabled="recorder_state !== undefined && recorder_state !== 'stopped'"
+            >
+                <i class="fas fa-microphone-lines"></i>
+            </VActionButtonMedium>
             <TransitionFade>
-                <VActionButton
-                    v-show="recorder_state !== undefined && recorder_state !== 'stopped'"
+                <VActionButtonMedium
                     @click.prevent="recorderPauseResume()"
-                    :disabled="recorder_state === undefined || recorder_state === 'stopped'"
                     aria-label="pause or resume"
-                    class="col-span-1 col-start-1 w-full h-full p-4"
-
+                    :class="[
+                        recorder_state !== undefined && recorder_state !== 'stopped' ? 'block' : 'hidden',
+                        'col-span-1 w-full p-4'
+                    ]"
                 >
                     <i
                         :class="[
@@ -19,28 +32,19 @@
                             ''
                         ]"
                     ></i>
-                </VActionButton>
+                </VActionButtonMedium>
             </TransitionFade>
-            <VActionButton
-                @click.prevent="recorderStart()"
-                aria-label="record"
-                :class="[
-                    recorder_state !== undefined && recorder_state !== 'stopped' ? 'text-theme-disabled' : 'text-theme-black',
-                    'col-span-2 col-start-2 w-full h-full p-4 transition-colors duration-200 ease-in-out'
-                ]"
-                :disabled="recorder_state !== undefined && recorder_state !== 'stopped'"
-            >
-                <i class="fas fa-microphone-lines"></i>
-            </VActionButton>
             <TransitionFade>
-                <VActionButton
-                    v-show="recorder_state !== undefined && recorder_state !== 'stopped'"
+                <VActionButtonMedium
                     @click.prevent="recorderStop()"
                     aria-label="end recording"
-                    class="col-span-1 col-start-4 w-full h-full p-4"
+                    :class="[
+                        recorder_state !== undefined && recorder_state !== 'stopped' ? 'block' : 'hidden',
+                        'col-span-1 w-full p-4'
+                    ]"
                 >
                     <i class="fas fa-check"></i>
-                </VActionButton>
+                </VActionButtonMedium>
             </TransitionFade>
         </div>
         <!-- currently don't allow file submission, but store file here for final form submit -->
@@ -52,9 +56,9 @@
 
 <script setup>
 
-    import VActionButton from './VActionButton.vue';
+    import VActionButtonMedium from './VActionButtonMedium.vue';
     import TransitionFade from '/src/transitions/TransitionFade.vue';
-    import VAudioPlayback from './VAudioPlayback.vue';
+    import VInputLabel from './VInputLabel.vue';
 </script>
 
 <script>
@@ -69,6 +73,7 @@
                 recorder_state: undefined,
                 final_blob: null,
                 final_file: null,
+                is_recording: false,
 
                 //default values
                 //webm, despite being able to contain video media, is seamlessly handled by <audio>
@@ -81,8 +86,27 @@
         mounted(){
 
             //NOTE
-            //don't be alarmed if it picks up nothing from browser audio
+            //no need to be alarmed if it picks up nothing from browser audio
         },
+        components: {
+            VActionButtonMedium,
+            TransitionFade,
+            VInputLabel,
+        },
+        props: {
+            propLabelText: String,
+        },
+        watch: {
+            final_file(new_value){
+
+                this.$emit('hasNewRecording', new_value);
+            },
+            is_recording(new_value){
+
+                this.$emit('isRecording', new_value);
+            },
+        },
+        emits: ['hasNewRecording', 'isRecording'],
         methods: {
 
             async initiateStream(){
@@ -105,10 +129,14 @@
                     switch(error.name){
 
                         case 'NotFoundError':
-                            console.log('No input device detected.');
+                            alert(
+                                'No recording device detected.'
+                                +' Please select your recording device as input at your system settings.'
+                            );
                             break;
 
                         default:
+
                             console.log(error.name);
                             console.log(error.message);
                             break;
@@ -216,6 +244,8 @@
                 
                 this.recorder.startRecording();
                 this.recorder_state = this.recorder.state;
+                this.is_recording = true;
+
                 return true;
             },
             recorderPauseResume(){
@@ -240,22 +270,22 @@
                         
                         //if auto-stop, state will be 'stopped'
                         this.saveRecorderAudioAsFile();
-                        this.attachRecordedAudioToInput();
-                        this.attachRecordedAudioToPlayback();
+                        this.stream.stop();
 
                     }else{
 
                         //stopRecording() bug dictates that we must run codes in it to getBlob() properly
                         this.recorder.stopRecording( () => {
                             this.saveRecorderAudioAsFile();
-                            this.attachRecordedAudioToInput();
-                            this.attachRecordedAudioToPlayback();
+                            this.stream.stop();
                         });
                     }
                     
                     //we manually store 'stopped' instead of this.recorder.state
                     //fix for bug where on pause->stop, you get 'recording'
                     this.recorder_state = 'stopped';
+                    this.is_recording = false;
+
                     return true;
 
                 }catch(error){
@@ -276,14 +306,19 @@
                     this.final_file = new File([this.final_blob], 'this_recording.webm', {
                         type: 'audio/webm'
                     });
-                    return true;
 
                 }catch(error){
 
-                    alert('Could not retrieve recorded audio.');
+                    alert(
+                        'Unexpectedly unable to retrieve recorded audio.'
+                        +' Our developers have been notified.'
+                        +' Please refresh the page.'
+                    );
                     console.log(error);
                     return false;
                 }
+
+                this.attachRecordedAudioToInput();
             },
             attachRecordedAudioToInput(){
                     
@@ -295,18 +330,6 @@
 
                 //replace files of <input type="file"> with DataTransfer() files
                 this.$refs.audio_upload.files = container.files;
-
-                return true;
-            },
-            attachRecordedAudioToPlayback(){
-
-                //attach file into <audio>
-                this.$refs.audio_playback.src = URL.createObjectURL(this.final_file);
-
-                this.$refs.audio_playback.onload = function(){
-                    //free the memory
-                    return URL.revokeObjectURL(this.$refs.audio_playback.src);
-                };
 
                 return true;
             },
@@ -376,7 +399,7 @@
                     alert('Success! Uploaded file meets requirements.');
 
                     //attach recorded audio to playback
-                    this.attachRecordedAudioToPlayback();
+                    // this.attachRecordedAudioToPlayback();
 
                     return true;
                 }
@@ -390,10 +413,6 @@
                 container.items.add(this.final_file);
 
                 //validate
-                if(this.doFinalValidation() === false){
-
-                    return false;
-                }
 
                 //if not undefined, i.e. has clicked 'record' before, destroy the instances
                 //not sure if necessary for preventing memory leak
