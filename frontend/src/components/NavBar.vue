@@ -10,20 +10,20 @@
                 <li class="col-span-2 hidden lg:flex"></li>
                 <li class="col-span-1 lg:col-span-2 flex flex-nowrap">
                     <VNavigationButton propElement="a" propUrl="/" class="w-full h-full p-4 lg:p-2">
-                        <i class="col-span-1 fas fa-ear-listen"></i>
+                        <i class="fas fa-ear-listen"></i>
                         <span class="hidden lg:block">Hear</span>
                     </VNavigationButton>
                 </li>
                 <li class="col-span-1 lg:col-span-2 flex flex-nowrap">
                     <VNavigationButton propElement="a" propUrl="/" class="w-full h-full p-4 lg:p-2">
-                        <i class="col-span-1 fas fa-microphone-lines"></i>
+                        <i class="fas fa-quote-left"></i>
                         <span class="hidden lg:block">Say</span>
                     </VNavigationButton>
                 </li>
                 <li class="col-span-2 hidden lg:flex"></li>
                 <li v-if="!is_logged_in" class="hidden lg:col-span-1 lg:flex flex-nowrap">
                     <VNavigationButton propElement="a" propUrl="/" class="w-full h-full p-4 lg:p-2">
-                        <i class="col-span-1 fas fa-user"></i>
+                        <i class="fas fa-user"></i>
                         <span class="hidden lg:block">Login</span>
                     </VNavigationButton>
                 </li>

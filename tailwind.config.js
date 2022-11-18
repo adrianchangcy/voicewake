@@ -12,6 +12,9 @@ module.exports = {
             //hover, e.g. button, is duration-150
             //open/close, e.g. menu, is duration-200
             colors: {
+
+                'theme-dominant': '#FFD645',
+                
                 'theme-light': '#F2F4F3',
                 'theme-light-trim': '#FDFDFD',
                 'theme-dark': '#22333B',

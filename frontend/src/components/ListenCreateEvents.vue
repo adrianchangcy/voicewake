@@ -20,12 +20,13 @@
             </div>
             <div>
                 <VInput
-                    :propIsRequired="true"
+                    :propIsRequired="false"
                     propElementId="event-name"
                     propLabel="Title"
-                    propPlaceholder="Title"
+                    propPlaceholder="An interesting title"
                     :propMaxLength="40"
                     :propHasTextCounter="true"
+                    :propHasStatusText="false"
                     :propIsOk="event_name_is_ok"
                     :propIsWarning="event_name_is_warning"
                     :propIsError="event_name_is_error"
@@ -128,7 +129,7 @@
 
                 }else if(new_value.trim().length === 0){
 
-                    this.event_name_status_text = 'required - enter some text here';
+                    this.event_name_status_text = '';
                     this.event_name_is_ok = false;
                     this.event_name_is_warning = false;
                     this.event_name_is_error = true;

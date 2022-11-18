@@ -24,7 +24,7 @@
             <i v-if="propIsWarning" class="w-0 h-0 fas fa-triangle-exclamation relative py-2 right-7 text-theme-warning"></i>
             <i v-if="propIsError" class="w-0 h-0 fas fa-exclamation relative py-2 right-6 text-theme-danger"></i>
         </div>
-        <div class="h-5 text-base px-2">
+        <div v-show="propHasStatusText" class="h-5 text-base px-2">
             <span v-if="propIsOk" class="text-theme-ok">{{propStatusText}}</span>
             <span v-if="propIsWarning" class="text-theme-warning">{{propStatusText}}</span>
             <span v-if="propIsError" class="text-theme-danger">{{propStatusText}}</span>
@@ -54,6 +54,7 @@
             propPlaceholder: String,
             propMaxLength: Number,
             propHasTextCounter: Boolean,
+            propHasStatusText: Boolean,
             propIsOk: Boolean,
             propIsWarning: Boolean,
             propIsError: Boolean,

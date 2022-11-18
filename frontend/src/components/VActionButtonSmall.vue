@@ -14,6 +14,7 @@
 
 <script>
 //focus:border-2 focus:outline-none focus:ring-1 focus:ring-theme-black focus:border-theme-black
+//for all buttons, change our hover css to click, and come up with another css for hover
     export default {
         data(){
             return {
