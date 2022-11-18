@@ -20,13 +20,13 @@
             </div>
             <div class="relative w-full">
                 <TransitionFade>
-                    <div
+                    <VBox
                         v-show="is_emoji_picker_open"
                         v-click-outside="{
                             related_data: 'is_emoji_picker_open',
                             exclude: ['emoji_choice_label', 'emoji_choice_button']
                         }"
-                        class="top-2 p-2 absolute z-10 w-full left-0 right-0 mx-auto    border border-black/5      backdrop-blur bg-theme-light/60"
+                        class="top-2 p-2 absolute z-10 w-full left-0 right-0 mx-auto"
                     >
                         <div class="text-md">
                             <span>Select what you feel</span>
@@ -51,7 +51,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </VBox>
                 </TransitionFade>
             </div>
         </div>
@@ -63,6 +63,7 @@
     import TransitionFade from '/src/transitions/TransitionFade.vue';
     import VActionButtonMedium from './VActionButtonMedium.vue';
     import VInputLabel from './VInputLabel.vue';
+    import VBox from './VBox.vue';
 
 </script>
 
@@ -84,6 +85,7 @@
             TransitionFade,
             VActionButtonMedium,
             VInputLabel,
+            VBox,
         },
         props: {
             propLabelText: String,
@@ -94,9 +96,6 @@
             }
         },
         watch: {
-            is_emoji_picker_open(new_value){
-                console.log(new_value);
-            }
         },
         methods: {
             toggleEmojiPicker(){

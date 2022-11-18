@@ -3,49 +3,53 @@
         <div class="w-fit h-fit text-left">
             <VInputLabel for="click-to-record">{{propLabelText}}</VInputLabel>
         </div>
-        <div class="grid grid-cols-4 grid-flow-col place-items-center text-center gap-x-2">
+        <div class="grid grid-rows-2 grid-cols-4 grid-flow-col place-items-center text-center gap-x-2">
             <VActionButtonMedium
                 id="click-to-record"
                 @click.prevent="recorderStart()"
                 aria-label="record"
                 :class="[
-                    recorder_state !== undefined && recorder_state !== 'stopped' ? 'text-theme-disabled col-span-2' : 'text-theme-black col-span-4',
-                    'w-full p-2 transition-colors duration-200 ease-in-out'
+                    recorder_state !== undefined && recorder_state !== 'stopped' ? 'text-theme-disabled col-span-1' : 'text-theme-black col-span-4',
+                    'w-full row-span-2 p-2 transition-colors duration-200 ease-in-out'
                 ]"
                 :disabled="recorder_state !== undefined && recorder_state !== 'stopped'"
             >
                 <i class="fas fa-microphone-lines"></i>
             </VActionButtonMedium>
-            <TransitionFade>
-                <VActionButtonMedium
-                    @click.prevent="recorderPauseResume()"
-                    aria-label="pause or resume"
+            <div
+                :class="[
+                    recorder_state !== undefined && recorder_state !== 'stopped' ? 'block' : 'hidden',
+                    'row-start-1 row-span-1 col-span-2 text-base'
+                ]"
+            >
+                <span>00:00 / {{pretty_max_recording_duration_ms}}</span>
+            </div>
+            <VActionButtonSmall
+                @click.prevent="recorderPauseResume()"
+                aria-label="pause or resume"
+                :class="[
+                    recorder_state !== undefined && recorder_state !== 'stopped' ? 'block' : 'hidden',
+                    'row-start-2 row-span-1 col-span-2 w-full'
+                ]"
+            >
+                <i
                     :class="[
-                        recorder_state !== undefined && recorder_state !== 'stopped' ? 'block' : 'hidden',
-                        'col-span-1 w-full p-4'
+                        (recorder_state === 'recording' ? 'fas fa-pause' : 'fas fa-pause'),
+                        (recorder_state === 'paused' ? 'fas fa-play' : 'fas fa-pause'),
+                        ''
                     ]"
-                >
-                    <i
-                        :class="[
-                            (recorder_state === 'recording' ? 'fas fa-pause' : 'fas fa-pause'),
-                            (recorder_state === 'paused' ? 'fas fa-play' : 'fas fa-pause'),
-                            ''
-                        ]"
-                    ></i>
-                </VActionButtonMedium>
-            </TransitionFade>
-            <TransitionFade>
-                <VActionButtonMedium
-                    @click.prevent="recorderStop()"
-                    aria-label="end recording"
-                    :class="[
-                        recorder_state !== undefined && recorder_state !== 'stopped' ? 'block' : 'hidden',
-                        'col-span-1 w-full p-4'
-                    ]"
-                >
-                    <i class="fas fa-check"></i>
-                </VActionButtonMedium>
-            </TransitionFade>
+                ></i>
+            </VActionButtonSmall>
+            <VActionButtonMedium
+                @click.prevent="recorderStop()"
+                aria-label="end recording"
+                :class="[
+                    recorder_state !== undefined && recorder_state !== 'stopped' ? 'block' : 'hidden',
+                    'col-start-4 row-span-2 col-span-1 w-full p-4'
+                ]"
+            >
+                <i class="fas fa-check"></i>
+            </VActionButtonMedium>
         </div>
         <!-- currently don't allow file submission, but store file here for final form submit -->
         <!-- for file submission: <form method="POST" enctype="multipart/form-data"></form> -->
@@ -56,8 +60,8 @@
 
 <script setup>
 
+    import VActionButtonSmall from './VActionButtonSmall.vue';
     import VActionButtonMedium from './VActionButtonMedium.vue';
-    import TransitionFade from '/src/transitions/TransitionFade.vue';
     import VInputLabel from './VInputLabel.vue';
 </script>
 
@@ -77,10 +81,10 @@
 
                 //default values
                 //webm, despite being able to contain video media, is seamlessly handled by <audio>
-                max_audio_file_size_mb: 200,
+                max_audio_file_size_mb: 10,
                 audio_file_extensions_allowed: ['mp3','webm'],
-                // max_recording_duration_ms: 1000 * 60 * 2,    //2 minutes
-                max_recording_duration_ms: 5000,    //2 minutes
+                max_recording_duration_ms: 1000 * 60 * 2,    //2 minutes
+                pretty_max_recording_duration_ms: new Date(1000 * 60 * 2).toISOString().substring(14, 19),
             };
         },
         mounted(){
@@ -89,8 +93,8 @@
             //no need to be alarmed if it picks up nothing from browser audio
         },
         components: {
+            VActionButtonSmall,
             VActionButtonMedium,
-            TransitionFade,
             VInputLabel,
         },
         props: {
@@ -148,6 +152,10 @@
                 return true;
             },
             async recorderStart(){
+
+                //clear previous recording
+                this.final_blob = null;
+                this.final_file = null;
 
                 //reinitiate stream
                 //ensures user has device ready on every recording instance
