@@ -1,6 +1,7 @@
 <template>
     <!-- specify your own height -->
     <div
+        @click="instantDrag($event)"
         @mousedown="startDrag()"
         @touchstart="startDrag()"
         class="relative p-2 w-fit left-0 right-0 mx-auto touch-none"
@@ -126,7 +127,12 @@
 
                 this.is_dragging = false;
             },
+            instantDrag(event){
 
+                this.startDrag();
+                this.doDrag(event);
+                this.stopDrag();
+            },
             repositionSlider(value){
 
                 //handle visual representation

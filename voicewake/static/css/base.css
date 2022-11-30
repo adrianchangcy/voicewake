@@ -65,9 +65,9 @@ form miscellaneous, e.g. character counter and input status text, is text-sm
     details, text-base
 
     BUTTON SIZES
-    biggest page button, h-?
-    component main button, h-20
-    component smaller buttons, h-?
+    biggest page button, h-40, (text-2xl?)
+    component main button, h-20, text-2xl
+    component smaller buttons, h-10, text-2xl
 
 */
 

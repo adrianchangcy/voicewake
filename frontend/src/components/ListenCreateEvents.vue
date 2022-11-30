@@ -42,7 +42,7 @@
                 </div>
             </div>
             <div class="grid grid-cols-4">
-                <div class="col-span-4 grid gap-2">
+                <div class="col-span-4 flex flex-col gap-y-2">
                     <VRecorder
                         propLabelText="Thoughts"
                         @hasNewRecording="handleHasNewRecording"
@@ -59,7 +59,7 @@
                     @click.prevent="handleSubmit()"
                     class="p-4 w-full"
                 >
-                    <span class="text-2xl">Start hearing from others</span>
+                    <span>Start hearing from others</span>
                 </VActionButtonBig>
             </div>
         </form>
