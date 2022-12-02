@@ -1,0 +1,11 @@
+//css
+    //nav menu does not close when 'Esc' is pressed
+    //EmojiPicker.vue has no keyboard accessibility
+
+//recordRTC
+    //can capture desktop audio, but cannot capture browser audio
+        //was successful at one point, but can't trace it back
+    //current duration and final duration is off by 1 time_interval, no easy fix, only cosmetics
+    //very inconsistent ended duration and file duration
+
+

@@ -11,8 +11,7 @@
                     id="emoji-picker"
                     aria-label="select an emotion"
                     @click.prevent="toggleEmojiPicker()"
-                    class="w-full p-2 pb-3 text-4xl"
-                    :propIsDefaultTextSize="false"
+                    class="w-full p-2 pb-3"
                 >
                     <span :aria-label="'Current choice is '+emoji_choice.index">
                         {{emoji_choice.emoji}}

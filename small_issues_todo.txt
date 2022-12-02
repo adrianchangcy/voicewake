@@ -1,8 +1,0 @@
-//css
-    //nav menu does not close when 'Esc' is pressed
-    //EmojiPicker.vue has no keyboard accessibility
-
-
-
-
-

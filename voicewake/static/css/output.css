@@ -587,6 +587,10 @@ video {
   }
 }
 
+.visible {
+  visibility: visible;
+}
+
 .invisible {
   visibility: hidden;
 }
@@ -709,6 +713,11 @@ video {
   margin-right: auto;
 }
 
+.my-auto {
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
 .mt-2 {
   margin-top: 0.5rem;
 }
@@ -797,6 +806,14 @@ video {
 
 .h-4 {
   height: 1rem;
+}
+
+.h-24 {
+  height: 6rem;
+}
+
+.h-28 {
+  height: 7rem;
 }
 
 .w-fit {
@@ -923,8 +940,16 @@ video {
   flex-wrap: nowrap;
 }
 
+.place-content-center {
+  place-content: center;
+}
+
 .place-items-center {
   place-items: center;
+}
+
+.content-center {
+  align-content: center;
 }
 
 .items-center {
@@ -1039,11 +1064,6 @@ video {
   border-color: rgb(163 163 163 / var(--tw-border-opacity));
 }
 
-.border-theme-dominant {
-  --tw-border-opacity: 1;
-  border-color: rgb(255 214 69 / var(--tw-border-opacity));
-}
-
 .bg-theme-light {
   --tw-bg-opacity: 1;
   background-color: rgb(242 244 243 / var(--tw-bg-opacity));
@@ -1077,23 +1097,6 @@ video {
   background-color: rgb(255 214 69 / var(--tw-bg-opacity));
 }
 
-.bg-theme-dominant\/60 {
-  background-color: rgb(255 214 69 / 0.6);
-}
-
-.bg-theme-dominant\/40 {
-  background-color: rgb(255 214 69 / 0.4);
-}
-
-.bg-theme-dominant\/20 {
-  background-color: rgb(255 214 69 / 0.2);
-}
-
-.bg-theme-disabled {
-  --tw-bg-opacity: 1;
-  background-color: rgb(163 163 163 / var(--tw-bg-opacity));
-}
-
 .bg-orange-500\/60 {
   background-color: rgb(249 115 22 / 0.6);
 }
@@ -1106,6 +1109,16 @@ video {
   background-color: rgb(249 115 22 / 0.2);
 }
 
+.bg-theme-disabled {
+  --tw-bg-opacity: 1;
+  background-color: rgb(163 163 163 / var(--tw-bg-opacity));
+}
+
+.bg-theme-danger {
+  --tw-bg-opacity: 1;
+  background-color: rgb(164 36 59 / var(--tw-bg-opacity));
+}
+
 .bg-none {
   background-image: none;
 }
@@ -1116,6 +1129,10 @@ video {
 
 .p-4 {
   padding: 1rem;
+}
+
+.p-1 {
+  padding: 0.25rem;
 }
 
 .py-2 {
@@ -1164,9 +1181,8 @@ video {
   text-align: center;
 }
 
-.text-4xl {
-  font-size: 2.25rem;
-  line-height: 2.5rem;
+.align-middle {
+  vertical-align: middle;
 }
 
 .text-2xl {
@@ -1177,6 +1193,11 @@ video {
 .text-lg {
   font-size: 1.125rem;
   line-height: 1.75rem;
+}
+
+.text-4xl {
+  font-size: 2.25rem;
+  line-height: 2.5rem;
 }
 
 .text-xl {
@@ -1192,6 +1213,11 @@ video {
 .text-sm {
   font-size: 0.875rem;
   line-height: 1.25rem;
+}
+
+.text-6xl {
+  font-size: 3.75rem;
+  line-height: 1;
 }
 
 .leading-none {
@@ -1226,6 +1252,11 @@ video {
 .text-theme-danger {
   --tw-text-opacity: 1;
   color: rgb(164 36 59 / var(--tw-text-opacity));
+}
+
+.text-theme-idle {
+  --tw-text-opacity: 1;
+  color: rgb(163 163 163 / var(--tw-text-opacity));
 }
 
 .opacity-0 {
@@ -1376,7 +1407,7 @@ form miscellaneous, e.g. character counter and input status text, is text-sm
 
     BUTTON SIZES
     biggest page button, h-40, (text-2xl?)
-    component main button, h-20, text-2xl
+    component main button, h-20, text-4xl
     component smaller buttons, h-10, text-2xl
 
 */
