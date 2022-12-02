@@ -10,7 +10,7 @@
                 aria-label="record"
                 :class="[
                     recorder_state !== undefined && recorder_state !== 'stopped' ? 'col-span-1' : 'col-span-4',
-                    'w-full row-span-2 p-2 transition-colors duration-200 ease-in-out'
+                    'w-full row-span-2 transition-colors duration-200 ease-in-out'
                 ]"
                 :propIsDisabled="recorder_state !== undefined && recorder_state !== 'stopped'"
             >
@@ -39,7 +39,7 @@
                     'row-start-1 row-span-1 col-span-2'
                 ]"
             >
-                <span class="text-xl">{{current_duration_pretty}} ~ {{max_recording_duration_ms_pretty}}</span>
+                <span class="text-xl">{{current_duration_pretty}} / {{max_recording_duration_ms_pretty}}</span>
             </div>
             <VActionButtonSmall
                 @click.prevent="recorderPauseResume()"
@@ -61,11 +61,12 @@
                 @click.prevent="recorderStop()"
                 aria-label="end recording"
                 :class="[
-                    recorder_state !== undefined && recorder_state !== 'stopped' ? 'block' : 'hidden',
-                    'col-start-4 row-span-2 col-span-1 w-full p-4'
+                    recorder_state !== undefined && recorder_state !== 'stopped' ? '' : 'hidden',
+                    'col-start-4 row-span-2 col-span-1 w-full'
                 ]"
+                :propIsDefaultTextSize="false"
             >
-                <i class="fas fa-check"></i>
+                <i class="fas fa-stop text-2xl"></i>
             </VActionButtonMedium>
         </div>
         <div>
@@ -152,19 +153,18 @@
                 
                 // Value range: 127 = analyser.maxDecibels - analyser.minDecibels;
                 const average_volume = volume_sum / volumes.length;
-                const true_volume = average_volume / 127;
+                let true_volume = average_volume / 127;
+
+                //we can still exceed expected max volume of 1, e.g. 1.01
+                //we cap it at 1
+                if(true_volume > 1){
+
+                    true_volume = 1;
+                }
+
                 this.animeVolumeAnalyser(true_volume);
             },
             animeVolumeAnalyser(new_value){
-
-                if(new_value >= 0 && new_value <= 1){
-
-                    //ok
-
-                }else{
-
-                    return false;
-                }
 
                 new_value = new_value.toFixed(2).toString();
 
@@ -239,13 +239,19 @@
                     this.animeVolumeAnalyser(0);
                 }
             },
-            async handleRecordingInput(){
+            handleRecordingInput(){
 
                 //you can pass 'blob' here, but currently removed as it is not needed
 
+                //we need this because ondataavailable runs one more time after stopRecording()
+                if(this.is_recording === false){
+                    
+                    return false;
+                }
+
                 //handle time elapsed
                 this.current_duration += this.time_interval;
-                this.current_duration_pretty = new Date(this.current_duration).toISOString().substring(14, 19);
+                this.current_duration_pretty = new Date(Math.floor(this.current_duration)).toISOString().substring(14, 19);
 
                 //give user instant visual feedback on recording input
             },
@@ -272,6 +278,12 @@
                             alert(
                                 'No recording device detected.'
                                 +' Please select your recording device as input at your system settings.'
+                            );
+                            break;
+
+                        case 'NotAllowedError':
+                            alert(
+                                'Please allow permissions for your recording device on your browser.'
                             );
                             break;
 
@@ -327,7 +339,7 @@
                 
                     // MediaStreamRecorder, StereoAudioRecorder, WebAssemblyRecorder
                     // CanvasRecorder, GifRecorder, WhammyRecorder
-                    recorderType: this.MediaStreamRecorder,
+                    recorderType: recordRTC.MediaStreamRecorder,
                 
                     // disable logs
                     disableLogs: false,
@@ -338,7 +350,7 @@
                 
                     // requires timeSlice above
                     // returns blob via callback function
-                    ondataavailable: async () => { await this.handleRecordingInput()},
+                    ondataavailable: () => {this.handleRecordingInput()},
                 
                     // auto stop recording if camera stops
                     checkForInactiveTracks: false,
@@ -434,7 +446,7 @@
                             this.stopVolumeAnalyser();
                         });
                     }
-                    
+
                     //we manually store 'stopped' instead of this.recorder.state
                     //fix for bug where on pause->stop, you get 'recording'
                     this.recorder_state = 'stopped';
