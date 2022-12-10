@@ -1,6 +1,6 @@
 <template>
     <div class="text-theme-black text-center">
-        <div class="w-fit h-fit text-left">
+        <div v-if="propLabelText !== ''" class="w-fit h-fit text-left">
             <VInputLabel for="click-to-record">{{propLabelText}}</VInputLabel>
         </div>
         <div class="grid grid-rows-2 grid-cols-4 grid-flow-col place-items-center text-center gap-x-2">
@@ -69,9 +69,6 @@
                 <i class="fas fa-stop text-2xl"></i>
             </VActionButtonMedium>
         </div>
-        <div>
-            {{user_recording_input}}
-        </div>
         <!-- currently don't allow file submission, but store file here for final form submit -->
         <!-- for file submission: <form method="POST" enctype="multipart/form-data"></form> -->
         <input type="file" ref="audio_upload" accept=".mp3, .webm" class="hidden" required>
@@ -100,7 +97,6 @@
                 recorder: undefined,
                 time_interval: 200, //milliseconds
                 recorder_state: undefined,
-                user_recording_input: null,
                 final_blob: null,
                 final_file: null,
                 is_recording: false,

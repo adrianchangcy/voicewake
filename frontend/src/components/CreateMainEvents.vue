@@ -14,15 +14,25 @@
                 flex flex-nowrap flex-col gap-10
                 rounded-md shadow-inner"
         >
-            <div class="flex-1 text-4xl pb-10">
-                <span>Hear</span>
-                <i class="fas fa-ear-listen float-right"></i>
+
+            <div>
+            <div class="flex-1 text-4xl text-center w-full p-2">
+                <span>Say</span>
+            </div>
+                <VAudioPlayback
+                    :propFile="final_file"
+                    :propIsRecording="is_recording"
+                />
+                <VRecorder
+                    @hasNewRecording="handleHasNewRecording"
+                    @isRecording="handleIsRecording"
+                />
             </div>
             <div>
                 <VInput
                     :propIsRequired="false"
                     propElementId="event-name"
-                    propLabel="Title"
+                    propLabel="Give it a title"
                     propPlaceholder="An interesting title"
                     :propMaxLength="40"
                     :propHasTextCounter="true"
@@ -37,20 +47,7 @@
             <div class="grid grid-cols-4">
                 <div class="col-span-4">
                     <EmojiPicker
-                        propLabelText="Mood"
-                    />
-                </div>
-            </div>
-            <div class="grid grid-cols-4">
-                <div class="col-span-4 flex flex-col gap-y-2">
-                    <VRecorder
-                        propLabelText="Thoughts"
-                        @hasNewRecording="handleHasNewRecording"
-                        @isRecording="handleIsRecording"
-                    />
-                    <VAudioPlayback
-                        :propFile="final_file"
-                        :propIsRecording="is_recording"
+                        propLabelText="Label the feeling"
                     />
                 </div>
             </div>

@@ -1,0 +1,33 @@
+{%extends 'voicewake/base.html'%}
+{%block title%}View Own Events{%endblock%}
+
+{% comment %} pre-defining usable variables {% endcomment %}
+
+{%block content%}
+<div>
+    {% for event in object_list %}
+        <div class="card mt-2">
+            <div class="card-header">
+                {% comment %} do datetime difference calculation for tomorrow/today/yesterday display {% endcomment %}
+                {% comment %} do css elevation on mouse hover? {% endcomment %}
+                <strong>{{event.event_name}}</strong>
+                <strong>{{event.when_trigger|timeuntil}}</strong>
+                <strong>{{event.when_trigger}}</strong>
+                {% comment %} use JS to auto-tick here? {% endcomment %}
+            </div>
+            <div class="card-body d-flex flex-row justify-content-between">
+                <div>
+                    <h5 class="card-title language">{{event.language.language_name}}</h5>
+                    <h5 class="card-title event-purpose">{{event.event_purpose.event_purpose_name}}</h5>
+                    <h5 class="card-title event-tone">{{event.event_tone.event_tone_name}}</h5>
+                </div>
+            </div>
+            <div class="card-footer text-muted">
+                <p>Nothing yet &#128225;</p>
+            </div>
+        </div>
+    {% empty %}
+        <p>Nothing yet &#128225;</p>
+    {% endfor %}
+</div>
+{%endblock%}

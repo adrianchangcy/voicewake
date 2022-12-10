@@ -1,19 +1,19 @@
 <template>
-    <ListenCreateEvents/>
+    <CreateMainEvents/>
 </template>
 
 
 <script>
-    import ListenCreateEvents from './components/ListenCreateEvents.vue';
+    import CreateMainEvents from './components/CreateMainEvents.vue';
 
     export default{
         data(){
             return {
             };
         },
-        name: 'ListenCreateEventsApp',
+        name: 'CreateMainEventsApp',
         components: {
-            ListenCreateEvents,
+            CreateMainEvents,
         },
         methods: {
         }

@@ -28,7 +28,7 @@ class UserSignUpForm(UserCreationForm):
 
 
 
-class ListenCreateEventsForm(forms.Form):
+class CreateMainEventsForm(forms.Form):
 
     event_name = forms.CharField(
                     required=False,

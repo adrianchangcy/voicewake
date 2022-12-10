@@ -1,18 +1,19 @@
 <template>
     <!-- specify your own height -->
     <div
+        class="relative p-2 w-fit left-0 right-0 mx-auto touch-none"
         @click="instantDrag($event)"
         @mousedown="startDrag()"
         @touchstart="startDrag()"
-        class="relative p-2 w-fit left-0 right-0 mx-auto touch-none"
     >
+        <!--need 99% to remove dead pixel-->
         <div
             ref="slider"
-            class="w-2 h-full absolute bg-theme-disabled left-0 right-0 mx-auto bottom-0 rounded-full"
+            class="w-2 h-[99%] absolute bg-theme-idle left-0 right-0 mx-auto top-0 bottom-0 rounded-full"
         ></div>
         <div
             ref="current_position"
-            class="w-2 absolute bg-theme-dominant left-0 right-0 mx-auto bottom-0 rounded-full"
+            class="w-2 absolute bg-theme-dominant left-0 right-0 mx-auto bottom-0 rounded-b-full"
         >
             <div
                 class="w-4 h-4 rounded-full bg-theme-black left-0 right-0 top-0 absolute -translate-y-2 -translate-x-1"
@@ -53,17 +54,17 @@
             window.removeEventListener('touchend', this.stopDrag);
         },
         props: {
-            propDefaultValue: Number,
+            propSliderValue: Number,
         },
         watch: {
 
-            propDefaultValue(new_value){
+            propSliderValue(new_value){
 
-                if(this.slider_value !== new_value && this.propDefaultValue >= 0 && this.propDefaultValue <= 1){
+                if(this.slider_value !== new_value && this.propSliderValue >= 0 && this.propSliderValue <= 1){
 
                     //using watcher is important past initial 0 values, i.e. if localStorage exists
-                    this.slider_value = this.propDefaultValue;
-                    this.repositionSlider(this.propDefaultValue);
+                    this.slider_value = this.propSliderValue;
+                    this.repositionSlider(this.propSliderValue);
                 }
             },
         },
@@ -133,10 +134,10 @@
                 this.doDrag(event);
                 this.stopDrag();
             },
-            repositionSlider(value){
+            repositionSlider(new_value){
 
                 //handle visual representation
-                this.$refs.current_position.style.height = (value * 100).toString() + '%';
+                this.$refs.current_position.style.height = (new_value * 100).toString() + '%';
             },
             emitNewSliderValue(){
 
