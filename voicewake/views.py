@@ -303,11 +303,11 @@ class LanguagesViewSet(viewsets.ModelViewSet):
 
 #=====WEB PAGES=====
 
-#create listener event
-class ListenCreateEventsFormView(FormView):
+#create main events
+class CreateMainEventsFormView(FormView):
 
-    template_name = 'voicewake/events/listeners/create_events.html'
-    form_class = ListenCreateEventsForm
+    template_name = 'voicewake/events/say/create_main_events.html'
+    form_class = CreateMainEventsForm
     success_url = '/'
 
     def form_valid(self, form):

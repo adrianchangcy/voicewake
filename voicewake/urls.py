@@ -48,12 +48,12 @@ urlpatterns = [
     path('', views.home, name='home'),
     path('sign-up', views.sign_up, name='sign_up'),
     path('set-timezone', views.set_timezone, name='set_timezone'),
-    path('hear', views.ListenCreateEventsFormView.as_view(), name='listen_create_events'),
-    path('view-event', views.ViewEventsListView.as_view(), name='view_event'),
-    path('seek-event', views.SeekEventsFormView.as_view(), name='seek_event'),
+    path('say', views.CreateMainEventsFormView.as_view(), name='create_main_events'),
+    path('view-event', views.ViewEventsListView.as_view(), name='view_events'),
+    path('seek-event', views.SeekEventsFormView.as_view(), name='seek_events'),
     
     #test
-    path('record', views.RecordAudioFormView.as_view(), name='record'),
+    # path('record', views.RecordAudioFormView.as_view(), name='record'),
 
     #favicon
     path('favicon.ico', RedirectView.as_view(url=staticfiles_storage.url('website-logo.svg'))),

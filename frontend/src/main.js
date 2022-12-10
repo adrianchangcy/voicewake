@@ -2,7 +2,7 @@ import { createApp } from 'vue';
 import { mixinGeneral } from './mixin_general.js';
 
 import BaseApp from './BaseApp.vue';
-import ListenCreateEventsApp from './ListenCreateEventsApp.vue';
+import CreateMainEventsApp from './CreateMainEventsApp.vue';
 
 const clickOutside = {
 
@@ -63,12 +63,12 @@ createApp(BaseApp)
 
 //this might not be the most efficient fix
 //https://vuejs.org/guide/essentials/application.html#the-root-component
-if(document.querySelector('#listen-create-events-app')){
+if(document.querySelector('#create-main-events-app')){
 
-    createApp(ListenCreateEventsApp)
+    createApp(CreateMainEventsApp)
         .directive('click-outside', clickOutside)
         .mixin(mixinGeneral)
-        .mount('#listen-create-events-app');
+        .mount('#create-main-events-app');
 
 }
 
