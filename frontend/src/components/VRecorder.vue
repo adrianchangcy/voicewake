@@ -9,29 +9,12 @@
                 @click.prevent="recorderStart()"
                 aria-label="record"
                 :class="[
-                    recorder_state !== undefined && recorder_state !== 'stopped' ? 'col-span-1' : 'col-span-4',
+                    recorder_state !== undefined && recorder_state !== 'stopped' ? 'col-span-1 text-theme-disabled' : 'col-span-4 text-theme-black',
                     'w-full row-span-2 transition-colors duration-200 ease-in-out'
                 ]"
                 :propIsDisabled="recorder_state !== undefined && recorder_state !== 'stopped'"
             >
-                <div
-                    v-if="recorder_state !== undefined && recorder_state !== 'stopped'"
-                    class="relative w-full h-full"
-                >
-                    <div
-                        ref="volume_analyser_circle_0"
-                        class="w-0 h-0 absolute left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-orange-500/60"
-                    ></div>
-                    <div
-                        ref="volume_analyser_circle_1"
-                        class="w-0 h-0 absolute left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-orange-500/40"
-                    ></div>
-                    <div
-                        ref="volume_analyser_circle_2"
-                        class="w-0 h-0 absolute left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-orange-500/20"
-                    ></div>
-                </div>
-                <i v-else class="fas fa-microphone-lines"></i>
+                <i class="fas fa-microphone-lines"></i>
             </VActionButtonMedium>
             <div
                 :class="[
@@ -86,7 +69,7 @@
 <script>
 
     const recordRTC = require('/node_modules/recordrtc/RecordRTC.min.js');
-    import anime from 'animejs';
+    // import anime from 'animejs';
 
     export default {
         data(){
@@ -97,6 +80,8 @@
                 recorder: undefined,
                 time_interval: 200, //milliseconds
                 recorder_state: undefined,
+                recording_volume: 0,    //0-1, only changes when recording
+
                 final_blob: null,
                 final_file: null,
                 is_recording: false,
@@ -115,6 +100,9 @@
 
             //NOTE
             //no need to be alarmed if it picks up nothing from browser audio
+
+            //emit original source of time_interval
+            this.$emit('hasNewTimeInterval', this.time_interval);
         },
         components: {
             VActionButtonSmall,
@@ -123,6 +111,7 @@
         },
         props: {
             propLabelText: String,
+            propTimeInterval: Number,
         },
         watch: {
             final_file(new_value){
@@ -133,8 +122,12 @@
 
                 this.$emit('isRecording', new_value);
             },
+            recording_volume(new_value){
+
+                this.$emit('hasNewRecordingVolume', new_value);
+            },
         },
-        emits: ['hasNewRecording', 'isRecording'],
+        emits: ['hasNewRecording', 'isRecording', 'hasNewRecordingVolume', 'hasNewTimeInterval'],
         methods: {
             handleVolumeAnalyser(){
 
@@ -158,40 +151,7 @@
                     true_volume = 1;
                 }
 
-                this.animeVolumeAnalyser(true_volume);
-            },
-            animeVolumeAnalyser(new_value){
-
-                new_value = new_value.toFixed(2).toString();
-
-                const targets = [
-                    this.$refs.volume_analyser_circle_0,
-                    this.$refs.volume_analyser_circle_1,
-                    this.$refs.volume_analyser_circle_2,
-                ];
-
-                //circles have width and height of 20-30, 30-50, 50-80 %
-                let base_target_percentage = 10;
-                const percentage_increment = 30;
-                
-                for(let x=0; x < targets.length; x++){
-                    
-                    anime.remove(targets[x]);
-
-                    const extra_target_percentage = (x + 1) * percentage_increment;
-
-                    const final_target_percentage = (new_value * extra_target_percentage) + base_target_percentage;
-
-                    anime({
-                        targets: targets[x],
-                        width: final_target_percentage.toString() + '%',
-                        height: final_target_percentage.toString() + '%',
-                        autoplay: true,
-                        easing: 'linear',
-                        loop: false,
-                        duration: this.time_interval,
-                    });
-                }
+                this.recording_volume = true_volume;
             },
             async initiateVolumeAnalyser(){
 
@@ -232,7 +192,7 @@
 
                     clearInterval(this.volume_analyser_interval);
                     this.volume_analyser_interval = null;
-                    this.animeVolumeAnalyser(0);
+                    this.recording_volume = 0;
                 }
             },
             handleRecordingInput(){

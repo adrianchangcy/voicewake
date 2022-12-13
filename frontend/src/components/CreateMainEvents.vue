@@ -12,52 +12,62 @@
             class="
                 md:w-2/4 lg:w-3/6 xl:w-2/6 m-4 md:mx-auto h-fit p-4 bg-theme-light
                 flex flex-nowrap flex-col gap-10
-                rounded-md shadow-inner"
+                "
         >
-
-            <div>
-            <div class="flex-1 text-4xl text-center w-full p-2">
-                <span>Say</span>
-            </div>
+            <div class="flex-1 grid gap-2">
+                <div class="text-4xl text-center w-full h-fit p-2">
+                    <span>Say</span>
+                </div>
                 <VAudioPlayback
                     :propFile="final_file"
                     :propIsRecording="is_recording"
+                    :propRecordingVolume="recording_volume"
+                    :propTimeInterval="time_interval"
                 />
                 <VRecorder
-                    @hasNewRecording="handleHasNewRecording"
-                    @isRecording="handleIsRecording"
+                    @hasNewRecording="handleHasNewRecording($event)"
+                    @isRecording="handleIsRecording($event)"
+                    @hasNewRecordingVolume="handleHasNewRecordingVolume($event)"
+                    @hasNewTimeInterval="handleHasNewTimeInterval($event)"
                 />
             </div>
-            <div>
-                <VInput
-                    :propIsRequired="false"
-                    propElementId="event-name"
-                    propLabel="Give it a title"
-                    propPlaceholder="An interesting title"
-                    :propMaxLength="40"
-                    :propHasTextCounter="true"
-                    :propHasStatusText="false"
-                    :propIsOk="event_name_is_ok"
-                    :propIsWarning="event_name_is_warning"
-                    :propIsError="event_name_is_error"
-                    :propStatusText="event_name_status_text"
-                    @hasNewValue="validateEventName"
-                />
-            </div>
-            <div class="grid grid-cols-4">
-                <div class="col-span-4">
-                    <EmojiPicker
-                        propLabelText="Label the feeling"
+            <div 
+                :class="[
+                    final_file === null ? 'opacity-0' : 'opacity-100',
+                    'flex flex-col gap-10 transition-opacity duration-1000 ease-in-out'
+                ]"
+            >
+                <div>
+                    <VInput
+                        :propIsRequired="false"
+                        propElementId="event-name"
+                        propLabel="Give it a title"
+                        propPlaceholder=""
+                        :propMaxLength="40"
+                        :propHasTextCounter="true"
+                        :propHasStatusText="false"
+                        :propIsOk="event_name_is_ok"
+                        :propIsWarning="event_name_is_warning"
+                        :propIsError="event_name_is_error"
+                        :propStatusText="event_name_status_text"
+                        @hasNewValue="validateEventName"
                     />
                 </div>
-            </div>
-            <div class="flex-1 pt-4">
-                <VActionButtonBig
-                    @click.prevent="handleSubmit()"
-                    class="p-4 w-full"
-                >
-                    <span>Start hearing from others</span>
-                </VActionButtonBig>
+                <div class="grid grid-cols-4">
+                    <div class="col-span-4">
+                        <EmojiPicker
+                            propLabelText="Label the feeling"
+                        />
+                    </div>
+                </div>
+                <div class="flex-1 pt-4">
+                    <VActionButtonBig
+                        @click.prevent="handleSubmit()"
+                        class="p-4 w-full"
+                    >
+                        <span>Start hearing from others</span>
+                    </VActionButtonBig>
+                </div>
             </div>
         </form>
     </div>
@@ -81,6 +91,8 @@
 
                 final_file: null,
                 is_recording: false,
+                recording_volume: 0,    //0-1, only changes when recording
+                time_interval: 0,   //ms, based on VRecorder time_interval
 
                 event_name: '',
                 event_name_is_ok: false,
@@ -108,6 +120,14 @@
             handleIsRecording(new_value){
 
                 this.is_recording = new_value;
+            },
+            handleHasNewRecordingVolume(new_value){
+
+                this.recording_volume = new_value;
+            },
+            handleHasNewTimeInterval(new_value){
+
+                this.time_interval = new_value;
             },
             validateEventName(new_value){
                 
