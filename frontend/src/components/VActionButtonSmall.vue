@@ -3,7 +3,7 @@
         :class="[
             (propIsDefaultColour ? 'bg-theme-light/60 hover:bg-theme-light/80' : ''),
             (propIsDefaultTextSize ? 'text-xl' : ''),
-            (propIsDisabled ? '' : 'hover:border-theme-light-trim/40 hover:shadow-sm hover:scale-[0.99]'),
+            (propIsDisabled ? 'cursor-not-allowed' : 'hover:border-theme-light-trim/40 hover:shadow-sm hover:scale-[0.99]'),
             'h-10 p-1       items-center border-t-2 border-theme-light-trim rounded-lg shadow-md transition duration-150 ease-in-out'
         ]"
         :disabled="propIsDisabled"

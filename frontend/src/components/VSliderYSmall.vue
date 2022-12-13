@@ -9,14 +9,14 @@
         <!--need 99% to remove dead pixel-->
         <div
             ref="slider"
-            class="w-2 h-[99%] absolute bg-theme-idle left-0 right-0 mx-auto top-0 bottom-0 rounded-full"
+            class="w-2 h-[99%] absolute bg-theme-idle left-0 right-0 mx-auto top-0 bottom-0"
         ></div>
         <div
             ref="current_position"
-            class="w-2 absolute bg-theme-dominant left-0 right-0 mx-auto bottom-0 rounded-b-full"
+            class="w-2 absolute bg-theme-dominant left-0 right-0 mx-auto bottom-0"
         >
             <div
-                class="w-4 h-4 rounded-full bg-theme-black left-0 right-0 top-0 absolute -translate-y-2 -translate-x-1"
+                class="w-4 h-4 bg-theme-black left-0 right-0 top-0 absolute -translate-y-2 -translate-x-1"
             ></div>
         </div>
     </div>
