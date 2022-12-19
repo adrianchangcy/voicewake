@@ -14,10 +14,11 @@
         @stalled="current_playback_state = playback_states[4]"
         :loop="is_repeat"
     ></audio>
-    <!--22.5rem is h-60 + h-30-->
-    <div class="text-center h-[20rem] relative" tabindex="0">
-        <!--extras-->
-        <div ref="playback_extras" class="absolute w-full h-20 bottom-0 px-3">
+    <div
+        class="text-center h-[15rem] relative"
+    >
+        <!--extras, h-20 made possible with spacing being inside elements and not outside-->
+        <div ref="playback_extras" class="absolute w-full h-20 bottom-0 px-3 opacity-0 hidden">
                 <!--navigation slider-->
                 <div class="w-full h-10">
                     <VSliderXMedium
@@ -34,7 +35,7 @@
                 </div>
         </div>
         <!--main-->
-        <div ref="playback_main" class="absolute w-full">
+        <div ref="playback_main" class="absolute w-full h-[15rem]">
             <div class="w-full h-full relative">
                 <!--audio bars-->
                 <div ref="playback_progress" class="absolute h-full left-0 rounded-lg px-3"></div>
@@ -54,7 +55,7 @@
                 <div
                     class="absolute w-40 h-40 left-0 right-0 top-0 bottom-0 m-auto"
                 >
-                    <div class="relative w-full h-full bg-pink-400">
+                    <div class="relative w-full h-full">
                         <div
                             ref="volume_analyser_circle_0"
                             class="absolute w-0 h-0 left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-dominant/60"
@@ -70,164 +71,183 @@
                     </div>
                 </div>
                 <!--options-->
-                <VBox
-                    :class="[
-                        final_file === null ? 'text-theme-disabled' : 'text-theme-black',
-                        'hidden w-full h-full grid grid-rows-5 grid-cols-4 items-center rounded-lg gap-2 p-2 text-xl'
-                    ]"
+                <div
+                    ref="playback_options"
+                    class="absolute w-full h-full"
+                    tabindex="0"
+                    @keyup.enter.self.stop="[togglePlaybackOptions(), troubleshootEventListener('b')]"
+                    @mouseenter.self.stop="[togglePlaybackOptions(true), troubleshootEventListener('mouseenter')]"
+                    @mouseleave.self.stop="[togglePlaybackOptions(false), troubleshootEventListener('mouseleave')]"
+                    @touchstart="[delayClosePlaybackOptions(), troubleshootEventListener('touchstart')]"
+                    @touchend="[delayClosePlaybackOptions(false, $event), troubleshootEventListener('touchend')]"
                 >
-                    <div class="row-start-2 row-span-3 col-start-1 col-span-1 h-full">
-                        <button
-                            :disabled="final_file === null"
-                            :class="[
-                                final_file === null ? 'cursor-not-allowed' : '',
-                                'w-full h-full'
-                            ]"
-                        >
-                            <i class="fas fa-rotate-left"></i>
-                            <br>
-                            <span>10</span>
-                        </button>
-                    </div>
-                    <div class="row-start-2 row-span-3 col-start-2 col-span-2 h-full">
-                        <button
-                            @click.prevent="togglePlaybackPlayPause()"
-                            :disabled="final_file === null"
-                            :class="[
-                                final_file === null ? 'cursor-not-allowed' : '',
-                                'w-full h-full'
-                            ]"
-                        >
-                            <i
-                                :class="[
-                                    is_playing? 'fa-pause' : 'fa-play',
-                                    'fas text-4xl'
-                                ]"
-                            ></i>
-                        </button>
-                    </div>
-                    <div class="row-start-2 row-span-3 col-start-4 col-span-1 h-full">
-                        <button
-                            :disabled="final_file === null"
-                            :class="[
-                                final_file === null ? 'cursor-not-allowed' : '',
-                                'w-full h-full'
-                            ]"
-                        >
-                            <i class="fas fa-rotate-right"></i>
-                            <br>
-                            <span>10</span>
-                        </button>
-                    </div>
-                    <!--playback speed-->
-                    <div
-                        ref="playback_speed_options_button"
-                        class="row-start-5 row-span-1 col-start-2 col-span-1 h-full"
+                    <VBox
+                        v-show="is_playback_options_open"
+                        :class="[
+                            final_file === null ? 'text-theme-disabled' : 'text-theme-black',
+                            'w-full h-full grid grid-rows-5 grid-cols-4 items-center rounded-lg gap-2 p-2 text-xl'
+                        ]"
                     >
-                        <div class="relative w-full h-0">
-                            <TransitionFade>
-                                <VBox
-                                    v-show="is_playback_speed_options_open"
-                                    v-click-outside="{
-                                        related_data: 'is_playback_speed_options_open',
-                                        exclude: ['playback_speed_options_button']
-                                    }"
-                                    class="
-                                        w-full h-32 absolute text-center text-theme-black bottom-1
-                                        grid grid-rows-3 divide-y divide-theme-black/5
-                                    "
-                                >
-                                        <div class="row-span-1">
-                                            <button
-                                                @click.prevent="changePlaybackRate(1.5)"
-                                                :class="[
-                                                    playback_rate === 1.5 ? 'bg-theme-dominant' : 'bg-none' ,
-                                                    'w-full h-full transition-colors duration-200 ease-in-out p-2 rounded-t-lg'
-                                                ]"
-                                            >
-                                                1.5
-                                            </button>
-                                        </div>
-                                        <div class="row-span-1">
-                                            <button
-                                                @click.prevent="changePlaybackRate(1)"
-                                                :class="[
-                                                    playback_rate === 1 ? 'bg-theme-dominant' : 'bg-none' ,
-                                                    'w-full h-full transition-colors duration-200 ease-in-out p-2'
-                                                ]"
-                                            >
-                                                1
-                                            </button>
-                                        </div>
-                                        <div class="row-span-1">
-                                            <button
-                                                @click.prevent="changePlaybackRate(0.5)"
-                                                :class="[
-                                                    playback_rate === 0.5 ? 'bg-theme-dominant' : 'bg-none' ,
-                                                    'w-full h-full transition-colors duration-200 ease-in-out p-2 rounded-b-lg'
-                                                ]"
-                                            >
-                                                0.5
-                                            </button>
-                                        </div>
-                                </VBox>
-                            </TransitionFade>
-                        </div>
-                        <button
-                            @click.prevent="togglePlaybackSpeedOptions()"
-                            class="w-full h-full"
-                        >
-                            <i
+                        <div class="row-start-2 row-span-3 col-start-1 col-span-1 h-full">
+                            <button
                                 :class="[
-                                    is_playback_speed_options_open ? '-rotate-90' : 'rotate-0',
-                                    'fas fa-forward transition duration-200 ease-in-out'
+                                    final_file === null ? 'cursor-not-allowed' : '',
+                                    'w-full h-full'
                                 ]"
-                            ></i>
-                        </button>
-                    </div>
-                    <!--playback volume-->
-                    <div
-                        ref="playback_volume_button"
-                        class="row-start-5 row-span-1 col-start-3 col-span-1 h-full"
-                    >
-                        <div class="relative w-full h-0">
-                            <TransitionFade>
-                                <VBox
-                                    v-show="is_playback_volume_open"
-                                    v-click-outside="{
-                                        related_data: 'is_playback_volume_open',
-                                        exclude: ['playback_volume_button']
-                                    }"
-                                    class="
-                                        w-full h-32 absolute text-center bottom-1 p-2 py-6
-                                    "
-                                >
-                                    <VSliderYSmall
-                                        ref="volume_slider"
-                                        :propSliderValue="playback_volume"
-                                        @hasNewSliderValue="changePlaybackVolume($event)"
-                                        class="h-full"
-                                    />
-                                </VBox>
-                            </TransitionFade>
+                            >
+                                <i class="fas fa-rotate-left"></i>
+                                <br>
+                                <span>10</span>
+                            </button>
                         </div>
-                        <button
-                            @click.prevent="togglePlaybackVolumeOptions()"
-                            class="w-full h-full"
-                        >
-                            <i
+                        <div class="row-start-2 row-span-3 col-start-2 col-span-2 h-full">
+                            <button
+                                @click.prevent="togglePlaybackPlayPause()"
                                 :class="[
-                                    (playback_volume === 0 ? 'fa-volume-xmark' : ''),
-                                    (playback_volume <= 0.25 ? 'fa-volume-off' : ''),
-                                    (playback_volume <= 0.5 ? 'fa-volume-low' : ''),
-                                    (playback_volume <= 1 ? 'fa-volume-high' : ''),
-                                    (is_playback_volume_open ? '-rotate-90' : 'rotate-0'),
-                                    'fas transition duration-200 ease-in-out'
+                                    final_file === null ? 'cursor-not-allowed' : '',
+                                    'w-full h-full'
                                 ]"
-                            ></i>
-                        </button>
-                    </div>
-                </VBox>
+                            >
+                                <i
+                                    :class="[
+                                        is_playing? 'fa-pause' : 'fa-play',
+                                        'fas text-4xl'
+                                    ]"
+                                ></i>
+                            </button>
+                        </div>
+                        <div class="row-start-2 row-span-3 col-start-4 col-span-1 h-full">
+                            <button
+                                :class="[
+                                    final_file === null ? 'cursor-not-allowed' : '',
+                                    'w-full h-full'
+                                ]"
+                            >
+                                <i class="fas fa-rotate-right"></i>
+                                <br>
+                                <span>10</span>
+                            </button>
+                        </div>
+                        <!--playback speed-->
+                        <div
+                            ref="playback_speed_options_container"
+                            class="row-start-5 row-span-1 col-start-2 col-span-1 h-full"
+                        >
+                            <div class="relative w-full h-0">
+                                    <TransitionFade>
+                                        <VBox
+                                            v-show="is_playback_speed_options_open"
+                                            v-click-outside="{
+                                                related_data: 'is_playback_speed_options_open',
+                                                exclude: ['playback_speed_options_container']
+                                            }"
+                                            class="
+                                                w-full h-32 absolute text-center text-theme-black bottom-1
+                                                grid grid-rows-3 divide-y divide-theme-black/5
+                                            "
+                                        >
+                                                <div class="row-span-1">
+                                                    <button
+                                                        @click.self.stop="changePlaybackRate(1.5, $event)"
+                                                        @touchend.self.stop="changePlaybackRate(1.5, $event)"
+                                                        @touchend.
+                                                        :class="[
+                                                            playback_rate === 1.5 ? 'bg-theme-dominant' : 'bg-none' ,
+                                                            'w-full h-full transition-colors duration-200 ease-in-out p-2 rounded-t-lg'
+                                                        ]"
+                                                    >
+                                                        1.5
+                                                    </button>
+                                                </div>
+                                                <div class="row-span-1">
+                                                    <button
+                                                        @click.self.stop="changePlaybackRate(1, $event)"
+                                                        @touchend.self.stop="changePlaybackRate(1, $event)"
+                                                        :class="[
+                                                            playback_rate === 1 ? 'bg-theme-dominant' : 'bg-none' ,
+                                                            'w-full h-full transition-colors duration-200 ease-in-out p-2'
+                                                        ]"
+                                                    >
+                                                        1
+                                                    </button>
+                                                </div>
+                                                <div class="row-span-1">
+                                                    <button
+                                                        @click.self.stop="changePlaybackRate(0.5, $event)"
+                                                        @touchend.self.stop="changePlaybackRate(0.5, $event)"
+                                                        :class="[
+                                                            playback_rate === 0.5 ? 'bg-theme-dominant' : 'bg-none' ,
+                                                            'w-full h-full transition-colors duration-200 ease-in-out p-2 rounded-b-lg'
+                                                        ]"
+                                                    >
+                                                        0.5
+                                                    </button>
+                                                </div>
+                                        </VBox>
+                                    </TransitionFade>
+                            </div>
+                            <button
+                                @click.prevent.stop="[togglePlaybackSpeedOptions(), troubleshootEventListener('g')]"
+                                @touchend.stop="[togglePlaybackSpeedOptions($event), troubleshootEventListener('g')]"
+                                class="w-full h-full"
+                            >
+                                <i
+                                    :class="[
+                                        is_playback_speed_options_open ? '-rotate-90' : 'rotate-0',
+                                        'fas fa-forward transition duration-200 ease-in-out'
+                                    ]"
+                                ></i>
+                            </button>
+                        </div>
+                        <!--playback volume-->
+                        <div
+                            ref="playback_volume_container"
+                            class="row-start-5 row-span-1 col-start-3 col-span-1 h-full"
+                        >
+                            <div
+                                class="relative w-full h-0"
+                                @touchmove="[delayClosePlaybackOptions(true), troubleshootEventListener('touchmove')]"
+                            >
+                                <TransitionFade>
+                                    <VBox
+                                        v-show="is_playback_volume_open"
+                                        v-click-outside="{
+                                            related_data: 'is_playback_volume_open',
+                                            exclude: ['playback_volume_container']
+                                        }"
+                                        class="
+                                            w-full h-32 absolute text-center bottom-1 p-2 py-6
+                                        "
+                                    >
+                                        <VSliderYSmall
+                                            ref="volume_slider"
+                                            :propSliderValue="playback_volume"
+                                            @hasNewSliderValue="changePlaybackVolume($event)"
+                                            class="h-full"
+                                        />
+                                    </VBox>
+                                </TransitionFade>
+                            </div>
+                            <button
+                                @click.prevent.stop="[togglePlaybackVolumeOptions(), troubleshootEventListener('g')]"
+                                @touchend.stop="[togglePlaybackVolumeOptions($event), troubleshootEventListener('g')]"
+                                class="w-full h-full"
+                            >
+                                <i
+                                    :class="[
+                                        (playback_volume === 0 ? 'fa-volume-xmark' : ''),
+                                        (playback_volume <= 0.25 ? 'fa-volume-off' : ''),
+                                        (playback_volume <= 0.5 ? 'fa-volume-low' : ''),
+                                        (playback_volume <= 1 ? 'fa-volume-high' : ''),
+                                        (is_playback_volume_open ? '-rotate-90' : 'rotate-0'),
+                                        'fas transition duration-200 ease-in-out'
+                                    ]"
+                                ></i>
+                            </button>
+                        </div>
+                    </VBox>
+                </div>
+
             </div>
         </div>
     </div>
@@ -254,14 +274,15 @@
                 current_playback_time: '00:00',
                 playback_duration: '00:00',
                 is_playing: false,
-                is_dragging: false,
                 
                 playback_rate: 1,  //accepts 0 to 2
                 playback_volume: 0.5, //accepts 0 to 1
                 is_repeat: false,
 
+                is_playback_options_open: false,
                 is_playback_speed_options_open: false,
                 is_playback_volume_open: false,
+                playback_options_timeout: null,
 
                 is_ready_to_navigate: false,
                 playback_states: ['empty', 'recording', 'has_file', 'loading', 'error'],
@@ -383,6 +404,53 @@
             },
         },
         methods: {
+            delayClosePlaybackOptions(cancel_delay=false, event=null){
+
+                //intended only for touch events
+                
+                if(event !== null && event.cancelable === true){
+                    
+                    //Vue creates passive=false touch events for us
+                    //we are safe, since our events using this function do not involve scrolling directly
+                    event.preventDefault();
+                }
+
+                //this shall only fire if playback_options is already open
+                //if not open, help open
+                this.is_playback_options_open = true;
+
+                //clear delay first
+                if(this.playback_options_timeout !== null){
+
+                    clearTimeout(this.playback_options_timeout);
+                    this.playback_options_timeout = null;
+                }
+
+                //if no explicit ask to cancel delay, continue
+                if(cancel_delay === false){
+
+                    this.playback_options_timeout = setTimeout(this.togglePlaybackOptions, 3000);
+                    console.log('ok scheduled to close');
+                }
+            },
+            togglePlaybackOptions(force_open_close=null){
+
+                //close everything in playback_options first
+                if(force_open_close === false || (force_open_close === null && this.is_playback_options_open === true)){
+
+                    this.is_playback_speed_options_open = false;
+                    this.is_playback_volume_open = false;
+                }
+
+                if(force_open_close !== null){
+
+                    this.is_playback_options_open = force_open_close;
+
+                }else{
+
+                    this.is_playback_options_open = !this.is_playback_options_open;
+                }
+            },
             resetVolumeAnalyser(){
 
                 const volume_analyser_circles = [
@@ -463,7 +531,12 @@
                     this.$refs.audio_playback.currentTime * 1000
                 ).toISOString().substring(14, 19);
             },
-            changePlaybackRate(new_value){
+            changePlaybackRate(new_value, event){
+
+                if(event.cancelable === true){
+
+                    event.preventDefault();
+                }
 
                 //note that on every new file loaded into <audio>, playbackRate is reset
                 //attachRecordedAudioToPlayback() will handle this inconvenience
@@ -477,7 +550,12 @@
                 this.playback_volume = new_value;
                 window.localStorage.playback_volume = new_value;
             },
-            togglePlaybackSpeedOptions(){
+            togglePlaybackSpeedOptions(event=null){
+
+                if(event !== null && event.cancelable === true){
+
+                    event.preventDefault();
+                }
 
                 this.is_playback_speed_options_open = !this.is_playback_speed_options_open;
             },
@@ -485,7 +563,12 @@
 
                 this.is_repeat = !this.is_repeat;
             },
-            togglePlaybackVolumeOptions(){
+            togglePlaybackVolumeOptions(event=null){
+
+                if(event !== null && event.cancelable === true){
+
+                    event.preventDefault();
+                }
 
                 this.is_playback_volume_open = !this.is_playback_volume_open;
             },
@@ -513,18 +596,14 @@
                 //reset all elements
                 //reset all translates to 0
                 anime.remove(volume_ripples);
+                anime.remove(this.$refs.playback_main);
+                anime.remove(this.$refs.playback_extras);
 
                 switch(this.current_playback_state){
 
                     case this.playback_states[0]: {
 
                         //'empty', a.k.a. initial state
-
-                        //initialise or reset all relevant elements
-                        this.$refs.playback_main.style.height = '20rem';
-                        this.$refs.playback_extras.style.display = 'none';
-                        this.$refs.playback_extras.style.opacity = '0';
-                        this.resetVolumeAnalyser();
 
                         //animate volume_ripples
                         anime({
@@ -542,7 +621,7 @@
 
                         //'recording'
 
-                        //fade playback_extras and hide, reset volume_ripples, expand playback_main
+                        //fade playback_extras and hide, clear volume_ripples, expand playback_main
                         anime.timeline({
                             easing: 'linear',
                             loop: false,
@@ -559,7 +638,7 @@
                             duration: 100,
                         }).add({
                             targets: this.$refs.playback_main,
-                            height: '20rem',
+                            height: '15rem',
                             duration: 2000
                         });
 
@@ -576,7 +655,7 @@
                             autoplay: true,
                         }).add({
                             targets: this.$refs.playback_main,
-                            height: '15rem',
+                            height: '10rem',
                             begin: this.resetVolumeAnalyser,
                             duration: 100,
                             complete: this.adjustVolumeRipples,
@@ -592,14 +671,25 @@
                     case this.playback_states[3]:
 
                         //'loading'
+                        
+                        //only reposition volume_ripples, then show that it is loading
+                        anime({
+                            targets: volume_ripples,
+                            translateY: ['0%'],
+                            duration: 0,    //must be 0, no other solutions in this context
+                            autoplay: true,
+                            loop: false,
+                            easing: 'linear',
+                        });
                         anime({
                             targets: volume_ripples,
                             translateY: ['0%', '-10%', '10%', '0%'],
                             autoplay: true,
-                            delay: anime.stagger(20),
-                            easing: 'linear',
                             loop: true,
+                            easing: 'linear',
+                            delay: anime.stagger(20),
                         });
+                        
                         break;
 
                     case this.playback_states[4]:

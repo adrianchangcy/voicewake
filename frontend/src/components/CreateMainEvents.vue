@@ -37,7 +37,7 @@
                     'flex flex-col gap-10 transition-opacity duration-1000 ease-in-out'
                 ]"
             >
-                <div>
+                <div class="w-[80%] mx-auto">
                     <VInput
                         :propIsRequired="false"
                         propElementId="event-name"
@@ -53,10 +53,11 @@
                         @hasNewValue="validateEventName"
                     />
                 </div>
-                <div class="grid grid-cols-4">
+                <div class="w-[80%] mx-auto grid grid-cols-4">
                     <div class="col-span-4">
                         <EmojiPicker
                             propLabelText="Label the feeling"
+                            class=""
                         />
                     </div>
                 </div>
