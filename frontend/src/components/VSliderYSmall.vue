@@ -2,9 +2,8 @@
     <!-- specify your own height -->
     <div
         class="relative p-2 w-fit left-0 right-0 mx-auto touch-none"
-        @click="instantDrag($event)"
-        @mousedown="startDrag()"
-        @touchstart="startDrag()"
+        @mousedown="[startDrag(), doDrag($event)]"
+        @touchstart="[startDrag(true), doDrag($event)]"
     >
         <!--need 99% to remove dead pixel-->
         <div
@@ -35,12 +34,13 @@
             return {
                 slider_value: 0,
                 is_dragging: false,
+                is_touch: false,
             };
         },
         mounted(){
 
             //attach listeners to window for mouse Y
-            window.addEventListener('mousemove', this.doDrag);
+            window.addEventListener('mousemove', this.doDrag);  //hovering over :disabled elements causes unresponsiveness
             window.addEventListener('touchmove', this.doDrag);
             window.addEventListener('mouseup', this.stopDrag);
             window.addEventListener('touchend', this.stopDrag);
@@ -69,13 +69,21 @@
             },
         },
         methods: {
-            startDrag(){
+            startDrag(is_touch=false){
 
                 this.is_dragging = true;
+                this.is_touch = is_touch;
             },
             doDrag(event){
 
-                //when event.passive is true, calls to .preventDefault() will be ignored
+                //for mouse, we need these to avoid text highlighting, accidental permanent drag state, etc.
+                //for touch, we need these to avoid mouse firing
+                event.stopPropagation();
+
+                if(event.cancelable === true && event.defaultPrevented === true){
+                    
+                        event.preventDefault();
+                }
 
                 if(this.is_dragging === true){
 
@@ -84,18 +92,12 @@
                     //can use clientY, screenY, pageY, but pageY is most accurate in this context
                     let user_y = undefined;
 
-                    //instead of using listeners (still a bit unreliable), we check on undefined
-                    if(event.clientY === undefined){
+                    if(this.is_touch === true){
 
-                        //touch
                         user_y = event.touches[0].clientY;
-
+                        
                     }else{
 
-                        //mouse
-                        //we need these to avoid text highlighting, accidental permanent drag state, etc.
-                        event.stopPropagation();
-                        event.preventDefault();
                         user_y = event.clientY;
                     }
 
@@ -127,12 +129,10 @@
             stopDrag(){
 
                 this.is_dragging = false;
-            },
-            instantDrag(event){
 
-                this.startDrag();
-                this.doDrag(event);
-                this.stopDrag();
+                //we reset touch detection on every startDrag() and stopDrag()
+                //so we get latest status of is_touch
+                this.is_touch = false;
             },
             repositionSlider(new_value){
 

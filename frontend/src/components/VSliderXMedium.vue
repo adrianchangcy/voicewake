@@ -2,9 +2,8 @@
     <!-- specify your own height -->
     <div
         class="relative p-2 top-0 bottom-0 my-auto touch-none"
-        @click="instantDrag($event)"
-        @mousedown="startDrag()"
-        @touchstart="startDrag()"
+        @mousedown="[startDrag(), doDrag($event)]"
+        @touchstart="[startDrag(true), doDrag($event)]"
     >
         <!--need 99% to remove dead pixel-->
         <div
@@ -35,6 +34,7 @@
             return {
                 slider_value: 0,
                 is_dragging: false,
+                is_touch: false,
             };
         },
         mounted(){
@@ -73,17 +73,27 @@
             },
         },
         methods: {
-            startDrag(){
+            startDrag(is_touch=false){
 
-                if(this.propIsEnabled === true){
+                if(this.propIsEnabled === false){
 
-                    this.is_dragging = true;
+                    return false;
                 }
+
+                this.is_dragging = true;
+                this.is_touch = is_touch;
             },
             doDrag(event){
 
-                //when event.passive is true, calls to .preventDefault() will be ignored
+                //for mouse, we need these to avoid text highlighting, accidental permanent drag state, etc.
+                //for touch, we need these to avoid mouse firing
+                event.stopPropagation();
 
+                if(event.cancelable === true && event.defaultPrevented === true){
+                    
+                        event.preventDefault();
+                }
+                
                 if(this.is_dragging === true){
 
                     let slider_rect = this.$refs.slider.getBoundingClientRect();
@@ -91,18 +101,12 @@
                     //can use clientX, screenX, pageX, but pageX is most accurate in this context
                     let user_x = undefined;
 
-                    //instead of using listeners (still a bit unreliable), we check on undefined
-                    if(event.clientX === undefined){
+                    if(this.is_touch === true){
 
-                        //touch
                         user_x = event.touches[0].clientX;
 
                     }else{
 
-                        //mouse
-                        //we need these to avoid text highlighting, accidental permanent drag state, etc.
-                        event.stopPropagation();
-                        event.preventDefault();
                         user_x = event.clientX;
                     }
 
@@ -134,12 +138,11 @@
             stopDrag(){
 
                 this.is_dragging = false;
-            },
-            instantDrag(event){
 
-                this.startDrag();
-                this.doDrag(event);
-                this.stopDrag();
+                //we reset touch detection on every startDrag() and stopDrag()
+                //so we get latest status of is_touch
+                //some browsers also trigger both touch + mouse events together
+                this.is_touch = false;
             },
             repositionSlider(new_value){
 
