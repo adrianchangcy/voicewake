@@ -11,6 +11,9 @@ module.exports = {
             //for transition duration
             //hover, e.g. button, is duration-150
             //open/close, e.g. menu, is duration-200
+            //long animation is duration-1000
+
+            //remember to change the values in animeJS if you make changes here
             colors: {
 
                 'theme-dominant': '#FFD645',
