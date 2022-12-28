@@ -2,8 +2,8 @@
     <!-- specify your own height -->
     <div
         class="relative p-2 w-fit left-0 right-0 mx-auto touch-none"
-        @mousedown="[startDrag(), doDrag($event)]"
-        @touchstart="[startDrag(true), doDrag($event)]"
+        @mousedown.stop="[startDrag(), doDrag($event)]"
+        @touchstart.stop="[startDrag(true), doDrag($event)]"
     >
         <!--need 99% to remove dead pixel-->
         <div
@@ -56,6 +56,7 @@
         props: {
             propSliderValue: Number,
         },
+        emits: ['hasNewSliderValue', 'hasNewIsDraggingValue'],
         watch: {
 
             propSliderValue(new_value){
@@ -66,6 +67,10 @@
                     this.slider_value = this.propSliderValue;
                     this.repositionSlider(this.propSliderValue);
                 }
+            },
+            is_dragging(new_value){
+
+                this.$emit('hasNewIsDraggingValue', new_value);
             },
         },
         methods: {
@@ -78,11 +83,9 @@
 
                 //for mouse, we need these to avoid text highlighting, accidental permanent drag state, etc.
                 //for touch, we need these to avoid mouse firing
-                event.stopPropagation();
-
-                if(event.cancelable === true && event.defaultPrevented === true){
+                if(event.cancelable === true){
                     
-                        event.preventDefault();
+                    event.preventDefault();
                 }
 
                 if(this.is_dragging === true){
@@ -143,8 +146,6 @@
 
                 this.$emit('hasNewSliderValue', this.slider_value);
             },
-        },
-        emits: ['hasNewSliderValue'],
-        
+        },        
     }
 </script>

@@ -7,7 +7,7 @@
 /*enable this to troubleshoot css errors*/
 /* * {
     outline: 1px solid #f00 !important;
-  } */
+} */
 
 /*this is to save vertical space via hiding labels, while still readable to screen readers*/
 .hide-but-readable {

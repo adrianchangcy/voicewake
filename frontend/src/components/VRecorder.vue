@@ -22,7 +22,7 @@
                     'row-start-1 row-span-1 col-span-2'
                 ]"
             >
-                <span class="text-xl">{{current_duration_pretty}} / {{max_recording_duration_ms_pretty}}</span>
+                <span class="text-xl">{{current_duration_pretty}}</span>
             </div>
             <VActionButtonSmall
                 @click.prevent="recorderPauseResume()"
@@ -207,7 +207,9 @@
 
                 //handle time elapsed
                 this.current_duration += this.time_interval;
-                this.current_duration_pretty = new Date(Math.floor(this.current_duration)).toISOString().substring(14, 19);
+                this.current_duration_pretty = new Date(
+                    Math.floor(this.max_recording_duration_ms - this.current_duration)
+                ).toISOString().substring(14, 19);
 
                 //give user instant visual feedback on recording input
             },
@@ -382,6 +384,12 @@
                 return true;
             },
             recorderStop(){
+
+                //don't stop if < 1 second, as near 0 will cause bugs
+                if(this.current_duration < 1000){
+
+                    return false;
+                }
 
                 //attach recorded audio to file input and playback
                 try{

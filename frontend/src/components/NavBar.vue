@@ -81,8 +81,8 @@
             <div 
                 v-show="is_nav_main_more_open"
                 v-click-outside="{
-                    related_data: 'is_nav_main_more_open',
-                    exclude: ['nav_main_more_button', 'nav_main_more_mobile_button']
+                    var_name_for_element_bool_status: 'is_nav_main_more_open',
+                    refs_to_exclude: ['nav_main_more_button', 'nav_main_more_mobile_button']
                 }"
                 class="w-screen h-screen absolute right-0 lg:max-w-fit lg:border-l border-black/5      backdrop-blur bg-theme-light/60"
             >
@@ -119,9 +119,8 @@
     </nav>
 </template>
 
-  
 <script setup>
-  
+
     // import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
     import VNavigationButton from './VNavigationButton.vue';
     import VActionButtonWeird from './VActionButtonWeird.vue';

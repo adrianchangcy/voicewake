@@ -14,7 +14,7 @@
                 flex flex-nowrap flex-col gap-10
                 "
         >
-            <div class="flex-1 grid gap-2">
+            <div class="w-[90%] mx-auto grid gap-2">
                 <div class="text-4xl text-center w-full h-fit p-2">
                     <span>Say</span>
                 </div>
@@ -68,6 +68,9 @@
                     >
                         <span>Start hearing from others</span>
                     </VActionButtonBig>
+                </div>
+                <div class="h-10">
+                    <!--extra spacing for EmojiPicker dropdown-->
                 </div>
             </div>
         </form>

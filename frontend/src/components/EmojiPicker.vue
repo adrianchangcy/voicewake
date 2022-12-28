@@ -23,8 +23,8 @@
                     <VBox
                         v-show="is_emoji_picker_open"
                         v-click-outside="{
-                            related_data: 'is_emoji_picker_open',
-                            exclude: ['emoji_choice_label', 'emoji_choice_button']
+                            var_name_for_element_bool_status: 'is_emoji_picker_open',
+                            refs_to_exclude: ['emoji_choice_label', 'emoji_choice_button']
                         }"
                         class="top-2 p-2 absolute z-10 w-full left-0 right-0 mx-auto"
                     >
