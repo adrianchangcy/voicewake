@@ -1,21 +1,22 @@
 <template>
     <!-- specify your own height -->
     <div
+        ref="slider"
         class="relative p-2 w-fit left-0 right-0 mx-auto touch-none"
         @mousedown.stop="[startDrag(), doDrag($event)]"
         @touchstart.stop="[startDrag(true), doDrag($event)]"
     >
         <!--need 99% to remove dead pixel-->
         <div
-            ref="slider"
             class="w-2 h-[99%] absolute bg-theme-idle left-0 right-0 mx-auto top-0 bottom-0"
         ></div>
         <div
-            ref="current_position"
-            class="w-2 absolute bg-theme-dominant left-0 right-0 mx-auto bottom-0"
+            ref="slider_progress"
+            class="w-2 h-full absolute bg-theme-dominant left-0 right-0 mx-auto bottom-0 origin-bottom"
         >
             <div
-                class="w-4 h-4 bg-theme-black left-0 right-0 top-0 absolute -translate-y-2 -translate-x-1"
+                ref="slider_knob"
+                class="w-4 h-4 bg-theme-black absolute -left-1 -top-2"
             ></div>
         </div>
     </div>
@@ -32,6 +33,7 @@
 
         data(){
             return {
+                slider_dimension: null,
                 slider_value: 0,
                 is_dragging: false,
                 is_touch: false,
@@ -65,8 +67,9 @@
 
                     //using watcher is important past initial 0 values, i.e. if localStorage exists
                     this.slider_value = this.propSliderValue;
-                    this.repositionSlider(this.propSliderValue);
                 }
+
+                this.repositionSlider();
             },
             is_dragging(new_value){
 
@@ -75,6 +78,8 @@
         },
         methods: {
             startDrag(is_touch=false){
+
+                this.slider_dimension = this.$refs.slider.getBoundingClientRect();
 
                 this.is_dragging = true;
                 this.is_touch = is_touch;
@@ -90,8 +95,6 @@
 
                 if(this.is_dragging === true){
 
-                    let slider_rect = this.$refs.slider.getBoundingClientRect();
-
                     //can use clientY, screenY, pageY, but pageY is most accurate in this context
                     let user_y = undefined;
 
@@ -104,15 +107,15 @@
                         user_y = event.clientY;
                     }
 
-                    if(user_y >= slider_rect.top && user_y <= slider_rect.bottom){
+                    if(user_y >= this.slider_dimension.top && user_y <= this.slider_dimension.bottom){
 
-                        this.slider_value = ((slider_rect.bottom - user_y) / slider_rect.height).toFixed(2) * 1;
+                        this.slider_value = ((this.slider_dimension.bottom - user_y) / this.slider_dimension.height).toFixed(2) * 1;
 
-                    }else if(user_y < slider_rect.top){
+                    }else if(user_y < this.slider_dimension.top){
 
                         this.slider_value = 1;
 
-                    }else if(user_y > slider_rect.bottom){
+                    }else if(user_y > this.slider_dimension.bottom){
 
                         this.slider_value = 0;
                     }
@@ -123,8 +126,8 @@
                     //troubleshoot if needed
                     // console.log("==========================");
                     // console.log('user_y: '+user_y);
-                    // console.log('slider_top: '+slider_rect.top);
-                    // console.log('slider_bottom: '+slider_rect.bottom);
+                    // console.log('slider_top: '+this.slider_dimension.top);
+                    // console.log('slider_bottom: '+this.slider_dimension.bottom);
                     // console.log(this.slider_value);
                     // console.log("==========================");
                 }
@@ -137,15 +140,26 @@
                 //so we get latest status of is_touch
                 this.is_touch = false;
             },
-            repositionSlider(new_value){
+            repositionSlider(){
+
+                //we must not go fully 0, else it hides slider_knob
+                let scale_value = this.slider_value;
+
+                if(this.slider_value === 0){
+
+                    scale_value = 0.001;
+                }
 
                 //handle visual representation
-                this.$refs.current_position.style.height = (new_value * 100).toString() + '%';
+                this.$refs.slider_progress.style.transform = 'scaleY(' + scale_value.toString() + ')';
+                
+                //since we have no px to refer to for translate due to v-show, we do inverse scale trick
+                this.$refs.slider_knob.style.transform = 'scaleY(' + (1 / scale_value).toString() + ')';
             },
             emitNewSliderValue(){
 
                 this.$emit('hasNewSliderValue', this.slider_value);
             },
-        },        
+        },
     }
 </script>

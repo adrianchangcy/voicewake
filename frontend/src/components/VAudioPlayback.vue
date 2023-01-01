@@ -19,10 +19,6 @@
                 @mousedown.stop="[startPlaybackDrag(), doPlaybackDrag($event)]"
                 @touchstart.stop="[startPlaybackDrag(true), doPlaybackDrag($event)]"
             >
-                <div
-                    ref="playback_slider_knob"
-                    class="w-4 h-4 rounded-full bg-theme-black top-0 my-auto absolute"
-                ></div>
             </div>
             <!--timers-->
             <div class="w-full h-10 text-base items-center grid grid-cols-4 px-2">
@@ -37,16 +33,16 @@
         >
             <div class="relative w-full h-full">
                 <div
-                    ref="volume_analyser_circle_0"
-                    class="absolute w-0 h-0 left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-dominant/60"
+                    ref="recording_visualiser_circle_0"
+                    class="absolute w-full h-full scale-0 left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-dominant/60"
                 ></div>
                 <div
-                    ref="volume_analyser_circle_1"
-                    class="absolute w-0 h-0 left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-dominant/40"
+                    ref="recording_visualiser_circle_1"
+                    class="absolute w-full h-full scale-0 left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-dominant/40"
                 ></div>
                 <div
-                    ref="volume_analyser_circle_2"
-                    class="absolute w-0 h-0 left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-dominant/20"
+                    ref="recording_visualiser_circle_2"
+                    class="absolute w-full h-full scale-0 left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-dominant/20"
                 ></div>
             </div>
         </div>
@@ -62,6 +58,11 @@
                         <div ref="playback_slider_needle" class="absolute h-full left-0 opacity-0 hidden">
                             <div
                                 class="w-1 h-full rounded-full bg-theme-dominant -right-0.5 absolute"
+                            ></div>
+                            <div
+                                class="w-4 h-4 rounded-full bg-theme-black -bottom-4 -left-2 my-auto absolute touch-none"
+                                @mousedown.stop="[startPlaybackDrag(), doPlaybackDrag($event)]"
+                                @touchstart.stop="[startPlaybackDrag(true), doPlaybackDrag($event)]"
                             ></div>
                         </div>
                         <div class="absolute w-full h-full grid grid-cols-max grid-flow-col gap-1 place-items-center">
@@ -86,6 +87,7 @@
                     ref="playback_options"
                     class="absolute w-full h-full text-theme-black"
                     tabindex="0"
+                    v-show="final_file !== null"
                     @keyup.enter.self.stop="[togglePlaybackOptions(), troubleshootEventListener('b')]"
                     @mouseenter.self.stop="[mouseTogglePlaybackOptions(true), troubleshootEventListener('mouseenter')]"
                     @mouseleave.self.stop="[mouseTogglePlaybackOptions(false), troubleshootEventListener('mouseleave')]"
@@ -93,14 +95,14 @@
                 >
                     <TransitionFade>
                         <VBox
-                            v-show="is_playback_options_open && final_file !== null"
+                            v-show="is_playback_options_open"
                             class="w-full h-full grid grid-rows-5 grid-cols-4 items-center rounded-lg gap-2 p-2 text-xl"
                         >
                             <!--backward-->
                             <div class="row-start-2 row-span-3 col-start-1 col-span-1 h-full">
                                 <button
                                     @click.stop="skipPlayback(-10, $event)"
-                                    @touchend.stop="skipPlayback(-10, $event)"
+                                    @touchend="skipPlayback(-10, $event)"
                                     :class="[
                                         final_file === null ? 'cursor-not-allowed' : '',
                                         'w-full h-full'
@@ -115,7 +117,7 @@
                             <div class="row-start-2 row-span-3 col-start-2 col-span-2 h-full">
                                 <button
                                     @click.stop="togglePlaybackPlayPause($event)"
-                                    @touchend.stop="togglePlaybackPlayPause($event)"
+                                    @touchend="togglePlaybackPlayPause($event)"
                                     :class="[
                                         final_file === null ? 'cursor-not-allowed' : '',
                                         'w-full h-full'
@@ -133,7 +135,7 @@
                             <div class="row-start-2 row-span-3 col-start-4 col-span-1 h-full">
                                 <button
                                     @click.stop="skipPlayback(10, $event)"
-                                    @touchend.stop="skipPlayback(10, $event)"
+                                    @touchend="skipPlayback(10, $event)"
                                     :class="[
                                         final_file === null ? 'cursor-not-allowed' : '',
                                         'w-full h-full'
@@ -184,7 +186,7 @@
                                     ></i>
                                 </button>
                             </div>
-                            <!--playback speed menu-->
+                            <!--playback rate menu-->
                             <TransitionFade>
                                 <VBox
                                     v-show="is_playback_speed_options_open"
@@ -204,7 +206,7 @@
                                             <div class="row-span-1">
                                                 <button
                                                     @click.self.stop="changePlaybackRate(1.5, $event)"
-                                                    @touchend.self.stop="changePlaybackRate(1.5, $event)"
+                                                    @touchend="changePlaybackRate(1.5, $event)"
                                                     :class="[
                                                         playback_rate === 1.5 ? 'bg-theme-dominant' : 'bg-none' ,
                                                         'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-t-lg'
@@ -216,7 +218,7 @@
                                             <div class="row-span-1">
                                                 <button
                                                     @click.self.stop="changePlaybackRate(1, $event)"
-                                                    @touchend.self.stop="changePlaybackRate(1, $event)"
+                                                    @touchend="changePlaybackRate(1, $event)"
                                                     :class="[
                                                         playback_rate === 1 ? 'bg-theme-dominant' : 'bg-none' ,
                                                         'w-full h-full transition-colors duration-200 ease-in-out p-1'
@@ -228,7 +230,7 @@
                                             <div class="row-span-1">
                                                 <button
                                                     @click.self.stop="changePlaybackRate(0.5, $event)"
-                                                    @touchend.self.stop="changePlaybackRate(0.5, $event)"
+                                                    @touchend="changePlaybackRate(0.5, $event)"
                                                     :class="[
                                                         playback_rate === 0.5 ? 'bg-theme-dominant' : 'bg-none' ,
                                                         'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-b-lg'
@@ -304,12 +306,11 @@
                 is_dragging: false,
                 is_slider_touch: false,
                 slider_dimension: null,
-                slider_knob_anime: null, //we play/pause instead of new anime() to prevent second play off-position
                 slider_needle_anime: null, //we play/pause instead of new anime() to prevent second play off-position
                 resume_after_stop_dragging: null,    //to know whether to resume after done navigating
                 resume_after_stop_skipping: null,   //to know whether to resume after done navigating
 
-                playback_rate: 1,  //accepts 0 to 2
+                playback_rate: 1,   //allows 0 to 2, but we handle 0.5, 1, 1.5
                 playback_volume: 0.5, //accepts 0 to 1
                 is_repeat: false,
 
@@ -371,6 +372,7 @@
             window.addEventListener('mouseup', this.stopPlaybackDrag);
             window.addEventListener('touchend', this.stopPlaybackDrag);
             window.addEventListener('resize', this.adjustToNewPlaybackDimension);
+            document.addEventListener('visibilitychange', this.syncSliderNeedleAnimeAfterSuspend);
         },
         beforeUnmount(){
 
@@ -380,6 +382,7 @@
             window.removeEventListener('mouseup', this.stopPlaybackDrag);
             window.removeEventListener('touchend', this.stopPlaybackDrag);
             window.removeEventListener('resize', this.adjustToNewPlaybackDimension);
+            document.removeEventListener('visibilitychange', this.syncSliderNeedleAnimeAfterSuspend);
         },
         props: {
             propFile: Object,
@@ -422,6 +425,7 @@
                 if(new_value === false){
 
                     return false;
+
                 }
 
                 //reset most things when recording a new instance
@@ -431,28 +435,53 @@
                     this.pausePlayback();
                 }
                 this.current_playback_state = this.playback_states[1];
+                this.slider_needle_anime = null;
             },
             current_playback_state(){
 
                 this.animePlaybackStates();
             },
-            is_playing(new_value){
-                console.log('is_playing? '+new_value);
-            }
         },
         methods: {
-            createSliderNeedleKnobAnime(){
+            syncSliderNeedleAnimeAfterSuspend(){
 
-                //to be called one time only at getPlaybackDuration(), or on window resize
+                //we need this because anime.suspendDocumentWhenHidden=false does not work
+                //basically just to reposition slider anime to playback, else it doesn't do that
+                //must call pause() first, else seek() is inaccurate
+                if(document.visibilityState === 'visible' && this.slider_needle_anime !== null){
+
+                    const resume_later = this.is_playing;
+
+                    if(this.is_playing === true){
+
+                        //reminder that pausePlayback() also updates this.slider_value
+                        this.pausePlayback();
+                    }
+
+                    this.slider_needle_anime.seek(this.slider_value * this.slider_needle_anime.duration);
+
+                    if(resume_later === true){
+
+                        const target = this.$refs.audio_playback;
+
+                        //we want to mute to avoid the rare slight spike at certain db
+                        target.muted = true;
+                        this.playPlayback();
+                        target.muted = false;
+                    }
+                }
+            },
+            createSliderNeedleKnobAnime(){
+            
+                //to be called during getPlaybackDuration(), window resize, changePlaybackRate()
                 //we can then use .play/.pause/.seek
                 //expects to already have accurate this.slider_value
 
-                //check and remove any existing anime
-                this.slider_value = 0;
-
                 //calculate starting point of translateX
-                const starting_translateX = this.slider_value * this.slider_dimension.width;
                 const ending_translateX = this.slider_dimension.width;
+
+                //calculate duration based on playback_rate
+                const anime_duration = this.getRealDurationAfterPlaybackRate() * 1000;
 
                 //create new needle anime
                 this.slider_needle_anime = anime({
@@ -460,28 +489,12 @@
                     easing: 'linear',
                     autoplay: false,
                     loop: false,
-                    duration: this.final_file_duration * 1000,
+                    duration: anime_duration,
                     translateX: [
-                        (starting_translateX).toString() + 'px',
-                        (ending_translateX).toString() + 'px'
+                        '0px',
+                        ending_translateX.toString() + 'px'
                     ],
                 });
-
-                //create new knob anime, remembering to shift to center
-                //8px is for -translate-x-2, cannot use getBoundingClientRect() here
-                const knob_distance_to_center = 8;
-                this.slider_knob_anime = anime({
-                    targets: this.$refs.playback_slider_knob,
-                    easing: 'linear',
-                    autoplay: false,
-                    loop: false,
-                    duration: this.final_file_duration * 1000,
-                    translateX: [
-                        (starting_translateX - knob_distance_to_center).toString() + 'px',
-                        (ending_translateX - knob_distance_to_center).toString() + 'px'
-                    ],
-                });
-
             },
             adjustToNewPlaybackDimension(){
 
@@ -490,7 +503,7 @@
                 this.slider_dimension = this.$refs.slider_dimension_reference.getBoundingClientRect();
 
                 //create/recreate anime
-                if(this.final_file !== null){
+                if(this.final_file !== null && this.slider_needle_anime !== null){
 
                     this.createSliderNeedleKnobAnime();
                 }
@@ -596,18 +609,20 @@
             handlePlaybackDrag(){
 
                 //expects slider_value to be float 0 to 1
-                const current_duration = this.slider_value * this.final_file_duration;
+
+                //duration is the same regardless of playbackRate
+                const jumped_anime_duration = this.slider_value * this.slider_needle_anime.duration;
+                //duration changes when playbackRate changes
+                const jumped_playback_duration = this.slider_value * this.$refs.audio_playback.duration;
 
                 //handle slider aesthetics
                 //need to set .completed to false, else .play() starts from 0 if it has finished before
                 //must be in ms
                 this.slider_needle_anime.completed = false;
-                this.slider_knob_anime.completed = false;
-                this.slider_needle_anime.seek(current_duration * 1000);
-                this.slider_knob_anime.seek(current_duration * 1000);
+                this.slider_needle_anime.seek(jumped_anime_duration);
 
                 //handle <audio>
-                this.$refs.audio_playback.currentTime = current_duration;
+                this.$refs.audio_playback.currentTime = jumped_playback_duration;
 
                 //handle timer
                 this.updateCurrentPlaybackTime();
@@ -743,46 +758,47 @@
             },
             resetVolumeAnalyser(){
 
-                const volume_analyser_circles = [
-                    this.$refs.volume_analyser_circle_0,
-                    this.$refs.volume_analyser_circle_1,
-                    this.$refs.volume_analyser_circle_2,
+                const recording_visualiser_circles = [
+                    this.$refs.recording_visualiser_circle_0,
+                    this.$refs.recording_visualiser_circle_1,
+                    this.$refs.recording_visualiser_circle_2,
                 ];
 
+                //scale does not accept % or px, only percentage digit
                 anime({
-                    targets: volume_analyser_circles,
+                    targets: recording_visualiser_circles,
                     easing: 'linear',
                     loop: false,
                     autoplay: true,
-                    width: '0',
-                    height: '0',
+                    scaleX: '0',
+                    scaleY: '0',
                     duration: this.fastest_anime_duration_ms,
                 });
             },
             animeVolumeAnalyser(new_value){
 
-                const volume_analyser_circles = [
-                    this.$refs.volume_analyser_circle_0,
-                    this.$refs.volume_analyser_circle_1,
-                    this.$refs.volume_analyser_circle_2,
+                const recording_visualiser_circles = [
+                    this.$refs.recording_visualiser_circle_0,
+                    this.$refs.recording_visualiser_circle_1,
+                    this.$refs.recording_visualiser_circle_2,
                 ];
 
-                //circles have width and height of 20-30, 30-50, 50-80 %
-                let base_target_percentage = 10;
-                const percentage_increment = 30;
+                //scale works with values from 0 to 1
+                const base_target_percentage = 0.1;
+                const percentage_increment = 0.3;
                 
-                anime.remove(volume_analyser_circles);
+                anime.remove(recording_visualiser_circles);
 
-                for(let x=0; x < volume_analyser_circles.length; x++){
+                for(let x=0; x < recording_visualiser_circles.length; x++){
 
                     const extra_target_percentage = (x + 1) * percentage_increment;
-
                     const final_target_percentage = (new_value * extra_target_percentage) + base_target_percentage;
 
+                    //scale does not accept % or px, only percentage digit
                     anime({
-                        targets: volume_analyser_circles[x],
-                        width: final_target_percentage.toString() + '%',
-                        height: final_target_percentage.toString() + '%',
+                        targets: recording_visualiser_circles[x],
+                        scaleX: final_target_percentage.toString(),
+                        scaleY: final_target_percentage.toString(),
                         autoplay: true,
                         easing: 'linear',
                         loop: false,
@@ -799,6 +815,11 @@
                     target.currentTime * 1000
                 ).toISOString().substring(14, 19);
             },
+            getRealDurationAfterPlaybackRate(){
+
+                //note that when <audio> playbackRate changes, .duration is still the same
+                return this.final_file_duration / this.playback_rate;
+            },
             changePlaybackRate(new_value, event=null){
 
                 if(event !== null && event.cancelable === true){
@@ -811,9 +832,20 @@
                 this.$refs.audio_playback.playbackRate = new_value;
                 this.playback_rate = new_value;
                 window.localStorage.playback_rate = new_value;
+
+                //adjust anime
+                const resume_later = this.is_playing;
+                this.pausePlayback();
+                this.createSliderNeedleKnobAnime();
+                this.slider_needle_anime.seek(this.slider_value * this.slider_needle_anime.duration);
+                if(resume_later === true){
+
+                    this.playPlayback();
+                }
             },
             updateIsDraggingVolume(new_value){
 
+                //we want this to pevent mouseleave from closing playback_options via mouseTogglePlaybackOptions()
                 this.is_dragging_volume = new_value;
             },
             changePlaybackVolume(new_value){
@@ -859,7 +891,6 @@
                     //don't need seek(), as when .completed is true, play() restarts
                     this.slider_value = 0;
                     this.slider_needle_anime.completed = true;
-                    this.slider_knob_anime.completed = true;
 
                     //extra thing to do for our drag-to-end trick
                     target.muted = false;
@@ -867,7 +898,6 @@
 
                 target.play();
                 this.slider_needle_anime.play();
-                this.slider_knob_anime.play();
                 this.is_playing = true;
             },
             pausePlayback(){
@@ -879,9 +909,8 @@
 
                 target.pause();
                 //recalculate slider value
-                this.slider_value = this.$refs.audio_playback.currentTime / this.final_file_duration;
+                this.slider_value = target.currentTime / this.final_file_duration;
                 this.slider_needle_anime.pause();
-                this.slider_knob_anime.pause();
                 this.is_playing = false;
             },
             togglePlaybackPlayPause(event=null){
@@ -920,9 +949,9 @@
                     this.$refs.playback_main,
                     this.$refs.playback_extras,
                     this.$refs.recording_visualiser,
-                    this.$refs.volume_analyser_circle_0,
-                    this.$refs.volume_analyser_circle_1,
-                    this.$refs.volume_analyser_circle_2,
+                    this.$refs.recording_visualiser_circle_0,
+                    this.$refs.recording_visualiser_circle_1,
+                    this.$refs.recording_visualiser_circle_2,
                 ]);
 
                 switch(this.current_playback_state){
@@ -1208,9 +1237,10 @@
 
                         this.$refs.audio_playback.currentTime = 0;
                         this.$refs.audio_playback.removeEventListener('timeupdate', handler);
-                        this.final_file_duration = this.$refs.audio_playback.duration;
+                        this.final_file_duration = this.$refs.audio_playback.duration; console.log(this.final_file_duration);
 
                         //create anime
+                        this.slider_value = 0;
                         this.createSliderNeedleKnobAnime();
 
                         //mm:ss
@@ -1225,7 +1255,9 @@
                 }else{
 
                     this.final_file_duration = this.$refs.audio_playback.duration;
+
                     //create anime
+                    this.slider_value = 0;
                     this.createSliderNeedleKnobAnime();
                 }
 
