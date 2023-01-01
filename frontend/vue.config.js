@@ -7,8 +7,8 @@ module.exports = {
     runtimeCompiler: true, // See: https://vuejs.org/v2/guide/installation.html#Runtime-Compiler-vs-Runtime-only
     devServer: {
         devMiddleware: {
-          // see https://github.com/webpack/webpack-dev-server/issues/2958
-          writeToDisk: true, 
+            // see https://github.com/webpack/webpack-dev-server/issues/2958
+            writeToDisk: true, 
         }
     },
 };

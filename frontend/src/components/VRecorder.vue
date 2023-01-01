@@ -81,6 +81,7 @@
                 time_interval: 200, //milliseconds
                 recorder_state: undefined,
                 recording_volume: 0,    //0-1, only changes when recording
+                recording_interval_worker: null,
 
                 final_blob: null,
                 final_file: null,
@@ -92,8 +93,8 @@
                 //webm, despite being able to contain video media, is seamlessly handled by <audio>
                 max_audio_file_size_mb: 10,
                 audio_file_extensions_allowed: ['mp3','webm'],
-                max_recording_duration_ms: 1000 * 60 * 2,    //2 minutes
-                max_recording_duration_ms_pretty: new Date(1000 * 60 * 2).toISOString().substring(14, 19),
+                // max_recording_duration_ms: (1000 * 60 * 2) + 500,    //2m + 0.5s, as final_file is always +-0.1s away
+                max_recording_duration_ms: 5000 + 500,
             };
         },
         mounted(){
@@ -103,6 +104,11 @@
 
             //emit original source of time_interval
             this.$emit('hasNewTimeInterval', this.time_interval);
+        },
+        beforeUnmount(){
+
+            //just in case
+            this.stopRecordingIntervalWorker();
         },
         components: {
             VActionButtonSmall,
@@ -129,7 +135,48 @@
         },
         emits: ['hasNewRecording', 'isRecording', 'hasNewRecordingVolume', 'hasNewTimeInterval'],
         methods: {
-            handleVolumeAnalyser(){
+            stopRecordingIntervalWorker(){
+
+                if(this.recording_interval_worker !== null){
+
+                    this.recording_interval_worker.postMessage({
+                        'action': 'stop'
+                    });
+
+                    this.recording_interval_worker.terminate();
+                    this.recording_interval_worker = null;
+                }
+            },
+            startRecordingIntervalWorker(){
+
+                //set up web worker to stop recording appropriately, even when tabbed out
+                //expect {'action': 'start/stop', 'interval_ms: 0, 'starting_ms': 0}
+                //we have webpack 5, so we do not need worker-loader package
+
+                if(this.recording_interval_worker === null){
+
+                    this.recording_interval_worker = new Worker(
+                        new URL('/src/workers/IntervalTimer.js', import.meta.url)
+                    );
+                }
+
+                this.recording_interval_worker.postMessage({
+                    'action': 'start',
+                    'interval_ms': this.time_interval,
+                    'starting_ms': this.current_duration
+                });
+
+                this.recording_interval_worker.onmessage = (event)=>{
+
+                    //can do ===, but feels safer with >=
+                    if(event.data >= this.max_recording_duration_ms){
+
+                        this.recorderStop();
+                    }
+                }
+
+            },
+            async handleVolumeAnalyser(){
 
                 const volumes = new Uint8Array(this.volume_analyser.frequencyBinCount);
                 this.volume_analyser.getByteFrequencyData(volumes);
@@ -308,7 +355,7 @@
                 
                     // requires timeSlice above
                     // returns blob via callback function
-                    ondataavailable: () => {this.handleRecordingInput()},
+                    ondataavailable: this.handleRecordingInput,
                 
                     // auto stop recording if camera stops
                     checkForInactiveTracks: false,
@@ -362,6 +409,7 @@
                     .onRecordingStopped(this.recorderStop);
                 
                 this.recorder.startRecording();
+                this.startRecordingIntervalWorker();
                 this.recorder_state = this.recorder.state;
                 this.is_recording = true;
 
@@ -372,11 +420,13 @@
                 if(this.recorder.state == 'recording'){
 
                     this.recorder.pauseRecording();
+                    this.stopRecordingIntervalWorker();
                     this.stopVolumeAnalyser();
 
                 }else if(this.recorder.state == 'paused'){
 
                     this.recorder.resumeRecording();
+                    this.startRecordingIntervalWorker();
                     this.startVolumeAnalyser();
                 }
 
@@ -385,18 +435,13 @@
             },
             recorderStop(){
 
-                //don't stop if < 1 second, as near 0 will cause bugs
-                if(this.current_duration < 1000){
-
-                    return false;
-                }
-
                 //attach recorded audio to file input and playback
                 try{
 
                     if(this.recorder.state === 'stopped'){
                         
                         //if auto-stop, state will be 'stopped'
+                        this.stopRecordingIntervalWorker();
                         this.saveRecorderAudioAsFile();
                         this.stream.stop();
                         this.stopVolumeAnalyser();
@@ -405,6 +450,7 @@
 
                         //stopRecording() bug dictates that we must run codes in it to getBlob() properly
                         this.recorder.stopRecording( () => {
+                            this.stopRecordingIntervalWorker();
                             this.saveRecorderAudioAsFile();
                             this.stream.stop();
                             this.stopVolumeAnalyser();
