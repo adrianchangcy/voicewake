@@ -6,11 +6,8 @@ import CreateMainEventsApp from './CreateMainEventsApp.vue';
 
 const clickOutside = {
 
-    //2022-12-28
-    //ARCHIVED TO-DO: make anything with v-click-outside to treat other v-click-outside like any other elements
-        //v-click-outside's element scope is on individual component level
-        //so when clicking via cross-component, it doesn't register
-        //PROBLEM: is_open does not become false if clicking another v-click-outside component
+    //PROBLEM: make anything with v-click-outside to treat other v-click-outside like any other elements
+    //FIX: don't use event.stopPropagation(), else your events cannot reach here
 
     beforeMount: (element, binding) => {
 

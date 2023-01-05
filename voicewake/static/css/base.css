@@ -32,15 +32,6 @@
 }
 
 /*
-    FONT STANDARDS
-current hierarchy of text sizes
-form title is text-3xl
-form input label is text-xl
-form input is text-lg
-form miscellaneous, e.g. character counter and input status text, is text-sm
-*/
-
-/*
     NAMING STANDARDS
     for ref, use "ref_name", so we can do this.$refs.ref_name with no issue
     for functions, use "functionName"

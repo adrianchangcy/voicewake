@@ -9,10 +9,10 @@
                 @click.prevent="recorderStart()"
                 aria-label="record"
                 :class="[
-                    recorder_state !== undefined && recorder_state !== 'stopped' ? 'col-span-1 text-theme-disabled' : 'col-span-4 text-theme-black',
+                    recorder_state !== undefined && recorder_state !== 'stopped' ? 'col-span-1' : 'col-span-4',
                     'w-full row-span-2 transition-colors duration-200 ease-in-out'
                 ]"
-                :propIsDisabled="recorder_state !== undefined && recorder_state !== 'stopped'"
+                :propIsEnabled="is_anime_playback_truly_completed === true && is_recording === false"
             >
                 <i class="fas fa-microphone-lines"></i>
             </VActionButtonMedium>
@@ -22,7 +22,7 @@
                     'row-start-1 row-span-1 col-span-2'
                 ]"
             >
-                <span class="text-xl">{{current_duration_pretty}}</span>
+                <span class="text-xl">-{{current_duration_pretty}}</span>
             </div>
             <VActionButtonSmall
                 @click.prevent="recorderPauseResume()"
@@ -44,10 +44,11 @@
                 @click.prevent="recorderStop()"
                 aria-label="end recording"
                 :class="[
-                    recorder_state !== undefined && recorder_state !== 'stopped' ? '' : 'hidden',
+                    (recorder_state !== undefined && recorder_state !== 'stopped' ? '' : 'hidden'),
                     'col-start-4 row-span-2 col-span-1 w-full'
                 ]"
                 :propIsDefaultTextSize="false"
+                :propIsEnabled="is_anime_playback_truly_completed === true && is_recording === true"
             >
                 <i class="fas fa-stop text-2xl"></i>
             </VActionButtonMedium>
@@ -85,16 +86,17 @@
 
                 final_blob: null,
                 final_file: null,
-                is_recording: false,
+                is_recording: false,    //is not affected by pause/resume
                 current_duration: 0,    //milliseconds
                 current_duration_pretty: '00:00',
+                is_anime_playback_truly_completed: false,
 
                 //default values
                 //webm, despite being able to contain video media, is seamlessly handled by <audio>
                 max_audio_file_size_mb: 10,
                 audio_file_extensions_allowed: ['mp3','webm'],
                 // max_recording_duration_ms: (1000 * 60 * 2) + 500,    //2m + 0.5s, as final_file is always +-0.1s away
-                max_recording_duration_ms: 5000 + 500,
+                max_recording_duration_ms: 20000 + 500,
             };
         },
         mounted(){
@@ -118,6 +120,7 @@
         props: {
             propLabelText: String,
             propTimeInterval: Number,
+            propIsAnimePlaybackCompleted: Boolean,
         },
         watch: {
             final_file(new_value){
@@ -126,12 +129,21 @@
             },
             is_recording(new_value){
 
+                //reset to false before incoming anime, as there will be anime for both is_recording=true/false
+                this.is_anime_playback_truly_completed = false;
+
                 this.$emit('isRecording', new_value);
             },
             recording_volume(new_value){
 
                 this.$emit('hasNewRecordingVolume', new_value);
             },
+            propIsAnimePlaybackCompleted(new_value){
+
+                //relying on prop alone isn't enough, because when is_recording is changed, it is still true
+                //here, we get the final true
+                this.is_anime_playback_truly_completed = new_value;
+            }
         },
         emits: ['hasNewRecording', 'isRecording', 'hasNewRecordingVolume', 'hasNewTimeInterval'],
         methods: {
@@ -306,6 +318,11 @@
             },
             async recorderStart(){
 
+                if(this.is_anime_playback_truly_completed === false || this.is_recording === true){
+
+                    return false;
+                }
+
                 //clear previous recording
                 this.final_blob = null;
                 this.final_file = null;
@@ -417,6 +434,11 @@
             },
             recorderPauseResume(){
                 
+                if(this.is_recording === false){
+
+                    return false;
+                }
+
                 if(this.recorder.state == 'recording'){
 
                     this.recorder.pauseRecording();
@@ -434,6 +456,11 @@
                 return true;
             },
             recorderStop(){
+
+                if(this.is_anime_playback_truly_completed === false || this.is_recording === false){
+
+                    return false;
+                }
 
                 //attach recorded audio to file input and playback
                 try{

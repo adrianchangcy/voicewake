@@ -84,11 +84,11 @@
                 this.is_dragging = true;
                 this.is_touch = is_touch;
             },
-            doDrag(event){
+            doDrag(event=null){
 
                 //for mouse, we need these to avoid text highlighting, accidental permanent drag state, etc.
                 //for touch, we need these to avoid mouse firing
-                if(event.cancelable === true){
+                if(event !== null && event.cancelable === true){
                     
                     event.preventDefault();
                 }

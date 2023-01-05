@@ -14,27 +14,30 @@
                 flex flex-nowrap flex-col gap-10
                 "
         >
-            <div class="w-[90%] mx-auto grid gap-2">
-                <div class="text-4xl text-center w-full h-fit p-2">
-                    <span>Say</span>
-                </div>
+            <div class="text-4xl text-center w-full h-fit">
+                <span>Say</span>
+            </div>
+            <div class="w-full">
+                <label class="text-2xl w-full text-center">Lend your voice</label>
                 <VAudioPlayback
                     :propFile="final_file"
                     :propIsRecording="is_recording"
                     :propRecordingVolume="recording_volume"
                     :propTimeInterval="time_interval"
+                    @isAnimePlaybackCompleted="handleIsAnimePlaybackCompleted($event)"
                 />
                 <VRecorder
                     @hasNewRecording="handleHasNewRecording($event)"
                     @isRecording="handleIsRecording($event)"
                     @hasNewRecordingVolume="handleHasNewRecordingVolume($event)"
                     @hasNewTimeInterval="handleHasNewTimeInterval($event)"
+                    :propIsAnimePlaybackCompleted="is_anime_playback_completed"
                 />
             </div>
             <div 
                 :class="[
-                    final_file === null ? 'opacity-0' : 'opacity-100',
-                    'flex flex-col gap-10 transition-opacity duration-1000 ease-in-out'
+                    final_file === null ? '' : '',
+                    'flex flex-col gap-10'
                 ]"
             >
                 <div class="w-[80%] mx-auto">
@@ -97,6 +100,7 @@
                 is_recording: false,
                 recording_volume: 0,    //0-1, only changes when recording
                 time_interval: 0,   //ms, based on VRecorder time_interval
+                is_anime_playback_completed: null,
 
                 event_name: '',
                 event_name_is_ok: false,
@@ -172,6 +176,10 @@
             },
             handleSubmit(){
                 console.log('y submit? lol');
+            },
+            handleIsAnimePlaybackCompleted(new_value){
+
+                this.is_anime_playback_completed = new_value;
             }
         }
     };

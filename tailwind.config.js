@@ -9,6 +9,7 @@ module.exports = {
     theme: {
         extend: {
             //for transition duration
+            //for chaining miscellaneous things, e.g. anime, is duration 100
             //hover, e.g. button, is duration-150
             //open/close, e.g. menu, is duration-200
             //long animation is duration-1000
