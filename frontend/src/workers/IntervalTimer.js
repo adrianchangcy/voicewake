@@ -14,9 +14,9 @@ self.onmessage = function(event){
         let time_passed_ms = event.data.starting_ms;
 
         mytimer = setInterval(function(){
+            
             time_passed_ms += event.data.interval_ms;
             postMessage(time_passed_ms);
-            console.log(time_passed_ms);
         }, event.data.interval_ms);
     }
 };
