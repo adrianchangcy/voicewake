@@ -28,9 +28,7 @@
                         }"
                         class="top-2 p-2 absolute z-10 w-full left-0 right-0 mx-auto"
                     >
-                        <div class="text-md">
-                            <span>Select what you feel</span>
-                        </div>
+                        <VInputLabel>Pick one!</VInputLabel>
                         <div class="h-40 box-content emojis-container overflow-x-hidden overflow-y-auto text-2xl">
                             <div
                                 class="items-center place-items-center grid grid-flow-row grid-cols-4"

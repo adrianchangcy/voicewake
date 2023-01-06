@@ -50,15 +50,20 @@
     everything else, nothing, i.e. z-0 by default
 
     FONT SIZES
-    main title, text-4xl
-    label for input, text-2xl
-    input, text-xl
+    page section title, text-4xl
+    label for input, be noticeably smaller than main input, so text-lg font-medium
+    input, text-2xl
     details, text-base
 
     BUTTON SIZES
     biggest page button, h-40, (text-2xl?)
     component main button, h-20, text-2xl
     component smaller buttons, h-10, text-xl
+
+    GAPS
+    page items, gap-10
+    sub-page items, gap-5
+
 
 */
 
