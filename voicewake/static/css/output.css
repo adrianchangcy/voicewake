@@ -668,16 +668,20 @@ video {
   z-index: 10;
 }
 
-.col-span-4 {
-  grid-column: span 4 / span 4;
-}
-
 .col-span-1 {
   grid-column: span 1 / span 1;
 }
 
 .col-span-2 {
   grid-column: span 2 / span 2;
+}
+
+.col-span-3 {
+  grid-column: span 3 / span 3;
+}
+
+.col-span-4 {
+  grid-column: span 4 / span 4;
 }
 
 .col-start-1 {
@@ -848,18 +852,22 @@ video {
   height: 99%;
 }
 
-.w-full {
-  width: 100%;
-}
-
-.w-\[80\%\] {
-  width: 80%;
+.w-\[90\%\] {
+  width: 90%;
 }
 
 .w-fit {
   width: -webkit-fit-content;
   width: -moz-fit-content;
   width: fit-content;
+}
+
+.w-\[80\%\] {
+  width: 80%;
+}
+
+.w-full {
+  width: 100%;
 }
 
 .w-5 {
@@ -892,10 +900,6 @@ video {
 
 .w-2 {
   width: 0.5rem;
-}
-
-.w-\[90\%\] {
-  width: 90%;
 }
 
 .flex-1 {
@@ -1011,6 +1015,10 @@ video {
 
 .gap-10 {
   gap: 2.5rem;
+}
+
+.gap-5 {
+  gap: 1.25rem;
 }
 
 .gap-2 {
@@ -1180,20 +1188,12 @@ video {
   padding-bottom: 0.5rem;
 }
 
-.pt-4 {
-  padding-top: 1rem;
+.pt-5 {
+  padding-top: 1.25rem;
 }
 
 .pb-3 {
   padding-bottom: 0.75rem;
-}
-
-.pr-0\.5 {
-  padding-right: 0.125rem;
-}
-
-.pr-0 {
-  padding-right: 0px;
 }
 
 .pr-10 {
@@ -1217,11 +1217,6 @@ video {
   line-height: 1.75rem;
 }
 
-.text-4xl {
-  font-size: 2.25rem;
-  line-height: 2.5rem;
-}
-
 .text-2xl {
   font-size: 1.5rem;
   line-height: 2rem;
@@ -1230,6 +1225,11 @@ video {
 .text-xl {
   font-size: 1.25rem;
   line-height: 1.75rem;
+}
+
+.text-4xl {
+  font-size: 2.25rem;
+  line-height: 2.5rem;
 }
 
 .text-base {
@@ -1251,6 +1251,10 @@ video {
   font-weight: 700;
 }
 
+.font-medium {
+  font-weight: 500;
+}
+
 .leading-none {
   line-height: 1;
 }
@@ -1263,6 +1267,11 @@ video {
 .text-theme-disabled {
   --tw-text-opacity: 1;
   color: rgb(163 163 163 / var(--tw-text-opacity));
+}
+
+.text-theme-blue-2 {
+  --tw-text-opacity: 1;
+  color: rgb(0 171 231 / var(--tw-text-opacity));
 }
 
 .text-theme-black {
@@ -1417,15 +1426,20 @@ video {
     everything else, nothing, i.e. z-0 by default
 
     FONT SIZES
-    main title, text-4xl
-    label for input, text-2xl
-    input, text-xl
+    page section title, text-4xl
+    label for input, be noticeably smaller than main input, so text-lg font-medium
+    input, text-2xl
     details, text-base
 
     BUTTON SIZES
     biggest page button, h-40, (text-2xl?)
     component main button, h-20, text-2xl
     component smaller buttons, h-10, text-xl
+
+    GAPS
+    page items, gap-10
+    sub-page items, gap-5
+
 
 */
 

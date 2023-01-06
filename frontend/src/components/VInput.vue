@@ -1,13 +1,20 @@
 <template>
     <div class="text-left">
-        <div>
-            <VInputLabel :for="propElementId">{{propLabel}}</VInputLabel>
-            <div v-if="propHasTextCounter" class="float-right pr-0.5">
-                <VInputLabel><!--for text baseline alignment--></VInputLabel>
-                <span class="w-fit text-base">{{current_length}}/{{propMaxLength}}</span>
-            </div>
+        <div class="w-full grid grid-cols-4">
+            <VInputLabel
+                class="col-span-3 w-fit"
+                :for="propElementId"
+            >
+                {{propLabel}}
+            </VInputLabel>
+            <VInputLabel
+                v-if="propHasTextCounter"
+                class="col-span-1 w-full text-right"
+            >
+                {{current_length}}/{{propMaxLength}}
+            </VInputLabel>
         </div>
-        <div class="text-xl">
+        <div class="text-2xl">
             <input
                 :required="propIsRequired"
                 type="text"

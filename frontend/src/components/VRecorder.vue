@@ -1,7 +1,7 @@
 <template>
     <div class="text-theme-black text-center">
-        <div v-if="propLabelText !== ''" class="w-fit h-fit text-left">
-            <VInputLabel for="click-to-record">{{propLabelText}}</VInputLabel>
+        <div v-if="propLabel !== ''" class="w-fit h-fit text-left">
+            <VInputLabel for="click-to-record">{{propLabel}}</VInputLabel>
         </div>
         <div class="grid grid-rows-2 grid-cols-4 grid-flow-col place-items-center text-center gap-x-2">
             <VActionButtonMedium
@@ -22,7 +22,7 @@
                     'row-start-1 row-span-1 col-span-2'
                 ]"
             >
-                <span class="text-xl">-{{current_duration_pretty}}</span>
+                <span class="text-2xl">-{{current_duration_pretty}}</span>
             </div>
             <VActionButtonSmall
                 @click.prevent="recorderPauseResume()"
@@ -118,7 +118,7 @@
             VInputLabel,
         },
         props: {
-            propLabelText: String,
+            propLabel: String,
             propTimeInterval: Number,
             propIsAnimePlaybackCompleted: Boolean,
         },
@@ -185,6 +185,8 @@
 
                         this.recorderStop();
                     }
+
+                    this.countdownRecordingTime();
                 }
 
             },
@@ -254,20 +256,20 @@
                     this.recording_volume = 0;
                 }
             },
-            handleRecordingInput(){
-
-                //you can pass 'blob' here, but currently removed as it is not needed
+            countdownRecordingTime(){
 
                 //we need this because ondataavailable runs one more time after stopRecording()
-                if(this.is_recording === false){
+                //UPDATE: unreliable for timing, rely on web worker instead
+                //e.g. if max dura. 20s then auto-stopped at -3s, if max dura. 40s then auto-stopped at -6s
+                // if(this.is_recording === false){
                     
-                    return false;
-                }
+                //     return false;
+                // }
 
                 //handle time elapsed
                 this.current_duration += this.time_interval;
                 this.current_duration_pretty = new Date(
-                    Math.floor(this.max_recording_duration_ms - this.current_duration)
+                    this.max_recording_duration_ms - this.current_duration
                 ).toISOString().substring(14, 19);
 
                 //give user instant visual feedback on recording input
@@ -368,11 +370,11 @@
                 
                     // get intervals based blobs
                     // value in milliseconds
-                    timeSlice: this.time_interval,
+                    // timeSlice: this.time_interval,
                 
                     // requires timeSlice above
                     // returns blob via callback function
-                    ondataavailable: this.handleRecordingInput,
+                    // ondataavailable: this.countdownRecordingTime,
                 
                     // auto stop recording if camera stops
                     checkForInactiveTracks: false,

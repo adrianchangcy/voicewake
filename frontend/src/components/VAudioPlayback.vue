@@ -86,7 +86,7 @@
                 <!--options-->
                 <div
                     ref="playback_options"
-                    class="absolute w-full h-full text-theme-black"
+                    class="absolute w-full h-full text-theme-blue-2"
                     tabindex="0"
                     v-show="final_file !== null"
                     @keyup.enter.self.stop="[togglePlaybackOptions(), troubleshootEventListener('playback_options keyup')]"
@@ -100,7 +100,7 @@
                                 is_volume_ripples_available && !is_dragging_playback_slider &&
                                 (is_playback_options_open || is_dragging_volume || !is_playing)
                             "
-                            class="w-full h-full grid grid-rows-4 grid-cols-4 items-center p-2 gap-1 text-xl rounded-lg"
+                            class="w-full h-full grid grid-rows-4 grid-cols-4 items-center p-2 gap-1 text-xl rounded-lg backdrop-blur"
                         >
                             <!--backward-->
                             <div class="row-start-2 row-span-2 col-start-1 col-span-1 h-full">
@@ -118,20 +118,24 @@
                                     </div>
                                 </button>
                             </div>
-                            <!--open/close playback speed-->
+                            <!--open/close playback volume-->
                             <div
-                                ref="playback_speed_options_opener"
+                                ref="playback_volume_opener"
                                 class="row-start-4 row-span-1 col-start-2 col-span-1 h-full"
                             >
                                 <button
-                                    @click.prevent="[togglePlaybackSpeedOptions(), troubleshootEventListener('playback_speed click')]"
-                                    @touchend="[togglePlaybackSpeedOptions($event), troubleshootEventListener('playback_speed touchend')]"
+                                    @click.prevent="[togglePlaybackVolumeOptions(), troubleshootEventListener('playback_volume click')]"
+                                    @touchend="[togglePlaybackVolumeOptions($event), troubleshootEventListener('playback_volume touchend')]"
                                     class="w-full h-full"
                                 >
                                     <i
                                         :class="[
-                                            is_playback_speed_options_open ? '-rotate-90' : 'rotate-0',
-                                            'fas fa-forward transition duration-200 ease-in-out'
+                                            (playback_volume === 0 ? 'fa-volume-xmark' : ''),
+                                            (playback_volume <= 0.25 ? 'fa-volume-off' : ''),
+                                            (playback_volume <= 0.5 ? 'fa-volume-low' : ''),
+                                            (playback_volume <= 1 ? 'fa-volume-high' : ''),
+                                            (is_playback_volume_open ? '-rotate-90' : 'rotate-0'),
+                                            'fas transition duration-200 ease-in-out'
                                         ]"
                                     ></i>
                                 </button>
@@ -151,24 +155,20 @@
                                     ></i>
                                 </button>
                             </div>
-                            <!--open/close playback volume-->
+                            <!--open/close playback speed-->
                             <div
-                                ref="playback_volume_opener"
+                                ref="playback_speed_options_opener"
                                 class="row-start-4 row-span-1 col-start-3 col-span-1 h-full"
                             >
                                 <button
-                                    @click.prevent="[togglePlaybackVolumeOptions(), troubleshootEventListener('playback_volume click')]"
-                                    @touchend="[togglePlaybackVolumeOptions($event), troubleshootEventListener('playback_volume touchend')]"
+                                    @click.prevent="[togglePlaybackSpeedOptions(), troubleshootEventListener('playback_speed click')]"
+                                    @touchend="[togglePlaybackSpeedOptions($event), troubleshootEventListener('playback_speed touchend')]"
                                     class="w-full h-full"
                                 >
                                     <i
                                         :class="[
-                                            (playback_volume === 0 ? 'fa-volume-xmark' : ''),
-                                            (playback_volume <= 0.25 ? 'fa-volume-off' : ''),
-                                            (playback_volume <= 0.5 ? 'fa-volume-low' : ''),
-                                            (playback_volume <= 1 ? 'fa-volume-high' : ''),
-                                            (is_playback_volume_open ? '-rotate-90' : 'rotate-0'),
-                                            'fas transition duration-200 ease-in-out'
+                                            is_playback_speed_options_open ? '-rotate-90' : 'rotate-0',
+                                            'fas fa-forward transition duration-200 ease-in-out'
                                         ]"
                                     ></i>
                                 </button>
@@ -192,16 +192,40 @@
                             </div>
                             <!--current duration-->
                             <div
-                                class="row-start-4 row-span-1 col-start-1 col-span-1"
+                                class="row-start-4 row-span-1 col-start-1 col-span-1 text-base"
                             >
                                 <span>{{pretty_current_playback_time}}</span>
                             </div>
                             <!--total duration-->
                             <div
-                                class="row-start-4 row-span-1 col-start-4 col-span-1"
+                                class="row-start-4 row-span-1 col-start-4 col-span-1 text-base"
                             >
                                 <span>{{pretty_playback_duration}}</span>
                             </div>
+                            <!--playback volume menu-->
+                            <!--also no transition to avoid flickering if kept open while playback_options closes and reopens-->
+                            <VBox
+                                v-show="is_playback_volume_open"
+                                :propIsOpaque="false"
+                                v-click-outside="{
+                                    var_name_for_element_bool_status: 'is_playback_volume_open',
+                                    refs_to_exclude: ['playback_volume_opener']
+                                }"
+                                class="row-start-1 row-span-3 col-start-2 col-span-1 h-full"
+                            >
+                                    <div class="relative w-full h-full">
+                                            <div class="w-full h-full absolute text-center p-2 py-4">
+                                                <VSliderYSmall
+                                                    ref="volume_slider"
+                                                    :propSliderValue="playback_volume"
+                                                    @hasNewSliderValue="changePlaybackVolume($event)"
+                                                    @hasNewIsDraggingValue="updateIsDraggingVolume($event)"
+                                                    class="h-full"
+                                                    @touchmove="[clearDelayClosePlaybackOptions(), troubleshootEventListener('touchmove')]"
+                                                />
+                                            </div>
+                                    </div>
+                            </VBox>
                             <!--playback rate menu-->
                             <!--also no transition to avoid flickering if kept open while playback_options closes and reopens-->
                             <VBox
@@ -211,7 +235,7 @@
                                     var_name_for_element_bool_status: 'is_playback_speed_options_open',
                                     refs_to_exclude: ['playback_speed_options_opener']
                                 }"
-                                class="row-start-1 row-span-3 col-start-2 col-span-1 h-full"
+                                class="row-start-1 row-span-3 col-start-3 col-span-1 h-full"
                             >
                                     <div class="relative w-full h-full">
                                         <div
@@ -257,30 +281,6 @@
                                                 </button>
                                             </div>
                                         </div>
-                                    </div>
-                            </VBox>
-                            <!--playback volume menu-->
-                            <!--also no transition to avoid flickering if kept open while playback_options closes and reopens-->
-                            <VBox
-                                v-show="is_playback_volume_open"
-                                :propIsOpaque="false"
-                                v-click-outside="{
-                                    var_name_for_element_bool_status: 'is_playback_volume_open',
-                                    refs_to_exclude: ['playback_volume_opener']
-                                }"
-                                class="row-start-1 row-span-3 col-start-3 col-span-1 h-full"
-                            >
-                                    <div class="relative w-full h-full">
-                                            <div class="w-full h-full absolute text-center p-2 py-4">
-                                                <VSliderYSmall
-                                                    ref="volume_slider"
-                                                    :propSliderValue="playback_volume"
-                                                    @hasNewSliderValue="changePlaybackVolume($event)"
-                                                    @hasNewIsDraggingValue="updateIsDraggingVolume($event)"
-                                                    class="h-full"
-                                                    @touchmove="[clearDelayClosePlaybackOptions(), troubleshootEventListener('touchmove')]"
-                                                />
-                                            </div>
                                     </div>
                             </VBox>
                         </div>
@@ -939,6 +939,9 @@
                     target.muted = false;
                 }
 
+                //although redundant, we put target.muted=false here to guarantee it
+                //as there has been a rare instance where playback had no audio unintentionally until the next replay
+                target.muted = false;
                 target.play();
                 this.playback_slider_needle_anime.play();
                 this.is_playing = true;
@@ -1083,7 +1086,8 @@
                                 anime({
                                     targets: this.$refs.recording_visualiser,
                                     translateY: ['0%', '25%'],
-                                    duration: 2000
+                                    duration: 2000,
+                                    easing: 'easeOutQuad'
                                 });
                             }
                         });
@@ -1336,7 +1340,7 @@
 
                         this.$refs.audio_playback.currentTime = 0;
                         this.$refs.audio_playback.removeEventListener('timeupdate', handler);
-                        this.final_file_duration = this.$refs.audio_playback.duration; console.log(this.final_file_duration);
+                        this.final_file_duration = this.$refs.audio_playback.duration;
 
                         //create anime
                         this.playback_slider_value = 0;

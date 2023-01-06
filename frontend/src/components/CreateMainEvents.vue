@@ -14,11 +14,11 @@
                 flex flex-nowrap flex-col gap-10
                 "
         >
-            <div class="text-4xl text-center w-full h-fit">
+            <VSectionTitle>
                 <span>Say</span>
-            </div>
+            </VSectionTitle>
             <div class="w-[90%] mx-auto">
-                <label class="block w-full text-center text-2xl">Share your thoughts</label>
+                <VInputLabel class="w-fit mx-auto">Share your thoughts</VInputLabel>
                 <VAudioPlayback
                     :propFile="final_file"
                     :propIsRecording="is_recording"
@@ -34,12 +34,21 @@
                     :propIsAnimePlaybackCompleted="is_anime_playback_completed"
                 />
             </div>
+            <VSectionTitle>
+                <span>Details</span>
+            </VSectionTitle>
             <div 
                 :class="[
                     final_file === null ? '' : '',
-                    'flex flex-col gap-10'
+                    'flex flex-col gap-5'
                 ]"
             >
+                <div class="w-[80%] mx-auto">
+                    <EmojiPicker
+                        propLabelText="Label the feeling"
+                        class="w-full"
+                    />
+                </div>
                 <div class="w-[80%] mx-auto">
                     <VInput
                         :propIsRequired="false"
@@ -56,25 +65,18 @@
                         @hasNewValue="validateEventName"
                     />
                 </div>
-                <div class="w-[80%] mx-auto grid grid-cols-4">
-                    <div class="col-span-4">
-                        <EmojiPicker
-                            propLabelText="Label the feeling"
-                            class=""
-                        />
-                    </div>
-                </div>
-                <div class="flex-1 pt-4">
-                    <VActionButtonBig
-                        @click.prevent="handleSubmit()"
-                        class="p-4 w-full"
-                    >
-                        <span>Start hearing from others</span>
-                    </VActionButtonBig>
-                </div>
-                <div class="h-10">
-                    <!--extra spacing for EmojiPicker dropdown-->
-                </div>
+            </div>
+            <div class="w-0 h-0"><!--extra div for another divider onto main page button--></div>
+            <div>
+                <VActionButtonBig
+                    @click.prevent="handleSubmit()"
+                    class="w-full"
+                >
+                    <span>Done</span>
+                </VActionButtonBig>
+            </div>
+            <div class="h-10">
+                <!--extra spacing for EmojiPicker dropdown-->
             </div>
         </form>
     </div>
@@ -88,7 +90,8 @@
     import VActionButtonBig from './VActionButtonBig.vue';
     import EmojiPicker from './EmojiPicker.vue';
     import VInput from './VInput.vue';
-
+    import VInputLabel from './VInputLabel.vue';
+    import VSectionTitle from './VSectionTitle.vue';
 </script>
 
 <script>
@@ -117,6 +120,7 @@
             VActionButtonBig,
             EmojiPicker,
             VInput,
+            VSectionTitle,
         },
         watch: {
         },
