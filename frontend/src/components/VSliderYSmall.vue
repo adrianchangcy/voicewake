@@ -86,14 +86,14 @@
             },
             doDrag(event=null){
 
-                //for mouse, we need these to avoid text highlighting, accidental permanent drag state, etc.
-                //for touch, we need these to avoid mouse firing
-                if(event !== null && event.cancelable === true){
-                    
-                    event.preventDefault();
-                }
-
                 if(this.is_dragging === true){
+
+                    //for mouse, we need these to avoid text highlighting, accidental permanent drag state, etc.
+                    //for touch, we need these to avoid mouse firing
+                    if(event !== null && event.cancelable === true){
+                        
+                        event.preventDefault();
+                    }
 
                     //can use clientY, screenY, pageY, but pageY is most accurate in this context
                     let user_y = undefined;

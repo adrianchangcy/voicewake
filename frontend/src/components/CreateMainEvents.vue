@@ -17,8 +17,8 @@
             <div class="text-4xl text-center w-full h-fit">
                 <span>Say</span>
             </div>
-            <div class="w-full">
-                <label class="text-2xl w-full text-center">Lend your voice</label>
+            <div class="w-[90%] mx-auto">
+                <label class="block w-full text-center text-2xl">Share your thoughts</label>
                 <VAudioPlayback
                     :propFile="final_file"
                     :propIsRecording="is_recording"
