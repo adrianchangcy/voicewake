@@ -1,23 +1,32 @@
 <template>
-    <!-- specify your own height -->
-    <div
-        ref="slider"
-        class="relative p-2 w-fit left-0 right-0 mx-auto touch-none"
-        @mousedown.stop="[startDrag(), doDrag($event)]"
-        @touchstart.stop="[startDrag(true), doDrag($event)]"
-    >
-        <!--need 99% to remove dead pixel-->
+    <!-- your specified width will be entirely clickable -->
+    <!-- if your parent container causes slider to fire twice at edge, put touch-none to fix it -->
+    <div class="p-2 py-4 touch-none">
         <div
-            class="w-2 h-[99%] absolute bg-theme-idle left-0 right-0 mx-auto top-0 bottom-0"
-        ></div>
-        <div
-            ref="slider_progress"
-            class="w-2 h-full absolute bg-theme-dominant left-0 right-0 mx-auto bottom-0 origin-bottom"
+            ref="slider"
+            class="relative w-full h-full left-0 right-0 mx-auto"
+            @mousedown.stop="[startDrag(), doDrag($event)]"
+            @touchstart.stop="[startDrag(true), doDrag($event)]"
         >
+            <!--need 99% to remove dead pixel-->
             <div
-                ref="slider_knob"
-                class="w-4 h-4 bg-theme-black absolute -left-1 -top-2"
-            ></div>
+                class="w-2 h-[99%] absolute bg-theme-idle left-0 right-0 top-0 bottom-0 m-auto"
+            >
+                <div
+                    class="w-2 h-2 absolute bg-theme-dominant left-0 right-0 mx-auto bottom-0"
+                >
+                    <!--this is just to patch up grey spot-->
+                </div>
+            </div>
+            <div
+                ref="slider_progress"
+                class="w-2 absolute bg-theme-dominant left-0 right-0 mx-auto top-2 bottom-2 origin-bottom"
+            >
+                <div
+                    ref="slider_knob"
+                    class="w-4 h-4 bg-theme-black absolute -top-2 -left-1"
+                ></div>
+            </div>
         </div>
     </div>
 </template>
@@ -78,7 +87,7 @@
         },
         methods: {
             startDrag(is_touch=false){
-
+                
                 this.slider_dimension = this.$refs.slider.getBoundingClientRect();
 
                 this.is_dragging = true;
@@ -97,7 +106,7 @@
 
                     //can use clientY, screenY, pageY, but pageY is most accurate in this context
                     let user_y = undefined;
-
+                    
                     if(this.is_touch === true){
 
                         user_y = event.touches[0].clientY;

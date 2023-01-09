@@ -3,7 +3,7 @@
         ref="audio_playback"
         @loadedmetadata="getPlaybackDuration()"
         @timeupdate="updateCurrentPlaybackTime()"
-        @ended="pausePlayback()"
+        @ended="[pausePlayback(), togglePlaybackOptions(true)]"
         @canplay="current_playback_state = playback_states[3]"
         @waiting="current_playback_state = playback_states[4]"
     ></audio>
@@ -70,12 +70,12 @@
                                 v-for="volume_ripple in bucket_quantity" :key="volume_ripple"
                                 :class="[
                                     (current_playback_state === null ? 'hidden' : ''),
-                                    (current_playback_state === playback_states[0] ? 'bg-theme-idle' : ''),
-                                    (current_playback_state === playback_states[1] ? 'bg-theme-idle' : ''),
+                                    (current_playback_state === playback_states[0] ? 'outline-1 outline outline-theme-idle' : ''),
+                                    (current_playback_state === playback_states[1] ? 'outline-1 outline outline-theme-idle' : ''),
                                     (current_playback_state === playback_states[2] ? 'bg-theme-black' : ''),
                                     (current_playback_state === playback_states[3] ? 'bg-theme-black' : ''),
                                     (current_playback_state === playback_states[4] ? 'bg-theme-black' : ''),
-                                    'col-span-1 w-0.5 h-full scale-y-0 top-0 bottom-0 my-auto'
+                                    'col-span-1 w-0.5 h-full scale-y-0'
                                 ]"
                                 ref="volume_ripple"
                             >
@@ -86,28 +86,30 @@
                 <!--options-->
                 <div
                     ref="playback_options"
-                    class="absolute w-full h-full text-theme-blue-2"
+                    class="absolute w-full h-full text-theme-black"
                     tabindex="0"
                     v-show="final_file !== null"
                     @keyup.enter.self.stop="[togglePlaybackOptions(), troubleshootEventListener('playback_options keyup')]"
                     @mouseenter.self.stop="[togglePlaybackOptions(true), troubleshootEventListener('playback_options mouseenter')]"
                     @mouseleave.self.stop="[togglePlaybackOptions(false), troubleshootEventListener('playback_options mouseleave')]"
-                    @touchend="[togglePlaybackOptions(true), delayClosePlaybackOptions($event), troubleshootEventListener('playback_options touchend')]"
+                    @touchend="[togglePlaybackOptions(true, $event), delayClosePlaybackOptions(), troubleshootEventListener('playback_options touchend')]"
                 >
                     <TransitionFade>
                         <div
                             v-show="
-                                is_volume_ripples_available && !is_dragging_playback_slider &&
-                                (is_playback_options_open || is_dragging_volume || !is_playing)
+                                is_volume_ripples_available &&
+                                !is_dragging_playback_slider &&
+                                (is_playback_options_open || is_dragging_volume)
                             "
                             class="w-full h-full grid grid-rows-4 grid-cols-4 items-center p-2 gap-1 text-xl rounded-lg backdrop-blur"
                         >
                             <!--backward-->
                             <div class="row-start-2 row-span-2 col-start-1 col-span-1 h-full">
                                 <button
-                                    @click="skipPlayback(-5, $event)"
-                                    @touchend="skipPlayback(-5, $event)"
-                                    class="w-full h-full"
+                                    @click="skipPlayback(-5)"
+                                    @touchend="skipPlayback(-5)"
+                                    class="w-full h-full hover:active:scale-110"
+                                    type="button"
                                 >
                                     <div class="w-full h-full relative">
                                         <i
@@ -125,8 +127,9 @@
                             >
                                 <button
                                     @click.prevent="[togglePlaybackVolumeOptions(), troubleshootEventListener('playback_volume click')]"
-                                    @touchend="[togglePlaybackVolumeOptions($event), troubleshootEventListener('playback_volume touchend')]"
+                                    @touchend="[togglePlaybackVolumeOptions(), troubleshootEventListener('playback_volume touchend')]"
                                     class="w-full h-full"
+                                    type="button"
                                 >
                                     <i
                                         :class="[
@@ -143,9 +146,11 @@
                             <!--play pause-->
                             <div class="row-start-2 row-span-2 col-start-2 col-span-2 h-full">
                                 <button
-                                    @click="togglePlaybackPlayPause($event)"
-                                    @touchend="togglePlaybackPlayPause($event)"
+                                    ref="play_pause_button"
+                                    @click="togglePlaybackPlayPause()"
+                                    @touchend="togglePlaybackPlayPause(true)"
                                     class="w-full h-full"
+                                    type="button"
                                 >
                                     <i
                                         :class="[
@@ -162,8 +167,9 @@
                             >
                                 <button
                                     @click.prevent="[togglePlaybackSpeedOptions(), troubleshootEventListener('playback_speed click')]"
-                                    @touchend="[togglePlaybackSpeedOptions($event), troubleshootEventListener('playback_speed touchend')]"
+                                    @touchend="[togglePlaybackSpeedOptions(), troubleshootEventListener('playback_speed touchend')]"
                                     class="w-full h-full"
+                                    type="button"
                                 >
                                     <i
                                         :class="[
@@ -176,9 +182,10 @@
                             <!--forward-->
                             <div class="row-start-2 row-span-2 col-start-4 col-span-1 h-full">
                                 <button
-                                    @click="skipPlayback(5, $event)"
-                                    @touchend="skipPlayback(5, $event)"
-                                    class="w-full h-full"
+                                    @click="skipPlayback(5)"
+                                    @touchend="skipPlayback(5)"
+                                    class="w-full h-full hover:active:scale-110"
+                                    type="button"
                                 >
 
                                     <div class="w-full h-full relative">
@@ -192,13 +199,13 @@
                             </div>
                             <!--current duration-->
                             <div
-                                class="row-start-4 row-span-1 col-start-1 col-span-1 text-base"
+                                class="row-start-4 row-span-1 col-start-1 col-span-1 text-lg"
                             >
                                 <span>{{pretty_current_playback_time}}</span>
                             </div>
                             <!--total duration-->
                             <div
-                                class="row-start-4 row-span-1 col-start-4 col-span-1 text-base"
+                                class="row-start-4 row-span-1 col-start-4 col-span-1"
                             >
                                 <span>{{pretty_playback_duration}}</span>
                             </div>
@@ -213,18 +220,18 @@
                                 }"
                                 class="row-start-1 row-span-3 col-start-2 col-span-1 h-full"
                             >
-                                    <div class="relative w-full h-full">
-                                            <div class="w-full h-full absolute text-center p-2 py-4">
-                                                <VSliderYSmall
-                                                    ref="volume_slider"
-                                                    :propSliderValue="playback_volume"
-                                                    @hasNewSliderValue="changePlaybackVolume($event)"
-                                                    @hasNewIsDraggingValue="updateIsDraggingVolume($event)"
-                                                    class="h-full"
-                                                    @touchmove="[clearDelayClosePlaybackOptions(), troubleshootEventListener('touchmove')]"
-                                                />
-                                            </div>
-                                    </div>
+                                <div class="relative w-full h-full">
+                                        <div class="w-full h-full absolute text-center">
+                                            <VSliderYSmall
+                                                ref="volume_slider"
+                                                :propSliderValue="playback_volume"
+                                                @hasNewSliderValue="changePlaybackVolume($event)"
+                                                @hasNewIsDraggingValue="updateIsDraggingVolume($event)"
+                                                class="w-full h-full"
+                                                @touchmove="[clearDelayClosePlaybackOptions(), troubleshootEventListener('touchmove')]"
+                                            />
+                                        </div>
+                                </div>
                             </VBox>
                             <!--playback rate menu-->
                             <!--also no transition to avoid flickering if kept open while playback_options closes and reopens-->
@@ -237,51 +244,54 @@
                                 }"
                                 class="row-start-1 row-span-3 col-start-3 col-span-1 h-full"
                             >
-                                    <div class="relative w-full h-full">
-                                        <div
-                                            class="
-                                                w-full h-full absolute text-center text-theme-black
-                                                grid grid-rows-3 divide-y divide-theme-black/5
-                                            "
-                                        >
-                                            <div class="row-span-1">
-                                                <button
-                                                    @click="changePlaybackRate(1.5, $event)"
-                                                    @touchend="changePlaybackRate(1.5, $event)"
-                                                    :class="[
-                                                        playback_rate === 1.5 ? 'bg-theme-dominant' : 'bg-none' ,
-                                                        'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-t-lg'
-                                                    ]"
-                                                >
-                                                    1.5
-                                                </button>
-                                            </div>
-                                            <div class="row-span-1">
-                                                <button
-                                                    @click="changePlaybackRate(1, $event)"
-                                                    @touchend="changePlaybackRate(1, $event)"
-                                                    :class="[
-                                                        playback_rate === 1 ? 'bg-theme-dominant' : 'bg-none' ,
-                                                        'w-full h-full transition-colors duration-200 ease-in-out p-1'
-                                                    ]"
-                                                >
-                                                    1
-                                                </button>
-                                            </div>
-                                            <div class="row-span-1">
-                                                <button
-                                                    @click="changePlaybackRate(0.5, $event)"
-                                                    @touchend="changePlaybackRate(0.5, $event)"
-                                                    :class="[
-                                                        playback_rate === 0.5 ? 'bg-theme-dominant' : 'bg-none' ,
-                                                        'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-b-lg'
-                                                    ]"
-                                                >
-                                                    0.5
-                                                </button>
-                                            </div>
+                                <div class="relative w-full h-full">
+                                    <div
+                                        class="
+                                            w-full h-full absolute text-center text-theme-black
+                                            grid grid-rows-3 divide-y divide-theme-black/5
+                                        "
+                                    >
+                                        <div class="row-span-1">
+                                            <button
+                                                @click="changePlaybackRate(1.5)"
+                                                @touchend="changePlaybackRate(1.5)"
+                                                :class="[
+                                                    playback_rate === 1.5 ? 'bg-theme-dominant' : 'bg-none' ,
+                                                    'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-t-lg'
+                                                ]"
+                                                type="button"
+                                            >
+                                                1.5
+                                            </button>
+                                        </div>
+                                        <div class="row-span-1">
+                                            <button
+                                                @click="changePlaybackRate(1)"
+                                                @touchend="changePlaybackRate(1)"
+                                                :class="[
+                                                    playback_rate === 1 ? 'bg-theme-dominant' : 'bg-none' ,
+                                                    'w-full h-full transition-colors duration-200 ease-in-out p-1'
+                                                ]"
+                                                type="button"
+                                            >
+                                                1
+                                            </button>
+                                        </div>
+                                        <div class="row-span-1">
+                                            <button
+                                                @click="changePlaybackRate(0.5)"
+                                                @touchend="changePlaybackRate(0.5)"
+                                                :class="[
+                                                    playback_rate === 0.5 ? 'bg-theme-dominant' : 'bg-none' ,
+                                                    'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-b-lg'
+                                                ]"
+                                                type="button"
+                                            >
+                                                0.5
+                                            </button>
                                         </div>
                                     </div>
+                                </div>
                             </VBox>
                         </div>
                     </TransitionFade>
@@ -476,6 +486,14 @@
             },
         },
         methods: {
+            dataTroubleshooter(){
+
+                console.log('=================');
+                console.log('is_playing: '+this.is_playing);
+                console.log('is_playback_options_open: '+this.is_playback_options_open);
+                console.log('is_dragging_volume: '+this.is_dragging_volume);
+                console.log('=================');
+            },
             syncSliderNeedleAnimeAfterSuspend(){
 
                 //we need this because anime.suspendDocumentWhenHidden=false does not work
@@ -674,14 +692,10 @@
                 //handle timer
                 this.updateCurrentPlaybackTime();
             },
-            skipPlayback(seconds=0, event=null){
+            skipPlayback(seconds=0){
 
-                //+10 for forward, -10 for backward
-
-                if(event !== null && event.cancelable === true){
-
-                    event.preventDefault();
-                }
+                //+x for forward, -x for backward
+                //somehow @touchend does not trigger @click, which is good
 
                 //do this instead of relying on :disabled, as :disabled makes sliders bug out
                 if(seconds === 0 || this.final_file === null){
@@ -737,31 +751,23 @@
                     this.playback_options_timeout = null;
                 }
             },
-            delayClosePlaybackOptions(event=null){
+            delayClosePlaybackOptions(){
 
                 //intended only for touch events
+                //only used when user taps while playing
 
-                //as usual, close nothing if paused
-                if(this.is_playing === false){
-
-                    return false;
-                }
-
-                if(event !== null && event.cancelable === true){
+                //do nothing if paused, since playback_options would be always open
+                if(this.is_playing === true){
                     
-                    //Vue creates passive=false touch events for us
-                    //we are safe, since our events using this function do not involve scrolling directly
-                    event.preventDefault();
+                    //clear any existing timeout
+                    this.clearDelayClosePlaybackOptions();
+
+                    this.playback_options_timeout = setTimeout(()=>{
+                        this.togglePlaybackOptions(false);
+                    }, 3000);
                 }
-
-                //clear any existing timeout
-                this.clearDelayClosePlaybackOptions();
-
-                this.playback_options_timeout = setTimeout(()=>{
-                    this.togglePlaybackOptions(false);
-                }, 3000);
             },
-            togglePlaybackOptions(force_open_close=null){
+            togglePlaybackOptions(force_open_close=null, event=null){
 
                 //force_open_close is true for open, false for close
                 //force_open_close and !this.is_playback_options_open are not final
@@ -769,35 +775,50 @@
                 //and (3) is paused
                 //we hide if user is dragging playback_slider or is playing
 
+                if(event !== null && event.cancelable === true){
+                    
+                    //we need this, else @touchend triggers @mouseenter too
+                    //Vue creates passive=false touch events for us
+                    //safe from [Intervention], since our events using this function do not involve scrolling directly
+                    event.preventDefault();
+                }
+
                 //clear any existing timeout
                 this.clearDelayClosePlaybackOptions();
 
-                let should_close = null;
+                //if user touches on play, playback_options is false, vice versa
+                //that's why we don't do anything, and instead, let togglePlaybackPlayPause() call this accordingly
+                if(event !== null && this.$refs.play_pause_button.contains(event.target) === true){
+
+                    return false;
+                }
+
+                //we use temporary variable because we don't want to prematurely close playback_options
+                //we want to close inner menus first
+                let should_open = null;
 
                 //this statement covers all "should close" conditions
                 if(force_open_close === null){
 
-                    should_close = this.is_playback_options_open;
+                    //simple toggle
+                    should_open = !this.is_playback_options_open;
 
                 }else{
 
-                    should_close = !force_open_close;
+                    //manual input
+                    should_open = force_open_close;
                 }
 
-                //now we weigh in other conditions
-                //as we want to close inner menus first, but only appropriately
-                if(
-                    this.should_close === true &&
-                    this.is_volume_ripples_available === true && this.is_dragging_playback_slider === false &&
-                    (this.is_dragging_volume === true || this.is_playing === false)
-                ){
+                //if we are closing, close inner menus
+                if(should_open === false){
 
                     this.is_playback_speed_options_open = false;
                     this.is_playback_volume_open = false;
                 }
 
                 //conclude
-                this.is_playback_options_open = !should_close;
+                this.is_playback_options_open = should_open;
+                this.dataTroubleshooter();
             },
             resetRecordingVisualiser(){
 
@@ -863,12 +884,7 @@
                 //note that when <audio> playbackRate changes, .duration is still the same
                 return this.final_file_duration / this.playback_rate;
             },
-            changePlaybackRate(new_value, event=null){
-
-                if(event !== null && event.cancelable === true){
-
-                    event.preventDefault();
-                }
+            changePlaybackRate(new_value){
 
                 //note that on every new file loaded into <audio>, playbackRate is reset
                 //attachRecordedAudioToPlayback() will handle this inconvenience
@@ -897,27 +913,17 @@
                 this.playback_volume = new_value;
                 window.localStorage.playback_volume = new_value;
             },
-            togglePlaybackSpeedOptions(event=null){
+            togglePlaybackSpeedOptions(){
                 
-                if(event !== null && event.cancelable === true){
-
-                    event.preventDefault();
-                }
-
                 this.is_playback_speed_options_open = !this.is_playback_speed_options_open;
             },
             toggleRepeat(){
 
                 this.is_repeat = !this.is_repeat;
             },
-            togglePlaybackVolumeOptions(event=null){
+            togglePlaybackVolumeOptions(){
 
                 //note that slider malfunctions over :disabled elements, i.e. backward/forward, etc.
-
-                if(event !== null && event.cancelable === true){
-
-                    event.preventDefault();
-                }
 
                 this.is_playback_volume_open = !this.is_playback_volume_open;
             },
@@ -959,29 +965,32 @@
                 this.playback_slider_needle_anime.pause();
                 this.is_playing = false;
             },
-            togglePlaybackPlayPause(event=null){
+            togglePlaybackPlayPause(is_touch=false){
 
                 //we let everything stay at the end if playback truly ended
                 //reset is only triggered on next play
-                if(event !== null && event.cancelable === true){
-
-                    event.preventDefault();
-                }
 
                 //do this instead of relying on :disabled, as :disabled makes sliders bug out
                 if(this.final_file === null){
 
                     return false;
                 }
-
+                
                 //check if playback is not playing
                 if(this.is_playing === false){
                     
                     this.playPlayback();
 
+                    //only immediately close on play if not mouse
+                    if(is_touch === true){
+
+                        this.togglePlaybackOptions(false);
+                    }
+
                 }else{
 
                     this.pausePlayback();
+                    this.togglePlaybackOptions(true);
                 }
             },
             emitIsAnimePlaybackCompleted(is_completed){
@@ -1326,6 +1335,9 @@
 
                 //on every new file loaded into <audio>, playbackRate is reset
                 this.$refs.audio_playback.playbackRate = this.playback_rate;
+
+                //open playback_options on first attach
+                this.togglePlaybackOptions(true);
 
                 return true;
             },
