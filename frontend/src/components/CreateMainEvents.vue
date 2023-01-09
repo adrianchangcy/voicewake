@@ -5,12 +5,11 @@
         https://blog.xoxzo.com/2021/05/24/vue-with-django-rest-framework-api/
         https://docs.djangoproject.com/en/dev/howto/csrf/
     -->
-
     <div class="bg-theme-light text-left text-lg">
         <form
             spellcheck="false"
             class="
-                md:w-2/4 lg:w-3/6 xl:w-2/6 m-4 md:mx-auto h-fit p-4 bg-theme-light
+                md:w-2/4 lg:w-3/6 xl:w-2/6 m-4 md:mx-auto h-fit bg-theme-light
                 flex flex-nowrap flex-col gap-10
                 "
         >
@@ -38,33 +37,26 @@
                 <span>Details</span>
             </VSectionTitle>
             <div 
-                :class="[
-                    final_file === null ? '' : '',
-                    'flex flex-col gap-5'
-                ]"
+                class="flex flex-col gap-5 w-[80%] mx-auto"
             >
-                <div class="w-[80%] mx-auto">
-                    <EmojiPicker
-                        propLabelText="Label the feeling"
-                        class="w-full"
-                    />
-                </div>
-                <div class="w-[80%] mx-auto">
-                    <VInput
-                        :propIsRequired="false"
-                        propElementId="event-name"
-                        propLabel="Give it a title"
-                        propPlaceholder=""
-                        :propMaxLength="40"
-                        :propHasTextCounter="true"
-                        :propHasStatusText="false"
-                        :propIsOk="event_name_is_ok"
-                        :propIsWarning="event_name_is_warning"
-                        :propIsError="event_name_is_error"
-                        :propStatusText="event_name_status_text"
-                        @hasNewValue="validateEventName"
-                    />
-                </div>
+                <VTextArea
+                    :propIsRequired="false"
+                    propElementId="event-name"
+                    propLabel="Give it a title"
+                    propPlaceholder=""
+                    :propMaxLength="40"
+                    :propHasTextCounter="true"
+                    :propHasStatusText="false"
+                    :propIsOk="event_name_is_ok"
+                    :propIsWarning="event_name_is_warning"
+                    :propIsError="event_name_is_error"
+                    :propStatusText="event_name_status_text"
+                    @hasNewValue="validateEventName"
+                />
+                <EmojiPicker
+                    propLabelText="Label the feeling"
+                    class="w-full"
+                />
             </div>
             <div class="w-0 h-0"><!--extra div for another divider onto main page button--></div>
             <div>
@@ -89,9 +81,9 @@
     import VAudioPlayback from './VAudioPlayback.vue';
     import VActionButtonBig from './VActionButtonBig.vue';
     import EmojiPicker from './EmojiPicker.vue';
-    import VInput from './VInput.vue';
     import VInputLabel from './VInputLabel.vue';
     import VSectionTitle from './VSectionTitle.vue';
+    import VTextArea from './VTextArea.vue';
 </script>
 
 <script>
@@ -119,8 +111,8 @@
             VRecorder,
             VActionButtonBig,
             EmojiPicker,
-            VInput,
             VSectionTitle,
+            VTextArea,
         },
         watch: {
         },

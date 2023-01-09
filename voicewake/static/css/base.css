@@ -31,6 +31,13 @@
     color: rgb(24,24,24) !important;
 }
 
+/*much prefer this over plain focus, that way focus only appears when necessary*/
+*:focus-visible {
+    outline-width: 2px;
+    outline-color: blueviolet;
+    outline-offset: 2px;
+}
+
 /*
     NAMING STANDARDS
     for ref, use "ref_name", so we can do this.$refs.ref_name with no issue

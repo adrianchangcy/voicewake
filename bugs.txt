@@ -13,5 +13,5 @@
 //VAudioPlayback
     //when volume is open, hovering on forward button causes volume icon to temporarily blur
 
-//v-click-outside
+//DONE: v-click-outside
     //closing the element doesn't work if you are clicking on another component

@@ -20,15 +20,13 @@
                 type="text"
                 :id="propElementId"
                 v-model="input_value"
-                class="w-full h-10 p-2 pr-10 bg-theme-light border-2 border-theme-black rounded-lg
-                    focus:outline-double focus:outline-theme-black focus:outline-2
-                "
+                class="w-full h-10 p-2 pr-10 bg-theme-light border-2 border-theme-black rounded-lg"
                 :placeholder="propPlaceholder"
                 autocomplete="off"
                 :maxlength="propMaxLength"
             >
-            <i v-if="propIsOk" class="w-0 h-0 fas fa-check relative py-2 right-7 text-theme-ok"></i>
-            <i v-if="propIsWarning" class="w-0 h-0 fas fa-triangle-exclamation relative py-2 right-7 text-theme-warning"></i>
+            <i v-if="propIsOk" class="w-0 h-0 fas fa-check relative py-2 right-8 text-theme-ok"></i>
+            <i v-if="propIsWarning" class="w-0 h-0 fas fa-triangle-exclamation relative py-2 right-9 text-theme-warning"></i>
             <i v-if="propIsError" class="w-0 h-0 fas fa-exclamation relative py-2 right-6 text-theme-danger"></i>
         </div>
         <div v-show="propHasStatusText" class="h-5 text-base px-2">

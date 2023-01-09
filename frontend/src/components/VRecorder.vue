@@ -118,7 +118,10 @@
             VInputLabel,
         },
         props: {
-            propLabel: String,
+            propLabel: {
+                type: String,
+                default: ''
+            },
             propTimeInterval: Number,
             propIsAnimePlaybackCompleted: Boolean,
         },
