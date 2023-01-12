@@ -10,17 +10,16 @@
         >
             <!--need 99% to remove dead pixel-->
             <div
-                class="w-2 h-[99%] absolute bg-theme-idle left-0 right-0 top-0 bottom-0 m-auto"
+                class="w-2 h-[99%] absolute bg-theme-medium-gray left-0 right-0 top-0 bottom-0 m-auto"
             >
+                <!--this is just to patch up grey spot-->
                 <div
-                    class="w-2 h-2 absolute bg-theme-dominant left-0 right-0 mx-auto bottom-0"
-                >
-                    <!--this is just to patch up grey spot-->
-                </div>
+                    class="w-2 h-2 absolute bg-theme-lead left-0 right-0 mx-auto bottom-0"
+                ></div>
             </div>
             <div
                 ref="slider_progress"
-                class="w-2 absolute bg-theme-dominant left-0 right-0 mx-auto top-2 bottom-2 origin-bottom"
+                class="w-2 absolute bg-theme-lead left-0 right-0 mx-auto top-2 bottom-2 origin-bottom"
             >
                 <div
                     ref="slider_knob"

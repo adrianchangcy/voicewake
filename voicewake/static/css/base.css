@@ -60,16 +60,26 @@
     page section title, text-4xl
     label for input, be noticeably smaller than main input, so text-lg font-medium
     input, text-2xl
+    details, if important, text-base font-medium
     details, text-base
+
+    FONT TYPES
+    if text is not from user, use formal font
+    if text is from user, use casual font
 
     BUTTON SIZES
     biggest page button, h-40, (text-2xl?)
-    component main button, h-20, text-2xl
-    component smaller buttons, h-10, text-xl
+    component main button, h-20, text-4xl
+    component small buttons, h-10, text-2xl
+    component smallest buttons, h-10, text-xl
 
     GAPS
-    page items, gap-10
-    sub-page items, gap-5
+    page items, gap-8
+    sub-page items, gap-4
+
+    GRAY
+    less focus, e.g. border, light-gray
+    want obvious focus, dark-gray
 
 
 */
