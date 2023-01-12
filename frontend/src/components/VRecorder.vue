@@ -10,7 +10,7 @@
                 aria-label="record"
                 :class="[
                     recorder_state !== undefined && recorder_state !== 'stopped' ? 'col-span-1' : 'col-span-4',
-                    'w-full row-span-2 transition-colors duration-200 ease-in-out'
+                    'w-full row-span-2'
                 ]"
                 :propIsEnabled="is_anime_playback_truly_completed === true && is_recording === false"
             >

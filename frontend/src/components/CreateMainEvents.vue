@@ -5,12 +5,13 @@
         https://blog.xoxzo.com/2021/05/24/vue-with-django-rest-framework-api/
         https://docs.djangoproject.com/en/dev/howto/csrf/
     -->
+
     <div class="bg-theme-light text-left text-lg">
         <form
             spellcheck="false"
             class="
                 md:w-2/4 lg:w-3/6 xl:w-2/6 m-4 md:mx-auto h-fit bg-theme-light
-                flex flex-nowrap flex-col gap-10
+                flex flex-nowrap flex-col gap-8
                 "
         >
             <VSectionTitle>
@@ -25,6 +26,8 @@
                     :propTimeInterval="time_interval"
                     @isAnimePlaybackCompleted="handleIsAnimePlaybackCompleted($event)"
                 />
+                <div class="w-0 h-0 p-1">
+                </div>
                 <VRecorder
                     @hasNewRecording="handleHasNewRecording($event)"
                     @isRecording="handleIsRecording($event)"
@@ -37,7 +40,7 @@
                 <span>Details</span>
             </VSectionTitle>
             <div 
-                class="flex flex-col gap-5 w-[80%] mx-auto"
+                class="flex flex-col gap-4 w-[90%] mx-auto"
             >
                 <VTextArea
                     :propIsRequired="false"

@@ -17,20 +17,23 @@ module.exports = {
             //remember to change the values in animeJS if you make changes here
             colors: {
 
-                'theme-dominant': '#FFD645',
                 
+                'theme-lead': '#65a30d',    //yellow-300, for main colour
+                // 'theme-lead': '#FFD645',    //this yellow isn't as nice as yellow-300
+                'theme-lead-dim': '#facc15', //yellow-400, for hover
+
                 'theme-light': '#F2F4F3',
                 'theme-light-trim': '#FDFDFD',
                 'theme-dark': '#22333B',
 
-                'theme-focus': '#FFE178',
-                'theme-ok': '#3fce31',
+                'theme-ok': '#00ff00',
                 'theme-warning': '#FFE178',
-                'theme-danger': '#A4243B',
+                'theme-danger': '#ff0000',
 
-                'theme-disabled': '#a3a3a3',
-                'theme-idle': '#a3a3a3',
-                'theme-enabled': '#22333B',
+                //for disabled feature, advised to use opacity until unreadable, and not gray
+                'theme-light-gray': '#e7e5e4',
+                'theme-medium-gray': '#d6d3d1',
+                'theme-dark-gray': '#a8a29e',
 
                 'theme-black': '#444444',
 
@@ -40,14 +43,11 @@ module.exports = {
                 'theme-blue-1': '#1BC4FF',
                 'theme-blue-2': '#00ABE7',
 
-
-                'theme-yellow-light': '#FFE178',
-                'theme-yellow-medium': '#FFD645',
-                'theme-yellow-strong': '#EEBA0B',
-
                 'theme-mud': '#82846D',
 
                 'theme-cream-pink': '#F9F0F8',
+
+                'theme-yellow': '#facc15', //yellow-400, not used as lead because it's too glaring
             }
         },
     },
