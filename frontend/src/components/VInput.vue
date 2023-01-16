@@ -14,7 +14,7 @@
                 {{current_length}}/{{propMaxLength}}
             </VInputLabel>
         </div>
-        <div class="text-2xl">
+        <div class="text-xl">
             <input
                 :required="propIsRequired"
                 type="text"

@@ -18,9 +18,8 @@ module.exports = {
             colors: {
 
                 
-                'theme-lead': '#65a30d',    //yellow-300, for main colour
                 // 'theme-lead': '#FFD645',    //this yellow isn't as nice as yellow-300
-                'theme-lead-dim': '#facc15', //yellow-400, for hover
+                'theme-lead': '#facc15', //yellow-400, for main colour
 
                 'theme-light': '#F2F4F3',
                 'theme-light-trim': '#FDFDFD',

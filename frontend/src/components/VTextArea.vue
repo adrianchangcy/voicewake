@@ -7,17 +7,18 @@
             >
                 {{propLabel}}
             </VInputLabel>
-            <VInputLabel
+            <div
                 v-if="propHasTextCounter"
-                class="col-span-1 w-full text-right"
+                class="col-span-1 relative"
             >
-                {{current_length}}/{{propMaxLength}}
-            </VInputLabel>
+                <VInputLabel class="absolute w-fit h-fit right-0 top-0 bottom-0 m-auto">
+                    {{current_length}}/{{propMaxLength}}
+                </VInputLabel>
+            </div>
         </div>
-        <div class="text-2xl">
+        <div class="text-xl">
             <!--default inline-block, changed to block to remove bottom spacing-->
             <textarea
-                @input="resize()"
                 ref="nice_textarea"
                 :required="propIsRequired"
                 :id="propElementId"
@@ -26,7 +27,7 @@
                     (propIsOk ? 'border-theme-ok' : ''),
                     (propIsWarning ? 'border-theme-warning' : ''),
                     (propIsError ? 'border-theme-danger' : ''),
-                    'block w-full h-10 bg-theme-light border-2 border-theme-black rounded-lg overflow-hidden px-2 pb-2'
+                    'block w-full h-20 bg-theme-light border-2 border-theme-black rounded-lg p-2'
                 ]"
                 :placeholder="propPlaceholder"
                 autocomplete="off"

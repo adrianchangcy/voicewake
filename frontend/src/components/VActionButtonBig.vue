@@ -2,10 +2,11 @@
     <button
         :class="[
             (propIsDefaultColour ? 'bg-theme-light/60' : ''),
-            (propIsDefaultTextSize ? 'text-4xl' : ''),
+            (propIsDefaultTextSize ? 'text-2xl' : ''),
             (propIsEnabled ? 'hover:bg-theme-light/80 hover:border-theme-light-trim/40 hover:shadow-sm hover:scale-[0.99]' : 'opacity-10 cursor-default'),
-            'h-28 p-4       border-t-2 border-theme-light-trim rounded-lg shadow-md transition duration-150 ease-in-out'
+            'h-28 p-4 block       border-t-2 border-theme-light-trim rounded-lg shadow-md transition duration-150 ease-in-out'
         ]"
+        type="button"
     >
         <slot></slot>
     </button>

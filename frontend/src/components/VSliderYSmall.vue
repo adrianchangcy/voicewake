@@ -4,7 +4,7 @@
     <div class="p-2 py-4 touch-none">
         <div
             ref="slider"
-            class="relative w-full h-full left-0 right-0 mx-auto"
+            class="relative w-full h-full left-0 right-0 mx-auto cursor-pointer"
             @mousedown.stop="[startDrag(), doDrag($event)]"
             @touchstart.stop="[startDrag(true), doDrag($event)]"
         >
