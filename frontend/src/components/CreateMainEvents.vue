@@ -9,43 +9,51 @@
     <div class="bg-theme-light text-left text-lg">
         <form
             spellcheck="false"
-            class="
-                md:w-2/4 lg:w-3/6 xl:w-2/6 m-4 md:mx-auto h-fit bg-theme-light
-                flex flex-nowrap flex-col gap-8
-                "
+            class="md:w-2/4 lg:w-3/6 xl:w-2/6 mx-4 my-8 md:mx-auto h-fit bg-theme-light flex flex-nowrap flex-col gap-8"
         >
+
             <VSectionTitle>
                 <span>Say</span>
             </VSectionTitle>
-            <div class="w-[90%] mx-auto">
-                <VInputLabel class="w-fit mx-auto">Share your thoughts</VInputLabel>
-                <VAudioPlayback
-                    :propFile="final_file"
-                    :propIsRecording="is_recording"
-                    :propRecordingVolume="recording_volume"
-                    :propTimeInterval="time_interval"
-                    @isAnimePlaybackCompleted="handleIsAnimePlaybackCompleted($event)"
-                />
-                <div class="w-0 h-0 p-1">
+
+            <div class="w-[90%] mx-auto flex flex-nowrap flex-col gap-8">
+                <div>
+                    <VInputLabel
+                        class="w-fit left-0"
+                        for="click-to-record"
+                    >
+                        Share your thoughts
+                    </VInputLabel>
+                    <VPlayback
+                        :propFile="final_file"
+                        :propIsRecording="is_recording"
+                        :propRecordingVolume="recording_volume"
+                        :propTimeInterval="time_interval"
+                        :propIsForRecording="true"
+                        @isAnimePlaybackCompleted="handleIsAnimePlaybackCompleted($event)"
+                    />
+                    <div class="w-0 h-0 p-1">
+                    </div>  
+                    <VRecorder
+                        @hasNewRecording="handleHasNewRecording($event)"
+                        @isRecording="handleIsRecording($event)"
+                        @hasNewRecordingVolume="handleHasNewRecordingVolume($event)"
+                        @hasNewTimeInterval="handleHasNewTimeInterval($event)"
+                        :propIsAnimePlaybackCompleted="is_anime_playback_completed"
+                    />
                 </div>
-                <VRecorder
-                    @hasNewRecording="handleHasNewRecording($event)"
-                    @isRecording="handleIsRecording($event)"
-                    @hasNewRecordingVolume="handleHasNewRecordingVolume($event)"
-                    @hasNewTimeInterval="handleHasNewTimeInterval($event)"
-                    :propIsAnimePlaybackCompleted="is_anime_playback_completed"
-                />
             </div>
-            <VSectionTitle>
-                <span>Details</span>
-            </VSectionTitle>
-            <div 
-                class="flex flex-col gap-4 w-[90%] mx-auto"
-            >
+
+            <div class="w-[90%] mx-auto flex flex-nowrap flex-col gap-8">
+                <EmojiPicker
+                    propLabelText="How did you feel?"
+                    class="w-full"
+                />
+
                 <VTextArea
                     :propIsRequired="false"
                     propElementId="event-name"
-                    propLabel="Give it a title"
+                    propLabel="Title"
                     propPlaceholder=""
                     :propMaxLength="40"
                     :propHasTextCounter="true"
@@ -56,23 +64,18 @@
                     :propStatusText="event_name_status_text"
                     @hasNewValue="validateEventName"
                 />
-                <EmojiPicker
-                    propLabelText="Label the feeling"
-                    class="w-full"
-                />
             </div>
-            <div class="w-0 h-0"><!--extra div for another divider onto main page button--></div>
-            <div>
-                <VActionButtonBig
-                    @click.prevent="handleSubmit()"
-                    class="w-full"
-                >
-                    <span>Done</span>
-                </VActionButtonBig>
-            </div>
-            <div class="h-10">
-                <!--extra spacing for EmojiPicker dropdown-->
-            </div>
+
+            <div class="w-0 h-0"></div>
+
+            <VActionButtonBig
+                @click.prevent="handleSubmit()"
+                class="w-[50%] left-0 right-0 mx-auto"
+            >
+                <span>Hear from others</span>
+            </VActionButtonBig>
+
+            <div class="w-0 h-0"></div>
         </form>
     </div>
 </template>
@@ -81,7 +84,7 @@
 <script setup>
 
     import VRecorder from './VRecorder.vue';
-    import VAudioPlayback from './VAudioPlayback.vue';
+    import VPlayback from './VPlayback.vue';
     import VActionButtonBig from './VActionButtonBig.vue';
     import EmojiPicker from './EmojiPicker.vue';
     import VInputLabel from './VInputLabel.vue';

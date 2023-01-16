@@ -58,28 +58,38 @@
 
     FONT SIZES
     page section title, text-4xl
-    label for input, be noticeably smaller than main input, so text-lg font-medium
-    input, text-2xl
+    label for input, be noticeable but smaller than main input, so text-lg font-medium
+    input, text-xl
     details, if important, text-base font-medium
     details, text-base
+    action, text-2xl
 
     FONT TYPES
     if text is not from user, use formal font
     if text is from user, use casual font
 
     BUTTON SIZES
-    biggest page button, h-40, (text-2xl?)
-    component main button, h-20, text-4xl
+    biggest page button, h-40, text-4xl icons, text-2xl text
+    component main button, h-20, text-4xl icons, text-2xl text
     component small buttons, h-10, text-2xl
     component smallest buttons, h-10, text-xl
+
+    INPUT SIZES (may change according to font size)
+    textarea, h-10 p-2 pt-1
+    input, h-10
 
     GAPS
     page items, gap-8
     sub-page items, gap-4
 
     GRAY
-    less focus, e.g. border, light-gray
-    want obvious focus, dark-gray
+    least attention-seeking, e.g. border, light-gray
+    obvious attention-seeking, dark-gray
+    hover and seek attention, medium-gray/50
+    hover and seek attention that is already gray, medium-gray/50 + scale
+
+    OPACITY
+    if want to signify disabled, use opacity-10, i.e. until element is unreadable
 
 
 */
@@ -94,3 +104,18 @@ textarea {
     resize: none;
 }
 
+
+@media(hover: hover){
+
+    /*
+    this is for buttons that don't look like buttons
+    also use rounded-md
+    */
+    .shade-when-hover:hover{
+        background-color: rgba(214, 211, 209, 0.5);
+    }
+
+    .double-height-when-hover{
+        transform: scaleY(2);
+    }
+}

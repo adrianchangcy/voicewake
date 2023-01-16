@@ -8,15 +8,14 @@
         @waiting="current_playback_state = playback_states[4]"
     ></audio>
 
-
-
-    <!--NEW-->
-    <div class="text-center text-theme-black h-[10rem] relative">
+    <!--size priority: playback_main, then ripples, then everything else-->
+    <!--h = playback_main + p-2 (top+bottom 1rem) + border-2 (top+bottom 0.25rem)-->
+    <div class="h-[9.25rem] text-center relative">
 
         <!--recording visualiser-->
         <div
             ref="recording_visualiser"
-            class="absolute w-[7.5rem] h-[7.5rem] left-0 right-0 top-0 m-auto opacity-0 hidden"
+            class="absolute w-[5rem] h-[5rem] left-0 right-0 -bottom-[0.5rem] m-auto opacity-0 hidden"
         >
             <div class="relative w-full h-full">
                 <div
@@ -34,252 +33,239 @@
             </div>
         </div>
 
-        <!--volume ripples-->
-        <div class="absolute w-full h-[7.5rem] grid grid-rows-3 grid-cols-5">
-            <div
-                ref="volume_ripples_container"
-                class="row-start-1 row-span-3 col-start-2 col-span-4 w-full h-full top-0 bottom-0 my-auto flex flex-row justify-evenly"
-            >
-                <div
-                    v-for="volume_ripple in bucket_quantity" :key="volume_ripple"
-                    ref="volume_ripple"
-                    class="h-full scale-y-0"
-                >
-                    <div
-                        :class="[
-                            (current_playback_state === playback_states[0] ? 'outline-1 outline outline-theme-medium-gray' : ''),
-                            (current_playback_state === playback_states[1] ? 'outline-1 outline outline-theme-medium-gray' : ''),
-                            (current_playback_state === playback_states[2] ? 'outline-0 bg-theme-black' : ''),
-                            (current_playback_state === playback_states[3] ? 'outline-0 bg-theme-black' : ''),
-                            (current_playback_state === playback_states[4] ? 'outline-0 bg-theme-black' : ''),
-                            'left-0 right-0 mx-auto w-0.5 h-full'
-                        ]"
-                    ></div>
-                </div>
-            </div>
-        </div>
+        <!--
+            ACTUAL VAUDIOPLAYBACK
+            ripples, slider, volume, play/pause, rate, timers
+            we want it like this to be able to hide everything when needed
+        -->
+        <div
+            ref="playback_main"
+            :class="[
+                final_file === null ? 'border-theme-light-gray/10' : 'border-theme-light-gray',
+                'w-full h-full text-theme-black border-2 rounded-2xl p-2'
+            ]"
+        >
 
-        <!--playback options-->
-        <!--we keep playback_options separate so we can apply css on entire playback options at once-->
-        <div class="absolute w-full h-full grid grid-rows-4 grid-cols-5">
-            <!--play pause-->
-            <div class="row-start-1 row-span-3 col-start-1 col-span-1 h-full">
-                <button
-                    ref="play_pause_button"
-                    @click="togglePlaybackPlayPause()"
-                    @touchend="togglePlaybackPlayPause()"
-                    class="w-full h-full bg-theme-lead rounded-l-2xl"
-                    type="button"
-                >
-                    <i
-                        :class="[
-                            is_playing? 'fa-pause' : 'fa-play',
-                            'fas text-5xl'
-                        ]"
-                    ></i>
-                </button>
-            </div>
-            <!--slider-->
-            <div
-                class="row-start-1 row-span-3 col-start-2 col-span-4 h-full mx-2"
-            >
+            <!--ripples, slider-->
+            <!--h-fit = ripples without parent top padding 10rem + slider 2.5rem-->
+            <div class="w-full h-[5rem] relative">
+                <!--ripples-->
                 <div
-                    ref="playback_slider"
-                    class="h-full touch-none cursor-pointer relative"
-                    @mousedown.stop="[startPlaybackDrag(), doPlaybackDrag($event)]"
-                    @touchstart.stop="[startPlaybackDrag(true), doPlaybackDrag($event)]"
+                    ref="volume_ripples_container"
+                    class="w-full h-[4.375rem] absolute top-0 flex flex-row justify-evenly"
                 >
                     <div
-                        ref="playback_slider_progress"
-                        class="h-1 absolute bg-theme-lead left-0 right-0 top-0 bottom-0 m-auto scale-x-0 origin-left"
+                        v-for="volume_ripple in bucket_quantity" :key="volume_ripple"
+                        ref="volume_ripple"
+                        class="h-full scale-y-0 origin-bottom"
                     >
                         <div
-                            class="w-4 h-4 rounded-full absolute -right-2 top-0 bottom-0 m-auto bg-theme-black/20"
+                            :class="[
+                                (current_playback_state === playback_states[0] ? 'outline-1 outline outline-theme-dark-gray' : ''),
+                                (current_playback_state === playback_states[1] ? 'outline-1 outline outline-theme-dark-gray' : ''),
+                                (current_playback_state === playback_states[2] ? 'bg-theme-black' : ''),
+                                (current_playback_state === playback_states[3] ? 'bg-theme-black' : ''),
+                                (current_playback_state === playback_states[4] ? 'bg-theme-black' : ''),
+                                'left-0 right-0 mx-auto w-0.5 h-full'
+                            ]"
+                        ></div>
+                    </div>
+                </div>
+                <!--slider-->
+                <div
+                    :class="[
+                        final_file === null ? 'opacity-10 cursor-default' : 'opacity-100 cursor-pointer',
+                        'h-[2.5rem] absolute bottom-0 left-2 right-2 m-auto'
+                    ]"
+                >
+                    <div
+                        ref="playback_slider"
+                        :class="[
+                            final_file !== null ? 'touch-none' : '',
+                            'w-full h-full relative'
+                        ]"
+                        @mouseenter.stop="is_playback_slider_hover = true"
+                        @mouseleave.stop="is_playback_slider_hover = false"
+                        @mousedown.stop="[startPlaybackDrag(), doPlaybackDrag($event)]"
+                        @touchstart.stop="[startPlaybackDrag(true), doPlaybackDrag($event)]"
+                    >
+                        <!--for reference, since playback_slider_progress cannot give full width at start-->
+                        <div
+                            ref="playback_slider_width"
+                            class="h-0 absolute opacity-0 left-0 right-0 top-0 bottom-0 m-auto"
+                        ></div>
+                        <div
+                            :class="[
+                                is_playback_slider_hover && final_file !== null ? 'double-height-when-hover' : 'scale-y-100',
+                                'h-1 absolute bg-theme-medium-gray/50 left-0 right-0 top-5 bottom-0 m-auto transition-transform duration-150 ease-in-out'
+                            ]"
+                        ></div>
+                        <div
+                            ref="playback_slider_progress"
+                            class="h-1 absolute bg-theme-lead left-0 right-0 top-5 bottom-0 m-auto scale-x-0 origin-left"
+                        ></div>
+                        <div
+                            ref="playback_slider_knob"
+                            class="w-4 h-4 absolute rounded-full bg-theme-black top-5 bottom-0 -left-2 m-auto"
                         ></div>
                     </div>
                 </div>
             </div>
 
-            <!--current duration-->
-            <div class="row-start-4 row-span-1 col-start-1 col-span-1 h-full relative text-base font-medium">
-                <span
-                    class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto"
-                >
-                    {{pretty_current_playback_time}}
-                </span>
-            </div>
-            <!--current duration-->
-            <div class="row-start-4 row-span-1 col-start-5 col-span-1 h-full relative text-base font-medium">
-                <span
-                    class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto"
-                >
-                    {{pretty_playback_duration}}
-                </span>
-            </div>
-
-            <!--backward-->
-            <div class="row-start-3 row-span-1 col-start-2 col-span-1 h-full hidden">
-                <button
-                    @click="skipPlayback(-5)"
-                    @touchend="skipPlayback(-5)"
-                    class="w-full h-full hover:active:scale-110"
-                    type="button"
-                >
-                    <div class="relative">
-                        <i
-                            ref="playback_go_back_icon"
-                            class="absolute left-0 right-0 top-0 bottom-0 m-auto w-fit h-fit fas fa-rotate-left text-4xl"
-                        ></i>
-                        <span class="absolute left-0 right-0 top-0 bottom-0 m-auto w-fit h-fit text-base font-bold">5</span>
-                    </div>
-                </button>
-            </div>
-            <!--forward-->
-            <div class="row-start-3 row-span-1 col-start-5 col-span-1 h-full hidden">
-                <button
-                    @click="skipPlayback(5)"
-                    @touchend="skipPlayback(5)"
-                    class="w-full h-full hover:active:scale-110 scale-100"
-                    type="button"
-                >
-                    <div class="relative">
-                        <i
-                            ref="playback_go_forward_icon"
-                            class="absolute left-0 right-0 top-0 bottom-0 m-auto w-fit h-fit fas fa-rotate-right text-4xl"
-                        ></i>
-                        <span class="absolute left-0 right-0 top-0 bottom-0 m-auto w-fit h-fit text-base font-bold">5</span>
-                    </div>
-                </button>
-            </div>
-
-            <!--open/close playback volume-->
+            <!--volume, play/pause, rate, timers-->
             <div
-                ref="playback_volume_opener"
-                class="row-start-4 row-span-1 col-start-2 col-span-1 h-full text-xl"
+                :class="[
+                    final_file === null ? 'opacity-10' : 'opacity-100',
+                    'w-full h-[3rem] grid grid-rows-1 grid-cols-5'
+                ]"
             >
-                <button
-                    @click.prevent="togglePlaybackVolumeOptions()"
-                    class="w-full h-full"
-                    type="button"
+                <!--current duration-->
+                <div class="row-start-1 row-span-1 col-start-1 col-span-1 relative text-base font-medium">
+                    <span class="absolute w-fit h-fit left-2 top-0 bottom-0 m-auto">{{pretty_current_playback_time}}</span>
+                </div>
+                <!--volume-->
+                <div
+                    v-if="propIsForRecording === false"
+                    ref="playback_volume_opener"
+                    class="row-start-1 row-span-1 col-start-2 col-span-1 h-full text-xl relative"
                 >
-                    <i
-                        :class="[
-                            (playback_volume === 0 ? 'fa-volume-xmark' : ''),
-                            (playback_volume <= 0.5 ? 'fa-volume-low' : ''),
-                            (playback_volume <= 1 ? 'fa-volume-high' : ''),
-                            (is_playback_volume_open ? '-rotate-90' : 'rotate-0'),
-                            'fas transition duration-200 ease-in-out'
-                        ]"
-                    ></i>
-                </button>
-            </div>
-            <!--open/close playback speed-->
-            <div
-                ref="playback_speed_options_opener"
-                class="row-start-4 row-span-1 col-start-3 col-span-1 h-full text-xl"
-            >
-                <button
-                    @click.prevent="togglePlaybackSpeedOptions()"
-                    class="w-full h-full"
-                    type="button"
+                    <!--open/close volume-->
+                    <button
+                        @click="togglePlaybackVolumeOptions()"
+                        class="w-full h-full shade-when-hover rounded-md"
+                        :disabled="final_file === null"
+                        type="button"
+                    >
+                        <i
+                            :class="[
+                                (playback_volume === 0 ? 'fa-volume-xmark' : ''),
+                                (playback_volume <= 0.5 ? 'fa-volume-low' : ''),
+                                (playback_volume <= 1 ? 'fa-volume-high' : ''),
+                                (is_playback_volume_open ? '-rotate-90' : 'rotate-0'),
+                                'fas transition-transform duration-200 ease-in-out'
+                            ]"
+                        ></i>
+                    </button>
+                    <!--volume menu-->
+                    <TransitionFade>
+                        <VBox
+                            v-show="is_playback_volume_open"
+                            :propIsOpaque="true"
+                            v-click-outside="{
+                                var_name_for_element_bool_status: 'is_playback_volume_open',
+                                refs_to_exclude: ['playback_volume_opener']
+                            }"
+                            class="w-full h-[300%] absolute left-0 right-0 bottom-[110%] m-auto"
+                        >
+                            <VSliderYSmall
+                                ref="volume_slider"
+                                :propSliderValue="playback_volume"
+                                @hasNewSliderValue="changePlaybackVolume($event)"
+                                @hasNewIsDraggingValue="updateIsDraggingVolume($event)"
+                                class="w-full h-full"
+                            />
+                        </VBox>
+                    </TransitionFade>
+                </div>
+                <!--play/pause-->
+                <div class="row-start-1 row-span-1 col-start-3 col-span-1 h-full text-4xl">
+                    <button
+                        ref="play_pause_button"
+                        @click="togglePlaybackPlayPause()"
+                        class="w-full h-full shade-when-hover rounded-md"
+                        :disabled="final_file === null"
+                        type="button"
+                    >
+                        <i
+                            :class="[
+                                is_playing? 'fa-pause' : 'fa-play',
+                                'fas'
+                            ]"
+                        ></i>
+                    </button>
+                </div>
+                <!--rate-->
+                <div
+                    v-if="propIsForRecording === false"
+                    ref="playback_speed_options_opener"
+                    class="row-start-1 row-span-1 col-start-4 col-span-1 h-full text-xl relative"
                 >
-                    <i
-                        :class="[
-                            is_playback_speed_options_open ? '-rotate-90' : 'rotate-0',
-                            'fas fa-forward transition duration-200 ease-in-out'
-                        ]"
-                    ></i>
-                </button>
-            </div>
-
-                        <!--playback volume menu-->
-                        <!--also no transition to avoid flickering if kept open while playback_options closes and reopens-->
-                        <TransitionFade>
-                            <VBox
-                                v-show="is_playback_volume_open"
-                                :propIsOpaque="false"
-                                v-click-outside="{
-                                    var_name_for_element_bool_status: 'is_playback_volume_open',
-                                    refs_to_exclude: ['playback_volume_opener']
-                                }"
-                                class="row-start-1 row-span-3 col-start-2 col-span-1 h-full"
-                            >
-                                <div class="relative w-full h-full">
-                                        <div class="w-full h-full absolute text-center">
-                                            <VSliderYSmall
-                                                ref="volume_slider"
-                                                :propSliderValue="playback_volume"
-                                                @hasNewSliderValue="changePlaybackVolume($event)"
-                                                @hasNewIsDraggingValue="updateIsDraggingVolume($event)"
-                                                class="w-full h-full"
-                                            />
-                                        </div>
-                                </div>
-                            </VBox>
-                        </TransitionFade>
-                        <!--playback rate menu-->
-                        <!--also no transition to avoid flickering if kept open while playback_options closes and reopens-->
+                    <!--open/close rate-->
+                    <button
+                        @click="togglePlaybackSpeedOptions()"
+                        class="w-full h-full shade-when-hover rounded-md"
+                        :disabled="final_file === null"
+                        type="button"
+                    >
+                        <i
+                            :class="[
+                                is_playback_speed_options_open ? '-rotate-90' : 'rotate-0',
+                                'fas fa-forward transition-transform duration-200 ease-in-out'
+                            ]"
+                        ></i>
+                    </button>
+                    <!--rate menu-->
+                    <TransitionFade>
                         <VBox
                             v-show="is_playback_speed_options_open"
-                            :propIsOpaque="false"
+                            :propIsOpaque="true"
                             v-click-outside="{
                                 var_name_for_element_bool_status: 'is_playback_speed_options_open',
                                 refs_to_exclude: ['playback_speed_options_opener']
                             }"
-                            class="row-start-1 row-span-3 col-start-4 col-span-1 h-full"
+                            class="w-full h-[300%] absolute left-0 right-0 bottom-[110%] m-auto"
                         >
-                            <div class="relative w-full h-full">
-                                <div
-                                    class="
-                                        w-full h-full absolute text-center text-theme-black
-                                        grid grid-rows-3 divide-y divide-theme-black/5
-                                    "
-                                >
-                                    <div class="row-span-1">
-                                        <button
-                                            @click="changePlaybackRate(1.5)"
-                                            @touchend="changePlaybackRate(1.5)"
-                                            :class="[
-                                                playback_rate === 1.5 ? 'bg-theme-lead' : 'bg-none' ,
-                                                'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-t-lg'
-                                            ]"
-                                            type="button"
-                                        >
-                                            1.5
-                                        </button>
-                                    </div>
-                                    <div class="row-span-1">
-                                        <button
-                                            @click="changePlaybackRate(1)"
-                                            @touchend="changePlaybackRate(1)"
-                                            :class="[
-                                                playback_rate === 1 ? 'bg-theme-lead' : 'bg-none' ,
-                                                'w-full h-full transition-colors duration-200 ease-in-out p-1'
-                                            ]"
-                                            type="button"
-                                        >
-                                            1
-                                        </button>
-                                    </div>
-                                    <div class="row-span-1">
-                                        <button
-                                            @click="changePlaybackRate(0.5)"
-                                            @touchend="changePlaybackRate(0.5)"
-                                            :class="[
-                                                playback_rate === 0.5 ? 'bg-theme-lead' : 'bg-none' ,
-                                                'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-b-lg'
-                                            ]"
-                                            type="button"
-                                        >
-                                            0.5
-                                        </button>
-                                    </div>
+                            <div
+                                class="
+                                    w-full h-full text-center text-theme-black p-1
+                                    grid grid-rows-3 divide-y divide-theme-black/5
+                                "
+                            >
+                                <div class="row-span-1">
+                                    <button
+                                        @click="changePlaybackRate(1.5)"
+                                        :class="[
+                                            playback_rate === 1.5 ? 'bg-theme-lead' : 'bg-none shade-when-hover' ,
+                                            'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-sm'
+                                        ]"
+                                        type="button"
+                                    >
+                                        1.5
+                                    </button>
+                                </div>
+                                <div class="row-span-1">
+                                    <button
+                                        @click="changePlaybackRate(1)"
+                                        :class="[
+                                            playback_rate === 1 ? 'bg-theme-lead' : 'bg-none shade-when-hover' ,
+                                            'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-sm'
+                                        ]"
+                                        type="button"
+                                    >
+                                        1
+                                    </button>
+                                </div>
+                                <div class="row-span-1">
+                                    <button
+                                        @click="changePlaybackRate(0.5)"
+                                        :class="[
+                                            playback_rate === 0.5 ? 'bg-theme-lead' : 'bg-none shade-when-hover' ,
+                                            'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-sm'
+                                        ]"
+                                        type="button"
+                                    >
+                                        0.5
+                                    </button>
                                 </div>
                             </div>
                         </VBox>
-
-
-
+                    </TransitionFade>
+                </div>
+                <!--total duration-->
+                <div class="row-start-1 row-span-1 col-start-5 col-span-1 relative text-base font-medium">
+                    <span class="absolute w-fit h-fit right-2 top-0 bottom-0 m-auto">{{pretty_playback_duration}}</span>
+                </div>
+            </div>
         </div>
     </div>
 </template>
@@ -287,10 +273,12 @@
 
 <script setup>
 
-    import VSliderYSmall from './VSliderYSmall.vue';
     import VBox from './VBox.vue';
+    import VSliderYSmall from './VSliderYSmall.vue';
     import TransitionFade from '/src/transitions/TransitionFade.vue';
+
 </script>
+
 
 <script>
 
@@ -304,13 +292,16 @@
                 pretty_current_playback_time: '00:00',
                 pretty_playback_duration: '00:00',
                 is_playing: false,
+                is_buffering: false,    //for 'waiting' and 'can_play'
                 is_volume_ripples_available: false,
                 anime_instance: null,   //to store animePlaybackStates() anime
                 
                 playback_slider_value: 0,
-                is_dragging_playback_slider: false,
+                is_playback_slider_drag: false,
                 is_playback_slider_touch: false,
-                playback_slider_dimension: null,
+                is_playback_slider_hover: false,
+                playback_slider_width: null,
+                playback_slider_knob_anime: null, //we play/pause instead of new anime() for best results
                 playback_slider_progress_anime: null, //we play/pause instead of new anime() for best results
                 resume_after_stop_dragging: null,    //to know whether to resume after done navigating
                 resume_after_stop_skipping: null,   //to know whether to resume after done navigating
@@ -319,9 +310,11 @@
                 playback_volume: 0, //accepts 0 to 1
                 is_repeat: false,
 
+                is_playback_options_open: false,
                 is_playback_speed_options_open: false,
                 is_playback_volume_open: false,
                 is_dragging_volume: false,
+                playback_options_timeout: null,
 
                 playback_states: ['empty', 'recording', 'attaching', 'can_play', 'loading'],
                 current_playback_state: null,
@@ -332,44 +325,49 @@
             };
         },
         components: {
-            VSliderYSmall,
+
             VBox,
-            TransitionFade,
+            VSliderYSmall,
+            TransitionFade
         },
         mounted(){
 
-            //playback speed, accepts 0 to 2, default 1
-            //also convert from localStorage's String back to Float
-            if(window.localStorage.playback_rate === undefined){
+            //handle rate and volume differently
+            if(this.propIsForRecording === true){
 
-                this.playback_rate = 1;
-
-            }else{
-
-                this.playback_rate = parseFloat(window.localStorage.playback_rate);
-            }
-            this.$refs.audio_playback.playbackRate = this.playback_rate;
-            
-            //playback speed, accepts 0 to 1, default 0.5
-            //also convert from localStorage's String back to Float
-            if(window.localStorage.playback_volume === undefined){
-
-                this.playback_volume = 0;
+                //we set rate to 1 and volume to max, and hide them
+                //there is no need for them if intended for recording, for best feedback
+                this.playback_volume = 1;
+                this.$refs.audio_playback.playbackRate = this.playback_rate;
+                this.$refs.audio_playback.volume = this.playback_volume;
 
             }else{
 
-                this.playback_volume = parseFloat(window.localStorage.playback_volume);
+                //set rate to saved value
+                if(window.localStorage.playback_rate){
+
+                    this.playback_rate = parseFloat(window.localStorage.playback_rate);
+                }
+
+                //set volume to saved value
+                if(window.localStorage.playback_volume){
+
+                    this.playback_volume = parseFloat(window.localStorage.playback_volume);
+                }
             }
-            this.$refs.audio_playback.volume = this.playback_volume;
 
             //initialise with 'empty' state
             this.current_playback_state = this.playback_states[0];
+
+            //get playback_width for first time
+            this.adjustToNewPlaybackDimension();
 
             //attach listeners to window for mouse Y
             window.addEventListener('mousemove', this.doPlaybackDrag);
             window.addEventListener('touchmove', this.doPlaybackDrag);
             window.addEventListener('mouseup', this.stopPlaybackDrag);
             window.addEventListener('touchend', this.stopPlaybackDrag);
+            window.addEventListener('resize', this.adjustToNewPlaybackDimension);
             document.addEventListener('visibilitychange', this.syncSliderNeedleAnimeAfterSuspend);
         },
         beforeUnmount(){
@@ -379,6 +377,7 @@
             window.removeEventListener('touchmove', this.doPlaybackDrag);
             window.removeEventListener('mouseup', this.stopPlaybackDrag);
             window.removeEventListener('touchend', this.stopPlaybackDrag);
+            window.removeEventListener('resize', this.adjustToNewPlaybackDimension);
             document.removeEventListener('visibilitychange', this.syncSliderNeedleAnimeAfterSuspend);
         },
         emits: [
@@ -389,6 +388,10 @@
             propIsRecording: Boolean,
             propRecordingVolume: Number,    //0-1
             propTimeInterval: Number,  //based on VRecorder time_interval, needed for analyser during recording
+            propIsForRecording: {
+                type: Boolean,
+                default: false
+            },
         },
         watch: {
             async propFile(new_value){
@@ -416,16 +419,6 @@
                         console.log(error);
                     });
             },
-            final_file(new_value){
-
-                //reset all time
-                if(new_value === null){
-
-                    this.final_file_duration = 0;
-                    this.pretty_current_playback_time = '00:00';
-                    this.pretty_playback_duration = '00:00';
-                }
-            },
             propRecordingVolume(new_value){
 
                 this.animeRecordingVisualiser(new_value);
@@ -442,6 +435,7 @@
                 if(this.is_playing === true){
 
                     this.pausePlayback();
+                    this.final_file = null;
                 }
 
                 this.is_volume_ripples_available = false;
@@ -476,6 +470,7 @@
 
                 console.log('=================');
                 console.log('is_playing: '+this.is_playing);
+                console.log('is_playback_options_open: '+this.is_playback_options_open);
                 console.log('is_dragging_volume: '+this.is_dragging_volume);
                 console.log('=================');
             },
@@ -486,7 +481,7 @@
                 //must call pause() first, else seek() is inaccurate
                 if(
                     document.visibilityState === 'visible' &&
-                    this.playback_slider_progress_anime !== null
+                    this.playback_slider_knob_anime !== null && this.playback_slider_progress_anime !== null
                 ){
 
                     let resume_later = null;
@@ -498,6 +493,7 @@
                         resume_later = true;
                     }
 
+                    this.playback_slider_knob_anime.seek(this.playback_slider_value * this.playback_slider_knob_anime.duration);
                     this.playback_slider_progress_anime.seek(this.playback_slider_value * this.playback_slider_progress_anime.duration);
 
                     if(resume_later === true){
@@ -517,20 +513,35 @@
                 //we can then use .play/.pause/.seek
                 //expects to already have accurate this.playback_slider_value
 
-                //if playback_slider is not involved in any other anime,
+                //if playback_slider_knob is not involved in any other anime,
                 //we are safe to remove its own anime for the purpose of re-do
                 //during window resize or playback rate change
                 if(this.is_volume_ripples_available === true){
 
                     anime.remove([
+                        this.$refs.playback_slider_knob,
                         this.$refs.playback_slider_progress
                     ]);
                 }
+
+                //calculate starting point of translateX
+                const ending_translateX = this.playback_slider_width.width;
 
                 //calculate duration based on playback_rate
                 const anime_duration = this.getRealDurationAfterPlaybackRate() * 1000;
 
                 //create new anime
+                this.playback_slider_knob_anime = anime({
+                    targets: this.$refs.playback_slider_knob,
+                    easing: 'linear',
+                    autoplay: false,
+                    loop: false,
+                    duration: anime_duration,
+                    translateX: [
+                        '0px',
+                        ending_translateX.toString() + 'px'
+                    ],
+                });
                 this.playback_slider_progress_anime = anime({
                     targets: this.$refs.playback_slider_progress,
                     easing: 'linear',
@@ -539,6 +550,23 @@
                     duration: anime_duration,
                     scaleX: ['0', '1'],
                 });
+            },
+            adjustToNewPlaybackDimension(){
+
+                //expects playback_slider to have the same width
+                //only using this at 'resize' event listener
+                this.playback_slider_width = this.$refs.playback_slider_width.getBoundingClientRect();
+
+                //create/recreate anime
+                if(
+                    this.final_file !== null &&
+                    this.playback_slider_knob_anime !== null &&
+                    this.playback_slider_progress_anime !== null
+                ){
+
+                    this.createPlaybackSliderAnime();
+                    this.syncSliderNeedleAnimeAfterSuspend();
+                }
             },
             endPlaybackProperly(){
 
@@ -563,8 +591,7 @@
                     return false;
                 }
 
-                this.playback_slider_dimension = this.$refs.playback_slider.getBoundingClientRect();
-                this.is_dragging_playback_slider = true;
+                this.is_playback_slider_drag = true;
                 this.is_playback_slider_touch = is_playback_slider_touch;
 
                 if(this.is_playing === true){
@@ -575,7 +602,7 @@
             },
             doPlaybackDrag(event=null){
 
-                if(this.is_dragging_playback_slider === true && this.playback_slider_dimension !== null){
+                if(this.is_playback_slider_drag === true && this.playback_slider_width !== null){
 
                     //for mouse, we need these to avoid text highlighting, accidental permanent drag state, etc.
                     //for touch, we need these to avoid mouse firing
@@ -597,15 +624,15 @@
                         user_x = event.clientX;
                     }
 
-                    if(user_x >= this.playback_slider_dimension.left && user_x <= this.playback_slider_dimension.right){
+                    if(user_x >= this.playback_slider_width.left && user_x <= this.playback_slider_width.right){
 
-                        this.playback_slider_value = (user_x - this.playback_slider_dimension.left) / this.playback_slider_dimension.width;
+                        this.playback_slider_value = (user_x - this.playback_slider_width.left) / this.playback_slider_width.width;
 
-                    }else if(user_x < this.playback_slider_dimension.left){
+                    }else if(user_x < this.playback_slider_width.left){
 
                         this.playback_slider_value = 0;
 
-                    }else if(user_x > this.playback_slider_dimension.right){
+                    }else if(user_x > this.playback_slider_width.right){
 
                         this.playback_slider_value = 1;
                     }
@@ -615,15 +642,15 @@
                     //troubleshoot if needed
                     // console.log("==========================");
                     // console.log('user_x: '+user_x);
-                    // console.log('slider_top: '+playback_slider_dimension.top);
-                    // console.log('slider_bottom: '+playback_slider_dimension.bottom);
+                    // console.log('slider_top: '+playback_slider_width.top);
+                    // console.log('slider_bottom: '+playback_slider_width.bottom);
                     // console.log(this.playback_slider_value);
                     // console.log("==========================");
                 }
             },
             stopPlaybackDrag(){
 
-                if(this.is_dragging_playback_slider === true){
+                if(this.is_playback_slider_drag === true){
 
                     //we reset touch detection on every startPlaybackDrag() and stopPlaybackDrag()
                     //so we get latest status of is_playback_slider_touch
@@ -640,7 +667,7 @@
                         this.endPlaybackProperly();
                     }
 
-                    this.is_dragging_playback_slider = false;
+                    this.is_playback_slider_drag = false;
                 }
 
             },
@@ -649,14 +676,16 @@
                 //expects playback_slider_value to be float 0 to 1
 
                 //duration is the same regardless of playbackRate
-                const jumped_anime_duration = this.playback_slider_value * this.playback_slider_progress_anime.duration;
+                const jumped_anime_duration = this.playback_slider_value * this.playback_slider_knob_anime.duration;
                 //duration changes when playbackRate changes
                 const jumped_playback_duration = this.playback_slider_value * this.$refs.audio_playback.duration;
 
                 //handle slider aesthetics
                 //need to set .completed to false, else .play() starts from 0 if it has finished before
                 //must be in ms
+                this.playback_slider_knob_anime.completed = false;
                 this.playback_slider_progress_anime.completed = false;
+                this.playback_slider_knob_anime.seek(jumped_anime_duration);
                 this.playback_slider_progress_anime.seek(jumped_anime_duration);
 
                 //handle <audio>
@@ -668,7 +697,6 @@
             skipPlayback(seconds=0){
 
                 //+x for forward, -x for backward
-                //somehow @touchend does not trigger @click, which is good
 
                 //do this instead of relying on :disabled, as :disabled makes sliders bug out
                 if(seconds === 0 || this.final_file === null){
@@ -714,6 +742,31 @@
                 }
 
                 this.resume_after_stop_skipping = null;
+            },
+            clearDelayClosePlaybackOptions(){
+
+                //clear delay
+                if(this.playback_options_timeout !== null){
+
+                    clearTimeout(this.playback_options_timeout);
+                    this.playback_options_timeout = null;
+                }
+            },
+            delayClosePlaybackOptions(){
+
+                //intended only for touch events
+                //only used when user taps while playing
+
+                //do nothing if paused, since playback_options would be always open
+                if(this.is_playing === true){
+                    
+                    //clear any existing timeout
+                    this.clearDelayClosePlaybackOptions();
+
+                    this.playback_options_timeout = setTimeout(()=>{
+                        this.togglePlaybackOptions(false);
+                    }, 3000);
+                }
             },
             resetRecordingVisualiser(){
 
@@ -781,20 +834,29 @@
             },
             changePlaybackRate(new_value){
 
+                if(new_value === this.playback_rate){
+
+                    return false;
+                }
+
                 //note that on every new file loaded into <audio>, playbackRate is reset
                 //attachRecordedAudioToPlayback() will handle this inconvenience
                 this.$refs.audio_playback.playbackRate = new_value;
                 this.playback_rate = new_value;
                 window.localStorage.playback_rate = new_value;
 
-                //adjust anime
-                const resume_later = this.is_playing;
-                this.pausePlayback();
-                this.createPlaybackSliderAnime();
-                this.playback_slider_progress_anime.seek(this.playback_slider_value * this.playback_slider_progress_anime.duration);
-                if(resume_later === true){
+                if(this.$refs.audio_playback.src !== ''){
 
-                    this.playPlayback();
+                    //adjust anime
+                    const resume_later = this.is_playing;
+                    this.pausePlayback();
+                    this.createPlaybackSliderAnime();
+                    this.playback_slider_knob_anime.seek(this.playback_slider_value * this.playback_slider_knob_anime.duration);
+                    this.playback_slider_progress_anime.seek(this.playback_slider_value * this.playback_slider_progress_anime.duration);
+                    if(resume_later === true){
+
+                        this.playPlayback();
+                    }
                 }
             },
             updateIsDraggingVolume(new_value){
@@ -833,6 +895,7 @@
 
                     //don't need seek(), as when .completed is true, play() restarts
                     this.playback_slider_value = 0;
+                    this.playback_slider_knob_anime.completed = true;
                     this.playback_slider_progress_anime.completed = true;
 
                     //extra thing to do for our drag-to-end trick
@@ -843,6 +906,7 @@
                 //as there has been a rare instance where playback had no audio unintentionally until the next replay
                 target.muted = false;
                 target.play();
+                this.playback_slider_knob_anime.play();
                 this.playback_slider_progress_anime.play();
                 this.is_playing = true;
             },
@@ -856,6 +920,7 @@
                 target.pause();
                 //recalculate slider value
                 this.playback_slider_value = target.currentTime / this.final_file_duration;
+                this.playback_slider_knob_anime.pause();
                 this.playback_slider_progress_anime.pause();
                 this.is_playing = false;
             },
@@ -896,6 +961,7 @@
                     case this.playback_states[0]: {
 
                         //'empty', a.k.a. initial state
+                        //this is also used for hard reset
 
                         //remove related anime
                         anime.remove([
@@ -907,6 +973,8 @@
                         this.anime_instance = anime({
                             begin: ()=>{
                                 //remove sunset
+                                this.$refs.recording_visualiser.style.opacity = 0;
+                                this.$refs.recording_visualiser.style.display = 'none';
                                 this.resetRecordingVisualiser();
                             },
                             targets: volume_ripples,
@@ -937,7 +1005,8 @@
                         anime.remove([
                             volume_ripples,
                             this.$refs.recording_visualiser,
-                            this.$refs.playback_slider_progress,
+                            this.$refs.playback_slider_knob,
+                            this.$refs.playback_main,
                             this.$refs.recording_visualiser_circle_0,
                             this.$refs.recording_visualiser_circle_1,
                             this.$refs.recording_visualiser_circle_2,
@@ -948,20 +1017,21 @@
                             loop: false,
                             autoplay: true,
                         }).add({
-                            //remove playback_slider
-                            targets: [this.$refs.playback_slider],
-                            opacity: 0,
-                            duration: this.fastest_anime_duration_ms,
-                            complete: ()=>{
-                                this.$refs.playback_slider.style.display = 'none';
-                                this.playback_slider_progress_anime = null;
-                            },
-                        }).add({
                             //remove volume_ripples
                             targets: volume_ripples,
                             scaleY: ['0'],
                             translateY: ['0%'],
                             duration: this.fastest_anime_duration_ms,
+                        }).add({
+                            //remove playback_main
+                            targets: this.$refs.playback_main,
+                            opacity: 0,
+                            duration: this.fastest_anime_duration_ms,
+                            complete: ()=>{
+                                this.$refs.playback_main.style.display = 'none';
+                                this.playback_slider_knob_anime = null;
+                                this.playback_slider_progress_anime = null;
+                            },
                         }).add({
                             //make sunset available
                             begin: ()=>{
@@ -970,15 +1040,6 @@
                             targets: this.$refs.recording_visualiser,
                             opacity: 1,
                             duration: this.fastest_anime_duration_ms,
-                            complete: ()=>{
-                                //translateY the sunset to the right position
-                                anime({
-                                    targets: this.$refs.recording_visualiser,
-                                    translateY: ['0%', '25%'],
-                                    duration: 2000,
-                                    easing: 'easeOutQuad'
-                                });
-                            }
                         });
                     }
                     break;
@@ -991,7 +1052,7 @@
                         anime.remove([
                             volume_ripples,
                             this.$refs.recording_visualiser,
-                            this.$refs.playback_slider_progress,
+                            this.$refs.playback_main,
                             this.$refs.recording_visualiser_circle_0,
                             this.$refs.recording_visualiser_circle_1,
                             this.$refs.recording_visualiser_circle_2,
@@ -1002,30 +1063,24 @@
                             loop: false,
                             autoplay: true,
                         }).add({
-                            //translateY sunset back to top
-                            begin: this.resetRecordingVisualiser,
-                            targets: this.$refs.recording_visualiser,
-                            translateY: ['0%'],
-                            duration: this.fastest_anime_duration_ms
-                        }).add({
                             //remove sunset
                             targets: this.$refs.recording_visualiser,
                             opacity: 0,
                             duration: this.fastest_anime_duration_ms,
                             complete: ()=>{
-                                this.$refs.recording_visualiser.style.display = 'hidden';
-                                //set volume_ripples
-                                this.adjustVolumeRipples();
+                                this.$refs.recording_visualiser.style.display = 'none';
                             },
                         }).add({
-                            //make playback_slider available
+                            //make playback_main available
+                            targets: this.$refs.playback_main,
                             begin: ()=>{
-                                this.$refs.playback_slider.style.display = 'block';
+                                this.$refs.playback_main.style.display = 'block';
                             },
-                            targets: [this.$refs.playback_slider],
                             opacity: 1,
                             duration: this.fastest_anime_duration_ms * 2,
                             complete: ()=>{
+                                //set volume_ripples
+                                this.adjustVolumeRipples();
                                 //we want the entire anime to finish before this condition unlocks other actions
                                 //to delay this (so users can enjoy the anime), we don't use setTimeout
                                 //we multiply duration above instead, so that we can still fully rely on anime's .finished.then()
@@ -1039,6 +1094,17 @@
                         //'can_play'
                         //will trigger after 'loading', so this is basically to undo 'loading' state
                         //they fire on file load and on every start-from-beginning play
+
+                        //we resume slider anime after buffering while playing
+                        //we put is_buffering outside since 'can_play' always means no longer buffering
+                        if(
+                            this.is_playing === true && this.is_buffering === true
+                        ){
+
+                            this.playback_slider_progress_anime.play();
+                            this.playback_slider_knob_anime.play();
+                        }
+                        this.is_buffering = false;
 
                         //remove related anime
                         anime.remove([
@@ -1058,7 +1124,15 @@
                     case this.playback_states[4]:
 
                         //'loading'
-                        
+
+                        //we pause slider anime when buffering while playing
+                        if(this.is_playing === true){
+
+                            this.is_buffering = true;
+                            this.playback_slider_progress_anime.pause();
+                            this.playback_slider_knob_anime.pause();
+                        }
+
                         //remove related anime
                         anime.remove([
                             volume_ripples,

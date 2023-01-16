@@ -29,7 +29,7 @@
                 aria-label="pause or resume"
                 :class="[
                     recorder_state !== undefined && recorder_state !== 'stopped' ? 'block' : 'hidden',
-                    'row-start-2 row-span-1 col-span-2 w-full'
+                    'row-start-2 row-span-1 col-span-2 w-full h-full'
                 ]"
             >
                 <i
