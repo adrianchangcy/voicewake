@@ -306,7 +306,7 @@ class LanguagesViewSet(viewsets.ModelViewSet):
 #create main events
 class CreateMainEventsFormView(FormView):
 
-    template_name = 'voicewake/events/say/create_main_events.html'
+    template_name = 'voicewake/events/create_main_events.html'
     form_class = CreateMainEventsForm
     success_url = '/'
 
@@ -349,20 +349,14 @@ class CreateMainEventsFormView(FormView):
         return redirect('/create-event')
 
 
-#view personal events
-class ViewEventsListView(ListView):
+#view main events
+class ViewMainEventsListView(ListView):
 
-    template_name = 'voicewake/events/listeners/view_events.html'
+    template_name = 'voicewake/events/view_main_events.html'
 
     def get_queryset(self):
 
-        user_event_role = UserEventRoles.objects.get(
-                                                    user=self.request.user.id,
-                                                    event_role__event_role_name='listener'
-                                                    )
-
-        # queryset = EventSchedules.objects.select_ related('event').filter(event__user_event_role=user_event_role)
-        events = Events.objects.filter(user_event_role=user_event_role)
+        events = [1,1]
 
         return events
 

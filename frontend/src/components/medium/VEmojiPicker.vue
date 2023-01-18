@@ -59,9 +59,9 @@
 <script setup>
 
     import TransitionFade from '/src/transitions/TransitionFade.vue';
-    import VActionButtonMedium from './VActionButtonMedium.vue';
-    import VInputLabel from './VInputLabel.vue';
-    import VBox from './VBox.vue';
+    import VActionButtonMedium from '/src/components/small/VActionButtonMedium.vue';
+    import VInputLabel from '/src/components/small/VInputLabel.vue';
+    import VBox from '/src/components/small/VBox.vue';
 
 </script>
 

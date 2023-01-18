@@ -9,13 +9,12 @@
     ></audio>
 
     <!--size priority: playback_main, then ripples, then everything else-->
-    <!--h = playback_main + p-2 (top+bottom 1rem) + border-2 (top+bottom 0.25rem)-->
-    <div class="h-[9.25rem] text-center relative">
+    <div class="h-36 text-center relative">
 
         <!--recording visualiser-->
         <div
             ref="recording_visualiser"
-            class="absolute w-[5rem] h-[5rem] left-0 right-0 -bottom-[0.5rem] m-auto opacity-0 hidden"
+            class="absolute w-36 h-36 left-0 right-0 top-0 bottom-0 m-auto opacity-0 hidden"
         >
             <div class="relative w-full h-full">
                 <div
@@ -42,17 +41,16 @@
             ref="playback_main"
             :class="[
                 final_file === null ? 'border-theme-light-gray/10' : 'border-theme-light-gray',
-                'w-full h-full text-theme-black border-2 rounded-2xl p-2'
+                'w-full h-fit absolute left-0 right-0 top-0 bottom-0 m-auto text-theme-black border-2 rounded-2xl p-2'
             ]"
         >
 
             <!--ripples, slider-->
-            <!--h-fit = ripples without parent top padding 10rem + slider 2.5rem-->
-            <div class="w-full h-[5rem] relative">
+            <div class="w-full h-20 relative">
                 <!--ripples-->
                 <div
                     ref="volume_ripples_container"
-                    class="w-full h-[4.375rem] absolute top-0 flex flex-row justify-evenly"
+                    class="w-full h-16 absolute top-0 flex flex-row justify-evenly"
                 >
                     <div
                         v-for="volume_ripple in bucket_quantity" :key="volume_ripple"
@@ -75,7 +73,7 @@
                 <div
                     :class="[
                         final_file === null ? 'opacity-10 cursor-default' : 'opacity-100 cursor-pointer',
-                        'h-[2.5rem] absolute bottom-0 left-2 right-2 m-auto'
+                        'h-10 absolute bottom-0 left-2 right-2 m-auto'
                     ]"
                 >
                     <div
@@ -116,7 +114,7 @@
             <div
                 :class="[
                     final_file === null ? 'opacity-10' : 'opacity-100',
-                    'w-full h-[3rem] grid grid-rows-1 grid-cols-5'
+                    'w-full h-10 grid grid-rows-1 grid-cols-5'
                 ]"
             >
                 <!--current duration-->
@@ -168,7 +166,7 @@
                     </TransitionFade>
                 </div>
                 <!--play/pause-->
-                <div class="row-start-1 row-span-1 col-start-3 col-span-1 h-full text-4xl">
+                <div class="row-start-1 row-span-1 col-start-3 col-span-1 h-full text-3xl">
                     <button
                         ref="play_pause_button"
                         @click="togglePlaybackPlayPause()"
@@ -273,8 +271,8 @@
 
 <script setup>
 
-    import VBox from './VBox.vue';
-    import VSliderYSmall from './VSliderYSmall.vue';
+    import VBox from '/src/components/small/VBox.vue';
+    import VSliderYSmall from '/src/components/small/VSliderYSmall.vue';
     import TransitionFade from '/src/transitions/TransitionFade.vue';
 
 </script>
@@ -513,16 +511,10 @@
                 //we can then use .play/.pause/.seek
                 //expects to already have accurate this.playback_slider_value
 
-                //if playback_slider_knob is not involved in any other anime,
-                //we are safe to remove its own anime for the purpose of re-do
-                //during window resize or playback rate change
-                if(this.is_volume_ripples_available === true){
-
-                    anime.remove([
-                        this.$refs.playback_slider_knob,
-                        this.$refs.playback_slider_progress
-                    ]);
-                }
+                anime.remove([
+                    this.$refs.playback_slider_knob,
+                    this.$refs.playback_slider_progress
+                ]);
 
                 //calculate starting point of translateX
                 const ending_translateX = this.playback_slider_width.width;
@@ -553,16 +545,18 @@
             },
             adjustToNewPlaybackDimension(){
 
+                if(this.$refs.playback_main.style.display === 'none'){
+
+                    return false;
+                }
+
                 //expects playback_slider to have the same width
-                //only using this at 'resize' event listener
+                //use not only during 'resize' event, but when playback_states[2] is ready
+                //as 'resize' may occur when element is display:none
                 this.playback_slider_width = this.$refs.playback_slider_width.getBoundingClientRect();
 
                 //create/recreate anime
-                if(
-                    this.final_file !== null &&
-                    this.playback_slider_knob_anime !== null &&
-                    this.playback_slider_progress_anime !== null
-                ){
+                if(this.final_file !== null){
 
                     this.createPlaybackSliderAnime();
                     this.syncSliderNeedleAnimeAfterSuspend();
@@ -594,7 +588,7 @@
                 this.is_playback_slider_drag = true;
                 this.is_playback_slider_touch = is_playback_slider_touch;
 
-                if(this.is_playing === true){
+                if(this.is_playing === true || this.playback_slider_value === 1){
 
                     this.pausePlayback();
                     this.resume_after_stop_dragging = true;
@@ -1064,8 +1058,12 @@
                             autoplay: true,
                         }).add({
                             //remove sunset
+                            begin: ()=>{
+                                this.resetRecordingVisualiser();
+                            },
                             targets: this.$refs.recording_visualiser,
                             opacity: 0,
+                            delay: 100,
                             duration: this.fastest_anime_duration_ms,
                             complete: ()=>{
                                 this.$refs.recording_visualiser.style.display = 'none';
@@ -1078,13 +1076,13 @@
                             },
                             opacity: 1,
                             duration: this.fastest_anime_duration_ms * 2,
+                            //we want the entire anime to finish before this condition unlocks other actions
+                            //to delay this, we don't use setTimeout
+                            //we multiply duration above instead, so that we can still fully rely on anime's .finished.then()
                             complete: ()=>{
                                 //set volume_ripples
                                 this.adjustVolumeRipples();
-                                //we want the entire anime to finish before this condition unlocks other actions
-                                //to delay this (so users can enjoy the anime), we don't use setTimeout
-                                //we multiply duration above instead, so that we can still fully rely on anime's .finished.then()
-                                this.is_volume_ripples_available = true;
+                                this.adjustToNewPlaybackDimension();
                             }
                         });
                     }
@@ -1266,6 +1264,8 @@
                         easing: 'easeInOutQuad',
                         duration: 200,
                     });
+
+                    this.is_volume_ripples_available = true;
                 }
             },
             attachRecordedAudioToPlayback(){

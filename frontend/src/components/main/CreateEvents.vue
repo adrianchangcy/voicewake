@@ -6,30 +6,31 @@
         https://docs.djangoproject.com/en/dev/howto/csrf/
     -->
 
-    <div class="bg-theme-light text-left text-lg">
-        <form
-            spellcheck="false"
-            class="md:w-2/4 lg:w-3/6 xl:w-2/6 mx-4 my-8 md:mx-auto h-fit bg-theme-light flex flex-nowrap flex-col gap-8"
-        >
+    <div class="md:w-2/4 lg:w-3/6 xl:w-2/6 left-4 right-4 mx-auto h-fit bg-theme-light text-left text-lg">
 
             <VSectionTitle>
                 <span>Say</span>
             </VSectionTitle>
 
-            <div class="w-[90%] mx-auto flex flex-nowrap flex-col gap-8">
+        <form
+            spellcheck="false"
+            class=" bg-theme-light flex flex-nowrap flex-col gap-6"
+        >
+
+            <div class="w-[90%] mx-auto flex flex-nowrap flex-col">
                 <div>
                     <VInputLabel
                         class="w-fit left-0"
                         for="click-to-record"
                     >
-                        Share your thoughts
+                        Share something
                     </VInputLabel>
                     <VPlayback
                         :propFile="final_file"
                         :propIsRecording="is_recording"
                         :propRecordingVolume="recording_volume"
                         :propTimeInterval="time_interval"
-                        :propIsForRecording="true"
+                        :propIsForRecording="false"
                         @isAnimePlaybackCompleted="handleIsAnimePlaybackCompleted($event)"
                     />
                     <div class="w-0 h-0 p-1">
@@ -44,12 +45,14 @@
                 </div>
             </div>
 
-            <div class="w-[90%] mx-auto flex flex-nowrap flex-col gap-8">
-                <EmojiPicker
-                    propLabelText="How did you feel?"
+            <div class="w-[70%] mx-auto">
+                <VEmojiPicker
+                    propLabelText="How you feel about it"
                     class="w-full"
                 />
+            </div>
 
+            <div class="w-[70%] mx-auto">
                 <VTextArea
                     :propIsRequired="false"
                     propElementId="event-name"
@@ -72,7 +75,7 @@
                 @click.prevent="handleSubmit()"
                 class="w-[50%] left-0 right-0 mx-auto"
             >
-                <span>Hear from others</span>
+                <span>Hear from someone</span>
             </VActionButtonBig>
 
             <div class="w-0 h-0"></div>
@@ -83,13 +86,13 @@
 
 <script setup>
 
-    import VRecorder from './VRecorder.vue';
-    import VPlayback from './VPlayback.vue';
-    import VActionButtonBig from './VActionButtonBig.vue';
-    import EmojiPicker from './EmojiPicker.vue';
-    import VInputLabel from './VInputLabel.vue';
-    import VSectionTitle from './VSectionTitle.vue';
-    import VTextArea from './VTextArea.vue';
+    import VRecorder from '/src/components/medium/VRecorder.vue';
+    import VPlayback from '/src/components/medium/VPlayback.vue';
+    import VEmojiPicker from '/src/components/medium/VEmojiPicker.vue';
+    import VActionButtonBig from '/src/components/small/VActionButtonBig.vue';
+    import VInputLabel from '/src/components/small/VInputLabel.vue';
+    import VSectionTitle from '/src/components/small/VSectionTitle.vue';
+    import VTextArea from '/src/components/small/VTextArea.vue';
 </script>
 
 <script>
@@ -116,7 +119,7 @@
         components: {
             VRecorder,
             VActionButtonBig,
-            EmojiPicker,
+            VEmojiPicker,
             VSectionTitle,
             VTextArea,
         },
