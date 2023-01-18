@@ -9,13 +9,13 @@
                 </li>
                 <li class="col-span-2 hidden lg:flex"></li>
                 <li class="col-span-1 lg:col-span-2 flex flex-nowrap">
-                    <VNavigationButton propElement="a" propUrl="/" class="w-full h-full p-4 lg:p-2">
+                    <VNavigationButton propElement="a" propUrl="/hear" class="w-full h-full p-4 lg:p-2">
                         <i class="fas fa-ear-listen"></i>
                         <span class="hidden lg:block">Hear</span>
                     </VNavigationButton>
                 </li>
                 <li class="col-span-1 lg:col-span-2 flex flex-nowrap">
-                    <VNavigationButton propElement="a" propUrl="/" class="w-full h-full p-4 lg:p-2">
+                    <VNavigationButton propElement="a" propUrl="/say" class="w-full h-full p-4 lg:p-2">
                         <i class="fas fa-quote-left"></i>
                         <span class="hidden lg:block">Say</span>
                     </VNavigationButton>
