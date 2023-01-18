@@ -1,8 +1,8 @@
 import { createApp } from 'vue';
 import { mixinGeneral } from './mixin_general.js';
 
-import BaseApp from './BaseApp.vue';
-import CreateMainEventsApp from './CreateMainEventsApp.vue';
+import BaseApp from '/src/apps/BaseApp.vue';
+import CreateMainEventsApp from '/src/apps/CreateMainEventsApp.vue';
 
 const clickOutside = {
 

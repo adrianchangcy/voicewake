@@ -48,8 +48,9 @@ urlpatterns = [
     path('', views.home, name='home'),
     path('sign-up', views.sign_up, name='sign_up'),
     path('set-timezone', views.set_timezone, name='set_timezone'),
-    path('say', views.CreateMainEventsFormView.as_view(), name='create_main_events'),
-    path('view-event', views.ViewEventsListView.as_view(), name='view_events'),
+    path('say', views.CreateMainEventsFormView.as_view(), name='create_new_events'),
+    path('hear', views.ViewMainEventsListView.as_view(), name='view_new_events'),
+    # path('reply', views.ReplyMainEventsFormView.as_view(), name='reply_new_events'),
     path('seek-event', views.SeekEventsFormView.as_view(), name='seek_events'),
     
     #test

@@ -62,9 +62,9 @@
 
 <script setup>
 
-    import VActionButtonSmall from './VActionButtonSmall.vue';
-    import VActionButtonMedium from './VActionButtonMedium.vue';
-    import VInputLabel from './VInputLabel.vue';
+    import VActionButtonSmall from '/src/components/small/VActionButtonSmall.vue';
+    import VActionButtonMedium from '/src/components/small/VActionButtonMedium.vue';
+    import VInputLabel from '/src/components/small/VInputLabel.vue';
 </script>
 
 <script>

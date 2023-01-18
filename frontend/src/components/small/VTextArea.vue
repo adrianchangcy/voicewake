@@ -19,6 +19,7 @@
         <div class="text-xl">
             <!--default inline-block, changed to block to remove bottom spacing-->
             <textarea
+                @input="resize()"
                 ref="nice_textarea"
                 :required="propIsRequired"
                 :id="propElementId"
@@ -27,7 +28,7 @@
                     (propIsOk ? 'border-theme-ok' : ''),
                     (propIsWarning ? 'border-theme-warning' : ''),
                     (propIsError ? 'border-theme-danger' : ''),
-                    'block w-full h-20 bg-theme-light border-2 border-theme-black rounded-lg p-2'
+                    'block w-full h-10 bg-theme-light border-2 border-theme-black rounded-lg overflow-hidden p-2 pt-1'
                 ]"
                 :placeholder="propPlaceholder"
                 autocomplete="off"
