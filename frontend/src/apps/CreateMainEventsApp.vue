@@ -1,10 +1,10 @@
 <template>
-    <CreateEvents/>
+    <CreateMainEvents/>
 </template>
 
 
 <script>
-    import CreateEvents from '/src/components/main/CreateEvents.vue';
+    import CreateMainEvents from '/src/components/main/CreateMainEvents.vue';
 
     export default {
         data(){
@@ -13,7 +13,7 @@
         },
         name: 'CreateMainEventsApp',
         components: {
-            CreateEvents,
+            CreateMainEvents,
         },
         methods: {
         }
