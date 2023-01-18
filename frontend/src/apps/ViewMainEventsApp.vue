@@ -1,10 +1,10 @@
 <template>
-    <ViewEvents/>
+    <ViewMainEvents/>
 </template>
 
 
 <script>
-    import ViewEvents from '/src/components/main/ViewEvents.vue';
+    import ViewMainEvents from '/src/components/main/ViewMainEvents.vue';
 
     export default {
         data(){
@@ -13,7 +13,7 @@
         },
         name: 'ViewMainEventsApp',
         components: {
-            ViewEvents,
+            ViewMainEvents,
         },
         methods: {
         }
