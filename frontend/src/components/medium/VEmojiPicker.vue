@@ -1,11 +1,9 @@
 <template>
     <div class="text-center">
-        <div ref="emoji_choice_label" class="w-fit h-fit text-left">
+        <div ref="emoji_choice_label" class="w-fit h-fit">
             <VInputLabel for="emoji-picker">{{propLabelText}}</VInputLabel>
         </div>
-        <div
-            v-if="emoji_choice !== null"
-        >
+        <div>
             <div ref="emoji_choice_button">
                 <VActionButtonMedium
                     id="emoji-picker"
@@ -13,7 +11,10 @@
                     @click.prevent="toggleEmojiPicker()"
                     class="w-full p-2 pb-3"
                 >
-                    <span :aria-label="'Current choice is '+emoji_choice.index">
+                    <span v-if="emoji_choice === null">
+                        <i class="far fa-face-meh-blank text-theme-black"></i>
+                    </span>
+                    <span v-else :aria-label="'Current choice is '+emoji_choice.index">
                         {{emoji_choice.emoji}}
                     </span>
                 </VActionButtonMedium>
@@ -42,6 +43,8 @@
                                         @click.prevent="handleEmojiClick($event, emoji, index)"
                                         :aria-label="index"
                                         :disabled="!is_emoji_picker_open"
+                                        class="w-10 h-10 shade-when-hover rounded-md transition-colors duration-100 ease-in-out"
+                                        type="button"
                                     >
                                         {{emoji}}
                                     </button>
@@ -110,13 +113,13 @@
         mounted(){
 
             //navigate emojis until we get our first emoji key:value to set as default
-            let full_emojis = this.emoji_categories;
-            let category_key = Object.keys(full_emojis)[0];
-            let first_emoji = Object.entries(full_emojis[category_key])[0];
-            this.emoji_choice = {
-                'index': first_emoji[0],
-                'emoji': first_emoji[1]
-            };
+            // let full_emojis = this.emoji_categories;
+            // let category_key = Object.keys(full_emojis)[0];
+            // let first_emoji = Object.entries(full_emojis[category_key])[0];
+            // this.emoji_choice = {
+            //     'index': first_emoji[0],
+            //     'emoji': first_emoji[1]
+            // };
         },
     }
 </script>

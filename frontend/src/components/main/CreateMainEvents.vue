@@ -6,59 +6,58 @@
         https://docs.djangoproject.com/en/dev/howto/csrf/
     -->
 
-    <div class="md:w-2/4 lg:w-3/6 xl:w-2/6 left-4 right-4 mx-auto h-fit bg-theme-light text-left text-lg">
+    <div class="md:w-2/4 lg:w-3/6 xl:w-2/6 mx-auto h-fit bg-theme-light text-left text-lg">
 
+        <div class="w-[90%] mx-auto">
             <VSectionTitle>
                 <span>Say</span>
             </VSectionTitle>
+        </div>
 
         <form
             spellcheck="false"
-            class=" bg-theme-light flex flex-nowrap flex-col gap-6"
+            class="w-[80%] mx-auto bg-theme-light flex flex-nowrap flex-col gap-6"
         >
 
-            <div class="w-[90%] mx-auto flex flex-nowrap flex-col">
-                <div>
-                    <VInputLabel
-                        class="w-fit left-0"
-                        for="click-to-record"
-                    >
-                        Share something
-                    </VInputLabel>
-                    <VPlayback
-                        :propFile="final_file"
-                        :propIsRecording="is_recording"
-                        :propRecordingVolume="recording_volume"
-                        :propTimeInterval="time_interval"
-                        :propIsForRecording="false"
-                        @isAnimePlaybackCompleted="handleIsAnimePlaybackCompleted($event)"
-                    />
-                    <div class="w-0 h-0 p-1">
-                    </div>  
-                    <VRecorder
-                        @hasNewRecording="handleHasNewRecording($event)"
-                        @isRecording="handleIsRecording($event)"
-                        @hasNewRecordingVolume="handleHasNewRecordingVolume($event)"
-                        @hasNewTimeInterval="handleHasNewTimeInterval($event)"
-                        :propIsAnimePlaybackCompleted="is_anime_playback_completed"
-                    />
-                </div>
+            <div class="">
+                <VInputLabel
+                    class="left-0"
+                    for="click-to-record"
+                >
+                    Share something
+                </VInputLabel>
+                <VPlayback
+                    :propFile="final_file"
+                    :propIsRecording="is_recording"
+                    :propRecordingVolume="recording_volume"
+                    :propTimeInterval="time_interval"
+                    :propIsForRecording="false"
+                    @isAnimePlaybackCompleted="handleIsAnimePlaybackCompleted($event)"
+                />
+                <div class="w-0 h-2"></div>
+                <VRecorder
+                    @hasNewRecording="handleHasNewRecording($event)"
+                    @isRecording="handleIsRecording($event)"
+                    @hasNewRecordingVolume="handleHasNewRecordingVolume($event)"
+                    @hasNewTimeInterval="handleHasNewTimeInterval($event)"
+                    :propIsAnimePlaybackCompleted="is_anime_playback_completed"
+                />
             </div>
 
-            <div class="w-[70%] mx-auto">
+            <div class="">
                 <VEmojiPicker
                     propLabelText="How you feel about it"
                     class="w-full"
                 />
             </div>
 
-            <div class="w-[70%] mx-auto">
+            <div class="">
                 <VTextArea
                     :propIsRequired="false"
                     propElementId="event-name"
-                    propLabel="Title"
+                    propLabel="Notes (optional)"
                     propPlaceholder=""
-                    :propMaxLength="40"
+                    :propMaxLength="100"
                     :propHasTextCounter="true"
                     :propHasStatusText="false"
                     :propIsOk="event_name_is_ok"
@@ -73,7 +72,7 @@
 
             <VActionButtonBig
                 @click.prevent="handleSubmit()"
-                class="w-[50%] left-0 right-0 mx-auto"
+                class="w-[60%] left-0 right-0 mx-auto"
             >
                 <span>Hear from someone</span>
             </VActionButtonBig>
