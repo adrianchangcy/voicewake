@@ -3,13 +3,14 @@
         ref="audio_playback"
         @loadedmetadata="getPlaybackDuration()"
         @timeupdate="updateCurrentPlaybackTime()"
-        @ended="pausePlayback()"
         @canplay="current_playback_state = playback_states[3]"
         @waiting="current_playback_state = playback_states[4]"
+        @playing="isPlaying()"
+        @ended="[pausePlayback(), isEnded()]"
     ></audio>
 
     <!--size priority: playback_main, then ripples, then everything else-->
-    <div class="h-36 text-center relative">
+    <div class="h-[8.75rem] text-center relative">
 
         <!--recording visualiser-->
         <div
@@ -44,9 +45,8 @@
                 'w-full h-fit absolute left-0 right-0 top-0 bottom-0 m-auto text-theme-black border-2 rounded-2xl p-2'
             ]"
         >
-
             <!--ripples, slider-->
-            <div class="w-full h-20 relative">
+            <div class="h-20 w-full relative">
                 <!--ripples-->
                 <div
                     ref="volume_ripples_container"
@@ -73,14 +73,14 @@
                 <div
                     :class="[
                         final_file === null ? 'opacity-10 cursor-default' : 'opacity-100 cursor-pointer',
-                        'h-10 absolute bottom-0 left-2 right-2 m-auto'
+                        'left-2 right-2 m-auto h-10 absolute bottom-0'
                     ]"
                 >
                     <div
                         ref="playback_slider"
                         :class="[
                             final_file !== null ? 'touch-none' : '',
-                            'w-full h-full relative'
+                            'h-full relative'
                         ]"
                         @mouseenter.stop="is_playback_slider_hover = true"
                         @mouseleave.stop="is_playback_slider_hover = false"
@@ -119,7 +119,7 @@
             >
                 <!--current duration-->
                 <div class="row-start-1 row-span-1 col-start-1 col-span-1 relative text-base font-medium">
-                    <span class="absolute w-fit h-fit left-2 top-0 bottom-0 m-auto">{{pretty_current_playback_time}}</span>
+                    <span class="absolute w-10 h-fit left-2 top-0 bottom-0 m-auto">{{pretty_current_playback_time}}</span>
                 </div>
                 <!--volume-->
                 <div
@@ -130,7 +130,7 @@
                     <!--open/close volume-->
                     <button
                         @click="togglePlaybackVolumeOptions()"
-                        class="w-full h-full shade-when-hover rounded-md"
+                        class="w-full h-full shade-when-hover transition-colors duration-200 ease-in-out rounded-md"
                         :disabled="final_file === null"
                         type="button"
                     >
@@ -170,7 +170,7 @@
                     <button
                         ref="play_pause_button"
                         @click="togglePlaybackPlayPause()"
-                        class="w-full h-full shade-when-hover rounded-md"
+                        class="w-full h-full shade-when-hover transition-colors duration-200 ease-in-out rounded-md"
                         :disabled="final_file === null"
                         type="button"
                     >
@@ -191,7 +191,7 @@
                     <!--open/close rate-->
                     <button
                         @click="togglePlaybackSpeedOptions()"
-                        class="w-full h-full shade-when-hover rounded-md"
+                        class="w-full h-full shade-when-hover transition-colors duration-200 ease-in-out rounded-md"
                         :disabled="final_file === null"
                         type="button"
                     >
@@ -223,7 +223,7 @@
                                     <button
                                         @click="changePlaybackRate(1.5)"
                                         :class="[
-                                            playback_rate === 1.5 ? 'bg-theme-lead' : 'bg-none shade-when-hover' ,
+                                            playback_rate === 1.5 ? 'bg-theme-lead' : 'bg-none shade-when-hover',
                                             'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-sm'
                                         ]"
                                         type="button"
@@ -235,7 +235,7 @@
                                     <button
                                         @click="changePlaybackRate(1)"
                                         :class="[
-                                            playback_rate === 1 ? 'bg-theme-lead' : 'bg-none shade-when-hover' ,
+                                            playback_rate === 1 ? 'bg-theme-lead' : 'bg-none shade-when-hover',
                                             'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-sm'
                                         ]"
                                         type="button"
@@ -247,7 +247,7 @@
                                     <button
                                         @click="changePlaybackRate(0.5)"
                                         :class="[
-                                            playback_rate === 0.5 ? 'bg-theme-lead' : 'bg-none shade-when-hover' ,
+                                            playback_rate === 0.5 ? 'bg-theme-lead' : 'bg-none shade-when-hover',
                                             'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-sm'
                                         ]"
                                         type="button"
@@ -366,7 +366,16 @@
             window.addEventListener('mouseup', this.stopPlaybackDrag);
             window.addEventListener('touchend', this.stopPlaybackDrag);
             window.addEventListener('resize', this.adjustToNewPlaybackDimension);
-            document.addEventListener('visibilitychange', this.syncSliderNeedleAnimeAfterSuspend);
+            window.addEventListener('keydown', (event) => {
+                if(event.keyCode === 32){
+                    //prevent scrolling on spacebar
+                    event.preventDefault();
+                }
+            });
+            window.addEventListener('keyup', (event) => {
+                this.handleKeyUp(event);
+            });
+            document.addEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
         },
         beforeUnmount(){
 
@@ -376,7 +385,16 @@
             window.removeEventListener('mouseup', this.stopPlaybackDrag);
             window.removeEventListener('touchend', this.stopPlaybackDrag);
             window.removeEventListener('resize', this.adjustToNewPlaybackDimension);
-            document.removeEventListener('visibilitychange', this.syncSliderNeedleAnimeAfterSuspend);
+            window.removeEventListener('keydown', (event) => {
+                if(event.keyCode === 32){
+                    //prevent scrolling on spacebar
+                    event.preventDefault();
+                }
+            });
+            window.removeEventListener('keyup', (event) => {
+                this.handleKeyUp(event);
+            });
+            document.removeEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
         },
         emits: [
             'isAnimePlaybackCompleted',
@@ -428,14 +446,13 @@
                     return false;
                 }
 
-                //reset most things when recording a new instance
-                //others will be automatically handled on new data
                 if(this.is_playing === true){
 
                     this.pausePlayback();
-                    this.final_file = null;
                 }
 
+                this.final_file = null;
+                this.final_file_duration = 0;
                 this.is_volume_ripples_available = false;
                 this.current_playback_state = this.playback_states[1];
             },
@@ -464,6 +481,45 @@
             },
         },
         methods: {
+            isPlaying(){
+                console.log('is playing');
+            },
+            isEnded(){
+                console.log('is ended');
+            },
+            handleKeyUp(event){
+
+                if(this.final_file === null){
+
+                    return false;
+                }
+
+                switch(event.keyCode){
+
+                    case 37:
+
+                        //left arrow
+                        this.skipPlayback(-5);
+                        break;
+                    
+                    case 39:
+
+                        //right arrow
+                        this.skipPlayback(5);
+                        break;
+
+                    case 32:
+
+                        //spacebar
+                        this.togglePlaybackPlayPause();
+                        break;
+                    
+                    default:
+
+                        //have not handled volume yet
+                        return false;
+                }
+            },
             dataTroubleshooter(){
 
                 console.log('=================');
@@ -472,7 +528,7 @@
                 console.log('is_dragging_volume: '+this.is_dragging_volume);
                 console.log('=================');
             },
-            syncSliderNeedleAnimeAfterSuspend(){
+            syncSliderAnimeAfterSuspend(){
 
                 //we need this because anime.suspendDocumentWhenHidden=false does not work
                 //basically just to reposition slider anime to playback, else it doesn't do that
@@ -506,15 +562,18 @@
                 }
             },
             createPlaybackSliderAnime(){
-            
+
                 //to be called during getPlaybackDuration(), window resize, changePlaybackRate()
                 //we can then use .play/.pause/.seek
                 //expects to already have accurate this.playback_slider_value
 
+                //remove
                 anime.remove([
                     this.$refs.playback_slider_knob,
                     this.$refs.playback_slider_progress
                 ]);
+                this.playback_slider_knob_anime = null;
+                this.playback_slider_progress_anime =null;
 
                 //calculate starting point of translateX
                 const ending_translateX = this.playback_slider_width.width;
@@ -559,23 +618,15 @@
                 if(this.final_file !== null){
 
                     this.createPlaybackSliderAnime();
-                    this.syncSliderNeedleAnimeAfterSuspend();
+                    this.syncSliderAnimeAfterSuspend();
                 }
             },
             endPlaybackProperly(){
 
-                if(this.playback_slider_value < 1){
-
-                    return false;
-                }
-
-                //when <audio> .currentTime is dragged to absolute end, @ended does not fire
-                //then, when play, it will fire @play then @ended
-                //this is the fix, provided that you have loop=false
-                //0.999 is better than 0.99
+                //when paused and dragged to end, html media seems to still want you to play once to truly end
+                //handle only the media here, the rest are already settled
                 const target = this.$refs.audio_playback;
-                target.currentTime = 0.999 * this.final_file_duration;
-                target.muted = true;    //we will undo this at playPlayback()
+                target.muted = true;
                 target.play();
             },
             startPlaybackDrag(is_playback_slider_touch=false){
@@ -588,9 +639,15 @@
                 this.is_playback_slider_drag = true;
                 this.is_playback_slider_touch = is_playback_slider_touch;
 
-                if(this.is_playing === true || this.playback_slider_value === 1){
+                if(this.is_playing === true){
 
                     this.pausePlayback();
+                    this.resume_after_stop_dragging = true;
+                }
+
+                //we want to also resume if started from end
+                if(this.playback_slider_value === 1){
+
                     this.resume_after_stop_dragging = true;
                 }
             },
@@ -654,13 +711,13 @@
                     if(this.playback_slider_value < 1 && this.resume_after_stop_dragging === true){
 
                         this.playPlayback();
-                        this.resume_after_stop_dragging = null;
 
                     }else if(this.playback_slider_value === 1){
 
                         this.endPlaybackProperly();
                     }
 
+                    this.resume_after_stop_dragging = null;
                     this.is_playback_slider_drag = false;
                 }
 
@@ -672,7 +729,7 @@
                 //duration is the same regardless of playbackRate
                 const jumped_anime_duration = this.playback_slider_value * this.playback_slider_knob_anime.duration;
                 //duration changes when playbackRate changes
-                const jumped_playback_duration = this.playback_slider_value * this.$refs.audio_playback.duration;
+                const jumped_playback_duration = this.playback_slider_value * this.final_file_duration;
 
                 //handle slider aesthetics
                 //need to set .completed to false, else .play() starts from 0 if it has finished before
@@ -698,7 +755,6 @@
                     return false;
                 }
 
-                //check if audio is playing
                 if(this.is_playing === true){
 
                     this.pausePlayback();
@@ -884,18 +940,6 @@
 
                 const target = this.$refs.audio_playback;
 
-                //ended, so reset
-                if(this.playback_slider_value === 1 && this.$refs.audio_playback.currentTime === this.final_file_duration){
-
-                    //don't need seek(), as when .completed is true, play() restarts
-                    this.playback_slider_value = 0;
-                    this.playback_slider_knob_anime.completed = true;
-                    this.playback_slider_progress_anime.completed = true;
-
-                    //extra thing to do for our drag-to-end trick
-                    target.muted = false;
-                }
-
                 //although redundant, we put target.muted=false here to guarantee it
                 //as there has been a rare instance where playback had no audio unintentionally until the next replay
                 target.muted = false;
@@ -911,11 +955,11 @@
 
                 const target = this.$refs.audio_playback;
 
+                //also recalculate slider value
                 target.pause();
-                //recalculate slider value
-                this.playback_slider_value = target.currentTime / this.final_file_duration;
                 this.playback_slider_knob_anime.pause();
                 this.playback_slider_progress_anime.pause();
+                this.playback_slider_value = target.currentTime / this.final_file_duration;
                 this.is_playing = false;
             },
             togglePlaybackPlayPause(){
@@ -928,15 +972,25 @@
 
                     return false;
                 }
-                
+
                 //check if playback is not playing
                 if(this.is_playing === false){
-                    
+
                     this.playPlayback();
 
                 }else{
 
                     this.pausePlayback();
+                    
+                    //when we pause right at the end, our anime may finish earlier than playback
+                    //we end the actual playback in this case
+                    if(
+                        this.playback_slider_knob_anime.completed === true ||
+                        this.playback_slider_progress_anime.completed === true
+                    ){
+                        
+                        this.endPlaybackProperly();
+                    }
                 }
             },
             emitIsAnimePlaybackCompleted(is_completed){
@@ -952,200 +1006,210 @@
 
                 switch(this.current_playback_state){
 
-                    case this.playback_states[0]: {
+                    case this.playback_states[0]:
 
-                        //'empty', a.k.a. initial state
-                        //this is also used for hard reset
+                        {
+                            //'empty', a.k.a. initial state
+                            //this is also used for hard reset
 
-                        //remove related anime
-                        anime.remove([
-                            volume_ripples,
-                            this.$refs.recording_visualiser,
-                        ]);
+                            //remove related anime
+                            anime.remove([
+                                volume_ripples,
+                                this.$refs.recording_visualiser,
+                            ]);
 
-                        //timeline will not work here
-                        this.anime_instance = anime({
-                            begin: ()=>{
-                                //remove sunset
-                                this.$refs.recording_visualiser.style.opacity = 0;
-                                this.$refs.recording_visualiser.style.display = 'none';
-                                this.resetRecordingVisualiser();
-                            },
-                            targets: volume_ripples,
-                            scaleY: ['0', '0.9'],
-                            autoplay: true,
-                            loop: false,
-                            easing: 'easeInOutCubic',
-                            duration: 1000,
-                            complete: ()=>{
-                                //add ripple effect
-                                anime({
-                                    targets: volume_ripples,
-                                    autoplay: true,
-                                    easing: 'linear',
-                                    loop: true,
-                                    translateY: ['0%', '-5%', '5%', '0%'],
-                                    delay: anime.stagger(100),
-                                });
-                            }
-                        });
-                    }
-                    break;
-                    case this.playback_states[1]:{
-
-                        //'recording'
-
-                        //remove related anime
-                        anime.remove([
-                            volume_ripples,
-                            this.$refs.recording_visualiser,
-                            this.$refs.playback_slider_knob,
-                            this.$refs.playback_main,
-                            this.$refs.recording_visualiser_circle_0,
-                            this.$refs.recording_visualiser_circle_1,
-                            this.$refs.recording_visualiser_circle_2,
-                        ]);
-
-                        this.anime_instance = anime.timeline({
-                            easing: 'linear',
-                            loop: false,
-                            autoplay: true,
-                        }).add({
-                            //remove volume_ripples
-                            targets: volume_ripples,
-                            scaleY: ['0'],
-                            translateY: ['0%'],
-                            duration: this.fastest_anime_duration_ms,
-                        }).add({
-                            //remove playback_main
-                            targets: this.$refs.playback_main,
-                            opacity: 0,
-                            duration: this.fastest_anime_duration_ms,
-                            complete: ()=>{
-                                this.$refs.playback_main.style.display = 'none';
-                                this.playback_slider_knob_anime = null;
-                                this.playback_slider_progress_anime = null;
-                            },
-                        }).add({
-                            //make sunset available
-                            begin: ()=>{
-                                this.$refs.recording_visualiser.style.display = 'block';
-                            },
-                            targets: this.$refs.recording_visualiser,
-                            opacity: 1,
-                            duration: this.fastest_anime_duration_ms,
-                        });
-                    }
-                    break;
-                    case this.playback_states[2]: {
-
-                        //'attaching'
-                        //run once only
-
-                        //remove related anime
-                        anime.remove([
-                            volume_ripples,
-                            this.$refs.recording_visualiser,
-                            this.$refs.playback_main,
-                            this.$refs.recording_visualiser_circle_0,
-                            this.$refs.recording_visualiser_circle_1,
-                            this.$refs.recording_visualiser_circle_2,
-                        ]);
-
-                        this.anime_instance = anime.timeline({
-                            easing: 'linear',
-                            loop: false,
-                            autoplay: true,
-                        }).add({
-                            //remove sunset
-                            begin: ()=>{
-                                this.resetRecordingVisualiser();
-                            },
-                            targets: this.$refs.recording_visualiser,
-                            opacity: 0,
-                            delay: 100,
-                            duration: this.fastest_anime_duration_ms,
-                            complete: ()=>{
-                                this.$refs.recording_visualiser.style.display = 'none';
-                            },
-                        }).add({
-                            //make playback_main available
-                            targets: this.$refs.playback_main,
-                            begin: ()=>{
-                                this.$refs.playback_main.style.display = 'block';
-                            },
-                            opacity: 1,
-                            duration: this.fastest_anime_duration_ms * 2,
-                            //we want the entire anime to finish before this condition unlocks other actions
-                            //to delay this, we don't use setTimeout
-                            //we multiply duration above instead, so that we can still fully rely on anime's .finished.then()
-                            complete: ()=>{
-                                //set volume_ripples
-                                this.adjustVolumeRipples();
-                                this.adjustToNewPlaybackDimension();
-                            }
-                        });
-                    }
-                    break;
-                    case this.playback_states[3]: {
-
-                        //'can_play'
-                        //will trigger after 'loading', so this is basically to undo 'loading' state
-                        //they fire on file load and on every start-from-beginning play
-
-                        //we resume slider anime after buffering while playing
-                        //we put is_buffering outside since 'can_play' always means no longer buffering
-                        if(
-                            this.is_playing === true && this.is_buffering === true
-                        ){
-
-                            this.playback_slider_progress_anime.play();
-                            this.playback_slider_knob_anime.play();
+                            //timeline will not work here
+                            this.anime_instance = anime({
+                                begin: ()=>{
+                                    //remove sunset
+                                    this.$refs.recording_visualiser.style.opacity = 0;
+                                    this.$refs.recording_visualiser.style.display = 'none';
+                                    this.resetRecordingVisualiser();
+                                },
+                                targets: volume_ripples,
+                                scaleY: ['0', '0.9'],
+                                autoplay: true,
+                                loop: false,
+                                easing: 'easeInOutCubic',
+                                duration: 1000,
+                                complete: ()=>{
+                                    //add ripple effect
+                                    anime({
+                                        targets: volume_ripples,
+                                        autoplay: true,
+                                        easing: 'linear',
+                                        loop: true,
+                                        translateY: ['0%', '-5%', '5%', '0%'],
+                                        delay: anime.stagger(100),
+                                    });
+                                }
+                            });
                         }
-                        this.is_buffering = false;
+                        break;
 
-                        //remove related anime
-                        anime.remove([
-                            volume_ripples,
-                        ]);
+                    case this.playback_states[1]:
 
-                        this.anime_instance = anime({
-                            targets: volume_ripples,
-                            translateY: ['0%'],
-                            duration: 0,    //must be 0, no other solutions in this context
-                            autoplay: true,
-                            loop: false,
-                            easing: 'linear',
-                        });
-                    }
-                    break;
+                        {
+                            //'recording'
+
+                            //remove related anime
+                            anime.remove([
+                                volume_ripples,
+                                this.$refs.recording_visualiser,
+                                this.$refs.playback_slider_knob,
+                                this.$refs.playback_main,
+                                this.$refs.recording_visualiser_circle_0,
+                                this.$refs.recording_visualiser_circle_1,
+                                this.$refs.recording_visualiser_circle_2,
+                            ]);
+
+                            this.anime_instance = anime.timeline({
+                                easing: 'linear',
+                                loop: false,
+                                autoplay: true,
+                            }).add({
+                                //remove volume_ripples
+                                targets: volume_ripples,
+                                scaleY: ['0'],
+                                translateY: ['0%'],
+                                duration: this.fastest_anime_duration_ms,
+                            }).add({
+                                //remove playback_main
+                                targets: this.$refs.playback_main,
+                                opacity: 0,
+                                duration: this.fastest_anime_duration_ms,
+                                complete: ()=>{
+                                    this.$refs.playback_main.style.display = 'none';
+                                    this.playback_slider_knob_anime = null;
+                                    this.playback_slider_progress_anime = null;
+                                },
+                            }).add({
+                                //make sunset available
+                                begin: ()=>{
+                                    this.$refs.recording_visualiser.style.display = 'block';
+                                },
+                                targets: this.$refs.recording_visualiser,
+                                opacity: 1,
+                                duration: this.fastest_anime_duration_ms,
+                            });
+                        }
+                        break;
+
+                    case this.playback_states[2]:
+
+                        {
+                            //'attaching'
+                            //run once only
+
+                            //remove related anime
+                            anime.remove([
+                                volume_ripples,
+                                this.$refs.recording_visualiser,
+                                this.$refs.playback_main,
+                                this.$refs.recording_visualiser_circle_0,
+                                this.$refs.recording_visualiser_circle_1,
+                                this.$refs.recording_visualiser_circle_2,
+                            ]);
+
+                            this.anime_instance = anime.timeline({
+                                easing: 'linear',
+                                loop: false,
+                                autoplay: true,
+                            }).add({
+                                //remove sunset
+                                begin: ()=>{
+                                    this.resetRecordingVisualiser();
+                                },
+                                targets: this.$refs.recording_visualiser,
+                                opacity: 0,
+                                delay: 100,
+                                duration: this.fastest_anime_duration_ms,
+                                complete: ()=>{
+                                    this.$refs.recording_visualiser.style.display = 'none';
+                                },
+                            }).add({
+                                //make playback_main available
+                                targets: this.$refs.playback_main,
+                                begin: ()=>{
+                                    this.$refs.playback_main.style.display = 'block';
+                                },
+                                opacity: 1,
+                                duration: this.fastest_anime_duration_ms * 2,
+                                //we want the entire anime to finish before this condition unlocks other actions
+                                //to delay this, we don't use setTimeout
+                                //we multiply duration above instead, so that we can still fully rely on anime's .finished.then()
+                                complete: ()=>{
+                                    //set volume_ripples
+                                    this.adjustVolumeRipples();
+                                }
+                            });
+                        }
+                        break;
+
+                    case this.playback_states[3]:
+
+                        {
+                            //'can_play'
+                            //will trigger after 'loading', so this is basically to undo 'loading' state
+                            //they fire on file load and on every start-from-beginning play
+
+                            //we resume slider anime after buffering while playing
+                            //we put is_buffering outside since 'can_play' always means no longer buffering
+                            if(
+                                this.is_playing === true && this.is_buffering === true
+                            ){
+
+                                this.playback_slider_progress_anime.play();
+                                this.playback_slider_knob_anime.play();
+                            }
+                            this.is_buffering = false;
+
+                            //remove related anime
+                            anime.remove([
+                                volume_ripples,
+                            ]);
+
+                            this.anime_instance = anime({
+                                targets: volume_ripples,
+                                translateY: ['0%'],
+                                duration: 0,    //must be 0, no other solutions in this context
+                                autoplay: true,
+                                loop: false,
+                                easing: 'linear',
+                            });
+                        }
+                        break;
+
                     case this.playback_states[4]:
 
-                        //'loading'
+                        {
+                            //'loading'
 
-                        //we pause slider anime when buffering while playing
-                        if(this.is_playing === true){
+                            //we pause slider anime when buffering while playing
+                            if(this.is_playing === true){
 
-                            this.is_buffering = true;
-                            this.playback_slider_progress_anime.pause();
-                            this.playback_slider_knob_anime.pause();
+                                this.is_buffering = true;
+                                this.playback_slider_progress_anime.pause();
+                                this.playback_slider_knob_anime.pause();
+                            }
+
+                            //remove related anime
+                            anime.remove([
+                                volume_ripples,
+                            ]);
+
+                            //create fast ripple effect for volume_ripples to show that it is loading
+                            this.anime_instance = anime({
+                                targets: volume_ripples,
+                                translateY: ['0%', '-5%', '5%', '0%'],
+                                autoplay: true,
+                                loop: true,
+                                easing: 'linear',
+                                delay: anime.stagger(20),
+                            });
                         }
+                        break;
 
-                        //remove related anime
-                        anime.remove([
-                            volume_ripples,
-                        ]);
-
-                        //create fast ripple effect for volume_ripples to show that it is loading
-                        this.anime_instance = anime({
-                            targets: volume_ripples,
-                            translateY: ['0%', '-5%', '5%', '0%'],
-                            autoplay: true,
-                            loop: true,
-                            easing: 'linear',
-                            delay: anime.stagger(20),
-                        });
-                    break;
                     default:
                         
                         console.log('State is currently null or not one of the declared playback_states.');
@@ -1251,7 +1315,7 @@
 
                         scaleY_percentage = this.file_volumes[x];
                     }
-                        
+                    
                     //add the deficit
                     // scaleY_percentage += volume_range_deficit;
 

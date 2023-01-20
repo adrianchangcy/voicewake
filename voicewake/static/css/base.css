@@ -112,7 +112,7 @@ textarea {
     also use rounded-md
     */
     .shade-when-hover:hover{
-        background-color: rgba(214, 211, 209, 0.5);
+        background-color: rgba(214, 211, 209, 0.8);
     }
 
     .double-height-when-hover{

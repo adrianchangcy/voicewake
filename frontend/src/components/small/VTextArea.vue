@@ -28,7 +28,7 @@
                     (propIsOk ? 'border-theme-ok' : ''),
                     (propIsWarning ? 'border-theme-warning' : ''),
                     (propIsError ? 'border-theme-danger' : ''),
-                    'block w-full h-10 bg-theme-light border-2 border-theme-black rounded-lg overflow-hidden p-2 pt-1'
+                    'block w-full h-10 bg-theme-light border-2 border-theme-dark-gray focus:border-theme-black rounded-lg overflow-hidden p-2 pt-1'
                 ]"
                 :placeholder="propPlaceholder"
                 autocomplete="off"
@@ -86,11 +86,13 @@
         methods: {
             resize(){
 
+                const textarea = this.$refs.nice_textarea;
+
                 //need 0 to make it snappy
-                this.$refs.nice_textarea.style.height = '0px';
+                textarea.style.height = '0px';
 
                 //must get scrollHeight after height 0
-                this.$refs.nice_textarea.style.height = this.$refs.nice_textarea.scrollHeight.toString() + 'px';
+                textarea.style.height = textarea.scrollHeight.toString() + 'px';
             },
         },
     };
