@@ -5,12 +5,16 @@
         @timeupdate="updateCurrentPlaybackTime()"
         @canplay="current_playback_state = playback_states[3]"
         @waiting="current_playback_state = playback_states[4]"
-        @playing="isPlaying()"
-        @ended="[pausePlayback(), isEnded()]"
+        @ended="pausePlayback()"
     ></audio>
 
     <!--size priority: playback_main, then ripples, then everything else-->
-    <div class="h-[8.75rem] text-center relative">
+    <div
+        :class="[
+            propIsSticky ? 'bg-theme-light/60 backdrop-blur border-t border-theme-black/5' : '',
+            'h-[6.25rem] text-center relative'
+        ]"
+    >
 
         <!--recording visualiser-->
         <div
@@ -46,11 +50,11 @@
             ]"
         >
             <!--ripples, slider-->
-            <div class="h-20 w-full relative">
+            <div class="h-10 w-full relative">
                 <!--ripples-->
                 <div
                     ref="volume_ripples_container"
-                    class="w-full h-16 absolute top-0 flex flex-row justify-evenly"
+                    class="w-full h-6 absolute top-0 flex flex-row justify-evenly"
                 >
                     <div
                         v-for="volume_ripple in bucket_quantity" :key="volume_ripple"
@@ -282,7 +286,7 @@
 
     import anime from 'animejs';
 
-    export default{
+    export default {
         data(){
             return {
                 final_file: null,
@@ -366,12 +370,6 @@
             window.addEventListener('mouseup', this.stopPlaybackDrag);
             window.addEventListener('touchend', this.stopPlaybackDrag);
             window.addEventListener('resize', this.adjustToNewPlaybackDimension);
-            window.addEventListener('keydown', (event) => {
-                if(event.keyCode === 32){
-                    //prevent scrolling on spacebar
-                    event.preventDefault();
-                }
-            });
             window.addEventListener('keyup', (event) => {
                 this.handleKeyUp(event);
             });
@@ -385,12 +383,6 @@
             window.removeEventListener('mouseup', this.stopPlaybackDrag);
             window.removeEventListener('touchend', this.stopPlaybackDrag);
             window.removeEventListener('resize', this.adjustToNewPlaybackDimension);
-            window.removeEventListener('keydown', (event) => {
-                if(event.keyCode === 32){
-                    //prevent scrolling on spacebar
-                    event.preventDefault();
-                }
-            });
             window.removeEventListener('keyup', (event) => {
                 this.handleKeyUp(event);
             });
@@ -400,6 +392,10 @@
             'isAnimePlaybackCompleted',
         ],
         props: {
+            propIsSticky: {
+                type: Boolean,
+                default: false,
+            },
             propFile: Object,
             propIsRecording: Boolean,
             propRecordingVolume: Number,    //0-1
@@ -481,15 +477,10 @@
             },
         },
         methods: {
-            isPlaying(){
-                console.log('is playing');
-            },
-            isEnded(){
-                console.log('is ended');
-            },
             handleKeyUp(event){
 
-                if(this.final_file === null){
+                //don't let this function affect text input
+                if(this.final_file === null || event.target !== document.body){
 
                     return false;
                 }
@@ -1031,7 +1022,7 @@
                                 autoplay: true,
                                 loop: false,
                                 easing: 'easeInOutCubic',
-                                duration: 1000,
+                                duration: 200,
                                 complete: ()=>{
                                     //add ripple effect
                                     anime({

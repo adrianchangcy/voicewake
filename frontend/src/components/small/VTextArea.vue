@@ -2,7 +2,7 @@
     <div class="text-left">
         <div class="w-full grid grid-cols-4">
             <VInputLabel
-                class="col-span-3 w-fit"
+                class="col-span-3"
                 :for="propElementId"
             >
                 {{propLabel}}
@@ -11,9 +11,9 @@
                 v-if="propHasTextCounter"
                 class="col-span-1 relative"
             >
-                <VInputLabel class="absolute w-fit h-fit right-0 top-0 bottom-0 m-auto">
+                <span class="absolute w-fit h-fit block text-base font-medium py-1 right-0 bottom-0 m-auto">
                     {{current_length}}/{{propMaxLength}}
-                </VInputLabel>
+                </span>
             </div>
         </div>
         <div class="text-xl">

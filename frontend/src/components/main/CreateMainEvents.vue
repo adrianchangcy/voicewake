@@ -9,14 +9,12 @@
     <div class="md:w-2/4 lg:w-3/6 xl:w-2/6 mx-auto h-fit bg-theme-light text-left text-lg">
 
         <div class="w-[90%] mx-auto">
-            <VSectionTitle>
-                <span>Say</span>
-            </VSectionTitle>
+            <VSectionTitle>Say</VSectionTitle>
         </div>
 
         <form
             spellcheck="false"
-            class="w-[80%] mx-auto bg-theme-light flex flex-nowrap flex-col gap-6"
+            class="w-[80%] mx-auto bg-theme-light flex flex-nowrap flex-col gap-8"
         >
 
             <div class="">
@@ -44,18 +42,18 @@
                 />
             </div>
 
-            <div class="">
+            <div class="w-[80%] mx-auto">
                 <VEmojiPicker
                     propLabelText="How you feel about it"
                     class="w-full"
                 />
             </div>
 
-            <div class="">
+            <div class="w-[80%] mx-auto">
                 <VTextArea
                     :propIsRequired="false"
                     propElementId="event-name"
-                    propLabel="Notes (optional)"
+                    propLabel="Details (optional)"
                     propPlaceholder=""
                     :propMaxLength="100"
                     :propHasTextCounter="true"
