@@ -1,6 +1,6 @@
 <template>
-    <nav class="text-center text-xl text-black leading-none">
-        <div ref="nav_main" class="p-2 lg:px-8   flex flex-nowrap     backdrop-blur bg-theme-light/60 border-b border-black/5">
+    <nav class="text-center text-xl text-theme-black leading-none">
+        <div ref="nav_main" class="p-2 lg:px-8   flex flex-nowrap     backdrop-blur bg-theme-light/60 border-b border-theme-black/5">
             <ul class="w-full      grid gap-2 grid-flow-col grid-rows-1 grid-cols-4 lg:grid-cols-10">
                 <li class="col-span-1 flex flex-nowrap justify-center">
                     <a href="/" aria-label="home" class="flex-1 p-4 lg:p-2      grid items-center">
@@ -84,7 +84,7 @@
                     var_name_for_element_bool_status: 'is_nav_main_more_open',
                     refs_to_exclude: ['nav_main_more_button', 'nav_main_more_mobile_button']
                 }"
-                class="w-screen h-screen absolute right-0 lg:max-w-fit lg:border-l border-black/5      backdrop-blur bg-theme-light/60"
+                class="w-screen h-screen absolute right-0 lg:max-w-fit lg:border-l border-theme-black/5      backdrop-blur bg-theme-light/60"
             >
                 <div class="p-4 lg:p-8 overflow-y-auto">
                     <div v-if="is_logged_in" class="p-4 grid gap-y-2">

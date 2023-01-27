@@ -48,8 +48,20 @@
         <link href="{% static 'fontawesomefree/css/regular.css' %}" rel="stylesheet" type="text/css">
 
         <!--Because hot reload does not work for Tailwind, we use CDN for full class-->
-        <script src="https://cdn.tailwindcss.com"></script>
+        {% comment %} <script src="https://cdn.tailwindcss.com"></script> {% endcomment %}
     </body>
 
 {% endblock %}
 </html>
+
+
+<script>
+
+    //prevent scrolling on spacebar without disabling input space
+    window.addEventListener('keydown', (event) => {
+        if(event.keyCode === 32 && event.target === document.body){
+            event.preventDefault();
+        }
+    });
+
+</script>

@@ -9,7 +9,7 @@
                     id="emoji-picker"
                     aria-label="select an emotion"
                     @click.prevent="toggleEmojiPicker()"
-                    class="w-full p-2 pb-3"
+                    class="w-full pb-3"
                 >
                     <span v-if="emoji_choice === null">
                         <i class="far fa-face-meh-blank text-theme-black"></i>
