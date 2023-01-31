@@ -591,6 +591,10 @@ video {
   visibility: visible;
 }
 
+.invisible {
+  visibility: hidden;
+}
+
 .static {
   position: static;
 }
@@ -1170,6 +1174,10 @@ video {
   border-top-width: 2px;
 }
 
+.border-dashed {
+  border-style: dashed;
+}
+
 .border-theme-black\/5 {
   border-color: rgb(68 68 68 / 0.05);
 }
@@ -1191,6 +1199,11 @@ video {
 .border-theme-black {
   --tw-border-opacity: 1;
   border-color: rgb(68 68 68 / var(--tw-border-opacity));
+}
+
+.border-theme-lead {
+  --tw-border-opacity: 1;
+  border-color: rgb(250 204 21 / var(--tw-border-opacity));
 }
 
 .border-theme-ok {
@@ -1627,6 +1640,10 @@ textarea {
   .double-height-when-hover{
     transform: scaleY(2);
   }
+}
+
+.hover\:border-4:hover {
+  border-width: 4px;
 }
 
 .hover\:border-theme-light-trim\/40:hover {

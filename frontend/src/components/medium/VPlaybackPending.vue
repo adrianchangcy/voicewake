@@ -20,12 +20,8 @@
                         propUsername="carlj101"
                     />
 
-                    <!--user 2-->
-                    <VPlaybackCardX
-                        propUsername="holy_reckoning69"
-                        :propIsReply="true"
-                    />
-
+                    <!--option to reply-->
+                    <VReplyButtonX/>
                 </div>
             </div>
 
@@ -39,6 +35,7 @@
 <script setup>
 
     import VPlaybackCardX from '/src/components/small/VPlaybackCardX.vue';
+    import VReplyButtonX from '/src/components/small/VReplyButtonX.vue';
 </script>
 
 
@@ -53,6 +50,7 @@ export default {
     },
     components: {
         VPlaybackCardX,
+        VReplyButtonX,
     },
 
 }
