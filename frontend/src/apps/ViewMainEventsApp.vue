@@ -3,10 +3,11 @@
 </template>
 
 
-<script>
+<script lang="ts">
+    import { defineComponent } from 'vue';
     import ViewMainEvents from '/src/components/main/ViewMainEvents.vue';
 
-    export default {
+    export default defineComponent({
         data(){
             return {
             };
@@ -17,7 +18,7 @@
         },
         methods: {
         }
-    };
+    });
 </script>
 
 
