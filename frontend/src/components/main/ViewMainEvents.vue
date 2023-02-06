@@ -17,24 +17,22 @@
 </template>
 
 
-<script setup>
-
+<script setup lang="ts">
     import VPlayback from '/src/components/medium/VPlayback.vue';
     import VPlaybackPending from '/src/components/medium/VPlaybackPending.vue';
     import VSectionTitle from '/src/components/small/VSectionTitle.vue';
 </script>
 
-<script>
+<script lang="ts">
+    import { defineComponent } from 'vue';
 
-    export default {
+    export default defineComponent({
         data(){
             return {
 
 
             };
         },
-        components:{
-            VPlaybackPending,
-        },
-    }
+
+    });
 </script>
