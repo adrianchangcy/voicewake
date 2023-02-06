@@ -31,17 +31,19 @@
 </template>
 
 
-<script>
+<script lang="ts">
 
     //there are reasons we do it this way instead of <input type="range">
         //firefox does not support vertical orientation
         //the screen will move before <input> does, in a bad way
 
-    export default {
+    import { defineComponent } from 'vue';
+
+    export default defineComponent({
 
         data(){
             return {
-                slider_dimension: null,
+                slider_dimension: null as DOMRect | null,   //reminder to parseFloat(val.toFixed(2)) to avoid negative exponent bugs
                 slider_value: 0,
                 is_dragging: false,
                 is_touch: false,
@@ -64,37 +66,21 @@
             window.removeEventListener('touchend', this.stopDrag);
         },
         props: {
-            propSliderValue: Number,
         },
-        emits: ['hasNewSliderValue', 'hasNewIsDraggingValue'],
+        emits: ['hasNewSliderValue'],
         watch: {
-
-            propSliderValue(new_value){
-
-                if(this.slider_value !== new_value && this.propSliderValue >= 0 && this.propSliderValue <= 1){
-
-                    //using watcher is important past initial 0 values, i.e. if localStorage exists
-                    this.slider_value = this.propSliderValue;
-                }
-
-                this.repositionSlider();
-            },
-            is_dragging(new_value){
-
-                this.$emit('hasNewIsDraggingValue', new_value);
-            },
         },
         methods: {
             startDrag(is_touch=false){
                 
-                this.slider_dimension = this.$refs.slider.getBoundingClientRect();
+                this.slider_dimension = (this.$refs.slider as HTMLElement).getBoundingClientRect();
 
                 this.is_dragging = true;
                 this.is_touch = is_touch;
             },
-            doDrag(event=null){
+            doDrag(event:MouseEvent|TouchEvent){
 
-                if(this.is_dragging === true){
+                if(this.is_dragging === true && this.slider_dimension !== null){
 
                     //for mouse, we need these to avoid text highlighting, accidental permanent drag state, etc.
                     //for touch, we need these to avoid mouse firing
@@ -104,20 +90,20 @@
                     }
 
                     //can use clientY, screenY, pageY, but pageY is most accurate in this context
-                    let user_y = undefined;
+                    let user_y:number;
                     
                     if(this.is_touch === true){
 
-                        user_y = event.touches[0].clientY;
+                        user_y = (event as TouchEvent).touches[0].clientY;
                         
                     }else{
 
-                        user_y = event.clientY;
+                        user_y = (event as MouseEvent).clientY;
                     }
 
                     if(user_y >= this.slider_dimension.top && user_y <= this.slider_dimension.bottom){
-
-                        this.slider_value = ((this.slider_dimension.bottom - user_y) / this.slider_dimension.height).toFixed(2) * 1;
+                        
+                        this.slider_value = parseFloat(((this.slider_dimension.bottom - user_y) / this.slider_dimension.height).toFixed(2));
 
                     }else if(user_y < this.slider_dimension.top){
 
@@ -128,8 +114,8 @@
                         this.slider_value = 0;
                     }
 
-                    this.repositionSlider(this.slider_value);
-                    this.emitNewSliderValue();
+                    this.mainUpdateSlider(null);
+                    this.$emit('hasNewSliderValue', this.slider_value);
 
                     //troubleshoot if needed
                     // console.log("==========================");
@@ -140,7 +126,7 @@
                     // console.log("==========================");
                 }
             },
-            stopDrag(){
+            stopDrag() : void {
 
                 this.is_dragging = false;
 
@@ -148,7 +134,9 @@
                 //so we get latest status of is_touch
                 this.is_touch = false;
             },
-            repositionSlider(){
+            animeSlider() : void {
+
+                //animation only
 
                 //we must not go fully 0, else it hides slider_knob
                 let scale_value = this.slider_value;
@@ -159,15 +147,22 @@
                 }
 
                 //handle visual representation
-                this.$refs.slider_progress.style.transform = 'scaleY(' + scale_value.toString() + ')';
+                (this.$refs.slider_progress as HTMLElement).style.transform = 'scaleY(' + scale_value.toString() + ')';
                 
                 //since we have no px to refer to for translate due to v-show, we do inverse scale trick
-                this.$refs.slider_knob.style.transform = 'scaleY(' + (1 / scale_value).toString() + ')';
+                (this.$refs.slider_knob as HTMLElement).style.transform = 'scaleY(' + (1 / scale_value).toString() + ')';
             },
-            emitNewSliderValue(){
+            mainUpdateSlider(new_value:number|null=null) : void {
 
-                this.$emit('hasNewSliderValue', this.slider_value);
+                //you can call this from parent, and everything at VSliderYSmall will update accordingly
+                if(new_value !== null && (new_value >= 0 && new_value <= 1)){
+
+                    this.slider_value = new_value;
+                }
+
+                console.log('passed vol val is '+new_value);
+                this.animeSlider();
             },
         },
-    }
+    });
 </script>

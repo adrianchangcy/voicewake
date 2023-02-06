@@ -43,7 +43,7 @@
             </div>
 
             <div class="w-[80%] mx-auto">
-                <VEmojiPicker
+                <VEventTonePicker
                     propLabelText="How you feel about it"
                     class="w-full"
                 />
@@ -81,27 +81,28 @@
 </template>
 
 
-<script setup>
-
+<script setup lang="ts">
     import VRecorder from '/src/components/medium/VRecorder.vue';
     import VPlayback from '/src/components/medium/VPlayback.vue';
-    import VEmojiPicker from '/src/components/medium/VEmojiPicker.vue';
+    import VEventTonePicker from '/src/components/medium/VEventTonePicker.vue';
     import VActionButtonBig from '/src/components/small/VActionButtonBig.vue';
     import VInputLabel from '/src/components/small/VInputLabel.vue';
     import VSectionTitle from '/src/components/small/VSectionTitle.vue';
     import VTextArea from '/src/components/small/VTextArea.vue';
 </script>
 
-<script>
-    export default {
+<script lang="ts">
+    import { defineComponent } from 'vue';
+
+    export default defineComponent({
         data(){
             return {
 
-                final_file: null,
+                final_file: null as File | null,
                 is_recording: false,
                 recording_volume: 0,    //0-1, only changes when recording
                 time_interval: 0,   //ms, based on VRecorder time_interval
-                is_anime_playback_completed: null,
+                is_anime_playback_completed: false,
 
                 event_name: '',
                 event_name_is_ok: false,
@@ -109,37 +110,31 @@
                 event_name_is_error: false,
                 event_name_status_text: '',
 
-                event_tone_id: null,
+                event_tone_id: null as string | null,   //change to number if emojis are from db later
                 event_message: '',
             };
         },
-        components: {
-            VRecorder,
-            VActionButtonBig,
-            VEmojiPicker,
-            VSectionTitle,
-            VTextArea,
-        },
+
         watch: {
         },
         methods: {
-            handleHasNewRecording(new_value){
+            handleHasNewRecording(new_value:File) : void {
 
                 this.final_file = new_value;
             },
-            handleIsRecording(new_value){
+            handleIsRecording(new_value:boolean) : void {
 
                 this.is_recording = new_value;
             },
-            handleHasNewRecordingVolume(new_value){
+            handleHasNewRecordingVolume(new_value:number) : void {
 
                 this.recording_volume = new_value;
             },
-            handleHasNewTimeInterval(new_value){
+            handleHasNewTimeInterval(new_value:number) : void {
 
                 this.time_interval = new_value;
             },
-            validateEventName(new_value){
+            validateEventName(new_value:string) : void {
                 
                 //VInput cannot .trim() for us, due to v-model
                 //doing it this way is easier than managing css classes
@@ -170,21 +165,21 @@
                     this.event_name_is_error = false;
                 }
             },
-            newEmojiChoice(new_value){
+            newEmojiChoice(new_value:string) : void {
                 this.event_tone_id = new_value;
             },
-            newEventMessage(new_value){
+            newEventMessage(new_value:string) : void {
                 this.event_message = new_value;
             },
-            handleSubmit(){
+            handleSubmit() : void {
                 console.log('y submit? lol');
             },
-            handleIsAnimePlaybackCompleted(new_value){
+            handleIsAnimePlaybackCompleted(new_value:boolean) : void {
 
                 this.is_anime_playback_completed = new_value;
             }
         }
-    };
+    });
 </script>
 
 

@@ -1,5 +1,5 @@
 import { createApp } from 'vue';
-import { mixinGeneral } from './mixin_general.js';
+import { mixinGeneral } from './mixin_general';
 
 import BaseApp from '/src/apps/BaseApp.vue';
 import CreateMainEventsApp from '/src/apps/CreateMainEventsApp.vue';
@@ -10,11 +10,11 @@ const clickOutside = {
     //PROBLEM: make anything with v-click-outside to treat other v-click-outside like any other elements
     //FIX: don't use event.stopPropagation(), else your events cannot reach here
 
-    beforeMount: (element, binding) => {
+    beforeMount: (element:any, binding:any) => {
 
         //2022-12-28
         //QUESTION: where did event come from?
-        element.clickOutsideEvent = event => {
+        element.clickOutsideEvent = (event:any) => {
 
             //unpack passed arguments
             //var_name_for_element_bool_status, string, is the bool status variable, in charge of your element
@@ -25,7 +25,7 @@ const clickOutside = {
             //if true, we don't do anything, because excluded element already runs handler at @click
             let is_clicked_element_excluded = false;
 
-            refs_to_exclude.forEach((ref_name)=>{
+            refs_to_exclude.forEach((ref_name:any)=>{
 
                 try{
 
@@ -64,7 +64,7 @@ const clickOutside = {
         document.addEventListener("mousedown", element.clickOutsideEvent);
         document.addEventListener("touchstart", element.clickOutsideEvent);
     },
-    unmounted: element => {
+    unmounted: (element:any) => {
 
         document.removeEventListener("mousedown", element.clickOutsideEvent);
         document.removeEventListener("touchstart", element.clickOutsideEvent);

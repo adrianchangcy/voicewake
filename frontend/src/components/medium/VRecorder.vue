@@ -9,7 +9,7 @@
                 @click.prevent="recorderStart()"
                 aria-label="record"
                 :class="[
-                    recorder_state !== undefined && recorder_state !== 'stopped' ? 'col-span-1' : 'col-span-4',
+                    recorder_state !== null && recorder_state !== 'stopped' ? 'col-span-1' : 'col-span-4',
                     'w-full row-span-2'
                 ]"
                 :propIsEnabled="is_anime_playback_truly_completed === true && is_recording === false"
@@ -18,7 +18,7 @@
             </VActionButtonMedium>
             <div
                 :class="[
-                    recorder_state !== undefined && recorder_state !== 'stopped' ? 'block' : 'hidden',
+                    recorder_state !== null && recorder_state !== 'stopped' ? 'block' : 'hidden',
                     'row-start-1 row-span-1 col-span-2'
                 ]"
             >
@@ -28,7 +28,7 @@
                 @click.prevent="recorderPauseResume()"
                 aria-label="pause or resume"
                 :class="[
-                    recorder_state !== undefined && recorder_state !== 'stopped' ? 'block' : 'hidden',
+                    recorder_state !== null && recorder_state !== 'stopped' ? 'block' : 'hidden',
                     'row-start-2 row-span-1 col-span-2 w-full h-full'
                 ]"
             >
@@ -44,13 +44,15 @@
                 @click.prevent="recorderStop()"
                 aria-label="end recording"
                 :class="[
-                    (recorder_state !== undefined && recorder_state !== 'stopped' ? '' : 'hidden'),
+                    (recorder_state !== null && recorder_state !== 'stopped' ? '' : 'hidden'),
                     'col-start-4 row-span-2 col-span-1 w-full'
                 ]"
                 :propIsDefaultTextSize="false"
                 :propIsEnabled="is_anime_playback_truly_completed === true && is_recording === true"
             >
-                <i class="fas fa-stop text-2xl"></i>
+                <div class="text-2xl">
+                    <i class="fas fa-stop"></i>
+                </div>
             </VActionButtonMedium>
         </div>
         <!-- currently don't allow file submission, but store file here for final form submit -->
@@ -60,32 +62,30 @@
 </template>
 
 
-<script setup>
-
+<script setup lang="ts">
     import VActionButtonSmall from '/src/components/small/VActionButtonSmall.vue';
     import VActionButtonMedium from '/src/components/small/VActionButtonMedium.vue';
     import VInputLabel from '/src/components/small/VInputLabel.vue';
 </script>
 
-<script>
-
-    const recordRTC = require('/node_modules/recordrtc/RecordRTC.min.js');
+<script lang="ts">
+    import { defineComponent } from 'vue';
     // import anime from 'animejs';
+    const recordRTC = require('/node_modules/recordrtc/RecordRTC.min.js');
 
-    export default {
+    export default defineComponent({
         data(){
             return {
-                stream: undefined,  //for defining recorder instances
-                volume_analyser: undefined,
-                volume_analyser_interval: undefined,
-                recorder: undefined,
+                stream: null as MediaStream | null,  //for defining recorder instances
+                volume_analyser: null as AnalyserNode | null,
+                volume_analyser_interval: null as number | null,
+                recorder: null as any | null,   //recordRTC object, but lazy to find a solution
                 time_interval: 200, //milliseconds
-                recorder_state: undefined,
+                recorder_state: null as 'recording' | 'paused' | 'stopped' | null,
                 recording_volume: 0,    //0-1, only changes when recording
-                recording_interval_worker: null,
+                recording_interval_worker: null as Worker | null,
 
-                final_blob: null,
-                final_file: null,
+                final_file: null as File | null,
                 is_recording: false,    //is not affected by pause/resume
                 current_duration: 0,    //milliseconds
                 current_duration_pretty: '00:00',
@@ -112,11 +112,6 @@
             //just in case
             this.stopRecordingIntervalWorker();
         },
-        components: {
-            VActionButtonSmall,
-            VActionButtonMedium,
-            VInputLabel,
-        },
         props: {
             propLabel: {
                 type: String,
@@ -136,10 +131,6 @@
                 this.is_anime_playback_truly_completed = false;
 
                 this.$emit('isRecording', new_value);
-            },
-            recording_volume(new_value){
-
-                this.$emit('hasNewRecordingVolume', new_value);
             },
             propIsAnimePlaybackCompleted(new_value){
 
@@ -171,7 +162,7 @@
                 if(this.recording_interval_worker === null){
 
                     this.recording_interval_worker = new Worker(
-                        new URL('/src/workers/IntervalTimer.js', import.meta.url)
+                        new URL('/src/workers/IntervalTimer.ts', import.meta.url)
                     );
                 }
 
@@ -193,7 +184,12 @@
                 }
 
             },
-            async handleVolumeAnalyser(){
+            async handleVolumeAnalyser() : Promise<boolean> {
+
+                if(this.volume_analyser === null){
+
+                    return false;
+                }
 
                 const volumes = new Uint8Array(this.volume_analyser.frequencyBinCount);
                 this.volume_analyser.getByteFrequencyData(volumes);
@@ -216,10 +212,15 @@
                 }
 
                 this.recording_volume = true_volume;
-            },
-            async initiateVolumeAnalyser(){
 
-                if(this.stream === undefined){
+                //emit to VPlayback for recording visualiser
+                this.$emit('hasNewRecordingVolume', this.recording_volume);
+
+                return true;
+            },
+            async initiateVolumeAnalyser() : Promise<boolean> {
+
+                if(this.stream === null){
 
                     return false;
                 }
@@ -237,7 +238,7 @@
 
                     audio_source.connect(this.volume_analyser);
 
-                }catch(error){
+                }catch(error:any|unknown){
 
                     console.log(error.name);
                     console.log(error.message);
@@ -246,11 +247,12 @@
 
                 return true;
             },
-            startVolumeAnalyser(){
+            startVolumeAnalyser() : void {
 
-                this.volume_analyser_interval = setInterval(this.handleVolumeAnalyser, this.time_interval);
+                //using window for number typing
+                this.volume_analyser_interval = window.setInterval(this.handleVolumeAnalyser, this.time_interval);
             },
-            stopVolumeAnalyser(){
+            stopVolumeAnalyser() : void {
 
                 if(this.volume_analyser_interval !== null){
 
@@ -259,7 +261,7 @@
                     this.recording_volume = 0;
                 }
             },
-            countdownRecordingTime(){
+            countdownRecordingTime() : void {
 
                 //we need this because ondataavailable runs one more time after stopRecording()
                 //UPDATE: unreliable for timing, rely on web worker instead
@@ -277,14 +279,14 @@
 
                 //give user instant visual feedback on recording input
             },
-            async initiateStream(){
+            async initiateStream() : Promise<boolean> {
 
-                //if not undefined, i.e. has clicked 'record' before, destroy the instance
+                //if not null, i.e. has clicked 'record' before, destroy the instance
                 //probably not necessary, but doing this for slight precaution on memory management
-                if(this.recorder !== undefined){
+                if(this.recorder !== null){
 
                     this.recorder.destroy();
-                    this.recorder = undefined;  //need to do this, else TypeError when record->stop->record
+                    this.recorder = null;  //need to do this, else TypeError when record->stop->record
                 }
 
                 try{
@@ -292,7 +294,7 @@
                     //getUserMedia is a Promise
                     this.stream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
                     
-                }catch(error){
+                }catch(error:any|unknown){
 
                     switch(error.name){
 
@@ -321,7 +323,7 @@
 
                 return true;
             },
-            async recorderStart(){
+            async recorderStart() : Promise<boolean> {
 
                 if(this.is_anime_playback_truly_completed === false || this.is_recording === true){
 
@@ -329,7 +331,6 @@
                 }
 
                 //clear previous recording
-                this.final_blob = null;
                 this.final_file = null;
 
                 //initiate and reinitiate stream
@@ -437,11 +438,11 @@
 
                 return true;
             },
-            recorderPauseResume(){
+            recorderPauseResume() : void {
                 
                 if(this.is_recording === false){
 
-                    return false;
+                    return;
                 }
 
                 if(this.recorder.state == 'recording'){
@@ -458,13 +459,12 @@
                 }
 
                 this.recorder_state = this.recorder.state;
-                return true;
             },
-            recorderStop(){
+            recorderStop() : void {
 
                 if(this.is_anime_playback_truly_completed === false || this.is_recording === false){
 
-                    return false;
+                    return;
                 }
 
                 //attach recorded audio to file input and playback
@@ -475,7 +475,11 @@
                         //if auto-stop, state will be 'stopped'
                         this.stopRecordingIntervalWorker();
                         this.saveRecorderAudioAsFile();
-                        this.stream.stop();
+                        if(this.stream !== null){
+                            //MediaStream.stop() deprecated, use getTracks()[0] for MediaStreamTrack.stop()
+                            //https://developer.chrome.com/blog/mediastream-deprecations/
+                            this.stream.getTracks()[0].stop();
+                        }
                         this.stopVolumeAnalyser();
 
                     }else{
@@ -484,7 +488,11 @@
                         this.recorder.stopRecording( () => {
                             this.stopRecordingIntervalWorker();
                             this.saveRecorderAudioAsFile();
-                            this.stream.stop();
+                            if(this.stream !== null){
+                                //MediaStream.stop() deprecated, use getTracks()[0] for MediaStreamTrack.stop()
+                                //https://developer.chrome.com/blog/mediastream-deprecations/
+                                this.stream.getTracks()[0].stop();
+                            }
                             this.stopVolumeAnalyser();
                         });
                     }
@@ -496,15 +504,15 @@
                     this.current_duration = 0;
                     this.current_duration_pretty = '00:00';
 
-                    return true;
+                    return;
 
-                }catch(error){
+                }catch(error:any|unknown){
 
                     console.log(error);
-                    return false;
+                    return;
                 }
             },
-            saveRecorderAudioAsFile(){
+            saveRecorderAudioAsFile() : boolean {
 
                 //to use getBlob(), you must run it in either onRecordingStopped() or stopRecording()
                 //else your first blob is unplayable (too small), and user has to click a second time
@@ -512,13 +520,13 @@
                 //transform blob into file
                 try{
 
-                    this.final_blob = this.recorder.getBlob();
-                    this.final_file = new File([this.final_blob], 'this_recording.webm', {
+                    this.final_file = new File([this.recorder.getBlob()], 'this_recording.webm', {
                         type: 'audio/webm'
                     });
                     this.attachRecordedAudioToInput();
+                    return true;
 
-                }catch(error){
+                }catch(error:any|unknown){
 
                     alert(
                         'Unexpectedly unable to retrieve recorded audio.'
@@ -529,7 +537,7 @@
                     return false;
                 }
             },
-            attachRecordedAudioToInput(){
+            attachRecordedAudioToInput() : boolean {
 
                 if(this.final_file === null){
 
@@ -544,11 +552,11 @@
                 container.items.add(this.final_file);
 
                 //replace files of <input type="file"> with DataTransfer() files
-                this.$refs.audio_upload.files = container.files;
+                (this.$refs.audio_upload as any).files = container.files;
 
                 return true;
             },
-            checkFileSizeIsValid(file=this.final_file, max_size_mb=this.max_audio_file_size_mb){
+            checkFileSizeIsValid(file:File, max_size_mb:number) : boolean {
 
                 //mks with File() and files uploaded through <input type="file">
 
@@ -561,36 +569,41 @@
                 
                 return true;
             },
-            checkFileTypeIsValid(file=this.final_file, extensions_allowed=this.audio_file_extensions_allowed){
+            checkFileTypeIsValid(file:File) : boolean {
 
                 //handles names with no extension, and names that start with '.', while also being most performant
                 
                 let file_name =  file.name;
                 let file_extension = (file_name.slice((file_name.lastIndexOf(".") - 1 >>> 0) + 2)).toLowerCase();
 
-                if(!extensions_allowed.includes(file_extension)){
+                if(!this.audio_file_extensions_allowed.includes(file_extension)){
                     
                     return false;
                 }
 
                 return true;
             },
-            validateInputUpload(){
+            validateInputUpload() : boolean {
                 
-                if(this.$refs.audio_upload.files.length > 0){
+                let input_audio_upload:any = this.$refs.audio_upload;
+
+                if(input_audio_upload.files.length > 0){
                     
-                    this.final_file = this.$refs.audio_upload.files.item(0);
-                    
+                    this.final_file = input_audio_upload.files.item(0);
+
+                    //TS is unhappy without this line
+                    if(this.final_file === null){ return false;}
+
                     //check file size
-                    if(this.checkFileSizeIsValid() === false){
+                    if(this.checkFileSizeIsValid(this.final_file, this.max_audio_file_size_mb) === false){
 
                         alert('Uploaded file has exceeded limit of '+this.max_audio_file_size_mb+'MB!');
-                        this.$refs.audio_upload.value = null;
+                        input_audio_upload.value = null;
                         return false;
                     }
 
                     //check file format
-                    if(this.checkFileTypeIsValid() === false){
+                    if(this.checkFileTypeIsValid(this.final_file) === false){
 
                         let temp_string = '';
 
@@ -606,7 +619,7 @@
                         }
 
                         alert('Uploaded file type is not supported. Please use one of the following: '+temp_string);
-                        this.$refs.audio_upload.value = null;
+                        input_audio_upload.value = null;
                         return false;
                     }
 
@@ -616,12 +629,21 @@
                     //attach recorded audio to playback
                     // this.attachRecordedAudioToPlayback();
 
-                    return true;
+                }else{
+
+                    return false;
                 }
+
+                return true;
             },
             //to be called from parent as ultimate function
-            retrieveFileForInputAttach(){
+            retrieveFileForInputAttach() : null | DataTransfer {
                 
+                if(this.final_file === null){
+
+                    return null;
+                }
+
                 //create new container to replace <input type="file"> container later
                 let container = new DataTransfer();
 
@@ -631,9 +653,9 @@
 
                 //if not undefined, i.e. has clicked 'record' before, destroy the instances
                 //not sure if necessary for preventing memory leak
-                if(this.recorder !== undefined){
+                if(this.recorder !== null){
 
-                    this.stream = undefined;
+                    this.stream = null;
                     this.recorder.destroy();
                 }
 
@@ -647,6 +669,5 @@
                 return container;
             },
         }
-    }
-
+    });
 </script>

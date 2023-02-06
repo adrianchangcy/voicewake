@@ -19,7 +19,7 @@
         <!--recording visualiser-->
         <div
             ref="recording_visualiser"
-            class="absolute w-36 h-36 left-0 right-0 top-0 bottom-0 m-auto opacity-0 hidden"
+            class="absolute w-[6.25rem] h-[6.25rem] left-0 right-0 top-0 bottom-0 m-auto opacity-0 hidden"
         >
             <div class="relative w-full h-full">
                 <div
@@ -118,12 +118,12 @@
             <div
                 :class="[
                     final_file === null ? 'opacity-10' : 'opacity-100',
-                    'w-full h-10 grid grid-rows-1 grid-cols-5'
+                    'mx-2 h-10 grid grid-rows-1 grid-cols-5'
                 ]"
             >
                 <!--current duration-->
                 <div class="row-start-1 row-span-1 col-start-1 col-span-1 relative text-base font-medium">
-                    <span class="absolute w-10 h-fit left-2 top-0 bottom-0 m-auto">{{pretty_current_playback_time}}</span>
+                    <span class="absolute w-10 h-fit left-0 top-0 bottom-0 m-auto">{{pretty_current_playback_time}}</span>
                 </div>
                 <!--volume-->
                 <div
@@ -161,9 +161,7 @@
                         >
                             <VSliderYSmall
                                 ref="volume_slider"
-                                :propSliderValue="playback_volume"
                                 @hasNewSliderValue="changePlaybackVolume($event)"
-                                @hasNewIsDraggingValue="updateIsDraggingVolume($event)"
                                 class="w-full h-full"
                             />
                         </VBox>
@@ -265,7 +263,7 @@
                 </div>
                 <!--total duration-->
                 <div class="row-start-1 row-span-1 col-start-5 col-span-1 relative text-base font-medium">
-                    <span class="absolute w-fit h-fit right-2 top-0 bottom-0 m-auto">{{pretty_playback_duration}}</span>
+                    <span class="absolute w-fit h-fit right-0 top-0 bottom-0 m-auto">{{pretty_playback_duration}}</span>
                 </div>
             </div>
         </div>
@@ -273,8 +271,7 @@
 </template>
 
 
-<script setup>
-
+<script setup lang="ts">
     import VBox from '/src/components/small/VBox.vue';
     import VSliderYSmall from '/src/components/small/VSliderYSmall.vue';
     import TransitionFade from '/src/transitions/TransitionFade.vue';
@@ -282,31 +279,31 @@
 </script>
 
 
-<script>
-
+<script lang="ts">
+    import { defineComponent } from 'vue';
     import anime from 'animejs';
 
-    export default {
+    export default defineComponent({
         data(){
             return {
-                final_file: null,
+                final_file: null as File | null,
                 final_file_duration: 0, //float seconds
                 pretty_current_playback_time: '00:00',
                 pretty_playback_duration: '00:00',
                 is_playing: false,
                 is_buffering: false,    //for 'waiting' and 'can_play'
                 is_volume_ripples_available: false,
-                anime_instance: null,   //to store animePlaybackStates() anime
+                main_anime: null as InstanceType<typeof anime> | null,   //to store animePlaybackStates() anime
                 
                 playback_slider_value: 0,
                 is_playback_slider_drag: false,
                 is_playback_slider_touch: false,
                 is_playback_slider_hover: false,
-                playback_slider_width: null,
-                playback_slider_knob_anime: null, //we play/pause instead of new anime() for best results
-                playback_slider_progress_anime: null, //we play/pause instead of new anime() for best results
-                resume_after_stop_dragging: null,    //to know whether to resume after done navigating
-                resume_after_stop_skipping: null,   //to know whether to resume after done navigating
+                playback_slider_width: null as DOMRect | null,
+                playback_slider_knob_anime: null as InstanceType<typeof anime> | null, //we play/pause instead of new anime() for best results
+                playback_slider_progress_anime: null as InstanceType<typeof anime> | null, //we play/pause instead of new anime() for best results
+                resume_after_stop_dragging: null as boolean | null,    //to know whether to resume after done navigating
+                resume_after_stop_skipping: null as boolean | null,   //to know whether to resume after done navigating
 
                 playback_rate: 1,   //allows 0 to 2, but we handle 0.5, 1, 1.5
                 playback_volume: 0, //accepts 0 to 1
@@ -315,13 +312,11 @@
                 is_playback_options_open: false,
                 is_playback_speed_options_open: false,
                 is_playback_volume_open: false,
-                is_dragging_volume: false,
-                playback_options_timeout: null,
 
                 playback_states: ['empty', 'recording', 'attaching', 'can_play', 'loading'],
-                current_playback_state: null,
+                current_playback_state: null as string | null,
                 bucket_quantity: 20,
-                file_volumes: [],
+                file_volumes: [] as number[],
 
                 fastest_anime_duration_ms: 100, //to change anime durations easily
             };
@@ -340,23 +335,27 @@
                 //we set rate to 1 and volume to max, and hide them
                 //there is no need for them if intended for recording, for best feedback
                 this.playback_volume = 1;
-                this.$refs.audio_playback.playbackRate = this.playback_rate;
-                this.$refs.audio_playback.volume = this.playback_volume;
+                (this.$refs.audio_playback as HTMLAudioElement).playbackRate = this.playback_rate;
+                (this.$refs.audio_playback as HTMLAudioElement).volume = this.playback_volume;
 
             }else{
 
                 //set rate to saved value
-                if(window.localStorage.playback_rate){
+                if(window.localStorage.playback_rate !== undefined){
 
                     this.playback_rate = parseFloat(window.localStorage.playback_rate);
                 }
 
                 //set volume to saved value
-                if(window.localStorage.playback_volume){
+                if(window.localStorage.playback_volume !== undefined){
 
                     this.playback_volume = parseFloat(window.localStorage.playback_volume);
                 }
             }
+
+            //set initial value for volume slider
+            (this.$refs.volume_slider as InstanceType<typeof VSliderYSmall>).mainUpdateSlider(this.playback_volume);
+
 
             //initialise with 'empty' state
             this.current_playback_state = this.playback_states[0];
@@ -370,8 +369,11 @@
             window.addEventListener('mouseup', this.stopPlaybackDrag);
             window.addEventListener('touchend', this.stopPlaybackDrag);
             window.addEventListener('resize', this.adjustToNewPlaybackDimension);
+            window.addEventListener('keydown', (event) => {
+                this.handleKeyboardEvent(event);
+            });
             window.addEventListener('keyup', (event) => {
-                this.handleKeyUp(event);
+                this.handleKeyboardEvent(event);
             });
             document.addEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
         },
@@ -383,8 +385,11 @@
             window.removeEventListener('mouseup', this.stopPlaybackDrag);
             window.removeEventListener('touchend', this.stopPlaybackDrag);
             window.removeEventListener('resize', this.adjustToNewPlaybackDimension);
+            window.addEventListener('keydown', (event) => {
+                this.handleKeyboardEvent(event);
+            });
             window.removeEventListener('keyup', (event) => {
-                this.handleKeyUp(event);
+                this.handleKeyboardEvent(event);
             });
             document.removeEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
         },
@@ -418,14 +423,14 @@
                 const audio_context = new AudioContext();
 
                 await new_value.arrayBuffer()
-                    .then(buffer => audio_context.decodeAudioData(buffer))
-                    .then(decoded_audio => decoded_audio.getChannelData(0)) //only 1 channel as expected
-                    .then(audio_data => this.getVolumes(audio_data))
+                    .then((buffer:ArrayBuffer) => audio_context.decodeAudioData(buffer))
+                    .then((decoded_audio:AudioBuffer) => decoded_audio.getChannelData(0)) //only 1 channel as expected
+                    .then((audio_data:Float32Array) => this.getVolumes(audio_data))
                     .then(() => {
                         this.attachRecordedAudioToPlayback();
                         this.current_playback_state = this.playback_states[2];
                     })
-                    .catch(error => {
+                    .catch((error:any|Error) => {
                         this.final_file = null;
                         this.current_playback_state = this.playback_states[0];
                         console.log(error);
@@ -469,7 +474,7 @@
 
                     this.animePlaybackStates();
 
-                    this.anime_instance.finished.then(()=>{
+                    this.main_anime.finished.then(()=>{
 
                         this.emitIsAnimePlaybackCompleted(true);
                     });
@@ -477,49 +482,160 @@
             },
         },
         methods: {
-            handleKeyUp(event){
+            handleKeyboardEvent(event:KeyboardEvent) : void {
 
-                //don't let this function affect text input
-                if(this.final_file === null || event.target !== document.body){
+                //one function, for both keydown and keyup
+                //some keyup events are too late for .preventDefault(), so they use keydown
 
-                    return false;
+                //these keys affect only playback, so no point if there's no file
+                if(this.final_file === null){
+
+                    return;
                 }
 
-                switch(event.keyCode){
+                //don't let this function affect text input
+                if(
+                    event.target !== document.body &&
+                    !(this.$refs.playback_main as HTMLElement).contains(event.target as Node)
+                ){
 
-                    case 37:
+                    return;
+                }
 
-                        //left arrow
+                //keyCode is deprecated, use .key
+                    //.code is different on different types of keyboards, but .key will be consistent
+                //https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key
+                switch(event.key){
+
+                    case 'ArrowLeft':
+
+                        if(event.type !== 'keydown'){
+
+                            break;
+                        }
+
+                        //go backwards playback
                         this.skipPlayback(-5);
                         break;
-                    
-                    case 39:
 
-                        //right arrow
+                    case 'ArrowRight':
+
+                        if(event.type !== 'keydown'){
+
+                            break;
+                        }
+
+                        //go forward playback
                         this.skipPlayback(5);
                         break;
 
-                    case 32:
+                    case ' ':
 
-                        //spacebar
+                        if(event.type !== 'keyup'){
+
+                            break;
+                        }
+
+                        //play/pause
                         this.togglePlaybackPlayPause();
                         break;
-                    
+
+                    case 'm':
+
+                        //mute/unmute
+                        //when for recording, no volume option
+                        //we use localStorage for backup value from mute to unmute
+                        {
+                            if(event.type !== 'keyup' || this.propIsForRecording === true){
+
+                                break;
+                            }
+
+                            let audio_element = (this.$refs.audio_playback as HTMLAudioElement);
+                            const stored_volume = parseFloat(window.localStorage.playback_volume);
+
+                            if(this.playback_volume === stored_volume){
+
+                                //mute
+                                this.playback_volume = 0;
+                                audio_element.volume = 0;
+
+                            }else{
+
+                                //unmute
+                                this.playback_volume = stored_volume;
+                                audio_element.volume = stored_volume;
+                            }
+                            (this.$refs.volume_slider as InstanceType<typeof VSliderYSmall>).mainUpdateSlider(this.playback_volume);
+                        }
+                        break;
+
+                    case 'ArrowUp':
+
+                        //increase volume if volume_slider is open
+                        {
+                            if(
+                                event.type !=='keydown' ||
+                                this.is_playback_volume_open === false
+                            ){
+
+                                break;
+                            }
+
+                            event.preventDefault();
+                            let new_playback_volume = this.playback_volume + 0.2;
+                            new_playback_volume = parseFloat(new_playback_volume.toFixed(2));
+                            
+                            if(new_playback_volume > 1){
+
+                                this.changePlaybackVolume(1);
+
+                            }else{
+
+                                this.changePlaybackVolume(new_playback_volume);
+                            }
+                        
+                            //update volume_slider
+                            (this.$refs.volume_slider as InstanceType<typeof VSliderYSmall>).mainUpdateSlider(this.playback_volume);
+                            break;
+                        }
+
+                        case 'ArrowDown':
+
+                            //decrease volume if volume_slider is open
+                            {
+                                if(
+                                    event.type !== 'keydown' ||
+                                    this.is_playback_volume_open === false
+                                ){
+
+                                    break;
+                                }
+
+                                event.preventDefault();
+                                let new_playback_volume = this.playback_volume - 0.2;
+                                new_playback_volume = parseFloat(new_playback_volume.toFixed(2));
+                                
+                                if(new_playback_volume <= 0){
+
+                                    this.changePlaybackVolume(0);
+
+                                }else{
+
+                                    this.changePlaybackVolume(new_playback_volume);
+                                }
+
+                                //update volume_slider
+                                (this.$refs.volume_slider as InstanceType<typeof VSliderYSmall>).mainUpdateSlider(this.playback_volume);
+                                break;
+                            }
+
                     default:
 
-                        //have not handled volume yet
-                        return false;
+                        break;
                 }
             },
-            dataTroubleshooter(){
-
-                console.log('=================');
-                console.log('is_playing: '+this.is_playing);
-                console.log('is_playback_options_open: '+this.is_playback_options_open);
-                console.log('is_dragging_volume: '+this.is_dragging_volume);
-                console.log('=================');
-            },
-            syncSliderAnimeAfterSuspend(){
+            syncSliderAnimeAfterSuspend() : void {
 
                 //we need this because anime.suspendDocumentWhenHidden=false does not work
                 //basically just to reposition slider anime to playback, else it doesn't do that
@@ -543,7 +659,7 @@
 
                     if(resume_later === true){
 
-                        const target = this.$refs.audio_playback;
+                        const target = (this.$refs.audio_playback as HTMLAudioElement);
 
                         //we want to mute to avoid the rare slight spike at certain db
                         target.muted = true;
@@ -552,7 +668,7 @@
                     }
                 }
             },
-            createPlaybackSliderAnime(){
+            createPlaybackSliderAnime() : void {
 
                 //to be called during getPlaybackDuration(), window resize, changePlaybackRate()
                 //we can then use .play/.pause/.seek
@@ -567,7 +683,7 @@
                 this.playback_slider_progress_anime =null;
 
                 //calculate starting point of translateX
-                const ending_translateX = this.playback_slider_width.width;
+                const ending_translateX = (this.playback_slider_width as DOMRect).width;
 
                 //calculate duration based on playback_rate
                 const anime_duration = this.getRealDurationAfterPlaybackRate() * 1000;
@@ -593,17 +709,17 @@
                     scaleX: ['0', '1'],
                 });
             },
-            adjustToNewPlaybackDimension(){
+            adjustToNewPlaybackDimension() : void {
 
-                if(this.$refs.playback_main.style.display === 'none'){
+                if((this.$refs.playback_main as HTMLElement).style.display === 'none'){
 
-                    return false;
+                    return;
                 }
 
                 //expects playback_slider to have the same width
                 //use not only during 'resize' event, but when playback_states[2] is ready
                 //as 'resize' may occur when element is display:none
-                this.playback_slider_width = this.$refs.playback_slider_width.getBoundingClientRect();
+                this.playback_slider_width = (this.$refs.playback_slider_width as HTMLElement).getBoundingClientRect();
 
                 //create/recreate anime
                 if(this.final_file !== null){
@@ -612,19 +728,19 @@
                     this.syncSliderAnimeAfterSuspend();
                 }
             },
-            endPlaybackProperly(){
+            endPlaybackProperly() : void {
 
                 //when paused and dragged to end, html media seems to still want you to play once to truly end
                 //handle only the media here, the rest are already settled
-                const target = this.$refs.audio_playback;
+                const target = (this.$refs.audio_playback as HTMLAudioElement);
                 target.muted = true;
                 target.play();
             },
-            startPlaybackDrag(is_playback_slider_touch=false){
+            startPlaybackDrag(is_playback_slider_touch=false) : void {
 
                 if(this.final_file === null || this.is_volume_ripples_available === false){
 
-                    return false;
+                    return;
                 }
 
                 this.is_playback_slider_drag = true;
@@ -642,7 +758,7 @@
                     this.resume_after_stop_dragging = true;
                 }
             },
-            doPlaybackDrag(event=null){
+            doPlaybackDrag(event:MouseEvent|TouchEvent) : void {
 
                 if(this.is_playback_slider_drag === true && this.playback_slider_width !== null){
 
@@ -659,11 +775,11 @@
 
                     if(this.is_playback_slider_touch === true){
 
-                        user_x = event.touches[0].clientX;
+                        user_x = (event as TouchEvent).touches[0].clientX;
 
                     }else{
 
-                        user_x = event.clientX;
+                        user_x = (event as MouseEvent).clientX;
                     }
 
                     if(user_x >= this.playback_slider_width.left && user_x <= this.playback_slider_width.right){
@@ -690,7 +806,7 @@
                     // console.log("==========================");
                 }
             },
-            stopPlaybackDrag(){
+            stopPlaybackDrag() : void {
 
                 if(this.is_playback_slider_drag === true){
 
@@ -713,7 +829,7 @@
                 }
 
             },
-            handlePlaybackDrag(){
+            handlePlaybackDrag() : void {
 
                 //expects playback_slider_value to be float 0 to 1
 
@@ -731,19 +847,19 @@
                 this.playback_slider_progress_anime.seek(jumped_anime_duration);
 
                 //handle <audio>
-                this.$refs.audio_playback.currentTime = jumped_playback_duration;
+                (this.$refs.audio_playback as HTMLAudioElement).currentTime = jumped_playback_duration;
 
                 //handle timer
                 this.updateCurrentPlaybackTime();
             },
-            skipPlayback(seconds=0){
+            skipPlayback(seconds=0) : void {
 
                 //+x for forward, -x for backward
 
                 //do this instead of relying on :disabled, as :disabled makes sliders bug out
                 if(seconds === 0 || this.final_file === null){
 
-                    return false;
+                    return;
                 }
 
                 if(this.is_playing === true){
@@ -752,7 +868,7 @@
                     this.resume_after_stop_skipping = true;
                 }
 
-                const target = this.$refs.audio_playback;
+                const target = (this.$refs.audio_playback as HTMLAudioElement);
                 let updated_time = target.currentTime + seconds;
 
                 if(updated_time < 0){
@@ -784,32 +900,7 @@
 
                 this.resume_after_stop_skipping = null;
             },
-            clearDelayClosePlaybackOptions(){
-
-                //clear delay
-                if(this.playback_options_timeout !== null){
-
-                    clearTimeout(this.playback_options_timeout);
-                    this.playback_options_timeout = null;
-                }
-            },
-            delayClosePlaybackOptions(){
-
-                //intended only for touch events
-                //only used when user taps while playing
-
-                //do nothing if paused, since playback_options would be always open
-                if(this.is_playing === true){
-                    
-                    //clear any existing timeout
-                    this.clearDelayClosePlaybackOptions();
-
-                    this.playback_options_timeout = setTimeout(()=>{
-                        this.togglePlaybackOptions(false);
-                    }, 3000);
-                }
-            },
-            resetRecordingVisualiser(){
+            resetRecordingVisualiser() : void {
 
                 const recording_visualiser_circles = [
                     this.$refs.recording_visualiser_circle_0,
@@ -828,7 +919,7 @@
                     duration: this.fastest_anime_duration_ms,
                 });
             },
-            animeRecordingVisualiser(new_value){
+            animeRecordingVisualiser(new_value:number) : void {
 
                 const recording_visualiser_circles = [
                     this.$refs.recording_visualiser_circle_0,
@@ -859,34 +950,34 @@
                     });
                 }
             },
-            updateCurrentPlaybackTime(){
+            updateCurrentPlaybackTime() : void {
 
-                const target = this.$refs.audio_playback;
+                const target = (this.$refs.audio_playback as HTMLAudioElement);
 
                 //timer
                 this.pretty_current_playback_time = new Date(
                     target.currentTime * 1000
                 ).toISOString().substring(14, 19);
             },
-            getRealDurationAfterPlaybackRate(){
+            getRealDurationAfterPlaybackRate() : number{
 
                 //note that when <audio> playbackRate changes, .duration is still the same
                 return this.final_file_duration / this.playback_rate;
             },
-            changePlaybackRate(new_value){
+            changePlaybackRate(new_value:number) : void {
 
                 if(new_value === this.playback_rate){
 
-                    return false;
+                    return;
                 }
 
                 //note that on every new file loaded into <audio>, playbackRate is reset
                 //attachRecordedAudioToPlayback() will handle this inconvenience
-                this.$refs.audio_playback.playbackRate = new_value;
+                (this.$refs.audio_playback as HTMLAudioElement).playbackRate = new_value;
                 this.playback_rate = new_value;
                 window.localStorage.playback_rate = new_value;
 
-                if(this.$refs.audio_playback.src !== ''){
+                if((this.$refs.audio_playback as HTMLAudioElement).src !== ''){
 
                     //adjust anime
                     const resume_later = this.is_playing;
@@ -900,36 +991,28 @@
                     }
                 }
             },
-            updateIsDraggingVolume(new_value){
-
-                this.is_dragging_volume = new_value;
-            },
-            changePlaybackVolume(new_value){
+            changePlaybackVolume(new_value:number) : void {
                 
-                this.$refs.audio_playback.volume = new_value;
+                (this.$refs.audio_playback as HTMLAudioElement).volume = new_value;
                 this.playback_volume = new_value;
                 window.localStorage.playback_volume = new_value;
             },
-            togglePlaybackSpeedOptions(){
+            togglePlaybackSpeedOptions() : void {
                 
                 this.is_playback_speed_options_open = !this.is_playback_speed_options_open;
             },
-            toggleRepeat(){
-
-                this.is_repeat = !this.is_repeat;
-            },
-            togglePlaybackVolumeOptions(){
+            togglePlaybackVolumeOptions() : void {
 
                 //note that slider malfunctions over :disabled elements, i.e. backward/forward, etc.
 
                 this.is_playback_volume_open = !this.is_playback_volume_open;
             },
-            playPlayback(){
+            playPlayback() : void {
 
                 //using play/pause instead of remove+create prevents slight off-position on second play
                 //our new anime position is already settled by handlePlaybackDrag()
 
-                const target = this.$refs.audio_playback;
+                const target = (this.$refs.audio_playback as HTMLAudioElement);
 
                 //although redundant, we put target.muted=false here to guarantee it
                 //as there has been a rare instance where playback had no audio unintentionally until the next replay
@@ -939,12 +1022,12 @@
                 this.playback_slider_progress_anime.play();
                 this.is_playing = true;
             },
-            pausePlayback(){
+            pausePlayback() : void {
                 
                 //if playing, call this before drag, then do playPlayback() once done
                 //done at startPlaybackDrag() and stopPlaybackDrag()
 
-                const target = this.$refs.audio_playback;
+                const target = (this.$refs.audio_playback as HTMLAudioElement);
 
                 //also recalculate slider value
                 target.pause();
@@ -953,7 +1036,7 @@
                 this.playback_slider_value = target.currentTime / this.final_file_duration;
                 this.is_playing = false;
             },
-            togglePlaybackPlayPause(){
+            togglePlaybackPlayPause() : void {
 
                 //we let everything stay at the end if playback truly ended
                 //reset is only triggered on next play
@@ -961,7 +1044,7 @@
                 //do this instead of relying on :disabled, as :disabled makes sliders bug out
                 if(this.final_file === null){
 
-                    return false;
+                    return;
                 }
 
                 //check if playback is not playing
@@ -984,13 +1067,15 @@
                     }
                 }
             },
-            emitIsAnimePlaybackCompleted(is_completed){
+            emitIsAnimePlaybackCompleted(is_completed:boolean) : void {
 
                 this.$emit('isAnimePlaybackCompleted', is_completed);
             },
-            animePlaybackStates(){
+            animePlaybackStates() : void {
 
-                const volume_ripples = this.$refs.volume_ripple;
+                const volume_ripples = (this.$refs.volume_ripple as HTMLElement[]);
+                const recording_visualiser = (this.$refs.recording_visualiser as HTMLElement);
+                const playback_main = (this.$refs.playback_main as HTMLElement);
 
                 //reset all elements
                 //reset all translates to 0
@@ -1006,15 +1091,15 @@
                             //remove related anime
                             anime.remove([
                                 volume_ripples,
-                                this.$refs.recording_visualiser,
+                                recording_visualiser,
                             ]);
 
                             //timeline will not work here
-                            this.anime_instance = anime({
+                            this.main_anime = anime({
                                 begin: ()=>{
                                     //remove sunset
-                                    this.$refs.recording_visualiser.style.opacity = 0;
-                                    this.$refs.recording_visualiser.style.display = 'none';
+                                    recording_visualiser.style.opacity = '0';
+                                    recording_visualiser.style.display = 'none';
                                     this.resetRecordingVisualiser();
                                 },
                                 targets: volume_ripples,
@@ -1046,15 +1131,15 @@
                             //remove related anime
                             anime.remove([
                                 volume_ripples,
-                                this.$refs.recording_visualiser,
+                                recording_visualiser,
                                 this.$refs.playback_slider_knob,
-                                this.$refs.playback_main,
+                                playback_main,
                                 this.$refs.recording_visualiser_circle_0,
                                 this.$refs.recording_visualiser_circle_1,
                                 this.$refs.recording_visualiser_circle_2,
                             ]);
 
-                            this.anime_instance = anime.timeline({
+                            this.main_anime = anime.timeline({
                                 easing: 'linear',
                                 loop: false,
                                 autoplay: true,
@@ -1066,20 +1151,20 @@
                                 duration: this.fastest_anime_duration_ms,
                             }).add({
                                 //remove playback_main
-                                targets: this.$refs.playback_main,
+                                targets: playback_main,
                                 opacity: 0,
                                 duration: this.fastest_anime_duration_ms,
                                 complete: ()=>{
-                                    this.$refs.playback_main.style.display = 'none';
+                                    playback_main.style.display = 'none';
                                     this.playback_slider_knob_anime = null;
                                     this.playback_slider_progress_anime = null;
                                 },
                             }).add({
                                 //make sunset available
                                 begin: ()=>{
-                                    this.$refs.recording_visualiser.style.display = 'block';
+                                    recording_visualiser.style.display = 'block';
                                 },
-                                targets: this.$refs.recording_visualiser,
+                                targets: recording_visualiser,
                                 opacity: 1,
                                 duration: this.fastest_anime_duration_ms,
                             });
@@ -1095,14 +1180,14 @@
                             //remove related anime
                             anime.remove([
                                 volume_ripples,
-                                this.$refs.recording_visualiser,
-                                this.$refs.playback_main,
+                                recording_visualiser,
+                                playback_main,
                                 this.$refs.recording_visualiser_circle_0,
                                 this.$refs.recording_visualiser_circle_1,
                                 this.$refs.recording_visualiser_circle_2,
                             ]);
 
-                            this.anime_instance = anime.timeline({
+                            this.main_anime = anime.timeline({
                                 easing: 'linear',
                                 loop: false,
                                 autoplay: true,
@@ -1111,18 +1196,18 @@
                                 begin: ()=>{
                                     this.resetRecordingVisualiser();
                                 },
-                                targets: this.$refs.recording_visualiser,
+                                targets: recording_visualiser,
                                 opacity: 0,
                                 delay: 100,
                                 duration: this.fastest_anime_duration_ms,
                                 complete: ()=>{
-                                    this.$refs.recording_visualiser.style.display = 'none';
+                                    recording_visualiser.style.display = 'none';
                                 },
                             }).add({
                                 //make playback_main available
-                                targets: this.$refs.playback_main,
+                                targets: playback_main,
                                 begin: ()=>{
-                                    this.$refs.playback_main.style.display = 'block';
+                                    playback_main.style.display = 'block';
                                 },
                                 opacity: 1,
                                 duration: this.fastest_anime_duration_ms * 2,
@@ -1160,7 +1245,7 @@
                                 volume_ripples,
                             ]);
 
-                            this.anime_instance = anime({
+                            this.main_anime = anime({
                                 targets: volume_ripples,
                                 translateY: ['0%'],
                                 duration: 0,    //must be 0, no other solutions in this context
@@ -1190,7 +1275,7 @@
                             ]);
 
                             //create fast ripple effect for volume_ripples to show that it is loading
-                            this.anime_instance = anime({
+                            this.main_anime = anime({
                                 targets: volume_ripples,
                                 translateY: ['0%', '-5%', '5%', '0%'],
                                 autoplay: true,
@@ -1204,10 +1289,10 @@
                     default:
                         
                         console.log('State is currently null or not one of the declared playback_states.');
-                        return false;
+                        return;
                 }
             },
-            getVolumes(audio_data){
+            getVolumes(audio_data:Float32Array) : void {
 
                 let bucket_peaks = [];
                 let bucket_threshold = Math.round(audio_data.length / this.bucket_quantity);
@@ -1251,7 +1336,7 @@
                 //min and max range is also -1 to 1, so need extra 'if' statements
                 //lastly, we expect -1 to 1, but at 0 audio, we get only -0.0001
             },
-            adjustVolumeRipples(){
+            adjustVolumeRipples() : void {
 
                 //we calculate height relative to most quiet and loudest parts
                 //samples are expected to be between -1 and 1, but we get -0.0001 when no audio
@@ -1312,7 +1397,7 @@
 
                     //this performs fine, so do not add Tailwind transition, else it interferes
                     anime({
-                        targets: this.$refs.volume_ripple[x],
+                        targets: (this.$refs.volume_ripple as HTMLElement[])[x],
                         scaleY: scaleY_percentage.toString(),
                         autoplay: true,
                         loop: false,
@@ -1323,40 +1408,45 @@
                     this.is_volume_ripples_available = true;
                 }
             },
-            attachRecordedAudioToPlayback(){
+            attachRecordedAudioToPlayback() : boolean {
 
                 if(this.final_file === null){
 
                     return false;
                 }
 
+                const audio_playback = (this.$refs.audio_playback as HTMLAudioElement);
+
                 //attach file into <audio>
-                this.$refs.audio_playback.src = URL.createObjectURL(this.final_file);
+                audio_playback.src = URL.createObjectURL(this.final_file);
 
                 //free the memory
-                this.$refs.audio_playback.onload = function(){
-                    return URL.revokeObjectURL(this.$refs.audio_playback.src);
+                audio_playback.onload = function(){
+                    return URL.revokeObjectURL(audio_playback.src);
                 };
 
                 //no updating current_playback_state here, we rely on <audio> for that
 
-                //on every new file loaded into <audio>, playbackRate is reset
-                this.$refs.audio_playback.playbackRate = this.playback_rate;
+                //on every new file loaded into <audio>, playbackRate is reset by default
+                //this is the fix
+                audio_playback.playbackRate = this.playback_rate;
 
                 return true;
             },
-            getPlaybackDuration(){
+            getPlaybackDuration() : void {
+
+                const audio_playback = (this.$refs.audio_playback as HTMLAudioElement);
 
                 //there's a bug that gives us 'Infinity'
                 //this is how we fix it
                 //https://stackoverflow.com/a/69512775
-                if(this.$refs.audio_playback.duration == 'Infinity'){
+                if((audio_playback.duration as number|string) == 'Infinity'){
 
                     const handler = ()=>{
 
-                        this.$refs.audio_playback.currentTime = 0;
-                        this.$refs.audio_playback.removeEventListener('timeupdate', handler);
-                        this.final_file_duration = this.$refs.audio_playback.duration;
+                        audio_playback.currentTime = 0;
+                        audio_playback.removeEventListener('timeupdate', handler);
+                        this.final_file_duration = audio_playback.duration;
 
                         //create anime
                         this.playback_slider_value = 0;
@@ -1368,12 +1458,12 @@
                             new Date(Math.floor(this.final_file_duration) * 1000).toISOString().substring(14, 19);
                     };
 
-                    this.$refs.audio_playback.currentTime = 1e101;
-                    this.$refs.audio_playback.addEventListener('timeupdate', handler);
+                    audio_playback.currentTime = 1e101;
+                    audio_playback.addEventListener('timeupdate', handler);
 
                 }else{
 
-                    this.final_file_duration = this.$refs.audio_playback.duration;
+                    this.final_file_duration = audio_playback.duration;
 
                     //create anime
                     this.playback_slider_value = 0;
@@ -1385,5 +1475,5 @@
                 //put your code in handler instead if you need to run something else
             },
         }
-    }
+    });
 </script>

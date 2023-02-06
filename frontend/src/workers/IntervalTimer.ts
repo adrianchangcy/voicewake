@@ -1,4 +1,4 @@
-let mytimer;
+let mytimer:number;
 
 self.onmessage = function(event){
 

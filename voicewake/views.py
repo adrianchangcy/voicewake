@@ -249,16 +249,14 @@ class EventPurposesViewSet(viewsets.ModelViewSet):
         return queryset
 
 
-class EventTonesViewSet(viewsets.ModelViewSet):
+class EventTonesViewSet(viewsets.ReadOnlyModelViewSet):
 
     serializer_class = EventTonesSerializer
-    permission_classes = [IsAuthenticated]
     queryset = EventTones.objects.all()
 
     def get_queryset(self):
 
-        #allow max 50 rows
-        queryset = EventTones.objects.all()[:50]
+        queryset = EventTones.objects.all()
 
         search = self.request.query_params.get('search')
 

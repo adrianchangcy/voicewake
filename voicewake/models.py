@@ -446,7 +446,8 @@ class EventToneTranslations(models.Model):
 
 class EventTones(models.Model):
     id = models.BigAutoField(primary_key=True)
-    event_tone_name = models.TextField(max_length=50)
+    event_tone_name = models.TextField(max_length=50, unique=True)
+    event_tone_symbol = models.TextField(max_length=50, unique=True)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -24,9 +24,9 @@ from voicewake import views
 
 #register API URLs for auto-create
 router = routers.SimpleRouter(trailing_slash=False)
-router.register(r'api/user_verification_options', views.UserVerificationOptionsViewSet)
-router.register(r'api/event_purposes', views.EventPurposesViewSet)
-router.register(r'api/event_tones', views.EventTonesViewSet)
+router.register(r'api/user-verification-options', views.UserVerificationOptionsViewSet)
+router.register(r'api/event-purposes', views.EventPurposesViewSet)
+router.register(r'api/event-tones', views.EventTonesViewSet)
 
 #original URL
 urlpatterns = [

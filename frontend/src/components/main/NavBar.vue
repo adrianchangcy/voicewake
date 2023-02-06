@@ -120,7 +120,6 @@
 </template>
 
 <script setup>
-
     // import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
     import VNavigationButton from '/src/components/small/VNavigationButton.vue';
     import VActionButtonWeird from '/src/components/small/VActionButtonWeird.vue';
