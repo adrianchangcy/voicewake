@@ -50,7 +50,12 @@
             ]"
         >
             <!--ripples, slider-->
-            <div class="h-10 w-full relative">
+            <div
+                :class="[
+                    final_file === null ? 'opacity-10 cursor-default' : 'opacity-100 cursor-pointer',
+                    'h-10 w-full relative'
+                ]"
+            >
                 <!--ripples-->
                 <div
                     ref="volume_ripples_container"
@@ -74,12 +79,7 @@
                     </div>
                 </div>
                 <!--slider-->
-                <div
-                    :class="[
-                        final_file === null ? 'opacity-10 cursor-default' : 'opacity-100 cursor-pointer',
-                        'left-2 right-2 m-auto h-10 absolute bottom-0'
-                    ]"
-                >
+                <div class="left-2 right-2 m-auto h-10 absolute bottom-0">
                     <div
                         ref="playback_slider"
                         :class="[
@@ -280,7 +280,7 @@
 
 
 <script lang="ts">
-    import { defineComponent } from 'vue';
+    import { DefineComponent, defineComponent } from 'vue';
     import anime from 'animejs';
 
     export default defineComponent({
@@ -321,12 +321,6 @@
                 fastest_anime_duration_ms: 100, //to change anime durations easily
             };
         },
-        components: {
-
-            VBox,
-            VSliderYSmall,
-            TransitionFade
-        },
         mounted(){
 
             //handle rate and volume differently
@@ -354,7 +348,7 @@
             }
 
             //set initial value for volume slider
-            (this.$refs.volume_slider as InstanceType<typeof VSliderYSmall>).mainUpdateSlider(this.playback_volume);
+            (this.$refs.volume_slider as DefineComponent).mainUpdateSlider(this.playback_volume);
 
 
             //initialise with 'empty' state
@@ -566,7 +560,7 @@
                                 this.playback_volume = stored_volume;
                                 audio_element.volume = stored_volume;
                             }
-                            (this.$refs.volume_slider as InstanceType<typeof VSliderYSmall>).mainUpdateSlider(this.playback_volume);
+                            (this.$refs.volume_slider as DefineComponent).mainUpdateSlider(this.playback_volume);
                         }
                         break;
 
@@ -596,7 +590,7 @@
                             }
                         
                             //update volume_slider
-                            (this.$refs.volume_slider as InstanceType<typeof VSliderYSmall>).mainUpdateSlider(this.playback_volume);
+                            (this.$refs.volume_slider as DefineComponent).mainUpdateSlider(this.playback_volume);
                             break;
                         }
 
@@ -626,7 +620,7 @@
                                 }
 
                                 //update volume_slider
-                                (this.$refs.volume_slider as InstanceType<typeof VSliderYSmall>).mainUpdateSlider(this.playback_volume);
+                                (this.$refs.volume_slider as DefineComponent).mainUpdateSlider(this.playback_volume);
                                 break;
                             }
 

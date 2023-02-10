@@ -79,8 +79,10 @@
     input, h-10
 
     GAPS
-    page items, gap-8
-    sub-page items, gap-4
+    page items, gap-12
+    form items, gap-8
+    related items, gap-6
+    closely related items, gap-4
 
     GRAY
     least attention-seeking, e.g. border, light-gray
@@ -113,6 +115,14 @@ textarea {
     */
     .shade-when-hover:hover{
         background-color: rgba(214, 211, 209, 0.8);
+    }
+
+    .shade-border-when-hover:hover{
+        border-color: rgba(214, 211, 209, 0.8);
+    }
+
+    .border-solid-when-hover:hover{
+        border-style: solid;
     }
 
     .double-height-when-hover{

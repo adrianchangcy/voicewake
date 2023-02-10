@@ -160,7 +160,6 @@
                     this.slider_value = new_value;
                 }
 
-                console.log('passed vol val is '+new_value);
                 this.animeSlider();
             },
         },
