@@ -1,7 +1,28 @@
 <template>
-    <div class="text-4xl w-fit h-fit py-8">
-        <span>
-            <slot></slot>
-        </span>
+    <div class="w-fit h-fit pt-7 pb-8">
+        <div class="w-fit h-fit text-4xl font-light text-theme-black">
+            <span>{{propTitle}}</span>
+        </div>
+        <div class="w-fit h-fit text-2xl font-light text-theme-black/80 pt-2">
+            <span>{{propTitleDescription}}</span>
+        </div>
     </div>
 </template>
+
+
+<script>
+
+    export default {
+
+        props: {
+            propTitle: {
+                type: String,
+                default: ''
+            },
+            propTitleDescription: {
+                type: String,
+                default: ''
+            },
+        }
+    }
+</script>

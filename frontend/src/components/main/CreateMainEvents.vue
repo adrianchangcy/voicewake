@@ -9,7 +9,9 @@
     <div class="md:w-2/4 lg:w-3/6 xl:w-2/6 mx-auto h-fit bg-theme-light text-left text-lg">
 
         <div class="w-[90%] mx-auto">
-            <VSectionTitle>Say</VSectionTitle>
+            <VSectionTitle
+                propTitle="Say"
+            />
         </div>
 
         <form
@@ -22,7 +24,7 @@
                     class="left-0"
                     for="click-to-record"
                 >
-                    Share something
+                    Your recording
                 </VInputLabel>
                 <VPlayback
                     :propFile="final_file"
@@ -42,20 +44,20 @@
                 />
             </div>
 
-            <div class="w-[80%] mx-auto">
+            <div class="">
                 <VEventTonePicker
                     propLabelText="How you feel about it"
                     class="w-full"
                 />
             </div>
 
-            <div class="w-[80%] mx-auto">
+            <div class="">
                 <VTextArea
                     :propIsRequired="false"
                     propElementId="event-name"
-                    propLabel="Details (optional)"
+                    propLabel="Short title"
                     propPlaceholder=""
-                    :propMaxLength="100"
+                    :propMaxLength="40"
                     :propHasTextCounter="true"
                     :propHasStatusText="false"
                     :propIsOk="event_name_is_ok"
