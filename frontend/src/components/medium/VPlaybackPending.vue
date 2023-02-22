@@ -47,47 +47,49 @@
 
 <script setup lang="ts">
 
-    import { defineComponent } from 'vue';
     import VEventCard from '/src/components/small/VEventCard.vue';
     import VEventReplyButton from '/src/components/small/VEventReplyButton.vue';
 </script>
 
 
 <script lang="ts">
-export default defineComponent({
-    data() {
-        return {
-            selected_card: null as number | null,
-        };
-    },
-    methods: {
-        handleSelectedCard(card_id:number): void {
 
-            if(this.selected_card === card_id){
-
-                return;
-            }
-
-            this.selected_card = card_id;
+    import { defineComponent } from 'vue';
+    
+    export default defineComponent({
+        data() {
+            return {
+                selected_card: null as number | null,
+            };
         },
-        redirectToThisPost(key:number, event:MouseEvent|TouchEvent) : void {
+        methods: {
+            handleSelectedCard(card_id:number): void {
             
-            //readjust to array
-            key = key = 1;
-
-            if(((this.$refs.user_1_card as HTMLElement[])[key]).contains(event.target as Node)){
-
-                return;
-
-            }else if(((this.$refs.user_2_card as HTMLElement[])[key]).contains(event.target as Node)){
-
-                return;
-
-            }else{
-
-                console.log('wtf');
+                if(this.selected_card === card_id){
+                
+                    return;
+                }
+            
+                this.selected_card = card_id;
+            },
+            redirectToThisPost(key:number, event:MouseEvent|TouchEvent) : void {
+                
+                //readjust to array
+                key = key = 1;
+            
+                if(((this.$refs.user_1_card as HTMLElement[])[key]).contains(event.target as Node)){
+                
+                    return;
+                
+                }else if(((this.$refs.user_2_card as HTMLElement[])[key]).contains(event.target as Node)){
+                
+                    return;
+                
+                }else{
+                
+                    console.log('wtf');
+                }
             }
-        }
-    },
-});
+        },
+    });
 </script>

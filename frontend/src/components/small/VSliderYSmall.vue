@@ -66,9 +66,18 @@
             window.removeEventListener('touchend', this.stopDrag);
         },
         props: {
+            propInitialSliderValue: {   //only be used at init
+                type: Number,
+                required: true,
+                default: 0
+            },
         },
         emits: ['hasNewSliderValue'],
         watch: {
+            propInitialSliderValue(new_value){
+
+                this.mainUpdateSlider(new_value);
+            },
         },
         methods: {
             startDrag(is_touch=false){

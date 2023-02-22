@@ -28,7 +28,7 @@
                     (propIsOk ? 'border-theme-ok' : ''),
                     (propIsWarning ? 'border-theme-warning' : ''),
                     (propIsError ? 'border-theme-danger' : ''),
-                    'block w-full h-10 bg-theme-light border-2 border-theme-dark-gray focus:border-theme-black rounded-lg overflow-hidden p-2 pt-1'
+                    'block w-full h-10 bg-theme-light border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black rounded-lg overflow-hidden p-2 pt-1'
                 ]"
                 :placeholder="propPlaceholder"
                 autocomplete="off"

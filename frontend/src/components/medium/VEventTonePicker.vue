@@ -5,19 +5,25 @@
         </div>
         <div>
             <div ref="event_tone_choice_opener">
-                <VActionButtonMedium
+                <button
                     id="event-tone-picker"
                     aria-label="select an emotion"
                     @click.prevent="toggleEventTonePicker()"
-                    class="w-full pb-3"
+                    class="w-full h-20 relative pb-3 border-2 rounded-lg border-theme-medium-gray text-3xl text-theme-black"
+                    type="button"
                 >
-                    <span v-if="event_tone_choice === null">
-                        <i class="far fa-face-meh-blank text-theme-black"></i>
-                    </span>
-                    <span v-else :aria-label="'Current choice is '+event_tone_choice.event_tone_name">
+                    <i
+                        v-if="event_tone_choice === null"
+                        class="far fa-face-meh-blank absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto"
+                    ></i>
+                    <span
+                        v-else
+                        :aria-label="'Current choice is '+event_tone_choice.event_tone_name"
+                        class="absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto"
+                    >
                         {{event_tone_choice.event_tone_symbol}}
                     </span>
-                </VActionButtonMedium>
+                </button>
             </div>
             <div class="relative w-full">
                 <TransitionFade>
@@ -58,7 +64,6 @@
 
 <script setup lang="ts">
     import TransitionFade from '/src/transitions/TransitionFade.vue';
-    import VActionButtonMedium from '/src/components/small/VActionButtonMedium.vue';
     import VInputLabel from '/src/components/small/VInputLabel.vue';
     import VBox from '/src/components/small/VBox.vue';
 </script>

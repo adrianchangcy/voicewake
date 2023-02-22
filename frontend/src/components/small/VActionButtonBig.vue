@@ -1,8 +1,8 @@
 <template>
     <button
         :class="[
-            (propIsEnabled ? 'hover:bg-theme-light/80 hover:border-theme-light-trim/40 hover:shadow-sm' : 'opacity-10 cursor-default'),
-            'h-28 p-4 block text-2xl bg-theme-light/60       border-t-2 border-theme-light-trim rounded-lg shadow-md transition duration-150 ease-in-out'
+            (propIsEnabled ? 'hover:bg-theme-light/80 hover:border-theme-light/40 hover:shadow-sm' : 'opacity-10 cursor-default'),
+            'w-28 h-28 p-4 block text-2xl bg-theme-light/60       border-t-2 border-theme-light-trim rounded-full shadow-md transition duration-150 ease-in-out'
         ]"
         type="button"
     >
