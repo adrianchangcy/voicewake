@@ -6,181 +6,189 @@
         https://docs.djangoproject.com/en/dev/howto/csrf/
     -->
 
-    <div class="md:w-2/4 lg:w-3/6 xl:w-2/6 mx-auto h-fit bg-theme-light text-left text-lg">
+    <div class="md:w-2/4 lg:w-3/6 xl:w-2/6 mx-auto h-fit bg-theme-light text-left text-lg pb-20">
 
         <div class="w-[90%] mx-auto">
             <VSectionTitle
                 propTitle="Say"
+                propTitleDescription="Fill in the fields below"
             />
         </div>
 
+
+
+        <!--test-->
         <form
             spellcheck="false"
-            class="w-[80%] mx-auto bg-theme-light flex flex-nowrap flex-col gap-8"
+            class="w-[90%] mx-auto bg-theme-light flex flex-col gap-4 text-theme-black"
         >
+            <!--title-->
+            <VTextArea
+            :propIsRequired="true"
+            propElementId="event-name"
+            propLabel="Short title"
+            propPlaceholder=""
+            :propMaxLength="40"
+            :propHasTextCounter="true"
+            :propHasStatusText="false"
+            />
 
-            <div class="">
-                <VInputLabel
-                    class="left-0"
-                    for="click-to-record"
-                >
-                    Your recording
-                </VInputLabel>
-                <VPlayback
-                    :propFile="final_file"
-                    :propIsRecording="is_recording"
-                    :propRecordingVolume="recording_volume"
-                    :propTimeInterval="time_interval"
-                    :propIsForRecording="false"
-                    @isAnimePlaybackCompleted="handleIsAnimePlaybackCompleted($event)"
+            <!--fields for open/close-->
+            <div class="grid grid-cols-7 gap-2">
+
+                <!--open/close VEventToneMenu-->
+                <div class="col-span-2">
+                    <VEventToneField
+                        ref="event_tone_field"
+                        propLabelText="Feeling"
+                        :propEventToneChoice="event_tone_choice"
+                        :propIsOpen="is_event_tone_menu_open"
+                        @isOpen="handleIsEventToneMenuOpen($event)"
+                    />
+                </div>
+
+                <!--open/close VRecorderMenu-->
+                <div class="col-span-5">
+                    <VRecorderField
+                    :propIsOpen="is_recorder_menu_open"
+                    :propBucketQuantity="bucket_quantity"
+                    :propHasRecording="final_file !== null"
+                    :propFileVolumes="file_volumes"
+                    :propFileDuration="file_duration"
+                    @isOpen="handleIsRecorderMenuOpen($event)"
+                    />
+                </div>
+            </div>
+
+            <!--menus-->
+            <div class="w-full h-0 relative">
+
+                <!--arrows, aesthetics only-->
+                <div class="w-full h-0 grid grid-cols-7 gap-4">
+                    <!--arrow for event_tones menu-->
+                    <div v-show="is_event_tone_menu_open" class="col-span-2 col-start-1 relative">
+                        <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"></div>
+                    </div>
+                    <!--arrow for recorder menu-->
+                    <div v-show="is_recorder_menu_open" class="col-span-5 col-start-3 relative">
+                        <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"></div>
+                    </div>
+                </div>
+
+                <!--event_tone menu-->
+                <VEventToneMenu
+                    :propIsOpen="is_event_tone_menu_open"
+                    @eventToneSelected="handleEventToneSelected($event)"
+                    class="absolute border-2 border-theme-black rounded-lg"
                 />
-                <div class="w-0 h-2"></div>
-                <VRecorder
-                    @hasNewRecording="handleHasNewRecording($event)"
-                    @isRecording="handleIsRecording($event)"
-                    @hasNewRecordingVolume="handleHasNewRecordingVolume($event)"
-                    @hasNewTimeInterval="handleHasNewTimeInterval($event)"
-                    :propIsAnimePlaybackCompleted="is_anime_playback_completed"
+
+                <!--recorder menu-->
+                <VRecorderMenu
+                    :propIsOpen="is_recorder_menu_open"
+                    :propBucketQuantity="bucket_quantity"
+                    :propMaxDuration="max_duration"
+                    @newRecording="handleNewRecording($event)"
+                    class="absolute border-2 border-theme-black rounded-lg"
                 />
             </div>
 
-            <div class="">
-                <VEventTonePicker
-                    propLabelText="How you feel about it"
-                    class="w-full"
-                />
+            <!--submit-->
+            <div class="w-[90%] mx-auto py-10">
+                <VActionButtonBig class="mx-auto">
+                    <span>Done</span>
+                </VActionButtonBig>
             </div>
 
-            <div class="">
-                <VTextArea
-                    :propIsRequired="false"
-                    propElementId="event-name"
-                    propLabel="Short title"
-                    propPlaceholder=""
-                    :propMaxLength="40"
-                    :propHasTextCounter="true"
-                    :propHasStatusText="false"
-                    :propIsOk="event_name_is_ok"
-                    :propIsWarning="event_name_is_warning"
-                    :propIsError="event_name_is_error"
-                    :propStatusText="event_name_status_text"
-                    @hasNewValue="validateEventName"
-                />
-            </div>
-
-            <div class="w-0 h-0"></div>
-
-            <VActionButtonBig
-                @click.prevent="handleSubmit()"
-                class="w-[60%] left-0 right-0 mx-auto"
-            >
-                <span>Hear from someone</span>
-            </VActionButtonBig>
-
-            <div class="w-0 h-0"></div>
         </form>
+
     </div>
 </template>
 
 
 <script setup lang="ts">
-    import VRecorder from '/src/components/medium/VRecorder.vue';
-    import VPlayback from '/src/components/medium/VPlayback.vue';
-    import VEventTonePicker from '/src/components/medium/VEventTonePicker.vue';
+
     import VActionButtonBig from '/src/components/small/VActionButtonBig.vue';
-    import VInputLabel from '/src/components/small/VInputLabel.vue';
     import VSectionTitle from '/src/components/small/VSectionTitle.vue';
     import VTextArea from '/src/components/small/VTextArea.vue';
+    import VEventToneField from '/src/components/medium/VEventToneField.vue';
+    import VEventToneMenu from '/src/components/medium/VEventToneMenu.vue';
+    import VRecorderField from '/src/components/medium/VRecorderField.vue';
+    import VRecorderMenu from '/src/components/medium/VRecorderMenu.vue';
+
 </script>
 
 <script lang="ts">
     import { defineComponent } from 'vue';
+    import EventToneTypes from '@/types/EventTones.interface';
 
     export default defineComponent({
-        data(){
+        data() {
             return {
 
-                final_file: null as File | null,
-                is_recording: false,
-                recording_volume: 0,    //0-1, only changes when recording
-                time_interval: 0,   //ms, based on VRecorder time_interval
-                is_anime_playback_completed: false,
+                event_name: "",
+                event_tone_id: null as string|null,
+                event_message: "",
 
-                event_name: '',
-                event_name_is_ok: false,
-                event_name_is_warning: false,
-                event_name_is_error: false,
-                event_name_status_text: '',
+                is_event_tone_menu_open: false, //updates only from VEventToneField to VEventToneMenu, maybe use vuex
+                event_tone_choice: null as EventToneTypes|null,
 
-                event_tone_id: null as string | null,   //change to number if emojis are from db later
-                event_message: '',
+                is_recorder_menu_open: false,
+                final_file: null as File|null,
+                file_volumes: [] as number[],
+                file_duration: 0,
+                bucket_quantity: 20,
+                // propMaxDuration: (1000 * 60 * 2) + 500,    //2m + 0.5s, as final_file is always +-0.1s away
+                max_duration: 10000,    //2m + 0.5s, as final_file is always +-0.1s away
             };
         },
-
         watch: {
-        },
-        methods: {
-            handleHasNewRecording(new_value:File) : void {
+            is_event_tone_menu_open(new_value){
 
-                this.final_file = new_value;
-            },
-            handleIsRecording(new_value:boolean) : void {
+                if(new_value === true && this.is_recorder_menu_open === true){
 
-                this.is_recording = new_value;
-            },
-            handleHasNewRecordingVolume(new_value:number) : void {
-
-                this.recording_volume = new_value;
-            },
-            handleHasNewTimeInterval(new_value:number) : void {
-
-                this.time_interval = new_value;
-            },
-            validateEventName(new_value:string) : void {
-                
-                //VInput cannot .trim() for us, due to v-model
-                //doing it this way is easier than managing css classes
-                if(new_value.trim().length > 0){
-
-                    //all perfect
-                    this.event_name_status_text = '';
-                    this.event_name_is_ok = true;
-                    this.event_name_is_warning = false;
-                    this.event_name_is_error = false;
-
-                    //store
-                    this.event_name = new_value;
-
-                }else if(new_value.trim().length === 0){
-
-                    this.event_name_status_text = '';
-                    this.event_name_is_ok = false;
-                    this.event_name_is_warning = false;
-                    this.event_name_is_error = true;
-
-                }else{
-
-                    //reset
-                    this.event_name_status_text = '';
-                    this.event_name_is_ok = false;
-                    this.event_name_is_warning = false;
-                    this.event_name_is_error = false;
+                    this.is_recorder_menu_open = false;
                 }
             },
-            newEmojiChoice(new_value:string) : void {
+            is_recorder_menu_open(new_value){
+                
+                if(new_value === true && this.is_event_tone_menu_open === true){
+
+                    this.is_event_tone_menu_open = false;
+                }
+            },
+        },
+        computed: {
+
+        },
+        methods: {
+            handleNewRecording(new_value:{'final_file':File, 'file_duration':number, 'file_volumes':number[]}) : void {
+
+                this.final_file = new_value['final_file'];
+                this.file_duration = new_value['file_duration'];
+                this.file_volumes = new_value['file_volumes'];
+            },
+            handleIsRecorderMenuOpen(new_value:boolean) : void {
+
+                this.is_recorder_menu_open = new_value;
+            },
+            handleEventToneSelected(new_value:EventToneTypes) : void {
+
+                this.is_event_tone_menu_open = false;
+                this.event_tone_choice = new_value;
+            },
+            handleIsEventToneMenuOpen(new_value:boolean) : void {
+
+                this.is_event_tone_menu_open = new_value;
+            },
+
+            newEmojiChoice(new_value:string): void {
                 this.event_tone_id = new_value;
             },
-            newEventMessage(new_value:string) : void {
-                this.event_message = new_value;
-            },
-            handleSubmit() : void {
-                console.log('y submit? lol');
-            },
-            handleIsAnimePlaybackCompleted(new_value:boolean) : void {
 
-                this.is_anime_playback_completed = new_value;
-            }
-        }
+            handleSubmit(): void {
+                console.log("y submit? lol");
+            },
+        },
     });
 </script>
 

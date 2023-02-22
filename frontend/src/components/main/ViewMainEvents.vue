@@ -11,7 +11,7 @@
 
             <div class="py-12">
                 <VActionButtonBig class="w-full">
-                    Show me more
+                    More
                 </VActionButtonBig>
             </div>
 

@@ -20,7 +20,7 @@
                 type="text"
                 :id="propElementId"
                 v-model="input_value"
-                class="w-full h-10 p-2 pr-10 bg-theme-light border-2 border-theme-black rounded-lg"
+                class="w-full h-10 p-2 pr-10 border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black rounded-lg"
                 :placeholder="propPlaceholder"
                 autocomplete="off"
                 :maxlength="propMaxLength"
