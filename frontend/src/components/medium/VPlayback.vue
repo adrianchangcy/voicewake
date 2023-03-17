@@ -46,14 +46,14 @@
             <div
                 ref="playback_main"
                 :class="[
-                    propFile === null ? 'border-theme-light-gray/10' : 'border-theme-light-gray',
+                    propAudio === null ? 'border-theme-light-gray/10' : 'border-theme-light-gray',
                     'w-full h-fit absolute left-0 right-0 top-0 bottom-0 m-auto text-theme-black border rounded-2xl p-2'
                 ]"
             >
                 <!--ripples, slider-->
                 <div
                     :class="[
-                        propFile === null ? 'opacity-10 cursor-default' : 'opacity-100 cursor-pointer',
+                        propAudio === null ? 'opacity-10 cursor-default' : 'opacity-100 cursor-pointer',
                         'h-10 w-full relative'
                     ]"
                 >
@@ -84,7 +84,7 @@
                         <div
                             ref="playback_slider"
                             :class="[
-                                propFile !== null ? 'touch-none' : '',
+                                propAudio !== null ? 'touch-none' : '',
                                 'h-full relative'
                             ]"
                             @mouseenter.stop="is_playback_slider_hover = true"
@@ -99,7 +99,7 @@
                             ></div>
                             <div
                                 :class="[
-                                    is_playback_slider_hover && propFile !== null ? 'double-height-when-hover' : 'scale-y-100',
+                                    is_playback_slider_hover && propAudio !== null ? 'double-height-when-hover' : 'scale-y-100',
                                     'h-1 absolute bg-theme-medium-gray/50 left-0 right-0 top-5 bottom-0 m-auto transition-transform duration-150 ease-in-out'
                                 ]"
                             ></div>
@@ -118,7 +118,7 @@
                 <!--volume, play/pause, rate, timers-->
                 <div
                     :class="[
-                        propFile === null ? 'opacity-10' : 'opacity-100',
+                        propAudio === null ? 'opacity-10' : 'opacity-100',
                         'mx-2 h-10 grid grid-rows-1 grid-cols-5'
                     ]"
                 >
@@ -136,7 +136,7 @@
                         <button
                             @click="togglePlaybackVolumeOptions()"
                             class="w-full h-full shade-when-hover transition-colors duration-200 ease-in-out rounded-md"
-                            :disabled="propFile === null"
+                            :disabled="propAudio === null"
                             type="button"
                         >
                             <i
@@ -175,7 +175,7 @@
                         ref="play_pause_button"
                         @click="togglePlaybackPlayPause()"
                         class="w-full h-full shade-when-hover transition-colors duration-200 ease-in-out rounded-md"
-                        :disabled="propFile === null"
+                        :disabled="propAudio === null"
                         type="button"
                     >
                         <i
@@ -196,7 +196,7 @@
                         <button
                             @click="togglePlaybackSpeedOptions()"
                             class="w-full h-full shade-when-hover transition-colors duration-200 ease-in-out rounded-md"
-                            :disabled="propFile === null"
+                            :disabled="propAudio === null"
                             type="button"
                         >
                             <i
@@ -388,15 +388,14 @@
                 type: Boolean,
                 default: false,
             },
-            propFile: {
-                type: Object as PropType<File> | null,
+            propAudio: {
+                type: Object as PropType<Blob> | PropType<File> | null,
                 default: null,
             },
             propIsRecording: Boolean,
             propRecordingVisualiserVolume: Number,    //0-1
             propRecordingVisualiserTimeInterval: {  //milliseconds, based on VRecorder time_interval
                 type: Number,
-                required: true,
                 default: 200
             },
             propIsForRecording: {   //if VPlayback is for recording, hide things like volume, etc.
@@ -407,7 +406,7 @@
                 type: Boolean,
                 default: false
             },
-            propFileVolumes: {    //not sure if this is the best way to type this, but it looks ok
+            propAudioVolumePeaks: {    //not sure if this is the best way to type this, but it looks ok
                 type: Array as PropType<number[]>,
                 default: () => [],  //assigning array of 0s immediately after did not solve unrendered issue
             },
@@ -416,7 +415,7 @@
             },
         },
         watch: {
-            propFile(new_value){
+            propAudio(new_value){
 
                 this.attachRecordedAudioToPlayback(new_value);
             },
@@ -466,8 +465,8 @@
             },
             propIsOpen(new_value){
 
-                //if is open, i.e. rendered, run this on first time
-                if(new_value === true && this.playback_slider_dimension === null){
+                //if is open, i.e. rendered
+                if(new_value === true){
 
                     this.$nextTick(()=>{
                         this.adjustToNewPlaybackSliderDimension();
@@ -480,7 +479,7 @@
                     this.pausePlayback();
                 }
             },
-            propFileVolumes(){
+            propAudioVolumePeaks(){
 
                 this.adjustVolumeRipples();
             },
@@ -492,7 +491,7 @@
                 //some keyup events are too late for .preventDefault(), so they use keydown
 
                 //these keys affect only playback, so no point if there's no file
-                if(this.propFile === null){
+                if(this.propAudio === null){
 
                     return;
                 }
@@ -725,7 +724,14 @@
                 //as 'resize' may occur when element is display:none
                 let new_dimension = (this.$refs.playback_slider_dimension as HTMLElement).getBoundingClientRect();
 
-                if(new_dimension.width === 0){
+                //also skip create/recreate anime if no dimensional change
+                if(
+                    new_dimension.width === 0 ||
+                    (
+                        this.playback_slider_dimension !== null &&
+                        this.playback_slider_dimension.width === new_dimension.width
+                    )
+                ){
 
                     return;
                 }
@@ -733,7 +739,7 @@
                 this.playback_slider_dimension = new_dimension;
 
                 //create/recreate anime
-                if(this.propFile !== null){
+                if(this.propAudio !== null){
 
                     this.createPlaybackSliderAnime();
                     this.syncSliderAnimeAfterSuspend();
@@ -749,7 +755,7 @@
             },
             startPlaybackDrag(is_playback_slider_touch=false) : void {
 
-                if(this.propFile === null || this.is_volume_ripples_available === false){
+                if(this.propAudio === null || this.is_volume_ripples_available === false){
 
                     return;
                 }
@@ -868,7 +874,7 @@
                 //+x for forward, -x for backward
 
                 //do this instead of relying on :disabled, as :disabled makes sliders bug out
-                if(seconds === 0 || this.propFile === null){
+                if(seconds === 0 || this.propAudio === null){
 
                     return;
                 }
@@ -1066,7 +1072,7 @@
                 //reset is only triggered on next play
 
                 //do this instead of relying on :disabled, as :disabled makes sliders bug out
-                if(this.propFile === null){
+                if(this.propAudio === null){
 
                     return;
                 }
@@ -1317,7 +1323,7 @@
                 // let volume_range_deficit = 0;
                 // let highest_file_volume = null;
 
-                // highest_file_volume = this.arrayMax(this.propFileVolumes);
+                // highest_file_volume = this.arrayMax(this.propAudioVolumePeaks);
 
                 // if(highest_file_volume < 0){
 
@@ -1333,33 +1339,33 @@
 
                 let scaleY_percentage = 0;
 
-                for(let x=0; x < this.propFileVolumes.length; x++){
+                for(let x=0; x < this.propAudioVolumePeaks.length; x++){
 
-                    // if(this.propFileVolumes[x] < 0){
+                    // if(this.propAudioVolumePeaks[x] < 0){
                         
-                    //     scaleY_percentage = (1 - (this.propFileVolumes[x] * -1)) * 50;
+                    //     scaleY_percentage = (1 - (this.propAudioVolumePeaks[x] * -1)) * 50;
 
                     // }else{
 
-                    //     scaleY_percentage = 50 + (this.propFileVolumes[x] * 50);
+                    //     scaleY_percentage = 50 + (this.propAudioVolumePeaks[x] * 50);
                     // }
 
                     //expected volume range is -1 to 0, but our peaks at 0 audio is still -0.0001...
                     //so we recalibrate from lower and upper 50 to full 100
                     //instead of <0 ... =0, if you prefer 0 to be visible, do <0.05 ... =5
                     //UPDATE: non-zero feels more functional for end user
-                    if(this.propFileVolumes[x] < 0.05){
+                    if(this.propAudioVolumePeaks[x] < 0.05){
 
                         scaleY_percentage = 0.05;
 
-                    }else if(this.propFileVolumes[x] > 0.9){
+                    }else if(this.propAudioVolumePeaks[x] > 0.9){
 
                         //we max at 0.9 to make space for -+5% translateY anime
                         scaleY_percentage = 0.9;
 
                     }else{
 
-                        scaleY_percentage = this.propFileVolumes[x];
+                        scaleY_percentage = this.propAudioVolumePeaks[x];
                     }
                     
                     //add the deficit
@@ -1378,12 +1384,12 @@
                     this.is_volume_ripples_available = true;
                 }
             },
-            attachRecordedAudioToPlayback(new_file:File) : void {
+            attachRecordedAudioToPlayback(new_audio:Blob|File) : void {
 
                 const audio_element = (this.$refs.audio_element as HTMLAudioElement);
 
                 //attach file into <audio>
-                audio_element.src = URL.createObjectURL(new_file);
+                audio_element.src = URL.createObjectURL(new_audio);
 
                 //free the memory
                 audio_element.onload = function(){

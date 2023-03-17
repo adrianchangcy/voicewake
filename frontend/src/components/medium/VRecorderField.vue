@@ -3,7 +3,7 @@
     class="left-0"
     for="click-to-record"
     >
-        Your thoughts
+        {{ propLabel }}
     </VInputLabel>
     <button
         @click.stop="[toggleMenu(), emitIsOpen()]"
@@ -15,11 +15,11 @@
         id="click-to-record"
         type="button"
     >
+        <!--ripples-->
         <div class="w-full h-[75%] top-0 bottom-0 m-auto relative">
             <div
                 class="w-full h-full absolute"
             >
-                <!--ripples-->
                 <div class="h-full flex flex-row justify-between">
                     <div
                         v-for="volume_ripple in propBucketQuantity" :key="volume_ripple"
@@ -36,7 +36,7 @@
                     </div>
                 </div>
             </div>
-        </div>            
+        </div>
     </button>
 </template>
 
@@ -57,8 +57,11 @@
             };
         },
         emits: ['isOpen'],
+        mounted(){
+
+        },
         props: {
-            propLabelText: String,
+            propLabel: String,
             propBucketQuantity: {
                 type: Number,
                 required: true,
@@ -112,16 +115,19 @@
                 this.is_open = new_value;
             },
             propFileVolumes(){
+
                 this.adjustVolumeRipples();
             },
         },
         methods: {
             toggleMenu() : void {
+
                 //this dictates whether VEventToneMenu is open
                 this.is_open = !this.is_open;
                 
             },
             emitIsOpen() : void {
+
                 this.$emit('isOpen', this.is_open);
             },
             adjustVolumeRipples() : void {

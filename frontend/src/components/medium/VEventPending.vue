@@ -15,11 +15,11 @@
                     </span>
                     <!--last updated-->
                     <span class="text-base font-light">
-                        &nbsp;~10 minutes ago
+                        &nbsp;&mdash;&nbsp;10 minutes ago
                     </span>
                 </div>
 
-                <div class="w-full h-fit flex flex-col gap-6">
+                <div class="w-full h-fit flex flex-col gap-8">
 
                     <!--user 1-->
                     <div ref="user_1_card">
@@ -34,6 +34,8 @@
                     <div ref="user_2_card">
                         <VEventReplyButton
                             :propIsSelected="reply_event === selected_card"
+                            @click.stop="redirectToThisPost(reply_event, $event)"
+                            class="w-full"
                         />
                     </div>
                 </div>

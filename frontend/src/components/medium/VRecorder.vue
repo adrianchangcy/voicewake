@@ -1,8 +1,6 @@
 <template>
     <div class="text-theme-black text-center place-items-center">
-        <div class="">
 
-            
             <!--when recording-->
             <div v-if="recorder_state !== null && recorder_state !== 'stopped'">
                 <div class="grid grid-rows-2 grid-cols-4 grid-flow-col gap-x-2">
@@ -12,7 +10,7 @@
                         @click.prevent="recorderStop(true)"
                         aria-label="end recording"
                         class="col-start-1 row-span-2 col-span-1"
-                        :propIsEnabled="is_anime_playback_truly_completed === true && is_recording === true"
+                        :propIsEnabled="canClickAfterAnimeReady"
                         :propIsDefaultTextSize="false"
                     >
                         <div class="text-2xl">
@@ -22,7 +20,7 @@
 
                     <!--timer-->
                     <div class="row-start-1 row-span-1 col-span-2 relative">
-                        <span class="absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto text-2xl">-{{current_duration_pretty}}</span>
+                        <span class="absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto text-xl">-{{current_duration_pretty}}</span>
                     </div>
 
                     <!--pause/resume-->
@@ -30,7 +28,7 @@
                         @click.prevent="recorderPauseResume()"
                         :aria-label="pauseResumeAriaLabel"
                         class="row-start-2 row-span-1 col-span-2 h-full"
-                        :propIsEnabled="is_anime_playback_truly_completed === true && is_recording === true"
+                        :propIsEnabled="canClickAfterAnimeReady"
                     >
                         <i
                             :class="[
@@ -47,7 +45,7 @@
                         aria-label="end recording"
                         class="col-start-4 row-span-2 col-span-1"
                         :propIsDefaultTextSize="false"
-                        :propIsEnabled="is_anime_playback_truly_completed === true && is_recording === true"
+                        :propIsEnabled="canClickAfterAnimeReady"
                     >
                         <div class="text-2xl">
                             <i class="fas fa-check"></i>
@@ -71,7 +69,6 @@
         <!-- currently don't allow file submission, but store file here for final form submit -->
         <!-- for file submission: <form method="POST" enctype="multipart/form-data"></form> -->
         <!-- <input type="file" ref="audio_upload" accept=".mp3, .webm" class="hidden" required> -->
-    </div>
 </template>
 
 
@@ -160,8 +157,19 @@
                     return 'resume recording';
                 }
             },
+            canClickAfterAnimeReady() : boolean {
+
+                if(this.is_anime_playback_truly_completed === true && this.is_recording === true){
+
+                    return true;
+
+                }else{
+
+                    return false;
+                }
+            },
         },
-        emits: ['newRecording', 'isRecording', 'newRecordingVolume'],
+        emits: ['newRecording', 'isRecording', 'isCancelled', 'newRecordingVolume'],
         methods: {
             stopRecordingIntervalWorker(){
 
@@ -451,7 +459,7 @@
             },
             recorderPauseResume(force_state:'pause'|'resume'|null=null) : void {
                 
-                if(this.is_recording === false){
+                if(this.canClickAfterAnimeReady === false){
 
                     return;
                 }
@@ -486,7 +494,7 @@
             },
             recorderStop(is_cancelled:boolean) : void {
                 
-                if(this.is_anime_playback_truly_completed === false || this.is_recording === false){
+                if(this.canClickAfterAnimeReady === false){
 
                     return;
                 }
@@ -508,9 +516,13 @@
                         this.stopVolumeAnalyser();
                         
                         //emit
-                        if(is_cancelled !== true){
+                        if(is_cancelled === false){
 
                             this.emitNewRecording();
+
+                        }else{
+
+                            this.$emit('isCancelled', true);
                         }
 
                         this.resetWhenRecorderStop();
@@ -531,9 +543,13 @@
                             this.stopVolumeAnalyser();
 
                             //emit
-                            if(is_cancelled !== true){
+                            if(is_cancelled === false){
 
                                 this.emitNewRecording();
+
+                            }else{
+
+                                this.$emit('isCancelled', true);
                             }
 
                             this.resetWhenRecorderStop();
@@ -553,16 +569,15 @@
                 //to use getBlob(), you must run it in either onRecordingStopped() or stopRecording()
                 //else your first blob is unplayable (too small), and user has to click a second time
 
-                //transform blob into file
                 try{
 
-                    let new_recording = new File([this.recorder.getBlob()], 'this_recording.webm', {
-                        type: 'audio/webm'
-                    });
+                    // let new_recording = new File([this.recorder.getBlob()], 'this_recording.webm', {
+                    //     type: 'audio/webm'
+                    // });
 
                     this.$emit('newRecording', {
-                        'final_file' : new_recording,
-                        'file_duration' : this.current_duration
+                        'blob' : this.recorder.getBlob(),
+                        'blob_duration' : this.current_duration
                     });
 
                 }catch(error:any|unknown){

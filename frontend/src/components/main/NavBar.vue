@@ -147,11 +147,10 @@
             this.username = JSON.parse(document.getElementById('data-username').textContent);
 
             if(this.username !== ""){
+                
                 this.is_logged_in = true;
             }
 
-            this.username="Adrian1111111111";
-            this.is_logged_in = true;
         },
         methods: {
             toggle_nav_main_more(){

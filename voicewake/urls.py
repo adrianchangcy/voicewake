@@ -24,9 +24,8 @@ from voicewake import views
 
 #register API URLs for auto-create
 router = routers.SimpleRouter(trailing_slash=False)
-router.register(r'api/user-verification-options', views.UserVerificationOptionsViewSet)
-router.register(r'api/event-purposes', views.EventPurposesViewSet)
-router.register(r'api/event-tones', views.EventTonesViewSet)
+router.register(r'api/user-verification-options', views.UserVerificationOptionsAPI)
+router.register(r'api/event-tones', views.EventTonesAPI)
 
 #original URL
 urlpatterns = [
@@ -36,6 +35,7 @@ urlpatterns = [
     # path('user_verification_options/', views.user_verification_options_list),
     # path('user_verification_options/<int:id>/', views.user_verification_options_details),
     path('', include(router.urls)),
+    path('events/by-event-room/<int:event_room_id>', views.EventsAPI.as_view(), name='get_events_by_event_room_id'),
     
     #user management
     #refer to link below for all URLs/APIs already provided
@@ -48,10 +48,11 @@ urlpatterns = [
     path('', views.home, name='home'),
     path('sign-up', views.sign_up, name='sign_up'),
     path('set-timezone', views.set_timezone, name='set_timezone'),
-    path('say', views.CreateMainEventsFormView.as_view(), name='create_new_events'),
-    path('hear', views.ViewMainEventsListView.as_view(), name='view_new_events'),
+    path('say', views.CreateMainEvents.as_view(), name='create_main_events'),
+    path('hear', views.BrowseMainEvents.as_view(), name='browse_main_events'),
+    path('hear/<int:event_room_id>', views.ViewSpecificEvents.as_view(), name='view_specific_events'),
     # path('reply', views.ReplyMainEventsFormView.as_view(), name='reply_new_events'),
-    path('seek-event', views.SeekEventsFormView.as_view(), name='seek_events'),
+    # path('seek-event', views.SeekEventsFormView.as_view(), name='seek_events'),
     
     #test
     # path('record', views.RecordAudioFormView.as_view(), name='record'),

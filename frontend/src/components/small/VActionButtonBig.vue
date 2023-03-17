@@ -1,8 +1,8 @@
 <template>
     <button
         :class="[
-            (propIsEnabled ? 'hover:bg-theme-light/80 hover:border-theme-light/40 hover:shadow-sm' : 'opacity-10 cursor-default'),
-            'w-28 h-28 p-4 block text-2xl bg-theme-light/60       border-t-2 border-theme-light-trim rounded-full shadow-md transition duration-150 ease-in-out'
+            (propIsEnabled ? 'hover:bg-theme-light/80 hover:border-theme-light-trim/40 shadow-theme-lead/75 shadow-lg hover:shadow-theme-lead/75 hover:shadow-md text-theme-black' : 'shadow-md hover:shadow-sm cursor-not-allowed text-theme-black/10'),
+            'w-28 h-28 p-4 block text-2xl bg-theme-light/60       border-t-2 border-theme-light-trim rounded-full transition duration-150 ease-in-out'
         ]"
         type="button"
     >

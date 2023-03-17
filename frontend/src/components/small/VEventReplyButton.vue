@@ -1,16 +1,20 @@
 <template>
-
-    <div class="text-theme-black text-2xl py-1 grid grid-cols-5">
-
-        <div v-if="propIsSelected === false" class="col-span-4 h-20 border border-theme-light-gray bg-theme-light rounded-lg relative"></div>
-
-        <button v-else class="col-span-4 h-20 border-2 border-dashed border-solid-when-hover border-theme-lead bg-theme-light rounded-lg relative" type="button">
-            <span class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">
-                Reply
-            </span>
-        </button>
-
-    </div>
+    <button
+        :class="[
+            propIsSelected ? 'border-2 border-dashed border-solid-when-hover border-theme-lead' : 'border border-theme-light-gray cursor-default',
+            'h-20 text-theme-black relative bg-theme-light rounded-lg transition-colors duration-150 ease-in-out'
+        ]"
+        type="button"
+    >
+        <span
+            :class="[
+                propIsSelected ? 'visible opacity-100' : 'invisible opacity-0',
+                'w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto text-2xl transition-opacity duration-150 ease-in-out'
+            ]"
+        >
+            Reply
+        </span>
+    </button>
 </template>
 
 

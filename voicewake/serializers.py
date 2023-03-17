@@ -22,12 +22,6 @@ class EventTonesSerializer(serializers.ModelSerializer):
         exclude = ['when_created']
 
 
-class EventPurposesSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = EventPurposes
-        exclude = ['when_created']
-
-
 class UserVerificationOptionsSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserVerificationOptions
@@ -38,6 +32,27 @@ class LanguagesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Languages
         exclude = ['when_created']
+
+
+class AuthUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AuthUser
+        fields = ['id', 'username']
+
+
+class UserEventRolesSerializer(serializers.ModelSerializer):
+    user = AuthUserSerializer()
+    class Meta:
+        model = UserEventRoles
+        fields = '__all__'
+
+
+class EventsSerializer(serializers.ModelSerializer):
+    user_event_role = UserEventRolesSerializer()
+    class Meta:
+        model = Events
+        fields = '__all__'
+
 
 
 

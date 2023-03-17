@@ -12,12 +12,13 @@ from rest_framework import status
 from rest_framework.authtoken.models import Token
 
 #class-based views
-from rest_framework import viewsets
+from rest_framework import viewsets, generics
     #ModelViewSet has: list, create, retrieve, update, partial_update, destroy
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from django.views.generic.edit import FormView
 from django.views.generic.list import ListView
+from django.views.generic import TemplateView
 
 #mixins
 from django.contrib.auth.mixins import PermissionRequiredMixin
@@ -198,7 +199,7 @@ def set_timezone(request):
 
 
 # class UserVerificationOptionsViewSet(PermissionRequiredMixin, viewsets.ModelViewSet):
-class UserVerificationOptionsViewSet(PermissionPolicyMixin, viewsets.ModelViewSet):
+class UserVerificationOptionsAPI(PermissionPolicyMixin, viewsets.ModelViewSet):
 
     # authentication_classes = [SessionAuthentication, BasicAuthentication]
     # permission_classes = [IsAuthenticated]
@@ -221,57 +222,31 @@ class UserVerificationOptionsViewSet(PermissionPolicyMixin, viewsets.ModelViewSe
 
 
 
-#PROGESS STARTS HERE
-
 #=====REST APIs=====
 
-class EventPurposesViewSet(viewsets.ModelViewSet):
-
-    serializer_class = EventPurposesSerializer
-    permission_classes = [IsAuthenticated]
-    queryset = EventPurposes.objects.all()
-
-    def get_queryset(self):
-
-        #allow max 50 rows
-        queryset = EventPurposes.objects.all()[:50]
-
-        search = self.request.query_params.get('search')
-
-        if search is not None:
-
-            #part of search optimisation is "... field_name LIKE 'string%' OR field_name LIKE '%string%'"
-            #Q is used to encapsulate a collection of keyword arguments
-            queryset = EventPurposes.objects.filter(
-                        Q(event_purpose_name__istartswith=search)|Q(event_purpose_name__icontains=search)
-                        )[:10]
-
-        return queryset
-
-
-class EventTonesViewSet(viewsets.ReadOnlyModelViewSet):
+class EventTonesAPI(viewsets.ReadOnlyModelViewSet):
 
     serializer_class = EventTonesSerializer
     queryset = EventTones.objects.all()
 
     def get_queryset(self):
 
-        queryset = EventTones.objects.all()
-
         search = self.request.query_params.get('search')
 
         if search is not None:
 
             #part of search optimisation is "... field_name LIKE 'string%' OR field_name LIKE '%string%'"
             #Q is used to encapsulate a collection of keyword arguments
-            queryset = EventTones.objects.filter(
+            return EventTones.objects.filter(
                         Q(event_tone_name__istartswith=search)|Q(event_tone_name__icontains=search)
                         )[:10]
+            
+        else:
+        
+            return EventTones.objects.all()
 
-        return queryset
 
-
-class LanguagesViewSet(viewsets.ModelViewSet):
+class LanguagesAPI(viewsets.ModelViewSet):
 
     serializer_class = LanguagesSerializer
     permission_classes = [IsAuthenticated]
@@ -295,6 +270,21 @@ class LanguagesViewSet(viewsets.ModelViewSet):
         return queryset
 
 
+#we get events via event_room, as they all must belong to a room
+class EventsAPI(generics.ListAPIView):
+
+    def get_queryset(self, **kwargs):
+        
+        if 'event_room_id' in kwargs:
+
+            return Events.objects.filter(event_room=EventRooms(pk=kwargs['event_room_id']))
+        
+    def get(self, request, *args, **kwargs):
+
+        serializer = EventsSerializer(self.get_queryset(**kwargs), many=True)
+
+        return Response(serializer.data)
+
 
 #=====END OF REST APIs=====
 
@@ -302,7 +292,7 @@ class LanguagesViewSet(viewsets.ModelViewSet):
 #=====WEB PAGES=====
 
 #create main events
-class CreateMainEventsFormView(FormView):
+class CreateMainEvents(FormView):
 
     template_name = 'voicewake/events/create_main_events.html'
     form_class = CreateMainEventsForm
@@ -310,47 +300,76 @@ class CreateMainEventsFormView(FormView):
 
     def form_valid(self, form):
 
-        #by inheriting ProcessFormView, during post(), it already checks for is_valid()
-            #clean() is part of the validation in is_valid()
-        #when is_valid() is True, it then calls form_valid(), else form_invalid()
-        #this applies to CreateView, FormView, UpdateView
-
         user_event_role = UserEventRoles.objects.get(
-            user=self.request.user.id,
-            event_role__event_role_name='listener'
+            user=AuthUser(pk = getattr(self.request.user, 'id')),
+            event_role__event_role_name='originator'
         )
 
-        #for USE_TZ=True, use tzinfo attr for timezone-aware, else warning
-        #make sure JS processes form datetime into UTC before this
-        event_datetime = datetime.combine(
-                            form.cleaned_data['event_date'],
-                            form.cleaned_data['event_time'],
-                            tzinfo=zoneinfo.ZoneInfo('UTC'))
+        try:
 
+            event_tone = EventTones.objects.get(id=form.cleaned_data['event_tone_id'])
+
+        except EventTones.DoesNotExist:
+
+            return JsonResponse({'message':'Invalid event_tone_id.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        #create event, excluding audio_file and event_room_id
         new_event = Events.objects.create(
             user_event_role=user_event_role,
             event_name=form.cleaned_data['event_name'],
-            event_purpose=EventPurposes.objects.get_or_create(event_purpose_name=form.cleaned_data['event_purpose'])[0],
-            event_tone=EventTones.objects.get_or_create(event_tone_name=form.cleaned_data['event_tone'])[0],
-            language=Languages.objects.get_or_create(language_name=form.cleaned_data['language'])[0],
-            event_message=form.cleaned_data['event_message'],
+            event_tone=event_tone,
             event_status=EventStatuses.objects.filter(event_status_name='available')[:1].get(),
-            when_trigger=event_datetime,
         )
 
-        #form currently does not handle EventRepeatDetails
-        #only create new EventRepeatDetails obj in db if one of those columns are specified
+        #create event_room_id
+        new_event.event_room = EventRooms.objects.create()
 
-        #to-do: please clarify that timezone adjustments are accurate
+        #save audio_file here to allow reference to model instance, as it now exists
+        new_event.audio_file = form.cleaned_data['audio_file']
+
+        new_event.save()
 
         #don't return super().form_valid(form), else it goes though form.save() again
-        return redirect('/create-event')
+        return JsonResponse(data={}, status=status.HTTP_201_CREATED)
 
 
-#view main events
-class ViewMainEventsListView(ListView):
+#view specific event
+#to fetch replies and create new reply, we use EventsByRoom viewset
+class ViewSpecificEvents(FormView):
 
-    template_name = 'voicewake/events/view_main_events.html'
+    template_name = 'voicewake/events/view_specific_events.html'
+
+    def get(self, request, *args, **kwargs):
+
+        #originator event
+        #should always have only 1 per room
+        try:
+
+            originator_event = Events.objects.get(
+                event_room=EventRooms(pk=kwargs['event_room_id']),
+                user_event_role__event_role__event_role_name='originator'
+            )
+
+        except Events.DoesNotExist:
+
+            return JsonResponse({'message':'Originator event does not exist.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = EventsSerializer(originator_event, many=False)
+        originator_event = serializer.data
+
+        return render(
+            request,
+            template_name='voicewake/events/view_specific_events.html',
+            context={
+            'originator_event': originator_event,
+            }
+        )
+
+
+#browse main events, i.e. view list before selecting a specific one
+class BrowseMainEvents(ListView):
+
+    template_name = 'voicewake/events/browse_main_events.html'
 
     def get_queryset(self):
 
@@ -358,79 +377,6 @@ class ViewMainEventsListView(ListView):
 
         return events
 
-#find match
-class SeekEventsFormView(FormView):
-
-    template_name = 'voicewake/events/talkers/seek_events.html'
-    form_class = SeekEventsForm
-    success_url = '/'
-
-    def form_valid(self, form):
-
-        global QUALIFY_FOR_LIVE_TIME_WINDOW
-
-
-        return redirect('/seek-event')
-
-        user_event_role = UserEventRoles.objects.get(
-                                                    user=self.request.user.id,
-                                                    event_role__event_role_name='talker'
-                                                    )
-
-        #search for listeners to match first
-        #the rest of the code can be skipped if no rows found
-        event_mode_choice = form.cleaned_data['event_mode_choice']
-        event_scope_choice = form.cleaned_data['event_scope_choice']
-
-        #on live 1-1 search (not doing 1-many for live)
-        """
-        SELECT id FROM events WHERE 
-            event_status_id=(SELECT id FROM event_statuses WHERE event_status_name='available')
-            AND when_trigger < yourdatetime_after_60_secs_from_now
-        LIMIT 1;
-
-        INSERT INTO event_rooms DEFAULT VALUES;
-
-        """
-
-        #on group search
-        """
-        
-        """
-
-
-        #create event
-        #not specifying when_trigger here to use auto_add_now=True
-        # new_event = Events.objects.create(
-        #     user_event_role=user_event_role,
-        #     event_purpose=EventPurposes.objects.get_or_create(event_purpose_name=form.cleaned_data['event_purpose']),
-        #     event_tone=EventTones.objects.get_or_create(event_tone_name=form.cleaned_data['event_tone']),
-        #     language=Languages.objects.get_or_create(language_name=form.cleaned_data['language']),
-        #     event_status=EventStatuses.objects.filter(event_status_name='available').first(),
-        # )
-
-        return redirect('/seek-event')
-
-#test record
-class RecordAudioFormView(FormView):
-
-    template_name = 'voicewake/events/talkers/record_audio.html'
-    form_class = RecordAudioForm
-    success_url = '/record'
-    
-    def form_valid(self, form):
-
-        return redirect('/record')
-        #when you want to open the file, use chunks in loop instead of read()
-        #https://docs.djangoproject.com/en/4.1/ref/files/uploads/
-        # convert_audio_files_to_mp3()
-
-        #maybe run codes from services.py, i.e. our self-made middle layer for business logic
-        #check these two links for looping on query rows
-            #https://stackoverflow.com/questions/6069024/syntax-of-for-loop-in-sql-server
-            #https://stackoverflow.com/questions/32668201/postgresql-iterate-over-results-of-query
-        #for more docs on consumer for websocket
-            #https://channels.readthedocs.io/en/latest/topics/consumers.html
 
 
 #=====END OF WEB PAGES=====

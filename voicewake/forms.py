@@ -31,84 +31,18 @@ class UserSignUpForm(UserCreationForm):
 class CreateMainEventsForm(forms.Form):
 
     event_name = forms.CharField(
-                    required=False,
-                    widget=forms.TextInput(
-                                attrs={
-                                    'required': 'True'
-                                }
-                            ),
-                )
+        required=True,
+        max_length=40,
+    )
     
-    #use JS to manipulate 'min' date attr
-    event_date = forms.DateField(
-                    required=False,
-                    widget=forms.DateInput(
-                                attrs={
-                                    'type': 'date',
-                                    'required': 'True',
-                                    }
-                            ),
-                    initial=timezone.now().strftime("%Y-%m-%d"),
-                )
-    
-    #make default value be 2 mins ahead, to be received by JS
-    global LISTENER_NEW_EVENT_EXTRA_MINUTES
-    event_time = forms.TimeField(
-                    required=False,
-                    widget=forms.TimeInput(
-                        attrs={
-                            'type': 'time',
-                            'required': 'True',
-                            'initial_event_time_extra_minutes': LISTENER_NEW_EVENT_EXTRA_MINUTES,
-                            }
-                        ),
-                    label='When',
-                )
+    event_tone_id = forms.IntegerField(
+        required=True,
+    )
 
-    language = forms.CharField(
-                label='Language',
-                required=False,
-                widget=forms.TextInput(
-                    attrs={
-                        'class':'reuse_basic_autocomplete',
-                        'table_name':'languages',
-                        'column_name':'language_name',
-                        'placeholder':'Your spoken language',
-                        'required':'False',
-                    }
-                )
-            )
-
-    event_purpose = forms.CharField(
-                label='Purpose',
-                required=False,
-                widget=forms.TextInput(
-                    attrs={
-                        'class':'reuse_basic_autocomplete',
-                        'table_name':'event_purposes',
-                        'column_name':'event_purpose_name',
-                        'placeholder':'Purpose',
-                        'required':'True',
-                    }
-                )
-            )
-
-    event_tone = forms.CharField(
-                label='Tone',
-                required=False,
-                widget=forms.TextInput(
-                    attrs={
-                        'class':'reuse_basic_autocomplete',
-                        'table_name':'event_tones',
-                        'column_name':'event_tone_name',
-                        'placeholder':'Tone',
-                        'required':'False',
-                    }
-                )
-            )
-
-    event_message = forms.CharField(required=False)
-
+    audio_file = forms.FileField(
+        required=True,
+        allow_empty_file=False,
+    )
 
 
 class SeekEventsForm(forms.Form):

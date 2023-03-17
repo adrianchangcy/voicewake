@@ -33,6 +33,7 @@
                 :placeholder="propPlaceholder"
                 autocomplete="off"
                 :maxlength="propMaxLength"
+                title=""
             ></textarea>
         </div>
         <div v-show="propHasStatusText" class="h-5 text-base px-2">
@@ -71,13 +72,14 @@
             propIsError: Boolean,
             propStatusText: String,
         },
-        emits: ['hasNewValue'],
+        emits: ['newValue'],
         watch: {
             input_value(new_value){
 
                 this.input_value = new_value;
                 this.current_length = new_value.length;
-                this.$emit('hasNewValue', this.input_value);
+                this.$emit('newValue', this.input_value);
+                //we do trim() validation outside of here instead
             },
         },
         components: {
