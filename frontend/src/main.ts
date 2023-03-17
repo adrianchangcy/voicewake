@@ -1,9 +1,9 @@
 import { createApp } from 'vue';
-import { mixinGeneral } from './mixin_general';
 
 import BaseApp from '/src/apps/BaseApp.vue';
 import CreateMainEventsApp from '/src/apps/CreateMainEventsApp.vue';
-import ViewMainEventsApp from '/src/apps/ViewMainEventsApp.vue';
+import BrowseMainEventsApp from '/src/apps/BrowseMainEventsApp.vue';
+import ViewSpecificEventsApp from '/src/apps/ViewSpecificEventsApp.vue';
 
 const clickOutside = {
 
@@ -81,18 +81,22 @@ if(document.querySelector('#create-main-events-app')){
 
     createApp(CreateMainEventsApp)
         .directive('click-outside', clickOutside)
-        .mixin(mixinGeneral)
         .mount('#create-main-events-app');
 }
 
-if(document.querySelector('#view-main-events-app')){
+if(document.querySelector('#browse-main-events-app')){
 
-    createApp(ViewMainEventsApp)
+    createApp(BrowseMainEventsApp)
         .directive('click-outside', clickOutside)
-        .mixin(mixinGeneral)
-        .mount('#view-main-events-app');
+        .mount('#browse-main-events-app');
 }
 
+if(document.querySelector('#view-specific-events-app')){
+
+    createApp(ViewSpecificEventsApp)
+        .directive('click-outside', clickOutside)
+        .mount('#view-specific-events-app');
+}
 
 
 

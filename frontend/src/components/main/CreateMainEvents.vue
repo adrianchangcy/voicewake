@@ -1,46 +1,35 @@
 <template>
-    <!--
-        we deal with csrf and form logic later
-        we handle the design part of form first
-        https://blog.xoxzo.com/2021/05/24/vue-with-django-rest-framework-api/
-        https://docs.djangoproject.com/en/dev/howto/csrf/
-    -->
 
-    <div class="md:w-2/4 lg:w-3/6 xl:w-2/6 mx-auto h-fit bg-theme-light text-left text-lg pb-20">
+    <div class="md:w-2/4 lg:w-3/6 xl:w-2/6 mx-auto h-fit bg-theme-light text-left text-lg px-[5%] pb-20">
 
-        <div class="w-[90%] mx-auto">
-            <VSectionTitle
-                propTitle="Say"
-                propTitleDescription="Fill in the fields below"
-            />
-        </div>
+        <VSectionTitle
+            propTitle="Say"
+            propTitleDescription="Fill in the fields below"
+        />
 
-
-
-        <!--test-->
         <form
             spellcheck="false"
-            class="w-[90%] mx-auto bg-theme-light flex flex-col gap-4 text-theme-black"
+            class="bg-theme-light flex flex-col gap-4 text-theme-black"
         >
             <!--title-->
             <VTextArea
-            :propIsRequired="true"
-            propElementId="event-name"
-            propLabel="Short title"
-            propPlaceholder=""
-            :propMaxLength="40"
-            :propHasTextCounter="true"
-            :propHasStatusText="false"
+                :propIsRequired="true"
+                propElementId="event-name"
+                propLabel="Title"
+                propPlaceholder=""
+                :propMaxLength="40"
+                :propHasTextCounter="true"
+                :propHasStatusText="false"
+                @newValue="handleNewEventName($event)"
             />
 
             <!--fields for open/close-->
             <div class="grid grid-cols-7 gap-2">
 
                 <!--open/close VEventToneMenu-->
-                <div class="col-span-2">
+                <div ref="event_tone_field" class="col-span-2">
                     <VEventToneField
-                        ref="event_tone_field"
-                        propLabelText="Feeling"
+                        propLabel="Feeling"
                         :propEventToneChoice="event_tone_choice"
                         :propIsOpen="is_event_tone_menu_open"
                         @isOpen="handleIsEventToneMenuOpen($event)"
@@ -48,20 +37,21 @@
                 </div>
 
                 <!--open/close VRecorderMenu-->
-                <div class="col-span-5">
+                <div ref="recorder_field" class="col-span-5">
                     <VRecorderField
-                    :propIsOpen="is_recorder_menu_open"
-                    :propBucketQuantity="bucket_quantity"
-                    :propHasRecording="final_file !== null"
-                    :propFileVolumes="file_volumes"
-                    :propFileDuration="file_duration"
-                    @isOpen="handleIsRecorderMenuOpen($event)"
+                        propLabel="Your voice"
+                        :propIsOpen="is_recorder_menu_open"
+                        :propBucketQuantity="bucket_quantity"
+                        :propHasRecording="final_blob !== null"
+                        :propFileVolumes="blob_volume_peaks"
+                        :propFileDuration="blob_duration"
+                        @isOpen="handleIsRecorderMenuOpen($event)"
                     />
                 </div>
             </div>
 
             <!--menus-->
-            <div class="w-full h-0 relative">
+            <div class="w-full h-fit relative">
 
                 <!--arrows, aesthetics only-->
                 <div class="w-full h-0 grid grid-cols-7 gap-4">
@@ -76,25 +66,43 @@
                 </div>
 
                 <!--event_tone menu-->
-                <VEventToneMenu
-                    :propIsOpen="is_event_tone_menu_open"
-                    @eventToneSelected="handleEventToneSelected($event)"
-                    class="absolute border-2 border-theme-black rounded-lg"
-                />
+                <div
+                    v-click-outside="{
+                        var_name_for_element_bool_status: 'is_event_tone_menu_open',
+                        refs_to_exclude: ['event_tone_field', 'recorder_field']
+                    }"
+                >
+                    <VEventToneMenu
+                        :propIsOpen="is_event_tone_menu_open"
+                        @eventToneSelected="handleEventToneSelected($event)"
+                        class="border-2 border-theme-black rounded-lg"
+                    />
+                </div>
 
                 <!--recorder menu-->
-                <VRecorderMenu
-                    :propIsOpen="is_recorder_menu_open"
-                    :propBucketQuantity="bucket_quantity"
-                    :propMaxDuration="max_duration"
-                    @newRecording="handleNewRecording($event)"
-                    class="absolute border-2 border-theme-black rounded-lg"
-                />
+                <div
+                    v-click-outside="{
+                        var_name_for_element_bool_status: 'is_recorder_menu_open',
+                        refs_to_exclude: ['event_tone_field', 'recorder_field']
+                    }"
+                >
+                    <VRecorderMenu
+                        :propIsOpen="is_recorder_menu_open"
+                        :propBucketQuantity="bucket_quantity"
+                        :propMaxDuration="max_duration"
+                        @newRecording="handleNewRecording($event)"
+                        class="border-2 border-theme-black rounded-lg"
+                    />
+                </div>
             </div>
 
             <!--submit-->
-            <div class="w-[90%] mx-auto py-10">
-                <VActionButtonBig class="mx-auto">
+            <div class="py-4">
+                <VActionButtonBig
+                    class="mx-auto"
+                    :propIsEnabled="canSubmit"
+                    @click.stop="submitForm()"
+                >
                     <span>Done</span>
                 </VActionButtonBig>
             </div>
@@ -120,25 +128,24 @@
 <script lang="ts">
     import { defineComponent } from 'vue';
     import EventToneTypes from '@/types/EventTones.interface';
+    const axios = require('axios');
 
     export default defineComponent({
         data() {
             return {
 
                 event_name: "",
-                event_tone_id: null as string|null,
-                event_message: "",
 
                 is_event_tone_menu_open: false, //updates only from VEventToneField to VEventToneMenu, maybe use vuex
                 event_tone_choice: null as EventToneTypes|null,
 
                 is_recorder_menu_open: false,
-                final_file: null as File|null,
-                file_volumes: [] as number[],
-                file_duration: 0,
+                final_blob: null as Blob|null,
+                blob_duration: 0,
+                blob_volume_peaks: [] as number[],
                 bucket_quantity: 20,
-                // propMaxDuration: (1000 * 60 * 2) + 500,    //2m + 0.5s, as final_file is always +-0.1s away
-                max_duration: 10000,    //2m + 0.5s, as final_file is always +-0.1s away
+                // propMaxDuration: (1000 * 60 * 2) + 500,    //2m + 0.5s, as final_blob is always +-0.1s away
+                max_duration: 10000,    //2m + 0.5s, as final_blob is always +-0.1s away
             };
         },
         watch: {
@@ -158,14 +165,48 @@
             },
         },
         computed: {
+            canSubmit() : boolean {
 
+                if(
+                    this.event_name.trim() !== '' &&
+                    this.event_tone_choice !== null &&
+                    this.final_blob !== null
+                ){
+
+                    return true;
+                }
+
+                return false;
+            },
+        },
+        mounted(){
+
+            //set up axios appropriately
+            this.axiosSetup();
         },
         methods: {
-            handleNewRecording(new_value:{'final_file':File, 'file_duration':number, 'file_volumes':number[]}) : void {
+            async submitForm() : Promise<void> {
 
-                this.final_file = new_value['final_file'];
-                this.file_duration = new_value['file_duration'];
-                this.file_volumes = new_value['file_volumes'];
+                if(this.canSubmit === false){
+
+                    return;
+                }
+
+                let data = new FormData();
+                
+                data.append("event_name", this.event_name);
+                data.append("event_tone_id", (this.event_tone_choice as EventToneTypes)['id'].toString());
+                data.append("audio_file", this.final_blob as Blob);
+
+                axios.post('say', data)
+                .then((response:any) => console.log(response))
+                .catch((errors:any) => console.log(errors));
+            },
+            handleNewRecording(new_value:{'blob':Blob, 'blob_duration':number, 'blob_volume_peaks':number[]}) : void {
+
+                this.final_blob = new_value['blob'];
+                this.blob_duration = new_value['blob_duration'];
+                this.blob_volume_peaks = new_value['blob_volume_peaks'];
             },
             handleIsRecorderMenuOpen(new_value:boolean) : void {
 
@@ -180,14 +221,28 @@
 
                 this.is_event_tone_menu_open = new_value;
             },
+            handleNewEventName(new_value:string) : void {
 
-            newEmojiChoice(new_value:string): void {
-                this.event_tone_id = new_value;
+                this.event_name = new_value;
             },
-
             handleSubmit(): void {
                 console.log("y submit? lol");
             },
+            axiosSetup() : boolean {
+
+                //your template must have {% csrf_token %}
+                let token = document.getElementsByName("csrfmiddlewaretoken")[0];
+
+                if(token === undefined){
+
+                    console.log('CSRF not found.');
+                    return false;
+                }
+
+                axios.defaults.headers.common['X-CSRFToken'] = (token as HTMLFormElement).value;
+                axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
+                return true;
+            }
         },
     });
 </script>

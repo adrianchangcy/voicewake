@@ -2,10 +2,8 @@
 {% block title %}Create Events{% endblock %}
 
 {% block content %}
-    {% comment %} <form method="POST" class="mt-36">
-        {% csrf_token %}
-        {{form.as_p}}
-        <button type="submit" class="btn btn-confirm" name="create_events">Create</button>
-    </form> {% endcomment %}
+
+    {% csrf_token %}
+
     <div id="create-main-events-app"></div>
 {% endblock %}

@@ -42,17 +42,16 @@ def determine_event_audio_file_path_and_name(instance, filename):
     #e.g.:
     #MEDIA_ROOT/talkers/year_2022/month_08/uer_7
     #no need to type out MEDIA_ROOT here, as it is determined in settings.py
-    file_path = 'talkers/year_{0}/month_{1}/uer_{2}'.format(
+    file_path = 'year_{0}/month_{1}/day_{2}/uer_{3}'.format(
         instance.when_created.strftime('%Y'),
         instance.when_created.strftime('%m'),
+        instance.when_created.strftime('%d'),
         instance.user_event_role.id
     )
 
     #e.g.:
-    #adrian_uer_7_e_9
-    new_file_name = '{0}_uer_{1}_e_{2}'.format(
-        instance.user_event_role.user.username,
-        instance.user_event_role.id,
+    #e_9
+    new_file_name = 'e_{0}'.format(
         instance.id
     )
 
@@ -211,50 +210,18 @@ class DjangoSession(models.Model):
         db_table = 'django_session'
 
 
-class EventPurposeTranslations(models.Model):
+class EventLikesDislikes(models.Model):
     id = models.BigAutoField(primary_key=True)
-    event_purpose = models.ForeignKey('EventPurposes', on_delete=models.CASCADE, blank=True, null=True, default=None)
-    language = models.ForeignKey('Languages', on_delete=models.CASCADE, blank=True, null=True, default=None)
-    translation = models.TextField()
+    user = models.ForeignKey('AuthUser', on_delete=models.CASCADE, blank=True, null=True, default=None)
+    event = models.ForeignKey('Events', on_delete=models.SET_NULL, blank=True, null=True, default=None)
+    is_liked = models.BooleanField()
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
     class Meta:
         app_label = 'voicewake'
         managed = True
-        db_table = 'event_purpose_translations'
-
-
-class EventPurposes(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    event_purpose_name = models.TextField(max_length=20, unique=True)
-    when_created = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        app_label = 'voicewake'
-        managed = True
-        db_table = 'event_purposes'
-
-    def __str__(self):
-        return self.event_purpose_name
-
-
-class EventRepeatDetails(models.Model):
-    #no new row if none of these are specified at form
-    id = models.BigAutoField(primary_key=True)
-    event = models.OneToOneField('Events', on_delete=models.CASCADE, blank=True, null=True, default=None)
-    is_repeat = models.BooleanField()
-    trigger_mon_to_sun = ArrayField(
-        models.BooleanField(default=False),
-        size=7,
-        blank=True, null=True
-    )
-    last_modified = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        app_label = 'voicewake'
-        managed = True
-        db_table = 'event_repeat_details'
+        db_table = 'event_likes_dislikes'
 
 
 class EventRequestStatuses(models.Model):
@@ -317,99 +284,9 @@ class EventRoles(models.Model):
         db_table = 'event_roles'
 
 
-class EventRoomMatchReportChoices(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    event_room_match_report_choice_name = models.TextField(max_length=100, unique=True)
-    when_created = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        app_label = 'voicewake'
-        managed = True
-        db_table = 'event_room_match_report_choices'
-
-
-class EventRoomMatchReports(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    event_room_match = models.ForeignKey(
-        'EventRoomMatches',
-        on_delete=models.PROTECT,
-        related_name='event_room_match_reports1',
-        blank=True,
-        null=True,
-        default=None
-    )
-    reported_event_room_match = models.ForeignKey(
-        'EventRoomMatches',
-        on_delete=models.PROTECT,
-        related_name='event_room_match_reports2',
-        blank=True,
-        null=True,
-        default=None
-    )
-    event_room_match_report_choice = models.ForeignKey(
-        EventRoomMatchReportChoices,
-        on_delete=models.SET_NULL,
-        blank=True,
-        null=True,
-        default=None
-    )
-    reported_message = models.TextField()
-    when_created = models.DateTimeField(auto_now_add=True)
-    is_valid = models.BooleanField(blank=True, null=True)
-    when_validated = models.DateTimeField(blank=True, null=True)
-    validation_message = models.TextField()
-    last_modified = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        app_label = 'voicewake'
-        managed = True
-        db_table = 'event_room_match_reports'
-
-
-#a user that submits a score/message stores it in his/her own row, not the other's
-class EventRoomMatches(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    event = models.ForeignKey('Events', on_delete=models.PROTECT, blank=True, null=True, default=None)
-    event_room = models.ForeignKey('EventRooms', on_delete=models.PROTECT, blank=True, null=True, default=None)
-    when_created = models.DateTimeField(auto_now_add=True)
-    when_left = models.DateTimeField(blank=True, null=True)
-
-    class Meta:
-        app_label = 'voicewake'
-        managed = True
-        db_table = 'event_room_matches'
-
-
-#for best user experience, this won't be compulsory
-class EventRoomMatchRatings(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    event_room_match = models.ForeignKey(
-        'EventRoomMatches',
-        on_delete=models.CASCADE,
-        related_name='event_room_match_ratings1'
-    )
-    rated_event_room_match = models.ForeignKey(
-        'EventRoomMatches',
-        on_delete=models.CASCADE,
-        related_name='event_room_match_ratings2'
-    )
-    rating = models.IntegerField(default=3, validators=[validate_rating])
-        #1 to 5
-    message = models.TextField(blank=True, null=True, max_length=300)
-    when_created = models.DateTimeField(auto_now_add=True)
-    last_modified = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        app_label = 'voicewake'
-        managed = True
-        db_table = 'event_room_match_ratings'
-
-
 class EventRooms(models.Model):
     id = models.BigAutoField(primary_key=True)
-    event_room_name = models.TextField(blank=True, max_length=50)
     when_created = models.DateTimeField(auto_now_add=True)
-    audio_file = models.TextField(blank=True)
     last_modified = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -463,17 +340,14 @@ class Events(models.Model):
     #when language/tone/purpose is null, interpret as 'any' later
     id = models.BigAutoField(primary_key=True)
     user_event_role = models.ForeignKey('UserEventRoles', on_delete=models.CASCADE, blank=True, null=True, default=None)
-    language = models.ForeignKey('Languages', on_delete=models.SET_NULL, blank=True, null=True, default=None)
     event_tone = models.ForeignKey('EventTones', on_delete=models.SET_NULL, blank=True, null=True, default=None)
-    event_purpose = models.ForeignKey('EventPurposes', on_delete=models.SET_NULL, blank=True, null=True, default=None)
     event_status = models.ForeignKey(EventStatuses, on_delete=models.PROTECT, blank=True, null=True, default=None)
+    event_room = models.ForeignKey(EventRooms, on_delete=models.SET_NULL, blank=True, null=True, default=None)
     event_name = models.TextField(max_length=40)
-    when_trigger = models.DateTimeField(default=get_current_datetime_with_tz)
-    event_message = models.TextField(blank=True)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
     when_locked = models.DateTimeField(blank=True, null=True, default=None)
-        #should only have non-null when event_status is also 'locked_for_talker_choice'
+        #locked when currently viewed by a user
     audio_file = models.FileField(blank=True, null=True, upload_to=determine_event_audio_file_path_and_name)
 
     class Meta:
@@ -502,11 +376,6 @@ class UserEventRoles(models.Model):
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey('AuthUser', on_delete=models.CASCADE, blank=True, null=True, default=None)
     event_role = models.ForeignKey(EventRoles, on_delete=models.PROTECT, blank=True, null=True, default=None)
-    given_ratings = ArrayField(
-        models.IntegerField(default=0),
-        size=5,
-        blank=True, null=True
-    )
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 

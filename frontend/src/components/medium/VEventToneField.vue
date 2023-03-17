@@ -1,7 +1,7 @@
 <template>
     <div>
         <VInputLabel for="event-tone-picker">
-            {{propLabelText}}
+            {{propLabel}}
         </VInputLabel>
         <button
             id="event-tone-picker"
@@ -44,7 +44,7 @@
         },
         emits: ['isOpen'],
         props: {
-            propLabelText: String,
+            propLabel: String,
             propEventToneChoice: {
                 type: Object as PropType<EventToneTypes> | null,
                 default: null,

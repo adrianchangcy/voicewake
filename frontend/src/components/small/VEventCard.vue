@@ -3,13 +3,17 @@
     <div class="text-theme-black">
 
         <!--username-->
-        <div class="h-fit text-base font-extralight">
+        <button
+            @click.stop="showUserPage()"
+            class="w-fit h-10 px-2 text-base font-extralight rounded-lg shade-when-hover transition-colors duration-200 ease-in-out"
+            type="button"
+        >
             <span><i class="fas fa-user"></i> {{propUsername}}</span>
-        </div>
+        </button>
     
         <!--label, ripples, total duration-->
         <div class="py-1 grid grid-cols-5">
-            <div class="col-span-4">
+            <div class="col-span-5">
                 <VActionButtonMedium
                     class="w-full grid grid-cols-7 gap-2"
                     @click.stop="handleIsSelected()"
@@ -47,58 +51,32 @@
                             v-if="propIsSelected === false"
                             class="w-full h-full absolute flex flex-row"
                         >
-                            <span class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto text-sm">{{pretty_file_duration}}</span>
+                            <span class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto text-base font-semibold">
+                                {{pretty_file_duration}}
+                            </span>
                         </div>
                         <i v-else class="absolute w-fit h-fit text-2xl fas fa-square-check text-theme-lead left-0 right-0 top-0 bottom-0 m-auto"></i>
                     </div>
                 </VActionButtonMedium>
             </div>
-
-            <div
-                class="col-start-5 col-span-1 h-20 text-xl pl-1 md:pl-2"
-            >
-                <button
-                    @click.stop="handleLiked()"
-                    class="block w-full h-10 rounded-lg shade-when-hover transition-colors duration-200 ease-in-out relative"
-                    type="button"
-                >
-                    <i
-                        :class="[
-                            is_liked === true ? 'text-theme-lead' : 'text-theme-lead/0',
-                            'absolute w-fit h-fit fas fa-thumbs-up left-0 right-0 top-1 bottom-0 m-auto transition-colors duration-200 ease-in-out'
-                        ]"
-                    ></i>
-                    <i class="absolute w-fit h-fit far fa-thumbs-up left-0 right-0 top-1 bottom-0 m-auto"></i>
-                </button>
-                <button
-                    @click.stop="handleDisliked()"
-                    class="block w-full h-10 rounded-lg shade-when-hover transition-colors duration-200 ease-in-out relative"
-                    type="button"
-                >
-                    <i
-                        :class="[
-                            is_liked === false ? 'text-theme-lead' : 'text-theme-lead/0',
-                            'absolute w-fit h-fit fas fa-thumbs-down left-0 right-0 top-1 bottom-0 m-auto transition-colors duration-200 ease-in-out'
-                        ]"
-                    ></i>
-                    <i class="absolute w-fit h-fit far fa-thumbs-down left-0 right-0 top-1 bottom-0 m-auto"></i>
-                </button>
-            </div>
         </div>
+
+
     </div>
 </template>
 
 
-<script setup>
+<script setup lang="ts">
 
     import VActionButtonMedium from '/src/components/small/VActionButtonMedium.vue';
 </script>
 
 
-<script>
-    // import anime from 'animejs';
+<script lang="ts">
+    import { defineComponent } from 'vue';
+    import anime from 'animejs';
 
-    export default {
+    export default defineComponent({
         data(){
             return {
                 username: 'carlj101',
@@ -107,18 +85,18 @@
                 buckets: [0.4, 0.2, 0.6, 0.7, 0.5, 0.2, 0.1, 0.7, 1, 1, 0.4, 0.2, 0.6, 0.7, 0.5, 0.2, 0.1, 0.7, 0.9, 0.9],
                 pretty_file_duration: '01:20',
                 pretty_upload_datetime: '40 minutes ago',
-                is_liked: null,
+                is_liked: null as boolean|null,
+
+                anime_like: null as InstanceType<typeof anime>|null,
+                anime_dislike: null as InstanceType<typeof anime>|null,
 
             };
-        },
-        components: {
-            VActionButtonMedium,
         },
         mounted(){
 
             for(let x = 0; x < this.buckets.length; x++){
 
-                this.$refs.volume_ripple[x].style.transform = 'scaleY('+this.buckets[x]+')';
+                (this.$refs.volume_ripple as HTMLElement[])[x].style.transform = 'scaleY('+this.buckets[x]+')';
             }
         },
         props: {
@@ -137,35 +115,18 @@
         },
 
         methods: {
-            handleIsSelected() {
+            showUserPage() : void {
+
+                //pop up of user
+                console.log('user pop up for ' + this.propUsername);
+            },
+
+            handleIsSelected() : void {
 
                 this.$emit('isSelected', true);
             },
-            handleLiked() {
 
-                console.log('liked!');
-                if(this.is_liked === null || this.is_liked === false){
-
-                    this.is_liked = true;
-
-                }else{
-
-                    this.is_liked = null;
-                }
-            },
-
-            handleDisliked() {
-                console.log('disliked!');
-                if(this.is_liked === null || this.is_liked === true){
-
-                    this.is_liked = false;
-
-                }else{
-
-                    this.is_liked = null;
-                }
-            }
         }
 
-    }
+    });
 </script>

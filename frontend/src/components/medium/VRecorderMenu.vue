@@ -5,8 +5,8 @@
     >
         <VPlayback
             ref="audio_playback"
-            :propFile="final_file"
-            :propFileVolumes="file_volumes"
+            :propAudio="final_blob"
+            :propAudioVolumePeaks="blob_volume_peaks"
             :propBucketQuantity="propBucketQuantity"
             :propIsRecording="is_recording"
             :propRecordingVisualiserVolume="recording_volume"
@@ -14,7 +14,7 @@
             :propIsForRecording="false"
             :propIsOpen="propIsOpen"
             @isAnimePlaybackCompleted="handleIsAnimePlaybackCompleted($event)"
-            class="z-10 w-full"
+            class="z-10"
         />
         <VRecorder
             :propIsAnimePlaybackCompleted="is_anime_playback_completed"
@@ -23,6 +23,7 @@
             :propIsOpen="propIsOpen"
             @newRecording="handleNewRecording($event)"
             @isRecording="handleIsRecording($event)"
+            @isCancelled="handleIsCancelled()"
             @newRecordingVolume="handleNewRecordingVolume($event)"
         />
     </div>
@@ -46,9 +47,8 @@
                 time_interval: 200, //milliseconds
                 is_anime_playback_completed: false,
                 
-                final_file: null as File | null,
-                file_volumes: [] as Array<number>,
-                file_duration: 0,
+                final_blob: null as Blob | null,
+                blob_volume_peaks: [] as Array<number>,
             };
         },
         props: {
@@ -69,28 +69,36 @@
         mounted(){
 
         },
+        computed: {
+
+        },
         methods: {
-            async handleNewRecording(new_value:{'final_file':File, 'file_duration':number}) : Promise<void> {
+            handleIsCancelled() : void {
+
+                //basically briefly show "Cancelled"
+                console.log('yowza');
+
+            },
+            async handleNewRecording(new_value:{'blob':Blob, 'blob_duration':number}) : Promise<void> {
 
                 //get file volumes, then store file
                 //no need to store null on error, we keep existing file
                 const audio_context = new AudioContext();
 
-                await new_value['final_file'].arrayBuffer()
+                await new_value['blob'].arrayBuffer()
                     .then((buffer:ArrayBuffer) => audio_context.decodeAudioData(buffer))
                     .then((decoded_audio:AudioBuffer) => decoded_audio.getChannelData(0)) //only 1 channel as expected
                     .then((audio_data:Float32Array) => this.getFileVolumes(audio_data))
                     .then((volume_peaks) => {
 
-                        this.final_file = new_value['final_file'];
-                        this.file_duration = new_value['file_duration'];
-                        this.file_volumes = volume_peaks;
+                        this.final_blob = new_value['blob'];
+                        this.blob_volume_peaks = volume_peaks;
 
 
                         this.$emit('newRecording', {
-                            'final_file' : this.final_file,
-                            'file_duration' : this.file_duration,
-                            'file_volumes' : volume_peaks
+                            'blob' : new_value['blob'],
+                            'blob_duration' : new_value['blob_duration'],
+                            'blob_volume_peaks' : volume_peaks
                         });
                     })
                     .catch((error:any|Error) => {
