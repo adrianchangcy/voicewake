@@ -13,7 +13,7 @@ export function arrayMax(your_array:number[]) : number {
             });
 }
 
-export function timeSince(date:Date) : string {
+export function timeDifferenceUTC(date:Date) : string {
 
             //more optimised version, since visits to newer content will always be more
 
@@ -62,7 +62,7 @@ export function timeSince(date:Date) : string {
 }
 
 
-export function prettyCount(number:number, decimal_places:number) : string {
+export function prettyCount(number:number) : string {
     
     //thanks
     //https://www.skillthrive.com/hunter/snippets/abbreviate-number-javascript
@@ -76,7 +76,10 @@ export function prettyCount(number:number, decimal_places:number) : string {
     }
 
     // 2 decimal places => 100, 3 => 1000, etc
-    decimal_places = Math.pow(10, decimal_places);
+    // having this as parameter doesn't seem needed
+    // decimal_places = Math.pow(10, decimal_places);
+    const decimal_places = 1;
+
     // Enumerate number abbreviations
     const abbrev = ['K', 'M', 'B', 'T'];
 

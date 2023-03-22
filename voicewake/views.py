@@ -279,6 +279,10 @@ class EventsAPI(generics.ListAPIView):
 
             return Events.objects.filter(event_room=EventRooms(pk=kwargs['event_room_id']))
         
+        else:
+
+            return []
+        
     def get(self, request, *args, **kwargs):
 
         serializer = EventsSerializer(self.get_queryset(**kwargs), many=True)
@@ -353,9 +357,6 @@ class ViewSpecificEvents(FormView):
         except Events.DoesNotExist:
 
             return JsonResponse({'message':'Originator event does not exist.'}, status=status.HTTP_404_NOT_FOUND)
-
-        serializer = EventsSerializer(originator_event, many=False)
-        originator_event = serializer.data
 
         return render(
             request,

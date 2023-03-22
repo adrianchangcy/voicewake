@@ -71,7 +71,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
     #own middleware
-    'voicewake.middleware.set_user_timezone_middleware.SetUserTimezoneMiddleware',
+    # 'voicewake.middleware.set_user_timezone_middleware.SetUserTimezoneMiddleware',
 ]
 
 ROOT_URLCONF = 'voicewake.urls'
@@ -164,8 +164,11 @@ LOGOUT_REDIRECT_URL = '/'
 
 
 #timezone management
-USE_TZ = True   #no longer relies on TIME_ZONE
-
+#TIME_ZONE default is 'America/Chicago', which was the case here, causing templates to have UTC -5
+#when USE_TZ=False, Django stores datetime as UTC, and you should remove TIME_ZONE
+#when USE_TZ=True: create data at 23:00 MY (UTC +8) --> stores as 23:00+08 --> template shows 15:00
+USE_TZ = True
+TIME_ZONE = 'UTC'
 
 #DRF
 REST_FRAMEWORK = {

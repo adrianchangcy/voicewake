@@ -8,7 +8,7 @@
         >
             <!--like button-->
             <div
-                class="w-6 h-full relative"
+                class="w-6 h-full relative text-xl"
                 ref="like_logo"
             >
                 <i
@@ -20,7 +20,7 @@
                 <i class="absolute w-fit h-fit far fa-thumbs-up left-0 right-0 top-0 bottom-0 m-auto"></i>
             </div>
             <!--like count-->
-            <div class="w-10 h-full relative text-base font-semibold">
+            <div class="w-10 h-full relative text-base font-medium">
                 <span class="absolute w-fit h-fit left-1 top-0 bottom-0 m-auto">
                     {{ prettyLikeCount }}
                 </span>
@@ -46,7 +46,7 @@
                 <i class="absolute w-fit h-fit far fa-thumbs-down -scale-x-100 left-0 right-0 top-1 bottom-0 m-auto"></i>
             </div>
             <!--dislike count-->
-            <div class="w-10 h-full relative text-base font-semibold">
+            <div class="w-10 h-full relative text-base font-medium">
                 <span class="absolute w-fit h-fit left-1 top-0 bottom-0 m-auto">
                     {{ prettyDislikeCount }}
                 </span>
@@ -69,8 +69,9 @@
     export default defineComponent({
         data(){
             return {
-                event_id: null as number|null,
                 is_liked: null as boolean|null,
+                like_count: 0,
+                dislike_count: 0,
             };
         },
         props: {
@@ -90,7 +91,7 @@
             },
             propIsLiked: {
                 type: Boolean,
-                required: false,
+                required: true,
                 default: null,
             },
         },
@@ -99,28 +100,47 @@
 
                 if(this.is_liked === true){
 
-                    return prettyCount(this.propLikeCount + 1, 1);
+                    return prettyCount(this.like_count + 1);
 
                 }else if(this.is_liked === null){
 
-                    return prettyCount(this.propLikeCount, 1);
+                    return prettyCount(this.like_count);
+                    
                 }
 
-                return prettyCount(this.propLikeCount, 1);
+                return prettyCount(this.like_count);
             },
             prettyDislikeCount() : string {
-                
+
                 if(this.is_liked === false){
 
-                    return prettyCount(this.propDislikeCount + 1, 1);
+                    return prettyCount(this.dislike_count + 1);
 
                 }else if(this.is_liked === null){
 
-                    return prettyCount(this.propDislikeCount, 1);
+                    return prettyCount(this.dislike_count);
                 }
 
-                return prettyCount(this.propDislikeCount, 1);
+                return prettyCount(this.dislike_count);
             },
+        },
+        mounted(){
+
+            //store props into variables
+            this.is_liked = this.propIsLiked;
+            this.like_count = this.propLikeCount;
+            this.dislike_count = this.propDislikeCount;
+
+            //we expect counts from REST API to also include user's own
+            //if user has already liked/disliked, -1 from like_count/dislike_count
+            if(this.propIsLiked === true){
+
+                this.like_count -= 1;
+
+            }else if(this.propIsLiked === false){
+
+                this.dislike_count -= 1;
+            }
         },
         methods: {
             handleLiked() : void {
