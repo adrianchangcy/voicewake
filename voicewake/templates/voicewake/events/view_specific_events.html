@@ -3,20 +3,30 @@
 
 {% block content %}
 
-
-    <div class="md:w-2/4 lg:w-3/6 xl:w-2/6 mx-auto h-fit bg-theme-light text-left text-lg px-[5%] pb-20 text-theme-black">
-
-        <div class="p-8"></div>
+    <!--
+        use id to get to when-created element
+        we load '1 Jan 2022' here first, then at JS we make it pretty to '1 century ago'
+        shouldn't have to adjust '1 Jan 2022' to local timezone, as it's only for SEO
+    -->
+    <div
+        data-event-room-id="{{originator_event.event_room.id}}"
+        data-event-id="{{originator_event.id}}"
+        data-when-created="{{originator_event.when_created|date:"Y-m-d H:i:s"}}"
+        class="event-room   md:w-2/4 lg:w-3/6 xl:w-2/6 mx-auto h-fit bg-theme-light text-left text-lg px-[5%] pb-20 text-theme-black"
+    >
 
         <!--title-->
-        <div class="h-fit text-xl pb-4">
+        <div class="h-fit pt-4 pb-2">
             <!--title from user 1-->
-            <span>
+            <span class="text-xl">
                 {{originator_event.event_name}}
             </span>
             <!--last updated-->
             <span class="text-base font-light">
                 &nbsp;&mdash;&nbsp;
+            </span>
+            <span class="when-created   text-base font-light">
+                {{originator_event.when_created|date:"j M Y"}}
             </span>
         </div>
 

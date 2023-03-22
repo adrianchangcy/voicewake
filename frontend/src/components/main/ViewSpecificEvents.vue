@@ -5,7 +5,10 @@
         />
     </div>
     <VLikeDislike
-        :propLikeCount="1099"
+        :propEventId="10"
+        :propLikeCount="800"
+        :propDislikeCount="0"
+        :propIsLiked="true"
     />
 
     
@@ -23,6 +26,7 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
+    import { timeDifferenceUTC } from '@/helper_functions';
     // const axios = require('axios');
 
     export default defineComponent({
@@ -33,7 +37,13 @@
         },
         beforeMount(){
         
-
+            //change '1 Jan 2023' to '1 century ago'
+            //we are passing 'YYYY-MM-DD HH:mm:ss' from template
+            //for best reliability, Date() expects 'YYYY-MM-DDTHH:mm:ssZ'
+            const container = document.getElementsByClassName('event-room')[0];
+            const when_created_element = container.getElementsByClassName('when-created')[0];
+            const when_created = (container.getAttribute('data-when-created') as string).replace(/ /g, 'T') + 'Z';
+            when_created_element.textContent = timeDifferenceUTC(new Date(when_created));
         }
     });
 </script>
