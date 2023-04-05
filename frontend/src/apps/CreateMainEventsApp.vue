@@ -1,5 +1,7 @@
 <template>
-    <CreateMainEvents/>
+    <CreateMainEvents
+        :propIsOriginator="true"
+    />
 </template>
 
 

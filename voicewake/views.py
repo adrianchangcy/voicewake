@@ -1,6 +1,6 @@
 from django import views
 from django.http import JsonResponse, QueryDict
-from django.db.models import Q
+from django.db.models import Case, Value, When, Sum, Q
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required, permission_required
@@ -145,6 +145,144 @@ class PermissionPolicyMixin():
 #     return Response(status=status.HTTP_418_IM_A_TEAPOT)
 
 
+#if empty db, run this
+def first_time_setup():
+
+    from django.contrib.auth.models import Group
+
+    if EventTones.objects.count() == 0:
+
+        EventTones.objects.bulk_create([
+            EventTones(event_tone_name='blank face', event_tone_symbol='😶'),
+            EventTones(event_tone_name='plain smile', event_tone_symbol='🙂'),
+            EventTones(event_tone_name='smile', event_tone_symbol='😄'),
+            EventTones(event_tone_name='smiley', event_tone_symbol='😃'),
+            EventTones(event_tone_name='grinning', event_tone_symbol='😀'),
+            EventTones(event_tone_name='blush', event_tone_symbol='😊'),
+            EventTones(event_tone_name='halo', event_tone_symbol='😇'),
+            EventTones(event_tone_name='wink', event_tone_symbol='😉'),
+            EventTones(event_tone_name='heart eyes', event_tone_symbol='😍'),
+            EventTones(event_tone_name='kissing heart', event_tone_symbol='😘'),
+            EventTones(event_tone_name='kissing flushed', event_tone_symbol='😚'),
+            EventTones(event_tone_name='kissing', event_tone_symbol='😗'),
+            EventTones(event_tone_name='kissing smiling eyes', event_tone_symbol='😙'),
+            EventTones(event_tone_name='stuck out tongue winking eye', event_tone_symbol='😜'),
+            EventTones(event_tone_name='stuck out tongue closed eyes', event_tone_symbol='😝'),
+            EventTones(event_tone_name='stuck out tongue', event_tone_symbol='😛'),
+            EventTones(event_tone_name='flushed', event_tone_symbol='😳'),
+            EventTones(event_tone_name='grin', event_tone_symbol='😁'),
+            EventTones(event_tone_name='pensive', event_tone_symbol='😔'),
+            EventTones(event_tone_name='relieved', event_tone_symbol='😌'),
+            EventTones(event_tone_name='unamused', event_tone_symbol='😒'),
+            EventTones(event_tone_name='disappointed', event_tone_symbol='😞'),
+            EventTones(event_tone_name='persevere', event_tone_symbol='😣'),
+            EventTones(event_tone_name='cry', event_tone_symbol='😢'),
+            EventTones(event_tone_name='joy', event_tone_symbol='😂'),
+            EventTones(event_tone_name='sob', event_tone_symbol='😭'),
+            EventTones(event_tone_name='sleepy', event_tone_symbol='😪'),
+            EventTones(event_tone_name='disappointed relieved', event_tone_symbol='😥'),
+            EventTones(event_tone_name='cold sweat', event_tone_symbol='😰'),
+            EventTones(event_tone_name='sweat smile', event_tone_symbol='😅'),
+            EventTones(event_tone_name='sweat', event_tone_symbol='😓'),
+            EventTones(event_tone_name='weary', event_tone_symbol='😩'),
+            EventTones(event_tone_name='tired face', event_tone_symbol='😫'),
+            EventTones(event_tone_name='fearful', event_tone_symbol='😨'),
+            EventTones(event_tone_name='scream', event_tone_symbol='😱'),
+            EventTones(event_tone_name='angry', event_tone_symbol='😠'),
+            EventTones(event_tone_name='rage', event_tone_symbol='😡'),
+            EventTones(event_tone_name='triumph', event_tone_symbol='😤'),
+            EventTones(event_tone_name='confounded', event_tone_symbol='😖'),
+            EventTones(event_tone_name='laughing', event_tone_symbol='😆'),
+            EventTones(event_tone_name='yum', event_tone_symbol='😋'),
+            EventTones(event_tone_name='injured', event_tone_symbol='🤕'),
+            EventTones(event_tone_name='mask', event_tone_symbol='😷'),
+            EventTones(event_tone_name='fever', event_tone_symbol='🤒'),
+            EventTones(event_tone_name='nauseating', event_tone_symbol='🤢'),
+            EventTones(event_tone_name='heated', event_tone_symbol='🥵'),
+            EventTones(event_tone_name='chilled', event_tone_symbol='🥶'),
+            EventTones(event_tone_name='sunglasses', event_tone_symbol='😎'),
+            EventTones(event_tone_name='cowboy', event_tone_symbol='🤠'),
+            EventTones(event_tone_name='money face', event_tone_symbol='🤑'),
+            EventTones(event_tone_name='party face', event_tone_symbol='🥳'),
+            EventTones(event_tone_name='sleeping', event_tone_symbol='😴'),
+            EventTones(event_tone_name='dizzy face', event_tone_symbol='😵'),
+            EventTones(event_tone_name='astonished', event_tone_symbol='😲'),
+            EventTones(event_tone_name='worried', event_tone_symbol='😟'),
+            EventTones(event_tone_name='frowning', event_tone_symbol='😦'),
+            EventTones(event_tone_name='anguished', event_tone_symbol='😧'),
+            EventTones(event_tone_name='imp', event_tone_symbol='👿'),
+            EventTones(event_tone_name='open mouth', event_tone_symbol='😮'),
+            EventTones(event_tone_name='grimacing', event_tone_symbol='😬'),
+            EventTones(event_tone_name='neutral face', event_tone_symbol='😐'),
+            EventTones(event_tone_name='confused', event_tone_symbol='😕'),
+            EventTones(event_tone_name='hushed', event_tone_symbol='😯'),
+            EventTones(event_tone_name='smirk', event_tone_symbol='😏'),
+            EventTones(event_tone_name='expressionless', event_tone_symbol='😑'),
+            EventTones(event_tone_name='baby', event_tone_symbol='👶'),
+            EventTones(event_tone_name='older man', event_tone_symbol='👴'),
+            EventTones(event_tone_name='older woman', event_tone_symbol='👵'),
+            EventTones(event_tone_name='angel', event_tone_symbol='👼'),
+            EventTones(event_tone_name='princess', event_tone_symbol='👸'),
+            EventTones(event_tone_name='see no evil', event_tone_symbol='🙈'),
+            EventTones(event_tone_name='hear no evil', event_tone_symbol='🙉'),
+            EventTones(event_tone_name='speak no evil', event_tone_symbol='🙊'),
+            EventTones(event_tone_name='clown', event_tone_symbol='🤡'),
+            EventTones(event_tone_name='moyai', event_tone_symbol='🗿'),
+            EventTones(event_tone_name='skull', event_tone_symbol='💀'),
+            EventTones(event_tone_name='alien', event_tone_symbol='👽'),
+            EventTones(event_tone_name='hankey', event_tone_symbol='💩'),
+            EventTones(event_tone_name='wave', event_tone_symbol='👋'),
+            EventTones(event_tone_name='pray', event_tone_symbol='🙏'),
+            EventTones(event_tone_name='clap', event_tone_symbol='👏'),
+            EventTones(event_tone_name='muscle', event_tone_symbol='💪'),
+            EventTones(event_tone_name='bow', event_tone_symbol='🙇'),
+            EventTones(event_tone_name='broken heart', event_tone_symbol='💔'),
+            EventTones(event_tone_name='two hearts', event_tone_symbol='💕'),
+            EventTones(event_tone_name='sparkling heart', event_tone_symbol='💖'),
+            EventTones(event_tone_name='revolving hearts', event_tone_symbol='💞'),
+            EventTones(event_tone_name='cupid', event_tone_symbol='💘'),
+            EventTones(event_tone_name='turtle', event_tone_symbol='🐢'),
+            EventTones(event_tone_name='snail', event_tone_symbol='🐌'),
+            EventTones(event_tone_name='octopus', event_tone_symbol='🐙'),
+            EventTones(event_tone_name='four leaf clover', event_tone_symbol='🍀'),
+            EventTones(event_tone_name='herb', event_tone_symbol='🌿'),
+            EventTones(event_tone_name='hourglass flowing sand', event_tone_symbol='⏳'),
+            EventTones(event_tone_name='hourglass', event_tone_symbol='⌛'),
+            EventTones(event_tone_name='game die', event_tone_symbol='🎲'),
+            EventTones(event_tone_name='checkered flag', event_tone_symbol='🏁'),
+            EventTones(event_tone_name='trophy', event_tone_symbol='🏆'),
+            EventTones(event_tone_name='roller coaster', event_tone_symbol='🎢'),
+            EventTones(event_tone_name='rocket', event_tone_symbol='🚀'),
+            EventTones(event_tone_name='keep it 100', event_tone_symbol='💯'),
+        ])
+
+    if Countries.objects.count() == 0:
+
+        Countries.objects.create(
+            country_name='United States of America',
+            country_name_shortened='USA'
+        )
+
+    if Languages.objects.count() == 0:
+
+        Languages.objects.create(
+                    language_name='English',
+                    language_name_shortened='ENG'
+        )
+
+    if Group.objects.count() == 0:
+
+        Group.objects.create(
+            name='regular'
+        )
+
+    if EventRoles.objects.count() == 0:
+
+        EventRoles.objects.bulk_create([
+            EventRoles(event_role_name='originator'),
+            EventRoles(event_role_name='responder')
+        ])
+
 
 # @login_required(login_url='/login')
 def home(request):
@@ -271,23 +409,191 @@ class LanguagesAPI(viewsets.ModelViewSet):
 
 
 #we get events via event_room, as they all must belong to a room
-class EventsAPI(generics.ListAPIView):
+class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
-    def get_queryset(self, **kwargs):
-        
-        if 'event_room_id' in kwargs:
+    serializer_class = GetEventsSerializer
+    queryset = None
 
-            return Events.objects.filter(event_room=EventRooms(pk=kwargs['event_room_id']))
-        
+    def get_queryset(self):
+
+        if 'event_room_id' in self.kwargs:
+
+            event_room_id = self.kwargs['event_room_id']
+
         else:
 
-            return []
-        
+            return []        
+
+        events = Events.objects.filter(
+            event_room=EventRooms(pk=event_room_id)
+        ).annotate(
+            like_count=Sum(
+                Case(
+                    When(eventlikesdislikes__is_liked=True, then=Value(1)),
+                    default=0
+                )
+            )
+        ).annotate(
+            dislike_count=Sum(
+                Case(
+                    When(eventlikesdislikes__is_liked=False, then=Value(1)),
+                    default=0
+                )
+            )
+        ).annotate(
+            is_liked_by_user=Case(
+                When(
+                    eventlikesdislikes__user=AuthUser(pk=self.request.user.id),
+                    eventlikesdislikes__is_liked=True,
+                    then=Value(True)
+                ),
+                When(
+                    eventlikesdislikes__user=AuthUser(pk=self.request.user.id),
+                    eventlikesdislikes__is_liked=False,
+                    then=Value(False)
+                ),
+                default=Value(None)
+            )
+        ).order_by('when_created')
+
+        #you can return events.values() and skip GetEventsSerializer, but idk about the pros and cons
+        return events
+
     def get(self, request, *args, **kwargs):
 
-        serializer = EventsSerializer(self.get_queryset(**kwargs), many=True)
+        return Response(GetEventsSerializer(self.get_queryset(), many=True).data)
+    
+    def post(self, request, *args, **kwargs):
+        
+        serializer = CreateEventsSerializer(data=request.data, many=False)
 
-        return Response(serializer.data)
+        if serializer.is_valid() is False:
+
+            return Response(data={}, status=status.HTTP_400_BAD_REQUEST)
+        
+        new_data = serializer.validated_data
+
+        if new_data['is_originator'] is True:
+
+            #originator
+            user_event_role = UserEventRoles.objects.get(
+                user=AuthUser(pk = getattr(self.request.user, 'id')),
+                event_role__event_role_name='originator'
+            )
+
+        else:
+            
+            #responder
+            user_event_role = UserEventRoles.objects.get(
+                user=AuthUser(pk = getattr(self.request.user, 'id')),
+                event_role__event_role_name='responder'
+            )
+
+        #create event, excluding audio_file and event_room_id
+        new_event = Events.objects.create(
+            user_event_role=user_event_role,
+            event_tone=EventTones(pk=new_data['event_tone_id']),
+            audio_volume_peaks = new_data['audio_volume_peaks'],
+        )
+
+        if new_data['is_originator'] is True:
+
+            #create event_room row if user is originator
+            new_event.event_room = EventRooms.objects.create(
+                event_room_name=new_data['event_room_name'],
+            )
+
+        else:
+
+            #get specified event_room if user is responder
+            new_event.event_room = EventRooms(pk=new_data['event_room_id'])
+
+        #we delay saving audio_file, as we want when_created first
+        new_event.audio_file = new_data['audio_file']
+
+        new_event.save()
+
+        #don't return super().form_valid(form), else it goes though form.save() again
+        return JsonResponse(data={}, status=status.HTTP_201_CREATED)
+
+
+
+
+
+
+
+#to submit likes/dislikes
+#is_liked=True/False, or destroy when undone
+class EventLikesDislikesAPI(generics.GenericAPIView):
+
+    serializer_class = EventLikesDislikesSerializer
+
+    #create
+    def put(self, request, *args, **kwargs):
+
+        if 'event_id' not in request.data or 'is_liked' not in request.data:
+
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        
+        event_id = json.loads(request.data['event_id'])
+        is_liked = json.loads(request.data['is_liked'])
+
+        if type(event_id) != int or type(is_liked) != bool:
+
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        #create or update
+        try:
+
+            instance = EventLikesDislikes.objects.get(
+                event=Events(pk=event_id),
+                user=AuthUser(pk=request.user.id)
+            )
+
+            instance.is_liked = is_liked
+            instance.save()
+
+        except EventLikesDislikes.DoesNotExist:
+
+            instance = EventLikesDislikes.objects.create(
+                event=Events(pk=event_id),
+                user=AuthUser(pk=request.user.id),
+                is_liked=is_liked
+            )
+
+        return Response(status=status.HTTP_200_OK)
+    
+
+    #we use POST instead of DELETE because DELETE does not have request.data
+    #more convenient than creating another URL for this
+    def post(self, request, *args, **kwargs):
+
+        if 'event_id' not in request.data:
+
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        event_id = json.loads(request.data['event_id'])
+
+        if type(event_id) != int:
+
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        #get first
+        try:
+
+            instance = EventLikesDislikes.objects.get(
+                event=Events(pk=event_id),
+                user=AuthUser(pk=request.user.id)
+            )
+        
+        except EventLikesDislikes.DoesNotExist:
+
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        #delete
+        instance.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 #=====END OF REST APIs=====
@@ -296,37 +602,54 @@ class EventsAPI(generics.ListAPIView):
 #=====WEB PAGES=====
 
 #create main events
+#handles originator events
 class CreateMainEvents(FormView):
 
     template_name = 'voicewake/events/create_main_events.html'
     form_class = CreateMainEventsForm
     success_url = '/'
 
+    #this is originally originator + responder handler, but responder is currently separated
     def form_valid(self, form):
 
-        user_event_role = UserEventRoles.objects.get(
-            user=AuthUser(pk = getattr(self.request.user, 'id')),
-            event_role__event_role_name='originator'
-        )
+        #ensure we have the right set of data needed
+        if form.cleaned_data['is_originator'] is True:
 
-        try:
+            #originator
+            user_event_role = UserEventRoles.objects.get(
+                user=AuthUser(pk = getattr(self.request.user, 'id')),
+                event_role__event_role_name='originator'
+            )
 
-            event_tone = EventTones.objects.get(id=form.cleaned_data['event_tone_id'])
+        elif form.cleaned_data['is_originator'] is False and form.cleaned_data['event_room_id'] is not None:
+            
+            #responder
+            user_event_role = UserEventRoles.objects.get(
+                user=AuthUser(pk = getattr(self.request.user, 'id')),
+                event_role__event_role_name='responder'
+            )
 
-        except EventTones.DoesNotExist:
+        else:
 
-            return JsonResponse({'message':'Invalid event_tone_id.'}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'message':'Missing required form data.'}, status=status.HTTP_400_BAD_REQUEST)
 
         #create event, excluding audio_file and event_room_id
         new_event = Events.objects.create(
             user_event_role=user_event_role,
-            event_name=form.cleaned_data['event_name'],
-            event_tone=event_tone,
-            event_status=EventStatuses.objects.filter(event_status_name='available')[:1].get(),
+            event_tone=EventTones(pk=form.cleaned_data['event_tone_id']),
         )
 
-        #create event_room_id
-        new_event.event_room = EventRooms.objects.create()
+        if form.cleaned_data['is_originator'] is True:
+
+            #create event_room row if user is originator
+            new_event.event_room = EventRooms.objects.create(
+                event_room_name=form.cleaned_data['event_room_name'],
+            )
+
+        else:
+
+            #get specified event_room if user is responder
+            new_event.event_room = EventRooms(pk=form.cleaned_data['event_room_id'])
 
         #save audio_file here to allow reference to model instance, as it now exists
         new_event.audio_file = form.cleaned_data['audio_file']
@@ -342,6 +665,8 @@ class CreateMainEvents(FormView):
 class ViewSpecificEvents(FormView):
 
     template_name = 'voicewake/events/view_specific_events.html'
+    form_class = CreateResponderEventsForm
+    success_url = '/'
 
     def get(self, request, *args, **kwargs):
 
@@ -349,7 +674,9 @@ class ViewSpecificEvents(FormView):
         #should always have only 1 per room
         try:
 
-            originator_event = Events.objects.get(
+            originator_event = Events.objects.select_related(
+                'event_room'
+            ).get(
                 event_room=EventRooms(pk=kwargs['event_room_id']),
                 user_event_role__event_role__event_role_name='originator'
             )

@@ -1,6 +1,5 @@
 <template>
-
-    <div class="md:w-2/4 lg:w-3/6 xl:w-2/6 mx-auto px-[5%] h-fit">
+    <div>
 
         <VSectionTitle
             propTitle="Reply"

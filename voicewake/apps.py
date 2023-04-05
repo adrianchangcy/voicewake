@@ -20,8 +20,14 @@ class VoicewakeConfig(AppConfig):
             def create_user_details(user):
 
                 #should get user's geolocation instead of these
-                DEFAULT_COUNTRY = Countries.objects.get(country_name='United States of America')
-                DEFAULT_LANGUAGE = Languages.objects.get(language_name='English')
+                DEFAULT_COUNTRY = Countries.objects.get(
+                    country_name='United States of America',
+                    country_name_shortened='USA'
+                )
+                DEFAULT_LANGUAGE = Languages.objects.get(
+                    language_name='English',
+                    language_name_shortened='ENG'
+                )
 
                 #check if user_id exists instead of direct get_or_create()
                 #only want one row for one user
@@ -33,20 +39,20 @@ class VoicewakeConfig(AppConfig):
 
                     user_detail = UserDetails.objects.create(
                         user=AuthUser(pk=getattr(user, 'id')),
-                        country=Countries(pk=getattr(DEFAULT_COUNTRY, 'id')),
-                        language=Languages(pk=getattr(DEFAULT_LANGUAGE, 'id')),
+                        country=DEFAULT_COUNTRY,
+                        language=DEFAULT_LANGUAGE,
                         user_display_name=getattr(user, 'username'),  #user can change again later
                         user_birthdate='2022-01-01',
                     )
 
             def add_to_default_group(user):
 
-                group, ok = Group.objects.get_or_create(name='default')
+                group = Group.objects.get(name='regular')
                 group.user_set.add(user)
 
             def add_with_event_roles(user):
 
-                event_role, ok = EventRoles.objects.get_or_create(event_role_name='originator')
+                event_role = EventRoles.objects.get(event_role_name='originator')
 
                 user_event_role, ok = UserEventRoles.objects.get_or_create(
                     user=AuthUser(pk=getattr(user, 'id')),
@@ -54,7 +60,7 @@ class VoicewakeConfig(AppConfig):
                     defaults={},
                 )
 
-                event_role, ok = EventRoles.objects.get_or_create(event_role_name='responder')
+                event_role, ok = EventRoles.objects.get(event_role_name='responder')
 
                 user_event_role, ok = UserEventRoles.objects.get_or_create(
                     user=AuthUser(pk=getattr(user, 'id')),

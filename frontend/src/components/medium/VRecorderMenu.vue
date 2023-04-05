@@ -127,7 +127,8 @@
                     //check if we are at last sample of current bucket
                     if(x === bucket_threshold_count){
 
-                        //doesn't seem necessary to set smaller decimal places
+                        //set 2 decimal places, i.e. 0.00
+                        bucket_max = parseFloat(bucket_max.toFixed(2));
 
                         //store max peak
                         bucket_peaks.push(bucket_max);

@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import os
 import shutil
+from decimal import Decimal
 
 #defaults
 #'any' means randomise later
@@ -72,6 +73,10 @@ def validate_rating(value):
             _('%(value)s is not a valid rating between 1 and 5.'),
             params={'value': value}
         )
+
+
+def get_default_audio_volume_peaks():
+    return [Decimal('0')] * 20
 
 
 class AuthGroup(models.Model):
@@ -212,8 +217,8 @@ class DjangoSession(models.Model):
 
 class EventLikesDislikes(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey('AuthUser', on_delete=models.CASCADE, blank=True, null=True, default=None)
-    event = models.ForeignKey('Events', on_delete=models.SET_NULL, blank=True, null=True, default=None)
+    user = models.ForeignKey('AuthUser', on_delete=models.CASCADE)
+    event = models.ForeignKey('Events', on_delete=models.CASCADE)
     is_liked = models.BooleanField()
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
@@ -246,7 +251,7 @@ class EventRequests(models.Model):
         null=True,
         default=None
     )
-    event = models.ForeignKey('Events', on_delete=models.CASCADE, blank=True, null=True)
+    event = models.ForeignKey('Events', on_delete=models.CASCADE)
     requested_user_event_role = models.ForeignKey(
         'UserEventRoles',
         on_delete=models.CASCADE,
@@ -286,6 +291,9 @@ class EventRoles(models.Model):
 
 class EventRooms(models.Model):
     id = models.BigAutoField(primary_key=True)
+    event_room_name = models.TextField(max_length=200, default='-') #ensure default is never used
+    when_locked = models.DateTimeField(blank=True, null=True, default=None)
+    locked_for_user = models.ForeignKey('AuthUser', on_delete=models.SET_NULL, blank=True, null=True, default=None)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
@@ -293,18 +301,6 @@ class EventRooms(models.Model):
         app_label = 'voicewake'
         managed = True
         db_table = 'event_rooms'
-
-
-class EventStatuses(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    event_status_name = models.TextField(max_length=50, unique=True)
-    description = models.TextField(blank=True)
-    when_created = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        app_label = 'voicewake'
-        managed = True
-        db_table = 'event_statuses'
 
 
 class EventToneTranslations(models.Model):
@@ -341,14 +337,15 @@ class Events(models.Model):
     id = models.BigAutoField(primary_key=True)
     user_event_role = models.ForeignKey('UserEventRoles', on_delete=models.CASCADE, blank=True, null=True, default=None)
     event_tone = models.ForeignKey('EventTones', on_delete=models.SET_NULL, blank=True, null=True, default=None)
-    event_status = models.ForeignKey(EventStatuses, on_delete=models.PROTECT, blank=True, null=True, default=None)
-    event_room = models.ForeignKey(EventRooms, on_delete=models.SET_NULL, blank=True, null=True, default=None)
-    event_name = models.TextField(max_length=40)
+    event_room = models.ForeignKey(EventRooms, on_delete=models.CASCADE, blank=True, null=True, default=None)
+    audio_file = models.FileField(blank=True, null=True, upload_to=determine_event_audio_file_path_and_name)
+    audio_volume_peaks = ArrayField(
+        models.DecimalField(default=0, max_digits=3, decimal_places=2), #0 to 0.49 to 1
+        size=20,    #if size changes, change at get_default_audio_volume_peaks too
+        default=get_default_audio_volume_peaks
+    )
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
-    when_locked = models.DateTimeField(blank=True, null=True, default=None)
-        #locked when currently viewed by a user
-    audio_file = models.FileField(blank=True, null=True, upload_to=determine_event_audio_file_path_and_name)
 
     class Meta:
         app_label = 'voicewake'
@@ -372,10 +369,22 @@ class Languages(models.Model):
         return self.language_name
 
 
+class SeenEventRooms(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    user = models.ForeignKey('AuthUser', on_delete=models.CASCADE)
+    event_room = models.ForeignKey('EventRooms', on_delete=models.CASCADE)
+    when_created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = 'voicewake'
+        managed = True
+        db_table = 'seen_event_rooms'
+
+
 class UserEventRoles(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey('AuthUser', on_delete=models.CASCADE, blank=True, null=True, default=None)
-    event_role = models.ForeignKey(EventRoles, on_delete=models.PROTECT, blank=True, null=True, default=None)
+    user = models.ForeignKey('AuthUser', on_delete=models.CASCADE)
+    event_role = models.ForeignKey(EventRoles, on_delete=models.PROTECT)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
@@ -447,7 +456,7 @@ class UserVerificationStatuses(models.Model):
 
 class UserDetails(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.OneToOneField('AuthUser', on_delete=models.CASCADE, blank=True, null=True, default=None, unique=True)
+    user = models.OneToOneField('AuthUser', on_delete=models.CASCADE, unique=True)
     country = models.ForeignKey('Countries', on_delete=models.SET(get_default_country), blank=True, null=True, default=None)
     language = models.ForeignKey('Languages', on_delete=models.SET(get_default_language), blank=True, null=True, default=None)
     user_display_name = models.TextField(max_length=20)

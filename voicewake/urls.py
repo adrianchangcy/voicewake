@@ -35,7 +35,9 @@ urlpatterns = [
     # path('user_verification_options/', views.user_verification_options_list),
     # path('user_verification_options/<int:id>/', views.user_verification_options_details),
     path('', include(router.urls)),
-    path('events/by-event-room/<int:event_room_id>', views.EventsAPI.as_view(), name='get_events_by_event_room_id'),
+    path('api/events/get/by-event-room/<int:event_room_id>', views.EventsAPI.as_view(), name='get_events_by_event_room_id'),
+    path('api/events/create', views.EventsAPI.as_view(), name='create_events'),
+    path('api/event-likes-dislikes', views.EventLikesDislikesAPI.as_view(), name='event_likes_dislikes'),
     
     #user management
     #refer to link below for all URLs/APIs already provided
