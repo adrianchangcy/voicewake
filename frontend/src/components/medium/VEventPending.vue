@@ -5,20 +5,21 @@
         <div v-for="reply_event in 3" :key="reply_event">
 
             <div
-                class="w-full block border-2 border-theme-light-gray shade-border-when-hover rounded-lg px-4 py-6 transition-colors duration-200 ease-in-out"
+                class="w-full block border-2 border-theme-light-gray rounded-lg px-4 py-6 transition-colors duration-200 ease-in-out"
                 @click.stop="redirectToThisPost(reply_event, $event)"
             >
-                <div class="h-fit text-xl pb-4">
+                <!--title-->
+                <div class="h-fit pb-4">
                     <!--title from user 1-->
-                    <span>
+                    <p class="text-xl">
                         I have something to tell you!!
-                    </span>
+                    </p>
                     <!--last updated-->
-                    <span class="text-base font-light">
-                        &nbsp;&mdash;&nbsp;10 minutes ago
-                    </span>
+                    <p class="when-created      text-base font-light">
+                        10 minutes ago
+                    </p>
                 </div>
-
+                
                 <div class="w-full h-fit flex flex-col gap-8">
 
                     <!--user 1-->

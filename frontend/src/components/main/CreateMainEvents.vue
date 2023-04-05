@@ -1,10 +1,11 @@
 <template>
 
-    <div class="md:w-2/4 lg:w-3/6 xl:w-2/6 mx-auto h-fit bg-theme-light text-left text-lg px-[5%] pb-20">
+    <div>
 
         <VSectionTitle
             propTitle="Say"
             propTitleDescription="Fill in the fields below"
+            v-if="propIsOriginator === true"
         />
 
         <form
@@ -21,6 +22,7 @@
                 :propHasTextCounter="true"
                 :propHasStatusText="false"
                 @newValue="handleNewEventName($event)"
+                v-if="propIsOriginator === true"
             />
 
             <!--fields for open/close-->
@@ -148,6 +150,18 @@
                 max_duration: 10000,    //2m + 0.5s, as final_blob is always +-0.1s away
             };
         },
+        props: {
+            propIsOriginator: {
+                type: Boolean,
+                required: true,
+                default: true
+            },
+            propEventRoomId: {
+                type: Number,
+                required: false,
+                default: null
+            },
+        },
         watch: {
             is_event_tone_menu_open(new_value){
 
@@ -168,7 +182,10 @@
             canSubmit() : boolean {
 
                 if(
-                    this.event_name.trim() !== '' &&
+                    (
+                        (this.propIsOriginator === true && this.event_name.trim() !== '') ||
+                        (this.propIsOriginator === false && this.propEventRoomId !== null)
+                    ) &&
                     this.event_tone_choice !== null &&
                     this.final_blob !== null
                 ){
@@ -194,11 +211,33 @@
 
                 let data = new FormData();
                 
-                data.append("event_name", this.event_name);
-                data.append("event_tone_id", (this.event_tone_choice as EventToneTypes)['id'].toString());
-                data.append("audio_file", this.final_blob as Blob);
+                //prepare data
+                data.append('event_tone_id', (this.event_tone_choice as EventToneTypes)['id'].toString());
+                data.append('audio_file', this.final_blob as Blob);
+                data.append('is_originator', JSON.stringify(this.propIsOriginator));
 
-                axios.post('say', data)
+                //prepare array in this specific way
+                for(let x=0; x < this.blob_volume_peaks.length; x++){
+
+                    data.append('audio_volume_peaks', JSON.stringify(this.blob_volume_peaks[x]));
+                }
+
+                if(this.propIsOriginator === true && this.event_name.trim() !== ''){
+
+                    //originator, paired data
+                    data.append('event_room_name', this.event_name);
+
+                }else if(this.propIsOriginator === false && this.propEventRoomId !== null){
+
+                    //responder, paired data
+                    data.append('event_room_id', JSON.stringify(this.propEventRoomId));
+
+                }else{
+
+                    return;
+                }
+                
+                await axios.post('http://127.0.0.1:8000/api/events/create', data)
                 .then((response:any) => console.log(response))
                 .catch((errors:any) => console.log(errors));
             },

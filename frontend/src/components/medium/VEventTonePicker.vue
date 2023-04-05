@@ -95,6 +95,9 @@
                 await axios.get('http://127.0.0.1:8000/api/event-tones')
                 .then((results) => {
                     this.event_tones = results.data;
+                })
+                .catch((errors:any) => {
+                    console.log(errors);
                 });
             },
             toggleEventTonePicker(){

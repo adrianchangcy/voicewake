@@ -2,6 +2,7 @@
     <div class="h-10 flex flex-row text-xl">
         <!--like-->
         <button
+            ref="like_button"
             @click.stop="handleLiked()"
             class="w-fit h-full px-2 flex flex-row rounded-lg shade-when-hover transition-colors duration-200 ease-in-out"
             type="button"
@@ -28,6 +29,7 @@
         </button>
         <!--dislike-->
         <button
+            ref="dislike_button"
             @click.stop="handleDisliked()"
             class="w-fit h-full px-2 flex flex-row rounded-lg shade-when-hover transition-colors duration-200 ease-in-out"
             type="button"
@@ -65,6 +67,7 @@
     import { defineComponent } from 'vue';
     import anime from 'animejs';
     import { prettyCount } from '@/helper_functions';
+    const axios = require('axios');
 
     export default defineComponent({
         data(){
@@ -72,12 +75,14 @@
                 is_liked: null as boolean|null,
                 like_count: 0,
                 dislike_count: 0,
+                submit_interval: null as number|null,
             };
         },
         props: {
             propEventId: {
                 type: Number,
                 required: true,
+                default: null,
             },
             propLikeCount: {
                 type: Number,
@@ -91,7 +96,7 @@
             },
             propIsLiked: {
                 type: Boolean,
-                required: true,
+                required: false,
                 default: null,
             },
         },
@@ -126,13 +131,15 @@
         },
         mounted(){
 
+            this.axiosSetup();
+
             //store props into variables
             this.is_liked = this.propIsLiked;
             this.like_count = this.propLikeCount;
             this.dislike_count = this.propDislikeCount;
 
-            //we expect counts from REST API to also include user's own
-            //if user has already liked/disliked, -1 from like_count/dislike_count
+            //we expect counts from REST API to also include user's own like/dislike
+            //if user has like/dislike, we -1 first, so at computed, we can +1 for existing or new like/dislike
             if(this.propIsLiked === true){
 
                 this.like_count -= 1;
@@ -143,7 +150,58 @@
             }
         },
         methods: {
+            submitLikeDislike(old_is_liked:null|boolean) : void {
+
+                if(this.propEventId === null){
+
+                    return;
+                }
+
+                if(this.submit_interval !== null){
+
+                    clearTimeout(this.submit_interval);
+                }
+
+                //we use this to counter spammed clicking
+                this.submit_interval = window.setTimeout(()=>{
+
+                    let data = new FormData();
+                
+                    data.append('event_id', JSON.stringify(this.propEventId));
+
+                    if(this.is_liked === null){
+
+                        //delete
+                        axios.post('http://127.0.0.1:8000/api/event-likes-dislikes', data)
+                        .then(() => {})
+                        .catch(() => {
+                            //revert
+                            this.is_liked = old_is_liked;
+                        });
+
+                    }else{
+
+                        //create
+                        data.append('is_liked', JSON.stringify(this.is_liked));
+
+                        axios.put('http://127.0.0.1:8000/api/event-likes-dislikes', data)
+                        .then(() => {})
+                        .catch(() => {
+                            //revert
+                            this.is_liked = old_is_liked;
+                        });
+                    }
+                }, 500);
+            },
             handleLiked() : void {
+
+                if(this.propEventId === null){
+
+                    return;
+                }
+
+                //we want current is_liked before next change so that we can revert when needed
+                const old_is_liked = this.is_liked;
 
                 if(this.is_liked === null || this.is_liked === false){
 
@@ -155,8 +213,18 @@
                     this.is_liked = null;
                     this.animeLikeDislike('like', false);
                 }
+
+                this.submitLikeDislike(old_is_liked);
             },
             handleDisliked() : void {
+
+                if(this.propEventId === null){
+
+                    return;
+                }
+
+                //we want current is_liked before next change so that we can revert when needed
+                const old_is_liked = this.is_liked;
 
                 if(this.is_liked === null || this.is_liked === true){
 
@@ -168,6 +236,8 @@
                     this.is_liked = null;
                     this.animeLikeDislike('dislike', false);
                 }
+
+                this.submitLikeDislike(old_is_liked);
             },
             animeLikeDislike(like_or_dislike:'like'|'dislike', is_adding:boolean) : void {
 
@@ -225,6 +295,21 @@
                         easing: 'linear',
                     });
                 }
+            },
+            axiosSetup() : boolean {
+
+                //your template must have {% csrf_token %}
+                let token = document.getElementsByName("csrfmiddlewaretoken")[0];
+
+                if(token === undefined){
+
+                    console.log('CSRF not found.');
+                    return false;
+                }
+
+                axios.defaults.headers.common['X-CSRFToken'] = (token as HTMLFormElement).value;
+                axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
+                return true;
             },
         },
     });

@@ -5,7 +5,6 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from datetime import datetime, timedelta
 from django.utils import timezone
-from pkg_resources import require
 
 from voicewake.models import *
 
@@ -28,11 +27,28 @@ class UserSignUpForm(UserCreationForm):
 
 
 
+class CreateResponderEventsForm(forms.Form):
+
+    event_tone_id = forms.IntegerField(
+        required=True,
+    )
+
+    audio_file = forms.FileField(
+        required=True,
+        allow_empty_file=False,
+    )
+
+    event_room_id = forms.IntegerField(
+        required=True,
+    )
+
+
 class CreateMainEventsForm(forms.Form):
 
-    event_name = forms.CharField(
-        required=True,
-        max_length=40,
+    event_room_name = forms.CharField(
+        required=False,
+        min_length=1,
+        max_length=200, #follow EventRooms.event_room_name
     )
     
     event_tone_id = forms.IntegerField(
