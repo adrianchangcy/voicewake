@@ -1,24 +1,24 @@
 <template>
-    <div class="h-10 flex flex-row text-xl">
+    <div class="w-fit h-10 flex flex-row text-xl gap-0.5">
         <!--like-->
         <button
             ref="like_button"
             @click.stop="handleLiked()"
-            class="w-fit h-full px-2 flex flex-row rounded-lg shade-when-hover transition-colors duration-200 ease-in-out"
+            class="w-fit h-full px-3 flex flex-row bg-theme-light/60    hover:bg-theme-light/80 hover:border-theme-light-trim/40 hover:shadow-sm       border-t-2 border-theme-light-trim rounded-full rounded-r-none shadow-md transition duration-150 ease-in-out"
             type="button"
         >
             <!--like button-->
             <div
-                class="w-6 h-full relative text-xl"
+                class="w-6 h-full relative"
                 ref="like_logo"
             >
                 <i
                     :class="[
                         is_liked === true ? 'text-theme-black' : 'text-theme-black/0',
-                        'absolute w-fit h-fit fas fa-thumbs-up left-0 right-0 top-0 bottom-0 m-auto transition-colors duration-200 ease-in-out'
+                        'absolute w-fit h-fit fas fa-thumbs-up left-0 right-0 top-0 bottom-0.5 m-auto transition-colors duration-200 ease-in-out'
                     ]"
                 ></i>
-                <i class="absolute w-fit h-fit far fa-thumbs-up left-0 right-0 top-0 bottom-0 m-auto"></i>
+                <i class="absolute w-fit h-fit far fa-thumbs-up left-0 right-0 top-0 bottom-0.5 m-auto"></i>
             </div>
             <!--like count-->
             <div class="w-10 h-full relative text-base font-medium">
@@ -31,7 +31,7 @@
         <button
             ref="dislike_button"
             @click.stop="handleDisliked()"
-            class="w-fit h-full px-2 flex flex-row rounded-lg shade-when-hover transition-colors duration-200 ease-in-out"
+            class="w-fit h-full px-3 flex flex-row bg-theme-light/60    hover:bg-theme-light/80 hover:border-theme-light-trim/40 hover:shadow-sm       border-t-2 border-theme-light-trim rounded-full rounded-l-none shadow-md transition duration-150 ease-in-out"
             type="button"
         >
             <!--dislike button-->
@@ -42,10 +42,10 @@
                 <i
                     :class="[
                         is_liked === false ? 'text-theme-black' : 'text-theme-black/0',
-                        'absolute w-fit h-fit fas fa-thumbs-down -scale-x-100 left-0 right-0 top-1 bottom-0 m-auto transition-colors duration-200 ease-in-out'
+                        'absolute w-fit h-fit fas fa-thumbs-down left-0 right-0 top-2 bottom-0 m-auto transition-colors duration-200 ease-in-out'
                     ]"
                 ></i>
-                <i class="absolute w-fit h-fit far fa-thumbs-down -scale-x-100 left-0 right-0 top-1 bottom-0 m-auto"></i>
+                <i class="absolute w-fit h-fit far fa-thumbs-down left-0 right-0 top-2 bottom-0 m-auto"></i>
             </div>
             <!--dislike count-->
             <div class="w-10 h-full relative text-base font-medium">
@@ -150,7 +150,7 @@
             }
         },
         methods: {
-            submitLikeDislike(old_is_liked:null|boolean) : void {
+            submitLikeDislike() : void {
 
                 if(this.propEventId === null){
 
@@ -162,35 +162,30 @@
                     clearTimeout(this.submit_interval);
                 }
 
-                //we use this to counter spammed clicking
+                //we use this to counter spam-clicking
                 this.submit_interval = window.setTimeout(()=>{
 
                     let data = new FormData();
                 
                     data.append('event_id', JSON.stringify(this.propEventId));
+                    data.append('is_liked', JSON.stringify(this.is_liked));
 
-                    if(this.is_liked === null){
+                    axios.post('http://127.0.0.1:8000/api/event-likes-dislikes', data)
+                    .then(() => {})
+                    .catch(() => {
 
-                        //delete
-                        axios.post('http://127.0.0.1:8000/api/event-likes-dislikes', data)
-                        .then(() => {})
-                        .catch(() => {
-                            //revert
-                            this.is_liked = old_is_liked;
-                        });
+                        //revert
+                        //we want to do this with logic instead of simply using previous value
+                        //because on fail, previous value is inaccurate when spam-clicked
+                        if(this.is_liked === true){
 
-                    }else{
+                            this.handleLiked();
 
-                        //create
-                        data.append('is_liked', JSON.stringify(this.is_liked));
+                        }else if(this.is_liked === false){
 
-                        axios.put('http://127.0.0.1:8000/api/event-likes-dislikes', data)
-                        .then(() => {})
-                        .catch(() => {
-                            //revert
-                            this.is_liked = old_is_liked;
-                        });
-                    }
+                            this.handleDisliked();
+                        }
+                    });
                 }, 500);
             },
             handleLiked() : void {
@@ -199,9 +194,6 @@
 
                     return;
                 }
-
-                //we want current is_liked before next change so that we can revert when needed
-                const old_is_liked = this.is_liked;
 
                 if(this.is_liked === null || this.is_liked === false){
 
@@ -214,7 +206,7 @@
                     this.animeLikeDislike('like', false);
                 }
 
-                this.submitLikeDislike(old_is_liked);
+                this.submitLikeDislike();
             },
             handleDisliked() : void {
 
@@ -222,9 +214,6 @@
 
                     return;
                 }
-
-                //we want current is_liked before next change so that we can revert when needed
-                const old_is_liked = this.is_liked;
 
                 if(this.is_liked === null || this.is_liked === true){
 
@@ -237,7 +226,7 @@
                     this.animeLikeDislike('dislike', false);
                 }
 
-                this.submitLikeDislike(old_is_liked);
+                this.submitLikeDislike();
             },
             animeLikeDislike(like_or_dislike:'like'|'dislike', is_adding:boolean) : void {
 

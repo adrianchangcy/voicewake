@@ -1,23 +1,49 @@
 <template>
     <div class="flex flex-col gap-8">
-        <div>
+
+        <!--originator-->
+        <div
+            v-if="originator_event !== null"
+        >
+            <div class="w-full h-fit grid grid-cols-8 gap-2">
+                <div class="col-span-2 relative border border-theme-light-gray rounded-2xl">
+                    <span class="text-3xl w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">{{ originator_event.event_tone.event_tone_symbol }}</span>
+                </div>
+                <div class="col-span-6">
+                    <VPlayback/>
+                </div>
+            </div>
+            <VLikeDislike
+                :propEventId="originator_event.id"
+                :propLikeCount="originator_event.like_count"
+                :propDislikeCount="originator_event.dislike_count"
+                :propIsLiked="originator_event.is_liked_by_user"
+            />
+        </div>
+
+        <!--responders-->
+        <div
+            v-for="event in responder_events" :key="event.id"
+        >
+            <VUser
+                :propUsername="event.user_event_role.user.username"
+            />
             <div class="py-1">
                 <VPlayback
-                    ref="originator_audio"
                 />
             </div>
             <VLikeDislike
-                :propEventId="45"
-                :propLikeCount="999999"
-                :propDislikeCount="1"
-                :propIsLiked="null"
+                :propEventId="event.id"
+                :propLikeCount="event.like_count"
+                :propDislikeCount="event.dislike_count"
+                :propIsLiked="event.is_liked_by_user"
             />
         </div>
 
         <!--responders-->
         <CreateMainEvents
             :propIsOriginator="false"
-            :propEventRoomId="15"
+            :propEventRoomId="4"
         />
     </div>
 </template>
@@ -29,6 +55,7 @@
     import VPlayback from '/src/components/medium/VPlayback.vue';
     import VLikeDislike from '/src/components/medium/VLikeDislike.vue';
     import CreateMainEvents from '/src/components/main/CreateMainEvents.vue';
+    import VUser from '/src/components/small/VUser.vue';
 
 </script>
 
@@ -36,19 +63,29 @@
 <script lang="ts">
     import { defineComponent } from 'vue';
     import { timeDifferenceUTC } from '@/helper_functions';
+    import EventTypes from '@/types/Events.interface';
     const axios = require('axios');
 
     export default defineComponent({
         data() {
             return {
                 event_room_id: null as number|null,
-                events: [],
+                originator_event: null as EventTypes|null,
+                responder_events: [] as EventTypes[],
             };
         },
         beforeMount(){
         
-
             const container = document.getElementsByClassName('event-room')[0];
+
+            //get event_room_id
+            this.event_room_id = parseInt(container.getAttribute('data-event-room-id') as string);
+
+            //check for empty element, e.g. when deleted
+            if(container.getElementsByClassName('when-created').length === 0){
+
+                return;
+            }
 
             //change '1 Jan 2023' to '1 century ago'
             //we are passing 'YYYY-MM-DD HH:mm:ss' from template
@@ -56,29 +93,41 @@
             const when_created_element = container.getElementsByClassName('when-created')[0];
             const when_created = (container.getAttribute('data-when-created') as string).replace(/ /g, 'T') + 'Z';
             when_created_element.textContent = timeDifferenceUTC(new Date(when_created));
-
-            //get event_room_id
-            this.event_room_id = parseInt(container.getAttribute('data-event-room-id') as string);
         },
         mounted(){
 
             //get responders
-            this.getResponders();
+            this.getEvents();
         },
         methods: {
-            async getResponders(){
+            async getEvents(){
 
                 if(this.event_room_id === null){
 
                     return;
                 }
 
-                //prepare responder events
+                //prepare events, then separate
                 await axios.get('http://127.0.0.1:8000/api/events/get/by-event-room/' + this.event_room_id.toString())
                 .then((results:any) => {
-                    this.events = results.data;
+                    console.log(results.data);
+                    //separate originator from responder
+                    //doing it via loop, instead of relying on [0] being originator, helps us guarantee our event placements
+                    for(let x=0; x < results.data.length; x++){
+
+                        if((results.data[x] as EventTypes).user_event_role.event_role.event_role_name === 'originator'){
+
+                            this.originator_event = results.data[x];
+
+                        }else{
+
+                            return;
+                            // this.responder_events.push(results.data[x]);
+                        }
+                    }
                 })
                 .catch((errors:any) => {
+
                     console.log(errors);
                 });
             },

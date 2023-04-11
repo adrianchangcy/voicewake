@@ -13,14 +13,14 @@
         <div
             :class="[
                 propIsSticky ? 'bg-theme-light/60 backdrop-blur border-t border-theme-black/5' : '',
-                'h-[6.25rem] text-center relative'
+                'h-20 text-center relative'
             ]"
         >
 
             <!--recording visualiser-->
             <div
                 ref="recording_visualiser"
-                class="absolute w-[6.25rem] h-[6.25rem] left-0 right-0 top-0 bottom-0 m-auto opacity-0 hidden"
+                class="absolute w-20 h-20 left-0 right-0 top-0 bottom-0 m-auto opacity-0 hidden"
             >
             <div class="relative w-full h-full">
                 <div
@@ -47,14 +47,32 @@
                 ref="playback_main"
                 :class="[
                     propAudio === null ? 'border-theme-light-gray/10' : 'border-theme-light-gray',
-                    'w-full h-fit absolute left-0 right-0 top-0 bottom-0 m-auto text-theme-black border rounded-2xl p-2'
+                    propIsSticky === false ? 'border rounded-2xl' : '',
+                    'w-full h-full absolute grid grid-rows-2 grid-cols-4 gap-x-1 left-0 right-0 top-0 bottom-0 m-auto text-theme-black px-2'
                 ]"
             >
+                <!--play/pause-->
+                <div class="row-start-1 row-span-2 col-start-1 col-span-1 text-4xl">
+                    <button
+                        ref="play_pause_button"
+                        @click="togglePlaybackPlayPause()"
+                        class="w-full h-full shade-when-hover transition-colors duration-200 ease-in-out rounded-2xl"
+                        :disabled="propAudio === null"
+                        type="button"
+                    >
+                        <i
+                            :class="[
+                                is_playing? 'fa-pause' : 'fa-play',
+                                'fas'
+                            ]"
+                        ></i>
+                    </button>
+                </div>
                 <!--ripples, slider-->
                 <div
                     :class="[
                         propAudio === null ? 'opacity-10 cursor-default' : 'opacity-100 cursor-pointer',
-                        'h-10 w-full relative'
+                        'row-start-1 row-span-1 col-start-2 col-span-4 relative'
                     ]"
                 >
                     <!--ripples-->
@@ -80,7 +98,7 @@
                         </div>
                     </div>
                     <!--slider-->
-                    <div class="left-2 right-2 m-auto h-10 absolute bottom-0">
+                    <div class="left-2 right-2 m-auto h-full absolute bottom-0">
                         <div
                             ref="playback_slider"
                             :class="[
@@ -119,12 +137,12 @@
                 <div
                     :class="[
                         propAudio === null ? 'opacity-10' : 'opacity-100',
-                        'mx-2 h-10 grid grid-rows-1 grid-cols-5'
+                        'row-start-2 row-span-1 col-start-2 col-span-4 mx-2 grid grid-rows-1 grid-cols-3'
                     ]"
                 >
                     <!--current duration-->
                     <div class="row-start-1 row-span-1 col-start-1 col-span-1 relative text-base font-medium">
-                        <span class="absolute w-10 h-fit left-0 top-0 bottom-0 m-auto">{{pretty_current_playback_time}}</span>
+                        <span class="absolute w-fit h-fit left-0 top-0 bottom-0 m-auto">{{pretty_current_playback_time}}</span>
                     </div>
                     <!--volume-->
                     <div
@@ -169,102 +187,8 @@
                             </VBox>
                         </TransitionFade>
                     </div>
-                    <!--play/pause-->
-                    <div class="row-start-1 row-span-1 col-start-3 col-span-1 h-full text-3xl">
-                    <button
-                        ref="play_pause_button"
-                        @click="togglePlaybackPlayPause()"
-                        class="w-full h-full shade-when-hover transition-colors duration-200 ease-in-out rounded-md"
-                        :disabled="propAudio === null"
-                        type="button"
-                    >
-                        <i
-                            :class="[
-                                is_playing? 'fa-pause' : 'fa-play',
-                                'fas'
-                            ]"
-                        ></i>
-                    </button>
-                    </div>
-                    <!--rate-->
-                    <div
-                        v-if="propIsForRecording === false"
-                        ref="playback_speed_options_opener"
-                        class="row-start-1 row-span-1 col-start-4 col-span-1 h-full text-xl relative"
-                    >
-                        <!--open/close rate-->
-                        <button
-                            @click="togglePlaybackSpeedOptions()"
-                            class="w-full h-full shade-when-hover transition-colors duration-200 ease-in-out rounded-md"
-                            :disabled="propAudio === null"
-                            type="button"
-                        >
-                            <i
-                                :class="[
-                                    is_playback_speed_options_open ? '-rotate-90' : 'rotate-0',
-                                    'fas fa-forward transition-transform duration-200 ease-in-out'
-                                ]"
-                            ></i>
-                        </button>
-                        <!--rate menu-->
-                        <TransitionFade>
-                            <VBox
-                                v-show="is_playback_speed_options_open"
-                                :propIsOpaque="true"
-                                v-click-outside="{
-                                    var_name_for_element_bool_status: 'is_playback_speed_options_open',
-                                    refs_to_exclude: ['playback_speed_options_opener']
-                                }"
-                                class="w-full h-[300%] absolute left-0 right-0 bottom-[110%] m-auto"
-                            >
-                                <div
-                                    class="
-                                        w-full h-full text-center text-theme-black p-1
-                                        grid grid-rows-3 divide-y divide-theme-black/5
-                                    "
-                                >
-                                    <div class="row-span-1">
-                                        <button
-                                            @click="changePlaybackRate(1.5)"
-                                            :class="[
-                                                playback_rate === 1.5 ? 'bg-theme-lead' : 'bg-none shade-when-hover',
-                                                'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-sm'
-                                            ]"
-                                            type="button"
-                                        >
-                                            1.5
-                                        </button>
-                                    </div>
-                                    <div class="row-span-1">
-                                        <button
-                                            @click="changePlaybackRate(1)"
-                                            :class="[
-                                                playback_rate === 1 ? 'bg-theme-lead' : 'bg-none shade-when-hover',
-                                                'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-sm'
-                                            ]"
-                                            type="button"
-                                        >
-                                            1
-                                        </button>
-                                    </div>
-                                    <div class="row-span-1">
-                                        <button
-                                            @click="changePlaybackRate(0.5)"
-                                            :class="[
-                                                playback_rate === 0.5 ? 'bg-theme-lead' : 'bg-none shade-when-hover',
-                                                'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-sm'
-                                            ]"
-                                            type="button"
-                                        >
-                                            0.5
-                                        </button>
-                                    </div>
-                                </div>
-                            </VBox>
-                        </TransitionFade>
-                    </div>
                     <!--total duration-->
-                    <div class="row-start-1 row-span-1 col-start-5 col-span-1 relative text-base font-medium">
+                    <div class="row-start-1 row-span-1 col-start-3 col-span-1 relative text-base font-medium">
                         <span class="absolute w-fit h-fit right-0 top-0 bottom-0 m-auto">{{pretty_playback_duration}}</span>
                     </div>
                 </div>
@@ -272,6 +196,7 @@
         </div>
     </div>
 </template>
+
 
 
 <script setup lang="ts">
@@ -390,7 +315,7 @@
             },
             propAudio: {
                 type: Object as PropType<Blob> | PropType<File> | null,
-                default: null,
+                default: new Blob,
             },
             propIsRecording: Boolean,
             propRecordingVisualiserVolume: Number,    //0-1

@@ -55,6 +55,9 @@ INSTALLED_APPS = [
 
     #fontawesome, installed via requirements.txt
     'fontawesomefree',
+
+    #debug
+    'debug_toolbar',
 ]
 
 #if you have issues with bootstrap, try this:
@@ -62,6 +65,7 @@ INSTALLED_APPS = [
 # CRISPY_TEMPLATE_PACK = 'bootstrap5'
 
 MIDDLEWARE = [
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -129,6 +133,12 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
+#not needed, but required by django-debug-toolbar
+INTERNAL_IPS = [
+    '127.0.0.1',
+]
+
+
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
 
@@ -175,7 +185,12 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
-    ]
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+        'rest_framework.permissions.IsAdminUser',
+    ],
 }
 
 

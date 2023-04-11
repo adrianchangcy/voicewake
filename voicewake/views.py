@@ -1,6 +1,6 @@
 from django import views
 from django.http import JsonResponse, QueryDict
-from django.db.models import Case, Value, When, Sum, Q
+from django.db.models import Case, Value, When, Sum, Q, F, Count
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required, permission_required
@@ -15,7 +15,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework import viewsets, generics
     #ModelViewSet has: list, create, retrieve, update, partial_update, destroy
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, IsAuthenticatedOrReadOnly
 from django.views.generic.edit import FormView
 from django.views.generic.list import ListView
 from django.views.generic import TemplateView
@@ -276,6 +276,13 @@ def first_time_setup():
             name='regular'
         )
 
+    if GenericStatuses.objects.count() == 0:
+
+        GenericStatuses.objects.bulk_create([
+            GenericStatuses(generic_status_name='ok'),
+            GenericStatuses(generic_status_name='deleted'),
+        ])
+
     if EventRoles.objects.count() == 0:
 
         EventRoles.objects.bulk_create([
@@ -365,6 +372,7 @@ class UserVerificationOptionsAPI(PermissionPolicyMixin, viewsets.ModelViewSet):
 class EventTonesAPI(viewsets.ReadOnlyModelViewSet):
 
     serializer_class = EventTonesSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
     queryset = EventTones.objects.all()
 
     def get_queryset(self):
@@ -384,34 +392,11 @@ class EventTonesAPI(viewsets.ReadOnlyModelViewSet):
             return EventTones.objects.all()
 
 
-class LanguagesAPI(viewsets.ModelViewSet):
-
-    serializer_class = LanguagesSerializer
-    permission_classes = [IsAuthenticated]
-    queryset = Languages.objects.all()
-
-    def get_queryset(self):
-
-        #allow max 50 rows
-        queryset = Languages.objects.all()[:50]
-
-        search = self.request.query_params.get('search')
-
-        if search is not None:
-
-            #part of search optimisation is "... field_name LIKE 'string%' OR field_name LIKE '%string%'"
-            #Q is used to encapsulate a collection of keyword arguments
-            queryset = Languages.objects.filter(
-                        Q(language_name__istartswith=search)|Q(language_name__icontains=search)
-                        )[:10]
-
-        return queryset
-
-
 #we get events via event_room, as they all must belong to a room
 class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
     serializer_class = GetEventsSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
     queryset = None
 
     def get_queryset(self):
@@ -422,39 +407,50 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
         else:
 
-            return []        
+            return []
 
-        events = Events.objects.filter(
-            event_room=EventRooms(pk=event_room_id)
-        ).annotate(
-            like_count=Sum(
-                Case(
-                    When(eventlikesdislikes__is_liked=True, then=Value(1)),
-                    default=0
-                )
+        events = Events.objects.raw(
+            '''
+            SELECT
+                events.*,
+                event_tones.*,
+                generic_statuses.*,
+                SUM(
+                    CASE 
+                    WHEN event_likes_dislikes.is_liked='true' AND event_likes_dislikes.event_id IN (events.id) THEN 1
+                    ELSE 0
+                    END
+                ) AS like_count,
+                SUM(
+                    CASE
+                    WHEN event_likes_dislikes.is_liked='false' AND event_likes_dislikes.event_id IN (events.id) THEN 1
+                    ELSE 0
+                    END
+                ) AS dislike_count,
+                (CASE
+                    (
+                        SELECT event_likes_dislikes.is_liked
+                        FROM event_likes_dislikes
+                        WHERE user_id=%s
+                        AND event_id=events.id
+                    )
+                    WHEN 'true' THEN 'true'
+                    WHEN 'false' THEN 'false'
+                    ELSE null
+                    END
+                ) as is_liked_by_user
+            FROM events
+            LEFT JOIN event_likes_dislikes ON  events.id = event_likes_dislikes.event_id
+            LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
+            LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
+            WHERE events.event_room_id = %s
+            GROUP BY events.id, event_tones.id, generic_statuses.id
+            ''',
+            params=(
+                self.request.user.id,
+                event_room_id
             )
-        ).annotate(
-            dislike_count=Sum(
-                Case(
-                    When(eventlikesdislikes__is_liked=False, then=Value(1)),
-                    default=0
-                )
-            )
-        ).annotate(
-            is_liked_by_user=Case(
-                When(
-                    eventlikesdislikes__user=AuthUser(pk=self.request.user.id),
-                    eventlikesdislikes__is_liked=True,
-                    then=Value(True)
-                ),
-                When(
-                    eventlikesdislikes__user=AuthUser(pk=self.request.user.id),
-                    eventlikesdislikes__is_liked=False,
-                    then=Value(False)
-                ),
-                default=Value(None)
-            )
-        ).order_by('when_created')
+        )
 
         #you can return events.values() and skip GetEventsSerializer, but idk about the pros and cons
         return events
@@ -465,48 +461,67 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
     
     def post(self, request, *args, **kwargs):
         
+        #deserialize
         serializer = CreateEventsSerializer(data=request.data, many=False)
 
+        #validate
         if serializer.is_valid() is False:
 
             return Response(data={}, status=status.HTTP_400_BAD_REQUEST)
         
         new_data = serializer.validated_data
 
+        #determine if originator/responder, then create/get event_room
+        #generic_status is handled by default, so it is skipped here
         if new_data['is_originator'] is True:
 
-            #originator
-            user_event_role = UserEventRoles.objects.get(
-                user=AuthUser(pk = getattr(self.request.user, 'id')),
-                event_role__event_role_name='originator'
-            )
+            event_role_name = 'originator'
 
-        else:
-            
-            #responder
-            user_event_role = UserEventRoles.objects.get(
-                user=AuthUser(pk = getattr(self.request.user, 'id')),
-                event_role__event_role_name='responder'
-            )
-
-        #create event, excluding audio_file and event_room_id
-        new_event = Events.objects.create(
-            user_event_role=user_event_role,
-            event_tone=EventTones(pk=new_data['event_tone_id']),
-            audio_volume_peaks = new_data['audio_volume_peaks'],
-        )
-
-        if new_data['is_originator'] is True:
-
-            #create event_room row if user is originator
-            new_event.event_room = EventRooms.objects.create(
+            event_room = EventRooms.objects.create(
                 event_room_name=new_data['event_room_name'],
             )
 
         else:
 
-            #get specified event_room if user is responder
-            new_event.event_room = EventRooms(pk=new_data['event_room_id'])
+            event_role_name = 'responder'
+
+            try:
+
+                event_room = EventRooms.objects.get(pk=new_data['event_room_id'])
+
+            except EventRooms.DoesNotExist:
+
+                return Response(data={}, status=status.HTTP_400_BAD_REQUEST)
+
+        #user_event_role
+        try:
+
+            user_event_role = UserEventRoles.objects.get(
+                user=AuthUser(pk = getattr(self.request.user, 'id')),
+                event_role__event_role_name=event_role_name
+            )
+
+        except UserEventRoles.DoesNotExist:
+
+            return Response(data={}, status=status.HTTP_400_BAD_REQUEST)
+        
+        #event_tone
+        try:
+
+            event_tone = EventTones.objects.get(pk=new_data['event_tone_id'])
+
+        except EventTones.DoesNotExist:
+
+            return Response(data={}, status=status.HTTP_400_BAD_REQUEST)
+
+        #create event, excluding audio_file and event_room
+        #generic_status is handled by default, so it is skipped here
+        new_event = Events.objects.create(
+            user_event_role=user_event_role,
+            event_tone=event_tone,
+            audio_volume_peaks=new_data['audio_volume_peaks'],
+            event_room=event_room
+        )
 
         #we delay saving audio_file, as we want when_created first
         new_event.audio_file = new_data['audio_file']
@@ -517,84 +532,63 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         return JsonResponse(data={}, status=status.HTTP_201_CREATED)
 
 
-
-
-
-
-
 #to submit likes/dislikes
 #is_liked=True/False, or destroy when undone
 class EventLikesDislikesAPI(generics.GenericAPIView):
 
     serializer_class = EventLikesDislikesSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     #create
-    def put(self, request, *args, **kwargs):
-
-        if 'event_id' not in request.data or 'is_liked' not in request.data:
-
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-        
-        event_id = json.loads(request.data['event_id'])
-        is_liked = json.loads(request.data['is_liked'])
-
-        if type(event_id) != int or type(is_liked) != bool:
-
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-
-        #create or update
-        try:
-
-            instance = EventLikesDislikes.objects.get(
-                event=Events(pk=event_id),
-                user=AuthUser(pk=request.user.id)
-            )
-
-            instance.is_liked = is_liked
-            instance.save()
-
-        except EventLikesDislikes.DoesNotExist:
-
-            instance = EventLikesDislikes.objects.create(
-                event=Events(pk=event_id),
-                user=AuthUser(pk=request.user.id),
-                is_liked=is_liked
-            )
-
-        return Response(status=status.HTTP_200_OK)
-    
-
-    #we use POST instead of DELETE because DELETE does not have request.data
-    #more convenient than creating another URL for this
     def post(self, request, *args, **kwargs):
 
-        if 'event_id' not in request.data:
+        serializer = CreateEventLikesDislikesSerializer(data=request.data, many=False)
+
+        if serializer.is_valid() is False:
 
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
-        event_id = json.loads(request.data['event_id'])
+        new_data = serializer.validated_data
 
-        if type(event_id) != int:
-
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-
-        #get first
+        #get event
         try:
 
-            instance = EventLikesDislikes.objects.get(
-                event=Events(pk=event_id),
+            event = Events.objects.get(pk=new_data['event_id'])
+
+        except Events.DoesNotExist:
+
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        #handle is_liked
+        try:
+
+            event_like_dislike = EventLikesDislikes.objects.get(
+                event=event,
                 user=AuthUser(pk=request.user.id)
             )
-        
+
+            if new_data['is_liked'] is not None:
+
+                event_like_dislike.is_liked = new_data['is_liked']
+                event_like_dislike.save()
+
+            else:
+
+                event_like_dislike.delete()
+
         except EventLikesDislikes.DoesNotExist:
 
-            return Response(status=status.HTTP_204_NO_CONTENT)
+            if new_data['is_liked'] is not None:
 
-        #delete
-        instance.delete()
+                EventLikesDislikes.objects.create(
+                    event=event,
+                    user=AuthUser(pk=request.user.id),
+                    is_liked=new_data['is_liked']
+                )
 
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
+        #even when somehow is_liked=None and row does not exist, return OK
+        return Response(status=status.HTTP_200_OK)
+    
 
 #=====END OF REST APIs=====
 
@@ -675,7 +669,7 @@ class ViewSpecificEvents(FormView):
         try:
 
             originator_event = Events.objects.select_related(
-                'event_room'
+                'event_room', 'generic_status', 'event_tone'
             ).get(
                 event_room=EventRooms(pk=kwargs['event_room_id']),
                 user_event_role__event_role__event_role_name='originator'
@@ -690,6 +684,7 @@ class ViewSpecificEvents(FormView):
             template_name='voicewake/events/view_specific_events.html',
             context={
             'originator_event': originator_event,
+            'is_deleted': originator_event.generic_status.generic_status_name == 'deleted'
             }
         )
 

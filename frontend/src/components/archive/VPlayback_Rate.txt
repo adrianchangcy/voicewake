@@ -1,0 +1,77 @@
+                    <!--rate-->
+                    <div
+                        v-if="propIsForRecording === false"
+                        ref="playback_speed_options_opener"
+                        class="row-start-1 row-span-1 col-start-4 col-span-1 h-full text-xl relative"
+                    >
+                        <!--open/close rate-->
+                        <button
+                            @click="togglePlaybackSpeedOptions()"
+                            class="w-full h-full shade-when-hover transition-colors duration-200 ease-in-out rounded-md"
+                            :disabled="propAudio === null"
+                            type="button"
+                        >
+                            <i
+                                :class="[
+                                    is_playback_speed_options_open ? '-rotate-90' : 'rotate-0',
+                                    'fas fa-forward transition-transform duration-200 ease-in-out'
+                                ]"
+                            ></i>
+                        </button>
+                        <!--rate menu-->
+                        <TransitionFade>
+                            <VBox
+                                v-show="is_playback_speed_options_open"
+                                :propIsOpaque="true"
+                                v-click-outside="{
+                                    var_name_for_element_bool_status: 'is_playback_speed_options_open',
+                                    refs_to_exclude: ['playback_speed_options_opener']
+                                }"
+                                class="w-full h-[300%] absolute left-0 right-0 bottom-[110%] m-auto"
+                            >
+                                <div
+                                    class="
+                                        w-full h-full text-center text-theme-black p-1
+                                        grid grid-rows-3 divide-y divide-theme-black/5
+                                    "
+                                >
+                                    <div class="row-span-1">
+                                        <button
+                                            @click="changePlaybackRate(1.5)"
+                                            :class="[
+                                                playback_rate === 1.5 ? 'bg-theme-lead' : 'bg-none shade-when-hover',
+                                                'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-sm'
+                                            ]"
+                                            type="button"
+                                        >
+                                            1.5
+                                        </button>
+                                    </div>
+                                    <div class="row-span-1">
+                                        <button
+                                            @click="changePlaybackRate(1)"
+                                            :class="[
+                                                playback_rate === 1 ? 'bg-theme-lead' : 'bg-none shade-when-hover',
+                                                'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-sm'
+                                            ]"
+                                            type="button"
+                                        >
+                                            1
+                                        </button>
+                                    </div>
+                                    <div class="row-span-1">
+                                        <button
+                                            @click="changePlaybackRate(0.5)"
+                                            :class="[
+                                                playback_rate === 0.5 ? 'bg-theme-lead' : 'bg-none shade-when-hover',
+                                                'w-full h-full transition-colors duration-200 ease-in-out p-1 rounded-sm'
+                                            ]"
+                                            type="button"
+                                        >
+                                            0.5
+                                        </button>
+                                    </div>
+                                </div>
+                            </VBox>
+                        </TransitionFade>
+                    </div>
