@@ -19,7 +19,7 @@ class CountriesSerializer(serializers.ModelSerializer):
 class EventRolesSerializer(serializers.ModelSerializer):
     class Meta:
         model = EventRoles
-        fields = '__all__'
+        exclude = ['when_created']
 
 
 class EventTonesSerializer(serializers.ModelSerializer):
@@ -51,7 +51,7 @@ class UserEventRolesSerializer(serializers.ModelSerializer):
     event_role = EventRolesSerializer()
     class Meta:
         model = UserEventRoles
-        fields = '__all__'
+        exclude = ['when_created', 'last_modified']
 
 
 class EventLikesDislikesSerializer(serializers.ModelSerializer):
@@ -61,21 +61,35 @@ class EventLikesDislikesSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class GenericStatusesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GenericStatuses
+        exclude = ['when_created', 'last_modified']
+
+
 class EventRoomsSerializer(serializers.ModelSerializer):
+    generic_status = GenericStatusesSerializer()
     class Meta:
         model = EventRooms
-        fields = '__all__'
+        exclude = ['last_modified']
 
 
 class GetEventsSerializer(serializers.ModelSerializer):
+    generic_status = GenericStatusesSerializer()
+    event_tone = EventTonesSerializer()
     user_event_role = UserEventRolesSerializer()
     event_room = EventRoomsSerializer()
     like_count = serializers.IntegerField()
     dislike_count = serializers.IntegerField()
-    is_liked_by_user = serializers.BooleanField()
+    is_liked_by_user = serializers.BooleanField(allow_null=True)
     class Meta:
         model = Events
-        fields = ['id', 'audio_file', 'audio_volume_peaks', 'user_event_role', 'event_room', 'like_count', 'dislike_count', 'is_liked_by_user']
+        fields = ['id', 'generic_status', 'event_tone', 'audio_file', 'audio_volume_peaks', 'user_event_role', 'event_room', 'like_count', 'dislike_count', 'is_liked_by_user']
+
+
+class CreateEventLikesDislikesSerializer(serializers.Serializer):
+    event_id = serializers.IntegerField(required=True)
+    is_liked = serializers.BooleanField(required=True, allow_null=True)
 
 
 class CreateEventsSerializer(serializers.Serializer):

@@ -27,11 +27,11 @@ def get_current_datetime_with_tz():
 
 def get_default_country():
     #should get user's geolocation
-    return Countries.objects.get_or_create(country_name='United States of America', country_name_shortened='USA')[0]
+    return Countries.objects.get_or_create(country_name='United States of America', country_name_shortened='USA')[0].id
 
 
 def get_default_language():
-    return Languages.objects.get_or_create(country_name='English', country_name_shortened='ENG')[0]
+    return Languages.objects.get_or_create(country_name='English', country_name_shortened='ENG')[0].id
 
 
 #determine appropriate file path
@@ -61,22 +61,8 @@ def determine_event_audio_file_path_and_name(instance, filename):
     return file_path + '/' + new_file_name + '.' + file_extension
 
 
-def validate_rating(value):
-
-    if isinstance(value, int) and value >= 1 and value <= 5:
-
-        return True
-
-    else:
-
-        raise ValidationError(
-            _('%(value)s is not a valid rating between 1 and 5.'),
-            params={'value': value}
-        )
-
-
-def get_default_audio_volume_peaks():
-    return [Decimal('0')] * 20
+def get_default_generic_status():
+    return GenericStatuses.objects.get_or_create(generic_status_name='ok')[0].id
 
 
 class AuthGroup(models.Model):
@@ -292,6 +278,7 @@ class EventRoles(models.Model):
 class EventRooms(models.Model):
     id = models.BigAutoField(primary_key=True)
     event_room_name = models.TextField(max_length=200, default='-') #ensure default is never used
+    generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)
     when_locked = models.DateTimeField(blank=True, null=True, default=None)
     locked_for_user = models.ForeignKey('AuthUser', on_delete=models.SET_NULL, blank=True, null=True, default=None)
     when_created = models.DateTimeField(auto_now_add=True)
@@ -338,11 +325,13 @@ class Events(models.Model):
     user_event_role = models.ForeignKey('UserEventRoles', on_delete=models.CASCADE, blank=True, null=True, default=None)
     event_tone = models.ForeignKey('EventTones', on_delete=models.SET_NULL, blank=True, null=True, default=None)
     event_room = models.ForeignKey(EventRooms, on_delete=models.CASCADE, blank=True, null=True, default=None)
+    generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)
     audio_file = models.FileField(blank=True, null=True, upload_to=determine_event_audio_file_path_and_name)
     audio_volume_peaks = ArrayField(
         models.DecimalField(default=0, max_digits=3, decimal_places=2), #0 to 0.49 to 1
         size=20,    #if size changes, change at get_default_audio_volume_peaks too
-        default=get_default_audio_volume_peaks
+        null=True,
+        default=None
     )
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
@@ -351,6 +340,18 @@ class Events(models.Model):
         app_label = 'voicewake'
         managed = True
         db_table = 'events'
+
+
+class GenericStatuses(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    generic_status_name = models.TextField(max_length=200)
+    when_created = models.DateTimeField(auto_now_add=True)
+    last_modified = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = 'voicewake'
+        managed = True
+        db_table = 'generic_statuses'
 
 
 class Languages(models.Model):

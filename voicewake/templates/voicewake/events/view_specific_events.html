@@ -18,16 +18,25 @@
     >
 
         <!--title-->
-        <div class="h-fit pt-4 pb-4">
-            <!--title from user 1-->
-            <p class="text-xl">
-                {{originator_event.event_room.event_room_name}}
-            </p>
-            <!--last updated-->
-            <p class="when-created      text-base font-light">
-                {{originator_event.when_created|date:"j M Y"}}
-            </p>
-        </div>
+        {% if is_deleted %}
+            <div class="h-fit pt-4 pb-4">
+                <p class="text-xl font-light italic">
+                    deleted
+                </p>
+            </div>
+        {% else %}
+            <div class="h-fit pt-4 pb-4">
+                <!--title from user 1-->
+                <p class="text-xl">
+                    {{originator_event.event_room.event_room_name}}
+                </p>
+                <!--last updated-->
+                <p class="when-created      text-base font-light">
+                    {{originator_event.when_created|date:"j M Y"}}
+                </p>
+            </div>
+        {% endif %}
+
 
         <!--similar to VEventCard-->
         <!--username-->
@@ -39,7 +48,6 @@
             <span><i class="fas fa-user"></i> {{originator_event.user_event_role.user.username}}</span>
         </button>
 
-        
         <!--the rest of the content-->
         <div id="view-specific-events-app"></div>
     </div>

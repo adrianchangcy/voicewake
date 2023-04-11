@@ -30,6 +30,7 @@ router.register(r'api/event-tones', views.EventTonesAPI)
 #original URL
 urlpatterns = [
     path('admin', admin.site.urls),
+    path('__debug__/', include('debug_toolbar.urls')),
     
     #APIs
     # path('user_verification_options/', views.user_verification_options_list),
