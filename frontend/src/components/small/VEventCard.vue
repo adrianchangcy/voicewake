@@ -5,7 +5,7 @@
         <!--username-->
         <button
             @click.stop="showUserPage()"
-            class="w-fit h-10 px-2 text-base font-extralight rounded-lg shade-when-hover transition-colors duration-200 ease-in-out"
+            class="w-fit h-10 text-base font-extralight rounded-lg shade-when-hover transition-colors duration-200 ease-in-out"
             type="button"
         >
             <span><i class="fas fa-user"></i> {{propUsername}}</span>

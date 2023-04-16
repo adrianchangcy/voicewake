@@ -82,6 +82,12 @@ class GetEventsSerializer(serializers.ModelSerializer):
     like_count = serializers.IntegerField()
     dislike_count = serializers.IntegerField()
     is_liked_by_user = serializers.BooleanField(allow_null=True)
+    audio_volume_peaks = serializers.ListField(
+        child=serializers.DecimalField(min_value=0, max_value=1, max_digits=3, decimal_places=2, coerce_to_string=False),
+        min_length=20,
+        max_length=20
+    )
+
     class Meta:
         model = Events
         fields = ['id', 'generic_status', 'event_tone', 'audio_file', 'audio_volume_peaks', 'user_event_role', 'event_room', 'like_count', 'dislike_count', 'is_liked_by_user']
@@ -106,7 +112,7 @@ class CreateEventsSerializer(serializers.Serializer):
         max_length=200, #follow EventRooms.event_room_name
     )
 
-    #BooleanField has bug where if arg is not passed,
+    #BooleanField has bug where if arg is not passed and required=False,
     #it still unintentionally appears in your data with value False
     #https://github.com/encode/django-rest-framework/issues/8300
     is_originator = serializers.BooleanField(

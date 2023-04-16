@@ -11,7 +11,7 @@
             :propIsRecording="is_recording"
             :propRecordingVisualiserVolume="recording_volume"
             :propRecordingVisualiserTimeInterval="time_interval"
-            :propIsForRecording="false"
+            :propIsForRecording="true"
             :propIsOpen="propIsOpen"
             @isAnimePlaybackCompleted="handleIsAnimePlaybackCompleted($event)"
             class="z-10"
