@@ -1,59 +1,61 @@
 <template>
-    <div class="w-fit h-10 flex flex-row text-xl gap-0.5">
-        <!--like-->
-        <button
-            ref="like_button"
-            @click.stop="handleLiked()"
-            class="w-fit h-full px-3 flex flex-row bg-theme-light/60    hover:bg-theme-light/80 hover:border-theme-light-trim/40 hover:shadow-sm       border-t-2 border-theme-light-trim rounded-full rounded-r-none shadow-md transition duration-150 ease-in-out"
-            type="button"
-        >
-            <!--like button-->
-            <div
-                class="w-6 h-full relative"
-                ref="like_logo"
+    <div class="w-full h-10 text-xl grid grid-cols-8 gap-2">
+        <div class="col-span-5 h-full grid grid-cols-2 gap-0.5">
+            <!--like-->
+            <button
+                ref="like_button"
+                @click.stop="handleLiked()"
+                class="col-span-1 h-full px-3 flex flex-row bg-theme-light/60    hover:bg-theme-light/80 hover:border-theme-light-trim/40 hover:shadow-sm       border-t-2 border-theme-light-trim rounded-full rounded-r-none shadow-md transition duration-150 ease-in-out"
+                type="button"
             >
-                <i
-                    :class="[
-                        is_liked === true ? 'text-theme-black' : 'text-theme-black/0',
-                        'absolute w-fit h-fit fas fa-thumbs-up left-0 right-0 top-0 bottom-0.5 m-auto transition-colors duration-200 ease-in-out'
-                    ]"
-                ></i>
-                <i class="absolute w-fit h-fit far fa-thumbs-up left-0 right-0 top-0 bottom-0.5 m-auto"></i>
-            </div>
-            <!--like count-->
-            <div class="w-10 h-full relative text-base font-medium">
-                <span class="absolute w-fit h-fit left-1 top-0 bottom-0 m-auto">
-                    {{ prettyLikeCount }}
-                </span>
-            </div>
-        </button>
-        <!--dislike-->
-        <button
-            ref="dislike_button"
-            @click.stop="handleDisliked()"
-            class="w-fit h-full px-3 flex flex-row bg-theme-light/60    hover:bg-theme-light/80 hover:border-theme-light-trim/40 hover:shadow-sm       border-t-2 border-theme-light-trim rounded-full rounded-l-none shadow-md transition duration-150 ease-in-out"
-            type="button"
-        >
-            <!--dislike button-->
-            <div
-                class="w-6 h-full relative"
-                ref="dislike_logo"
+                <!--like button-->
+                <div
+                    class="w-6 h-full relative"
+                    ref="like_logo"
+                >
+                    <i
+                        :class="[
+                            is_liked === true ? 'text-theme-black' : 'text-theme-black/0',
+                            'absolute w-fit h-fit fas fa-thumbs-up left-0 right-0 top-0 bottom-0.5 m-auto transition-colors duration-200 ease-in-out'
+                        ]"
+                    ></i>
+                    <i class="absolute w-fit h-fit far fa-thumbs-up left-0 right-0 top-0 bottom-0.5 m-auto"></i>
+                </div>
+                <!--like count-->
+                <div class="w-full h-full relative text-base font-medium">
+                    <span class="absolute w-fit h-fit left-2 top-0 bottom-0 m-auto">
+                        {{ prettyLikeCount }}
+                    </span>
+                </div>
+            </button>
+            <!--dislike-->
+            <button
+                ref="dislike_button"
+                @click.stop="handleDisliked()"
+                class="col-span-1 h-full px-3 flex flex-row bg-theme-light/60    hover:bg-theme-light/80 hover:border-theme-light-trim/40 hover:shadow-sm       border-t-2 border-theme-light-trim rounded-full rounded-l-none shadow-md transition duration-150 ease-in-out"
+                type="button"
             >
-                <i
-                    :class="[
-                        is_liked === false ? 'text-theme-black' : 'text-theme-black/0',
-                        'absolute w-fit h-fit fas fa-thumbs-down left-0 right-0 top-2 bottom-0 m-auto transition-colors duration-200 ease-in-out'
-                    ]"
-                ></i>
-                <i class="absolute w-fit h-fit far fa-thumbs-down left-0 right-0 top-2 bottom-0 m-auto"></i>
-            </div>
-            <!--dislike count-->
-            <div class="w-10 h-full relative text-base font-medium">
-                <span class="absolute w-fit h-fit left-1 top-0 bottom-0 m-auto">
-                    {{ prettyDislikeCount }}
-                </span>
-            </div>
-        </button>
+                <!--dislike button-->
+                <div
+                    class="w-6 h-full relative"
+                    ref="dislike_logo"
+                >
+                    <i
+                        :class="[
+                            is_liked === false ? 'text-theme-black' : 'text-theme-black/0',
+                            'absolute w-fit h-fit fas fa-thumbs-down left-0 right-0 top-2 bottom-0 m-auto transition-colors duration-200 ease-in-out'
+                        ]"
+                    ></i>
+                    <i class="absolute w-fit h-fit far fa-thumbs-down left-0 right-0 top-2 bottom-0 m-auto"></i>
+                </div>
+                <!--dislike count-->
+                <div class="w-full h-full relative text-base font-medium">
+                    <span class="absolute w-fit h-fit left-2 top-0 bottom-0 m-auto">
+                        {{ prettyDislikeCount }}
+                    </span>
+                </div>
+            </button>
+        </div>
     </div>
 </template>
 

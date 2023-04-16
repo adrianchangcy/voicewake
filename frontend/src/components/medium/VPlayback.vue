@@ -22,20 +22,20 @@
                 ref="recording_visualiser"
                 class="absolute w-20 h-20 left-0 right-0 top-0 bottom-0 m-auto opacity-0 hidden"
             >
-            <div class="relative w-full h-full">
-                <div
-                    ref="recording_visualiser_circle_0"
-                    class="absolute w-full h-full scale-0 left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-yellow/60"
-                ></div>
-                <div
-                    ref="recording_visualiser_circle_1"
-                    class="absolute w-full h-full scale-0 left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-yellow/40"
-                ></div>
-                <div
-                    ref="recording_visualiser_circle_2"
-                    class="absolute w-full h-full scale-0 left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-yellow/20"
-                ></div>
-            </div>
+                <div class="relative w-full h-full">
+                    <div
+                        ref="recording_visualiser_circle_0"
+                        class="absolute w-full h-full scale-0 left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-yellow/60"
+                    ></div>
+                    <div
+                        ref="recording_visualiser_circle_1"
+                        class="absolute w-full h-full scale-0 left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-yellow/40"
+                    ></div>
+                    <div
+                        ref="recording_visualiser_circle_2"
+                        class="absolute w-full h-full scale-0 left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-yellow/20"
+                    ></div>
+                </div>
             </div>
 
             <!--
@@ -46,9 +46,8 @@
             <div
                 ref="playback_main"
                 :class="[
-                    propAudio === null ? 'border-theme-light-gray/10' : 'border-theme-light-gray',
-                    propIsSticky === false ? 'border rounded-2xl' : '',
-                    'w-full h-full absolute grid grid-rows-2 grid-cols-4 gap-x-1 left-0 right-0 top-0 bottom-0 m-auto text-theme-black px-2'
+                    propIsSticky === false ? 'border rounded-lg' : '',
+                    'w-full h-full absolute grid grid-rows-2 grid-cols-4 gap-x-1 left-0 right-0 top-0 bottom-0 m-auto pr-2 text-theme-black     opacity-10 border-theme-light-gray'
                 ]"
             >
                 <!--play/pause-->
@@ -56,7 +55,7 @@
                     <button
                         ref="play_pause_button"
                         @click="togglePlaybackPlayPause()"
-                        class="w-full h-full shade-when-hover transition-colors duration-200 ease-in-out rounded-2xl"
+                        class="w-full h-full shade-when-hover transition-colors duration-200 ease-in-out rounded-md"
                         :disabled="propAudio === null"
                         type="button"
                     >
@@ -71,14 +70,14 @@
                 <!--ripples, slider-->
                 <div
                     :class="[
-                        propAudio === null ? 'opacity-10 cursor-default' : 'opacity-100 cursor-pointer',
+                        propAudio === null ? 'cursor-default' : 'cursor-pointer',
                         'row-start-1 row-span-1 col-start-2 col-span-4 relative'
                     ]"
                 >
                     <!--ripples-->
                     <div
                         ref="volume_ripples_container"
-                        class="w-full h-6 absolute top-0 flex flex-row justify-evenly"
+                        class="left-1 right-1 h-4 absolute top-2 flex flex-row justify-evenly"
                     >
                         <div
                             v-for="volume_ripple in propBucketQuantity" :key="volume_ripple"
@@ -87,11 +86,7 @@
                         >
                             <div
                                 :class="[
-                                    (current_playback_state === playback_states[0] ? 'outline-1 outline outline-theme-dark-gray' : ''),
-                                    (current_playback_state === playback_states[1] ? 'outline-1 outline outline-theme-dark-gray' : ''),
-                                    (current_playback_state === playback_states[2] ? 'bg-theme-black' : ''),
-                                    (current_playback_state === playback_states[3] ? 'bg-theme-black' : ''),
-                                    (current_playback_state === playback_states[4] ? 'bg-theme-black' : ''),
+                                    are_volume_ripples_ok === true ? 'bg-theme-black' : 'outline-1 outline outline-theme-dark-gray',
                                     'left-0 right-0 mx-auto w-0.5 h-full'
                                 ]"
                             ></div>
@@ -133,28 +128,27 @@
                     </div>
                 </div>
 
-                <!--volume, play/pause, rate, timers-->
+                <!--volume, timers-->
                 <div
-                    :class="[
-                        propAudio === null ? 'opacity-10' : 'opacity-100',
-                        'row-start-2 row-span-1 col-start-2 col-span-4 mx-2 grid grid-rows-1 grid-cols-3'
-                    ]"
+                    class="row-start-2 row-span-1 col-start-2 col-span-4 mx-2 grid grid-rows-1 grid-cols-3"
                 >
                     <!--current duration-->
-                    <div class="row-start-1 row-span-1 col-start-1 col-span-1 relative text-base font-medium">
+                    <div class="row-start-1 row-span-1 col-start-1 col-span-1 relative text-sm font-medium">
                         <span class="absolute w-fit h-fit left-0 top-0 bottom-0 m-auto">{{pretty_current_playback_time}}</span>
                     </div>
                     <!--volume-->
                     <div
-                        v-if="propIsForRecording === false"
                         ref="playback_volume_opener"
-                        class="row-start-1 row-span-1 col-start-2 col-span-1 h-full text-xl relative"
+                        :class="[
+                            propIsForRecording === true ? 'opacity-10' : 'opacity-100',
+                            'row-start-1 row-span-1 col-start-2 col-span-1 h-full text-xl relative'
+                        ]"
                     >
                         <!--open/close volume-->
                         <button
                             @click="togglePlaybackVolumeOptions()"
                             class="w-full h-full shade-when-hover transition-colors duration-200 ease-in-out rounded-md"
-                            :disabled="propAudio === null"
+                            :disabled="propAudio === null || propIsForRecording === true"
                             type="button"
                         >
                             <i
@@ -188,7 +182,7 @@
                         </TransitionFade>
                     </div>
                     <!--total duration-->
-                    <div class="row-start-1 row-span-1 col-start-3 col-span-1 relative text-base font-medium">
+                    <div class="row-start-1 row-span-1 col-start-3 col-span-1 relative text-sm font-medium">
                         <span class="absolute w-fit h-fit right-0 top-0 bottom-0 m-auto">{{pretty_playback_duration}}</span>
                     </div>
                 </div>
@@ -239,7 +233,7 @@
                 is_playback_speed_options_open: false,
                 is_playback_volume_open: false,
 
-                playback_states: ['empty', 'recording', 'attaching', 'can_play', 'loading'],
+                playback_states: ['initiate', 'recording', 'attaching', 'can_play', 'loading'],
                 current_playback_state: null as string | null,
 
                 fastest_anime_duration_ms: 100, //to change anime durations easily
@@ -247,14 +241,27 @@
         },
         mounted(){
 
+            //when propAudioVolumePeaks.length > 0 on mounted(), means VPlayback was rendered via v-if with data already
+            //we do this here because in this case, watchers do not trigger
+            if(this.propAudioVolumePeaks.length > 0){
+
+                // this.attachRecordedAudioToPlayback();
+                console.log('ripples are adjusted from <audio>, which happens during this.attachRecordedAudioToPlayback(), so remove this when done');
+                this.current_playback_state = this.playback_states[2];
+
+            }else{
+
+                //initiate
+                this.current_playback_state = this.playback_states[0];
+            }
+
             //handle rate and volume differently
             if(this.propIsForRecording === true){
 
                 //we set rate to 1 and volume to max, and hide them
                 //there is no need for them if intended for recording, for best feedback
+                this.playback_rate = 1;
                 this.playback_volume = 1;
-                (this.$refs.audio_element as HTMLAudioElement).playbackRate = this.playback_rate;
-                (this.$refs.audio_element as HTMLAudioElement).volume = this.playback_volume;
 
             }else{
 
@@ -271,8 +278,9 @@
                 }
             }
 
-            //initialise with 'empty' state
-            this.current_playback_state = this.playback_states[0];
+            //set <audio> rate and volume
+            (this.$refs.audio_element as HTMLAudioElement).playbackRate = this.playback_rate;
+            (this.$refs.audio_element as HTMLAudioElement).volume = this.playback_volume;
 
             //attach listeners to window for mouse Y
             window.addEventListener('mousemove', this.doPlaybackDrag);
@@ -315,7 +323,7 @@
             },
             propAudio: {
                 type: Object as PropType<Blob> | PropType<File> | null,
-                default: new Blob,
+                default: null
             },
             propIsRecording: Boolean,
             propRecordingVisualiserVolume: Number,    //0-1
@@ -350,6 +358,7 @@
             },
             propIsRecording(new_value){
 
+                //started recording
                 if(new_value === true){
 
                     if(this.is_playing === true){
@@ -362,6 +371,7 @@
 
                 }else{
 
+                    //cancelled/finished recording
                     this.current_playback_state = this.playback_states[2];
                 }
             },
@@ -387,6 +397,7 @@
                         this.emitIsAnimePlaybackCompleted(true);
                     });
                 }
+                console.log(new_value);
             },
             propIsOpen(new_value){
 
@@ -404,10 +415,21 @@
                     this.pausePlayback();
                 }
             },
-            propAudioVolumePeaks(){
+        },
+        computed: {
+            are_volume_ripples_ok() : boolean {
 
-                this.adjustVolumeRipples();
-            },
+                if(
+                    this.current_playback_state === this.playback_states[0] ||
+                    this.propAudioVolumePeaks.length === 0
+                ){
+                    return false;
+
+                }else{
+
+                    return true;
+                }
+            }
         },
         methods: {
             handleKeyboardEvent(event:KeyboardEvent) : void {
@@ -947,6 +969,11 @@
 
                 //note that slider malfunctions over :disabled elements, i.e. backward/forward, etc.
 
+                if(this.propIsForRecording === true){
+
+                    return;
+                }
+
                 this.is_playback_volume_open = !this.is_playback_volume_open;
             },
             playPlayback() : void {
@@ -1030,40 +1057,20 @@
                     case this.playback_states[0]:
 
                         {
-                            //'empty', a.k.a. initial state
-                            //this is also used for hard reset
+                            //'initiate', only used once
+                            //wanted to set to 'empty' and allow for hard reset,
+                            //but too lazy to implement checks on recording cancelled + empty
 
-                            //remove related anime
-                            anime.remove([
-                                volume_ripples,
-                                recording_visualiser,
-                            ]);
-
-                            //timeline will not work here
-                            this.main_anime = anime({
-                                begin: ()=>{
-                                    //remove sunset
-                                    recording_visualiser.style.opacity = '0';
-                                    recording_visualiser.style.display = 'none';
-                                    this.resetRecordingVisualiser();
-                                },
-                                targets: volume_ripples,
-                                scaleY: ['0', '0.9'],
-                                autoplay: true,
+                            this.main_anime = anime.timeline({
+                                easing: 'linear',
                                 loop: false,
-                                easing: 'easeInOutCubic',
-                                duration: 200,
-                                complete: ()=>{
-                                    //add ripple effect
-                                    // anime({
-                                    //     targets: volume_ripples,
-                                    //     autoplay: true,
-                                    //     easing: 'linear',
-                                    //     loop: true,
-                                    //     translateY: ['0%', '-5%', '5%', '0%'],
-                                    //     delay: anime.stagger(100),
-                                    // });
-                                }
+                                autoplay: true,
+                            }).add({
+                                //set to default volume_ripples
+                                targets: volume_ripples,
+                                scaleY: ['1'],
+                                translateY: ['0%'],
+                                duration: this.fastest_anime_duration_ms,
                             });
                         }
                         break;
@@ -1120,7 +1127,6 @@
 
                         {
                             //'attaching'
-                            //run once only
 
                             //remove related anime
                             anime.remove([
@@ -1147,23 +1153,26 @@
                                 duration: this.fastest_anime_duration_ms,
                                 complete: ()=>{
                                     recording_visualiser.style.display = 'none';
+
+                                    //do this so that when cancelled, revert to opacity-10
+                                    //we have to run this part here to be able to get latest instance state, as anime() is async
+                                    anime({
+                                        targets: playback_main,
+                                        begin: ()=>{
+                                            playback_main.style.display = 'grid';
+                                        },
+                                        opacity: this.propAudio === null ? 0.1 : 1,
+                                        duration: this.fastest_anime_duration_ms * 2,
+                                        //we want the entire anime to finish before this condition unlocks other actions
+                                        //to delay this, we don't use setTimeout
+                                        //we multiply duration above instead, so that we can still fully rely on anime's .finished.then()
+                                        complete: ()=>{
+                                            //set volume_ripples
+                                            this.adjustVolumeRipples();
+                                        }
+                                    });
                                 },
-                            }).add({
-                                //make playback_main available
-                                targets: playback_main,
-                                begin: ()=>{
-                                    playback_main.style.display = 'block';
-                                },
-                                opacity: 1,
-                                duration: this.fastest_anime_duration_ms * 2,
-                                //we want the entire anime to finish before this condition unlocks other actions
-                                //to delay this, we don't use setTimeout
-                                //we multiply duration above instead, so that we can still fully rely on anime's .finished.then()
-                                complete: ()=>{
-                                    //set volume_ripples
-                                    this.adjustVolumeRipples();
-                                }
-                            });
+                            });                            
                         }
                         break;
 
@@ -1240,53 +1249,37 @@
             adjustVolumeRipples() : void {
 
                 //we calculate height relative to most quiet and loudest parts
-                //samples are expected to be between -1 and 1, but we get -0.0001 when no audio
+                //samples are expected to be between -1 and 1, but we always get -0.0001 to 1
+                //so we simply force <0 to be 0, and >1 to be 1
 
+                //if no audio, adjust back
+                if(this.propAudioVolumePeaks.length === 0){
 
-                // //now we find the highest volume, and its distance from max height
-                // //we will shift everything based on this difference
-                // let volume_range_deficit = 0;
-                // let highest_file_volume = null;
+                    anime({
+                            targets: this.$refs.volume_ripple as HTMLElement[],
+                            scaleY: ['0', '1'],
+                            autoplay: true,
+                            loop: false,
+                            easing: 'easeInOutQuad',
+                            duration: 200,
+                        });
 
-                // highest_file_volume = this.arrayMax(this.propAudioVolumePeaks);
+                    return;
+                }
 
-                // if(highest_file_volume < 0){
-
-                //     volume_range_deficit = 100 - 50 - (((highest_file_volume * -1) / volume_range) * 100);
-                    
-                // }else{
-
-                //     volume_range_deficit = 100 - ((highest_file_volume / volume_range) * 100);
-                // }
-
-                //shift half to make it readable, not full, else it'll be globally inconsistent for user
-                // volume_range_deficit = volume_range_deficit / 2;
-
+                //if has audio, continue
                 let scaleY_percentage = 0;
 
                 for(let x=0; x < this.propAudioVolumePeaks.length; x++){
 
-                    // if(this.propAudioVolumePeaks[x] < 0){
-                        
-                    //     scaleY_percentage = (1 - (this.propAudioVolumePeaks[x] * -1)) * 50;
-
-                    // }else{
-
-                    //     scaleY_percentage = 50 + (this.propAudioVolumePeaks[x] * 50);
-                    // }
-
-                    //expected volume range is -1 to 0, but our peaks at 0 audio is still -0.0001...
-                    //so we recalibrate from lower and upper 50 to full 100
-                    //instead of <0 ... =0, if you prefer 0 to be visible, do <0.05 ... =5
                     //UPDATE: non-zero feels more functional for end user
                     if(this.propAudioVolumePeaks[x] < 0.05){
 
                         scaleY_percentage = 0.05;
 
-                    }else if(this.propAudioVolumePeaks[x] > 0.9){
+                    }else if(this.propAudioVolumePeaks[x] > 1){
 
-                        //we max at 0.9 to make space for -+5% translateY anime
-                        scaleY_percentage = 0.9;
+                        scaleY_percentage = 1;
 
                     }else{
 
@@ -1299,7 +1292,7 @@
                     //this performs fine, so do not add Tailwind transition, else it interferes
                     anime({
                         targets: (this.$refs.volume_ripple as HTMLElement[])[x],
-                        scaleY: scaleY_percentage.toString(),
+                        scaleY: ['0', scaleY_percentage.toString()],
                         autoplay: true,
                         loop: false,
                         easing: 'easeInOutQuad',

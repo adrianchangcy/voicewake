@@ -7,7 +7,6 @@
             propTitleDescription="Fill in the fields below"
             v-if="propIsOriginator === true"
         />
-
         <form
             spellcheck="false"
             class="bg-theme-light flex flex-col gap-4 text-theme-black"
@@ -26,7 +25,7 @@
             />
 
             <!--fields for open/close-->
-            <div class="grid grid-cols-7 gap-2">
+            <div class="grid grid-cols-8 gap-2">
 
                 <!--open/close VEventToneMenu-->
                 <div ref="event_tone_field" class="col-span-2">
@@ -39,7 +38,7 @@
                 </div>
 
                 <!--open/close VRecorderMenu-->
-                <div ref="recorder_field" class="col-span-5">
+                <div ref="recorder_field" class="col-span-6">
                     <VRecorderField
                         propLabel="Your voice"
                         :propIsOpen="is_recorder_menu_open"
@@ -56,13 +55,13 @@
             <div class="w-full h-fit relative">
 
                 <!--arrows, aesthetics only-->
-                <div class="w-full h-0 grid grid-cols-7 gap-4">
+                <div class="w-full h-0 grid grid-cols-8 gap-4">
                     <!--arrow for event_tones menu-->
                     <div v-show="is_event_tone_menu_open" class="col-span-2 col-start-1 relative">
                         <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"></div>
                     </div>
                     <!--arrow for recorder menu-->
-                    <div v-show="is_recorder_menu_open" class="col-span-5 col-start-3 relative">
+                    <div v-show="is_recorder_menu_open" class="col-span-6 col-start-3 relative">
                         <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"></div>
                     </div>
                 </div>
@@ -99,13 +98,14 @@
             </div>
 
             <!--submit-->
-            <div class="py-4">
+            <div class="pt-2 pb-4">
                 <VActionButtonBig
                     class="mx-auto"
                     :propIsEnabled="canSubmit"
                     @click.stop="submitForm()"
                 >
-                    <span>Done</span>
+                    <span v-if="propIsOriginator === true">Done</span>
+                    <span v-else>Reply</span>
                 </VActionButtonBig>
             </div>
 

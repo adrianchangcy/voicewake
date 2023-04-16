@@ -632,10 +632,6 @@ video {
   right: 0px;
 }
 
-.top-10 {
-  top: 2.5rem;
-}
-
 .top-2 {
   top: 0.5rem;
 }
@@ -700,24 +696,8 @@ video {
   top: 0.25rem;
 }
 
-.bottom-4 {
-  bottom: 1rem;
-}
-
-.right-5 {
-  right: 1.25rem;
-}
-
-.top-6 {
-  top: 1.5rem;
-}
-
-.top-4 {
-  top: 1rem;
-}
-
-.right-4 {
-  right: 1rem;
+.right-1 {
+  right: 0.25rem;
 }
 
 .z-50 {
@@ -740,28 +720,24 @@ video {
   grid-column: span 2 / span 2;
 }
 
-.col-span-5 {
-  grid-column: span 5 / span 5;
+.col-span-6 {
+  grid-column: span 6 / span 6;
 }
 
 .col-span-1 {
   grid-column: span 1 / span 1;
 }
 
-.col-span-3 {
-  grid-column: span 3 / span 3;
-}
-
-.col-span-6 {
-  grid-column: span 6 / span 6;
-}
-
-.col-span-8 {
-  grid-column: span 8 / span 8;
-}
-
 .col-span-4 {
   grid-column: span 4 / span 4;
+}
+
+.col-span-5 {
+  grid-column: span 5 / span 5;
+}
+
+.col-span-3 {
+  grid-column: span 3 / span 3;
 }
 
 .col-start-1 {
@@ -780,12 +756,12 @@ video {
   grid-column-start: 4;
 }
 
-.col-start-5 {
-  grid-column-start: 5;
-}
-
 .col-start-6 {
   grid-column-start: 6;
+}
+
+.col-start-5 {
+  grid-column-start: 5;
 }
 
 .row-span-1 {
@@ -813,14 +789,14 @@ video {
   margin-right: auto;
 }
 
-.my-auto {
-  margin-top: auto;
-  margin-bottom: auto;
-}
-
 .mx-2 {
   margin-left: 0.5rem;
   margin-right: 0.5rem;
+}
+
+.my-auto {
+  margin-top: auto;
+  margin-bottom: auto;
 }
 
 .mt-2 {
@@ -905,10 +881,6 @@ video {
   height: 10rem;
 }
 
-.h-\[6\.25rem\] {
-  height: 6.25rem;
-}
-
 .h-6 {
   height: 1.5rem;
 }
@@ -935,10 +907,6 @@ video {
 
 .h-\[99\%\] {
   height: 99%;
-}
-
-.h-14 {
-  height: 3.5rem;
 }
 
 .w-fit {
@@ -971,8 +939,8 @@ video {
   width: 1.5rem;
 }
 
-.w-\[6\.25rem\] {
-  width: 6.25rem;
+.w-20 {
+  width: 5rem;
 }
 
 .w-0\.5 {
@@ -989,14 +957,6 @@ video {
 
 .w-28 {
   width: 7rem;
-}
-
-.w-20 {
-  width: 5rem;
-}
-
-.w-\[75\%\] {
-  width: 75%;
 }
 
 .flex-1 {
@@ -1088,24 +1048,32 @@ video {
   grid-auto-flow: column;
 }
 
-.grid-cols-7 {
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+.grid-cols-8 {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
 }
 
 .grid-cols-4 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.grid-cols-5 {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+.grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .grid-cols-3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.grid-cols-8 {
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+.grid-cols-5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.grid-cols-7 {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.grid-cols-6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .grid-rows-1 {
@@ -1180,17 +1148,8 @@ video {
   gap: 0px;
 }
 
-.gap-1 {
-  gap: 0.25rem;
-}
-
 .gap-y-2 {
   row-gap: 0.5rem;
-}
-
-.gap-x-2 {
-  -moz-column-gap: 0.5rem;
-       column-gap: 0.5rem;
 }
 
 .gap-x-1 {
@@ -1198,14 +1157,9 @@ video {
        column-gap: 0.25rem;
 }
 
-.divide-y > :not([hidden]) ~ :not([hidden]) {
-  --tw-divide-y-reverse: 0;
-  border-top-width: calc(1px * calc(1 - var(--tw-divide-y-reverse)));
-  border-bottom-width: calc(1px * var(--tw-divide-y-reverse));
-}
-
-.divide-theme-black\/5 > :not([hidden]) ~ :not([hidden]) {
-  border-color: rgb(68 68 68 / 0.05);
+.gap-x-2 {
+  -moz-column-gap: 0.5rem;
+       column-gap: 0.5rem;
 }
 
 .overflow-hidden {
@@ -1236,12 +1190,8 @@ video {
   border-radius: 9999px;
 }
 
-.rounded-2xl {
-  border-radius: 1rem;
-}
-
-.rounded-sm {
-  border-radius: 0.125rem;
+.rounded-xl {
+  border-radius: 0.75rem;
 }
 
 .rounded-r-none {
@@ -1374,20 +1324,12 @@ video {
   background-color: rgb(214 211 209 / var(--tw-bg-opacity));
 }
 
-.bg-none {
-  background-image: none;
-}
-
 .p-2 {
   padding: 0.5rem;
 }
 
 .p-4 {
   padding: 1rem;
-}
-
-.p-1 {
-  padding: 0.25rem;
 }
 
 .px-\[5\%\] {
@@ -1447,8 +1389,16 @@ video {
   padding-bottom: 1rem;
 }
 
+.pb-2 {
+  padding-bottom: 0.5rem;
+}
+
 .pb-3 {
   padding-bottom: 0.75rem;
+}
+
+.pr-2 {
+  padding-right: 0.5rem;
 }
 
 .pr-10 {
@@ -1471,8 +1421,12 @@ video {
   padding-top: 0.25rem;
 }
 
-.pr-2 {
-  padding-right: 0.5rem;
+.pl-1 {
+  padding-left: 0.25rem;
+}
+
+.pl-2 {
+  padding-left: 0.5rem;
 }
 
 .text-left {
@@ -1517,9 +1471,9 @@ video {
   line-height: 2rem;
 }
 
-.text-5xl {
-  font-size: 3rem;
-  line-height: 1;
+.text-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 }
 
 .font-light {
@@ -1901,6 +1855,14 @@ textarea {
 
   .lg\:col-span-1 {
     grid-column: span 1 / span 1;
+  }
+
+  .lg\:col-span-3 {
+    grid-column: span 3 / span 3;
+  }
+
+  .lg\:col-span-5 {
+    grid-column: span 5 / span 5;
   }
 
   .lg\:block {

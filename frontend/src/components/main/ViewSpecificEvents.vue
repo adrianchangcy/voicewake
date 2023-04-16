@@ -5,12 +5,15 @@
         <div
             v-if="originator_event !== null"
         >
-            <div class="w-full h-fit grid grid-cols-8 gap-2">
-                <div class="col-span-2 relative border border-theme-light-gray rounded-2xl">
+            <div class="w-full h-fit grid grid-cols-8 gap-2 pb-2">
+                <div class="col-span-2 relative border border-theme-light-gray rounded-lg">
                     <span class="text-3xl w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">{{ originator_event.event_tone.event_tone_symbol }}</span>
                 </div>
                 <div class="col-span-6">
-                    <VPlayback/>
+                    <VPlayback
+                        :propAudioVolumePeaks="originator_event.audio_volume_peaks"
+                        :propBucketQuantity="originator_event.audio_volume_peaks.length"
+                    />
                 </div>
             </div>
             <VLikeDislike
@@ -28,9 +31,16 @@
             <VUser
                 :propUsername="event.user_event_role.user.username"
             />
-            <div class="py-1">
-                <VPlayback
-                />
+            <div class="w-full h-fit grid grid-cols-8 gap-2 pb-2">
+                <div class="col-span-2 relative border border-theme-light-gray rounded-lg">
+                    <span class="text-3xl w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">{{ event.event_tone.event_tone_symbol }}</span>
+                </div>
+                <div class="col-span-6">
+                    <VPlayback
+                        :propAudioVolumePeaks="event.audio_volume_peaks"
+                        :propBucketQuantity="event.audio_volume_peaks.length"
+                    />
+                </div>
             </div>
             <VLikeDislike
                 :propEventId="event.id"
@@ -121,8 +131,7 @@
 
                         }else{
 
-                            return;
-                            // this.responder_events.push(results.data[x]);
+                            this.responder_events.push(results.data[x]);
                         }
                     }
                 })
