@@ -2,7 +2,7 @@
     <div>
         <audio
             ref="audio_element"
-            @loadedmetadata="getPlaybackDuration()"
+            @loadedmetadata="handleHasMetadata()"
             @timeupdate="updateCurrentPlaybackTime()"
             @canplay="current_playback_state = playback_states[3]"
             @waiting="current_playback_state = playback_states[4]"
@@ -47,7 +47,7 @@
                 ref="playback_main"
                 :class="[
                     propIsSticky === false ? 'border rounded-lg' : '',
-                    'w-full h-full absolute grid grid-rows-2 grid-cols-4 gap-x-1 left-0 right-0 top-0 bottom-0 m-auto pr-2 text-theme-black     opacity-10 border-theme-light-gray'
+                    'w-full h-full absolute grid grid-rows-2 grid-cols-4 gap-x-1 left-0 right-0 top-0 bottom-0 m-auto pl-2 lg:pl-0 pr-2 text-theme-black     opacity-10 border-theme-light-gray'
                 ]"
             >
                 <!--play/pause-->
@@ -246,7 +246,7 @@
 
                 //start with data already available, i.e. for existing records
                 this.current_playback_state = this.playback_states[2];
-                this.attachURLToPlayback(window.location.origin + this.propAudioURL);
+                this.attachAudioToPlayback(this.propAudioURL);
 
             }else{
 
@@ -281,12 +281,12 @@
             (this.$refs.audio_element as HTMLAudioElement).playbackRate = this.playback_rate;
             (this.$refs.audio_element as HTMLAudioElement).volume = this.playback_volume;
 
-            //attach listeners to window for mouse Y
+            //attach listeners
             window.addEventListener('mousemove', this.doPlaybackDrag);
             window.addEventListener('touchmove', this.doPlaybackDrag);
             window.addEventListener('mouseup', this.stopPlaybackDrag);
             window.addEventListener('touchend', this.stopPlaybackDrag);
-            window.addEventListener('resize', this.adjustToNewPlaybackSliderDimension);
+            window.addEventListener('resize', this.handleWindowResize);
             window.addEventListener('keydown', (event) => {
                 this.handleKeyboardEvent(event);
             });
@@ -302,7 +302,7 @@
             window.removeEventListener('touchmove', this.doPlaybackDrag);
             window.removeEventListener('mouseup', this.stopPlaybackDrag);
             window.removeEventListener('touchend', this.stopPlaybackDrag);
-            window.removeEventListener('resize', this.adjustToNewPlaybackSliderDimension);
+            window.removeEventListener('resize', this.handleWindowResize);
             window.addEventListener('keydown', (event) => {
                 this.handleKeyboardEvent(event);
             });
@@ -353,7 +353,12 @@
         watch: {
             propAudio(new_value){
 
-                this.attachRecordedAudioToPlayback(new_value);
+                this.attachAudioToPlayback(new_value);
+            },
+            propAudioURL(new_value){
+
+                //reminder that with v-if and props already supplied, first time will not trigger watchers
+                this.attachAudioToPlayback(new_value);
             },
             propRecordingVisualiserVolume(new_value){
 
@@ -405,8 +410,12 @@
                 //if is open, i.e. rendered
                 if(new_value === true){
 
+                    //ok to run this often, since it does nothing if dimension is the same
                     this.$nextTick(()=>{
-                        this.adjustToNewPlaybackSliderDimension();
+                        if(this.adjustPlaybackSliderDimension() === true && this.has_all_data_for_play === true){
+                            this.createPlaybackSliderAnime();
+                            this.syncSliderAnimeAfterSuspend();
+                        }
                     });
                 }
 
@@ -588,6 +597,15 @@
                         break;
                 }
             },
+            handleWindowResize() : void {
+
+                //for event listener 'resize', this recreates slider anime and syncs it
+                this.adjustPlaybackSliderDimension();
+                if(this.has_all_data_for_play === true && isNaN((this.$refs.audio_element as HTMLAudioElement).duration) === false){
+                    this.createPlaybackSliderAnime();
+                    this.syncSliderAnimeAfterSuspend();
+                }
+            },
             syncSliderAnimeAfterSuspend() : void {
 
                 //we need this because anime.suspendDocumentWhenHidden=false does not work
@@ -623,7 +641,7 @@
             },
             createPlaybackSliderAnime() : void {
 
-                //to be called during getPlaybackDuration(), window resize, changePlaybackRate()
+                //to be called during handleHasMetadata(), window resize, changePlaybackRate()
                 //we can then use .play/.pause/.seek
                 //expects to already have accurate this.playback_slider_value
 
@@ -666,14 +684,16 @@
 
                 this.is_playback_slider_ready = true;
             },
-            adjustToNewPlaybackSliderDimension() : void {
+            adjustPlaybackSliderDimension() : boolean {
+
+                //returns true if there is change
 
                 const playback_main = (this.$refs.playback_main as HTMLElement);
                 const playback_slider = (this.$refs.playback_slider_dimension as HTMLElement);
                 
                 if(playback_main.style.display === 'none'){
 
-                    return;
+                    return false;
                 }
 
                 //expects playback_slider to have the same width
@@ -690,17 +710,11 @@
                     )
                 ){
 
-                    return;
+                    return false;
                 }
 
                 this.playback_slider_dimension = new_dimension;
-
-                //create/recreate anime
-                if(this.has_all_data_for_play === true){
-
-                    this.createPlaybackSliderAnime();
-                    this.syncSliderAnimeAfterSuspend();
-                }
+                return true;
             },
             endPlaybackProperly() : void {
 
@@ -946,7 +960,7 @@
                 }
 
                 //note that on every new file loaded into <audio>, playbackRate is reset
-                //attachRecordedAudioToPlayback() will handle this inconvenience
+                //attachAudioToPlayback() will handle this inconvenience
                 (this.$refs.audio_element as HTMLAudioElement).playbackRate = new_value;
                 this.playback_rate = new_value;
                 window.localStorage.playback_rate = new_value;
@@ -1269,44 +1283,43 @@
                     });
                 }
             },
-            attachURLToPlayback(new_audio:string) : void {
+            attachAudioToPlayback(new_audio:string|Blob|File) : void {
 
                 const audio_element = (this.$refs.audio_element as HTMLAudioElement);
 
-                audio_element.removeAttribute('src');
-                audio_element.load();
+                //pause first if playing, and reset slider value
+                //we don't create new slider here, but at <audio>'s @loadedmetadata, as its .duration is only available then
+                if(this.is_playing === true){
 
-                //attach new audio as URL into <audio>
-                audio_element.setAttribute('src', new_audio);
-                audio_element.load();
+                    this.pausePlayback();
+                }
+                this.playback_slider_value = 0;
+                this.is_playback_slider_ready = false;
 
-                //no updating current_playback_state here, we rely on <audio> event for that
-
-                //on every new file loaded into <audio>, playbackRate is reset by default
-                //this is the fix
-                audio_element.playbackRate = this.playback_rate;
-            },
-            attachRecordedAudioToPlayback(new_audio:Blob|File) : void {
-
-                const audio_element = (this.$refs.audio_element as HTMLAudioElement);
-
-                //destroy URL to free from memory, then stop loading
+                //destroy URL.createObjectURL() instance to free from memory, then stop loading, no checks needed
                 //https://developer.mozilla.org/en-US/docs/Web/Guide/Audio_and_video_delivery#other_tips_for_audiovideo
                 URL.revokeObjectURL(audio_element.src);
                 audio_element.removeAttribute('src');
                 audio_element.load();
 
-                //attach new audio as URL into <audio>
-                audio_element.setAttribute('src', URL.createObjectURL(new_audio));
-                audio_element.load();
+                if(typeof(new_audio) === 'string'){
 
-                //no updating current_playback_state here, we rely on <audio> event for that
+                    //attach audio from URL origin
+                    audio_element.setAttribute('src', window.location.origin + new_audio);
+
+                }else{
+
+                    //attach audio from Blob/File origin
+                    audio_element.setAttribute('src', URL.createObjectURL(new_audio));
+                }
+
+                audio_element.load();
 
                 //on every new file loaded into <audio>, playbackRate is reset by default
                 //this is the fix
                 audio_element.playbackRate = this.playback_rate;
             },
-            getPlaybackDuration() : void {
+            handleHasMetadata() : void {
 
                 const audio_element = (this.$refs.audio_element as HTMLAudioElement);
 
@@ -1320,24 +1333,18 @@
                         audio_element.currentTime = 0;
                         audio_element.removeEventListener('timeupdate', handler);
 
-                        //create anime
-                        this.playback_slider_value = 0;
-                        this.adjustToNewPlaybackSliderDimension();
-
                         //mm:ss
                         //only for duration display we will use floor
                         this.pretty_playback_duration = 
                             new Date(Math.floor((this.$refs.audio_element as HTMLAudioElement).duration) * 1000).toISOString().substring(14, 19);
+                        
+                        //here is the first time <audio> duration is finally available
+                        this.adjustPlaybackSliderDimension();
+                        this.createPlaybackSliderAnime();
                     };
 
                     audio_element.currentTime = 1e101;
                     audio_element.addEventListener('timeupdate', handler);
-
-                }else{
-
-                    //create anime
-                    this.playback_slider_value = 0;
-                    this.createPlaybackSliderAnime();
                 }
 
                 //don't try to access (this.$refs.audio_element as HTMLAudioElement).duration precisely here, as something is async
