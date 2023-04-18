@@ -14,6 +14,8 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from django.conf import settings
+from django.conf.urls.static import static
 from django.urls import path, include
 from rest_framework.urlpatterns import format_suffix_patterns
 from rest_framework import routers
@@ -31,6 +33,7 @@ router.register(r'api/event-tones', views.EventTonesAPI)
 urlpatterns = [
     path('admin', admin.site.urls),
     path('__debug__/', include('debug_toolbar.urls')),
+
     
     #APIs
     # path('user_verification_options/', views.user_verification_options_list),
@@ -56,13 +59,14 @@ urlpatterns = [
     path('hear/<int:event_room_id>', views.ViewSpecificEvents.as_view(), name='view_specific_events'),
     # path('reply', views.ReplyMainEventsFormView.as_view(), name='reply_new_events'),
     # path('seek-event', views.SeekEventsFormView.as_view(), name='seek_events'),
-    
-    #test
-    # path('record', views.RecordAudioFormView.as_view(), name='record'),
 
     #favicon
     path('favicon.ico', RedirectView.as_view(url=staticfiles_storage.url('website-logo.svg'))),
 ]
+
+#for media files
+if settings.DEBUG is True:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 
 #do this to enable specifying .json extension at URL

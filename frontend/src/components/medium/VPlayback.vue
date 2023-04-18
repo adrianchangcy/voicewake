@@ -56,7 +56,7 @@
                         ref="play_pause_button"
                         @click="togglePlaybackPlayPause()"
                         class="w-full h-full shade-when-hover transition-colors duration-200 ease-in-out rounded-md"
-                        :disabled="propAudio === null"
+                        :disabled="has_all_data_for_play === false"
                         type="button"
                     >
                         <i
@@ -70,7 +70,7 @@
                 <!--ripples, slider-->
                 <div
                     :class="[
-                        propAudio === null ? 'cursor-default' : 'cursor-pointer',
+                        has_all_data_for_play === true && is_playback_slider_ready === true ? 'cursor-pointer' : 'cursor-default',
                         'row-start-1 row-span-1 col-start-2 col-span-4 relative'
                     ]"
                 >
@@ -86,7 +86,7 @@
                         >
                             <div
                                 :class="[
-                                    are_volume_ripples_ok === true ? 'bg-theme-black' : 'outline-1 outline outline-theme-dark-gray',
+                                    has_all_data_for_play === true ? 'bg-theme-black' : 'outline-1 outline outline-theme-dark-gray',
                                     'left-0 right-0 mx-auto w-0.5 h-full'
                                 ]"
                             ></div>
@@ -97,7 +97,7 @@
                         <div
                             ref="playback_slider"
                             :class="[
-                                propAudio !== null ? 'touch-none' : '',
+                                has_all_data_for_play === true && is_playback_slider_ready === true ? 'touch-none' : '',
                                 'h-full relative'
                             ]"
                             @mouseenter.stop="is_playback_slider_hover = true"
@@ -112,7 +112,7 @@
                             ></div>
                             <div
                                 :class="[
-                                    is_playback_slider_hover && propAudio !== null ? 'double-height-when-hover' : 'scale-y-100',
+                                    is_playback_slider_hover && has_all_data_for_play === true ? 'double-height-when-hover' : 'scale-y-100',
                                     'h-1 absolute bg-theme-medium-gray/50 left-0 right-0 top-5 bottom-0 m-auto transition-transform duration-150 ease-in-out'
                                 ]"
                             ></div>
@@ -148,7 +148,7 @@
                         <button
                             @click="togglePlaybackVolumeOptions()"
                             class="w-full h-full shade-when-hover transition-colors duration-200 ease-in-out rounded-md"
-                            :disabled="propAudio === null || propIsForRecording === true"
+                            :disabled="has_all_data_for_play === false || propIsForRecording === true"
                             type="button"
                         >
                             <i
@@ -211,11 +211,10 @@
                 pretty_current_playback_time: '00:00',
                 pretty_playback_duration: '00:00',
                 is_playing: false,
-                is_buffering: false,    //for 'waiting' and 'can_play'
-                is_volume_ripples_available: false,
                 main_anime: null as InstanceType<typeof anime> | null,   //to store animePlaybackStates() anime
                 
                 playback_slider_value: 0,
+                is_playback_slider_ready: false,
                 is_playback_slider_drag: false,
                 is_playback_slider_touch: false,
                 is_playback_slider_hover: false,
@@ -243,15 +242,15 @@
 
             //when propAudioVolumePeaks.length > 0 on mounted(), means VPlayback was rendered via v-if with data already
             //we do this here because in this case, watchers do not trigger
-            if(this.propAudioVolumePeaks.length > 0){
+            if(this.has_all_data_for_play === true){
 
-                // this.attachRecordedAudioToPlayback();
-                console.log('ripples are adjusted from <audio>, which happens during this.attachRecordedAudioToPlayback(), so remove this when done');
+                //start with data already available, i.e. for existing records
                 this.current_playback_state = this.playback_states[2];
+                this.attachURLToPlayback(window.location.origin + this.propAudioURL);
 
             }else{
 
-                //initiate
+                //start as 'initiate', a.k.a. empty, i.e. for recording
                 this.current_playback_state = this.playback_states[0];
             }
 
@@ -325,6 +324,10 @@
                 type: Object as PropType<Blob> | PropType<File> | null,
                 default: null
             },
+            propAudioURL: {
+                type: String,
+                default: ''
+            },
             propIsRecording: Boolean,
             propRecordingVisualiserVolume: Number,    //0-1
             propRecordingVisualiserTimeInterval: {  //milliseconds, based on VRecorder time_interval
@@ -366,7 +369,6 @@
                         this.pausePlayback();
                     }
 
-                    this.is_volume_ripples_available = false;
                     this.current_playback_state = this.playback_states[1];
 
                 }else{
@@ -378,7 +380,7 @@
             current_playback_state(new_value){
 
                 if(
-                    this.is_volume_ripples_available === true &&
+                    this.is_playback_slider_ready === true &&
                     (new_value === this.playback_states[3] || new_value === this.playback_states[4])
                 ){
 
@@ -388,16 +390,15 @@
                 }else{
 
                     //for those that are one-time, put here, and we can disable/enable elements with this
-                    this.emitIsAnimePlaybackCompleted(false);
+                    this.$emit('isAnimePlaybackCompleted', false);
 
                     this.animePlaybackStates();
 
                     this.main_anime.finished.then(()=>{
 
-                        this.emitIsAnimePlaybackCompleted(true);
+                        this.$emit('isAnimePlaybackCompleted', true);
                     });
                 }
-                console.log(new_value);
             },
             propIsOpen(new_value){
 
@@ -417,17 +418,19 @@
             },
         },
         computed: {
-            are_volume_ripples_ok() : boolean {
+            has_all_data_for_play() : boolean {
 
                 if(
-                    this.current_playback_state === this.playback_states[0] ||
-                    this.propAudioVolumePeaks.length === 0
+                    this.propAudioVolumePeaks.length > 0 &&
+                    this.propAudioVolumePeaks.length === this.propBucketQuantity &&
+                    (this.propAudio !== null || this.propAudioURL !== '')
                 ){
-                    return false;
+
+                    return true;
 
                 }else{
 
-                    return true;
+                    return false;
                 }
             }
         },
@@ -624,13 +627,15 @@
                 //we can then use .play/.pause/.seek
                 //expects to already have accurate this.playback_slider_value
 
+                this.is_playback_slider_ready = false;
+
                 //remove
                 anime.remove([
                     this.$refs.playback_slider_knob,
                     this.$refs.playback_slider_progress
                 ]);
                 this.playback_slider_knob_anime = null;
-                this.playback_slider_progress_anime =null;
+                this.playback_slider_progress_anime = null;
 
                 //calculate starting point of translateX
                 const ending_translateX = (this.playback_slider_dimension as DOMRect).width;
@@ -658,10 +663,15 @@
                     duration: anime_duration,
                     scaleX: ['0', '1'],
                 });
+
+                this.is_playback_slider_ready = true;
             },
             adjustToNewPlaybackSliderDimension() : void {
 
-                if((this.$refs.playback_main as HTMLElement).style.display === 'none'){
+                const playback_main = (this.$refs.playback_main as HTMLElement);
+                const playback_slider = (this.$refs.playback_slider_dimension as HTMLElement);
+                
+                if(playback_main.style.display === 'none'){
 
                     return;
                 }
@@ -669,7 +679,7 @@
                 //expects playback_slider to have the same width
                 //use not only during 'resize' event, but when playback_states[2] is ready
                 //as 'resize' may occur when element is display:none
-                let new_dimension = (this.$refs.playback_slider_dimension as HTMLElement).getBoundingClientRect();
+                let new_dimension = playback_slider.getBoundingClientRect();
 
                 //also skip create/recreate anime if no dimensional change
                 if(
@@ -686,7 +696,7 @@
                 this.playback_slider_dimension = new_dimension;
 
                 //create/recreate anime
-                if(this.propAudio !== null){
+                if(this.has_all_data_for_play === true){
 
                     this.createPlaybackSliderAnime();
                     this.syncSliderAnimeAfterSuspend();
@@ -702,7 +712,7 @@
             },
             startPlaybackDrag(is_playback_slider_touch=false) : void {
 
-                if(this.propAudio === null || this.is_volume_ripples_available === false){
+                if(this.has_all_data_for_play === false || this.is_playback_slider_ready === false){
 
                     return;
                 }
@@ -821,7 +831,7 @@
                 //+x for forward, -x for backward
 
                 //do this instead of relying on :disabled, as :disabled makes sliders bug out
-                if(seconds === 0 || this.propAudio === null){
+                if(seconds === 0 || this.has_all_data_for_play === false || this.is_playback_slider_ready === false){
 
                     return;
                 }
@@ -1024,7 +1034,7 @@
                 //reset is only triggered on next play
 
                 //do this instead of relying on :disabled, as :disabled makes sliders bug out
-                if(this.propAudio === null){
+                if(this.has_all_data_for_play === false || this.is_playback_slider_ready === false){
 
                     return;
                 }
@@ -1038,10 +1048,6 @@
 
                     this.pausePlayback();
                 }
-            },
-            emitIsAnimePlaybackCompleted(is_completed:boolean) : void {
-
-                this.$emit('isAnimePlaybackCompleted', is_completed);
             },
             animePlaybackStates() : void {
 
@@ -1068,7 +1074,7 @@
                             }).add({
                                 //set to default volume_ripples
                                 targets: volume_ripples,
-                                scaleY: ['1'],
+                                scaleY: ['0', '1'],
                                 translateY: ['0%'],
                                 duration: this.fastest_anime_duration_ms,
                             });
@@ -1161,7 +1167,7 @@
                                         begin: ()=>{
                                             playback_main.style.display = 'grid';
                                         },
-                                        opacity: this.propAudio === null ? 0.1 : 1,
+                                        opacity: this.has_all_data_for_play === true ? 1 : 0.1,
                                         duration: this.fastest_anime_duration_ms * 2,
                                         //we want the entire anime to finish before this condition unlocks other actions
                                         //to delay this, we don't use setTimeout
@@ -1184,29 +1190,11 @@
                             //they fire on file load and on every start-from-beginning play
 
                             //we resume slider anime after buffering while playing
-                            //we put is_buffering outside since 'can_play' always means no longer buffering
-                            if(
-                                this.is_playing === true && this.is_buffering === true
-                            ){
+                            if(this.is_playing === true){
 
                                 this.playback_slider_progress_anime.play();
                                 this.playback_slider_knob_anime.play();
                             }
-                            this.is_buffering = false;
-
-                            //remove related anime
-                            anime.remove([
-                                volume_ripples,
-                            ]);
-
-                            this.main_anime = anime({
-                                targets: volume_ripples,
-                                translateY: ['0%'],
-                                duration: 0,    //must be 0, no other solutions in this context
-                                autoplay: true,
-                                loop: false,
-                                easing: 'linear',
-                            });
                         }
                         break;
 
@@ -1216,27 +1204,8 @@
                             //'loading'
 
                             //we pause slider anime when buffering while playing
-                            if(this.is_playing === true){
-
-                                this.is_buffering = true;
-                                this.playback_slider_progress_anime.pause();
-                                this.playback_slider_knob_anime.pause();
-                            }
-
-                            //remove related anime
-                            anime.remove([
-                                volume_ripples,
-                            ]);
-
-                            //create fast ripple effect for volume_ripples to show that it is loading
-                            this.main_anime = anime({
-                                targets: volume_ripples,
-                                translateY: ['0%', '-5%', '5%', '0%'],
-                                autoplay: true,
-                                loop: true,
-                                easing: 'linear',
-                                delay: anime.stagger(20),
-                            });
+                            this.playback_slider_progress_anime.pause();
+                            this.playback_slider_knob_anime.pause();
                         }
                         break;
 
@@ -1298,23 +1267,40 @@
                         easing: 'easeInOutQuad',
                         duration: 200,
                     });
-
-                    this.is_volume_ripples_available = true;
                 }
+            },
+            attachURLToPlayback(new_audio:string) : void {
+
+                const audio_element = (this.$refs.audio_element as HTMLAudioElement);
+
+                audio_element.removeAttribute('src');
+                audio_element.load();
+
+                //attach new audio as URL into <audio>
+                audio_element.setAttribute('src', new_audio);
+                audio_element.load();
+
+                //no updating current_playback_state here, we rely on <audio> event for that
+
+                //on every new file loaded into <audio>, playbackRate is reset by default
+                //this is the fix
+                audio_element.playbackRate = this.playback_rate;
             },
             attachRecordedAudioToPlayback(new_audio:Blob|File) : void {
 
                 const audio_element = (this.$refs.audio_element as HTMLAudioElement);
 
-                //attach file into <audio>
-                audio_element.src = URL.createObjectURL(new_audio);
+                //destroy URL to free from memory, then stop loading
+                //https://developer.mozilla.org/en-US/docs/Web/Guide/Audio_and_video_delivery#other_tips_for_audiovideo
+                URL.revokeObjectURL(audio_element.src);
+                audio_element.removeAttribute('src');
+                audio_element.load();
 
-                //free the memory
-                audio_element.onload = function(){
-                    return URL.revokeObjectURL(audio_element.src);
-                };
+                //attach new audio as URL into <audio>
+                audio_element.setAttribute('src', URL.createObjectURL(new_audio));
+                audio_element.load();
 
-                //no updating current_playback_state here, we rely on <audio> for that
+                //no updating current_playback_state here, we rely on <audio> event for that
 
                 //on every new file loaded into <audio>, playbackRate is reset by default
                 //this is the fix
@@ -1336,7 +1322,7 @@
 
                         //create anime
                         this.playback_slider_value = 0;
-                        this.createPlaybackSliderAnime();
+                        this.adjustToNewPlaybackSliderDimension();
 
                         //mm:ss
                         //only for duration display we will use floor
