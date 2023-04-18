@@ -201,14 +201,13 @@ ASGI_APPLICATION = 'voicewake.asgi.application'
 CHANNEL_LAYERS = {
     'default': {
                 'BACKEND': 'channels.layers.InMemoryChannelLayer',
-                },
+    },
 }
 
-
+#folder name, only for storage
 MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')
-
-
-MEDIA_URL = 'http://www.127.0.0.0:8000/'
+#URL, trailing slash is compulsory, must not include domain URL
+MEDIA_URL = '/media/'
 
 
 STRIPE_PUBLIC_KEY = 'pk_test_51LeYM2GvCzbfbfazgRmGuWQQqOteutZEHYFN6FSfe95fWKqHxbUAAg33EC6Yi8fGdOcg7xQoB0DhHrLuKfgD7hDt00L2kqSIYq'

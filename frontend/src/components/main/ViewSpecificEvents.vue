@@ -13,6 +13,7 @@
                     <VPlayback
                         :propAudioVolumePeaks="originator_event.audio_volume_peaks"
                         :propBucketQuantity="originator_event.audio_volume_peaks.length"
+                        :propAudioURL="originator_event.audio_file"
                     />
                 </div>
             </div>
@@ -39,6 +40,7 @@
                     <VPlayback
                         :propAudioVolumePeaks="event.audio_volume_peaks"
                         :propBucketQuantity="event.audio_volume_peaks.length"
+                        :propAudioURL="event.audio_file"
                     />
                 </div>
             </div>
@@ -131,7 +133,7 @@
 
                         }else{
 
-                            this.responder_events.push(results.data[x]);
+                            // this.responder_events.push(results.data[x]);
                         }
                     }
                 })
