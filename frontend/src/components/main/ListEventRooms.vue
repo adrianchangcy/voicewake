@@ -32,14 +32,35 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
+    // import EventTypes from '@/types/Events.interface';
+    import { sortEvents } from '@/helper_functions';
+    const axios = require('axios');
 
     export default defineComponent({
         data(){
             return {
-
-
+                sorted_events: {} as any,
             };
         },
+        mounted(){
 
+            this.getEvents();
+        },
+        methods: {
+            async getEvents(){
+
+                //prepare events, then separate
+                await axios.get('http://127.0.0.1:8000/api/events/get/status/completed')
+                .then((results:any) => {
+
+                    //sort events
+                    this.sorted_events = sortEvents(results.data);
+                })
+                .catch((errors:any) => {
+
+                    console.log(errors);
+                });
+            },
+        }
     });
 </script>

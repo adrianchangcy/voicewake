@@ -24,7 +24,7 @@
                     <div
                         v-for="volume_ripple in propBucketQuantity" :key="volume_ripple"
                         ref="volume_ripple"
-                        class="h-full origin-center"
+                        class="h-full scale-y-0 origin-center"
                     >
                         <div
                             :class="[

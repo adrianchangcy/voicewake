@@ -1293,8 +1293,6 @@
 
                     this.pausePlayback();
                 }
-                this.playback_slider_value = 0;
-                this.is_playback_slider_ready = false;
 
                 //destroy URL.createObjectURL() instance to free from memory, then stop loading, no checks needed
                 //https://developer.mozilla.org/en-US/docs/Web/Guide/Audio_and_video_delivery#other_tips_for_audiovideo

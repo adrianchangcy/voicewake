@@ -1,20 +1,20 @@
 <template>
-    <BrowseMainEvents/>
+    <ListEventRooms/>
 </template>
 
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import BrowseMainEvents from '/src/components/main/BrowseMainEvents.vue';
+    import ListEventRooms from '/src/components/main/ListEventRooms.vue';
 
     export default defineComponent({
         data(){
             return {
             };
         },
-        name: 'BrowseMainEventsApp',
+        name: 'ListEventRoomsApp',
         components: {
-            BrowseMainEvents,
+            ListEventRooms,
         },
         methods: {
         }

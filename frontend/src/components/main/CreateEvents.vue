@@ -27,16 +27,6 @@
             <!--fields for open/close-->
             <div class="grid grid-cols-8 gap-2">
 
-                <!--open/close VEventToneMenu-->
-                <div ref="event_tone_field" class="col-span-2">
-                    <VEventToneField
-                        propLabel="Feeling"
-                        :propEventToneChoice="event_tone_choice"
-                        :propIsOpen="is_event_tone_menu_open"
-                        @isOpen="handleIsEventToneMenuOpen($event)"
-                    />
-                </div>
-
                 <!--open/close VRecorderMenu-->
                 <div ref="recorder_field" class="col-span-6">
                     <VRecorderField
@@ -49,35 +39,31 @@
                         @isOpen="handleIsRecorderMenuOpen($event)"
                     />
                 </div>
+
+                <!--open/close VEventToneMenu-->
+                <div ref="event_tone_field" class="col-span-2">
+                    <VEventToneField
+                        propLabel="Feeling"
+                        :propEventToneChoice="event_tone_choice"
+                        :propIsOpen="is_event_tone_menu_open"
+                        @isOpen="handleIsEventToneMenuOpen($event)"
+                    />
+                </div>
             </div>
 
             <!--menus-->
             <div class="w-full h-fit relative">
 
                 <!--arrows, aesthetics only-->
-                <div class="w-full h-0 grid grid-cols-8 gap-4">
-                    <!--arrow for event_tones menu-->
-                    <div v-show="is_event_tone_menu_open" class="col-span-2 col-start-1 relative">
-                        <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"></div>
-                    </div>
+                <div class="w-full h-0 grid grid-cols-8">
                     <!--arrow for recorder menu-->
-                    <div v-show="is_recorder_menu_open" class="col-span-6 col-start-3 relative">
+                    <div v-show="is_recorder_menu_open" class="col-span-6 col-start-1 relative">
                         <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"></div>
                     </div>
-                </div>
-
-                <!--event_tone menu-->
-                <div
-                    v-click-outside="{
-                        var_name_for_element_bool_status: 'is_event_tone_menu_open',
-                        refs_to_exclude: ['event_tone_field', 'recorder_field']
-                    }"
-                >
-                    <VEventToneMenu
-                        :propIsOpen="is_event_tone_menu_open"
-                        @eventToneSelected="handleEventToneSelected($event)"
-                        class="border-2 border-theme-black rounded-lg"
-                    />
+                    <!--arrow for event_tones menu-->
+                    <div v-show="is_event_tone_menu_open" class="col-span-2 col-start-7 relative">
+                        <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"></div>
+                    </div>
                 </div>
 
                 <!--recorder menu-->
@@ -95,10 +81,29 @@
                         class="border-2 border-theme-black rounded-lg"
                     />
                 </div>
+
+                <!--event_tone menu-->
+                <div
+                    v-click-outside="{
+                        var_name_for_element_bool_status: 'is_event_tone_menu_open',
+                        refs_to_exclude: ['event_tone_field', 'recorder_field']
+                    }"
+                >
+                    <VEventToneMenu
+                        :propIsOpen="is_event_tone_menu_open"
+                        @eventToneSelected="handleEventToneSelected($event)"
+                        class="border-2 border-theme-black rounded-lg"
+                    />
+                </div>
             </div>
 
             <!--submit-->
-            <div class="pt-2 pb-4">
+            <div
+                :class="[
+                    propIsOriginator === true ? 'pt-4' : '',
+                    ''
+                ]"
+            >
                 <VActionButtonBig
                     class="mx-auto"
                     :propIsEnabled="canSubmit"
@@ -187,7 +192,9 @@
                         (this.propIsOriginator === false && this.propEventRoomId !== null)
                     ) &&
                     this.event_tone_choice !== null &&
-                    this.final_blob !== null
+                    this.final_blob !== null &&
+                    this.blob_volume_peaks.length === this.bucket_quantity &&
+                    this.blob_duration > 0
                 ){
 
                     return true;
@@ -212,8 +219,9 @@
                 let data = new FormData();
                 
                 //prepare data
-                data.append('event_tone_id', (this.event_tone_choice as EventToneTypes)['id'].toString());
+                data.append('event_tone_id', JSON.stringify((this.event_tone_choice as EventToneTypes)['id']));
                 data.append('audio_file', this.final_blob as Blob);
+                data.append('audio_file_seconds', JSON.stringify(parseFloat(((this.blob_duration / 1000).toFixed(2)).toString())));
                 data.append('is_originator', JSON.stringify(this.propIsOriginator));
 
                 //prepare array in this specific way
@@ -236,7 +244,6 @@
 
                     return;
                 }
-                
                 await axios.post('http://127.0.0.1:8000/api/events/create', data)
                 .then((response:any) => console.log(response))
                 .catch((errors:any) => console.log(errors));

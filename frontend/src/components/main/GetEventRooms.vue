@@ -6,15 +6,15 @@
             v-if="originator_event !== null"
         >
             <div class="w-full h-fit grid grid-cols-8 gap-2 pb-2">
-                <div class="col-span-2 relative border border-theme-light-gray rounded-lg">
-                    <span class="text-3xl w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">{{ originator_event.event_tone.event_tone_symbol }}</span>
-                </div>
                 <div class="col-span-6">
                     <VPlayback
                         :propAudioVolumePeaks="originator_event.audio_volume_peaks"
                         :propBucketQuantity="originator_event.audio_volume_peaks.length"
                         :propAudioURL="originator_event.audio_file"
                     />
+                </div>
+                <div class="col-span-2 relative border border-theme-light-gray rounded-lg">
+                    <span class="text-3xl w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">{{ originator_event.event_tone.event_tone_symbol }}</span>
                 </div>
             </div>
             <VLikeDislike
@@ -33,15 +33,15 @@
                 :propUsername="event.user_event_role.user.username"
             />
             <div class="w-full h-fit grid grid-cols-8 gap-2 pb-2">
-                <div class="col-span-2 relative border border-theme-light-gray rounded-lg">
-                    <span class="text-3xl w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">{{ event.event_tone.event_tone_symbol }}</span>
-                </div>
                 <div class="col-span-6">
                     <VPlayback
                         :propAudioVolumePeaks="event.audio_volume_peaks"
                         :propBucketQuantity="event.audio_volume_peaks.length"
                         :propAudioURL="event.audio_file"
                     />
+                </div>
+                <div class="col-span-2 relative border border-theme-light-gray rounded-lg">
+                    <span class="text-3xl w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">{{ event.event_tone.event_tone_symbol }}</span>
                 </div>
             </div>
             <VLikeDislike
@@ -53,9 +53,9 @@
         </div>
 
         <!--responders-->
-        <CreateMainEvents
+        <CreateEvents
             :propIsOriginator="false"
-            :propEventRoomId="4"
+            :propEventRoomId="event_room_id"
         />
     </div>
 </template>
@@ -66,7 +66,7 @@
     // import VSectionTitle from '/src/components/small/VSectionTitle.vue';
     import VPlayback from '/src/components/medium/VPlayback.vue';
     import VLikeDislike from '/src/components/medium/VLikeDislike.vue';
-    import CreateMainEvents from '/src/components/main/CreateMainEvents.vue';
+    import CreateEvents from '/src/components/main/CreateEvents.vue';
     import VUser from '/src/components/small/VUser.vue';
 
 </script>
@@ -120,9 +120,9 @@
                 }
 
                 //prepare events, then separate
-                await axios.get('http://127.0.0.1:8000/api/events/get/by-event-room/' + this.event_room_id.toString())
+                await axios.get('http://127.0.0.1:8000/api/events/get/event-room/' + this.event_room_id.toString())
                 .then((results:any) => {
-                    console.log(results.data);
+
                     //separate originator from responder
                     //doing it via loop, instead of relying on [0] being originator, helps us guarantee our event placements
                     for(let x=0; x < results.data.length; x++){
@@ -133,7 +133,7 @@
 
                         }else{
 
-                            // this.responder_events.push(results.data[x]);
+                            this.responder_events.push(results.data[x]);
                         }
                     }
                 })
