@@ -87,10 +87,11 @@ class GetEventsSerializer(serializers.ModelSerializer):
         min_length=20,
         max_length=20
     )
+    audio_file_seconds = serializers.DecimalField(max_digits=6, decimal_places=2, coerce_to_string=False)
 
     class Meta:
         model = Events
-        fields = ['id', 'generic_status', 'event_tone', 'audio_file', 'audio_volume_peaks', 'user_event_role', 'event_room', 'like_count', 'dislike_count', 'is_liked_by_user']
+        fields = ['id', 'generic_status', 'event_tone', 'audio_file', 'audio_file_seconds', 'audio_volume_peaks', 'user_event_role', 'event_room', 'like_count', 'dislike_count', 'is_liked_by_user']
 
 
 class CreateEventLikesDislikesSerializer(serializers.Serializer):
@@ -128,8 +129,19 @@ class CreateEventsSerializer(serializers.Serializer):
         allow_empty_file=False,
     )
 
+    audio_file_seconds = serializers.DecimalField(
+        required=True,
+        max_digits=6,
+        decimal_places=2,
+    )
+
     audio_volume_peaks = serializers.ListField(
-        child=serializers.DecimalField(min_value=0, max_value=1, max_digits=3, decimal_places=2),
+        child=serializers.DecimalField(
+            min_value=0,
+            max_value=1,
+            max_digits=3,
+            decimal_places=2
+        ),
         min_length=20,
         max_length=20
     )
@@ -150,7 +162,7 @@ class CreateEventsSerializer(serializers.Serializer):
         else:
 
             raise serializers.ValidationError('Missing paired data on is_originator.')
-        
+
 
 
 

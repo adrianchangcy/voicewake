@@ -1,3 +1,4 @@
+#OLD:
 
 #time window in seconds for listener events to qualify for live
 QUALIFY_FOR_LIVE_TIME_WINDOW = 60
@@ -11,7 +12,6 @@ LISTENER_EVENT_SEARCH_LIMIT = 3
 #maximum wait time given to talker on selecting a listener event
 TALKER_EVENT_CHOICE_MAX_DURATION_SECONDS = 10
 
-
 #file extensions allowed
 #aac is the ideal format, but not used
     #requires additional configurations
@@ -22,3 +22,30 @@ HTML_FILE_INPUT_ACCEPT = '.mp3, .webm'
 #max file size
 #assumes decimal is always used (1000 ** 2) over binary (1024 ** 2)
 MAX_AUDIO_FILE_SIZE_MB = 200
+
+
+
+#NEW:
+
+#set EventRooms.when_locked=None and EventRooms.locked_for_user=None after x minutes of EventRooms.when_locked
+#if user has page open, JS will ping to update when_locked
+MINUTES_TO_UNLOCK_EVENT_ROOM = 10
+
+#how many incomplete EventRooms to show at a time, before next reroll
+INCOMPLETE_EVENT_ROOMS_PER_ROLL = 3
+
+#how many hours until an EventRoom is considered stale
+#used to clean up SeenEventRooms
+HOURS_UNTIL_EVENT_ROOM_IS_STALE = 2
+
+#e.g. top 10 completed events, etc.
+SPECIAL_EVENT_ROOMS_QUANTITY = 10
+
+#when to purge incomplete/completed event_rooms and allow new ones again
+PURGING_HOUR_MARKS = ['00', '06', '12', '18']
+
+#maximum completed event_rooms within purging window
+MAXIMUM_COMPLETED_EVENT_ROOMS_PER_PURGE_WINDOW = 20
+
+
+

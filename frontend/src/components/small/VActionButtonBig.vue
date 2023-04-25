@@ -2,7 +2,7 @@
     <button
         :class="[
             (propIsEnabled ? 'text-theme-black' : 'shadow-md hover:shadow-sm cursor-not-allowed text-theme-black/10'),
-            'w-28 h-28 p-4 block text-2xl bg-theme-light/60       border-t-2 border-theme-light-trim rounded-full   hover:bg-theme-light/80 hover:border-theme-light-trim/40 shadow-theme-lead/75 shadow-lg hover:shadow-theme-lead/75 hover:shadow-md   transition duration-150 ease-in-out'
+            'w-full h-24 block text-2xl bg-theme-soft-lead/80       border-t-2 border-theme-light-trim rounded-md   hover:bg-theme-soft-lead hover:border-theme-light-trim/40 shadow-theme-lead/75 shadow-lg hover:shadow-theme-lead/75 hover:shadow-md   transition duration-150 ease-in-out'
         ]"
         type="button"
     >

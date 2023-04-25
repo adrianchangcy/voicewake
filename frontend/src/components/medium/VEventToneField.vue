@@ -13,12 +13,8 @@
             ]"
             type="button"
         >
-            <i
-                v-if="propEventToneChoice === null"
-                class="far fa-face-meh-blank absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto"
-            ></i>
             <span
-                v-else
+                v-if="propEventToneChoice !== null"
                 class="absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto"
             >
                 {{propEventToneChoice.event_tone_symbol}}

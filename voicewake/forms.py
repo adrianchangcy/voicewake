@@ -26,41 +26,6 @@ class UserSignUpForm(UserCreationForm):
         fields = ['username', 'email', 'password1', 'password2']
 
 
-
-class CreateResponderEventsForm(forms.Form):
-
-    event_tone_id = forms.IntegerField(
-        required=True,
-    )
-
-    audio_file = forms.FileField(
-        required=True,
-        allow_empty_file=False,
-    )
-
-    event_room_id = forms.IntegerField(
-        required=True,
-    )
-
-
-class CreateMainEventsForm(forms.Form):
-
-    event_room_name = forms.CharField(
-        required=False,
-        min_length=1,
-        max_length=200, #follow EventRooms.event_room_name
-    )
-    
-    event_tone_id = forms.IntegerField(
-        required=True,
-    )
-
-    audio_file = forms.FileField(
-        required=True,
-        allow_empty_file=False,
-    )
-
-
 class SeekEventsForm(forms.Form):
 
     EVENT_MODE_CHOICES = [(1, 'live'), (2, 'pre-record'), (3, 'any')]

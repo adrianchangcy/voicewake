@@ -10,6 +10,7 @@ interface EventTypes{
         event_tone_symbol: string
     },
     audio_file: string,
+    audio_file_seconds: number,
     audio_volume_peaks: number[],
     user_event_role: {
         id: number,

@@ -1,9 +1,9 @@
 import { createApp } from 'vue';
 
 import BaseApp from '/src/apps/BaseApp.vue';
-import CreateMainEventsApp from '/src/apps/CreateMainEventsApp.vue';
-import BrowseMainEventsApp from '/src/apps/BrowseMainEventsApp.vue';
-import ViewSpecificEventsApp from '/src/apps/ViewSpecificEventsApp.vue';
+import CreateEventRoomsApp from '/src/apps/CreateEventRoomsApp.vue';
+import ListEventRoomsApp from '/src/apps/ListEventRoomsApp.vue';
+import GetEventRoomsApp from '/src/apps/GetEventRoomsApp.vue';
 
 const clickOutside = {
 
@@ -77,25 +77,25 @@ createApp(BaseApp)
 
 //this might not be the most efficient fix
 //https://vuejs.org/guide/essentials/application.html#the-root-component
-if(document.querySelector('#create-main-events-app')){
+if(document.querySelector('#create-event-rooms-app')){
 
-    createApp(CreateMainEventsApp)
+    createApp(CreateEventRoomsApp)
         .directive('click-outside', clickOutside)
-        .mount('#create-main-events-app');
+        .mount('#create-event-rooms-app');
 }
 
-if(document.querySelector('#browse-main-events-app')){
+if(document.querySelector('#list-event-rooms-app')){
 
-    createApp(BrowseMainEventsApp)
+    createApp(ListEventRoomsApp)
         .directive('click-outside', clickOutside)
-        .mount('#browse-main-events-app');
+        .mount('#list-event-rooms-app');
 }
 
-if(document.querySelector('#view-specific-events-app')){
+if(document.querySelector('#get-event-rooms-app')){
 
-    createApp(ViewSpecificEventsApp)
+    createApp(GetEventRoomsApp)
         .directive('click-outside', clickOutside)
-        .mount('#view-specific-events-app');
+        .mount('#get-event-rooms-app');
 }
 
 

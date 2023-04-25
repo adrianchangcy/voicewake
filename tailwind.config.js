@@ -19,7 +19,8 @@ module.exports = {
 
                 
                 // 'theme-lead': '#FFD645',    //this yellow isn't as nice as yellow-300
-                'theme-lead': '#facc15', //yellow-400, for main colour
+                'theme-lead': '#facc15', //yellow-400, for highlight
+                'theme-soft-lead': '#f5f5dc',   //for background yellow
 
                 'theme-light': '#F2F4F3',
                 'theme-light-trim': '#FDFDFD',

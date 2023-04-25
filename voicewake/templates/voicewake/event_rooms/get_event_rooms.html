@@ -20,14 +20,14 @@
         <!--title-->
         {% if is_deleted %}
             <div class="h-fit pt-4 pb-4">
-                <p class="text-xl font-light italic">
+                <p class="text-2xl font-light italic">
                     deleted
                 </p>
             </div>
         {% else %}
             <div class="h-fit pt-4 pb-4">
                 <!--title from user 1-->
-                <p class="text-xl">
+                <p class="text-2xl">
                     {{originator_event.event_room.event_room_name}}
                 </p>
                 <!--last updated-->
@@ -49,7 +49,7 @@
         </button>
 
         <!--the rest of the content-->
-        <div id="view-specific-events-app"></div>
+        <div id="get-event-rooms-app"></div>
     </div>
 
 {% endblock %}

@@ -1,20 +1,20 @@
 <template>
-    <ViewSpecificEvents/>
+    <GetEventRooms/>
 </template>
 
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import ViewSpecificEvents from '/src/components/main/ViewSpecificEvents.vue';
+    import GetEventRooms from '/src/components/main/GetEventRooms.vue';
 
     export default defineComponent({
         data(){
             return {
             };
         },
-        name: 'ViewSpecificEventsApp',
+        name: 'GetEventRoomsApp',
         components: {
-            ViewSpecificEvents,
+            GetEventRooms,
         },
         methods: {
         }

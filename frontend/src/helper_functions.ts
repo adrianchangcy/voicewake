@@ -1,3 +1,5 @@
+import EventTypes from '@/types/Events.interface';
+
 
 export function arrayMin(your_array:number[]) : number {
 
@@ -60,7 +62,6 @@ export function timeDifferenceUTC(date:Date) : string {
 
             return interval.toString() + ' years ago';
 }
-
 
 export function prettyCount(number:number) : string {
     
@@ -148,3 +149,36 @@ export function prettyCount(number:number) : string {
 
     return pretty_string;
 }
+
+export function sortEvents(events:EventTypes[]) : {} {
+
+    //structure
+    // {
+    //     event_room_id: {
+    //         'originator': [],
+    //         'responder': []
+    //     },
+    // }
+
+    const sorted_events:any = {};
+
+    for(let x=0; x < events.length; x++){
+
+        const event_room_id = events[x].event_room.id;
+        const event_role_name = events[x].user_event_role.event_role.event_role_name;
+
+        //prepare key value if it does not exist
+        if(event_room_id in sorted_events === false){
+
+            sorted_events[event_room_id] = {
+                'originator': [],
+                'responder': []
+            };            
+        }
+
+        sorted_events[event_room_id][event_role_name].push(events[x]);
+    }
+
+    return sorted_events;
+}
+
