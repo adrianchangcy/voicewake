@@ -204,6 +204,7 @@
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
     import anime from 'animejs';
+    import { prettyDuration } from '@/helper_functions';
 
     export default defineComponent({
         data(){
@@ -943,9 +944,7 @@
                 const target = (this.$refs.audio_element as HTMLAudioElement);
 
                 //timer
-                this.pretty_current_playback_time = new Date(
-                    target.currentTime * 1000
-                ).toISOString().substring(14, 19);
+                this.pretty_current_playback_time = prettyDuration(target.currentTime);
             },
             getRealDurationAfterPlaybackRate() : number{
 
@@ -1333,8 +1332,9 @@
 
                         //mm:ss
                         //only for duration display we will use floor
-                        this.pretty_playback_duration = 
-                            new Date(Math.floor((this.$refs.audio_element as HTMLAudioElement).duration) * 1000).toISOString().substring(14, 19);
+                        this.pretty_playback_duration = prettyDuration(
+                            (this.$refs.audio_element as HTMLAudioElement).duration
+                        );
                         
                         //here is the first time <audio> duration is finally available
                         this.adjustPlaybackSliderDimension();

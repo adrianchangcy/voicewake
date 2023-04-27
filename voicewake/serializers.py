@@ -94,6 +94,14 @@ class GetEventsSerializer(serializers.ModelSerializer):
         fields = ['id', 'generic_status', 'event_tone', 'audio_file', 'audio_file_seconds', 'audio_volume_peaks', 'user_event_role', 'event_room', 'like_count', 'dislike_count', 'is_liked_by_user']
 
 
+class GetEventRoomsSerializer(serializers.Serializer):
+    event_room = EventRoomsSerializer()
+    originator = GetEventsSerializer()
+    responder = serializers.ListField(
+        child=GetEventsSerializer()
+    )
+
+
 class CreateEventLikesDislikesSerializer(serializers.Serializer):
     event_id = serializers.IntegerField(required=True)
     is_liked = serializers.BooleanField(required=True, allow_null=True)

@@ -2,6 +2,6 @@
 {% block title %}Browse Events{% endblock %}
 
 {% block content %}
-
+    {% csrf_token %}
     <div id="list-event-rooms-app"></div>
 {% endblock %}

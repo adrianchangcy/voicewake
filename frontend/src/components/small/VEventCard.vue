@@ -1,67 +1,50 @@
 <template>
 
     <div class="text-theme-black">
-
-        <!--username-->
-        <button
-            @click.stop="showUserPage()"
-            class="w-fit h-10 text-base font-extralight rounded-lg shade-when-hover transition-colors duration-200 ease-in-out"
-            type="button"
-        >
-            <span><i class="fas fa-user"></i> {{propUsername}}</span>
-        </button>
-    
         <!--label, ripples, total duration-->
-        <div class="py-1 grid grid-cols-5">
-            <div class="col-span-5">
-                <VActionButtonMedium
-                    class="w-full grid grid-cols-7 gap-2"
-                    @click.stop="handleIsSelected()"
-                >
-                    <!--label-->
-                    <div class="col-span-2 col-start-1 h-full relative text-3xl">
-                        <span
-                            class="w-fit h-fit absolute left-0.5 right-0 top-0 bottom-0.5 m-auto"
-                            :aria-label="event_tone_name"
-                        >
-                            {{event_tone_symbol}}
-                        </span>
-                    </div>
-            
-                    <!--ripples-->
-                    <div class="col-span-3 col-start-3 h-[75%] top-0 bottom-0 my-auto relative">
+        <div class="py-1">
+            <VActionButtonMedium
+                class="w-full px-4 grid grid-cols-8"
+                @click.stop="handleIsSelected()"
+            >            
+                <!--ripples-->
+                <div class="col-span-4 h-full top-0 bottom-0 my-auto relative">
+                    <div
+                        ref="volume_ripples_container"
+                        class="w-full h-full absolute flex flex-row justify-between"
+                    >
                         <div
-                            ref="volume_ripples_container"
-                            class="w-full h-full absolute flex flex-row justify-between"
+                            v-for="volume_ripple in propEvent.audio_volume_peaks.length" :key="volume_ripple"
+                            ref="volume_ripple"
+                            class="h-full scale-y-0 origin-center"
                         >
-                            <div
-                                v-for="volume_ripple in buckets.length" :key="volume_ripple"
-                                ref="volume_ripple"
-                                class="h-full scale-y-0 origin-center"
-                            >
-                                <div class="left-0 right-0 mx-auto w-0.5 h-full bg-theme-black">
-                                </div>
+                            <div class="left-0 right-0 mx-auto w-0.5 h-full bg-theme-black">
                             </div>
                         </div>
                     </div>
-            
+                </div>
+
+                <div class="col-span-2 h-full relative">
                     <!--total duration, check icon for selected-->
-                    <div class="col-span-2 col-start-6 h-full relative">
-                        <div
-                            v-if="propIsSelected === false"
-                            class="w-full h-full absolute flex flex-row"
-                        >
-                            <span class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto text-base font-semibold">
-                                {{pretty_file_duration}}
-                            </span>
-                        </div>
-                        <i v-else class="absolute w-fit h-fit text-2xl fas fa-square-check text-theme-lead left-0 right-0 top-0 bottom-0 m-auto"></i>
-                    </div>
-                </VActionButtonMedium>
-            </div>
+                    <span
+                        v-if="is_selected === false"
+                        class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto text-sm font-medium"
+                    >
+                        {{ prettyFileDuration }}
+                    </span>
+                    <i v-else class="w-fit h-fit text-2xl fas fa-square-check text-theme-lead absolute left-0 right-0 top-0 bottom-0 m-auto"></i>
+                </div>
+
+                <div class="col-span-2 h-full relative">
+                    <!--label-->
+                    <span
+                        class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0.5 m-auto text-3xl"
+                    >
+                        {{ propEvent.event_tone.event_tone_symbol }}
+                    </span>
+                </div>
+            </VActionButtonMedium>
         </div>
-
-
     </div>
 </template>
 
@@ -73,57 +56,40 @@
 
 
 <script lang="ts">
-    import { defineComponent } from 'vue';
-    import anime from 'animejs';
+    import { defineComponent, PropType } from 'vue';
+    // import anime from 'animejs';
+    import EventTypes from '@/types/Events.interface';
+    import { prettyDuration } from '@/helper_functions';
 
     export default defineComponent({
         data(){
             return {
-                username: 'carlj101',
-                event_tone_name: 'laugh cry',
-                event_tone_symbol: '😭',
-                buckets: [0.4, 0.2, 0.6, 0.7, 0.5, 0.2, 0.1, 0.7, 1, 1, 0.4, 0.2, 0.6, 0.7, 0.5, 0.2, 0.1, 0.7, 0.9, 0.9],
-                pretty_file_duration: '01:20',
-                pretty_upload_datetime: '40 minutes ago',
-                is_liked: null as boolean|null,
-
-                anime_like: null as InstanceType<typeof anime>|null,
-                anime_dislike: null as InstanceType<typeof anime>|null,
-
+                is_selected: false,
             };
         },
         mounted(){
 
-            for(let x = 0; x < this.buckets.length; x++){
+            for(let x = 0; x < this.propEvent.audio_volume_peaks.length; x++){
 
-                (this.$refs.volume_ripple as HTMLElement[])[x].style.transform = 'scaleY('+this.buckets[x]+')';
+                (this.$refs.volume_ripple as HTMLElement[])[x].style.transform = 'scaleY('+this.propEvent.audio_volume_peaks[x]+')';
             }
         },
         props: {
-            propUsername: {
-                type: String,
-                default: '',
-            },
-            propIsReply: {
-                type: Boolean,
-                default: false,
-            },
-            propIsSelected: {
-                type: Boolean,
-                default: false,
+            propEvent: {
+                type: Object as PropType<EventTypes>,
+                required: true,
             },
         },
-
-        methods: {
-            showUserPage() : void {
-
-                //pop up of user
-                console.log('user pop up for ' + this.propUsername);
+        computed: {
+            prettyFileDuration(){
+                return prettyDuration(this.propEvent.audio_file_seconds);
             },
-
+        },
+        methods: {
             handleIsSelected() : void {
 
-                this.$emit('isSelected', true);
+                this.is_selected = !this.is_selected;
+                this.$emit('isSelected', this.is_selected);
             },
 
         }

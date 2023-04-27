@@ -1,6 +1,6 @@
 <template>
-    <div class="w-full h-10 text-xl grid grid-cols-8 gap-2">
-        <div class="col-span-5 h-full grid grid-cols-2 gap-0.5">
+    <div class="h-10 text-xl">
+        <div class="w-full h-full grid grid-cols-2 gap-0.5">
             <!--like-->
             <button
                 ref="like_button"
