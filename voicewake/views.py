@@ -640,6 +640,32 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
         return events
 
+    def sort_events(self, queryset):
+
+        sorted_events = []
+        event_room_id = []  #simpler way to check and get element position in sorted_events
+
+        for count, row in enumerate(queryset):
+
+            if row.event_room.id not in event_room_id:
+
+                sorted_events.append({
+                    'event_room': row.event_room,
+                    'originator': None,
+                    'responder': []
+                })
+                event_room_id.append(row.event_room.id)
+
+            if row.user_event_role.event_role.event_role_name == 'originator':
+
+                sorted_events[event_room_id.index(row.event_room.id)]['originator'] = row
+
+            else:
+
+                sorted_events[event_room_id.index(row.event_room.id)]['responder'].append(row)
+
+        return sorted_events
+
     def get(self, request, *args, **kwargs):
 
         if 'event_room_id' in kwargs:
@@ -648,7 +674,12 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         
         elif 'generic_status_name' in kwargs and kwargs['generic_status_name'] == 'completed':
 
-            return Response(GetEventsSerializer(self.get_queryset_all_test(), many=True).data)
+            return Response(
+                GetEventRoomsSerializer(
+                    self.sort_events(self.get_queryset_all_test()),
+                    many=True
+                ).data
+            )
             # return Response(GetEventsSerializer(self.get_queryset_by_best_completed(), many=True).data)
         
         else:

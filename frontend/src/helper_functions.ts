@@ -18,6 +18,8 @@ export function arrayMax(your_array:number[]) : number {
 export function timeDifferenceUTC(date:Date) : string {
 
             //more optimised version, since visits to newer content will always be more
+            //to use: timeDifferenceUTC(new Date('2023-04-26T07:45:22.258243Z'))
+            //i.e. can immediately use datetime from Django's Serializer
 
             const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
             let interval = 0;
@@ -150,35 +152,10 @@ export function prettyCount(number:number) : string {
     return pretty_string;
 }
 
-export function sortEvents(events:EventTypes[]) : {} {
-
-    //structure
-    // {
-    //     event_room_id: {
-    //         'originator': [],
-    //         'responder': []
-    //     },
-    // }
-
-    const sorted_events:any = {};
-
-    for(let x=0; x < events.length; x++){
-
-        const event_room_id = events[x].event_room.id;
-        const event_role_name = events[x].user_event_role.event_role.event_role_name;
-
-        //prepare key value if it does not exist
-        if(event_room_id in sorted_events === false){
-
-            sorted_events[event_room_id] = {
-                'originator': [],
-                'responder': []
-            };            
-        }
-
-        sorted_events[event_room_id][event_role_name].push(events[x]);
-    }
-
-    return sorted_events;
+export function prettyDuration(seconds:number) : string {
+    return new Date(
+        seconds * 1000
+    ).toISOString().substring(14, 19);
 }
+
 

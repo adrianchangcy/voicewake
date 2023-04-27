@@ -1,5 +1,5 @@
 <template>
-    <CreateEvents
+    <VCreateEvents
         :propIsOriginator="true"
     />
 </template>
@@ -7,7 +7,7 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import CreateEvents from '/src/components/main/CreateEvents.vue';
+    import VCreateEvents from '/src/components/medium/VCreateEvents.vue';
 
     export default defineComponent({
         data(){
@@ -16,7 +16,7 @@
         },
         name: 'CreateEventRoomsApp',
         components: {
-            CreateEvents,
+            VCreateEvents,
         },
         methods: {
         }
