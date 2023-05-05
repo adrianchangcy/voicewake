@@ -70,9 +70,9 @@
     if text is from user, use casual font
 
     BUTTON SIZES
-    biggest page button, h-40, text-4xl icons, text-2xl text
+    biggest page button, h-24, text-4xl icons, text-2xl text
     component main button, h-20, text-4xl icons, text-2xl text
-    component small buttons, h-10, text-2xl
+    component small buttons, h-10, text-2xl icons, text-xl text
     component smallest buttons, h-10, text-xl
 
     INPUT SIZES (may change according to font size)

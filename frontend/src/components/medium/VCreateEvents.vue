@@ -30,7 +30,7 @@
                 <!--open/close VRecorderMenu-->
                 <div ref="recorder_field" class="col-span-6">
                     <VRecorderField
-                        propLabel="Your voice"
+                        propLabel="Thoughts"
                         :propIsOpen="is_recorder_menu_open"
                         :propBucketQuantity="bucket_quantity"
                         :propHasRecording="final_blob !== null"
@@ -271,9 +271,6 @@
 
                 this.event_name = new_value;
             },
-            handleSubmit(): void {
-                console.log("y submit? lol");
-            },
             axiosSetup() : boolean {
 
                 //your template must have {% csrf_token %}
@@ -288,7 +285,7 @@
                 axios.defaults.headers.common['X-CSRFToken'] = (token as HTMLFormElement).value;
                 axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
                 return true;
-            }
+            },
         },
     });
 </script>
