@@ -11,16 +11,6 @@ module.exports = {
             writeToDisk: true, 
         },
     },
-    //configureWebpack below hopefully fixes bug of multiple Vue instances after a long while
-    //typically fixed by Ctrl+Shift+F5, but not a good fix for end users
-    //https://github.com/vuejs/vue-cli/issues/4271
-    configureWebpack: {
-        resolve: {
-            alias: {
-                vue$: path.resolve('./node_modules/vue/dist/vue.runtime.esm.js'),
-            },
-        },
-    },
 };
 
 //https://betterprogramming.pub/vue-django-using-vue-files-and-the-vue-cli-d6dd8c9145eb

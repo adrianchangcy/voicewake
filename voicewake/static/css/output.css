@@ -889,10 +889,6 @@ video {
   height: 99%;
 }
 
-.h-16 {
-  height: 4rem;
-}
-
 .w-fit {
   width: -webkit-fit-content;
   width: -moz-fit-content;
@@ -1052,10 +1048,6 @@ video {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.grid-cols-5 {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-}
-
 .grid-rows-1 {
   grid-template-rows: repeat(1, minmax(0, 1fr));
 }
@@ -1126,10 +1118,6 @@ video {
 
 .gap-0 {
   gap: 0px;
-}
-
-.gap-10 {
-  gap: 2.5rem;
 }
 
 .gap-y-32 {

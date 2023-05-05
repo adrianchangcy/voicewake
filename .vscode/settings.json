@@ -2,4 +2,5 @@
     "editor.codeActionsOnSave": {
         "source.fixAll.eslint": false
     },
+    "typescript.tsdk": "frontend/node_modules/typescript/lib",
 }
