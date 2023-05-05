@@ -14,7 +14,9 @@
 
 
 <script>
-    export default {
+    import { defineComponent } from 'vue';
+
+    export default defineComponent({
         data(){
             return {
 
@@ -24,5 +26,5 @@
             propElement: String,
             propUrl: String,
         }
-    }
+    });
 </script>

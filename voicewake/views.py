@@ -406,6 +406,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             '''
             SELECT
                 events.*,
+                event_rooms.*,
                 event_tones.*,
                 generic_statuses.*,
                 SUM(
@@ -429,19 +430,74 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                     )
                     WHEN 'true' THEN 'true'
                     WHEN 'false' THEN 'false'
-                    ELSE null
+                    ELSE NULL
                     END
                 ) as is_liked_by_user
             FROM events
-            LEFT JOIN event_likes_dislikes ON  events.id = event_likes_dislikes.event_id
+            LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
+            LEFT JOIN event_likes_dislikes ON  events.id = event_likes_dislikes.event_id
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
-            GROUP BY events.id, event_tones.id, generic_statuses.id
+            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
             ''',
             params=(
                 self.request.user.id,
             )
         )
+        return events
+
+    def get_queryset_by_is_replying(self):
+
+        events = Events.objects.raw(
+            '''
+            SELECT
+                events.*,
+                event_rooms.*,
+                event_tones.*,
+                generic_statuses.*,
+                SUM(
+                    CASE 
+                    WHEN event_likes_dislikes.is_liked='true' AND event_likes_dislikes.event_id IN (events.id) THEN 1
+                    ELSE 0
+                    END
+                ) AS like_count,
+                SUM(
+                    CASE
+                    WHEN event_likes_dislikes.is_liked='false' AND event_likes_dislikes.event_id IN (events.id) THEN 1
+                    ELSE 0
+                    END
+                ) AS dislike_count,
+                (CASE
+                    (
+                        SELECT event_likes_dislikes.is_liked
+                        FROM event_likes_dislikes
+                        WHERE user_id=%s
+                        AND event_id=events.id
+                    )
+                    WHEN 'true' THEN 'true'
+                    WHEN 'false' THEN 'false'
+                    ELSE NULL
+                    END
+                ) as is_liked_by_user
+            FROM events
+            LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
+            LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
+            LEFT JOIN event_likes_dislikes ON  events.id = event_likes_dislikes.event_id
+            LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
+            WHERE events.event_room_id IN (
+                SELECT id FROM event_rooms
+                WHERE locked_for_user_id=%s
+                AND is_replying=%s
+            )
+            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
+            ''',
+            params=(
+                self.request.user.id,
+                self.request.user.id,
+                True
+            )
+        )
+
         return events
 
     def get_queryset_by_random_incomplete(self):
@@ -450,6 +506,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             '''
             SELECT
                 events.*,
+                event_rooms.*,
                 event_tones.*,
                 generic_statuses.*,
                 SUM(
@@ -473,69 +530,42 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                     )
                     WHEN 'true' THEN 'true'
                     WHEN 'false' THEN 'false'
-                    ELSE null
+                    ELSE NULL
                     END
                 ) as is_liked_by_user
             FROM events
-            LEFT JOIN event_likes_dislikes ON  events.id = event_likes_dislikes.event_id
+            LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
+            LEFT JOIN event_likes_dislikes ON  events.id = event_likes_dislikes.event_id
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
             WHERE events.event_room_id IN (
                 SELECT event_rooms.id FROM event_rooms
                 INNER JOIN generic_statuses ON event_rooms.generic_status_id = generic_statuses.id
                 WHERE generic_statuses.generic_status_name=%s
-                LIMIT %s
+                AND locked_for_user_id IS NULL
+                ORDER BY event_rooms.when_created DESC
             )
             AND events.event_room_id NOT IN (
-                SELECT seen_event_rooms.id FROM seen_event_rooms
+                SELECT seen_event_rooms.event_room_id FROM seen_event_rooms
                 INNER JOIN event_rooms ON seen_event_rooms.event_room_id = event_rooms.id
                 WHERE user_id=%s
             )
-            GROUP BY events.id, event_tones.id, generic_statuses.id
+            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
+            LIMIT %s
             ''',
             params=(
                 self.request.user.id,
                 'incomplete',
-                INCOMPLETE_EVENT_ROOMS_PER_ROLL,
                 self.request.user.id,
+                INCOMPLETE_EVENT_ROOMS_PER_ROLL,
             )
         )
-
-        #lock these event_rooms
-        #store these event_rooms to seen_event_rooms
-        datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
-        event_rooms_for_update = []
-        seen_event_rooms_for_create = []
-
-        for event in events:
-
-            #prepare for event_rooms lock
-            event_room = EventRooms(pk=event.event_room.id)
-            event_room.locked_for_user = AuthUser(pk=self.request.user.id)
-            event_room.when_locked = datetime_now
-            event_room.last_modified = datetime_now
-
-            event_rooms_for_update.append(event_room)
-
-            #prepare for seen_event_rooms create
-            seen_event_room = SeenEventRooms(
-                user=AuthUser(pk=self.request.user.id),
-                event_room=event_room
-            )
-
-            seen_event_rooms_for_create.append(seen_event_room)
-
-        #lock event_rooms
-        EventRooms.objects.bulk_update(objs=event_rooms_for_update, fields=['locked_for_user', 'when_locked', 'last_modified'])
-
-        #create seen_event_rooms
-        SeenEventRooms.objects.bulk_create(seen_event_rooms_for_create)
 
         return events
 
     def get_queryset_by_best_completed(self):
 
-        #this is for "10 max new posts every __", which in this case is every hour
+        #this is for "10 max new posts every >= __", which in this case is every hour
         checkpoint_datetime = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d %H:00:00 %z')
         checkpoint_datetime = datetime.strptime(checkpoint_datetime, '%Y-%m-%d %H:%M:%S %z')
 
@@ -543,6 +573,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             '''
             SELECT
                 events.*,
+                event_rooms.*,
                 event_tones.*,
                 generic_statuses.*,
                 SUM(
@@ -566,12 +597,13 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                     )
                     WHEN 'true' THEN 'true'
                     WHEN 'false' THEN 'false'
-                    ELSE null
+                    ELSE NULL
                     END
                 ) as is_liked_by_user
             FROM events
-            LEFT JOIN event_likes_dislikes ON  events.id = event_likes_dislikes.event_id
+            LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
+            LEFT JOIN event_likes_dislikes ON  events.id = event_likes_dislikes.event_id
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
             WHERE events.event_room_id IN (
                 SELECT event_rooms.id FROM event_rooms
@@ -580,7 +612,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 AND event_rooms.when_created >= %s
                 LIMIT %s
             )
-            GROUP BY events.id, event_tones.id, generic_statuses.id
+            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
             ORDER BY like_count DESC
             ''',
             params=(
@@ -592,13 +624,14 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         )
 
         return events
-        
+
     def get_queryset_by_event_room(self):
 
         events = Events.objects.raw(
             '''
             SELECT
                 events.*,
+                event_rooms.*,
                 event_tones.*,
                 generic_statuses.*,
                 SUM(
@@ -622,15 +655,16 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                     )
                     WHEN 'true' THEN 'true'
                     WHEN 'false' THEN 'false'
-                    ELSE null
+                    ELSE NULL
                     END
                 ) as is_liked_by_user
             FROM events
-            LEFT JOIN event_likes_dislikes ON  events.id = event_likes_dislikes.event_id
+            LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
+            LEFT JOIN event_likes_dislikes ON  events.id = event_likes_dislikes.event_id
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
             WHERE events.event_room_id = %s
-            GROUP BY events.id, event_tones.id, generic_statuses.id
+            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
             ''',
             params=(
                 self.request.user.id,
@@ -639,6 +673,96 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         )
 
         return events
+
+    def unlock_event_rooms_from_past_reply_choices(self):
+
+        EventRooms.objects.filter(
+            locked_for_user=AuthUser(pk=self.request.user.id)
+        ).update(
+            when_locked=None,
+            locked_for_user=None,
+            is_replying=None,
+            last_modified=datetime.now().astimezone(tz=ZoneInfo('UTC'))
+        )
+
+    def lock_event_rooms_for_reply_choices(self, events):
+
+        event_room_ids = []
+
+        for event in events:
+
+            if event.event_room.id not in event_room_ids:
+
+                event_room_ids.append(event.event_room.id)
+
+                #lock for reply choices
+                event.event_room.when_locked = datetime.now().astimezone(tz=ZoneInfo('UTC'))
+                event.event_room.locked_for_user = AuthUser(pk=self.request.user.id)
+                event.event_room.is_replying = False
+                event.event_room.save()
+
+        return True
+
+    def check_user_can_create_event_room(self):
+
+        #this is for "10 max new posts every __", which in this case is every hour
+        checkpoint_datetime = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d %H:00:00 %z')
+        checkpoint_datetime = datetime.strptime(checkpoint_datetime, '%Y-%m-%d %H:%M:%S %z')
+
+        the_count = EventRooms.objects.filter(
+            when_created__gte=checkpoint_datetime,
+            generic_status=GenericStatuses.objects.get(generic_status_name='incomplete')
+        ).count()
+
+        if the_count > MAXIMUM_COMPLETED_EVENT_ROOMS_PER_PURGE_WINDOW:
+
+            return False
+        
+        return True
+
+    def check_user_can_reply_event_room(self, event_room_id):
+
+        event_room = EventRooms.objects.select_related('locked_for_user').get(
+            pk=event_room_id
+        )
+
+        if event_room.locked_for_user.user.id == self.request.user.id:
+
+            return True
+        
+        return False
+
+    def check_user_is_replying(self):
+
+        the_count = EventRooms.objects.filter(
+            locked_for_user=AuthUser(pk=self.request.user.id),
+            is_replying=True
+        ).count()
+
+        if the_count > 0:
+
+            return True
+        
+        return False
+
+    def add_to_seen_event_rooms(self, events):
+
+        event_room_ids = []
+
+        user = AuthUser(pk=self.request.user.id)
+
+        for event in events:
+
+            if event.event_room.id not in event_room_ids:
+
+                event_room_ids.append(event.event_room.id)
+
+                SeenEventRooms.objects.get_or_create(
+                    user=user,
+                    event_room=event.event_room
+                )
+
+        return True
 
     def sort_events(self, queryset):
 
@@ -670,24 +794,68 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
         if 'event_room_id' in kwargs:
 
-            return Response(GetEventsSerializer(self.get_queryset_by_event_room(), many=True).data)
-        
-        elif 'generic_status_name' in kwargs and kwargs['generic_status_name'] == 'completed':
-
             return Response(
                 GetEventRoomsSerializer(
-                    self.sort_events(self.get_queryset_all_test()),
+                    self.sort_events(self.get_queryset_by_event_room()),
                     many=True
                 ).data
             )
-            # return Response(GetEventsSerializer(self.get_queryset_by_best_completed(), many=True).data)
+        
+        elif 'generic_status_name' in kwargs and kwargs['generic_status_name'] == 'incomplete':
+
+            #check if user is replying to anything
+            #we want event_room.id if there is any
+            if self.check_user_is_replying() is True:
+
+                return Response(
+                    GetEventsSerializer(
+                        self.sort_events(self.get_queryset_by_is_replying()),
+                        many=True
+                    ).data,
+                    status=status.HTTP_412_PRECONDITION_FAILED
+                )
+
+            #unlock everything
+            self.unlock_event_rooms_from_past_reply_choices()
+
+            #get events
+            events = self.get_queryset_by_random_incomplete()
+
+            if len(events) == 0:
+
+                return Response(
+                    GetEventRoomsSerializer(
+                        [],
+                        many=True
+                    ).data
+                )
+            
+            #lock events
+            self.lock_event_rooms_for_reply_choices(events)
+
+            #add event_rooms to seen_event_rooms
+            self.add_to_seen_event_rooms(events)
+
+            #return events sorted by event_rooms
+            return Response(
+                GetEventRoomsSerializer(
+                    self.sort_events(events),
+                    many=True
+                ).data
+            )
         
         else:
 
-            return Response(GetEventsSerializer([], many=True).data)
+            return Response(
+                GetEventsSerializer(
+                    [],
+                    many=True
+                ).data,
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     def post(self, request, *args, **kwargs):
-        
+
         #deserialize
         serializer = CreateEventsSerializer(data=request.data, many=False)
 
@@ -702,6 +870,12 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         #generic_status is handled by default, so it is skipped here
         if new_data['is_originator'] is True:
 
+            #check if event_room limit is not yet reached
+            if self.check_user_can_create_event_room() is False:
+
+                return Response(data={}, status=status.HTTP_406_NOT_ACCEPTABLE)
+
+            #proceed
             event_role_name = 'originator'
 
             event_room = EventRooms.objects.create(
@@ -711,6 +885,12 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
         else:
 
+            #check if this user is already attached beforehand
+            if self.check_user_can_reply_event_room(new_data['event_room_id']) is False:
+
+                return Response(data={}, status=status.HTTP_406_NOT_ACCEPTABLE)
+
+            #proceed
             event_role_name = 'responder'
 
             try:
@@ -750,16 +930,109 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             user_event_role=user_event_role,
             event_tone=event_tone,
             audio_volume_peaks=new_data['audio_volume_peaks'],
+            audio_file_seconds=new_data['audio_file_seconds'],
             event_room=event_room
         )
 
-        #we delay saving audio_file, as we want when_created first
+        #we delay saving audio_file, as we want when_created for audio_file's path
         new_event.audio_file = new_data['audio_file']
 
         new_event.save()
 
+        #unlock everything
+        self.unlock_event_rooms_from_past_reply_choices()
+
         #don't return super().form_valid(form), else it goes though form.save() again
         return JsonResponse(data={}, status=status.HTTP_201_CREATED)
+
+
+
+#to handle specific actions related to user
+class UserActionsAPI(generics.GenericAPIView):
+
+    serializer_class = UserActionsSerializer
+    permission_classes =[IsAuthenticated]
+
+    def start_or_cancel_replying_to_event_room(self, new_data):
+
+        #get event_room
+        try:
+
+            event_room = EventRooms.objects.get(pk=new_data['event_room_id'])
+
+        except EventRooms.DoesNotExist:
+
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        
+        #users can only modify event_room if they are already attached to it
+        if event_room.locked_for_user is not None and event_room.locked_for_user.id != self.request.user.id:
+            
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        
+        if new_data['to_reply'] is True:
+
+            #check if user is replying to anything else
+            temp = EventRooms.objects.filter(
+                locked_for_user=AuthUser(self.request.user.id),
+                is_replying=True
+            ).exclude(
+                pk=new_data['event_room_id']
+            ).count()
+
+            #user cannot be replying to anything else
+            if temp > 0:
+                
+                return Response(status=status.HTTP_412_PRECONDITION_FAILED)
+
+            event_room.when_locked = datetime.now().astimezone(tz=ZoneInfo('UTC'))
+
+            #when to_reply=True but is_replying=False, means first time
+            #we will unlock all other locked events
+            if event_room.is_replying is not True:
+
+                #unlock other events that were locked for reply choices
+                EventRooms.objects.filter(
+                    locked_for_user=AuthUser(self.request.user.id)
+                ).exclude(
+                    pk=new_data['event_room_id']
+                ).update(
+                    when_locked=None,
+                    locked_for_user=None,
+                    is_replying=None,
+                    last_modified=datetime.now().astimezone(tz=ZoneInfo('UTC'))
+                )
+
+                #confirm replying
+                event_room.is_replying = True
+
+        else:
+
+            event_room.when_locked = None
+            event_room.locked_for_user = None
+            event_room.is_replying = None
+
+        event_room.save()
+
+        return Response(status=status.HTTP_200_OK)
+
+    def post(self, request, *args, **kwargs):
+
+        serializer = UserActionsSerializer(data=request.data, many=False)
+
+        if serializer.is_valid() is False:
+
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        
+        new_data = serializer.validated_data
+
+        if 'event_room_id' in new_data and 'to_reply' in new_data:
+
+            self.start_or_cancel_replying_to_event_room(new_data)
+
+        else:
+
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
 
 
 #to submit likes/dislikes
@@ -833,6 +1106,7 @@ class CreateEventRooms(TemplateView):
     success_url = '/'
 
 
+
 #view specific event_room and its events
 class GetEventRooms(TemplateView):
 
@@ -866,16 +1140,12 @@ class GetEventRooms(TemplateView):
         )
 
 
+
 #list event_rooms, for general browsing
-class ListEventRooms(ListView):
+class ListEventRooms(TemplateView):
 
     template_name = 'voicewake/event_rooms/list_event_rooms.html'
-
-    def get_queryset(self):
-
-        events = [1,1]
-
-        return events
+    queryset = None
 
 
 

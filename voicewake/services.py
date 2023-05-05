@@ -107,33 +107,3 @@ def delete_audio_file(absolute_path):
 
     return False
 
-
-#unlock events that have been locked for a user
-def unlock_event_rooms_by_user(user_id):
-
-    datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
-
-    return EventRooms.objects.filter(
-        locked_for_user=AuthUser(pk=user_id)
-    ).update(
-        when_locked=None,
-        locked_for_user=None,
-        last_modified=datetime_now
-    )
-
-
-#unlock EventRooms that users have locked and abandoned
-#if user has not abandoned, JS will ping to update EventRooms.when_locked, i.e. relock
-def unlock_event_rooms_by_time():
-
-    datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
-    checkpoint_datetime = datetime_now - timedelta(minutes=MINUTES_TO_UNLOCK_EVENT_ROOM)
-
-    return EventRooms.objects.filter(
-        when_locked__lte=checkpoint_datetime
-    ).update(
-        when_locked=None,
-        locked_for_user=None,
-        last_modified=datetime_now
-    )
-

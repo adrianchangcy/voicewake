@@ -1,6 +1,10 @@
 <template>
     <div class="flex flex-col gap-8">
 
+        <VSectionTitle
+            propTitle="Replying to..."
+        />
+
         <!--originator-->
         <div
             v-if="originator_event !== null"
@@ -59,6 +63,9 @@
         </div>
 
         <!--reply-->
+        <VSectionTitle
+            propTitle="Your reply"
+        />
         <VCreateEvents
             :propIsOriginator="false"
             :propEventRoomId="event_room_id"
@@ -74,6 +81,7 @@
     import VLikeDislike from '/src/components/medium/VLikeDislike.vue';
     import VCreateEvents from '/src/components/medium/VCreateEvents.vue';
     import VUser from '/src/components/small/VUser.vue';
+    import VSectionTitle from '@/components/small/VSectionTitle.vue';
 </script>
 
 

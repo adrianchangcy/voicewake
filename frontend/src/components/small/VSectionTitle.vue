@@ -11,8 +11,9 @@
 
 
 <script>
+    import { defineComponent } from 'vue';
 
-    export default {
+    export default defineComponent({
 
         props: {
             propTitle: {
@@ -24,5 +25,5 @@
                 default: ''
             },
         }
-    }
+    });
 </script>

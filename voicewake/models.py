@@ -281,6 +281,7 @@ class EventRooms(models.Model):
     generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)
     when_locked = models.DateTimeField(blank=True, null=True, default=None)
     locked_for_user = models.ForeignKey('AuthUser', on_delete=models.SET_NULL, blank=True, null=True, default=None)
+    is_replying = models.BooleanField(blank=True, null=True, default=None)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
@@ -345,7 +346,7 @@ class Events(models.Model):
 
 class GenericStatuses(models.Model):
     id = models.BigAutoField(primary_key=True)
-    generic_status_name = models.TextField(max_length=200)
+    generic_status_name = models.TextField(max_length=200, unique=True)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 

@@ -1,7 +1,7 @@
 <template>
     <div
         :class="[
-            propIsMany === true ? 'border-2 border-theme-light-gray rounded-lg px-4 py-6' : '',
+            propIsInContainer === true ? 'border-2 border-theme-light-gray rounded-lg px-4 py-6' : '',
             'flex flex-col gap-8'
         ]"
     >
@@ -30,7 +30,7 @@
             />
 
             <div
-                v-if="propIsMany === false"
+                v-if="propShowOnePlaybackPerEvent === true"
                 class="w-full h-fit grid grid-cols-8 gap-2"
             >
                 <div class="col-span-6">
@@ -70,7 +70,7 @@
             />
 
             <div
-                v-if="propIsMany === false"
+                v-if="propShowOnePlaybackPerEvent === true"
                 class="w-full h-fit grid grid-cols-8 gap-2"
             >
                 <div class="col-span-6">
@@ -101,7 +101,20 @@
         </div>
 
         <!--reply-->
-        <VActionButtonBig class="mt-6">Reply</VActionButtonBig>
+        <div v-if="propShowReplyMenu === true">
+            <VCreateEvents
+                :propIsOriginator="false"
+                :propEventRoomId="propEventRoom.event_room.id"
+            />
+        </div>
+        <div v-else>
+            <VActionButtonBig
+                :propIsSmaller="true"
+                @click.stop="confirmReplyChoice()"
+            >
+                Reply
+            </VActionButtonBig>
+        </div>
     </div>
 </template>
 
@@ -112,6 +125,7 @@
     import VLikeDislike from '/src/components/medium/VLikeDislike.vue';
     import VUser from '/src/components/small/VUser.vue';
     import VActionButtonBig from '../small/VActionButtonBig.vue';
+    import VCreateEvents from '../medium/VCreateEvents.vue';
 </script>
 
 
@@ -119,6 +133,7 @@
     import { defineComponent, PropType } from 'vue';
     import { timeDifferenceUTC } from '@/helper_functions';
     import EventRoomTypes from '@/types/EventRooms.interface';
+    const axios = require('axios');
 
     export default defineComponent({
         data() {
@@ -127,10 +142,6 @@
             };
         },
         props: {
-            propWhenCreated: {
-                type: Date,
-                default: null
-            },
             propEventRoom: {
                 type: Object as PropType<EventRoomTypes>,
                 required: true,
@@ -139,10 +150,18 @@
                 type: Boolean,
                 default: true
             },
-            propIsMany: {
+            propShowOnePlaybackPerEvent: {
                 type: Boolean,
                 default: false
             },
+            propShowReplyMenu: {
+                type: Boolean,
+                default: false
+            },
+            propIsInContainer: {
+                type: Boolean,
+                default: false
+            }
         },
         computed: {
             prettyWhenCreated(){
@@ -153,6 +172,32 @@
                 
                 return '/hear/' + (this.propEventRoom.event_room.id).toString();
             }
-        }
+        },
+        methods: {
+            async confirmReplyChoice(){
+
+                console.log('yolo');
+            },
+            axiosSetup() : boolean {
+
+                //your template must have {% csrf_token %}
+                let token = document.getElementsByName("csrfmiddlewaretoken")[0];
+
+                if(token === undefined){
+
+                    console.log('CSRF not found.');
+                    return false;
+                }
+
+                axios.defaults.headers.common['X-CSRFToken'] = (token as HTMLFormElement).value;
+                axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
+                return true;
+            },
+        },
+        mounted(){
+
+            //set up Axios appropriately
+            this.axiosSetup();
+        },
     });
 </script>

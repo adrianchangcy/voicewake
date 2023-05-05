@@ -52,7 +52,9 @@
 </script>
 
 <script>
-    export default {
+    import { defineComponent } from 'vue';
+
+    export default defineComponent({
         data(){
             return {
                 input_value: '',
@@ -97,5 +99,5 @@
                 textarea.style.height = textarea.scrollHeight.toString() + 'px';
             },
         },
-    };
+    });
 </script>

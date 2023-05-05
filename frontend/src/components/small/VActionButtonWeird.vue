@@ -14,11 +14,13 @@
 
 <script>
 //focus:border-2 focus:outline-none focus:ring-1 focus:ring-theme-black focus:border-theme-black
-    export default {
+    import { defineComponent } from 'vue';
+
+    export default defineComponent({
         data(){
             return {
 
             };
         },
-    }
+    });
 </script>

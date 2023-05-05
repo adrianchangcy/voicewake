@@ -69,6 +69,7 @@ class GenericStatusesSerializer(serializers.ModelSerializer):
 
 class EventRoomsSerializer(serializers.ModelSerializer):
     generic_status = GenericStatusesSerializer()
+    locked_for_user = AuthUserSerializer()
     class Meta:
         model = EventRooms
         exclude = ['last_modified']
@@ -172,5 +173,18 @@ class CreateEventsSerializer(serializers.Serializer):
             raise serializers.ValidationError('Missing paired data on is_originator.')
 
 
+class UserActionsSerializer(serializers.Serializer):
+    event_room_id = serializers.IntegerField()
+    to_reply = serializers.BooleanField()
+
+    def validate(self, data):
+
+        if 'event_room_id' in data and 'to_reply' in data:
+
+            return data
+        
+        else:
+
+            raise serializers.ValidationError('Missing paired data.')
 
 

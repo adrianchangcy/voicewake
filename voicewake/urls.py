@@ -43,6 +43,7 @@ urlpatterns = [
     path('api/events/get/status/<str:generic_status_name>', views.EventsAPI.as_view(), name='get_events_by_generic_status_name'),
     path('api/events/create', views.EventsAPI.as_view(), name='create_events'),
     path('api/event-likes-dislikes', views.EventLikesDislikesAPI.as_view(), name='event_likes_dislikes'),
+    path('api/user-actions', views.UserActionsAPI.as_view(), name='user_actions'),
     
     #user management
     #refer to link below for all URLs/APIs already provided

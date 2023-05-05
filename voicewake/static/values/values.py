@@ -32,7 +32,8 @@ MAX_AUDIO_FILE_SIZE_MB = 200
 MINUTES_TO_UNLOCK_EVENT_ROOM = 10
 
 #how many incomplete EventRooms to show at a time, before next reroll
-INCOMPLETE_EVENT_ROOMS_PER_ROLL = 3
+#we have not handled state management for play+pause when multiple VPlayback are present
+INCOMPLETE_EVENT_ROOMS_PER_ROLL = 1
 
 #how many hours until an EventRoom is considered stale
 #used to clean up SeenEventRooms
