@@ -47,7 +47,8 @@
                 ref="playback_main"
                 :class="[
                     propIsSticky === false ? 'border rounded-lg' : '',
-                    'w-full h-full absolute grid grid-rows-2 grid-cols-4 gap-x-1 left-0 right-0 top-0 bottom-0 m-auto pl-2 lg:pl-0 pr-2 text-theme-black     opacity-10 border-theme-light-gray'
+                    propEventToneSymbol === '' ? 'grid-cols-4' : 'grid-cols-5',
+                    'w-full h-full absolute grid grid-rows-2 gap-x-1 left-0 right-0 top-0 bottom-0 m-auto pl-2 lg:pl-0 pr-2 lg:pr-0 text-theme-black border-theme-light-gray opacity-0'
                 ]"
             >
                 <!--play/pause-->
@@ -71,7 +72,7 @@
                 <div
                     :class="[
                         has_all_data_for_play === true && is_playback_slider_ready === true ? 'cursor-pointer' : 'cursor-default',
-                        'row-start-1 row-span-1 col-start-2 col-span-4 relative'
+                        'row-start-1 row-span-1 col-start-2 col-span-3 relative'
                     ]"
                 >
                     <!--ripples-->
@@ -130,7 +131,7 @@
 
                 <!--volume, timers-->
                 <div
-                    class="row-start-2 row-span-1 col-start-2 col-span-4 mx-2 grid grid-rows-1 grid-cols-3"
+                    class="row-start-2 row-span-1 col-start-2 col-span-3 mx-2 grid grid-rows-1 grid-cols-3"
                 >
                     <!--current duration-->
                     <div class="row-start-1 row-span-1 col-start-1 col-span-1 relative text-sm font-medium">
@@ -185,6 +186,14 @@
                     <div class="row-start-1 row-span-1 col-start-3 col-span-1 relative text-sm font-medium">
                         <span class="absolute w-fit h-fit right-0 top-0 bottom-0 m-auto">{{pretty_playback_duration}}</span>
                     </div>
+                </div>
+
+                <!--event_tone_symbol-->
+                <div
+                    v-if="propEventToneSymbol !== ''" 
+                    class="row-start-1 row-span-2 col-start-5 col-span-1 relative"
+                >
+                    <span class="text-3xl w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">{{ propEventToneSymbol }}</span>
                 </div>
             </div>
         </div>
@@ -349,6 +358,10 @@
             },
             propBucketQuantity: {   //with no required value, this is the fix for unrendered this.$refs.volume_ripple
                 type: Number
+            },
+            propEventToneSymbol: {
+                type: String,
+                default: '',
             },
         },
         watch: {
@@ -1085,6 +1098,10 @@
                                 loop: false,
                                 autoplay: true,
                             }).add({
+                                targets: this.$refs.playback_main,
+                                duration: this.fastest_anime_duration_ms,
+                                opacity: '0.1',
+                            }).add({
                                 //set to default volume_ripples
                                 targets: volume_ripples,
                                 scaleY: ['0', '1'],
@@ -1181,6 +1198,7 @@
                                             playback_main.style.display = 'grid';
                                         },
                                         opacity: this.has_all_data_for_play === true ? 1 : 0.1,
+                                        easing: 'linear',
                                         duration: this.fastest_anime_duration_ms * 2,
                                         //we want the entire anime to finish before this condition unlocks other actions
                                         //to delay this, we don't use setTimeout

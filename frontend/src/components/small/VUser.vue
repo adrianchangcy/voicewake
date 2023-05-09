@@ -1,11 +1,11 @@
 <template>
-    <button
-    class="w-fit h-10 text-base font-extralight rounded-lg shade-when-hover transition-colors duration-200 ease-in-out"
-    type="button"
-    href='www.youtube.com'
->
-    <span><i class="fas fa-user"></i> {{propUsername}}</span>
-</button>
+    <div>
+        <a href="www.youtube.com">
+            <span class="text-theme-black text-base rounded-lg hover:underline transition-colors duration-200 ease-in-out">
+                <i class="fas fa-user text-xl"></i> {{ propUsername }}
+            </span>
+        </a>
+    </div>
 </template>
 
 

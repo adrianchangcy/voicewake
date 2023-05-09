@@ -17,6 +17,13 @@
         class="event-room text-theme-black"
     >
 
+        <!--possible page title-->
+        {% if is_this_user_replying %}
+            <div class="w-fit h-fit pt-7 pb-4 text-4xl font-light text-theme-black">
+                <span>Replying to...</span>
+            </div>
+        {% endif %}
+
         <!--title-->
         {% if is_deleted %}
             <div class="h-fit pt-4 pb-4">
@@ -27,7 +34,7 @@
         {% else %}
             <div class="h-fit pt-4 pb-4">
                 <!--title from user 1-->
-                <p class="text-2xl">
+                <p class="text-2xl break-words">
                     {{originator_event.event_room.event_room_name}}
                 </p>
                 <!--last updated-->
@@ -36,17 +43,6 @@
                 </p>
             </div>
         {% endif %}
-
-
-        <!--similar to VEventCard-->
-        <!--username-->
-        <button
-            class="w-fit h-10 text-base font-extralight rounded-lg shade-when-hover transition-colors duration-200 ease-in-out"
-            type="button"
-            href='www.youtube.com'
-        >
-            <span><i class="fas fa-user"></i> {{originator_event.user_event_role.user.username}}</span>
-        </button>
 
         <!--the rest of the content-->
         <div id="get-event-rooms-app"></div>

@@ -1,94 +1,27 @@
 <template>
-    <div class="flex flex-col gap-8">
-
-        <VSectionTitle
-            propTitle="Replying to..."
-        />
-
-        <!--originator-->
-        <div
-            v-if="originator_event !== null"
-        >
-            <div class="w-full h-fit grid grid-cols-8 gap-2">
-                <div class="col-span-6">
-                    <VPlayback
-                        :propAudioVolumePeaks="originator_event.audio_volume_peaks"
-                        :propBucketQuantity="originator_event.audio_volume_peaks.length"
-                        :propAudioURL="originator_event.audio_file"
-                    />
-                </div>
-                <div class="col-span-2 relative border border-theme-light-gray rounded-lg">
-                    <span class="text-3xl w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">{{ originator_event.event_tone.event_tone_symbol }}</span>
-                </div>
-            </div>
-            <div class="w-full h-fit grid grid-cols-8 pt-2">
-                <VLikeDislike
-                    :propEventId="originator_event.id"
-                    :propLikeCount="originator_event.like_count"
-                    :propDislikeCount="originator_event.dislike_count"
-                    :propIsLiked="originator_event.is_liked_by_user"
-                    class="col-span-6 lg:col-span-5"
-                />
-            </div>
-        </div>
-
-        <!--responders-->
-        <div
-            v-for="event in responder_events" :key="event.id"
-        >
-            <VUser
-                :propUsername="event.user_event_role.user.username"
+    <div>
+        <div v-if="event_room !== null">
+            <EventRoomCard
+                :propEventRoom="event_room"
+                :propShowTitle="false"
+                :propShowOnePlaybackPerEvent="event_room.responder.length === 0"
+                :propShowReplyMenu="true"
+                :propIsInContainer="false"
             />
-            <div class="w-full h-fit grid grid-cols-8 gap-2">
-                <div class="col-span-6">
-                    <VPlayback
-                        :propAudioVolumePeaks="event.audio_volume_peaks"
-                        :propBucketQuantity="event.audio_volume_peaks.length"
-                        :propAudioURL="event.audio_file"
-                    />
-                </div>
-                <div class="col-span-2 relative border border-theme-light-gray rounded-lg">
-                    <span class="text-3xl w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">{{ event.event_tone.event_tone_symbol }}</span>
-                </div>
-            </div>
-            <div class="w-full h-fit grid grid-cols-8 pt-2">
-                <VLikeDislike
-                    :propEventId="event.id"
-                    :propLikeCount="event.like_count"
-                    :propDislikeCount="event.dislike_count"
-                    :propIsLiked="event.is_liked_by_user"
-                    class="col-span-6 lg:col-span-5"
-                />
-            </div>
         </div>
-
-        <!--reply-->
-        <VSectionTitle
-            propTitle="Your reply"
-        />
-        <VCreateEvents
-            :propIsOriginator="false"
-            :propEventRoomId="event_room_id"
-        />
     </div>
 </template>
 
 
 <script setup lang="ts">
-
-    // import VSectionTitle from '/src/components/small/VSectionTitle.vue';
-    import VPlayback from '/src/components/medium/VPlayback.vue';
-    import VLikeDislike from '/src/components/medium/VLikeDislike.vue';
-    import VCreateEvents from '/src/components/medium/VCreateEvents.vue';
-    import VUser from '/src/components/small/VUser.vue';
-    import VSectionTitle from '@/components/small/VSectionTitle.vue';
+    import EventRoomCard from '@/components/main/EventRoomCard.vue';
 </script>
 
 
 <script lang="ts">
     import { defineComponent } from 'vue';
     import { timeDifferenceUTC } from '@/helper_functions';
-    import EventTypes from '@/types/Events.interface';
+    import EventRoomTypes from '@/types/EventRooms.interface';
     const axios = require('axios');
 
     export default defineComponent({
@@ -96,8 +29,7 @@
         data() {
             return {
                 event_room_id: null as number|null,
-                originator_event: null as EventTypes|null,
-                responder_events: [] as EventTypes[],
+                event_room: null as EventRoomTypes|null,
             };
         },
         beforeMount(){
@@ -123,10 +55,10 @@
         mounted(){
 
             //get responders
-            this.getEvents();
+            this.getEventRoom();
         },
         methods: {
-            async getEvents(){
+            async getEventRoom(){
 
                 if(this.event_room_id === null){
 
@@ -137,18 +69,9 @@
                 await axios.get('http://127.0.0.1:8000/api/events/get/event-room/' + this.event_room_id.toString())
                 .then((results:any) => {
 
-                    //separate originator from responder
-                    //doing it via loop, instead of relying on [0] being originator, helps us guarantee our event placements
-                    for(let x=0; x < results.data.length; x++){
+                    if(results.data.length > 0){
 
-                        if((results.data[x] as EventTypes).user_event_role.event_role.event_role_name === 'originator'){
-
-                            this.originator_event = results.data[x];
-
-                        }else{
-
-                            this.responder_events.push(results.data[x]);
-                        }
+                        this.event_room = results.data[0];
                     }
                 })
                 .catch((errors:any) => {

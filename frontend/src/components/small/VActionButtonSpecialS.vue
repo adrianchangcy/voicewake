@@ -1,9 +1,10 @@
 <template>
     <button
         :class="[
-            (propIsEnabled ? 'text-theme-black' : 'shadow-md hover:shadow-sm cursor-not-allowed text-theme-black/10'),
-            (propIsProcessing ? 'cursor-wait' : ''),
-            'w-40 h-40 mx-auto text-2xl bg-theme-soft-lead/80       border-t-2 border-theme-light-trim rounded-full   hover:bg-theme-soft-lead hover:border-theme-light-trim/40 shadow-theme-lead/75 shadow-lg hover:shadow-theme-lead/75 hover:shadow-md   transition duration-150 ease-in-out'
+            (propCanClick ? 'shadow-md hover:shadow-sm text-theme-black' : 'shadow-sm text-theme-black/10'),
+            (propIsWaiting ? 'cursor-wait' : ''),
+            (propIsDisallowed ? 'cursor-not-allowed' : ''),
+            'h-10 text-2xl bg-theme-soft-lead/80       border-t-2 border-theme-light-trim rounded-lg   hover:bg-theme-soft-lead hover:border-theme-light-trim/40 shadow-theme-lead/75 hover:shadow-theme-lead/75   transition duration-150 ease-in-out'
         ]"
         type="button"
     >
@@ -12,7 +13,7 @@
 </template>
 
 
-<script>
+<script lang="ts">
     //focus:border-2 focus:outline-none focus:ring-1 focus:ring-theme-black focus:border-theme-black
     //for all buttons, change our hover css to click, and come up with another css for hover
 
@@ -28,11 +29,15 @@
             };
         },
         props:{
-            propIsEnabled: {
+            propCanClick: {
                 type: Boolean,
                 default: true
             },
-            propIsProcessing: {
+            propIsWaiting: {
+                type: Boolean,
+                default: false
+            },
+            propIsDisallowed: {
                 type: Boolean,
                 default: false
             },
