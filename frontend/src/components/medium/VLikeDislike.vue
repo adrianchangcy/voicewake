@@ -15,7 +15,7 @@
                 >
                     <i
                         :class="[
-                            is_liked === true ? 'text-theme-black' : 'text-theme-black/0',
+                            is_liked === true ? 'text-theme-lead' : 'text-theme-black/0',
                             'absolute w-fit h-fit fas fa-thumbs-up left-0 right-0 top-0 bottom-0.5 m-auto transition-colors duration-200 ease-in-out'
                         ]"
                     ></i>
@@ -42,7 +42,7 @@
                 >
                     <i
                         :class="[
-                            is_liked === false ? 'text-theme-black' : 'text-theme-black/0',
+                            is_liked === false ? 'text-theme-lead' : 'text-theme-black/0',
                             'absolute w-fit h-fit fas fa-thumbs-down left-0 right-0 top-2 bottom-0 m-auto transition-colors duration-200 ease-in-out'
                         ]"
                     ></i>

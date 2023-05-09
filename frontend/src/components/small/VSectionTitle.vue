@@ -1,5 +1,5 @@
 <template>
-    <div class="w-fit h-fit pt-7 pb-8">
+    <div class="w-fit h-fit pt-7 pb-7">
         <div class="w-fit h-fit text-4xl font-light text-theme-black">
             <span>{{propTitle}}</span>
         </div>

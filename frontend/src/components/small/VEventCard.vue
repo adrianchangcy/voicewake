@@ -2,49 +2,47 @@
 
     <div class="text-theme-black">
         <!--label, ripples, total duration-->
-        <div class="py-1">
-            <VActionButtonMedium
-                class="w-full px-4 grid grid-cols-8"
-                @click.stop="handleIsSelected()"
-            >            
-                <!--ripples-->
-                <div class="col-span-4 h-full top-0 bottom-0 my-auto relative">
+        <VActionButtonMedium
+            class="w-full px-4 grid grid-cols-8"
+            @click.stop="handleIsSelected()"
+        >            
+            <!--ripples-->
+            <div class="col-span-4 h-full top-0 bottom-0 my-auto relative">
+                <div
+                    ref="volume_ripples_container"
+                    class="w-full h-full absolute flex flex-row justify-between"
+                >
                     <div
-                        ref="volume_ripples_container"
-                        class="w-full h-full absolute flex flex-row justify-between"
+                        v-for="volume_ripple in propEvent.audio_volume_peaks.length" :key="volume_ripple"
+                        ref="volume_ripple"
+                        class="h-full scale-y-0 origin-center"
                     >
-                        <div
-                            v-for="volume_ripple in propEvent.audio_volume_peaks.length" :key="volume_ripple"
-                            ref="volume_ripple"
-                            class="h-full scale-y-0 origin-center"
-                        >
-                            <div class="left-0 right-0 mx-auto w-0.5 h-full bg-theme-black">
-                            </div>
+                        <div class="left-0 right-0 mx-auto w-0.5 h-full bg-theme-black">
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div class="col-span-2 h-full relative">
-                    <!--total duration, check icon for selected-->
-                    <span
-                        v-if="is_selected === false"
-                        class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto text-sm font-medium"
-                    >
-                        {{ prettyFileDuration }}
-                    </span>
-                    <i v-else class="w-fit h-fit text-2xl fas fa-square-check text-theme-lead absolute left-0 right-0 top-0 bottom-0 m-auto"></i>
-                </div>
+            <div class="col-span-2 h-full relative">
+                <!--total duration, check icon for selected-->
+                <span
+                    v-if="is_selected === false"
+                    class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto text-sm font-medium"
+                >
+                    {{ prettyFileDuration }}
+                </span>
+                <i v-else class="w-fit h-fit text-2xl fas fa-square-check text-theme-lead absolute left-0 right-0 top-0 bottom-0 m-auto"></i>
+            </div>
 
-                <div class="col-span-2 h-full relative">
-                    <!--label-->
-                    <span
-                        class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0.5 m-auto text-3xl"
-                    >
-                        {{ propEvent.event_tone.event_tone_symbol }}
-                    </span>
-                </div>
-            </VActionButtonMedium>
-        </div>
+            <div class="col-span-2 h-full relative">
+                <!--label-->
+                <span
+                    class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0.5 m-auto text-3xl"
+                >
+                    {{ propEvent.event_tone.event_tone_symbol }}
+                </span>
+            </div>
+        </VActionButtonMedium>
     </div>
 </template>
 

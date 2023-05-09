@@ -175,7 +175,7 @@ class CreateEventsSerializer(serializers.Serializer):
 
 class UserActionsSerializer(serializers.Serializer):
     event_room_id = serializers.IntegerField()
-    to_reply = serializers.BooleanField()
+    to_reply = serializers.BooleanField(allow_null=True, default=None)
 
     def validate(self, data):
 

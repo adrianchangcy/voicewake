@@ -3,9 +3,8 @@
     <div>
 
         <VSectionTitle
-            propTitle="Say"
-            propTitleDescription="Fill in the fields below"
-            v-if="propIsOriginator === true"
+            :propTitle="titleText[0]"
+            :propTitleDescription="titleText[1]"
         />
         <form
             spellcheck="false"
@@ -202,11 +201,16 @@
 
                 return false;
             },
-        },
-        mounted(){
+            titleText() : string[] {
 
-            //set up axios appropriately
-            this.axiosSetup();
+                if(this.propIsOriginator === true){
+
+                    return ['Say', 'Fill in the fields below'];
+                    
+                }
+
+                return ['Your reply', ''];
+            },
         },
         methods: {
             async submitForm() : Promise<void> {
@@ -286,6 +290,11 @@
                 axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
                 return true;
             },
+        },
+        mounted(){
+
+            //set up axios appropriately
+            this.axiosSetup();
         },
     });
 </script>

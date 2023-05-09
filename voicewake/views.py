@@ -808,11 +808,10 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             if self.check_user_is_replying() is True:
 
                 return Response(
-                    GetEventsSerializer(
+                    GetEventRoomsSerializer(
                         self.sort_events(self.get_queryset_by_is_replying()),
                         many=True
                     ).data,
-                    status=status.HTTP_412_PRECONDITION_FAILED
                 )
 
             #unlock everything
@@ -847,7 +846,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         else:
 
             return Response(
-                GetEventsSerializer(
+                GetEventRoomsSerializer(
                     [],
                     many=True
                 ).data,
@@ -951,7 +950,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 class UserActionsAPI(generics.GenericAPIView):
 
     serializer_class = UserActionsSerializer
-    permission_classes =[IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def start_or_cancel_replying_to_event_room(self, new_data):
 
@@ -966,7 +965,7 @@ class UserActionsAPI(generics.GenericAPIView):
         
         #users can only modify event_room if they are already attached to it
         if event_room.locked_for_user is not None and event_room.locked_for_user.id != self.request.user.id:
-            
+
             return Response(status=status.HTTP_403_FORBIDDEN)
         
         if new_data['to_reply'] is True:
@@ -988,7 +987,7 @@ class UserActionsAPI(generics.GenericAPIView):
 
             #when to_reply=True but is_replying=False, means first time
             #we will unlock all other locked events
-            if event_room.is_replying is not True:
+            if event_room.is_replying is False:
 
                 #unlock other events that were locked for reply choices
                 EventRooms.objects.filter(
@@ -1025,9 +1024,10 @@ class UserActionsAPI(generics.GenericAPIView):
         
         new_data = serializer.validated_data
 
-        if 'event_room_id' in new_data and 'to_reply' in new_data:
+        if 'event_room_id' in new_data and 'to_reply' in new_data and type(new_data['to_reply']) is bool:
 
             self.start_or_cancel_replying_to_event_room(new_data)
+            return Response(status=status.HTTP_202_ACCEPTED)
 
         else:
 
@@ -1115,14 +1115,23 @@ class GetEventRooms(TemplateView):
 
     def get(self, request, *args, **kwargs):
 
+        #get event_room
+        try:
+
+            event_room = EventRooms.objects.select_related('locked_for_user').get(pk=kwargs['event_room_id'])
+
+        except EventRooms.DoesNotExist:
+
+            return JsonResponse({'message':'Event room does not exist.'}, status=status.HTTP_404_NOT_FOUND)
+
         #originator event
         #should always have only 1 per room
         try:
 
             originator_event = Events.objects.select_related(
-                'event_room', 'generic_status', 'event_tone'
+                'generic_status'
             ).get(
-                event_room=EventRooms(pk=kwargs['event_room_id']),
+                event_room=event_room,
                 user_event_role__event_role__event_role_name='originator'
             )
 
@@ -1130,12 +1139,18 @@ class GetEventRooms(TemplateView):
 
             return JsonResponse({'message':'Originator event does not exist.'}, status=status.HTTP_404_NOT_FOUND)
         
+        is_this_user_replying = request.user.id is not None and\
+            event_room.locked_for_user is not None and\
+            request.user.id == event_room.locked_for_user.id
+
         return render(
             request,
             template_name=self.template_name,
             context={
+            'event_room': event_room,
             'originator_event': originator_event,
             'is_deleted': originator_event.generic_status.generic_status_name == 'deleted',
+            'is_this_user_replying': is_this_user_replying,
             }
         )
 

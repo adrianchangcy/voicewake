@@ -1,9 +1,6 @@
 <template>
     <div
-        :class="[
-            propIsInContainer === true ? 'border-2 border-theme-light-gray rounded-lg px-4 py-6' : '',
-            'flex flex-col gap-8'
-        ]"
+        class="flex flex-col gap-8"
     >
 
         <!--title and datetime-->
@@ -12,7 +9,7 @@
             class="h-fit"
         >
             <!--title from user 1-->
-            <p class="text-xl">
+            <p class="text-xl break-words">
                 {{ propEventRoom.event_room.event_room_name }}
             </p>
             <!--last updated-->
@@ -24,6 +21,7 @@
         <!--originator-->
         <div
             v-if="propEventRoom.originator !== null"
+            class="flex flex-col gap-2"
         >
             <VUser
                 :propUsername="propEventRoom.originator.user_event_role.user.username"
@@ -31,18 +29,14 @@
 
             <div
                 v-if="propShowOnePlaybackPerEvent === true"
-                class="w-full h-fit grid grid-cols-8 gap-2"
+                class="w-full h-fit"
             >
-                <div class="col-span-6">
-                    <VPlayback
-                        :propAudioVolumePeaks="propEventRoom.originator.audio_volume_peaks"
-                        :propBucketQuantity="propEventRoom.originator.audio_volume_peaks.length"
-                        :propAudioURL="propEventRoom.originator.audio_file"
-                    />
-                </div>
-                <div class="col-span-2 relative border border-theme-light-gray rounded-lg">
-                    <span class="text-3xl w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">{{ propEventRoom.originator.event_tone.event_tone_symbol }}</span>
-                </div>
+                <VPlayback
+                    :propAudioVolumePeaks="propEventRoom.originator.audio_volume_peaks"
+                    :propBucketQuantity="propEventRoom.originator.audio_volume_peaks.length"
+                    :propAudioURL="propEventRoom.originator.audio_file"
+                    :propEventToneSymbol="propEventRoom.originator.event_tone.event_tone_symbol"
+                />
             </div>
             <div v-else>
                 <VEventCard
@@ -50,7 +44,7 @@
                 />
             </div>
 
-            <div class="w-full h-fit grid grid-cols-8 pt-2">
+            <div class="w-full h-fit grid grid-cols-8">
                 <VLikeDislike
                     :propEventId="propEventRoom.originator.id"
                     :propLikeCount="propEventRoom.originator.like_count"
@@ -64,6 +58,7 @@
         <!--responders-->
         <div
             v-for="event in propEventRoom.responder" :key="event.id"
+            class="flex flex-col gap-2"
         >
             <VUser
                 :propUsername="event.user_event_role.user.username"
@@ -71,25 +66,21 @@
 
             <div
                 v-if="propShowOnePlaybackPerEvent === true"
-                class="w-full h-fit grid grid-cols-8 gap-2"
+                class="w-full h-fit"
             >
-                <div class="col-span-6">
-                    <VPlayback
-                        :propAudioVolumePeaks="event.audio_volume_peaks"
-                        :propBucketQuantity="event.audio_volume_peaks.length"
-                        :propAudioURL="event.audio_file"
-                    />
-                </div>
-                <div class="col-span-2 relative border border-theme-light-gray rounded-lg">
-                    <span class="text-3xl w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">{{ event.event_tone.event_tone_symbol }}</span>
-                </div>
+                <VPlayback
+                    :propAudioVolumePeaks="event.audio_volume_peaks"
+                    :propBucketQuantity="event.audio_volume_peaks.length"
+                    :propAudioURL="event.audio_file"
+                    :propEventToneSymbol="event.event_tone.event_tone_symbol"
+                />
             </div>
             <div v-else>
                 <VEventCard
                     :propEvent="event"
                 />
             </div>
-            <div class="w-full h-fit grid grid-cols-8 pt-2">
+            <div class="w-full h-fit grid grid-cols-8">
                 <VLikeDislike
                     :propEventId="event.id"
                     :propLikeCount="event.like_count"
@@ -107,24 +98,14 @@
                 :propEventRoomId="propEventRoom.event_room.id"
             />
         </div>
-        <div v-else>
-            <VActionButtonBig
-                :propIsSmaller="true"
-                @click.stop="confirmReplyChoice()"
-            >
-                Reply
-            </VActionButtonBig>
-        </div>
     </div>
 </template>
 
 <script setup lang="ts">
-
     import VPlayback from '/src/components/medium/VPlayback.vue';
     import VEventCard from '/src/components/small/VEventCard.vue';
     import VLikeDislike from '/src/components/medium/VLikeDislike.vue';
     import VUser from '/src/components/small/VUser.vue';
-    import VActionButtonBig from '../small/VActionButtonBig.vue';
     import VCreateEvents from '../medium/VCreateEvents.vue';
 </script>
 
@@ -158,26 +139,14 @@
                 type: Boolean,
                 default: false
             },
-            propIsInContainer: {
-                type: Boolean,
-                default: false
-            }
         },
         computed: {
             prettyWhenCreated(){
 
                 return timeDifferenceUTC(new Date(this.propEventRoom.event_room.when_created));
             },
-            redirectURL(){
-                
-                return '/hear/' + (this.propEventRoom.event_room.id).toString();
-            }
         },
         methods: {
-            async confirmReplyChoice(){
-
-                console.log('yolo');
-            },
             axiosSetup() : boolean {
 
                 //your template must have {% csrf_token %}
