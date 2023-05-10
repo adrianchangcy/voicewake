@@ -103,14 +103,14 @@
                     ''
                 ]"
             >
-                <VActionButtonBig
+                <VActionButtonSpecialL
                     class="mx-auto"
                     :propIsEnabled="canSubmit"
                     @click.stop="submitForm()"
                 >
                     <span v-if="propIsOriginator === true">Done</span>
                     <span v-else>Reply</span>
-                </VActionButtonBig>
+                </VActionButtonSpecialL>
             </div>
 
         </form>
@@ -121,7 +121,7 @@
 
 <script setup lang="ts">
 
-    import VActionButtonBig from '/src/components/small/VActionButtonBig.vue';
+    import VActionButtonSpecialL from '/src/components/small/VActionButtonSpecialL.vue';
     import VSectionTitle from '/src/components/small/VSectionTitle.vue';
     import VTextArea from '/src/components/small/VTextArea.vue';
     import VEventToneField from '/src/components/medium/VEventToneField.vue';

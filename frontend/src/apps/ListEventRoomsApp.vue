@@ -6,41 +6,38 @@
 
         <div class="flex flex-col gap-8">
 
-            <div>
+            <div
+                :class="[
+                    is_search_button_shrinked ? 'w-full h-20' : 'w-full h-32 sm:h-40',
+                    'transition-all duration-150 ease-in-out'
+                ]"
+            >
+                <!--search button-->
                 <div ref="search_button_container">
                     <VActionButtonSpecialXL
                         ref="search_button"
                         :propCanClick="canSearch"
+                        :propToShrink="is_search_button_shrinked"
                         @click.stop="getEventRooms()"
                     >
-                        Search
+                        {{ search_button_text }}
                     </VActionButtonSpecialXL>
                 </div>
+
+                <!--spinner-->
                 <div
                     ref="spinner_container"
-                    class="w-full h-32 sm:h-40 text-theme-black hidden opacity-0 flex-col place-content-center"
+                    class="h-full text-theme-black hidden opacity-0 flex-col place-content-center"
                 >
                     <i class="fas fa-spinner text-4xl text-center"></i>
                 </div>
-            </div>
-            
-            <div ref="event_rooms_container" class="h-0 opacity-0">
-                <div v-for="event_room in event_rooms" :key="event_room.event_room.id">
-                    <div class="border-2 border-theme-light-gray rounded-lg px-4 py-6 flex flex-col gap-10">
-                        <EventRoomCard
-                            :propEventRoom="event_room"
-                            :propShowTitle="false"
-                            :propShowOnePlaybackPerEvent="true"
-                            :propShowReplyMenu="false"
-                            :propIsInContainer="true"
-                        />
-                        <VActionButtonBig
-                            :propIsSmaller="true"
-                            @click.stop="confirmReplyChoice(event_room)"
-                        >
-                            Reply
-                        </VActionButtonBig>
-                    </div>
+
+                <!--status logo-->
+                <div
+                    ref="status_logo_container"
+                    class="h-full text-theme-black hidden opacity-0 flex-col place-content-center"
+                >
+                    <i class="text-4xl text-center" :class="current_status_logo"></i>
                 </div>
             </div>
 
@@ -49,7 +46,7 @@
                 ref="details_container"
                 class="w-full h-full text-theme-black hidden opacity-0 flex-col gap-2 place-content-center"
             >
-                <i class="text-4xl text-center" :class="current_status_logo"></i>
+
                 <span class="block w-fit h-fit text-xl text-center mx-auto whitespace-pre-line">
                     {{ current_status }}
                 </span>
@@ -65,14 +62,34 @@
                             <span class="text-base font-medium mx-auto">Open</span>
                         </VActionButtonSpecialS>
                     </a>
-                    <VActionButtonSmall
+                    <VActionButtonS
                         @click.stop="deletePreviousReply()"
                         class="row-start-1 col-span-2 flex items-center"
                     >
                         <span class="text-base font-medium mx-auto">Delete</span>
-                    </VActionButtonSmall>
+                    </VActionButtonS>
                 </div>
             </div>
+
+            <!--event_rooms-->
+            <div ref="event_rooms_container" class="h-0 opacity-0">
+                <div v-for="event_room in event_rooms" :key="event_room.event_room.id">
+                    <div class="border-2 border-theme-light-gray rounded-lg px-4 py-6 flex flex-col gap-10">
+                        <EventRoomCard
+                            :propEventRoom="event_room"
+                            :propShowTitle="false"
+                            :propShowOnePlaybackPerEvent="true"
+                        />
+                        <VActionButtonSpecialL
+                            :propIsSmaller="true"
+                            @click.stop="confirmReplyChoice(event_room)"
+                        >
+                            Reply
+                        </VActionButtonSpecialL>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 </template>
@@ -82,8 +99,8 @@
     import VSectionTitle from '/src/components/small/VSectionTitle.vue';
     import VActionButtonSpecialXL from '/src/components/small/VActionButtonSpecialXL.vue';
     import VActionButtonSpecialS from '/src/components/small/VActionButtonSpecialS.vue';
-    import VActionButtonSmall from '/src/components/small/VActionButtonSmall.vue';
-    import VActionButtonBig from '@/components/small/VActionButtonBig.vue';
+    import VActionButtonS from '/src/components/small/VActionButtonS.vue';
+    import VActionButtonSpecialL from '@/components/small/VActionButtonSpecialL.vue';
     import EventRoomCard from '/src/components/main/EventRoomCard.vue';
 </script>
 
@@ -103,6 +120,9 @@
                 is_searching: false,
                 keep_search_disabled: false,    //used for auto-search after deletion
                 spinner_anime: null as InstanceType<typeof anime> | null,
+
+                is_search_button_shrinked: false,
+                search_button_text: 'Search',
 
                 still_replying: false,
                 still_replying_event_room: null as EventRoomTypes | null,
@@ -132,9 +152,14 @@
                 }
 
                 this.handleStartLoadingAnime();
-                this.event_rooms = null;
                 this.is_searching = true;
+
+                //reset
+                this.current_status_logo = '';
+                this.current_status = '';
                 this.still_replying = false;
+                this.still_replying_event_room = null;
+                this.event_rooms = null;
                 this.redirect_url = '';
 
                 //prepare events, then separate
@@ -143,9 +168,9 @@
 
                     if(results.data.length === 0){
 
-                        this.current_status_logo = 'far fa-face-meh-blank';
                         this.current_status = 'No events found.\nTry again in a moment!';
-                        this.still_replying = false;
+                        this.is_search_button_shrinked = false;
+                        this.search_button_text = 'Search';
 
                     }else if(results.data.length > 0 && results.data[0]['event_room']['is_replying'] === true){
 
@@ -157,10 +182,9 @@
 
                     }else{
 
-                        this.current_status_logo = 'fas fa-face-meh-blank';
-                        this.current_status = '';
-                        this.still_replying = false;
                         this.event_rooms = results.data;
+                        this.is_search_button_shrinked = true;
+                        this.search_button_text = 'Skip';
                     }
 
                     this.is_searching = false;
@@ -192,12 +216,13 @@
                 .then((results:any) => {
 
                     console.log(results);
-                    this.still_replying = false;
 
-                    this.handleEndLoadingAnime();
+                    this.still_replying = false;
+                    this.still_replying_event_room = null;
                     this.current_status_logo = 'fas fa-check';
                     this.current_status = 'Deleted unfinished reply.\nSearching for new events...';
-
+                    
+                    this.handleEndLoadingAnime();
                     window.setTimeout(this.getEventRooms, 500);
 
                 })
@@ -232,23 +257,6 @@
                     console.log(errors);
                 });
             },
-            searchButtonAnime(to_show=false) : void {
-
-                const target = (this.$refs.search_button_container as HTMLElement);
-
-                anime({
-                    targets: target,
-                    opacity: to_show === true ? ['0', '1'] : ['1', '0'],
-                    easing: 'linear',
-                    loop: false,
-                    autoplay: true,
-                    duration: 150,
-                    complete: ()=>{
-                        
-                        target.style.display = to_show === true ? 'block' : 'none';
-                    }
-                });
-            },
             handleStartLoadingAnime(){
 
                 //run this before values are reset in getEventRooms()
@@ -256,12 +264,15 @@
                 const search_button_container = (this.$refs.search_button_container as HTMLElement);
                 const details_container = (this.$refs.details_container as HTMLElement);
                 const spinner_container = (this.$refs.spinner_container as HTMLElement);
+                const status_logo_container = (this.$refs.status_logo_container as HTMLElement);
                 const still_replying_container = (this.$refs.still_replying_container as HTMLElement);
                 const event_rooms_container = (this.$refs.event_rooms_container as HTMLElement);
 
                 //conditionally add elements to hide
-                const el_targets = [search_button_container, details_container, event_rooms_container];
-                this.still_replying === true ? el_targets.push(still_replying_container) : null;
+                const el_targets = [
+                    search_button_container, details_container, status_logo_container,
+                    still_replying_container, event_rooms_container,
+                ];
 
                 anime.timeline({
                     easing: 'linear',
@@ -275,6 +286,7 @@
                     complete: ()=>{
                         search_button_container.style.display = 'none';
                         details_container.style.display = 'none';
+                        status_logo_container.style.display = 'none';
                         still_replying_container.style.display = 'none';
                         event_rooms_container.style.height = '0';
                     }
@@ -311,6 +323,7 @@
                 const search_button_container = (this.$refs.search_button_container as HTMLElement);
                 const details_container = (this.$refs.details_container as HTMLElement);
                 const spinner_container = (this.$refs.spinner_container as HTMLElement);
+                const status_logo_container = (this.$refs.status_logo_container as HTMLElement);
                 const still_replying_container = (this.$refs.still_replying_container as HTMLElement);
                 const event_rooms_container = (this.$refs.event_rooms_container as HTMLElement);
 
@@ -331,21 +344,25 @@
 
                         //conditionally add elements to show
                         const el_targets = [];
-                        this.current_status !== '' ? el_targets.push(details_container) : null;
-                        this.event_rooms !== null ? el_targets.push(event_rooms_container) : null;
 
-                        if(this.still_replying === false){
-                            el_targets.push(search_button_container);
-                            search_button_container.style.display = 'block';
-                        }
                         if(this.current_status !== ''){
                             el_targets.push(details_container);
                             details_container.style.display = 'flex';
                         }
+
+                        if(this.current_status_logo !== ''){
+                            el_targets.push(status_logo_container);
+                            status_logo_container.style.display = 'flex';
+                        }else{
+                            el_targets.push(search_button_container);
+                            search_button_container.style.display = 'block';
+                        }
+
                         if(this.still_replying === true){
                             el_targets.push(still_replying_container);
                             still_replying_container.style.display = 'grid';
                         }
+
                         if(this.event_rooms !== null){
                             el_targets.push(event_rooms_container);
                             event_rooms_container.style.height = 'fit-content';
