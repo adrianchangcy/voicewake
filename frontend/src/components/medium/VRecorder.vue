@@ -6,7 +6,7 @@
                 <div class="grid grid-rows-2 grid-cols-4 grid-flow-col gap-x-2">
 
                     <!--cancel-->
-                    <VActionButtonMedium
+                    <VActionButtonM
                         @click.prevent="recorderStop(true)"
                         aria-label="end recording"
                         class="col-start-1 row-span-2 col-span-1"
@@ -16,7 +16,7 @@
                         <div class="text-2xl">
                             <i class="fas fa-xmark"></i>
                         </div>
-                    </VActionButtonMedium>
+                    </VActionButtonM>
 
                     <!--timer-->
                     <div class="row-start-1 row-span-1 col-span-2 relative">
@@ -24,7 +24,7 @@
                     </div>
 
                     <!--pause/resume-->
-                    <VActionButtonSmall
+                    <VActionButtonS
                         @click.prevent="recorderPauseResume()"
                         :aria-label="pauseResumeAriaLabel"
                         class="row-start-2 row-span-1 col-span-2 h-full"
@@ -37,10 +37,10 @@
                                 ''
                             ]"
                         ></i>
-                    </VActionButtonSmall>
+                    </VActionButtonS>
 
                     <!--done-->
-                    <VActionButtonMedium
+                    <VActionButtonM
                         @click.prevent="recorderStop(false)"
                         aria-label="end recording"
                         class="col-start-4 row-span-2 col-span-1"
@@ -50,20 +50,20 @@
                         <div class="text-2xl">
                             <i class="fas fa-check"></i>
                         </div>
-                    </VActionButtonMedium>
+                    </VActionButtonM>
                 </div>
             </div>
 
             <!--when not recording-->
             <div v-else>
-                <VActionButtonMedium
+                <VActionButtonM
                     @click.prevent="recorderStart()"
                     aria-label="record"
                     :propIsEnabled="is_anime_playback_truly_completed === true && is_recording === false"
                     class="w-full"
                 >
                     <i class="fas fa-microphone-lines"></i>
-                </VActionButtonMedium>
+                </VActionButtonM>
             </div>
         </div>
         <!-- currently don't allow file submission, but store file here for final form submit -->
@@ -73,8 +73,8 @@
 
 
 <script setup lang="ts">
-    import VActionButtonSmall from '/src/components/small/VActionButtonSmall.vue';
-    import VActionButtonMedium from '/src/components/small/VActionButtonMedium.vue';
+    import VActionButtonS from '/src/components/small/VActionButtonS.vue';
+    import VActionButtonM from '/src/components/small/VActionButtonM.vue';
 </script>
 
 <script lang="ts">

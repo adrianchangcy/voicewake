@@ -2,7 +2,7 @@
 
     <div class="text-theme-black">
         <!--label, ripples, total duration-->
-        <VActionButtonMedium
+        <VActionButtonM
             class="w-full px-4 grid grid-cols-8"
             @click.stop="handleIsSelected()"
         >            
@@ -42,14 +42,14 @@
                     {{ propEvent.event_tone.event_tone_symbol }}
                 </span>
             </div>
-        </VActionButtonMedium>
+        </VActionButtonM>
     </div>
 </template>
 
 
 <script setup lang="ts">
 
-    import VActionButtonMedium from '/src/components/small/VActionButtonMedium.vue';
+    import VActionButtonM from '/src/components/small/VActionButtonM.vue';
 </script>
 
 
