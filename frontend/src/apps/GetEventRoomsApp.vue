@@ -6,32 +6,36 @@
             :propShowOnePlaybackPerEvent="event_room.responder.length === 0"
             :propShowReplyMenu="true"
             :propIsInContainer="false"
+            class="px-2"
         />
 
         <div class="h-0 pb-10"></div>
 
-        <div class="flex flex-col mx-4 text-theme-black border border-x-theme-light-gray rounded-lg divide-y divide-theme-light-gray">
+        <div class="flex flex-col text-theme-black border border-x-theme-light-gray rounded-lg divide-y divide-theme-light-gray">
             <div class="text-base font-medium flex flex-row">
                 <i class="fas fa-lock p-2 px-4 top-0 bottom-0 my-auto"></i>
                 <span class="p-2 pl-0 w-full">Someone else is replying</span>
             </div>
             <div class="text-base flex flex-row p-4 items-center relative">
                 <span>Check progress</span>
-                <div class="absolute w-fit h-fit right-2 top-0 bottom-0 m-auto">
-                    <Switch
-                        v-model="check_is_replying"
-                        @keyup.enter.stop="check_is_replying = !check_is_replying"
-                        :class="check_is_replying ? 'bg-theme-lead/75 shadow-theme-lead' : 'bg-theme-medium-gray/75 shadow-theme-medium-gray'"
-                        class="relative my-1 inline-flex h-10 w-20 shrink-0 shadow-inner cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out"
+                <button
+                    class="absolute w-fit h-10 right-4 top-0 bottom-0 m-auto cursor-pointer hover:scale-105 transition-transform duration-150 ease-in-out"
+                    type="button"
+                    @keyup.enter.stop="check_is_replying = !check_is_replying"
+                    @click.stop="check_is_replying = !check_is_replying"
+                >
+                    <div
+                        :class="check_is_replying ? 'bg-theme-lead/75 hover:shadow-theme-lead' : 'bg-theme-medium-gray/75 shadow-theme-medium-gray'"
+                        class="relative my-1 inline-flex h-7 w-14 shrink-0 shadow-inner rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out"
                     >
                         <span class="sr-only">auto-check availability, currently {{ check_is_replying }}</span>
                         <span
                             aria-hidden="true"
-                            :class="check_is_replying ? 'translate-x-10' : 'translate-x-0'"
-                            class="pointer-events-none inline-block h-9 w-9 transform rounded-full bg-theme-light border-t-2 border-theme-light-trim shadow-lg ring-0 transition duration-200 ease-in-out"
+                            :class="check_is_replying ? 'translate-x-7' : 'translate-x-0'"
+                            class="pointer-events-none inline-block h-6 w-6 transform rounded-full bg-theme-light border-t-2 border-theme-light-trim shadow-lg ring-0 transition duration-200 ease-in-out"
                         />
-                    </Switch>
-                </div>
+                    </div>
+                </button>
             </div>
             <div v-show="check_is_replying_interval !== null" class="text-sm flex flex-row">
                 <span class="p-2 px-4 w-full">{{ check_is_replying_text }}</span>
@@ -44,7 +48,6 @@
 
 <script setup lang="ts">
     import EventRoomCard from '@/components/main/EventRoomCard.vue';
-    import { Switch } from '@headlessui/vue';
 </script>
 
 
