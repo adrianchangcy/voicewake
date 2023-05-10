@@ -42,11 +42,7 @@ HOURS_UNTIL_EVENT_ROOM_IS_STALE = 2
 #e.g. top 10 completed events, etc.
 SPECIAL_EVENT_ROOMS_QUANTITY = 10
 
-#when to purge incomplete/completed event_rooms and allow new ones again
-PURGING_HOUR_MARKS = ['00', '06', '12', '18']
 
-#maximum completed event_rooms within purging window
-MAXIMUM_COMPLETED_EVENT_ROOMS_PER_PURGE_WINDOW = 20
 
 
 
