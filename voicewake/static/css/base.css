@@ -62,6 +62,7 @@
     input, text-xl
     main text, text-xl
     form labels, text-lg font-medium
+    form label subtext, text-lg
     details, if important, text-base font-medium
     details, text-base
     action, text-2xl

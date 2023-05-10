@@ -19,20 +19,22 @@
 
         <!--possible page title-->
         {% if is_this_user_replying %}
-            <div class="w-fit h-fit pt-7 pb-4 text-4xl font-light text-theme-black">
+            <div class="w-fit h-fit pt-7 pb-7 text-4xl font-light text-theme-black">
                 <span>Replying to...</span>
             </div>
+        {% else %}
+            <div class="h-0 pb-7"></div>
         {% endif %}
 
         <!--title-->
         {% if is_deleted %}
-            <div class="h-fit pt-4 pb-4">
+            <div class="h-fit pb-4">
                 <p class="text-2xl font-light italic">
                     deleted
                 </p>
             </div>
         {% else %}
-            <div class="h-fit pt-4 pb-4">
+            <div class="h-fit pb-4">
                 <!--title from user 1-->
                 <p class="text-2xl break-words">
                     {{originator_event.event_room.event_room_name}}

@@ -706,18 +706,9 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
     def check_user_can_create_event_room(self):
 
         #this is for "10 max new posts every __", which in this case is every hour
-        checkpoint_datetime = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d %H:00:00 %z')
-        checkpoint_datetime = datetime.strptime(checkpoint_datetime, '%Y-%m-%d %H:%M:%S %z')
+        # checkpoint_datetime = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d %H:00:00 %z')
+        # checkpoint_datetime = datetime.strptime(checkpoint_datetime, '%Y-%m-%d %H:%M:%S %z')
 
-        the_count = EventRooms.objects.filter(
-            when_created__gte=checkpoint_datetime,
-            generic_status=GenericStatuses.objects.get(generic_status_name='incomplete')
-        ).count()
-
-        if the_count > MAXIMUM_COMPLETED_EVENT_ROOMS_PER_PURGE_WINDOW:
-
-            return False
-        
         return True
 
     def check_user_can_reply_event_room(self, event_room_id):

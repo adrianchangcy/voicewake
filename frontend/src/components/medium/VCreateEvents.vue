@@ -8,7 +8,11 @@
         />
         <form
             spellcheck="false"
-            class="bg-theme-light flex flex-col gap-4 text-theme-black"
+            class="bg-theme-light flex flex-col text-theme-black"
+            :class="[
+                propIsOriginator ? 'gap-4' : 'gap-2',
+                ''
+            ]"
         >
             <!--title-->
             <VTextArea

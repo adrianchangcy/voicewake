@@ -90,14 +90,6 @@
                 />
             </div>
         </div>
-
-        <!--reply-->
-        <div v-if="propShowReplyMenu === true">
-            <VCreateEvents
-                :propIsOriginator="false"
-                :propEventRoomId="propEventRoom.event_room.id"
-            />
-        </div>
     </div>
 </template>
 
@@ -106,7 +98,6 @@
     import VEventCard from '/src/components/small/VEventCard.vue';
     import VLikeDislike from '/src/components/medium/VLikeDislike.vue';
     import VUser from '/src/components/small/VUser.vue';
-    import VCreateEvents from '../medium/VCreateEvents.vue';
 </script>
 
 
@@ -132,10 +123,6 @@
                 default: true
             },
             propShowOnePlaybackPerEvent: {
-                type: Boolean,
-                default: false
-            },
-            propShowReplyMenu: {
                 type: Boolean,
                 default: false
             },
