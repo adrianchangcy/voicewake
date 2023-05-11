@@ -7,7 +7,6 @@
     </VInputLabel>
     <button
         @click.stop="[toggleMenu(), emitIsOpen()]"
-        :aria-label="concludeAriaLabel"
         :class="[
             is_open ? 'border-theme-black' : 'border-theme-medium-gray shade-border-when-hover',
             'w-full h-20 px-4 py-2 border-2 rounded-lg'
@@ -37,6 +36,18 @@
                 </div>
             </div>
         </div>
+        <span v-if="propHasRecording" class="sr-only">
+            You have a recording
+        </span>
+        <span v-else class="sr-only">
+            No recording
+        </span>
+        <span v-if="propIsOpen" class="sr-only">
+            Close recording menu
+        </span>
+        <span v-else class="sr-only">
+            Open recording menu
+        </span>
     </button>
 </template>
 
@@ -84,7 +95,6 @@
             },
         },
         computed: {
-
             getPrettyPropFileDuration() : string {
 
                 if(this.propHasRecording === true){
@@ -96,17 +106,6 @@
                 }else{
 
                     return 'empty';
-                }
-            },
-            concludeAriaLabel() : string {
-
-                if(this.propHasRecording === true){
-                    
-                    return 'open recording menu; you have one recording made';
-
-                }else{
-
-                    return 'open recording menu; you have no recording';
                 }
             },
         },

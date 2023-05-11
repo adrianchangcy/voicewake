@@ -191,7 +191,7 @@
                 <!--event_tone_symbol-->
                 <div
                     v-if="propEventToneSymbol !== ''" 
-                    class="row-start-1 row-span-2 col-start-5 col-span-1 text-3xl relative"
+                    class="row-start-1 row-span-2 col-start-5 col-span-1 text-3xl has-emoji relative"
                 >
                     <span class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">{{ propEventToneSymbol }}</span>
                 </div>

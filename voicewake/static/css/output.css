@@ -650,6 +650,10 @@ video {
   right: 0.5rem;
 }
 
+.right-4 {
+  right: 1rem;
+}
+
 .right-6 {
   right: 1.5rem;
 }
@@ -676,10 +680,6 @@ video {
 
 .top-5 {
   top: 1.25rem;
-}
-
-.right-4 {
-  right: 1rem;
 }
 
 .z-10 {
@@ -778,11 +778,6 @@ video {
   margin-bottom: auto;
 }
 
-.mx-4 {
-  margin-left: 1rem;
-  margin-right: 1rem;
-}
-
 .mb-0 {
   margin-bottom: 0px;
 }
@@ -875,8 +870,12 @@ video {
   height: 1.25rem;
 }
 
-.h-9 {
-  height: 2.25rem;
+.h-6 {
+  height: 1.5rem;
+}
+
+.h-7 {
+  height: 1.75rem;
 }
 
 .h-\[300\%\] {
@@ -904,18 +903,6 @@ video {
   height: 100vh;
 }
 
-.h-7 {
-  height: 1.75rem;
-}
-
-.h-8 {
-  height: 2rem;
-}
-
-.h-6 {
-  height: 1.5rem;
-}
-
 .w-0 {
   width: 0px;
 }
@@ -926,6 +913,10 @@ video {
 
 .w-10 {
   width: 2.5rem;
+}
+
+.w-14 {
+  width: 3.5rem;
 }
 
 .w-2 {
@@ -952,10 +943,6 @@ video {
   width: 1.5rem;
 }
 
-.w-9 {
-  width: 2.25rem;
-}
-
 .w-fit {
   width: -moz-fit-content;
   width: fit-content;
@@ -967,14 +954,6 @@ video {
 
 .w-screen {
   width: 100vw;
-}
-
-.w-7 {
-  width: 1.75rem;
-}
-
-.w-14 {
-  width: 3.5rem;
 }
 
 .flex-1 {
@@ -1002,43 +981,8 @@ video {
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
-.translate-x-10 {
-  --tw-translate-x: 2.5rem;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
-
-.translate-x-8 {
-  --tw-translate-x: 2rem;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
-
-.translate-x-6 {
-  --tw-translate-x: 1.5rem;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
-
-.translate-x-20 {
-  --tw-translate-x: 5rem;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
-
-.translate-x-14 {
-  --tw-translate-x: 3.5rem;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
-
 .translate-x-7 {
   --tw-translate-x: 1.75rem;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
-
-.translate-x-9 {
-  --tw-translate-x: 2.25rem;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
-
-.translate-x-12 {
-  --tw-translate-x: 3rem;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
@@ -1357,12 +1301,6 @@ video {
   border-color: transparent;
 }
 
-.border-x-theme-light-gray {
-  --tw-border-opacity: 1;
-  border-left-color: rgb(231 229 228 / var(--tw-border-opacity));
-  border-right-color: rgb(231 229 228 / var(--tw-border-opacity));
-}
-
 .bg-theme-black {
   --tw-bg-opacity: 1;
   background-color: rgb(68 68 68 / var(--tw-bg-opacity));
@@ -1463,16 +1401,8 @@ video {
   padding-bottom: 1.5rem;
 }
 
-.pb-10 {
-  padding-bottom: 2.5rem;
-}
-
 .pb-3 {
   padding-bottom: 0.75rem;
-}
-
-.pb-4 {
-  padding-bottom: 1rem;
 }
 
 .pb-60 {
@@ -1515,8 +1445,8 @@ video {
   padding-top: 1.75rem;
 }
 
-.pr-5 {
-  padding-right: 1.25rem;
+.pr-4 {
+  padding-right: 1rem;
 }
 
 .text-left {
@@ -1564,11 +1494,6 @@ video {
 .text-xl {
   font-size: 1.25rem;
   line-height: 1.75rem;
-}
-
-.text-5xl {
-  font-size: 3rem;
-  line-height: 1;
 }
 
 .font-light {
@@ -1665,11 +1590,6 @@ video {
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
 }
 
-.shadow-theme-lead {
-  --tw-shadow-color: #facc15;
-  --tw-shadow: var(--tw-shadow-colored);
-}
-
 .shadow-theme-lead\/75 {
   --tw-shadow-color: rgb(250 204 21 / 0.75);
   --tw-shadow: var(--tw-shadow-colored);
@@ -1677,11 +1597,6 @@ video {
 
 .shadow-theme-medium-gray {
   --tw-shadow-color: #d6d3d1;
-  --tw-shadow: var(--tw-shadow-colored);
-}
-
-.shadow-theme-lead\/90 {
-  --tw-shadow-color: rgb(250 204 21 / 0.9);
   --tw-shadow: var(--tw-shadow-colored);
 }
 
@@ -1772,17 +1687,6 @@ video {
 /* * {
     outline: 1px solid #f00 !important;
 } */
-
-/*this is to save vertical space via hiding labels, while still readable to screen readers*/
-
-.hide-but-readable {
-  position:absolute;
-  left:-10000px;
-  top:auto;
-  width:1px;
-  height:1px;
-  overflow:hidden;
-}
 
 /*since we use placeholders for label, make them more visible*/
 
@@ -1895,6 +1799,16 @@ textarea {
   resize: none;
 }
 
+/*
+    use these fonts for emojis themselves to ensure proper rendering
+    https://github.com/joeattardi/picmo/issues/242
+*/
+
+.has-emoji{
+  font-family: "Segoe UI Emoji", "Segoe UI Symbol", "Segoe UI", "Apple Color Emoji", "Twemoji Mozilla",
+    "Noto Color Emoji", "EmojiOne Color", "Android Emoji"
+}
+
 @media(hover: hover){
   /*
     this is for buttons that don't look like buttons
@@ -1920,18 +1834,6 @@ textarea {
   .double-height-when-hover{
     transform: scaleY(2);
   }
-}
-
-.hover\:scale-95:hover {
-  --tw-scale-x: .95;
-  --tw-scale-y: .95;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
-
-.hover\:scale-50:hover {
-  --tw-scale-x: .5;
-  --tw-scale-y: .5;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
 .hover\:scale-105:hover {
@@ -1969,13 +1871,13 @@ textarea {
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
 }
 
-.hover\:shadow-theme-lead\/75:hover {
-  --tw-shadow-color: rgb(250 204 21 / 0.75);
+.hover\:shadow-theme-lead:hover {
+  --tw-shadow-color: #facc15;
   --tw-shadow: var(--tw-shadow-colored);
 }
 
-.hover\:shadow-theme-lead:hover {
-  --tw-shadow-color: #facc15;
+.hover\:shadow-theme-lead\/75:hover {
+  --tw-shadow-color: rgb(250 204 21 / 0.75);
   --tw-shadow: var(--tw-shadow-colored);
 }
 

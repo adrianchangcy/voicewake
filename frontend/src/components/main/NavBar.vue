@@ -119,7 +119,7 @@
     </nav>
 </template>
 
-<script setup>
+<script setup lang="ts">
     // import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
     import VNavigationButton from '/src/components/small/VNavigationButton.vue';
     import VActionButtonWeird from '/src/components/small/VActionButtonWeird.vue';
@@ -127,9 +127,10 @@
 </script>
 
 
-<script>
-    
-    export default{
+<script lang="ts">
+    import { defineComponent } from 'vue';
+
+    export default defineComponent({
         data(){
             return {
                 is_nav_main_more_open: false,
@@ -137,14 +138,10 @@
                 username: "",
             };
         },
-        components: {
-            VNavigationButton,
-            VActionButtonWeird
-        },
         beforeMount(){
 
             //get username, is always string
-            this.username = JSON.parse(document.getElementById('data-username').textContent);
+            this.username = JSON.parse(document.getElementById('data-username')!.textContent!);
 
             if(this.username !== ""){
                 
@@ -158,7 +155,7 @@
                 this.is_nav_main_more_open = !this.is_nav_main_more_open;
             },
         },
-    };
+    });
 
 
 

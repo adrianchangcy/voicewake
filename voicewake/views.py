@@ -717,20 +717,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             pk=event_room_id
         )
 
-        if event_room.locked_for_user.user.id == self.request.user.id:
-
-            return True
-        
-        return False
-
-    def check_user_is_replying(self):
-
-        the_count = EventRooms.objects.filter(
-            locked_for_user=AuthUser(pk=self.request.user.id),
-            is_replying=True
-        ).count()
-
-        if the_count > 0:
+        if event_room.locked_for_user.user.id == self.request.user.id and event_room.is_replying is True:
 
             return True
         
@@ -796,7 +783,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
             #check if user is replying to anything
             #we want event_room.id if there is any
-            if self.check_user_is_replying() is True:
+            if check_user_is_replying(request) is True:
 
                 return Response(
                     GetEventRoomsSerializer(
@@ -805,7 +792,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                     ).data,
                 )
 
-            #unlock everything
+            #not replying, can unlock everything
             self.unlock_event_rooms_from_past_reply_choices()
 
             #get events
@@ -887,6 +874,9 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
                 event_room = EventRooms.objects.get(pk=new_data['event_room_id'])
                 event_room.generic_status = GenericStatuses.objects.get(generic_status_name='completed')
+                event_room.when_locked = None
+                event_room.locked_for_user = None
+                event_room.is_replying = None
                 event_room.save()
 
             except EventRooms.DoesNotExist:
@@ -929,9 +919,6 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
         new_event.save()
 
-        #unlock everything
-        self.unlock_event_rooms_from_past_reply_choices()
-
         #don't return super().form_valid(form), else it goes though form.save() again
         return JsonResponse(data={}, status=status.HTTP_201_CREATED)
 
@@ -943,67 +930,94 @@ class UserActionsAPI(generics.GenericAPIView):
     serializer_class = UserActionsSerializer
     permission_classes = [IsAuthenticated]
 
-    def start_or_cancel_replying_to_event_room(self, new_data):
+    #202 success
+    def start_replying_to_event_room(self, event_room_id):
+
+        #check if user is replying to any other event_room
+        if check_user_is_replying(request=self.request, exclude_event_room_id=event_room_id) is True:
+
+            return Response(status=status.HTTP_412_PRECONDITION_FAILED)
 
         #get event_room
         try:
 
-            event_room = EventRooms.objects.get(pk=new_data['event_room_id'])
+            event_room = EventRooms.objects.select_related(
+                'generic_status', 'locked_for_user'
+            ).get(
+                pk=event_room_id
+            )
 
         except EventRooms.DoesNotExist:
 
             return Response(status=status.HTTP_404_NOT_FOUND)
         
-        #users can only modify event_room if they are already attached to it
+        datetime_now = get_datetime_now()
+        auth_user = AuthUser(self.request.user.id)
+        
+        #check if incomplete
+        if event_room.generic_status.generic_status_name != 'incomplete':
+
+            return Response(status=status.HTTP_412_PRECONDITION_FAILED)
+        
+        #check if locked for someone else
         if event_room.locked_for_user is not None and event_room.locked_for_user.id != self.request.user.id:
 
-            return Response(status=status.HTTP_403_FORBIDDEN)
+            return Response(status=status.HTTP_412_PRECONDITION_FAILED)
         
-        if new_data['to_reply'] is True:
+        #unlock any other events that were locked for reply choices
+        EventRooms.objects.filter(
+            locked_for_user=auth_user
+        ).exclude(
+            pk=event_room_id
+        ).update(
+            when_locked=None,
+            locked_for_user=None,
+            is_replying=None,
+            last_modified=datetime_now
+        )
 
-            #check if user is replying to anything else
-            temp = EventRooms.objects.filter(
-                locked_for_user=AuthUser(self.request.user.id),
-                is_replying=True
-            ).exclude(
-                pk=new_data['event_room_id']
-            ).count()
-
-            #user cannot be replying to anything else
-            if temp > 0:
-                
-                return Response(status=status.HTTP_412_PRECONDITION_FAILED)
-
-            event_room.when_locked = datetime.now().astimezone(tz=ZoneInfo('UTC'))
-
-            #when to_reply=True but is_replying=False, means first time
-            #we will unlock all other locked events
-            if event_room.is_replying is False:
-
-                #unlock other events that were locked for reply choices
-                EventRooms.objects.filter(
-                    locked_for_user=AuthUser(self.request.user.id)
-                ).exclude(
-                    pk=new_data['event_room_id']
-                ).update(
-                    when_locked=None,
-                    locked_for_user=None,
-                    is_replying=None,
-                    last_modified=datetime.now().astimezone(tz=ZoneInfo('UTC'))
-                )
-
-                #confirm replying
-                event_room.is_replying = True
-
-        else:
-
-            event_room.when_locked = None
-            event_room.locked_for_user = None
-            event_room.is_replying = None
+        #start replying
+        event_room.locked_for_user = auth_user
+        event_room.is_replying = True
+        event_room.when_locked = datetime_now
 
         event_room.save()
+        return Response(status=status.HTTP_202_ACCEPTED)
 
-        return Response(status=status.HTTP_200_OK)
+    #205 success
+    def cancel_replying_to_event_room(self, event_room_id):
+
+        #get event_room
+        try:
+
+            event_room = EventRooms.objects.select_related(
+                'generic_status', 'locked_for_user'
+            ).get(
+                pk=event_room_id
+            )
+
+        except EventRooms.DoesNotExist:
+
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        
+        #check if incomplete
+        if event_room.generic_status.generic_status_name != 'incomplete':
+
+            return Response(status=status.HTTP_412_PRECONDITION_FAILED)
+        
+        #check if someone else is replying
+        #also cannot cancel if event_room is not locked
+        if event_room.locked_for_user is None or event_room.locked_for_user.id != self.request.user.id:
+
+            return Response(status=status.HTTP_412_PRECONDITION_FAILED)
+        
+        #cancel replying
+        event_room.locked_for_user = None
+        event_room.is_replying = None
+        event_room.when_locked = None
+
+        event_room.save()
+        return Response(status=status.HTTP_205_RESET_CONTENT)
 
     def post(self, request, *args, **kwargs):
 
@@ -1017,8 +1031,13 @@ class UserActionsAPI(generics.GenericAPIView):
 
         if 'event_room_id' in new_data and 'to_reply' in new_data and type(new_data['to_reply']) is bool:
 
-            self.start_or_cancel_replying_to_event_room(new_data)
-            return Response(status=status.HTTP_202_ACCEPTED)
+            if new_data['to_reply'] is True:
+
+                return self.start_replying_to_event_room(event_room_id=new_data['event_room_id'])
+
+            else:
+
+                return self.cancel_replying_to_event_room(event_room_id=new_data['event_room_id'])
 
         else:
 
@@ -1130,9 +1149,16 @@ class GetEventRooms(TemplateView):
 
             return JsonResponse({'message':'Originator event does not exist.'}, status=status.HTTP_404_NOT_FOUND)
         
-        is_this_user_replying = request.user.id is not None and\
+        #check if this user is already supposed to reply
+        is_this_user_replying = is_user_logged_in(request) and\
             event_room.locked_for_user is not None and\
             request.user.id == event_room.locked_for_user.id
+        
+        #check if another user is replying
+        is_another_user_replying = is_this_user_replying is False and event_room.locked_for_user is not None
+
+        #check if can poll for reply
+        can_poll_for_reply = is_user_logged_in(request) and is_this_user_replying is False and is_another_user_replying
 
         return render(
             request,
@@ -1141,7 +1167,9 @@ class GetEventRooms(TemplateView):
             'event_room': event_room,
             'originator_event': originator_event,
             'is_deleted': originator_event.generic_status.generic_status_name == 'deleted',
-            'is_this_user_replying': is_this_user_replying,
+            'is_this_user_replying': json.dumps(is_this_user_replying),
+            'is_another_user_replying': json.dumps(is_another_user_replying),
+            'can_poll_for_reply': json.dumps(can_poll_for_reply),
             }
         )
 

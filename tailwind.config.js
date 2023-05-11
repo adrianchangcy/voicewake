@@ -5,6 +5,9 @@ module.exports = {
         "./voicewake/templates/**/*.html",
         "./voicewake/static/**/*.js",
         "./frontend/src/**/*.{vue,js,ts,jsx,tsx}",
+        //attempt to fix Tailwind requiring hard refresh for new class uses
+        //https://stackoverflow.com/a/75099477
+        "!./node_modules",
     ],
     theme: {
         extend: {
