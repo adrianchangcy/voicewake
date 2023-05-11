@@ -5,6 +5,9 @@ from django.db.models import Q, Case, When, Value
 from django.db import connection
 from django.core.files import File
 
+from rest_framework.response import Response
+from rest_framework import status
+
 #Python libraries
 from datetime import datetime, timezone, timedelta, tzinfo
 from genericpath import isfile
@@ -106,4 +109,40 @@ def delete_audio_file(absolute_path):
         return True
 
     return False
+
+
+def get_datetime_now():
+
+    return datetime.now().astimezone(tz=ZoneInfo('UTC'))
+
+
+def is_user_logged_in(request):
+
+    return request.user.id is not None
+
+def is_user_banned(request):
+
+    #??
+    return False
+
+def check_user_is_replying(request, exclude_event_room_id=None):
+
+    #check if user is replying to anything
+    if exclude_event_room_id is None:
+
+        the_count = EventRooms.objects.filter(
+            locked_for_user=AuthUser(pk=request.user.id),
+            is_replying=True
+        ).count()
+
+    else:
+
+        the_count = EventRooms.objects.filter(
+            locked_for_user=AuthUser(pk=request.user.id),
+            is_replying=True
+        ).exclude(
+            pk=exclude_event_room_id
+        ).count()
+
+    return the_count > 0
 

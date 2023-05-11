@@ -14,27 +14,28 @@
         data-event-room-id="{{originator_event.event_room.id}}"
         data-event-id="{{originator_event.id}}"
         data-when-created="{{originator_event.when_created|date:"Y-m-d H:i:s"}}"
-        class="event-room text-theme-black"
+        data-is-this-user-replying="{{is_this_user_replying}}"
+        data-is-another-user-replying="{{is_another_user_replying}}"
+        data-can-poll-for-reply="{{can_poll_for_reply}}"
+        class="text-theme-black"
+        id="get-event-room"
     >
 
-        <!--possible page title-->
-        {% if is_this_user_replying %}
-            <div class="w-fit h-fit pt-7 pb-7 text-4xl font-light text-theme-black">
-                <span>Replying to...</span>
-            </div>
-        {% else %}
-            <div class="h-0 pb-7"></div>
-        {% endif %}
+        <!--page title if user is replying-->
+        <div
+            id="is-replying-page-title"
+            class="w-fit h-fit pt-7 text-4xl font-light text-theme-black opacity-0 hidden"
+        >
+            <span>Replying to...</span>
+        </div>
 
         <!--title-->
-        {% if is_deleted %}
-            <div class="h-fit pb-4">
+        <div class="h-fit pt-7 pb-7">
+            {% if is_deleted %}
                 <p class="text-2xl font-light italic">
                     deleted
                 </p>
-            </div>
-        {% else %}
-            <div class="h-fit pb-4">
+            {% else %}
                 <!--title from user 1-->
                 <p class="text-2xl break-words">
                     {{originator_event.event_room.event_room_name}}
@@ -43,8 +44,8 @@
                 <p class="when-created      text-base font-light">
                     {{originator_event.when_created|date:"j M Y"}}
                 </p>
-            </div>
-        {% endif %}
+            {% endif %}
+        </div>
 
         <!--the rest of the content-->
         <div id="get-event-rooms-app"></div>

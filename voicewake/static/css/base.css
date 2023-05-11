@@ -9,16 +9,6 @@
     outline: 1px solid #f00 !important;
 } */
 
-/*this is to save vertical space via hiding labels, while still readable to screen readers*/
-.hide-but-readable {
-    position:absolute;
-    left:-10000px;
-    top:auto;
-    width:1px;
-    height:1px;
-    overflow:hidden;
-}
-
 /*since we use placeholders for label, make them more visible*/
 ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
     color: rgb(160, 160, 160) !important;
@@ -113,6 +103,15 @@
 
 textarea {
     resize: none;
+}
+
+/*
+    use these fonts for emojis themselves to ensure proper rendering
+    https://github.com/joeattardi/picmo/issues/242
+*/
+.has-emoji{
+    font-family: "Segoe UI Emoji", "Segoe UI Symbol", "Segoe UI", "Apple Color Emoji", "Twemoji Mozilla",
+    "Noto Color Emoji", "EmojiOne Color", "Android Emoji"
 }
 
 

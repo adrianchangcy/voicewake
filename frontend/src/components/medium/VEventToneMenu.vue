@@ -3,7 +3,7 @@
         v-show="is_open"
         class="p-4 w-full h-fit bg-theme-light"
     >
-        <div class="h-40 box-content emojis-container overflow-x-hidden overflow-y-scroll text-2xl">
+        <div class="h-40 box-content overflow-x-hidden overflow-y-scroll text-2xl">
             <div class="items-center place-items-center grid grid-flow-row grid-cols-4">
                 <div
                     class="col-span-1"
@@ -11,12 +11,12 @@
                 >
                     <button
                         @click.prevent="handleEventToneSelected(event_tone)"
-                        :aria-label="event_tone.event_tone_name"
                         :disabled="!is_open"
                         class="w-10 h-10 shade-when-hover rounded-md transition-colors duration-100 ease-in-out"
                         type="button"
                     >
-                        {{event_tone.event_tone_symbol}}
+                        <span class="has-emoji">{{event_tone.event_tone_symbol}}</span>
+                        <span class="sr-only">{{event_tone.event_tone_name}}</span>
                     </button>
                 </div>
             </div>
@@ -74,18 +74,3 @@
         },
     });
 </script>
-
-
-<style scoped>
-
-    /*
-    use these fonts for emojis themselves to ensure proper rendering
-    https://github.com/joeattardi/picmo/issues/242
-    */
-    .emojis-container{
-        font-family: "Segoe UI Emoji", "Segoe UI Symbol", "Segoe UI", "Apple Color Emoji", "Twemoji Mozilla",
-        "Noto Color Emoji", "EmojiOne Color", "Android Emoji"
-    }
-
-
-</style>

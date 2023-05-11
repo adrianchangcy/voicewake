@@ -47,7 +47,7 @@
                 class="w-full h-full text-theme-black hidden opacity-0 flex-col gap-2 place-content-center"
             >
 
-                <span class="block w-fit h-fit text-xl text-center mx-auto whitespace-pre-line">
+                <span class="block w-fit h-fit text-lg text-center mx-auto whitespace-pre-line">
                     {{ current_status }}
                 </span>
 
@@ -168,12 +168,13 @@
 
                     if(results.data.length === 0){
 
-                        this.current_status = 'No events found.\nTry again in a moment!';
                         this.is_search_button_shrinked = false;
+                        this.current_status = 'No events found.\nTry again in a moment!';
                         this.search_button_text = 'Search';
 
                     }else if(results.data.length > 0 && results.data[0]['event_room']['is_replying'] === true){
 
+                        this.is_search_button_shrinked = true;
                         this.current_status_logo = 'fas fa-circle-exclamation';
                         this.current_status = 'You have an unfinished reply.';
                         this.still_replying = true;
@@ -182,8 +183,8 @@
 
                     }else{
 
-                        this.event_rooms = results.data;
                         this.is_search_button_shrinked = true;
+                        this.event_rooms = results.data;
                         this.search_button_text = 'Skip';
                     }
 

@@ -5,7 +5,6 @@
         </VInputLabel>
         <button
             id="event-tone-picker"
-            :aria-label="concludeAriaLabel"
             @click.stop="[toggleMenu(), emitIsOpen()]"
             :class="[
                 is_open ? 'border-theme-black' : 'border-theme-medium-gray shade-border-when-hover',
@@ -15,9 +14,17 @@
         >
             <span
                 v-if="propEventToneChoice !== null"
-                class="absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto"
+                class="absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto has-emoji"
             >
                 {{propEventToneChoice.event_tone_symbol}}
+                <span class="sr-only">{{propEventToneChoice.event_tone_name}}</span>
+            </span>
+            <span v-else class="sr-only">No emoji selected</span>
+            <span v-if="propIsOpen" class="sr-only">
+                Close emoji menu
+            </span>
+            <span v-else class="sr-only">
+                Open emoji menu
             </span>
         </button>
     </div>
@@ -51,17 +58,7 @@
             },
         },
         computed: {
-            concludeAriaLabel() : string {
 
-                if(this.propEventToneChoice !== null){
-
-                    return 'select a feeling; your current selection is ' + this.propEventToneChoice.event_tone_name;
-
-                }else{
-
-                    return 'select a feeling; you have not selected any';
-                }
-            },
         },
         watch: {
             propIsOpen(new_value:boolean) : void {
@@ -80,18 +77,3 @@
         },
     });
 </script>
-
-
-<style scoped>
-
-    /*
-    use these fonts for emojis themselves to ensure proper rendering
-    https://github.com/joeattardi/picmo/issues/242
-    */
-    .emojis-container{
-        font-family: "Segoe UI Emoji", "Segoe UI Symbol", "Segoe UI", "Apple Color Emoji", "Twemoji Mozilla",
-        "Noto Color Emoji", "EmojiOne Color", "Android Emoji"
-    }
-
-
-</style>
