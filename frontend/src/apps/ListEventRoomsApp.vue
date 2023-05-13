@@ -77,7 +77,7 @@
                     <div class="border-2 border-theme-light-gray rounded-lg px-4 py-6 flex flex-col gap-10">
                         <EventRoomCard
                             :propEventRoom="event_room"
-                            :propShowTitle="false"
+                            :propShowTitle="true"
                             :propShowOnePlaybackPerEvent="true"
                         />
                         <VActionButtonSpecialL
@@ -163,7 +163,7 @@
                 this.redirect_url = '';
 
                 //prepare events, then separate
-                await axios.get('http://127.0.0.1:8000/api/events/get/status/incomplete')
+                await axios.get('http://127.0.0.1:8000/api/events/get/event-room/status/incomplete')
                 .then((results:any) => {
 
                     if(results.data.length === 0){

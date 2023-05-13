@@ -60,7 +60,7 @@ class VoicewakeConfig(AppConfig):
                     defaults={},
                 )
 
-                event_role, ok = EventRoles.objects.get(event_role_name='responder')
+                event_role = EventRoles.objects.get(event_role_name='responder')
 
                 user_event_role, ok = UserEventRoles.objects.get_or_create(
                     user=AuthUser(pk=getattr(user, 'id')),

@@ -38,111 +38,6 @@ from .services import *
 from .static.values.values import *
 
 
-#overriding ModelViewSet's check_permissions() via super() to allow permission_classes_per_method
-class PermissionPolicyMixin():
-    
-    def check_permissions(self, request):
-        try:
-            # This line is heavily inspired from `APIView.dispatch`.
-            # It returns the method associated with an endpoint.
-            handler = getattr(self, request.method.lower())
-        except AttributeError:
-            handler = None
-
-        if (
-            handler
-            and self.permission_classes_per_method
-            and self.permission_classes_per_method.get(handler.__name__)
-        ):
-            self.permission_classes = self.permission_classes_per_method.get(handler.__name__)
-
-        super().check_permissions(request)
-
-
-# #TESTING AREA
-# @api_view(['GET','POST'])
-# # @permission_required('voicewake.can_fart', login_url='/login', raise_exception=True)
-# def user_verification_options_list(request, format=None):
-
-#     #TESTING AREA
-#     #======================
-
-
-#     # if request.user.is_superuser:
-
-#     #     print('hooray')
-
-#     # boom = UserVerificationOptions.objects.exclude(pk=1, user_verification_option_name="Instagram")
-
-#     # if boom:
-
-#     #     print('waddup')
-
-#     # serializer = UserVerificationOptionsSerializer(boom, many=True)
-
-#     # return JsonResponse(data={'user_verification_options':serializer.data}, status=status.HTTP_418_IM_A_TEAPOT)
-#     # return
-#     #======================
-
-#     if request.method == 'GET':
-
-#         user_verification_options = UserVerificationOptions.objects.all()
-#         serializer = UserVerificationOptionsSerializer(user_verification_options, many=True)
-
-#         return Response(serializer.data)
-
-#     elif request.method == 'POST':
-
-#         serializer = UserVerificationOptionsSerializer(data=request.data)
-
-#         if serializer.is_valid():
-
-#             serializer.save()
-#             return JsonResponse(data={'user_verification_options':serializer.data}, status=status.HTTP_201_CREATED)
-
-#     return JsonResponse(data={'detail':'invalid request type'}, status=status.HTTP_418_IM_A_TEAPOT)
-
-
-# @api_view(['GET', 'PUT', 'DELETE'])
-# def user_verification_options_details(request, id, format=None):
-
-#     try:
-
-#         user_verification_option = UserVerificationOptions.objects.get(pk=id)
-
-#     except UserVerificationOptions.DoesNotExist:
-        
-#         return Response(status=status.HTTP_404_NOT_FOUND)
-
-#     if request.method == 'GET':
-
-#         serializer = UserVerificationOptionsSerializer(user_verification_option)
-
-#         return JsonResponse({"user_verification_options":serializer.data}, safe=False)
-
-#     elif request.method == 'PUT':
-
-#         #request.data is just plain dict of passed data
-#         #so you can manually modify it as such, e.g. request.data.update({})
-
-#         serializer = UserVerificationOptionsSerializer(user_verification_option, data=request.data)
-
-#         if serializer.is_valid():
-
-#             serializer.save()
-#             #you can also pass data changes into .save() in kwargs fashion:
-#             # serializer.save(user_verification_option_name="clown")
-
-#             return JsonResponse({"user_verification_option":serializer.data}, safe=False)
-
-#     elif request.method == 'DELETE':
-
-#         user_verification_option.delete()
-
-#         return Response(status=status.HTTP_204_NO_CONTENT)
-
-#     return Response(status=status.HTTP_418_IM_A_TEAPOT)
-
 
 #if empty db, run this
 def first_time_setup():
@@ -321,50 +216,7 @@ def sign_up(request):
     return render(request, 'registration/sign_up.html', {"form":form})
 
 
-#TBD
-#TEST SETTING TIME ZONE
-common_timezones = {
-    'London': 'Europe/London',
-    'Paris': 'Europe/Paris',
-    'New York': 'America/New_York',
-}
-def set_timezone(request):
 
-    if request.method == 'POST':
-        request.session['django_timezone'] = request.POST['timezone']
-        return redirect('/')
-    else:
-        return render(request, 'voicewake/set_timezone.html', {'timezones': common_timezones})
-
-
-
-
-
-
-
-
-
-# class UserVerificationOptionsViewSet(PermissionRequiredMixin, viewsets.ModelViewSet):
-class UserVerificationOptionsAPI(PermissionPolicyMixin, viewsets.ModelViewSet):
-
-    # authentication_classes = [SessionAuthentication, BasicAuthentication]
-    # permission_classes = [IsAuthenticated]
-
-    #leave empty or specify ('app_name.permission_code_name1', 'app_name.permission_code_name2')
-    # permission_required = ()
-
-    permission_classes_per_method = {
-        'list' : [IsAdminUser]
-    }
-
-    serializer_class = UserVerificationOptionsSerializer
-    queryset = UserVerificationOptions.objects.all()
-
-
-            
-    #if you have a function here, you can override viewset-level configs for the function, e.g.:
-    # from rest_framework.decorators import action
-    # @action(detail=True, methods=['post'], permission_classes=[IsAdminOrIsSelf])
 
 
 
@@ -500,6 +352,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
         return events
 
+    #excludes event_room started by user
     def get_queryset_by_random_incomplete(self):
 
         events = Events.objects.raw(
@@ -550,6 +403,15 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 INNER JOIN event_rooms ON seen_event_rooms.event_room_id = event_rooms.id
                 WHERE user_id=%s
             )
+            AND events.event_room_id NOT IN (
+                SELECT events2.event_room_id FROM events AS events2
+                WHERE events2.user_event_role_id = (
+                    SELECT user_event_roles.id FROM user_event_roles
+                    INNER JOIN event_roles ON user_event_roles.event_role_id = event_roles.id
+                    WHERE user_id=%s
+                    AND event_roles.event_role_name=%s
+                )
+            )
             GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
             LIMIT %s
             ''',
@@ -557,6 +419,8 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 self.request.user.id,
                 'incomplete',
                 self.request.user.id,
+                self.request.user.id,
+                'originator',
                 INCOMPLETE_EVENT_ROOMS_PER_ROLL,
             )
         )
@@ -781,6 +645,10 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         
         elif 'generic_status_name' in kwargs and kwargs['generic_status_name'] == 'incomplete':
 
+            if is_user_logged_in(request) is False:
+
+                return Response(status=status.HTTP_401_UNAUTHORIZED)
+
             #check if user is replying to anything
             #we want event_room.id if there is any
             if check_user_is_replying(request) is True:
@@ -930,7 +798,7 @@ class UserActionsAPI(generics.GenericAPIView):
     serializer_class = UserActionsSerializer
     permission_classes = [IsAuthenticated]
 
-    #202 success
+    #202 success, 205 reset due to user inactivity
     def start_replying_to_event_room(self, event_room_id):
 
         #check if user is replying to any other event_room
@@ -976,7 +844,23 @@ class UserActionsAPI(generics.GenericAPIView):
             last_modified=datetime_now
         )
 
-        #start replying
+        #we get time difference to determine user being inactive for too long
+        #when_locked is used for still-active pinging
+        if event_room.when_locked is not None:
+
+            minutes_passed = (get_datetime_now() - event_room.when_locked).total_seconds() / 60
+
+            if minutes_passed >= REPLY_INACTIVE_MAX_MINUTES:
+
+                event_room.locked_for_user = None
+                event_room.is_replying = None
+                event_room.when_locked = None
+
+                event_room.save()
+                return Response(status=status.HTTP_205_RESET_CONTENT)
+
+        #start replying or to update when_locked, same thing
+        #we don't check for is_replying=False to allow for instant reply when necessary
         event_room.locked_for_user = auth_user
         event_room.is_replying = True
         event_room.when_locked = datetime_now
@@ -1054,6 +938,10 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
 
     #create
     def post(self, request, *args, **kwargs):
+
+        if is_user_logged_in(request) is False:
+
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
 
         serializer = CreateEventLikesDislikesSerializer(data=request.data, many=False)
 
@@ -1153,12 +1041,6 @@ class GetEventRooms(TemplateView):
         is_this_user_replying = is_user_logged_in(request) and\
             event_room.locked_for_user is not None and\
             request.user.id == event_room.locked_for_user.id
-        
-        #check if another user is replying
-        is_another_user_replying = is_this_user_replying is False and event_room.locked_for_user is not None
-
-        #check if can poll for reply
-        can_poll_for_reply = is_user_logged_in(request) and is_this_user_replying is False and is_another_user_replying
 
         return render(
             request,
@@ -1168,8 +1050,6 @@ class GetEventRooms(TemplateView):
             'originator_event': originator_event,
             'is_deleted': originator_event.generic_status.generic_status_name == 'deleted',
             'is_this_user_replying': json.dumps(is_this_user_replying),
-            'is_another_user_replying': json.dumps(is_another_user_replying),
-            'can_poll_for_reply': json.dumps(can_poll_for_reply),
             }
         )
 

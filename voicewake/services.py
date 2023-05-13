@@ -116,9 +116,10 @@ def get_datetime_now():
     return datetime.now().astimezone(tz=ZoneInfo('UTC'))
 
 
+#you do not need this if you have appropriate permission_classes=[]
 def is_user_logged_in(request):
 
-    return request.user.id is not None
+    return request.user.is_authenticated
 
 def is_user_banned(request):
 

@@ -33,7 +33,7 @@
                 <!--open/close VRecorderMenu-->
                 <div ref="recorder_field" class="col-span-6">
                     <VRecorderField
-                        propLabel="Thoughts"
+                        propLabel="Recording"
                         :propIsOpen="is_recorder_menu_open"
                         :propBucketQuantity="bucket_quantity"
                         :propHasRecording="final_blob !== null"
@@ -46,7 +46,7 @@
                 <!--open/close VEventToneMenu-->
                 <div ref="event_tone_field" class="col-span-2">
                     <VEventToneField
-                        propLabel="Feeling"
+                        propLabel="Emoji"
                         :propEventToneChoice="event_tone_choice"
                         :propIsOpen="is_event_tone_menu_open"
                         @isOpen="handleIsEventToneMenuOpen($event)"
@@ -112,8 +112,7 @@
                     :propIsEnabled="canSubmit"
                     @click.stop="submitForm()"
                 >
-                    <span v-if="propIsOriginator === true">Done</span>
-                    <span v-else>Reply</span>
+                    <span>Done</span>
                 </VActionButtonSpecialL>
             </div>
 

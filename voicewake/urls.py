@@ -26,7 +26,6 @@ from voicewake import views
 
 #register API URLs for auto-create
 router = routers.SimpleRouter(trailing_slash=False)
-router.register(r'api/user-verification-options', views.UserVerificationOptionsAPI)
 router.register(r'api/event-tones', views.EventTonesAPI)
 
 #original URL
@@ -40,7 +39,7 @@ urlpatterns = [
     # path('user_verification_options/<int:id>/', views.user_verification_options_details),
     path('', include(router.urls)),
     path('api/events/get/event-room/<int:event_room_id>', views.EventsAPI.as_view(), name='get_events_by_event_room_id'),
-    path('api/events/get/status/<str:generic_status_name>', views.EventsAPI.as_view(), name='get_events_by_generic_status_name'),
+    path('api/events/get/event-room/status/<str:generic_status_name>', views.EventsAPI.as_view(), name='get_events_by_generic_status_name'),
     path('api/events/create', views.EventsAPI.as_view(), name='create_events'),
     path('api/event-likes-dislikes', views.EventLikesDislikesAPI.as_view(), name='event_likes_dislikes'),
     path('api/user-actions', views.UserActionsAPI.as_view(), name='user_actions'),
@@ -55,7 +54,6 @@ urlpatterns = [
     #we specify 'name' arg for auto-construction of full URL via reverse()
     path('', views.home, name='home'),
     path('sign-up', views.sign_up, name='sign_up'),
-    path('set-timezone', views.set_timezone, name='set_timezone'),
     path('say', views.CreateEventRooms.as_view(), name='create_event_room'),
     path('hear', views.ListEventRooms.as_view(), name='list_event_rooms'),
     path('hear/<int:event_room_id>', views.GetEventRooms.as_view(), name='get_event_room'),
