@@ -27,17 +27,13 @@ MAX_AUDIO_FILE_SIZE_MB = 200
 
 #NEW:
 
-#set EventRooms.when_locked=None and EventRooms.locked_for_user=None after x minutes of EventRooms.when_locked
+#unlocks event_room if last when_locked is too long ago
 #if user has page open, JS will ping to update when_locked
-MINUTES_TO_UNLOCK_EVENT_ROOM = 10
+REPLY_INACTIVE_MAX_MINUTES = 60
 
 #how many incomplete EventRooms to show at a time, before next reroll
 #we have not handled state management for play+pause when multiple VPlayback are present
 INCOMPLETE_EVENT_ROOMS_PER_ROLL = 1
-
-#how many hours until an EventRoom is considered stale
-#used to clean up SeenEventRooms
-HOURS_UNTIL_EVENT_ROOM_IS_STALE = 2
 
 #e.g. top 10 completed events, etc.
 SPECIAL_EVENT_ROOMS_QUANTITY = 10
