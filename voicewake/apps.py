@@ -19,63 +19,35 @@ class VoicewakeConfig(AppConfig):
 
             def create_user_details(user):
 
-                #should get user's geolocation instead of these
-                DEFAULT_COUNTRY = Countries.objects.get(
-                    country_name='United States of America',
-                    country_name_shortened='USA'
-                )
-                DEFAULT_LANGUAGE = Languages.objects.get(
-                    language_name='English',
-                    language_name_shortened='ENG'
-                )
-
-                #check if user_id exists instead of direct get_or_create()
-                #only want one row for one user
                 try:
 
-                    user_detail = UserDetails.objects.get(user=getattr(user, 'id'))
+                    user_detail = UserDetails.objects.get(user__id=user.id)
 
                 except UserDetails.DoesNotExist:
 
+                    #as with all non-Django-default tables, we use user=AuthUser
                     user_detail = UserDetails.objects.create(
-                        user=AuthUser(pk=getattr(user, 'id')),
-                        country=DEFAULT_COUNTRY,
-                        language=DEFAULT_LANGUAGE,
-                        user_display_name=getattr(user, 'username'),  #user can change again later
+                        user=AuthUser.objects.get(pk=user.id),
+                        country=None,
+                        language=None,
+                        user_display_name=user.username,  #user can change again later
                         user_birthdate='2022-01-01',
                     )
 
+            #expects User
             def add_to_default_group(user):
 
                 group = Group.objects.get(name='regular')
+
+                #expects User instance
                 group.user_set.add(user)
-
-            def add_with_event_roles(user):
-
-                event_role = EventRoles.objects.get(event_role_name='originator')
-
-                user_event_role, ok = UserEventRoles.objects.get_or_create(
-                    user=AuthUser(pk=getattr(user, 'id')),
-                    event_role=EventRoles(pk=getattr(event_role, 'id')),
-                    defaults={},
-                )
-
-                event_role = EventRoles.objects.get(event_role_name='responder')
-
-                user_event_role, ok = UserEventRoles.objects.get_or_create(
-                    user=AuthUser(pk=getattr(user, 'id')),
-                    event_role=EventRoles(pk=getattr(event_role, 'id')),
-                    defaults={},
-                )
 
             #run nested functions
             if kwargs['created']:
 
-                user = kwargs['instance']
-
-                create_user_details(user=user)
-                add_to_default_group(user=user)
-                add_with_event_roles(user=user)
+                #passes User instance
+                create_user_details(kwargs['instance'])
+                add_to_default_group(kwargs['instance'])
             
             return
 
