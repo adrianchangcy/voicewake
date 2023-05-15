@@ -39,7 +39,7 @@ from .static.values.values import *
 
 
 
-#if empty db, run this
+#if empty db, run this once
 def first_time_setup():
 
     from django.contrib.auth.models import Group
@@ -391,26 +391,24 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
             LEFT JOIN event_likes_dislikes ON  events.id = event_likes_dislikes.event_id
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
-            WHERE events.event_room_id IN (
+            WHERE
+            events.event_room_id IN (
                 SELECT event_rooms.id FROM event_rooms
                 INNER JOIN generic_statuses ON event_rooms.generic_status_id = generic_statuses.id
                 WHERE generic_statuses.generic_status_name=%s
                 AND locked_for_user_id IS NULL
-                ORDER BY event_rooms.when_created DESC
+                AND created_by_id != %s
+                ORDER BY event_rooms.when_created ASC
             )
             AND events.event_room_id NOT IN (
-                SELECT seen_event_rooms.event_room_id FROM seen_event_rooms
-                INNER JOIN event_rooms ON seen_event_rooms.event_room_id = event_rooms.id
+                SELECT user_event_rooms.event_room_id FROM user_event_rooms
+                INNER JOIN event_rooms ON user_event_rooms.event_room_id = event_rooms.id
                 WHERE user_id=%s
+                AND is_excluded_for_reply IS TRUE
             )
             AND events.event_room_id NOT IN (
                 SELECT events2.event_room_id FROM events AS events2
-                WHERE events2.user_event_role_id = (
-                    SELECT user_event_roles.id FROM user_event_roles
-                    INNER JOIN event_roles ON user_event_roles.event_role_id = event_roles.id
-                    WHERE user_id=%s
-                    AND event_roles.event_role_name=%s
-                )
+                WHERE user_id=%s
             )
             GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
             LIMIT %s
@@ -420,7 +418,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 'incomplete',
                 self.request.user.id,
                 self.request.user.id,
-                'originator',
+                self.request.user.id,
                 INCOMPLETE_EVENT_ROOMS_PER_ROLL,
             )
         )
@@ -540,18 +538,29 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
     def unlock_event_rooms_from_past_reply_choices(self):
 
-        EventRooms.objects.filter(
+        event_rooms = EventRooms.objects.filter(
             locked_for_user=AuthUser(pk=self.request.user.id)
-        ).update(
-            when_locked=None,
-            locked_for_user=None,
-            is_replying=None,
-            last_modified=datetime.now().astimezone(tz=ZoneInfo('UTC'))
         )
+        
+        auth_user = AuthUser(pk=self.request.user.id)
+        datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
+
+        for event_room in event_rooms:
+
+            #prevent these event_rooms from being queued again
+            prevent_event_room_from_queuing_twice_for_reply(auth_user, event_room)
+
+            #unlock
+            event_room.when_locked = None
+            event_room.locked_for_user = None
+            event_room.is_replying = None
+
+            event_room.save()
 
     def lock_event_rooms_for_reply_choices(self, events):
 
         event_room_ids = []
+        datetime_now = get_datetime_now()
 
         for event in events:
 
@@ -560,7 +569,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 event_room_ids.append(event.event_room.id)
 
                 #lock for reply choices
-                event.event_room.when_locked = datetime.now().astimezone(tz=ZoneInfo('UTC'))
+                event.event_room.when_locked = datetime_now
                 event.event_room.locked_for_user = AuthUser(pk=self.request.user.id)
                 event.event_room.is_replying = False
                 event.event_room.save()
@@ -581,30 +590,15 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             pk=event_room_id
         )
 
-        if event_room.locked_for_user.user.id == self.request.user.id and event_room.is_replying is True:
+        if\
+            event_room.locked_for_user is not None and\
+            event_room.locked_for_user.user.id == self.request.user.id and\
+            event_room.is_replying is True\
+        :
 
             return True
         
         return False
-
-    def add_to_seen_event_rooms(self, events):
-
-        event_room_ids = []
-
-        user = AuthUser(pk=self.request.user.id)
-
-        for event in events:
-
-            if event.event_room.id not in event_room_ids:
-
-                event_room_ids.append(event.event_room.id)
-
-                SeenEventRooms.objects.get_or_create(
-                    user=user,
-                    event_room=event.event_room
-                )
-
-        return True
 
     def sort_events(self, queryset):
 
@@ -660,7 +654,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                     ).data,
                 )
 
-            #not replying, can unlock everything
+            #not replying, can unlock previous choices if any
             self.unlock_event_rooms_from_past_reply_choices()
 
             #get events
@@ -677,9 +671,6 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             
             #lock events
             self.lock_event_rooms_for_reply_choices(events)
-
-            #add event_rooms to seen_event_rooms
-            self.add_to_seen_event_rooms(events)
 
             #return events sorted by event_rooms
             return Response(
@@ -711,6 +702,8 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         
         new_data = serializer.validated_data
 
+        auth_user = AuthUser.objects.get(pk=request.user.id)
+
         #determine if originator/responder, then create/get event_room
         #generic_status is handled by default, so it is skipped here
         if new_data['is_originator'] is True:
@@ -721,7 +714,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 return Response(data={}, status=status.HTTP_406_NOT_ACCEPTABLE)
 
             #proceed
-            event_role_name = 'originator'
+            event_role = EventRoles.objects.get(event_role_name='originator')
 
             event_room = EventRooms.objects.create(
                 event_room_name=new_data['event_room_name'],
@@ -736,32 +729,26 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 return Response(data={}, status=status.HTTP_406_NOT_ACCEPTABLE)
 
             #proceed
-            event_role_name = 'responder'
+            event_role = EventRoles.objects.get(event_role_name='originator')
 
             try:
 
                 event_room = EventRooms.objects.get(pk=new_data['event_room_id'])
+
+                #mark as completed, remove lock
                 event_room.generic_status = GenericStatuses.objects.get(generic_status_name='completed')
                 event_room.when_locked = None
                 event_room.locked_for_user = None
                 event_room.is_replying = None
+
                 event_room.save()
+
+                #prevent from being queued twice
+                prevent_event_room_from_queuing_twice_for_reply(auth_user, event_room)
 
             except EventRooms.DoesNotExist:
 
                 return Response(data={}, status=status.HTTP_400_BAD_REQUEST)
-
-        #user_event_role
-        try:
-
-            user_event_role = UserEventRoles.objects.get(
-                user=AuthUser(pk = getattr(self.request.user, 'id')),
-                event_role__event_role_name=event_role_name
-            )
-
-        except UserEventRoles.DoesNotExist:
-
-            return Response(data={}, status=status.HTTP_400_BAD_REQUEST)
         
         #event_tone
         try:
@@ -775,7 +762,8 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         #create event, excluding audio_file and event_room
         #generic_status is handled by default, so it is skipped here
         new_event = Events.objects.create(
-            user_event_role=user_event_role,
+            user=auth_user,
+            event_role=event_role,
             event_tone=event_tone,
             audio_volume_peaks=new_data['audio_volume_peaks'],
             audio_file_seconds=new_data['audio_file_seconds'],
@@ -819,7 +807,6 @@ class UserActionsAPI(generics.GenericAPIView):
 
             return Response(status=status.HTTP_404_NOT_FOUND)
         
-        datetime_now = get_datetime_now()
         auth_user = AuthUser(self.request.user.id)
         
         #check if incomplete
@@ -832,17 +819,36 @@ class UserActionsAPI(generics.GenericAPIView):
 
             return Response(status=status.HTTP_412_PRECONDITION_FAILED)
         
-        #unlock any other events that were locked for reply choices
-        EventRooms.objects.filter(
+        #check if user has queued this event_room before
+        user_event_room_count = UserEventRooms.objects.filter(
+            user=auth_user,
+            event_room__id=event_room_id,
+            is_excluded_for_reply=True
+        ).count()
+        
+        if user_event_room_count > 0:
+
+            return Response(status=status.HTTP_412_PRECONDITION_FAILED)
+        
+        #unlock any other event_room that were locked for reply choices
+        #also save to user_event_rooms to prevent unlocked event_rooms from being queued twice
+        event_rooms = EventRooms.objects.filter(
             locked_for_user=auth_user
         ).exclude(
             pk=event_room_id
-        ).update(
-            when_locked=None,
-            locked_for_user=None,
-            is_replying=None,
-            last_modified=datetime_now
         )
+
+        for event_room_row in event_rooms:
+
+            #prevent these event_rooms from being queued again
+            prevent_event_room_from_queuing_twice_for_reply(auth_user, event_room_row)
+
+            #unlock
+            event_room_row.when_locked = None
+            event_room_row.locked_for_user = None
+            event_room_row.is_replying = None
+
+            event_room_row.save()
 
         #we get time difference to determine user being inactive for too long
         #when_locked is used for still-active pinging
@@ -863,7 +869,7 @@ class UserActionsAPI(generics.GenericAPIView):
         #we don't check for is_replying=False to allow for instant reply when necessary
         event_room.locked_for_user = auth_user
         event_room.is_replying = True
-        event_room.when_locked = datetime_now
+        event_room.when_locked = get_datetime_now()
 
         event_room.save()
         return Response(status=status.HTTP_202_ACCEPTED)

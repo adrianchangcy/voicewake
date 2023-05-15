@@ -46,14 +46,6 @@ class AuthUserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username']
 
 
-class UserEventRolesSerializer(serializers.ModelSerializer):
-    user = AuthUserSerializer()
-    event_role = EventRolesSerializer()
-    class Meta:
-        model = UserEventRoles
-        exclude = ['when_created', 'last_modified']
-
-
 class EventLikesDislikesSerializer(serializers.ModelSerializer):
     user = AuthUserSerializer()
     class Meta:
@@ -70,29 +62,31 @@ class GenericStatusesSerializer(serializers.ModelSerializer):
 class EventRoomsSerializer(serializers.ModelSerializer):
     generic_status = GenericStatusesSerializer()
     locked_for_user = AuthUserSerializer()
+    created_by = AuthUserSerializer()
     class Meta:
         model = EventRooms
-        exclude = ['last_modified']
+        fields = '__all__'
 
 
 class GetEventsSerializer(serializers.ModelSerializer):
-    generic_status = GenericStatusesSerializer()
+    user = AuthUserSerializer()
+    event_role = EventRolesSerializer()
     event_tone = EventTonesSerializer()
-    user_event_role = UserEventRolesSerializer()
     event_room = EventRoomsSerializer()
-    like_count = serializers.IntegerField()
-    dislike_count = serializers.IntegerField()
-    is_liked_by_user = serializers.BooleanField(allow_null=True)
+    generic_status = GenericStatusesSerializer()
+    audio_file_seconds = serializers.DecimalField(max_digits=6, decimal_places=2, coerce_to_string=False)
     audio_volume_peaks = serializers.ListField(
         child=serializers.DecimalField(min_value=0, max_value=1, max_digits=3, decimal_places=2, coerce_to_string=False),
         min_length=20,
         max_length=20
     )
-    audio_file_seconds = serializers.DecimalField(max_digits=6, decimal_places=2, coerce_to_string=False)
+    like_count = serializers.IntegerField()
+    dislike_count = serializers.IntegerField()
+    is_liked_by_user = serializers.BooleanField(allow_null=True)
 
     class Meta:
         model = Events
-        fields = ['id', 'generic_status', 'event_tone', 'audio_file', 'audio_file_seconds', 'audio_volume_peaks', 'user_event_role', 'event_room', 'like_count', 'dislike_count', 'is_liked_by_user']
+        fields = ['id', 'user', 'event_role', 'event_tone', 'event_room', 'generic_status', 'audio_file', 'audio_file_seconds', 'audio_volume_peaks', 'like_count', 'dislike_count', 'is_liked_by_user']
 
 
 class GetEventRoomsSerializer(serializers.Serializer):

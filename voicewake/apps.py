@@ -13,7 +13,7 @@ class VoicewakeConfig(AppConfig):
         from django.contrib.auth.models import Group
         from django.db.models.signals import post_save
             #signals sent by model system
-        from .models import AuthUser, UserDetails, EventRoles, UserEventRoles, Countries, Languages
+        from .models import AuthUser, UserDetails
 
         def handle_new_registered_users(sender, **kwargs):
 

@@ -229,10 +229,10 @@ class EventRequestStatuses(models.Model):
 
 class EventRequests(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey('AuthUser', on_delete=models.CASCADE, related_name='auth_user_1')
-    requested_user = models.ForeignKey('AuthUser', on_delete=models.CASCADE, related_name='auth_user_2')
-    event_room = models.ForeignKey('EventRooms', on_delete=models.PROTECT)
-    event_request_status = models.ForeignKey('EventRequestStatuses', on_delete=models.PROTECT)
+    user = models.ForeignKey('AuthUser', on_delete=models.CASCADE, null=True, default=None, related_name='event_requests_auth_user_1')
+    requested_user = models.ForeignKey('AuthUser', on_delete=models.CASCADE, null=True, default=None, related_name='event_requests_auth_user_2')
+    event_room = models.ForeignKey('EventRooms', on_delete=models.PROTECT, blank=True, null=True, default=None)
+    event_request_status = models.ForeignKey('EventRequestStatuses', on_delete=models.PROTECT, blank=True, null=True, default=None)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
@@ -258,9 +258,9 @@ class EventRooms(models.Model):
     event_room_name = models.TextField(max_length=200, default='-') #ensure default is never used
     generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)
     when_locked = models.DateTimeField(blank=True, null=True, default=None)
-    locked_for_user = models.ForeignKey('AuthUser', on_delete=models.SET_NULL, blank=True, null=True, default=None, related_name='auth_user_1')
+    locked_for_user = models.ForeignKey('AuthUser', on_delete=models.SET_NULL, blank=True, null=True, default=None, related_name='event_rooms_auth_user_1')
     is_replying = models.BooleanField(blank=True, null=True, default=None)
-    created_by = models.ForeignKey('AuthUser', on_delete=models.CASCADE, related_name='auth_user_2')
+    created_by = models.ForeignKey('AuthUser', on_delete=models.CASCADE, blank=True, null=True, default=None, related_name='event_rooms_auth_user_2')
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
@@ -302,10 +302,10 @@ class EventTones(models.Model):
 class Events(models.Model):
     #when language/tone/purpose is null, interpret as 'any' later
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey('AuthUser', on_delete=models.CASCADE)
-    event_role = models.ForeignKey('EventRoles', on_delete=models.PROTECT)
+    user = models.ForeignKey('AuthUser', on_delete=models.CASCADE, null=True, default=None)
+    event_role = models.ForeignKey('EventRoles', on_delete=models.PROTECT, blank=True, null=True, default=None)
     event_tone = models.ForeignKey('EventTones', on_delete=models.SET_NULL, blank=True, null=True, default=None)
-    event_room = models.ForeignKey('EventRooms', on_delete=models.CASCADE)
+    event_room = models.ForeignKey('EventRooms', on_delete=models.CASCADE, null=True, default=None)
     generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)
     audio_file = models.FileField(blank=True, null=True, upload_to=determine_event_audio_file_path_and_name)
     audio_file_seconds = models.DecimalField(default=0, max_digits=6, decimal_places=2)
@@ -352,36 +352,24 @@ class Languages(models.Model):
         return self.language_name
 
 
-class SeenEventRooms(models.Model):
+class UserEventRooms(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey('AuthUser', on_delete=models.CASCADE)
-    event_room = models.ForeignKey('EventRooms', on_delete=models.CASCADE)
+    user = models.ForeignKey('AuthUser', on_delete=models.CASCADE, null=True, default=None)
+    event_room = models.ForeignKey('EventRooms', on_delete=models.CASCADE, null=True, default=None)
+    is_seen_at_front_page = models.BooleanField()
+    is_excluded_for_reply = models.BooleanField()
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         app_label = 'voicewake'
         managed = True
-        db_table = 'seen_event_rooms'
+        db_table = 'user_event_rooms'
 
 
 class UserFavourites(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(
-        'AuthUser',
-        on_delete=models.CASCADE,
-        related_name='primary_users',
-        blank=True,
-        null=True,
-        default=None
-    )
-    favourited_user = models.ForeignKey(
-        'AuthUser',
-        on_delete=models.CASCADE,
-        related_name='secondary_users',
-        blank=True,
-        null=True,
-        default=None
-    )
+    user = models.ForeignKey('AuthUser', on_delete=models.CASCADE, related_name='user_favourites_auth_user_1', blank=True, null=True, default=None)
+    favourited_user = models.ForeignKey('AuthUser', on_delete=models.CASCADE, related_name='user_favourites_auth_user_2', blank=True, null=True, default=None)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
