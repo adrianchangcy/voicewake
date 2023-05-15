@@ -718,7 +718,8 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
             event_room = EventRooms.objects.create(
                 event_room_name=new_data['event_room_name'],
-                generic_status=GenericStatuses.objects.get(generic_status_name='incomplete')
+                generic_status=GenericStatuses.objects.get(generic_status_name='incomplete'),
+                created_by=auth_user
             )
 
         else:

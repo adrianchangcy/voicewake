@@ -47,7 +47,7 @@ def determine_event_audio_file_path_and_name(instance, filename):
         instance.when_created.strftime('%Y'),
         instance.when_created.strftime('%m'),
         instance.when_created.strftime('%d'),
-        instance.created_by.username
+        instance.user.username
     )
 
     #e.g.:
