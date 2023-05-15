@@ -798,6 +798,10 @@ video {
   margin-top: 1rem;
 }
 
+.mr-2 {
+  margin-right: 0.5rem;
+}
+
 .box-content {
   box-sizing: content-box;
 }
@@ -1159,11 +1163,6 @@ video {
   gap: 2rem;
 }
 
-.gap-x-1 {
-  -moz-column-gap: 0.25rem;
-       column-gap: 0.25rem;
-}
-
 .gap-x-2 {
   -moz-column-gap: 0.5rem;
        column-gap: 0.5rem;
@@ -1171,17 +1170,6 @@ video {
 
 .gap-y-2 {
   row-gap: 0.5rem;
-}
-
-.divide-y > :not([hidden]) ~ :not([hidden]) {
-  --tw-divide-y-reverse: 0;
-  border-top-width: calc(1px * calc(1 - var(--tw-divide-y-reverse)));
-  border-bottom-width: calc(1px * var(--tw-divide-y-reverse));
-}
-
-.divide-theme-light-gray > :not([hidden]) ~ :not([hidden]) {
-  --tw-divide-opacity: 1;
-  border-color: rgb(231 229 228 / var(--tw-divide-opacity));
 }
 
 .overflow-hidden {
@@ -1413,20 +1401,16 @@ video {
   padding-bottom: 1.75rem;
 }
 
-.pl-0 {
-  padding-left: 0px;
-}
-
-.pl-2 {
-  padding-left: 0.5rem;
-}
-
 .pr-10 {
   padding-right: 2.5rem;
 }
 
 .pr-2 {
   padding-right: 0.5rem;
+}
+
+.pr-4 {
+  padding-right: 1rem;
 }
 
 .pt-1 {
@@ -1443,10 +1427,6 @@ video {
 
 .pt-7 {
   padding-top: 1.75rem;
-}
-
-.pr-4 {
-  padding-right: 1rem;
 }
 
 .text-left {
@@ -1815,10 +1795,10 @@ textarea {
     also use rounded-md
     */
 
-  /*from nothing to theme-medium-gray*/
+  /*from theme-black to theme-dark-gray*/
 
   .shade-when-hover:hover{
-    background-color: rgba(214, 211, 209, 1);
+    color: rgba(168, 162, 158, 1);
   }
 
   /*from theme-medium-gray to theme-dark-gray*/
@@ -1971,14 +1951,6 @@ textarea {
   .lg\:px-8 {
     padding-left: 2rem;
     padding-right: 2rem;
-  }
-
-  .lg\:pl-0 {
-    padding-left: 0px;
-  }
-
-  .lg\:pr-0 {
-    padding-right: 0px;
   }
 }
 

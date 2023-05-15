@@ -147,3 +147,16 @@ def check_user_is_replying(request, exclude_event_room_id=None):
 
     return the_count > 0
 
+
+def prevent_event_room_from_queuing_twice_for_reply(auth_user, event_room):
+
+    user_event_room, ok = UserEventRooms.objects.get_or_create(
+        user=auth_user,
+        event_room=event_room,
+    )
+
+    user_event_room.is_excluded_for_reply = True
+    user_event_room.save()
+
+
+

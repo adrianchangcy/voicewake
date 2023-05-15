@@ -20,20 +20,20 @@
             <!--recording visualiser-->
             <div
                 ref="recording_visualiser"
-                class="absolute w-20 h-20 left-0 right-0 top-0 bottom-0 m-auto opacity-0 hidden"
+                class="absolute w-20 h-20 left-0 right-0 top-0 bottom-0 m-auto"
             >
                 <div class="relative w-full h-full">
                     <div
                         ref="recording_visualiser_circle_0"
-                        class="absolute w-full h-full scale-0 left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-yellow/60"
+                        class="absolute w-full h-full left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-yellow/60"
                     ></div>
                     <div
                         ref="recording_visualiser_circle_1"
-                        class="absolute w-full h-full scale-0 left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-yellow/40"
+                        class="absolute w-full h-full left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-yellow/40"
                     ></div>
                     <div
                         ref="recording_visualiser_circle_2"
-                        class="absolute w-full h-full scale-0 left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-yellow/20"
+                        class="absolute w-full h-full left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-yellow/20"
                     ></div>
                 </div>
             </div>
@@ -48,7 +48,7 @@
                 :class="[
                     propIsSticky === false ? 'border rounded-lg' : '',
                     propEventToneSymbol === '' ? 'grid-cols-4' : 'grid-cols-5',
-                    'w-full h-full absolute grid grid-rows-2 gap-x-1 left-0 right-0 top-0 bottom-0 m-auto pl-2 lg:pl-0 pr-2 lg:pr-0 text-theme-black border-theme-light-gray opacity-0'
+                    'w-full h-full absolute grid grid-rows-2 left-0 right-0 top-0 bottom-0 m-auto pr-2 text-theme-black border-theme-light-gray opacity-0'
                 ]"
             >
                 <!--play/pause-->
@@ -78,7 +78,7 @@
                     <!--ripples-->
                     <div
                         ref="volume_ripples_container"
-                        class="left-1 right-1 h-4 absolute top-2 flex flex-row justify-evenly"
+                        class="left-0 right-2 h-4 absolute top-2 flex flex-row justify-evenly"
                     >
                         <div
                             v-for="volume_ripple in propBucketQuantity" :key="volume_ripple"
@@ -94,7 +94,7 @@
                         </div>
                     </div>
                     <!--slider-->
-                    <div class="left-2 right-2 m-auto h-full absolute bottom-0">
+                    <div class="left-0 right-2 m-auto h-full absolute bottom-0">
                         <div
                             ref="playback_slider"
                             :class="[
@@ -131,7 +131,7 @@
 
                 <!--volume, timers-->
                 <div
-                    class="row-start-2 row-span-1 col-start-2 col-span-3 mx-2 grid grid-rows-1 grid-cols-3"
+                    class="row-start-2 row-span-1 col-start-2 col-span-3 mr-2 grid grid-rows-1 grid-cols-3"
                 >
                     <!--current duration-->
                     <div class="row-start-1 row-span-1 col-start-1 col-span-1 relative text-sm font-medium">
@@ -249,6 +249,12 @@
             };
         },
         mounted(){
+
+            //you need this, as scale-0 at class is separate from anime's extra style attribute
+            //which causes sudden scaleX(1) and scaleY(1) jump on first load
+            (this.$refs.recording_visualiser_circle_0 as HTMLElement).style.transform = 'scaleX(0) scaleY(0)';
+            (this.$refs.recording_visualiser_circle_1 as HTMLElement).style.transform = 'scaleX(0) scaleY(0)';
+            (this.$refs.recording_visualiser_circle_2 as HTMLElement).style.transform = 'scaleX(0) scaleY(0)';
 
             //when propAudioVolumePeaks.length > 0 on mounted(), means VPlayback was rendered via v-if with data already
             //we do this here because in this case, watchers do not trigger
@@ -1120,11 +1126,7 @@
                             anime.remove([
                                 volume_ripples,
                                 recording_visualiser,
-                                this.$refs.playback_slider_knob,
                                 playback_main,
-                                this.$refs.recording_visualiser_circle_0,
-                                this.$refs.recording_visualiser_circle_1,
-                                this.$refs.recording_visualiser_circle_2,
                             ]);
 
                             this.main_anime = anime.timeline({
@@ -1144,8 +1146,6 @@
                                 duration: this.fastest_anime_duration_ms,
                                 complete: ()=>{
                                     playback_main.style.display = 'none';
-                                    this.playback_slider_knob_anime = null;
-                                    this.playback_slider_progress_anime = null;
                                 },
                             }).add({
                                 //make sunset available

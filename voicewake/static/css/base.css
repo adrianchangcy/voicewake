@@ -121,9 +121,9 @@ textarea {
     this is for buttons that don't look like buttons
     also use rounded-md
     */
-    /*from nothing to theme-medium-gray*/
+    /*from theme-black to theme-dark-gray*/
     .shade-when-hover:hover{
-        background-color: rgba(214, 211, 209, 1);
+        color: rgba(168, 162, 158, 1);
     }
 
     /*from theme-medium-gray to theme-dark-gray*/
