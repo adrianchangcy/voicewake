@@ -616,7 +616,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 })
                 event_room_id.append(row.event_room.id)
 
-            if row.user_event_role.event_role.event_role_name == 'originator':
+            if row.event_role.event_role_name == 'originator':
 
                 sorted_events[event_room_id.index(row.event_room.id)]['originator'] = row
 

@@ -356,14 +356,15 @@ class UserEventRooms(models.Model):
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey('AuthUser', on_delete=models.CASCADE, null=True, default=None)
     event_room = models.ForeignKey('EventRooms', on_delete=models.CASCADE, null=True, default=None)
-    is_seen_at_front_page = models.BooleanField()
-    is_excluded_for_reply = models.BooleanField()
+    is_seen_at_front_page = models.BooleanField(default=False)
+    is_excluded_for_reply = models.BooleanField(default=False)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         app_label = 'voicewake'
         managed = True
         db_table = 'user_event_rooms'
+        unique_together = ('user', 'event_room')
 
 
 class UserFavourites(models.Model):

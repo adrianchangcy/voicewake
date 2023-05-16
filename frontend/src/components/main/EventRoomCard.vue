@@ -24,7 +24,9 @@
             class="flex flex-col gap-2"
         >
             <VUser
-                :propUsername="propEventRoom.originator.user_event_role.user.username"
+                :propUsername="propEventRoom.originator.user.username"
+                :propEventToneSymbol="propEventRoom.originator.event_tone.event_tone_symbol"
+                :propEventToneName="propEventRoom.originator.event_tone.event_tone_name"
             />
 
             <div
@@ -35,7 +37,6 @@
                     :propAudioVolumePeaks="propEventRoom.originator.audio_volume_peaks"
                     :propBucketQuantity="propEventRoom.originator.audio_volume_peaks.length"
                     :propAudioURL="propEventRoom.originator.audio_file"
-                    :propEventToneSymbol="propEventRoom.originator.event_tone.event_tone_symbol"
                 />
             </div>
             <div v-else>
@@ -61,7 +62,7 @@
             class="flex flex-col gap-2"
         >
             <VUser
-                :propUsername="event.user_event_role.user.username"
+                :propUsername="event.user.username"
             />
 
             <div
@@ -72,7 +73,6 @@
                     :propAudioVolumePeaks="event.audio_volume_peaks"
                     :propBucketQuantity="event.audio_volume_peaks.length"
                     :propAudioURL="event.audio_file"
-                    :propEventToneSymbol="event.event_tone.event_tone_symbol"
                 />
             </div>
             <div v-else>

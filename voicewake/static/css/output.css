@@ -630,20 +630,12 @@ video {
   left: 0px;
 }
 
-.left-1 {
-  left: 0.25rem;
-}
-
 .left-2 {
   left: 0.5rem;
 }
 
 .right-0 {
   right: 0px;
-}
-
-.right-1 {
-  right: 0.25rem;
 }
 
 .right-2 {
@@ -682,6 +674,30 @@ video {
   top: 1.25rem;
 }
 
+.top-4 {
+  top: 1rem;
+}
+
+.bottom-4 {
+  bottom: 1rem;
+}
+
+.right-1 {
+  right: 0.25rem;
+}
+
+.bottom-1 {
+  bottom: 0.25rem;
+}
+
+.left-1 {
+  left: 0.25rem;
+}
+
+.bottom-3 {
+  bottom: 0.75rem;
+}
+
 .z-10 {
   z-index: 10;
 }
@@ -712,6 +728,10 @@ video {
 
 .col-span-6 {
   grid-column: span 6 / span 6;
+}
+
+.col-span-5 {
+  grid-column: span 5 / span 5;
 }
 
 .col-start-1 {
@@ -758,9 +778,8 @@ video {
   margin: auto;
 }
 
-.mx-2 {
-  margin-left: 0.5rem;
-  margin-right: 0.5rem;
+.m-2 {
+  margin: 0.5rem;
 }
 
 .mx-auto {
@@ -786,6 +805,10 @@ video {
   margin-bottom: 1rem;
 }
 
+.mr-2 {
+  margin-right: 0.5rem;
+}
+
 .mt-0 {
   margin-top: 0px;
 }
@@ -798,8 +821,16 @@ video {
   margin-top: 1rem;
 }
 
-.mr-2 {
-  margin-right: 0.5rem;
+.ml-10 {
+  margin-left: 2.5rem;
+}
+
+.mb-0\.5 {
+  margin-bottom: 0.125rem;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem;
 }
 
 .box-content {
@@ -964,6 +995,18 @@ video {
   flex: 1 1 0%;
 }
 
+.flex-none {
+  flex: none;
+}
+
+.flex-initial {
+  flex: 0 1 auto;
+}
+
+.flex-shrink-0 {
+  flex-shrink: 0;
+}
+
 .shrink-0 {
   flex-shrink: 0;
 }
@@ -1087,6 +1130,14 @@ video {
   grid-template-columns: repeat(8, minmax(0, 1fr));
 }
 
+.grid-cols-6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.grid-cols-7 {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
 .grid-rows-1 {
   grid-template-rows: repeat(1, minmax(0, 1fr));
 }
@@ -1163,6 +1214,10 @@ video {
   gap: 2rem;
 }
 
+.gap-1 {
+  gap: 0.25rem;
+}
+
 .gap-x-2 {
   -moz-column-gap: 0.5rem;
        column-gap: 0.5rem;
@@ -1172,8 +1227,16 @@ video {
   row-gap: 0.5rem;
 }
 
+.overflow-auto {
+  overflow: auto;
+}
+
 .overflow-hidden {
   overflow: hidden;
+}
+
+.overflow-clip {
+  overflow: clip;
 }
 
 .overflow-y-auto {
@@ -1186,6 +1249,28 @@ video {
 
 .overflow-y-scroll {
   overflow-y: scroll;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overflow-ellipsis {
+  text-overflow: ellipsis;
+}
+
+.text-ellipsis {
+  text-overflow: ellipsis;
+}
+
+.text-clip {
+  text-overflow: clip;
+}
+
+.whitespace-nowrap {
+  white-space: nowrap;
 }
 
 .whitespace-pre-line {
@@ -1401,6 +1486,10 @@ video {
   padding-bottom: 1.75rem;
 }
 
+.pr-0 {
+  padding-right: 0px;
+}
+
 .pr-10 {
   padding-right: 2.5rem;
 }
@@ -1427,6 +1516,14 @@ video {
 
 .pt-7 {
   padding-top: 1.75rem;
+}
+
+.pb-0 {
+  padding-bottom: 0px;
+}
+
+.pb-0\.5 {
+  padding-bottom: 0.125rem;
 }
 
 .text-left {
@@ -1797,11 +1894,13 @@ textarea {
 
   /*from theme-black to theme-dark-gray*/
 
-  .shade-when-hover:hover{
+  .shade-text-when-hover:hover{
     color: rgba(168, 162, 158, 1);
   }
 
-  /*from theme-medium-gray to theme-dark-gray*/
+  .shade-background-when-hover:hover{
+    background-color: rgba(168, 162, 158, 1);
+  }
 
   .shade-border-when-hover:hover{
     border-color: rgba(168, 162, 158, 1);
@@ -1833,10 +1932,6 @@ textarea {
 .hover\:bg-theme-soft-lead:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(245 245 220 / var(--tw-bg-opacity));
-}
-
-.hover\:underline:hover {
-  text-decoration-line: underline;
 }
 
 .hover\:shadow-md:hover {
