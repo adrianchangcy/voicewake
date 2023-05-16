@@ -6,7 +6,7 @@
             @timeupdate="updateCurrentPlaybackTime()"
             @canplay="current_playback_state = playback_states[3]"
             @waiting="current_playback_state = playback_states[4]"
-            @ended="pausePlayback()"
+            @ended="pausePlayback(), was_paused=true"
         ></audio>
 
         <!--size priority: playback_main, then ripples, then everything else-->
@@ -47,8 +47,7 @@
                 ref="playback_main"
                 :class="[
                     propIsSticky === false ? 'border rounded-lg' : '',
-                    propEventToneSymbol === '' ? 'grid-cols-4' : 'grid-cols-5',
-                    'w-full h-full absolute grid grid-rows-2 left-0 right-0 top-0 bottom-0 m-auto pr-2 text-theme-black border-theme-light-gray opacity-0'
+                    'w-full h-full absolute grid grid-rows-2 grid-cols-4 pr-2 left-0 right-0 top-0 bottom-0 m-auto text-theme-black border-theme-light-gray opacity-0'
                 ]"
             >
                 <!--play/pause-->
@@ -56,7 +55,7 @@
                     <button
                         ref="play_pause_button"
                         @click="togglePlaybackPlayPause()"
-                        class="w-full h-full shade-when-hover transition-colors duration-200 ease-in-out rounded-md"
+                        class="w-full h-full shade-text-when-hover transition-colors duration-200 ease-in-out rounded-md"
                         :disabled="has_all_data_for_play === false"
                         type="button"
                     >
@@ -66,19 +65,25 @@
                                 'fas'
                             ]"
                         ></i>
+                        <span v-if="is_playing" class="sr-only">
+                            pause
+                        </span>
+                        <span v-else class="sr-only">
+                            play
+                        </span>
                     </button>
                 </div>
-                <!--ripples, slider-->
+                <!--ripples, slider, do left-2 right-2 m-auto if you want outermost knob to be within bounds-->
                 <div
                     :class="[
-                        has_all_data_for_play === true && is_playback_slider_ready === true ? 'cursor-pointer' : 'cursor-default',
-                        'row-start-1 row-span-1 col-start-2 col-span-3 relative'
+                        (has_all_data_for_play === true && is_playback_slider_ready === true ? 'cursor-pointer' : 'cursor-default'),
+                        'row-start-1 row-span-1 col-start-2 col-span-3 pr-2 relative'
                     ]"
                 >
                     <!--ripples-->
                     <div
                         ref="volume_ripples_container"
-                        class="left-0 right-2 h-4 absolute top-2 flex flex-row justify-evenly"
+                        class="left-0 right-2 m-auto h-4 absolute top-2 flex flex-row justify-evenly"
                     >
                         <div
                             v-for="volume_ripple in propBucketQuantity" :key="volume_ripple"
@@ -94,7 +99,9 @@
                         </div>
                     </div>
                     <!--slider-->
-                    <div class="left-0 right-2 m-auto h-full absolute bottom-0">
+                    <div
+                        class="left-0 right-2 m-auto h-full absolute bottom-0"
+                    >
                         <div
                             ref="playback_slider"
                             :class="[
@@ -127,6 +134,7 @@
                             ></div>
                         </div>
                     </div>
+                    <span class="sr-only">playback navigation</span>
                 </div>
 
                 <!--volume, timers-->
@@ -135,6 +143,7 @@
                 >
                     <!--current duration-->
                     <div class="row-start-1 row-span-1 col-start-1 col-span-1 relative text-sm font-medium">
+                        <span class="sr-only">current duration</span>
                         <span class="absolute w-fit h-fit left-0 top-0 bottom-0 m-auto">{{pretty_current_playback_time}}</span>
                     </div>
                     <!--volume-->
@@ -142,13 +151,13 @@
                         ref="playback_volume_opener"
                         :class="[
                             propIsForRecording === true ? 'opacity-10' : 'opacity-100',
-                            'row-start-1 row-span-1 col-start-2 col-span-1 h-full text-xl relative'
+                            'row-start-1 row-span-1 col-start-2 col-span-1 h-full text-lg relative'
                         ]"
                     >
                         <!--open/close volume-->
                         <button
                             @click="togglePlaybackVolumeOptions()"
-                            class="w-full h-full shade-when-hover transition-colors duration-200 ease-in-out rounded-md"
+                            class="w-full h-full shade-text-when-hover transition-colors duration-200 ease-in-out rounded-md"
                             :disabled="has_all_data_for_play === false || propIsForRecording === true"
                             type="button"
                         >
@@ -161,6 +170,17 @@
                                     'fas transition-transform duration-200 ease-in-out'
                                 ]"
                             ></i>
+                            <span v-if="propIsForRecording" class="sr-only">
+                                cannot open volume box, as volume is always at maximum when recording
+                            </span>
+                            <span v-else>
+                                <span v-if="is_playback_volume_open" class="sr-only">
+                                    close volume box
+                                </span>
+                                <span v-else class="sr-only">
+                                    open volume box, of which you can use up down keystrokes to adjust
+                                </span>
+                            </span>
                         </button>
                         <!--volume menu-->
                         <TransitionFade>
@@ -178,22 +198,17 @@
                                     :propInitialSliderValue="playback_volume"
                                     @hasNewSliderValue="changePlaybackVolume($event)"
                                     class="w-full h-full"
-                                />
+                                >
+                                    <span class="sr-only">vertical volume box</span>
+                                </VSliderYSmall>
                             </VBox>
                         </TransitionFade>
                     </div>
                     <!--total duration-->
                     <div class="row-start-1 row-span-1 col-start-3 col-span-1 relative text-sm font-medium">
+                        <span class="sr-only">total duration</span>
                         <span class="absolute w-fit h-fit right-0 top-0 bottom-0 m-auto">{{pretty_playback_duration}}</span>
                     </div>
-                </div>
-
-                <!--event_tone_symbol-->
-                <div
-                    v-if="propEventToneSymbol !== ''" 
-                    class="row-start-1 row-span-2 col-start-5 col-span-1 text-3xl has-emoji relative"
-                >
-                    <span class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">{{ propEventToneSymbol }}</span>
                 </div>
             </div>
         </div>
@@ -231,8 +246,7 @@
                 playback_slider_dimension: null as DOMRect | null,
                 playback_slider_knob_anime: null as InstanceType<typeof anime> | null, //we play/pause instead of new anime() for best results
                 playback_slider_progress_anime: null as InstanceType<typeof anime> | null, //we play/pause instead of new anime() for best results
-                resume_after_stop_dragging: null as boolean | null,    //to know whether to resume after done navigating
-                resume_after_stop_skipping: null as boolean | null,   //to know whether to resume after done navigating
+                was_paused: true,  //if user pauses, then navigating will not auto-play
 
                 playback_rate: 1,   //allows 0 to 2, but we handle 0.5, 1, 1.5
                 playback_volume: 0, //accepts 0 to 1
@@ -364,10 +378,6 @@
             },
             propBucketQuantity: {   //with no required value, this is the fix for unrendered this.$refs.volume_ripple
                 type: Number
-            },
-            propEventToneSymbol: {
-                type: String,
-                default: '',
             },
         },
         watch: {
@@ -757,13 +767,6 @@
                 if(this.is_playing === true){
 
                     this.pausePlayback();
-                    this.resume_after_stop_dragging = true;
-                }
-
-                //we want to also resume if started from end
-                if(this.playback_slider_value === 1){
-
-                    this.resume_after_stop_dragging = true;
                 }
             },
             doPlaybackDrag(event:MouseEvent|TouchEvent) : void {
@@ -823,7 +826,7 @@
                     //some browsers also trigger both touch + mouse events together
                     this.is_playback_slider_touch = false;
 
-                    if(this.playback_slider_value < 1 && this.resume_after_stop_dragging === true){
+                    if(this.playback_slider_value < 1 && this.was_paused === false){
 
                         this.playPlayback();
 
@@ -832,7 +835,6 @@
                         this.endPlaybackProperly();
                     }
 
-                    this.resume_after_stop_dragging = null;
                     this.is_playback_slider_drag = false;
                 }
 
@@ -873,7 +875,6 @@
                 if(this.is_playing === true){
 
                     this.pausePlayback();
-                    this.resume_after_stop_skipping = true;
                 }
 
                 const target = (this.$refs.audio_element as HTMLAudioElement);
@@ -897,7 +898,7 @@
                 this.handlePlaybackDrag();
 
                 //resume if originally playing
-                if(this.resume_after_stop_skipping === true && this.playback_slider_value < 1){
+                if(this.was_paused === false && this.playback_slider_value < 1){
 
                     this.playPlayback();
 
@@ -905,8 +906,6 @@
 
                     this.endPlaybackProperly();
                 }
-
-                this.resume_after_stop_skipping = null;
             },
             resetRecordingVisualiser() : void {
 
@@ -1032,6 +1031,7 @@
                 this.playback_slider_knob_anime.play();
                 this.playback_slider_progress_anime.play();
                 this.is_playing = true;
+                this.was_paused = false;
             },
             pausePlayback() : void {
                 
@@ -1072,13 +1072,16 @@
                 }
 
                 //check if playback is not playing
+                //was_paused must be here to record user's manual pausing
                 if(this.is_playing === false){
 
                     this.playPlayback();
+                    this.was_paused = false;
 
                 }else{
 
                     this.pausePlayback();
+                    this.was_paused = true;
                 }
             },
             animePlaybackStates() : void {

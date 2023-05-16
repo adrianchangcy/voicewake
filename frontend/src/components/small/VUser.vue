@@ -1,10 +1,18 @@
 <template>
-    <div>
-        <a href="www.youtube.com">
-            <span class="text-theme-black text-base rounded-lg hover:underline transition-colors duration-200 ease-in-out">
-                <i class="fas fa-user text-xl"></i> {{ propUsername }}
+    <div class="flex flex-row gap-2">
+        <div class="overflow-hidden text-ellipsis whitespace-nowrap my-auto text-theme-black shade-text-when-hover transition-colors duration-200 ease-in-out">
+            <a href="yolo">
+                <i class="fas fa-user text-xl"></i> <span class="text-base">{{ propUsername }}</span>
+            </a>
+        </div>
+        <div class="my-auto">
+            <span>
+                &#8213;
             </span>
-        </a>
+        </div>
+        <div>
+            <span class="block text-3xl">{{ propEventToneSymbol }}</span>
+        </div>
     </div>
 </template>
 
@@ -22,6 +30,14 @@
                 type: String,
                 default: ''
             },
+            propEventToneSymbol: {
+                type: String,
+                default: ''
+            },
+            propEventToneName: {
+                type: String,
+                default: ''
+            }
         }
     });
 </script>
