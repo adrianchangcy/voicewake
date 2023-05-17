@@ -14,7 +14,7 @@ from django.core.asgi import get_asgi_application
 # from channels.auth import AuthMiddlewareStack
     #AuthMiddlewareStack includes AuthMiddleware -reqs-> SessionMiddleware -reqs-> CookieMiddleware (hence all 3)
 
-import voicewake.websocket_routing
+# import voicewake.websocket_routing
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'voicewake.settings')
 

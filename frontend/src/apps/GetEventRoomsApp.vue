@@ -50,11 +50,9 @@
 
                 if(new_value === true){
 
-                    this.startReplyActivePing();
-
                     anime({
                         targets: target,
-                        opacity: ['0', '1'],
+                        opacity: 1,
                         easing: 'linear',
                         loop: false,
                         duration: 1000,
@@ -66,11 +64,9 @@
 
                 }else{
 
-                    this.stopReplyActivePing();
-
                     anime({
                         targets: target,
-                        opacity: ['1', '0'],
+                        opacity: 0,
                         easing: 'linear',
                         loop: false,
                         duration: 150,
@@ -162,29 +158,6 @@
                 axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
                 return true;
             },
-            startReplyActivePing() : void {
-
-                if(this.keep_reply_active_interval !== null){
-
-                    return;
-                }
-
-                this.keep_reply_active_interval = window.setInterval(()=>{
-                    this.updateReplyDecision(true);
-                },
-                    this.reply_active_interval_ms
-                );
-            },
-            stopReplyActivePing() : void {
-
-                if(this.keep_reply_active_interval === null){
-
-                    return;
-                }
-
-                clearInterval(this.keep_reply_active_interval);
-                this.keep_reply_active_interval = null;
-            }
         },
         beforeMount(){
         

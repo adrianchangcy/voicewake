@@ -33,15 +33,6 @@
                 </span>
                 <i v-else class="w-fit h-fit text-2xl fas fa-square-check text-theme-lead absolute left-0 right-0 top-0 bottom-0 m-auto"></i>
             </div>
-
-            <div class="col-span-2 h-full relative">
-                <!--label-->
-                <span
-                    class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0.5 m-auto text-3xl"
-                >
-                    {{ propEvent.event_tone.event_tone_symbol }}
-                </span>
-            </div>
         </VActionButtonM>
     </div>
 </template>

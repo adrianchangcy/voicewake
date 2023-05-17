@@ -25,8 +25,7 @@
         >
             <VUser
                 :propUsername="propEventRoom.originator.user.username"
-                :propEventToneSymbol="propEventRoom.originator.event_tone.event_tone_symbol"
-                :propEventToneName="propEventRoom.originator.event_tone.event_tone_name"
+                :propEventTone="propEventRoom.originator.event_tone"
             />
 
             <div
@@ -51,7 +50,7 @@
                     :propLikeCount="propEventRoom.originator.like_count"
                     :propDislikeCount="propEventRoom.originator.dislike_count"
                     :propIsLiked="propEventRoom.originator.is_liked_by_user"
-                    class="col-span-6 lg:col-span-5"
+                    class="col-span-6 lg:col-span-4"
                 />
             </div>
         </div>
@@ -63,6 +62,7 @@
         >
             <VUser
                 :propUsername="event.user.username"
+                :propEventTone="event.event_tone"
             />
 
             <div
@@ -86,7 +86,7 @@
                     :propLikeCount="event.like_count"
                     :propDislikeCount="event.dislike_count"
                     :propIsLiked="event.is_liked_by_user"
-                    class="col-span-6 lg:col-span-5"
+                    class="col-span-6 lg:col-span-4"
                 />
             </div>
         </div>

@@ -797,6 +797,11 @@ video {
   margin-bottom: auto;
 }
 
+.mx-2 {
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
+}
+
 .mb-0 {
   margin-bottom: 0px;
 }
@@ -831,6 +836,10 @@ video {
 
 .mb-2 {
   margin-bottom: 0.5rem;
+}
+
+.mb-10 {
+  margin-bottom: 2.5rem;
 }
 
 .box-content {
@@ -1293,6 +1302,14 @@ video {
   border-radius: 0.375rem;
 }
 
+.rounded-none {
+  border-radius: 0px;
+}
+
+.rounded-sm {
+  border-radius: 0.125rem;
+}
+
 .rounded-l-none {
   border-top-left-radius: 0px;
   border-bottom-left-radius: 0px;
@@ -1474,6 +1491,16 @@ video {
   padding-bottom: 1.5rem;
 }
 
+.py-7 {
+  padding-top: 1.75rem;
+  padding-bottom: 1.75rem;
+}
+
+.px-5 {
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+
 .pb-3 {
   padding-bottom: 0.75rem;
 }
@@ -1524,6 +1551,18 @@ video {
 
 .pb-0\.5 {
   padding-bottom: 0.125rem;
+}
+
+.pb-10 {
+  padding-bottom: 2.5rem;
+}
+
+.pl-4 {
+  padding-left: 1rem;
+}
+
+.pl-5 {
+  padding-left: 1.25rem;
 }
 
 .text-left {
@@ -1978,6 +2017,14 @@ textarea {
 }
 
 @media (min-width: 640px) {
+  .sm\:col-span-4 {
+    grid-column: span 4 / span 4;
+  }
+
+  .sm\:col-span-5 {
+    grid-column: span 5 / span 5;
+  }
+
   .sm\:h-40 {
     height: 10rem;
   }
@@ -2004,6 +2051,10 @@ textarea {
 
   .lg\:col-span-5 {
     grid-column: span 5 / span 5;
+  }
+
+  .lg\:col-span-4 {
+    grid-column: span 4 / span 4;
   }
 
   .lg\:block {

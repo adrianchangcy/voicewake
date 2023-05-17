@@ -592,7 +592,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
         if\
             event_room.locked_for_user is not None and\
-            event_room.locked_for_user.user.id == self.request.user.id and\
+            event_room.locked_for_user.id == self.request.user.id and\
             event_room.is_replying is True\
         :
 
@@ -711,7 +711,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             #check if event_room limit is not yet reached
             if self.check_user_can_create_event_room() is False:
 
-                return Response(data={}, status=status.HTTP_406_NOT_ACCEPTABLE)
+                return Response(data={}, status=status.HTTP_412_PRECONDITION_FAILED)
 
             #proceed
             event_role = EventRoles.objects.get(event_role_name='originator')
@@ -727,10 +727,10 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             #check if this user is already attached beforehand
             if self.check_user_can_reply_event_room(new_data['event_room_id']) is False:
 
-                return Response(data={}, status=status.HTTP_406_NOT_ACCEPTABLE)
+                return Response(data={}, status=status.HTTP_412_PRECONDITION_FAILED)
 
             #proceed
-            event_role = EventRoles.objects.get(event_role_name='originator')
+            event_role = EventRoles.objects.get(event_role_name='responder')
 
             try:
 
@@ -773,11 +773,17 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
         #we delay saving audio_file, as we want when_created for audio_file's path
         new_event.audio_file = new_data['audio_file']
-
         new_event.save()
 
-        #don't return super().form_valid(form), else it goes though form.save() again
-        return JsonResponse(data={}, status=status.HTTP_201_CREATED)
+        return Response(
+            {
+                'data': {
+                    'event_room_id': event_room.id
+                },
+                'message': '',
+            },
+            status.HTTP_201_CREATED
+        )
 
 
 
@@ -908,6 +914,13 @@ class UserActionsAPI(generics.GenericAPIView):
         event_room.when_locked = None
 
         event_room.save()
+
+        #prevent repeated queue
+        prevent_event_room_from_queuing_twice_for_reply(
+            AuthUser(pk=self.request.user.id),
+            event_room
+        )
+
         return Response(status=status.HTTP_205_RESET_CONTENT)
 
     def post(self, request, *args, **kwargs):
@@ -1037,7 +1050,7 @@ class GetEventRooms(TemplateView):
                 'generic_status'
             ).get(
                 event_room=event_room,
-                user_event_role__event_role__event_role_name='originator'
+                event_role__event_role_name='originator'
             )
 
         except Events.DoesNotExist:
