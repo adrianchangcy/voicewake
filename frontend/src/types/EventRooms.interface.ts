@@ -16,8 +16,8 @@ interface EventRoomTypes{
         },
         is_replying: boolean,
     },
-    originator: EventTypes,
-    responder: EventTypes[]
+    originator: EventTypes|null,
+    responder: EventTypes[]|[]
 };
 
 export default EventRoomTypes;

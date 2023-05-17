@@ -1,11 +1,9 @@
 <template>
     <button
         :class="[
-            (propCanClick ? 'shadow-lg hover:shadow-md text-theme-black' : 'shadow-md text-theme-black/10'),
-            (propIsWaiting ? 'cursor-wait' : ''),
-            (propIsDisallowed ? 'cursor-not-allowed' : ''),
-            (propToShrink ? 'w-20 h-20 text-lg font-medium' : 'w-32 h-32 sm:w-40 sm:h-40 text-2xl'),
-            'block mx-auto bg-theme-soft-lead/80       border-t-2 border-theme-light-trim rounded-full   hover:bg-theme-soft-lead hover:border-theme-light-trim/40 shadow-theme-lead/75 hover:shadow-theme-lead/75   transition duration-150 ease-in-out'
+            (propIsEnabled ? 'text-theme-black hover:shadow-md hover:shadow-theme-lead/75 hover:bg-theme-soft-lead hover:border-theme-light-trim/40' : 'text-theme-black/10 shadow-md cursor-default'),
+            (propIsSmaller ? 'w-20 h-20 text-lg font-medium' : 'w-32 h-32 sm:w-40 sm:h-40 text-2xl'),
+            'block mx-auto      rounded-full border-t-2 shadow-lg    bg-theme-soft-lead/80 border-theme-light-trim shadow-theme-lead/75   transition duration-150 ease-in-out'
         ]"
         type="button"
     >
@@ -30,19 +28,11 @@
             };
         },
         props:{
-            propCanClick: {
+            propIsEnabled: {
                 type: Boolean,
                 default: true
             },
-            propIsWaiting: {
-                type: Boolean,
-                default: false
-            },
-            propIsDisallowed: {
-                type: Boolean,
-                default: false
-            },
-            propToShrink: {
+            propIsSmaller: {
                 type: Boolean,
                 default: false
             },

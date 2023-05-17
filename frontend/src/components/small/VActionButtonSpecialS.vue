@@ -1,10 +1,8 @@
 <template>
     <button
         :class="[
-            (propCanClick ? 'shadow-md hover:shadow-sm text-theme-black' : 'shadow-sm text-theme-black/10'),
-            (propIsWaiting ? 'cursor-wait' : ''),
-            (propIsDisallowed ? 'cursor-not-allowed' : ''),
-            'h-10 text-2xl bg-theme-soft-lead/80       border-t-2 border-theme-light-trim rounded-lg   hover:bg-theme-soft-lead hover:border-theme-light-trim/40 shadow-theme-lead/75 hover:shadow-theme-lead/75   transition duration-150 ease-in-out'
+            (propIsEnabled ? 'text-theme-black hover:shadow-sm hover:shadow-theme-lead/75 hover:bg-theme-soft-lead hover:border-theme-light-trim/40' : 'text-theme-black/10 shadow-md cursor-default'),
+            'h-10 text-2xl      rounded-lg border-t-2 shadow-md    bg-theme-soft-lead/80 border-theme-light-trim shadow-theme-lead/75   transition duration-150 ease-in-out'
         ]"
         type="button"
     >
@@ -29,17 +27,9 @@
             };
         },
         props:{
-            propCanClick: {
+            propIsEnabled: {
                 type: Boolean,
                 default: true
-            },
-            propIsWaiting: {
-                type: Boolean,
-                default: false
-            },
-            propIsDisallowed: {
-                type: Boolean,
-                default: false
             },
         },
     });

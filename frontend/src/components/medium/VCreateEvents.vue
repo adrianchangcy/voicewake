@@ -2,10 +2,13 @@
 
     <div>
 
-        <VSectionTitle
-            :propTitle="titleText[0]"
-            :propTitleDescription="titleText[1]"
+        <div v-if="propIsOriginator === true">
+            <VSectionTitle
+            propTitle="Say"
+            propTitleDescription="Fill in the fields below"
         />
+        </div>
+
         <form
             spellcheck="false"
             class="bg-theme-light flex flex-col text-theme-black"
@@ -33,7 +36,7 @@
                 <!--open/close VRecorderMenu-->
                 <div ref="recorder_field" class="col-span-6">
                     <VRecorderField
-                        propLabel="Recording"
+                        :propLabel="propIsOriginator === true ? 'Recording' : 'Your reply'"
                         :propIsOpen="is_recorder_menu_open"
                         :propBucketQuantity="bucket_quantity"
                         :propHasRecording="final_blob !== null"
@@ -70,12 +73,7 @@
                 </div>
 
                 <!--recorder menu-->
-                <div
-                    v-click-outside="{
-                        var_name_for_element_bool_status: 'is_recorder_menu_open',
-                        refs_to_exclude: ['event_tone_field', 'recorder_field']
-                    }"
-                >
+                <div>
                     <VRecorderMenu
                         :propIsOpen="is_recorder_menu_open"
                         :propBucketQuantity="bucket_quantity"
@@ -86,12 +84,7 @@
                 </div>
 
                 <!--event_tone menu-->
-                <div
-                    v-click-outside="{
-                        var_name_for_element_bool_status: 'is_event_tone_menu_open',
-                        refs_to_exclude: ['event_tone_field', 'recorder_field']
-                    }"
-                >
+                <div>
                     <VEventToneMenu
                         :propIsOpen="is_event_tone_menu_open"
                         @eventToneSelected="handleEventToneSelected($event)"
@@ -108,7 +101,7 @@
                 ]"
             >
                 <VActionButtonSpecialL
-                    class="mx-auto"
+                    class="w-full"
                     :propIsEnabled="canSubmit"
                     @click.stop="submitForm()"
                 >
@@ -147,6 +140,7 @@
 
                 is_event_tone_menu_open: false, //updates only from VEventToneField to VEventToneMenu, maybe use vuex
                 event_tone_choice: null as EventToneTypes|null,
+                is_submitting: false,
 
                 is_recorder_menu_open: false,
                 final_blob: null as Blob|null,
@@ -189,6 +183,7 @@
             canSubmit() : boolean {
 
                 if(
+                    this.is_submitting === false &&
                     (
                         (this.propIsOriginator === true && this.event_name.trim() !== '') ||
                         (this.propIsOriginator === false && this.propEventRoomId !== null)
@@ -204,16 +199,6 @@
 
                 return false;
             },
-            titleText() : string[] {
-
-                if(this.propIsOriginator === true){
-
-                    return ['Say', 'Fill in the fields below'];
-                    
-                }
-
-                return ['Your reply', ''];
-            },
         },
         methods: {
             async submitForm() : Promise<void> {
@@ -222,6 +207,8 @@
 
                     return;
                 }
+
+                this.is_submitting = true;
 
                 let data = new FormData();
                 
@@ -249,11 +236,24 @@
 
                 }else{
 
+                    this.is_submitting = false;
                     return;
                 }
                 await axios.post('http://127.0.0.1:8000/api/events/create', data)
-                .then((response:any) => console.log(response))
-                .catch((errors:any) => console.log(errors));
+                .then((response:any) => {
+
+                    if(response.status === 201 && 'event_room_id' in response.data['data']){
+
+                        window.location.href = "http://127.0.0.1:8000/hear/" + response.data['data']['event_room_id'].toString();
+                        //no need to do is_submitting=true on success
+                    }
+
+                })
+                .catch((errors:any) => {
+
+                    console.log(errors);
+                    this.is_submitting = false;
+                });
             },
             handleNewRecording(new_value:{'blob':Blob, 'blob_duration':number, 'blob_volume_peaks':number[]}) : void {
 

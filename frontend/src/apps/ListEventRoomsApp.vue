@@ -16,8 +16,8 @@
                 <div ref="search_button_container">
                     <VActionButtonSpecialXL
                         ref="search_button"
-                        :propCanClick="canSearch"
-                        :propToShrink="is_search_button_shrinked"
+                        :propIsEnabled="canSearch"
+                        :propIsSmaller="is_search_button_shrinked"
                         @click.stop="getEventRooms()"
                     >
                         {{ search_button_text }}
@@ -251,7 +251,14 @@
                 await axios.post('http://127.0.0.1:8000/api/user-actions', data)
                 .then((results:any) => {
 
-                    console.log(results);
+                    if(results.status === 202){
+
+                        window.location.href = "http://127.0.0.1:8000/hear/" + event_room.event_room.id.toString();
+
+                    }else{
+
+                        console.log(results);
+                    }
                 })
                 .catch((errors:any) => {
 
