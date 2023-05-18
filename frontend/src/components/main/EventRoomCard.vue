@@ -25,18 +25,18 @@
         >
             <VUser
                 :propUsername="propEventRoom.originator.user.username"
-                :propEventTone="propEventRoom.originator.event_tone"
             />
 
             <div
                 v-if="propShowOnePlaybackPerEvent === true"
-                class="w-full h-fit"
+                class="h-fit"
             >
-                <VPlayback
-                    :propAudioVolumePeaks="propEventRoom.originator.audio_volume_peaks"
-                    :propBucketQuantity="propEventRoom.originator.audio_volume_peaks.length"
-                    :propAudioURL="propEventRoom.originator.audio_file"
-                />
+                    <VPlayback
+                        :propAudioVolumePeaks="propEventRoom.originator.audio_volume_peaks"
+                        :propBucketQuantity="propEventRoom.originator.audio_volume_peaks.length"
+                        :propAudioURL="propEventRoom.originator.audio_file"
+                        :propEventTone="propEventRoom.originator.event_tone"
+                    />
             </div>
             <div v-else>
                 <VEventCard
@@ -62,7 +62,6 @@
         >
             <VUser
                 :propUsername="event.user.username"
-                :propEventTone="event.event_tone"
             />
 
             <div
@@ -73,6 +72,7 @@
                     :propAudioVolumePeaks="event.audio_volume_peaks"
                     :propBucketQuantity="event.audio_volume_peaks.length"
                     :propAudioURL="event.audio_file"
+                    :propEventTone="event.event_tone"
                 />
             </div>
             <div v-else>

@@ -3,11 +3,11 @@
     <div class="text-theme-black">
         <!--label, ripples, total duration-->
         <VActionButtonM
-            class="w-full px-4 grid grid-cols-8"
+            class="w-full px-5 grid grid-cols-4"
             @click.stop="handleIsSelected()"
         >            
             <!--ripples-->
-            <div class="col-span-4 h-full top-0 bottom-0 my-auto relative">
+            <div class="col-span-2 h-full top-0 bottom-0 my-auto relative">
                 <div
                     ref="volume_ripples_container"
                     class="w-full h-full absolute flex flex-row justify-between"
@@ -23,15 +23,25 @@
                 </div>
             </div>
 
-            <div class="col-span-2 h-full relative">
-                <!--total duration, check icon for selected-->
+            <div class="col-span-1 h-full relative">
+                <!--total duration, width is to match emoji-->
                 <span
                     v-if="is_selected === false"
-                    class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto text-sm font-medium"
+                    class="w-10 h-fit absolute right-0 top-0 bottom-0 m-auto text-sm font-medium"
                 >
                     {{ prettyFileDuration }}
                 </span>
                 <i v-else class="w-fit h-fit text-2xl fas fa-square-check text-theme-lead absolute left-0 right-0 top-0 bottom-0 m-auto"></i>
+            </div>
+
+            <div class="col-span-1 h-full relative">
+                <!--label-->
+                <span
+                    class="w-fit h-fit absolute right-0 top-0 bottom-0.5 m-auto text-3xl has-emoji pb-0.5"
+                >
+                    {{ propEvent.event_tone.event_tone_symbol }}
+                </span>
+                <span class="sr-only">{{ propEvent.event_tone.event_tone_name }}</span>
             </div>
         </VActionButtonM>
     </div>

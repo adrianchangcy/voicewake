@@ -47,7 +47,8 @@
                 ref="playback_main"
                 :class="[
                     propIsSticky === false ? 'border rounded-lg' : '',
-                    'w-full h-full absolute grid grid-rows-2 grid-cols-4 pr-2 left-0 right-0 top-0 bottom-0 m-auto text-theme-black border-theme-light-gray opacity-0'
+                    propEventTone === null ? 'grid-cols-3 pr-4' : 'grid-cols-4',
+                    'w-full h-full absolute grid grid-rows-2 left-0 right-0 top-0 bottom-0 m-auto text-theme-black border-theme-light-gray opacity-0'
                 ]"
             >
                 <!--play/pause-->
@@ -62,7 +63,7 @@
                         <i
                             :class="[
                                 is_playing? 'fa-pause' : 'fa-play',
-                                'fas'
+                                'fas mb-0.5'
                             ]"
                         ></i>
                         <span v-if="is_playing" class="sr-only">
@@ -77,13 +78,13 @@
                 <div
                     :class="[
                         (has_all_data_for_play === true && is_playback_slider_ready === true ? 'cursor-pointer' : 'cursor-default'),
-                        'row-start-1 row-span-1 col-start-2 col-span-3 pr-2 relative'
+                        'row-start-1 row-span-1 col-start-2 col-span-2 relative'
                     ]"
                 >
                     <!--ripples-->
                     <div
                         ref="volume_ripples_container"
-                        class="left-0 right-2 m-auto h-4 absolute top-2 flex flex-row justify-evenly"
+                        class="w-full h-4 absolute top-2 flex flex-row justify-evenly"
                     >
                         <div
                             v-for="volume_ripple in propBucketQuantity" :key="volume_ripple"
@@ -100,7 +101,7 @@
                     </div>
                     <!--slider-->
                     <div
-                        class="left-0 right-2 m-auto h-full absolute bottom-0"
+                        class="w-full h-full absolute bottom-0"
                     >
                         <div
                             ref="playback_slider"
@@ -139,7 +140,7 @@
 
                 <!--volume, timers-->
                 <div
-                    class="row-start-2 row-span-1 col-start-2 col-span-3 mr-2 grid grid-rows-1 grid-cols-3"
+                    class="row-start-2 row-span-1 col-start-2 col-span-2 grid grid-rows-1 grid-cols-3"
                 >
                     <!--current duration-->
                     <div class="row-start-1 row-span-1 col-start-1 col-span-1 relative text-sm font-medium">
@@ -210,6 +211,9 @@
                         <span class="absolute w-fit h-fit right-0 top-0 bottom-0 m-auto">{{pretty_playback_duration}}</span>
                     </div>
                 </div>
+                <div v-if="propEventTone !== null" class="row-span-2 col-span-1 h-fit my-auto pb-0.5">
+                    <span class="text-2xl">{{ propEventTone.event_tone_symbol }}</span>
+                </div>
             </div>
         </div>
     </div>
@@ -227,8 +231,9 @@
 
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
-    import anime from 'animejs';
     import { prettyDuration } from '@/helper_functions';
+    import anime from 'animejs';
+    import EventToneTypes from '@/types/EventTones.interface';
 
     export default defineComponent({
         data(){
@@ -378,6 +383,10 @@
             },
             propBucketQuantity: {   //with no required value, this is the fix for unrendered this.$refs.volume_ripple
                 type: Number
+            },
+            propEventTone: {
+                type: Object as PropType<EventToneTypes>,
+                default: null
             },
         },
         watch: {
