@@ -74,7 +74,7 @@
             <!--event_rooms-->
             <div ref="event_rooms_container" class="h-0 opacity-0">
                 <div v-for="event_room in event_rooms" :key="event_room.event_room.id">
-                    <div class="border-2 border-theme-light-gray rounded-lg px-4 py-6 flex flex-col gap-10">
+                    <div class="flex flex-col gap-10">
                         <EventRoomCard
                             :propEventRoom="event_room"
                             :propShowTitle="true"

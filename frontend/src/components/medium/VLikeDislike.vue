@@ -25,8 +25,7 @@
                 <div class="w-full h-full relative text-base font-medium">
                     <span class="absolute w-fit h-fit left-2 top-0 bottom-0 m-auto">
                         <span v-if="is_liked" class="sr-only">you have liked this</span>
-                        <!-- <span class="sr-only">current like count is </span>{{ prettyLikeCount }} -->
-                        <span class="sr-only">current like count is </span>999M
+                        <span class="sr-only">current like count is </span>{{ prettyLikeCount }}
                     </span>
                 </div>
             </button>
@@ -54,8 +53,7 @@
                 <div class="w-full h-full relative text-base font-medium">
                     <span class="absolute w-fit h-fit left-2 top-0 bottom-0 m-auto">
                         <span v-if="is_liked === false" class="sr-only">you have disliked this</span>
-                        <!-- <span class="sr-only">current dislike count is </span>{{ prettyDislikeCount }} -->
-                        <span class="sr-only">current dislike count is </span>999K
+                        <span class="sr-only">current dislike count is </span>{{ prettyDislikeCount }}
                     </span>
                 </div>
             </button>
