@@ -25,13 +25,15 @@ module.exports = {
                 'theme-lead': '#facc15', //yellow-400, for highlight
                 'theme-soft-lead': '#f5f5dc',   //for background yellow
 
+                'theme-danger': '#fa3515',
+                'theme-soft-danger': '#ff4934',
+
                 'theme-light': '#F2F4F3',
                 'theme-light-trim': '#FDFDFD',
                 'theme-dark': '#22333B',
 
                 'theme-ok': '#00ff00',
                 'theme-warning': '#FFE178',
-                'theme-danger': '#ff0000',
 
                 //for disabled feature, advised to use opacity until unreadable, and not gray
                 'theme-light-gray': '#e7e5e4',

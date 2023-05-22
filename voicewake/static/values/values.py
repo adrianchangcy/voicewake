@@ -27,9 +27,19 @@ MAX_AUDIO_FILE_SIZE_MB = 200
 
 #NEW:
 
+#uses checkpoint of today 00:00:00 and counts with when_created__gte=...
+#for max _ event_room a user can create per day
+MAX_DAILY_CREATED_EVENT_ROOMS = 5
+
+#uses checkpoint of today 00:00:00 and counts with when_created__gte=...
+#for max _ replies a user can create per day
+MAX_DAILY_CREATED_REPLY_EVENTS = 5
+
 #unlocks event_room if last when_locked is too long ago
 #if user has page open, JS will ping to update when_locked
-REPLY_INACTIVE_MAX_MINUTES = 60
+REPLY_INACTIVE_MAX_MINUTES = 31
+
+REPLY_CHOICE_INACTIVE_MAX_MINUTES = 11
 
 #how many incomplete EventRooms to show at a time, before next reroll
 #we have not handled state management for play+pause when multiple VPlayback are present

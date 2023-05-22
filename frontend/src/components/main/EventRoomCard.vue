@@ -41,6 +41,8 @@
             <div v-else>
                 <VEventCard
                     :propEvent="propEventRoom.originator"
+                    @isSelected="handleSelectedEventId($event)"
+                    :propIsSelected="selected_event_id === propEventRoom.originator.id"
                 />
             </div>
 
@@ -56,38 +58,57 @@
         </div>
 
         <!--responders-->
-        <div
-            v-for="event in propEventRoom.responder" :key="event.id"
-            class="flex flex-col gap-2"
-        >
-            <VUser
-                :propUsername="event.user.username"
-            />
-
+        <div v-if="propShowOnePlaybackPerEvent === true">
             <div
-                v-if="propShowOnePlaybackPerEvent === true"
-                class="w-full h-fit"
+                v-for="event in propEventRoom.responder" :key="event.id"
+                class="flex flex-col gap-2"
             >
-                <VPlayback
-                    :propAudioVolumePeaks="event.audio_volume_peaks"
-                    :propBucketQuantity="event.audio_volume_peaks.length"
-                    :propAudioURL="event.audio_file"
-                    :propEventTone="event.event_tone"
+                <VUser
+                    :propUsername="event.user.username"
                 />
+                <div class="w-full h-fit">
+                    <VPlayback
+                        :propAudioVolumePeaks="event.audio_volume_peaks"
+                        :propBucketQuantity="event.audio_volume_peaks.length"
+                        :propAudioURL="event.audio_file"
+                        :propEventTone="event.event_tone"
+                    />
+                </div>
+                <div class="w-full h-fit grid grid-cols-8">
+                    <VLikeDislike
+                        :propEventId="event.id"
+                        :propLikeCount="event.like_count"
+                        :propDislikeCount="event.dislike_count"
+                        :propIsLiked="event.is_liked_by_user"
+                        class="col-span-6 lg:col-span-4"
+                    />
+                </div>
             </div>
-            <div v-else>
-                <VEventCard
-                    :propEvent="event"
+        </div>
+        <div v-else>
+            <div
+                v-for="event in propEventRoom.responder" :key="event.id"
+                class="flex flex-col gap-2"
+            >
+                <VUser
+                    :propUsername="event.user.username"
                 />
-            </div>
-            <div class="w-full h-fit grid grid-cols-8">
-                <VLikeDislike
-                    :propEventId="event.id"
-                    :propLikeCount="event.like_count"
-                    :propDislikeCount="event.dislike_count"
-                    :propIsLiked="event.is_liked_by_user"
-                    class="col-span-6 lg:col-span-4"
-                />
+                <div>
+                    <VEventCard
+                        :propEvent="event"
+                        @isSelected="handleSelectedEventId($event)"
+                        :propIsSelected="selected_event_id === event.id"
+                    />
+                </div>
+                <div class="w-full h-fit grid grid-cols-8">
+                    <VLikeDislike
+                        :propEventId="event.id"
+                        :propLikeCount="event.like_count"
+                        :propDislikeCount="event.dislike_count"
+                        :propIsLiked="event.is_liked_by_user"
+                        class="col-span-6 lg:col-span-4"
+                    />
+                </div>
             </div>
         </div>
     </div>
@@ -149,6 +170,11 @@
                 axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
                 return true;
             },
+            handleSelectedEventId(event_id:number) : void {
+
+                this.selected_event_id = event_id;
+                console.log(this.selected_event_id);
+            }
         },
         mounted(){
 

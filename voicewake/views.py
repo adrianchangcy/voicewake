@@ -576,25 +576,58 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
         return True
 
-    def check_user_can_create_event_room(self):
+    def check_user_created_up_to_daily_limit(self, auth_user):
 
-        #this is for "10 max new posts every __", which in this case is every hour
-        # checkpoint_datetime = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d %H:00:00 %z')
-        # checkpoint_datetime = datetime.strptime(checkpoint_datetime, '%Y-%m-%d %H:%M:%S %z')
+        #this is for "X max new posts every __", which in this case is every 24h
+        checkpoint_datetime = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
+        checkpoint_datetime = datetime.strptime(checkpoint_datetime, '%Y-%m-%d %H:%M:%S %z')
+
+        the_count = EventRooms.objects.filter(
+            created_by=auth_user,
+            when_created__gte=checkpoint_datetime
+        ).count()
+
+        if the_count < MAX_DAILY_CREATED_EVENT_ROOMS:
+
+            return False
+
+        return True
+    
+    def check_user_replied_up_to_daily_limit(self, auth_user):
+
+        #this is for "X max new posts every __", which in this case is every 24h
+        checkpoint_datetime = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
+        checkpoint_datetime = datetime.strptime(checkpoint_datetime, '%Y-%m-%d %H:%M:%S %z')
+
+        the_count = Events.objects.filter(
+            created_by=auth_user,
+            when_created__gte=checkpoint_datetime
+        ).count()
+
+        if the_count < MAX_DAILY_CREATED_REPLY_EVENTS:
+
+            return False
 
         return True
 
-    def check_user_can_reply_event_room(self, event_room_id):
+    def check_user_can_reply_event_room(self, event_room):
 
-        event_room = EventRooms.objects.select_related('locked_for_user').get(
-            pk=event_room_id
-        )
-
+        #check if user is replying
         if\
             event_room.locked_for_user is not None and\
             event_room.locked_for_user.id == self.request.user.id and\
             event_room.is_replying is True\
         :
+
+            return True
+
+        return False
+        
+    def check_user_exceeded_reply_time_window(self, event_room):
+
+        minutes_passed = (get_datetime_now() - event_room.when_locked).total_seconds() / 60
+
+        if minutes_passed > REPLY_INACTIVE_MAX_MINUTES:
 
             return True
         
@@ -631,27 +664,38 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         if 'event_room_id' in kwargs:
 
             return Response(
-                GetEventRoomsSerializer(
-                    self.sort_events(self.get_queryset_by_event_room()),
-                    many=True
-                ).data
+                data={
+                    'message': '',
+                    'data': GetEventRoomsSerializer(
+                        self.sort_events(self.get_queryset_by_event_room()),
+                        many=True
+                    ).data,
+                },
             )
         
         elif 'generic_status_name' in kwargs and kwargs['generic_status_name'] == 'incomplete':
 
             if is_user_logged_in(request) is False:
 
-                return Response(status=status.HTTP_401_UNAUTHORIZED)
+                return Response(
+                    data={
+                        'message': ''
+                    },
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
 
             #check if user is replying to anything
             #we want event_room.id if there is any
             if check_user_is_replying(request) is True:
 
                 return Response(
-                    GetEventRoomsSerializer(
-                        self.sort_events(self.get_queryset_by_is_replying()),
-                        many=True
-                    ).data,
+                    data={
+                        'message': '',
+                        'data': GetEventRoomsSerializer(
+                            self.sort_events(self.get_queryset_by_is_replying()),
+                            many=True
+                        ).data,
+                    },
                 )
 
             #not replying, can unlock previous choices if any
@@ -663,10 +707,13 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             if len(events) == 0:
 
                 return Response(
-                    GetEventRoomsSerializer(
-                        [],
-                        many=True
-                    ).data
+                    data={
+                        'message': '',
+                        'data': GetEventRoomsSerializer(
+                            [],
+                            many=True
+                        ).data,
+                    },
                 )
             
             #lock events
@@ -674,19 +721,25 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
             #return events sorted by event_rooms
             return Response(
-                GetEventRoomsSerializer(
-                    self.sort_events(events),
-                    many=True
-                ).data
+                data={
+                    'message': '',
+                    'data': GetEventRoomsSerializer(
+                        self.sort_events(events),
+                        many=True
+                    ).data,
+                },
             )
         
         else:
 
             return Response(
-                GetEventRoomsSerializer(
-                    [],
-                    many=True
-                ).data,
+                data={
+                    'message': '',
+                    'data': GetEventRoomsSerializer(
+                        [],
+                        many=True
+                    ).data,
+                },
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -698,20 +751,43 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         #validate
         if serializer.is_valid() is False:
 
-            return Response(data={}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                data={
+                    'message': 'Invalid data.',
+                },
+                status=status.HTTP_412_PRECONDITION_FAILED
+            )
         
         new_data = serializer.validated_data
-
         auth_user = AuthUser.objects.get(pk=request.user.id)
+
+        #event_tone
+        try:
+
+            event_tone = EventTones.objects.get(pk=new_data['event_tone_id'])
+
+        except EventTones.DoesNotExist:
+
+            return Response(
+                data={
+                    'message': 'Your selected emoji is unexpectedly not found. Try a different one.',
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
 
         #determine if originator/responder, then create/get event_room
         #generic_status is handled by default, so it is skipped here
         if new_data['is_originator'] is True:
 
-            #check if event_room limit is not yet reached
-            if self.check_user_can_create_event_room() is False:
+            #check if created event_room limit is not yet reached
+            if self.check_user_created_up_to_daily_limit(auth_user) is True:
 
-                return Response(data={}, status=status.HTTP_412_PRECONDITION_FAILED)
+                return Response(
+                    data={
+                        'message': 'You have reached your daily limit.',
+                    },
+                    status=status.HTTP_412_PRECONDITION_FAILED
+                )
 
             #proceed
             event_role = EventRoles.objects.get(event_role_name='originator')
@@ -724,41 +800,70 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
         else:
 
-            #check if this user is already attached beforehand
-            if self.check_user_can_reply_event_room(new_data['event_room_id']) is False:
+            #check if reply event limit is not yet reached
+            if self.check_user_replied_up_to_daily_limit(auth_user) is True:
 
-                return Response(data={}, status=status.HTTP_412_PRECONDITION_FAILED)
-
-            #proceed
-            event_role = EventRoles.objects.get(event_role_name='responder')
-
+                return Response(
+                    data={
+                        'message': 'You have reached your daily limit of replies.',
+                    },
+                    status=status.HTTP_412_PRECONDITION_FAILED
+                )
+            
             try:
 
                 event_room = EventRooms.objects.get(pk=new_data['event_room_id'])
 
-                #mark as completed, remove lock
-                event_room.generic_status = GenericStatuses.objects.get(generic_status_name='completed')
-                event_room.when_locked = None
-                event_room.locked_for_user = None
-                event_room.is_replying = None
+            except EventRooms.DoesNotExist:
 
+                return Response(
+                    data={
+                        'message': 'This post no longer exists.',
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            #check if this user is already attached beforehand
+            if self.check_user_can_reply_event_room(event_room) is False:
+
+                return Response(
+                    data={
+                        'message': 'You cannot reply to this post.',
+                    },
+                    status=status.HTTP_412_PRECONDITION_FAILED
+                )
+            
+            #check if user exceeded reply time window but automated script has not detected yet
+            if self.check_user_exceeded_reply_time_window(event_room) is True:
+
+                #reset
+                event_room.locked_for_user = None
+                event_room.when_locked = None
+                event_room.is_replying = None
                 event_room.save()
 
                 #prevent from being queued twice
                 prevent_event_room_from_queuing_twice_for_reply(auth_user, event_room)
 
-            except EventRooms.DoesNotExist:
+                return Response(
+                    data={
+                        'message': 'Your reply was unsuccessful, as you had reached the time limit.',
+                    },
+                    status=status.HTTP_412_PRECONDITION_FAILED
+                )
 
-                return Response(data={}, status=status.HTTP_400_BAD_REQUEST)
-        
-        #event_tone
-        try:
+            #mark event_room as completed, remove lock
+            event_room.generic_status = GenericStatuses.objects.get(generic_status_name='completed')
+            event_room.when_locked = None
+            event_room.locked_for_user = None
+            event_room.is_replying = None
+            event_room.save()
 
-            event_tone = EventTones.objects.get(pk=new_data['event_tone_id'])
+            #prevent from being queued twice
+            prevent_event_room_from_queuing_twice_for_reply(auth_user, event_room)
 
-        except EventTones.DoesNotExist:
-
-            return Response(data={}, status=status.HTTP_400_BAD_REQUEST)
+            #proceed
+            event_role = EventRoles.objects.get(event_role_name='responder')
 
         #create event, excluding audio_file and event_room
         #generic_status is handled by default, so it is skipped here
@@ -780,7 +885,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 'data': {
                     'event_room_id': event_room.id
                 },
-                'message': '',
+                'message': 'Success!',
             },
             status.HTTP_201_CREATED
         )
@@ -793,14 +898,20 @@ class UserActionsAPI(generics.GenericAPIView):
     serializer_class = UserActionsSerializer
     permission_classes = [IsAuthenticated]
 
+    #currently does not allow renewing of when_locked
     #202 success, 205 reset due to user inactivity
     def start_replying_to_event_room(self, event_room_id):
 
         #check if user is replying to any other event_room
         if check_user_is_replying(request=self.request, exclude_event_room_id=event_room_id) is True:
 
-            return Response(status=status.HTTP_412_PRECONDITION_FAILED)
-
+            return Response(
+                data={
+                    'message': 'You are already replying in a different post.',
+                },
+                status=status.HTTP_412_PRECONDITION_FAILED
+            )
+        
         #get event_room
         try:
 
@@ -812,31 +923,37 @@ class UserActionsAPI(generics.GenericAPIView):
 
         except EventRooms.DoesNotExist:
 
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                data={
+                    'message': 'This post does not exist.',
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
         
         auth_user = AuthUser(self.request.user.id)
         
-        #check if incomplete
-        if event_room.generic_status.generic_status_name != 'incomplete':
+        #check if user can reply
+        if\
+            event_room.generic_status.generic_status_name == 'incomplete' and\
+            event_room.when_locked is not None and\
+            ((get_datetime_now() - event_room.when_locked).total_seconds() / 60) <= REPLY_CHOICE_INACTIVE_MAX_MINUTES and\
+            event_room.locked_for_user is not None and event_room.locked_for_user.id == self.request.user.id and\
+            event_room.is_replying is False\
+        :
 
-            return Response(status=status.HTTP_412_PRECONDITION_FAILED)
-        
-        #check if locked for someone else
-        if event_room.locked_for_user is not None and event_room.locked_for_user.id != self.request.user.id:
+            pass
 
-            return Response(status=status.HTTP_412_PRECONDITION_FAILED)
-        
-        #check if user has queued this event_room before
-        user_event_room_count = UserEventRooms.objects.filter(
-            user=auth_user,
-            event_room__id=event_room_id,
-            is_excluded_for_reply=True
-        ).count()
-        
-        if user_event_room_count > 0:
+        else:
 
-            return Response(status=status.HTTP_412_PRECONDITION_FAILED)
-        
+            return Response(
+                data={
+                    'message': 'You cannot select this post for reply.',
+                },
+                status=status.HTTP_412_PRECONDITION_FAILED
+            )
+
+        #can reply, proceed
+
         #unlock any other event_room that were locked for reply choices
         #also save to user_event_rooms to prevent unlocked event_rooms from being queued twice
         event_rooms = EventRooms.objects.filter(
@@ -850,36 +967,22 @@ class UserActionsAPI(generics.GenericAPIView):
             #prevent these event_rooms from being queued again
             prevent_event_room_from_queuing_twice_for_reply(auth_user, event_room_row)
 
-            #unlock
             event_room_row.when_locked = None
             event_room_row.locked_for_user = None
             event_room_row.is_replying = None
 
             event_room_row.save()
 
-        #we get time difference to determine user being inactive for too long
-        #when_locked is used for still-active pinging
-        if event_room.when_locked is not None:
-
-            minutes_passed = (get_datetime_now() - event_room.when_locked).total_seconds() / 60
-
-            if minutes_passed >= REPLY_INACTIVE_MAX_MINUTES:
-
-                event_room.locked_for_user = None
-                event_room.is_replying = None
-                event_room.when_locked = None
-
-                event_room.save()
-                return Response(status=status.HTTP_205_RESET_CONTENT)
-
-        #start replying or to update when_locked, same thing
-        #we don't check for is_replying=False to allow for instant reply when necessary
-        event_room.locked_for_user = auth_user
-        event_room.is_replying = True
+        #confirm reply, start over when_locked
         event_room.when_locked = get_datetime_now()
-
         event_room.save()
-        return Response(status=status.HTTP_202_ACCEPTED)
+
+        return Response(
+            data={
+                'message': 'Success! You are now replying to this post.',
+            },
+            status=status.HTTP_202_ACCEPTED
+        )
 
     #205 success
     def cancel_replying_to_event_room(self, event_room_id):
@@ -895,24 +998,37 @@ class UserActionsAPI(generics.GenericAPIView):
 
         except EventRooms.DoesNotExist:
 
-            return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                data={
+                    'message': 'This post does not exist.',
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
         
-        #check if incomplete
-        if event_room.generic_status.generic_status_name != 'incomplete':
+        #check if user is already replying
+        #we don't check for time limit, as cancellation may occur beyond it
+        if\
+            event_room.generic_status.generic_status_name == 'incomplete' and\
+            event_room.when_locked is not None and\
+            event_room.locked_for_user is not None and event_room.locked_for_user.id == self.request.user.id and\
+            event_room.is_replying is False\
+        :
+        
+            pass
 
-            return Response(status=status.HTTP_412_PRECONDITION_FAILED)
-        
-        #check if someone else is replying
-        #also cannot cancel if event_room is not locked
-        if event_room.locked_for_user is None or event_room.locked_for_user.id != self.request.user.id:
+        else:
 
-            return Response(status=status.HTTP_412_PRECONDITION_FAILED)
-        
+            return Response(
+                data={
+                    'message': 'Cannot cancel this replying process.',
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
         #cancel replying
         event_room.locked_for_user = None
         event_room.is_replying = None
         event_room.when_locked = None
-
         event_room.save()
 
         #prevent repeated queue
@@ -921,7 +1037,12 @@ class UserActionsAPI(generics.GenericAPIView):
             event_room
         )
 
-        return Response(status=status.HTTP_205_RESET_CONTENT)
+        return Response(
+            data={
+                'message': 'Cannot cancel this replying process.',
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
 
     def post(self, request, *args, **kwargs):
 
@@ -961,13 +1082,23 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
 
         if is_user_logged_in(request) is False:
 
-            return Response(status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                data={
+                    'message': 'Please log in to like and dislike events.',
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )
 
         serializer = CreateEventLikesDislikesSerializer(data=request.data, many=False)
 
         if serializer.is_valid() is False:
 
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                data={
+                    'message': 'Invalid data.',
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         new_data = serializer.validated_data
 
@@ -978,7 +1109,12 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
 
         except Events.DoesNotExist:
 
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                data={
+                    'message': 'This event does not exist.',
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
 
         #handle is_liked
         try:
@@ -1007,8 +1143,17 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
                     is_liked=new_data['is_liked']
                 )
 
-        #even when somehow is_liked=None and row does not exist, return OK
-        return Response(status=status.HTTP_200_OK)
+            else:
+
+                #do nothing if is_liked=None and row does not exist
+                pass
+
+        return Response(
+            data={
+                'message': 'Success!',
+            },
+            status=status.HTTP_200_OK
+        )
 
 
 #=====END OF REST APIs=====
