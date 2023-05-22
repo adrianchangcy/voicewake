@@ -2,14 +2,13 @@
 
     <div>
 
-        <div v-if="propIsOriginator === true">
-            <VSectionTitle
-            propTitle="Say"
-            propTitleDescription="Fill in the fields below"
+        <VSectionTitle
+            :propTitle="templateStrings[0]"
+            :propTitleDescription="templateStrings[1]"
+            v-if="propIsOriginator === true"
         />
-        </div>
 
-        <form
+        <div
             spellcheck="false"
             class="bg-theme-light flex flex-col text-theme-black"
             :class="[
@@ -17,7 +16,6 @@
                 ''
             ]"
         >
-            <!--title-->
             <VTextArea
                 :propIsRequired="true"
                 propElementId="event-name"
@@ -36,7 +34,7 @@
                 <!--open/close VRecorderMenu-->
                 <div ref="recorder_field" class="col-span-6">
                     <VRecorderField
-                        :propLabel="propIsOriginator === true ? 'Recording' : 'Your reply'"
+                        propLabel="Recording"
                         :propIsOpen="is_recorder_menu_open"
                         :propBucketQuantity="bucket_quantity"
                         :propHasRecording="final_blob !== null"
@@ -105,11 +103,11 @@
                     :propIsEnabled="canSubmit"
                     @click.stop="submitForm()"
                 >
-                    <span>Done</span>
+                    <span>{{ templateStrings[2] }}</span>
                 </VActionButtonSpecialL>
             </div>
 
-        </form>
+        </div>
 
     </div>
 </template>
@@ -180,6 +178,23 @@
             },
         },
         computed: {
+            templateStrings() : string[] {
+
+                if(this.propIsOriginator === true){
+
+                    return [
+                        'Create event',
+                        'Fill in the fields below',
+                        'Done'
+                    ];
+                }
+
+                return [
+                    '',
+                    '',
+                    'Done'
+                ];
+            },
             canSubmit() : boolean {
 
                 if(

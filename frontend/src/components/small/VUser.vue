@@ -20,6 +20,6 @@
                 type: String,
                 default: ''
             },
-        }
+        },
     });
 </script>

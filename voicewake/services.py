@@ -115,6 +115,10 @@ def get_datetime_now():
 
     return datetime.now().astimezone(tz=ZoneInfo('UTC'))
 
+    #to get difference
+    #minutes_passed = (get_datetime_now() - event_room.when_locked).total_seconds() / 60
+    #hours_passed = (get_datetime_now() - event_room.when_locked).total_seconds() / 60 / 60
+
 
 #you do not need this if you have appropriate permission_classes=[]
 def is_user_logged_in(request):

@@ -24,8 +24,10 @@ export function timeDifferenceUTC(date:Date) : string {
             const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
             let interval = 0;
 
-            if(seconds < 60){
+            if(seconds < 60 && seconds >= 0){
                 return 'Few seconds ago';
+            }else if(seconds < 0){
+                return '';
             }
 
             interval = Math.floor(seconds / 60);
@@ -63,6 +65,63 @@ export function timeDifferenceUTC(date:Date) : string {
             }
 
             return interval.toString() + ' years ago';
+}
+
+//we don't combine this with timeDifferenceUTC() for less 'if' checks, as these may be run as intervals
+export function timeRemainingUTC(date:Date, max_duration_seconds:number) : string {
+
+    //more optimised version, since visits to newer content will always be more
+    //to use: timeDifferenceUTC(new Date('2023-04-26T07:45:22.258243Z'))
+    //i.e. can immediately use datetime from Django's Serializer
+
+    let seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    let interval = 0;
+
+    seconds = max_duration_seconds - seconds;
+
+    if(seconds < 60 && seconds > 0){
+        return interval.toString() + ' second left';
+    }else if(seconds === 1){
+        return interval.toString() + ' seconds left';
+    }else if(seconds < 0){
+        return '';
+    }
+
+    interval = Math.floor(seconds / 60);
+    if(interval === 1){
+        return interval.toString() + ' minute left';
+    }else if(interval < 60){
+        return interval.toString() + ' minutes left';
+    }
+
+    interval = Math.floor(seconds / 3600);
+    if(interval === 1){
+        return interval.toString() + ' hour left';
+    }else if(interval < 24){
+        return interval.toString() + ' hours left';
+    }
+
+    interval = Math.floor(seconds / 86400);
+    if(interval === 1){
+        return interval.toString() + ' day left';
+    }else if(interval < 28){    //fastest transition to '1 month left', for aesthetic reasons only
+        return interval.toString() + ' days left';
+    }
+
+    interval = Math.floor(seconds / 2592000);
+    if(interval === 1){
+        return interval.toString() + ' month left';
+    }else if(interval < 12){
+        return interval.toString() + ' months left';
+    }
+
+
+    interval = Math.floor(seconds / 31536000);
+    if(interval === 1){
+        return interval.toString() + ' year left';
+    }
+
+    return interval.toString() + ' years left';
 }
 
 export function prettyCount(number:number) : string {

@@ -1,5 +1,6 @@
 <template>
-    <div v-if="event_room !== null" class="flex flex-col gap-8">
+    <div v-if="event_room !== null" class="flex flex-col">
+
         <EventRoomCard
             :propEventRoom="event_room"
             :propShowTitle="false"
@@ -9,6 +10,23 @@
         />
 
         <div v-if="is_this_user_replying">
+
+            <div class="flex flex-row">
+                <VSectionTitle
+                    propTitle="Replying"
+                    :propTitleDescription="reply_expiry_string"
+                    class="w-full"
+                />
+                <div class="pt-7">
+                    <VActionButtonDangerS
+                        class="w-fit flex items-center"
+                        @click.stop="stopReplying()"
+                    >
+                        <span class="px-2 text-base font-medium mx-auto">Cancel</span>
+                    </VActionButtonDangerS>
+                </div>
+            </div>
+
             <VCreateEvents
                 :propIsOriginator="false"
                 :propEventRoomId="event_room.event_room.id"
@@ -20,15 +38,17 @@
 
 <script setup lang="ts">
     import EventRoomCard from '@/components/main/EventRoomCard.vue';
+    import VActionButtonDangerS from '@/components/small/VActionButtonDangerS.vue';
+    import VCreateEvents from '@/components/medium/VCreateEvents.vue';
+    import VSectionTitle from '@/components/small/VSectionTitle.vue';
 </script>
 
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import { timeDifferenceUTC } from '@/helper_functions';
+    import { timeDifferenceUTC, timeRemainingUTC } from '@/helper_functions';
     import EventRoomTypes from '@/types/EventRooms.interface';
-    import VCreateEvents from '@/components/medium/VCreateEvents.vue';
-    import anime from 'animejs';
+    // import anime from 'animejs';
     const axios = require('axios');
 
     export default defineComponent({
@@ -39,53 +59,19 @@
                 is_this_user_replying: false,
                 event_room: null as EventRoomTypes|null,
 
-                keep_reply_active_interval: null as number|null,
-                reply_active_interval_ms: 60 * 1000,
+                reply_expiry_interval: null as number|null,
+                reply_expiry_string: '',
+                reply_expiry_seconds: 30 * 60,  //30 minutes
             };
-        },
-        watch: {
-            is_this_user_replying(new_value){
-
-                const target = (document.getElementById('is-replying-page-title') as HTMLElement);
-
-                if(new_value === true){
-
-                    anime({
-                        targets: target,
-                        opacity: 1,
-                        easing: 'linear',
-                        loop: false,
-                        duration: 1000,
-                        autoplay: true,
-                        begin: ()=>{
-                            target.style.display = 'block';
-                        }
-                    });
-
-                }else{
-
-                    anime({
-                        targets: target,
-                        opacity: 0,
-                        easing: 'linear',
-                        loop: false,
-                        duration: 150,
-                        autoplay: true,
-                        complete: ()=>{
-                            target.style.display = 'none';
-                        }
-                    });
-                }
-            },
         },
         methods: {
             //true to try/continue reply, false to skip
-            async updateReplyDecision(to_reply:boolean) : Promise<void> {
+            async stopReplying() : Promise<void> {
 
                 let data = new FormData();
 
                 data.append('event_room_id', JSON.stringify(this.event_room_id));
-                data.append('to_reply', JSON.stringify(to_reply));
+                data.append('to_reply', JSON.stringify(false));
 
                 await axios.post('http://127.0.0.1:8000/api/user-actions', data)
                 .then((results:any) => {
@@ -101,13 +87,6 @@
 
                         case 205:
                             {
-                                //when user wants to ping to_reply=True but it returns 205,
-                                //it means the last ping was too long ago, so it is no longer locked for this user
-                                if(to_reply === true){
-
-                                    console.log('Toast that user was inactive for over an hour');
-                                }
-
                                 this.is_this_user_replying = false;
                             }
                             break;
@@ -118,6 +97,7 @@
                 })
                 .catch((errors:any) => {
 
+                    this.is_this_user_replying = false;
                     console.log(errors);
                 });
             },
@@ -132,10 +112,31 @@
                 await axios.get('http://127.0.0.1:8000/api/events/get/event-room/' + this.event_room_id.toString())
                 .then((results:any) => {
 
-                    if(results.data.length > 0){
+                    if(results.data['data'].length > 0){
 
                         //API always returns list, even if there is only one event_room
-                        this.event_room = results.data[0];
+                        this.event_room = results.data['data'][0];
+
+                        //set first time expiry string
+                        this.reply_expiry_string = timeRemainingUTC(new Date(this.event_room!.event_room.when_locked), this.reply_expiry_seconds);
+
+                        //start interval
+                        if(this.reply_expiry_string !== ''){
+
+                            this.reply_expiry_interval = window.setInterval(()=>{
+
+                                this.reply_expiry_string = timeRemainingUTC(new Date(this.event_room!.event_room.when_locked), this.reply_expiry_seconds);
+
+                                //time is up
+                                if(this.reply_expiry_string === ''){
+
+                                    this.stopReplying();
+
+                                    clearInterval(this.reply_expiry_interval as number);
+                                }
+
+                            }, 10000);
+                        }
                     }
                 })
                 .catch((errors:any) => {

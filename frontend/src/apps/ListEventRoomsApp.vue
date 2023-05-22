@@ -74,7 +74,7 @@
             <!--event_rooms-->
             <div ref="event_rooms_container" class="h-0 opacity-0">
                 <div v-for="event_room in event_rooms" :key="event_room.event_room.id">
-                    <div class="flex flex-col gap-10">
+                    <div class="flex flex-col">
                         <EventRoomCard
                             :propEventRoom="event_room"
                             :propShowTitle="true"
@@ -166,25 +166,25 @@
                 await axios.get('http://127.0.0.1:8000/api/events/get/event-room/status/incomplete')
                 .then((results:any) => {
 
-                    if(results.data.length === 0){
+                    if(results.data['data'].length === 0){
 
                         this.is_search_button_shrinked = false;
                         this.current_status = 'No events found.\nTry again in a moment!';
                         this.search_button_text = 'Search';
 
-                    }else if(results.data.length > 0 && results.data[0]['event_room']['is_replying'] === true){
+                    }else if(results.data['data'].length > 0 && results.data['data'][0]['event_room']['is_replying'] === true){
 
                         this.is_search_button_shrinked = true;
                         this.current_status_logo = 'fas fa-circle-exclamation';
                         this.current_status = 'You have an unfinished reply.';
                         this.still_replying = true;
-                        this.still_replying_event_room = results.data[0];
+                        this.still_replying_event_room = results.data['data'][0];
                         this.redirect_url = 'hear/' + this.still_replying_event_room!.event_room.id.toString();
 
                     }else{
 
                         this.is_search_button_shrinked = true;
-                        this.event_rooms = results.data;
+                        this.event_rooms = results.data['data'];
                         this.search_button_text = 'Skip';
                     }
 

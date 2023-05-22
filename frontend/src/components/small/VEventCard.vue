@@ -26,12 +26,10 @@
             <div class="col-span-1 h-full relative">
                 <!--total duration, width is to match emoji-->
                 <span
-                    v-if="is_selected === false"
                     class="w-10 h-fit absolute right-0 top-0 bottom-0 m-auto text-sm font-medium"
                 >
                     {{ prettyFileDuration }}
                 </span>
-                <i v-else class="w-fit h-fit text-2xl fas fa-square-check text-theme-lead absolute left-0 right-0 top-0 bottom-0 m-auto"></i>
             </div>
 
             <div class="col-span-1 h-full relative">
@@ -78,6 +76,17 @@
                 type: Object as PropType<EventTypes>,
                 required: true,
             },
+            propIsSelected: {
+                type: Boolean,
+                default: false
+            },
+        },
+        watch: {
+            propIsSelected(new_value){
+
+                this.is_selected = new_value;
+                console.log(new_value);
+            }
         },
         computed: {
             prettyFileDuration(){
@@ -87,8 +96,7 @@
         methods: {
             handleIsSelected() : void {
 
-                this.is_selected = !this.is_selected;
-                this.$emit('isSelected', this.is_selected);
+                this.$emit('isSelected', this.propEvent.id);
             },
 
         }
