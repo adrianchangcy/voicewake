@@ -71,25 +71,27 @@
                 </div>
             </div>
 
-            <!--event_rooms-->
-            <div ref="event_rooms_container" class="h-0 opacity-0">
-                <div v-for="event_room in event_rooms" :key="event_room.event_room.id">
-                    <div class="flex flex-col">
-                        <EventRoomCard
-                            :propEventRoom="event_room"
-                            :propShowTitle="true"
-                            :propShowOnePlaybackPerEvent="true"
-                        />
-                        <VActionButtonSpecialL
-                            :propIsSmaller="true"
-                            @click.stop="confirmReplyChoice(event_room)"
-                        >
-                            Reply
-                        </VActionButtonSpecialL>
+            <!--event_room-->
+            <!--we keep limit to 1 event_room to utilise <KeepAlive> caching-->
+            <TransitionFadeSlow>
+                    <KeepAlive>
+                    <div v-if="event_room !== null">
+                        <div class="flex flex-col">
+                            <EventRoomCard
+                                :propEventRoom="event_room"
+                                :propShowTitle="true"
+                                :propShowOnePlaybackPerEvent="true"
+                            />
+                            <VActionButtonSpecialL
+                                :propIsSmaller="true"
+                                @click.stop="confirmReplyChoice()"
+                            >
+                                Reply
+                            </VActionButtonSpecialL>
+                        </div>
                     </div>
-                </div>
-            </div>
-
+                </KeepAlive>
+            </TransitionFadeSlow>
         </div>
     </div>
 </template>
@@ -102,10 +104,12 @@
     import VActionButtonS from '/src/components/small/VActionButtonS.vue';
     import VActionButtonSpecialL from '@/components/small/VActionButtonSpecialL.vue';
     import EventRoomCard from '/src/components/main/EventRoomCard.vue';
+    import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
 </script>
 
 <script lang="ts">
     import { defineComponent } from 'vue';
+    import { timeRemainingUTC } from '@/helper_functions';
     import anime from 'animejs';
     import EventRoomTypes from '@/types/EventRooms.interface';
     const axios = require('axios');
@@ -114,12 +118,17 @@
         name: 'ListEventRoomsApp',
         data(){
             return {
-                event_rooms: null as EventRoomTypes[] | null,
+                event_room: null as EventRoomTypes|null,
                 current_status_logo: '',
                 current_status: '',
                 is_searching: false,
-                keep_search_disabled: false,    //used for auto-search after deletion
                 spinner_anime: null as InstanceType<typeof anime> | null,
+
+                choice_expiry_interval: null as number|null,
+                // choice_expiry_interval_seconds: 10000,
+                // choice_expiry_seconds: 10 * 60, //10 minutes
+                choice_expiry_interval_seconds: 2000,
+                choice_expiry_seconds: 4,
 
                 is_search_button_shrinked: false,
                 search_button_text: 'Search',
@@ -144,6 +153,34 @@
             },
         },
         methods: {
+            stopReplyingTest() : void {
+                this.choice_expiry_interval !== null ? clearInterval(this.choice_expiry_interval) : null;
+
+                this.current_status_logo = '';
+                this.current_status = 'You ran out of time.\nFeel free to search again!';
+                this.is_search_button_shrinked = false;
+                this.search_button_text = 'Search';
+                this.event_room = null;
+                this.handleEndLoadingAnime();
+
+            },
+            async stopReplying() : Promise<void> {
+
+                let data = new FormData();
+
+                await axios.post('http://127.0.0.1:8000/api/user-actions', data)
+                .then(() => {
+
+                    if(this.choice_expiry_interval !== null){
+
+                        clearInterval(this.choice_expiry_interval as number);
+                    }
+                })
+                .catch((error:any) => {
+
+                    console.log(error.response.data['message']);
+                });
+            },
             async getEventRooms() : Promise<void> {
 
                 if(!this.canSearch){
@@ -151,16 +188,17 @@
                     return;
                 }
 
-                this.handleStartLoadingAnime();
-                this.is_searching = true;
-
                 //reset
                 this.current_status_logo = '';
                 this.current_status = '';
                 this.still_replying = false;
                 this.still_replying_event_room = null;
-                this.event_rooms = null;
+                this.event_room = null;
                 this.redirect_url = '';
+                this.choice_expiry_interval !== null ? clearInterval(this.choice_expiry_interval) : null;
+
+                this.handleStartLoadingAnime();
+                this.is_searching = true;
 
                 //prepare events, then separate
                 await axios.get('http://127.0.0.1:8000/api/events/get/event-room/status/incomplete')
@@ -184,16 +222,18 @@
                     }else{
 
                         this.is_search_button_shrinked = true;
-                        this.event_rooms = results.data['data'];
+                        this.event_room = results.data['data'][0];
                         this.search_button_text = 'Skip';
+                        
+                        this.startChoiceExpiryInterval();
                     }
 
                     this.is_searching = false;
 
                 })
-                .catch((errors:any) => {
+                .catch((error:any) => {
 
-                    console.log(errors);
+                    console.log(error.response.data['message']);
                 });
 
                 this.handleEndLoadingAnime();
@@ -227,25 +267,25 @@
                     window.setTimeout(this.getEventRooms, 500);
 
                 })
-                .catch((errors:any) => {
+                .catch((error:any) => {
 
-                    console.log(errors);
+                    console.log(error.response.data['message']);
                 });
 
 
                 //automatically search
                 // this.getEventRooms();
             },
-            async confirmReplyChoice(event_room:EventRoomTypes) : Promise<void> {
+            async confirmReplyChoice() : Promise<void> {
 
-                if(event_room === null || this.is_searching === true){
+                if(this.event_room === null || this.is_searching === true){
 
                     return;
                 }
 
                 let data = new FormData();
 
-                data.append('event_room_id', JSON.stringify(event_room.event_room.id));
+                data.append('event_room_id', JSON.stringify(this.event_room.event_room.id));
                 data.append('to_reply', JSON.stringify(true));
 
                 await axios.post('http://127.0.0.1:8000/api/user-actions', data)
@@ -253,17 +293,31 @@
 
                     if(results.status === 202){
 
-                        window.location.href = "http://127.0.0.1:8000/hear/" + event_room.event_room.id.toString();
+                        window.location.href = "http://127.0.0.1:8000/hear/" + this.event_room!.event_room.id.toString();
 
                     }else{
 
                         console.log(results);
                     }
                 })
-                .catch((errors:any) => {
+                .catch((error:any) => {
 
-                    console.log(errors);
+                    console.log(error.response.data['message']);
                 });
+            },
+            startChoiceExpiryInterval() : void {
+
+                //start interval
+                this.choice_expiry_interval = window.setInterval(()=>{
+
+                    //time is up
+                    //all event_rooms will have the same when_locked
+                    if(timeRemainingUTC(new Date(this.event_room!.event_room.when_locked), this.choice_expiry_seconds) === ''){
+
+                        this.stopReplyingTest();
+                    }
+
+                }, this.choice_expiry_interval_seconds);
             },
             handleStartLoadingAnime(){
 
@@ -274,12 +328,11 @@
                 const spinner_container = (this.$refs.spinner_container as HTMLElement);
                 const status_logo_container = (this.$refs.status_logo_container as HTMLElement);
                 const still_replying_container = (this.$refs.still_replying_container as HTMLElement);
-                const event_rooms_container = (this.$refs.event_rooms_container as HTMLElement);
 
                 //conditionally add elements to hide
                 const el_targets = [
                     search_button_container, details_container, status_logo_container,
-                    still_replying_container, event_rooms_container,
+                    still_replying_container,
                 ];
 
                 anime.timeline({
@@ -296,7 +349,6 @@
                         details_container.style.display = 'none';
                         status_logo_container.style.display = 'none';
                         still_replying_container.style.display = 'none';
-                        event_rooms_container.style.height = '0';
                     }
                 }).add({
                     //show
@@ -333,7 +385,6 @@
                 const spinner_container = (this.$refs.spinner_container as HTMLElement);
                 const status_logo_container = (this.$refs.status_logo_container as HTMLElement);
                 const still_replying_container = (this.$refs.still_replying_container as HTMLElement);
-                const event_rooms_container = (this.$refs.event_rooms_container as HTMLElement);
 
                 anime.timeline({
                     easing: 'linear',
@@ -351,8 +402,8 @@
                         spinner_container.style.display = 'none';
 
                         //conditionally add elements to show
-                        const el_targets = [];
-
+                        const el_targets:HTMLElement[] = [];
+                        
                         if(this.current_status !== ''){
                             el_targets.push(details_container);
                             details_container.style.display = 'flex';
@@ -361,7 +412,7 @@
                         if(this.current_status_logo !== ''){
                             el_targets.push(status_logo_container);
                             status_logo_container.style.display = 'flex';
-                        }else{
+                        }else if(search_button_container.style.display !== 'block'){
                             el_targets.push(search_button_container);
                             search_button_container.style.display = 'block';
                         }
@@ -371,18 +422,13 @@
                             still_replying_container.style.display = 'grid';
                         }
 
-                        if(this.event_rooms !== null){
-                            el_targets.push(event_rooms_container);
-                            event_rooms_container.style.height = 'fit-content';
-                        }
-
                         anime({
                             targets: el_targets,
                             opacity: ['0', '1'],
                             duration: 150,
                             loop: false,
                             easing: 'linear',
-                            autoplay: true,
+                            autoplay: true
                         });
                     }
                 });

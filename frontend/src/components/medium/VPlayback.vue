@@ -1,9 +1,9 @@
 <template>
     <div>
+        <!--add @timeupdate at mounted(), not here, as beforeUnmount() cannot remove it, and it'll still fire after unmount-->
         <audio
             ref="audio_element"
             @loadedmetadata="handleHasMetadata()"
-            @timeupdate="updateCurrentPlaybackTime()"
             @canplay="current_playback_state = playback_states[3]"
             @waiting="current_playback_state = playback_states[4]"
             @ended="pausePlayback(), was_paused=true"
@@ -329,6 +329,7 @@
                 this.handleKeyboardEvent(event);
             });
             document.addEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
+            (this.$refs.audio_element as HTMLAudioElement).addEventListener('timeupdate', this.updateCurrentPlaybackTime);
         },
         beforeUnmount(){
 
@@ -338,13 +339,14 @@
             window.removeEventListener('mouseup', this.stopPlaybackDrag);
             window.removeEventListener('touchend', this.stopPlaybackDrag);
             window.removeEventListener('resize', this.handleWindowResize);
-            window.addEventListener('keydown', (event) => {
+            window.removeEventListener('keydown', (event) => {
                 this.handleKeyboardEvent(event);
             });
             window.removeEventListener('keyup', (event) => {
                 this.handleKeyboardEvent(event);
             });
             document.removeEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
+            (this.$refs.audio_element as HTMLAudioElement).removeEventListener('timeupdate', this.updateCurrentPlaybackTime);
         },
         emits: [
             'isAnimePlaybackCompleted',

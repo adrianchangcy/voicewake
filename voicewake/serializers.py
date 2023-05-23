@@ -106,7 +106,7 @@ class CreateEventsSerializer(serializers.Serializer):
 
     #pass only when is_originator=False
     event_room_id = serializers.IntegerField(
-        required=False,
+        required=False
     )
 
     #pass only when is_originator=True
@@ -168,12 +168,16 @@ class CreateEventsSerializer(serializers.Serializer):
 
 
 class UserActionsSerializer(serializers.Serializer):
-    event_room_id = serializers.IntegerField()
-    to_reply = serializers.BooleanField(allow_null=True, default=None)
+    event_room_id = serializers.IntegerField(required=False)
+    to_reply = serializers.BooleanField(required=False)
 
     def validate(self, data):
 
         if 'event_room_id' in data and 'to_reply' in data:
+
+            return data
+        
+        elif 'to_reply' in data:
 
             return data
         
