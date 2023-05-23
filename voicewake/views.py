@@ -4,7 +4,7 @@ from django.db.models import Case, Value, When, Sum, Q, F, Count
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required, permission_required
-from django.db import connection
+from django.db import connection, transaction
 
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
@@ -24,18 +24,19 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 
 #Python libraries
 from datetime import datetime, timezone, timedelta
+from dateutil.relativedelta import relativedelta
 import zoneinfo
 import os
 import json
 
 #app files
 from voicewake.forms import *
-from .models import *
-from .serializers import *
-from .services import *
+from voicewake.models import *
+from voicewake.serializers import *
+from voicewake.services import *
 
 #static values for configuring throughout the app
-from .static.values.values import *
+from voicewake.static.values.values import *
 
 
 
@@ -755,7 +756,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 data={
                     'message': 'Invalid data.',
                 },
-                status=status.HTTP_412_PRECONDITION_FAILED
+                status=status.HTTP_400_BAD_REQUEST
             )
         
         new_data = serializer.validated_data
@@ -975,6 +976,7 @@ class UserActionsAPI(generics.GenericAPIView):
 
         #confirm reply, start over when_locked
         event_room.when_locked = get_datetime_now()
+        event_room.is_replying = True
         event_room.save()
 
         return Response(
@@ -1007,11 +1009,11 @@ class UserActionsAPI(generics.GenericAPIView):
         
         #check if user is already replying
         #we don't check for time limit, as cancellation may occur beyond it
+        #we don't check for is_replying, as is_replying=False (reply choice) must be cancellable too
         if\
             event_room.generic_status.generic_status_name == 'incomplete' and\
             event_room.when_locked is not None and\
-            event_room.locked_for_user is not None and event_room.locked_for_user.id == self.request.user.id and\
-            event_room.is_replying is False\
+            event_room.locked_for_user is not None and event_room.locked_for_user.id == self.request.user.id\
         :
         
             pass
@@ -1039,9 +1041,53 @@ class UserActionsAPI(generics.GenericAPIView):
 
         return Response(
             data={
-                'message': 'Cannot cancel this replying process.',
+                'message': 'Reply has been cancelled.',
             },
-            status=status.HTTP_404_NOT_FOUND
+            status=status.HTTP_200_OK
+        )
+
+    #205 success
+    def cancel_reply_choices(self):
+
+        auth_user = AuthUser(pk=self.request.user.id)
+
+        event_rooms = EventRooms.objects.select_related(
+            'generic_status', 'locked_for_user'
+        ).filter(
+            generic_status__generic_status_name='incomplete',
+            locked_for_user=auth_user,
+            when_locked__lte=datetime.now(timezone.utc) - relativedelta(minutes=REPLY_INACTIVE_MAX_MINUTES),
+            is_replying=False
+        )
+
+        if len(event_rooms) == 0:
+
+            return Response(
+                data={
+                    'message': 'No rows found.',
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        for event_room in event_rooms:
+
+            #prevent repeated queue
+            prevent_event_room_from_queuing_twice_for_reply(
+                auth_user,
+                event_room
+            )
+
+            #cancel replying
+            event_room.locked_for_user = None
+            event_room.is_replying = None
+            event_room.when_locked = None
+            event_room.save()
+
+        return Response(
+            data={
+                'message': 'Removed all reply choices.',
+            },
+            status=status.HTTP_205_RESET_CONTENT
         )
 
     def post(self, request, *args, **kwargs):
@@ -1050,11 +1096,16 @@ class UserActionsAPI(generics.GenericAPIView):
 
         if serializer.is_valid() is False:
 
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response(
+                data={
+                    'message': 'Invalid data.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         new_data = serializer.validated_data
 
-        if 'event_room_id' in new_data and 'to_reply' in new_data and type(new_data['to_reply']) is bool:
+        if 'event_room_id' in new_data:
 
             if new_data['to_reply'] is True:
 
@@ -1063,11 +1114,21 @@ class UserActionsAPI(generics.GenericAPIView):
             else:
 
                 return self.cancel_replying_to_event_room(event_room_id=new_data['event_room_id'])
+            
+        elif 'event_room_id' not in new_data:
+
+            if new_data['to_reply'] is False:
+
+                return self.cancel_reply_choices()
 
         else:
 
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-
+            return Response(
+                data={
+                    'message': 'Invalid data.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 #to submit likes/dislikes
@@ -1154,6 +1215,60 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
             },
             status=status.HTTP_200_OK
         )
+
+
+#put these as standalone files for cronjob, not as API
+#already tested
+#https://stackoverflow.com/questions/39723310/django-standalone-script
+class CronjobAPI(generics.GenericAPIView):
+
+    serializer_class = None
+    permission_classes = None
+
+    def unlock_inactive_reply_choice(self):
+
+        event_rooms = EventRooms.objects.select_related(
+            'locked_for_user'
+        ).select_for_update(skip_locked=True).filter(
+            when_locked__lte=datetime.now(timezone.utc) - relativedelta(minutes=REPLY_CHOICE_INACTIVE_MAX_MINUTES),
+            is_replying=False
+        ).exclude(
+            locked_for_user=None
+        )[:CRONJOB_ROW_LIMIT]
+
+        with transaction.atomic():
+
+            for event_room in event_rooms:
+
+                prevent_event_room_from_queuing_twice_for_reply(event_room.locked_for_user, event_room)
+
+                event_room.when_locked = None
+                event_room.locked_for_user = None
+                event_room.is_replying = None
+                event_room.save()
+
+    def unlock_inactive_reply(self):
+
+        event_rooms = EventRooms.objects.select_related(
+            'locked_for_user'
+        ).select_for_update(skip_locked=True).filter(
+            when_locked__lte=datetime.now(timezone.utc) - relativedelta(minutes=REPLY_INACTIVE_MAX_MINUTES),
+            is_replying=True
+        ).exclude(
+            locked_for_user=None
+        )[:CRONJOB_ROW_LIMIT]
+
+        with transaction.atomic():
+
+            for event_room in event_rooms:
+
+                prevent_event_room_from_queuing_twice_for_reply(event_room.locked_for_user, event_room)
+
+                event_room.when_locked = None
+                event_room.locked_for_user = None
+                event_room.is_replying = None
+                event_room.save()
+
 
 
 #=====END OF REST APIs=====

@@ -37,18 +37,21 @@ MAX_DAILY_CREATED_REPLY_EVENTS = 5
 
 #unlocks event_room if last when_locked is too long ago
 #if user has page open, JS will ping to update when_locked
-REPLY_INACTIVE_MAX_MINUTES = 31
+REPLY_INACTIVE_MAX_MINUTES = 30
 
-REPLY_CHOICE_INACTIVE_MAX_MINUTES = 11
+REPLY_CHOICE_INACTIVE_MAX_MINUTES = 10
 
 #how many incomplete EventRooms to show at a time, before next reroll
-#we have not handled state management for play+pause when multiple VPlayback are present
+#we must keep this at 1 (and maintain many=False at serializer) to take advantage of Vue's <KeepAlive> caching
+#all relevant backend code is otherwise ready for > 1
 INCOMPLETE_EVENT_ROOMS_PER_ROLL = 1
 
 #e.g. top 10 completed events, etc.
 SPECIAL_EVENT_ROOMS_QUANTITY = 10
 
 
+#for cronjob
+CRONJOB_ROW_LIMIT = 50
 
 
 

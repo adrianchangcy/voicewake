@@ -181,5 +181,8 @@
             //set up Axios appropriately
             this.axiosSetup();
         },
+        created(){
+            console.log('hi');
+        }
     });
 </script>

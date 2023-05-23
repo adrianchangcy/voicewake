@@ -8,30 +8,31 @@
             :propShowReplyMenu="true"
             :propIsInContainer="false"
         />
+        <TransitionFadeSlow>
+            <div v-if="is_this_user_replying">
 
-        <div v-if="is_this_user_replying">
-
-            <div class="flex flex-row">
-                <VSectionTitle
-                    propTitle="Replying"
-                    :propTitleDescription="reply_expiry_string"
-                    class="w-full"
-                />
-                <div class="pt-7">
-                    <VActionButtonDangerS
-                        class="w-fit flex items-center"
-                        @click.stop="stopReplying()"
-                    >
-                        <span class="px-2 text-base font-medium mx-auto">Cancel</span>
-                    </VActionButtonDangerS>
+                <div class="flex flex-row">
+                    <VSectionTitle
+                        propTitle="Replying"
+                        :propTitleDescription="reply_expiry_string"
+                        class="w-full"
+                    />
+                    <div class="pt-8">
+                        <VActionButtonDangerS
+                            class="w-fit flex items-center"
+                            @click.stop="stopReplying()"
+                        >
+                            <span class="px-2 text-base font-medium mx-auto">Cancel</span>
+                        </VActionButtonDangerS>
+                    </div>
                 </div>
-            </div>
 
-            <VCreateEvents
-                :propIsOriginator="false"
-                :propEventRoomId="event_room.event_room.id"
-            />
-        </div>
+                <VCreateEvents
+                    :propIsOriginator="false"
+                    :propEventRoomId="event_room.event_room.id"
+                />
+            </div>
+        </TransitionFadeSlow>
     </div>
 </template>
 
@@ -41,6 +42,7 @@
     import VActionButtonDangerS from '@/components/small/VActionButtonDangerS.vue';
     import VCreateEvents from '@/components/medium/VCreateEvents.vue';
     import VSectionTitle from '@/components/small/VSectionTitle.vue';
+    import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
 </script>
 
 
@@ -60,45 +62,33 @@
                 event_room: null as EventRoomTypes|null,
 
                 reply_expiry_interval: null as number|null,
+                reply_expiry_interval_seconds: 10000,
                 reply_expiry_string: '',
                 reply_expiry_seconds: 30 * 60,  //30 minutes
             };
         },
         methods: {
-            //true to try/continue reply, false to skip
             async stopReplying() : Promise<void> {
-
+                this.is_this_user_replying = false;
                 let data = new FormData();
 
                 data.append('event_room_id', JSON.stringify(this.event_room_id));
                 data.append('to_reply', JSON.stringify(false));
 
                 await axios.post('http://127.0.0.1:8000/api/user-actions', data)
-                .then((results:any) => {
-
-                    switch(results.status){
-
-                        case 202:
-                            {
-                                //user can now reply
-                                this.is_this_user_replying = true;
-                            }
-                            break;
-
-                        case 205:
-                            {
-                                this.is_this_user_replying = false;
-                            }
-                            break;
-
-                        default:
-                            break;
-                    }
-                })
-                .catch((errors:any) => {
+                .then(() => {
 
                     this.is_this_user_replying = false;
-                    console.log(errors);
+
+                    if(this.reply_expiry_interval !== null){
+
+                        clearInterval(this.reply_expiry_interval as number);
+                    }
+
+                })
+                .catch((error:any) => {
+
+                    console.log(error.response.data['message']);
                 });
             },
             async getEventRoom() : Promise<void> {
@@ -120,29 +110,33 @@
                         //set first time expiry string
                         this.reply_expiry_string = timeRemainingUTC(new Date(this.event_room!.event_room.when_locked), this.reply_expiry_seconds);
 
-                        //start interval
-                        if(this.reply_expiry_string !== ''){
-
-                            this.reply_expiry_interval = window.setInterval(()=>{
-
-                                this.reply_expiry_string = timeRemainingUTC(new Date(this.event_room!.event_room.when_locked), this.reply_expiry_seconds);
-
-                                //time is up
-                                if(this.reply_expiry_string === ''){
-
-                                    this.stopReplying();
-
-                                    clearInterval(this.reply_expiry_interval as number);
-                                }
-
-                            }, 10000);
-                        }
+                        this.startReplyExpiryInterval();
                     }
                 })
-                .catch((errors:any) => {
+                .catch((error:any) => {
 
-                    console.log(errors);
+                    console.log(error.response.data['message']);
                 });
+            },
+            startReplyExpiryInterval() : void {
+
+                if(this.reply_expiry_interval !== null){
+
+                    window.clearInterval(this.reply_expiry_interval);
+                }
+
+                //start interval
+                this.reply_expiry_interval = window.setInterval(()=>{
+
+                    this.reply_expiry_string = timeRemainingUTC(new Date(this.event_room!.event_room.when_locked), this.reply_expiry_seconds);
+
+                    //time is up
+                    if(this.reply_expiry_string === ''){
+
+                        this.stopReplying();
+                    }
+
+                }, this.reply_expiry_interval_seconds);
             },
             axiosSetup() : boolean {
 
