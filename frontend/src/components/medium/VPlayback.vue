@@ -18,6 +18,7 @@
         >
 
             <!--recording visualiser-->
+            <!--need inline CSS to prevent jolting from anime if without it-->
             <div
                 ref="recording_visualiser"
                 class="absolute w-20 h-20 left-0 right-0 top-0 bottom-0 m-auto"
@@ -26,14 +27,17 @@
                     <div
                         ref="recording_visualiser_circle_0"
                         class="absolute w-full h-full left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-yellow/60"
+                        style="transform: scaleX(0) scaleY(0);"
                     ></div>
                     <div
                         ref="recording_visualiser_circle_1"
                         class="absolute w-full h-full left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-yellow/40"
+                        style="transform: scaleX(0) scaleY(0);"
                     ></div>
                     <div
                         ref="recording_visualiser_circle_2"
                         class="absolute w-full h-full left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-yellow/20"
+                        style="transform: scaleX(0) scaleY(0);"
                     ></div>
                 </div>
             </div>
@@ -82,6 +86,7 @@
                     ]"
                 >
                     <!--ripples-->
+                    <!--need inline CSS to prevent jolting from anime if without it-->
                     <div
                         ref="volume_ripples_container"
                         class="w-full h-4 absolute top-2 flex flex-row justify-evenly"
@@ -89,7 +94,8 @@
                         <div
                             v-for="volume_ripple in propBucketQuantity" :key="volume_ripple"
                             ref="volume_ripple"
-                            class="h-full scale-y-0 origin-bottom"
+                            class="h-full origin-bottom"
+                            style="transform: scaleY(0);"
                         >
                             <div
                                 :class="[
@@ -269,18 +275,11 @@
         },
         mounted(){
 
-            //you need this, as scale-0 at class is separate from anime's extra style attribute
-            //which causes sudden scaleX(1) and scaleY(1) jump on first load
-            (this.$refs.recording_visualiser_circle_0 as HTMLElement).style.transform = 'scaleX(0) scaleY(0)';
-            (this.$refs.recording_visualiser_circle_1 as HTMLElement).style.transform = 'scaleX(0) scaleY(0)';
-            (this.$refs.recording_visualiser_circle_2 as HTMLElement).style.transform = 'scaleX(0) scaleY(0)';
-
             //when propAudioVolumePeaks.length > 0 on mounted(), means VPlayback was rendered via v-if with data already
             //we do this here because in this case, watchers do not trigger
             if(this.has_all_data_for_play === true){
 
                 //start with data already available, i.e. for existing records
-                this.current_playback_state = this.playback_states[2];
                 this.attachAudioToPlayback(this.propAudioURL);
 
             }else{
@@ -1306,7 +1305,7 @@
                     //this performs fine, so do not add Tailwind transition, else it interferes
                     anime({
                         targets: (this.$refs.volume_ripple as HTMLElement[])[x],
-                        scaleY: ['0', scaleY_percentage.toString()],
+                        scaleY: scaleY_percentage.toString(),
                         autoplay: true,
                         loop: false,
                         easing: 'easeInOutQuad',
@@ -1347,6 +1346,9 @@
                 //on every new file loaded into <audio>, playbackRate is reset by default
                 //this is the fix
                 audio_element.playbackRate = this.playback_rate;
+
+                //update state for ripple anime
+                this.current_playback_state = this.playback_states[2];
             },
             handleHasMetadata() : void {
 
