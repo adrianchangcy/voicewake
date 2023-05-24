@@ -217,6 +217,7 @@
                         <span class="absolute w-fit h-fit right-0 top-0 bottom-0 m-auto">{{pretty_playback_duration}}</span>
                     </div>
                 </div>
+
                 <div v-if="propEventTone !== null" class="row-span-2 col-span-1 h-fit my-auto pb-0.5">
                     <span class="text-2xl">{{ propEventTone.event_tone_symbol }}</span>
                 </div>
@@ -231,7 +232,6 @@
     import VBox from '/src/components/small/VBox.vue';
     import VSliderYSmall from '/src/components/small/VSliderYSmall.vue';
     import TransitionFade from '/src/transitions/TransitionFade.vue';
-
 </script>
 
 
