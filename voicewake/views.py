@@ -1056,7 +1056,7 @@ class UserActionsAPI(generics.GenericAPIView):
         ).filter(
             generic_status__generic_status_name='incomplete',
             locked_for_user=auth_user,
-            when_locked__lte=datetime.now(timezone.utc) - relativedelta(minutes=REPLY_INACTIVE_MAX_MINUTES),
+            when_locked__lte=datetime.now(timezone.utc) - relativedelta(minutes=REPLY_CHOICE_INACTIVE_MAX_MINUTES),
             is_replying=False
         )
 

@@ -28,7 +28,7 @@
             />
 
             <div
-                v-if="propShowOnePlaybackPerEvent === true"
+                v-if="hasMultipleEvents === false"
                 class="h-fit"
             >
                     <VPlayback
@@ -41,8 +41,8 @@
             <div v-else>
                 <VEventCard
                     :propEvent="propEventRoom.originator"
-                    @isSelected="handleSelectedEventId($event)"
-                    :propIsSelected="selected_event_id === propEventRoom.originator.id"
+                    @isSelected="handleNewSelectedEvent($event)"
+                    :propIsSelected="checkIsSelected(propEventRoom.originator.id)"
                 />
             </div>
 
@@ -58,7 +58,7 @@
         </div>
 
         <!--responders-->
-        <div v-if="propShowOnePlaybackPerEvent === true">
+        <div v-if="hasMultipleEvents === false">
             <div
                 v-for="event in propEventRoom.responder" :key="event.id"
                 class="flex flex-col gap-2"
@@ -96,8 +96,8 @@
                 <div>
                     <VEventCard
                         :propEvent="event"
-                        @isSelected="handleSelectedEventId($event)"
-                        :propIsSelected="selected_event_id === event.id"
+                        @isSelected="handleNewSelectedEvent($event)"
+                        :propIsSelected="checkIsSelected(event.id)"
                     />
                 </div>
                 <div class="w-full h-fit grid grid-cols-8">
@@ -126,12 +126,13 @@
     import { defineComponent, PropType } from 'vue';
     import { timeDifferenceUTC } from '@/helper_functions';
     import EventRoomTypes from '@/types/EventRooms.interface';
+    import EventTypes from '@/types/Events.interface';
     const axios = require('axios');
 
     export default defineComponent({
         data() {
             return {
-                selected_event_id: null as number|null,
+                selected_event: null as EventTypes|null,
             };
         },
         props: {
@@ -143,13 +144,14 @@
                 type: Boolean,
                 default: true
             },
-            propShowOnePlaybackPerEvent: {
-                type: Boolean,
-                default: false
-            },
         },
         computed: {
-            prettyWhenCreated(){
+            hasMultipleEvents() : boolean {
+                return this.propEventRoom !== null &&
+                    (this.propEventRoom.originator !== null && this.propEventRoom.responder.length >= 1) ||
+                    (this.propEventRoom.originator === null && this.propEventRoom.responder.length >= 2);
+            },
+            prettyWhenCreated() : string {
 
                 return timeDifferenceUTC(new Date(this.propEventRoom.event_room.when_created));
             },
@@ -170,10 +172,17 @@
                 axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
                 return true;
             },
-            handleSelectedEventId(event_id:number) : void {
+            checkIsSelected(event_id:number) : boolean {
 
-                this.selected_event_id = event_id;
-                console.log(this.selected_event_id);
+                return this.selected_event !== null && this.selected_event.id === event_id;
+            },
+            handleNewSelectedEvent(event:EventTypes) : void {
+
+                this.selected_event = event;
+
+                //since a page can have many EventRoomCard, VPlayback is placed as child to this component's parent
+                //to only have one VPlayback instance across the entire page, we emit from here
+                this.$emit('newSelectedEvent', event);
             }
         },
         mounted(){
@@ -181,8 +190,9 @@
             //set up Axios appropriately
             this.axiosSetup();
         },
-        created(){
-            console.log('hi');
-        }
+        beforeUnmount(){
+            
+            this.$emit('newSelectedEvent', null);
+        },
     });
 </script>

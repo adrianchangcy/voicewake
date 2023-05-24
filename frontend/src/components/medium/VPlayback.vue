@@ -357,11 +357,11 @@
                 type: Boolean,
                 default: false,
             },
-            propAudio: {
+            propAudio: {    //option 1
                 type: Object as PropType<Blob> | PropType<File> | null,
                 default: null
             },
-            propAudioURL: {
+            propAudioURL: {     //option 2
                 type: String,
                 default: ''
             },
@@ -375,7 +375,7 @@
                 type: Boolean,
                 default: false
             },
-            propIsOpen: {   //allows parent to conditionally render and have this prop listen to it
+            propIsOpen: {   //allows parent to conditionally render this component, for seamless anime continuation
                 type: Boolean,
                 default: false
             },
