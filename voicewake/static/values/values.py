@@ -42,8 +42,6 @@ REPLY_INACTIVE_MAX_MINUTES = 30
 REPLY_CHOICE_INACTIVE_MAX_MINUTES = 10
 
 #how many incomplete EventRooms to show at a time, before next reroll
-#we must keep this at 1 (and maintain many=False at serializer) to take advantage of Vue's <KeepAlive> caching
-#all relevant backend code is otherwise ready for > 1
 INCOMPLETE_EVENT_ROOMS_PER_ROLL = 1
 
 #e.g. top 10 completed events, etc.

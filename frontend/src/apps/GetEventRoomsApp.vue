@@ -7,7 +7,9 @@
             :propShowOnePlaybackPerEvent="event_room.responder.length === 0"
             :propShowReplyMenu="true"
             :propIsInContainer="false"
+            @newSelectedEvent=handleNewSelectedEvent($event)
         />
+
         <TransitionFadeSlow>
             <div v-if="is_this_user_replying">
 
@@ -33,6 +35,16 @@
                 />
             </div>
         </TransitionFadeSlow>
+
+        <div v-if="selected_event !== null">
+            <VPlayback
+                :propIsOpen="true"
+                :propAudioVolumePeaks="selected_event.audio_volume_peaks"
+                :propAudioURL="selected_event.audio_file"
+                :propBucketQuantity="selected_event.audio_volume_peaks.length"
+                :propEventTone="selected_event.event_tone"
+            />
+        </div>
     </div>
 </template>
 
@@ -43,6 +55,7 @@
     import VCreateEvents from '@/components/medium/VCreateEvents.vue';
     import VSectionTitle from '@/components/small/VSectionTitle.vue';
     import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
+    import VPlayback from '@/components/medium/VPlayback.vue';
 </script>
 
 
@@ -50,6 +63,7 @@
     import { defineComponent } from 'vue';
     import { timeDifferenceUTC, timeRemainingUTC } from '@/helper_functions';
     import EventRoomTypes from '@/types/EventRooms.interface';
+    import EventTypes from '@/types/Events.interface';
     // import anime from 'animejs';
     const axios = require('axios');
 
@@ -60,9 +74,11 @@
                 event_room_id: null as number|null,
                 is_this_user_replying: false,
                 event_room: null as EventRoomTypes|null,
+                selected_event: null as EventTypes|null,
+                playback_teleport_id: '',
 
                 reply_expiry_interval: null as number|null,
-                reply_expiry_interval_seconds: 10000,
+                reply_expiry_interval_ms: 10000,
                 reply_expiry_string: '',
                 reply_expiry_seconds: 30 * 60,  //30 minutes
             };
@@ -107,9 +123,6 @@
                         //API always returns list, even if there is only one event_room
                         this.event_room = results.data['data'][0];
 
-                        //set first time expiry string
-                        this.reply_expiry_string = timeRemainingUTC(new Date(this.event_room!.event_room.when_locked), this.reply_expiry_seconds);
-
                         this.startReplyExpiryInterval();
                     }
                 })
@@ -118,12 +131,30 @@
                     console.log(error.response.data['message']);
                 });
             },
+            handleNewSelectedEvent(event:EventTypes|null) : void {
+
+                this.selected_event = event;
+
+                if(event !== null){
+
+                    //must be the same as in VEventCard
+                    this.playback_teleport_id = 'playback-teleport-' + event.id.toString();
+                }
+            },
             startReplyExpiryInterval() : void {
 
                 if(this.reply_expiry_interval !== null){
 
                     window.clearInterval(this.reply_expiry_interval);
                 }
+
+                if(this.is_this_user_replying === false){
+
+                    return;
+                }
+
+                //set first time expiry string
+                this.reply_expiry_string = timeRemainingUTC(new Date(this.event_room!.event_room.when_locked), this.reply_expiry_seconds);
 
                 //start interval
                 this.reply_expiry_interval = window.setInterval(()=>{
@@ -136,7 +167,7 @@
                         this.stopReplying();
                     }
 
-                }, this.reply_expiry_interval_seconds);
+                }, this.reply_expiry_interval_ms);
             },
             axiosSetup() : boolean {
 
@@ -177,10 +208,6 @@
                 const when_created = (container.getAttribute('data-when-created') as string).replace(/ /g, 'T') + 'Z';
                 when_created_element.textContent = timeDifferenceUTC(new Date(when_created));
             }
-        },
-        mounted(){
-
-
         },
     });
 </script>

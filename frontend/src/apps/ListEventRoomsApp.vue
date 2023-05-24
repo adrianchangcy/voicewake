@@ -37,7 +37,7 @@
                     ref="status_logo_container"
                     class="h-full text-theme-black hidden opacity-0 flex-col place-content-center"
                 >
-                    <i class="text-4xl text-center" :class="current_status_logo"></i>
+                    <i class="text-4xl text-center" :class="status_logo"></i>
                 </div>
             </div>
 
@@ -46,9 +46,14 @@
                 ref="details_container"
                 class="w-full h-full text-theme-black hidden opacity-0 flex-col gap-2 place-content-center"
             >
+                <i
+                    ref="details_logo"
+                    class="w-full text-center text-3xl"
+                    :class="details_logo"
+                ></i>
 
                 <span class="block w-fit h-fit text-lg text-center mx-auto whitespace-pre-line">
-                    {{ current_status }}
+                    {{ details_text }}
                 </span>
 
                 <div
@@ -71,27 +76,24 @@
                 </div>
             </div>
 
-            <!--event_room-->
-            <!--we keep limit to 1 event_room to utilise <KeepAlive> caching-->
-            <TransitionFadeSlow>
-                    <KeepAlive>
-                    <div v-if="event_room !== null">
-                        <div class="flex flex-col">
-                            <EventRoomCard
-                                :propEventRoom="event_room"
-                                :propShowTitle="true"
-                                :propShowOnePlaybackPerEvent="true"
-                            />
-                            <VActionButtonSpecialL
-                                :propIsSmaller="true"
-                                @click.stop="confirmReplyChoice()"
-                            >
-                                Reply
-                            </VActionButtonSpecialL>
-                        </div>
+            <!--event_rooms-->
+            <TransitionGroupFadeSlow>
+                <div v-for="event_room in event_rooms" :key="event_room.event_room.id">
+                    <div class="flex flex-col">
+                        <EventRoomCard
+                            :propEventRoom="event_room"
+                            :propShowTitle="true"
+                            :propShowOnePlaybackPerEvent="true"
+                        />
+                        <VActionButtonSpecialL
+                            :propIsSmaller="true"
+                            @click.stop="confirmReplyChoice(event_room)"
+                        >
+                            Reply
+                        </VActionButtonSpecialL>
                     </div>
-                </KeepAlive>
-            </TransitionFadeSlow>
+                </div>
+            </TransitionGroupFadeSlow>
         </div>
     </div>
 </template>
@@ -104,7 +106,7 @@
     import VActionButtonS from '/src/components/small/VActionButtonS.vue';
     import VActionButtonSpecialL from '@/components/small/VActionButtonSpecialL.vue';
     import EventRoomCard from '/src/components/main/EventRoomCard.vue';
-    import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
+    import TransitionGroupFadeSlow from '@/transitions/TransitionGroupFadeSlow.vue';
 </script>
 
 <script lang="ts">
@@ -118,16 +120,17 @@
         name: 'ListEventRoomsApp',
         data(){
             return {
-                event_room: null as EventRoomTypes|null,
-                current_status_logo: '',
-                current_status: '',
+                event_rooms: [] as EventRoomTypes[] | [],
+                status_logo: '',
+                details_logo: '',
+                details_text: '',
                 is_searching: false,
                 spinner_anime: null as InstanceType<typeof anime> | null,
 
                 choice_expiry_interval: null as number|null,
-                // choice_expiry_interval_seconds: 10000,
+                // choice_expiry_interval_ms: 10000,
                 // choice_expiry_seconds: 10 * 60, //10 minutes
-                choice_expiry_interval_seconds: 2000,
+                choice_expiry_interval_ms: 2000,
                 choice_expiry_seconds: 4,
 
                 is_search_button_shrinked: false,
@@ -153,17 +156,6 @@
             },
         },
         methods: {
-            stopReplyingTest() : void {
-                this.choice_expiry_interval !== null ? clearInterval(this.choice_expiry_interval) : null;
-
-                this.current_status_logo = '';
-                this.current_status = 'You ran out of time.\nFeel free to search again!';
-                this.is_search_button_shrinked = false;
-                this.search_button_text = 'Search';
-                this.event_room = null;
-                this.handleEndLoadingAnime();
-
-            },
             async stopReplying() : Promise<void> {
 
                 let data = new FormData();
@@ -171,10 +163,14 @@
                 await axios.post('http://127.0.0.1:8000/api/user-actions', data)
                 .then(() => {
 
-                    if(this.choice_expiry_interval !== null){
-
-                        clearInterval(this.choice_expiry_interval as number);
-                    }
+                    this.choice_expiry_interval !== null ? clearInterval(this.choice_expiry_interval) : null;
+                    this.details_logo = 'fas fa-hourglass-end';
+                    this.details_text = 'You ran out of time.\nFeel free to search again!';
+                    this.is_search_button_shrinked = false;
+                    this.search_button_text = 'Search';
+                    this.event_rooms = [];
+                    
+                    this.handleEndLoadingAnime();
                 })
                 .catch((error:any) => {
 
@@ -189,11 +185,12 @@
                 }
 
                 //reset
-                this.current_status_logo = '';
-                this.current_status = '';
+                this.status_logo = '';
+                this.details_logo = '';
+                this.details_text = '';
                 this.still_replying = false;
                 this.still_replying_event_room = null;
-                this.event_room = null;
+                this.event_rooms = [];
                 this.redirect_url = '';
                 this.choice_expiry_interval !== null ? clearInterval(this.choice_expiry_interval) : null;
 
@@ -207,14 +204,15 @@
                     if(results.data['data'].length === 0){
 
                         this.is_search_button_shrinked = false;
-                        this.current_status = 'No events found.\nTry again in a moment!';
+                        this.details_logo = 'far fa-face-meh-blank';
+                        this.details_text = 'No events found.\nTry again in a moment!';
                         this.search_button_text = 'Search';
 
                     }else if(results.data['data'].length > 0 && results.data['data'][0]['event_room']['is_replying'] === true){
 
                         this.is_search_button_shrinked = true;
-                        this.current_status_logo = 'fas fa-circle-exclamation';
-                        this.current_status = 'You have an unfinished reply.';
+                        this.status_logo = 'fas fa-circle-exclamation';
+                        this.details_text = 'You have an unfinished reply.';
                         this.still_replying = true;
                         this.still_replying_event_room = results.data['data'][0];
                         this.redirect_url = 'hear/' + this.still_replying_event_room!.event_room.id.toString();
@@ -222,7 +220,7 @@
                     }else{
 
                         this.is_search_button_shrinked = true;
-                        this.event_room = results.data['data'][0];
+                        this.event_rooms = results.data['data'];
                         this.search_button_text = 'Skip';
                         
                         this.startChoiceExpiryInterval();
@@ -260,8 +258,8 @@
 
                     this.still_replying = false;
                     this.still_replying_event_room = null;
-                    this.current_status_logo = 'fas fa-check';
-                    this.current_status = 'Deleted unfinished reply.\nSearching for new events...';
+                    this.status_logo = 'fas fa-check';
+                    this.details_text = 'Deleted unfinished reply.\nSearching for new events...';
                     
                     this.handleEndLoadingAnime();
                     window.setTimeout(this.getEventRooms, 500);
@@ -276,16 +274,16 @@
                 //automatically search
                 // this.getEventRooms();
             },
-            async confirmReplyChoice() : Promise<void> {
+            async confirmReplyChoice(event_room:EventRoomTypes) : Promise<void> {
 
-                if(this.event_room === null || this.is_searching === true){
+                if(event_room === null || this.is_searching === true){
 
                     return;
                 }
 
                 let data = new FormData();
 
-                data.append('event_room_id', JSON.stringify(this.event_room.event_room.id));
+                data.append('event_room_id', JSON.stringify(event_room.event_room.id));
                 data.append('to_reply', JSON.stringify(true));
 
                 await axios.post('http://127.0.0.1:8000/api/user-actions', data)
@@ -293,7 +291,7 @@
 
                     if(results.status === 202){
 
-                        window.location.href = "http://127.0.0.1:8000/hear/" + this.event_room!.event_room.id.toString();
+                        window.location.href = "http://127.0.0.1:8000/hear/" + event_room.event_room.id.toString();
 
                     }else{
 
@@ -312,12 +310,12 @@
 
                     //time is up
                     //all event_rooms will have the same when_locked
-                    if(timeRemainingUTC(new Date(this.event_room!.event_room.when_locked), this.choice_expiry_seconds) === ''){
+                    if(timeRemainingUTC(new Date(this.event_rooms![0].event_room.when_locked), this.choice_expiry_seconds) === ''){
 
-                        this.stopReplyingTest();
+                        this.stopReplying();
                     }
 
-                }, this.choice_expiry_interval_seconds);
+                }, this.choice_expiry_interval_ms);
             },
             handleStartLoadingAnime(){
 
@@ -404,12 +402,12 @@
                         //conditionally add elements to show
                         const el_targets:HTMLElement[] = [];
                         
-                        if(this.current_status !== ''){
+                        if(this.details_text !== ''){
                             el_targets.push(details_container);
                             details_container.style.display = 'flex';
                         }
 
-                        if(this.current_status_logo !== ''){
+                        if(this.status_logo !== ''){
                             el_targets.push(status_logo_container);
                             status_logo_container.style.display = 'flex';
                         }else if(search_button_container.style.display !== 'block'){
