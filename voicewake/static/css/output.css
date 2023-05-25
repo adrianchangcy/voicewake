@@ -1336,6 +1336,10 @@ video {
   background-color: rgb(250 204 21 / 0.6);
 }
 
+.bg-theme-danger\/90 {
+  background-color: rgb(250 53 21 / 0.9);
+}
+
 .p-2 {
   padding: 0.5rem;
 }
@@ -1588,6 +1592,11 @@ video {
 
 .shadow-theme-medium-gray {
   --tw-shadow-color: #d6d3d1;
+  --tw-shadow: var(--tw-shadow-colored);
+}
+
+.shadow-theme-soft-danger\/75 {
+  --tw-shadow-color: rgb(255 73 52 / 0.75);
   --tw-shadow: var(--tw-shadow-colored);
 }
 
@@ -1857,6 +1866,11 @@ textarea {
   background-color: rgb(245 245 220 / var(--tw-bg-opacity));
 }
 
+.hover\:bg-theme-danger:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(250 53 21 / var(--tw-bg-opacity));
+}
+
 .hover\:shadow-md:hover {
   --tw-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --tw-shadow-colored: 0 4px 6px -1px var(--tw-shadow-color), 0 2px 4px -2px var(--tw-shadow-color);
@@ -1881,6 +1895,11 @@ textarea {
 
 .hover\:shadow-theme-lead\/75:hover {
   --tw-shadow-color: rgb(250 204 21 / 0.75);
+  --tw-shadow: var(--tw-shadow-colored);
+}
+
+.hover\:shadow-theme-soft-danger\/75:hover {
+  --tw-shadow-color: rgb(255 73 52 / 0.75);
   --tw-shadow: var(--tw-shadow-colored);
 }
 
