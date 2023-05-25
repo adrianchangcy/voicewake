@@ -1043,7 +1043,7 @@ class UserActionsAPI(generics.GenericAPIView):
             data={
                 'message': 'Reply has been cancelled.',
             },
-            status=status.HTTP_200_OK
+            status=status.HTTP_205_RESET_CONTENT
         )
 
     #204 nothing to cancel, 205 success
