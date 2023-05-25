@@ -771,7 +771,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
             return Response(
                 data={
-                    'message': 'Your selected emoji is unexpectedly not found. Try a different one.',
+                    'message': 'Unexpected error. Your selected emoji was not found. Try a different one.',
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
@@ -1024,7 +1024,7 @@ class UserActionsAPI(generics.GenericAPIView):
                 data={
                     'message': 'Cannot cancel this replying process.',
                 },
-                status=status.HTTP_404_NOT_FOUND
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         #cancel replying
@@ -1046,7 +1046,7 @@ class UserActionsAPI(generics.GenericAPIView):
             status=status.HTTP_200_OK
         )
 
-    #205 success
+    #204 nothing to cancel, 205 success
     def cancel_reply_choices(self):
 
         auth_user = AuthUser(pk=self.request.user.id)
@@ -1064,9 +1064,9 @@ class UserActionsAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'message': 'No rows found.',
+                    'message': 'No reply choice to cancel.',
                 },
-                status=status.HTTP_404_NOT_FOUND
+                status=status.HTTP_204_NO_CONTENT
             )
 
         for event_room in event_rooms:
@@ -1296,27 +1296,17 @@ class GetEventRooms(TemplateView):
         #get event_room
         try:
 
-            event_room = EventRooms.objects.select_related('locked_for_user').get(pk=kwargs['event_room_id'])
+            event_room = EventRooms.objects.select_related('locked_for_user', 'generic_status').get(pk=kwargs['event_room_id'])
 
         except EventRooms.DoesNotExist:
 
-            return JsonResponse({'message':'Event room does not exist.'}, status=status.HTTP_404_NOT_FOUND)
-
-        #originator event
-        #should always have only 1 per room
-        try:
-
-            originator_event = Events.objects.select_related(
-                'generic_status'
-            ).get(
-                event_room=event_room,
-                event_role__event_role_name='originator'
+            return JsonResponse(
+                data={
+                    'message':'Event room does not exist.'
+                },
+                status=status.HTTP_404_NOT_FOUND
             )
 
-        except Events.DoesNotExist:
-
-            return JsonResponse({'message':'Originator event does not exist.'}, status=status.HTTP_404_NOT_FOUND)
-        
         #check if this user is already supposed to reply
         is_this_user_replying = is_user_logged_in(request) and\
             event_room.locked_for_user is not None and\
@@ -1327,8 +1317,7 @@ class GetEventRooms(TemplateView):
             template_name=self.template_name,
             context={
             'event_room': event_room,
-            'originator_event': originator_event,
-            'is_deleted': originator_event.generic_status.generic_status_name == 'deleted',
+            'is_deleted': event_room.generic_status.generic_status_name == 'deleted',
             'is_this_user_replying': json.dumps(is_this_user_replying),
             }
         )

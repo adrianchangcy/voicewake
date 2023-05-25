@@ -226,7 +226,10 @@
                     </div>
                 </div>
 
-                <div class="row-span-2 col-span-1 relative">
+                <div
+                    v-if="propEventTone !== null"
+                    class="row-span-2 col-span-1 relative"
+                >
                     <span class="text-2xl pb-0.5 absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto">
                         {{ propEventTone.event_tone_symbol }}
                     </span>
