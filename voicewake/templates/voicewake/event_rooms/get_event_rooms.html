@@ -1,5 +1,5 @@
 {% extends 'voicewake/base.html'%}
-{% block title %}voicewake.com - {{originator_event.event_room.event_room_name}}{% endblock %}
+{% block title %}voicewake.com - {{event_room.event_room_name}}{% endblock %}
 
 {% block content %}
 
@@ -11,9 +11,8 @@
         shouldn't have to adjust '1 Jan 2022' to local timezone, as it's only for SEO
     -->
     <div
-        data-event-room-id="{{originator_event.event_room.id}}"
-        data-event-id="{{originator_event.id}}"
-        data-when-created="{{originator_event.when_created|date:"Y-m-d H:i:s"}}"
+        data-event-room-id="{{event_room.id}}"
+        data-when-created="{{event_room.when_created|date:"Y-m-d H:i:s"}}"
         data-is-this-user-replying="{{is_this_user_replying}}"
         class="text-theme-black"
         id="get-event-room"
@@ -28,11 +27,11 @@
             {% else %}
                 <!--title from user 1-->
                 <p class="text-xl break-words">
-                    {{originator_event.event_room.event_room_name}}
+                    {{event_room.event_room_name}}
                 </p>
                 <!--last updated-->
                 <p class="when-created      text-base font-light">
-                    {{originator_event.when_created|date:"j M Y"}}
+                    {{when_created|date:"j M Y"}}
                 </p>
             {% endif %}
         </div>

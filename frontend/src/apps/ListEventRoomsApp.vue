@@ -161,16 +161,22 @@
                 let data = new FormData();
 
                 await axios.post('http://127.0.0.1:8000/api/user-actions', data)
-                .then(() => {
+                .then((response:any) => {
 
-                    this.choice_expiry_interval !== null ? clearInterval(this.choice_expiry_interval) : null;
-                    this.details_logo = 'fas fa-hourglass-end';
-                    this.details_text = 'You ran out of time.\nFeel free to search again!';
-                    this.is_search_button_shrinked = false;
-                    this.search_button_text = 'Search';
-                    this.event_rooms = [];
-                    
-                    this.handleEndLoadingAnime();
+                    if(response.status === 205){
+
+                        this.choice_expiry_interval !== null ? clearInterval(this.choice_expiry_interval) : null;
+                        this.details_logo = 'fas fa-hourglass-end';
+                        this.details_text = 'You ran out of time.\nFeel free to search again!';
+                        this.is_search_button_shrinked = false;
+                        this.search_button_text = 'Search';
+                        this.event_rooms = [];
+                        
+                        this.handleEndLoadingAnime();
+                    }
+
+                    //do nothing if 204
+
                 })
                 .catch((error:any) => {
 
@@ -254,15 +260,16 @@
                 await axios.post('http://127.0.0.1:8000/api/user-actions', data)
                 .then((results:any) => {
 
-                    console.log(results);
+                    if(results.status === 205){
 
-                    this.still_replying = false;
-                    this.still_replying_event_room = null;
-                    this.status_logo = 'fas fa-check';
-                    this.details_text = 'Deleted unfinished reply.\nSearching for new events...';
-                    
-                    this.handleEndLoadingAnime();
-                    window.setTimeout(this.getEventRooms, 500);
+                        this.still_replying = false;
+                        this.still_replying_event_room = null;
+                        this.status_logo = 'fas fa-check';
+                        this.details_text = 'Deleted unfinished reply.\nSearching for new events...';
+                        
+                        this.handleEndLoadingAnime();
+                        window.setTimeout(this.getEventRooms, 500);
+                    }
 
                 })
                 .catch((error:any) => {
