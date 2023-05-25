@@ -4,20 +4,38 @@
     <div class="text-theme-black h-20">
 
         <!--for playback teleport-->
-        <div :id="playback_teleport_id"></div>
+        <div
+            :id="playback_teleport_id"
+            ref="playback_container"
+            style="opacity: 0;"
+        ></div>
 
         <!--label, ripples, total duration-->
-        <TransitionFadeSlow>
-            <VActionButtonM
-                class="w-full px-5 grid grid-cols-4"
+        <div
+            ref="card_button"
+            style="opacity: 1;"
+        >
+            <button
+                class="w-full grid grid-cols-4     h-20 text-4xl bg-theme-light/60 hover:bg-theme-light/80 hover:border-theme-light-trim/40 hover:shadow-sm      border-t-2 border-theme-light-trim rounded-lg shadow-md transition duration-150 ease-in-out"
+                type="button"
                 @click.stop="handleIsSelected()"
-                v-show="propIsSelected === false"
-            >            
+            >
+
+                <div class="col-span-1 h-full relative">
+                    <!--total duration, width is to match emoji-->
+                    <span
+                        class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto text-sm font-medium"
+                    >
+                        {{ prettyFileDuration }}
+                    </span>
+                </div>
+
                 <!--ripples-->
-                <div class="col-span-2 h-full top-0 bottom-0 my-auto relative">
+                <!--h-8 because VPlayback at half is h-4-->
+                <div class="col-span-2 h-8 top-0 bottom-0 my-auto relative">
                     <div
                         ref="volume_ripples_container"
-                        class="w-full h-full absolute flex flex-row justify-between"
+                        class="w-full h-full absolute flex flex-row justify-evenly"
                     >
                         <div
                             v-for="volume_ripple in propEvent.audio_volume_peaks.length" :key="volume_ripple"
@@ -30,47 +48,39 @@
                     </div>
                 </div>
 
-                <div class="col-span-1 h-full relative">
-                    <!--total duration, width is to match emoji-->
-                    <span
-                        class="w-10 h-fit absolute right-0 top-0 bottom-0 m-auto text-sm font-medium"
-                    >
-                        {{ prettyFileDuration }}
-                    </span>
-                </div>
+
 
                 <div class="col-span-1 h-full relative">
                     <!--label-->
                     <span
-                        class="w-fit h-fit absolute right-0 top-0 bottom-0.5 m-auto text-3xl has-emoji pb-0.5"
+                        class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0.5 m-auto text-2xl has-emoji pb-0.5"
                     >
                         {{ propEvent.event_tone.event_tone_symbol }}
                     </span>
                     <span class="sr-only">{{ propEvent.event_tone.event_tone_name }}</span>
                 </div>
-            </VActionButtonM>
-        </TransitionFadeSlow>
+            </button>
+        </div>
     </div>
 </template>
 
 
 <script setup lang="ts">
-    import VActionButtonM from '/src/components/small/VActionButtonM.vue';
-    import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
+
 </script>
 
 
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
-    // import anime from 'animejs';
+    import anime from 'animejs';
     import EventTypes from '@/types/Events.interface';
     import { prettyDuration } from '@/helper_functions';
 
     export default defineComponent({
         data(){
             return {
-                is_selected: false,
                 playback_teleport_id: '',
+                main_anime: null as InstanceType<typeof anime> | null,
             };
         },
         mounted(){
@@ -95,7 +105,46 @@
         watch: {
             propIsSelected(new_value){
 
-                this.is_selected = new_value;
+                this.main_anime === null ? null : this.main_anime.pause();
+
+                if(new_value === true){
+
+                    this.main_anime = anime.timeline({
+                        easing: 'linear',
+                        autoplay: true,
+                        loop: false,
+                    }).add({
+                        targets: this.$refs.card_button,
+                        opacity: '0',
+                        duration: 0,
+                        complete: () => {
+                            (this.$refs.card_button as HTMLElement).style.display = 'none';
+                        }
+                    }).add({
+                        targets: this.$refs.playback_container,
+                        opacity: '1',
+                        duration: 150,
+                    });
+
+                }else{
+
+                    this.main_anime = anime.timeline({
+                        easing: 'linear',
+                        autoplay: true,
+                        loop: false,
+                    }).add({
+                        targets: this.$refs.playback_container,
+                        opacity: '0',
+                        duration: 0,
+                    }).add({
+                        begin: () => {
+                            (this.$refs.card_button as HTMLElement).style.display = 'grid';
+                        },
+                        targets: this.$refs.card_button,
+                        opacity: '1',
+                        duration: 150,
+                    });
+                }
             }
         },
         computed: {

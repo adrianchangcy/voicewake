@@ -37,13 +37,17 @@
         </TransitionFadeSlow>
 
         <div v-if="selected_event !== null">
-            <VPlayback
-                :propIsOpen="true"
-                :propAudioVolumePeaks="selected_event.audio_volume_peaks"
-                :propAudioURL="selected_event.audio_file"
-                :propBucketQuantity="selected_event.audio_volume_peaks.length"
-                :propEventTone="selected_event.event_tone"
-            />
+            <Teleport :to="playback_teleport_id">
+                <VPlayback
+                    :propIsOpen="true"
+                    :propAudioVolumePeaks="selected_event.audio_volume_peaks"
+                    :propAudioURL="selected_event.audio_file"
+                    :propBucketQuantity="selected_event.audio_volume_peaks.length"
+                    :propEventTone="selected_event.event_tone"
+                    :propHasHighlight="true"
+                    :propAutoPlayOnSourceChange="true"
+                />
+            </Teleport>
         </div>
     </div>
 </template>
@@ -64,7 +68,6 @@
     import { timeDifferenceUTC, timeRemainingUTC } from '@/helper_functions';
     import EventRoomTypes from '@/types/EventRooms.interface';
     import EventTypes from '@/types/Events.interface';
-    // import anime from 'animejs';
     const axios = require('axios');
 
     export default defineComponent({
@@ -138,7 +141,7 @@
                 if(event !== null){
 
                     //must be the same as in VEventCard
-                    this.playback_teleport_id = 'playback-teleport-' + event.id.toString();
+                    this.playback_teleport_id = '#playback-teleport-' + event.id.toString();
                 }
             },
             startReplyExpiryInterval() : void {

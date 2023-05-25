@@ -4,18 +4,14 @@
         <audio
             ref="audio_element"
             @loadedmetadata="handleHasMetadata()"
-            @canplay="current_playback_state = playback_states[3]"
-            @waiting="current_playback_state = playback_states[4]"
+            @canplay="is_loading=false"
+            @waiting="is_loading=true"
             @ended="pausePlayback(), was_paused=true"
         ></audio>
 
         <!--size priority: playback_main, then ripples, then everything else-->
-        <div
-            :class="[
-                propIsSticky ? 'bg-theme-light/60 backdrop-blur border-t border-theme-black/5' : '',
-                'h-20 text-center relative'
-            ]"
-        >
+        <!--if you want to modify aesthetics, consider doing it at playback_main and not this parent div-->
+        <div class="h-20 text-center relative">
 
             <!--recording visualiser-->
             <!--need inline CSS to prevent jolting from anime if without it-->
@@ -50,9 +46,9 @@
             <div
                 ref="playback_main"
                 :class="[
-                    propIsSticky === false ? 'border rounded-lg' : '',
                     propEventTone === null ? 'grid-cols-3 pr-4' : 'grid-cols-4',
-                    'w-full h-full absolute grid grid-rows-2 left-0 right-0 top-0 bottom-0 m-auto text-theme-black border-theme-light-gray opacity-0'
+                    propHasHighlight === true ? 'border-2' : 'border',
+                    'w-full h-full absolute grid grid-rows-2 left-0 right-0 top-0 bottom-0 m-auto text-theme-black rounded-lg border-theme-light-gray opacity-0'
                 ]"
             >
                 <!--play/pause-->
@@ -138,7 +134,17 @@
                             <div
                                 ref="playback_slider_knob"
                                 class="w-4 h-4 absolute rounded-full bg-theme-black top-5 bottom-0 -left-2 m-auto"
-                            ></div>
+                            >
+                                <div
+                                    ref="spinner_container"
+                                    class="w-full h-full relative opacity-0"
+                                >
+                                    <i
+                                        ref="spinner"
+                                        class="fas fa-spinner text-2xl absolute w-fit h-fit -left-1 top-0 bottom-0 my-auto"
+                                    ></i>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <span class="sr-only">playback navigation</span>
@@ -213,13 +219,17 @@
                     </div>
                     <!--total duration-->
                     <div class="row-start-1 row-span-1 col-start-3 col-span-1 relative text-sm font-medium">
-                        <span class="sr-only">total duration</span>
-                        <span class="absolute w-fit h-fit right-0 top-0 bottom-0 m-auto">{{pretty_playback_duration}}</span>
+                        <span class="absolute w-fit h-fit right-0 top-0 bottom-0 m-auto">
+                            <span class="sr-only">total duration</span>
+                            {{pretty_playback_duration}}
+                        </span>
                     </div>
                 </div>
 
-                <div v-if="propEventTone !== null" class="row-span-2 col-span-1 h-fit my-auto pb-0.5">
-                    <span class="text-2xl">{{ propEventTone.event_tone_symbol }}</span>
+                <div class="row-span-2 col-span-1 relative">
+                    <span class="text-2xl pb-0.5 absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto">
+                        {{ propEventTone.event_tone_symbol }}
+                    </span>
                 </div>
             </div>
         </div>
@@ -248,6 +258,9 @@
                 pretty_playback_duration: '00:00',
                 is_playing: false,
                 main_anime: null as InstanceType<typeof anime> | null,   //to store animePlaybackStates() anime
+
+                is_loading: false,
+                spinner_anime: null as InstanceType<typeof anime> | null,
                 
                 playback_slider_value: 0,
                 is_playback_slider_ready: false,
@@ -274,6 +287,16 @@
             };
         },
         mounted(){
+
+            //spinner
+            this.spinner_anime = anime({
+                targets: this.$refs.spinner,
+                easing: 'linear',
+                rotate: 360,
+                loop: true,
+                autoplay: false,
+                duration: 800,
+            });
 
             //when propAudioVolumePeaks.length > 0 on mounted(), means VPlayback was rendered via v-if with data already
             //we do this here because in this case, watchers do not trigger
@@ -352,7 +375,11 @@
             'newFileVolumes'
         ],
         props: {
-            propIsSticky: {
+            propAutoPlayOnSourceChange: {
+                type: Boolean,
+                default: false
+            },
+            propHasHighlight: {
                 type: Boolean,
                 default: false,
             },
@@ -364,7 +391,9 @@
                 type: String,
                 default: ''
             },
-            propIsRecording: Boolean,
+            propIsRecording: {
+                type: Boolean
+            },
             propRecordingVisualiserVolume: Number,    //0-1
             propRecordingVisualiserTimeInterval: {  //milliseconds, based on VRecorder time_interval
                 type: Number,
@@ -391,6 +420,51 @@
             },
         },
         watch: {
+            is_loading(new_value){
+
+                if(new_value === true){
+
+                    anime({
+                        targets: this.$refs.spinner_container,
+                        easing: 'linear',
+                        duration: 150,
+                        autoplay: true,
+                        loop: false,
+                        opacity: '1',
+                        begin: ()=>{
+                            this.spinner_anime.play();
+                        }
+                    });
+
+                    //'if' statement should help prevent race condition
+                    if(this.is_playing === true){
+
+                        this.playback_slider_knob_anime.pause();
+                        this.playback_slider_progress_anime.pause();
+                    }
+
+                }else{
+
+                    anime({
+                        targets: this.$refs.spinner_container,
+                        easing: 'linear',
+                        duration: 150,
+                        autoplay: true,
+                        loop: false,
+                        opacity: '0',
+                        complete: ()=>{
+                            this.spinner_anime.pause();
+                        }
+                    });
+
+                    //'if' statement should help prevent race condition
+                    if(this.is_playing === true){
+
+                        this.playback_slider_knob_anime.play();
+                        this.playback_slider_progress_anime.play();
+                    }
+                }
+            },
             propAudio(new_value){
 
                 this.attachAudioToPlayback(new_value);
@@ -422,28 +496,17 @@
                     this.current_playback_state = this.playback_states[2];
                 }
             },
-            current_playback_state(new_value){
+            current_playback_state(){
 
-                if(
-                    this.is_playback_slider_ready === true &&
-                    (new_value === this.playback_states[3] || new_value === this.playback_states[4])
-                ){
+                //for those that are one-time, put here, and we can disable/enable elements at parent with this
+                this.$emit('isAnimePlaybackCompleted', false);
 
-                    //for those that are not one-time, put here
-                    this.animePlaybackStates();
+                this.animePlaybackStates();
 
-                }else{
+                this.main_anime.finished.then(()=>{
 
-                    //for those that are one-time, put here, and we can disable/enable elements with this
-                    this.$emit('isAnimePlaybackCompleted', false);
-
-                    this.animePlaybackStates();
-
-                    this.main_anime.finished.then(()=>{
-
-                        this.$emit('isAnimePlaybackCompleted', true);
-                    });
-                }
+                    this.$emit('isAnimePlaybackCompleted', true);
+                });
             },
             propIsOpen(new_value){
 
@@ -1226,33 +1289,6 @@
                         }
                         break;
 
-                    case this.playback_states[3]:
-
-                        {
-                            //'can_play'
-                            //will trigger after 'loading', so this is basically to undo 'loading' state
-                            //they fire on file load and on every start-from-beginning play
-
-                            //we resume slider anime after buffering while playing
-                            if(this.is_playing === true){
-
-                                this.playback_slider_progress_anime.play();
-                                this.playback_slider_knob_anime.play();
-                            }
-                        }
-                        break;
-
-                    case this.playback_states[4]:
-
-                        {
-                            //'loading'
-
-                            //we pause slider anime when buffering while playing
-                            this.playback_slider_progress_anime.pause();
-                            this.playback_slider_knob_anime.pause();
-                        }
-                        break;
-
                     default:
                         
                         console.log('State is currently null or not one of the declared playback_states.');
@@ -1347,7 +1383,11 @@
                 //this is the fix
                 audio_element.playbackRate = this.playback_rate;
 
-                //update state for ripple anime
+                //cannot rely on current_playback_state watcher,
+                //as merely changing source (i.e. playback_states[2] below) will not trigger watcher
+                this.adjustVolumeRipples();
+
+                //update state, not always needed but just to be sure
                 this.current_playback_state = this.playback_states[2];
             },
             handleHasMetadata() : void {
@@ -1373,6 +1413,12 @@
                         //here is the first time <audio> duration is finally available
                         this.adjustPlaybackSliderDimension();
                         this.createPlaybackSliderAnime();
+
+                        //auto-play if desired, condition checking is also already handled
+                        if(this.propAutoPlayOnSourceChange === true){
+
+                            this.togglePlaybackPlayPause();
+                        }
                     };
 
                     audio_element.currentTime = 1e101;
