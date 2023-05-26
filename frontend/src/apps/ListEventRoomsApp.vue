@@ -111,7 +111,7 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import { timeRemainingUTC } from '@/helper_functions';
+    import { timeFromNowMS } from '@/helper_functions';
     import anime from 'animejs';
     import EventRoomTypes from '@/types/EventRooms.interface';
     const axios = require('axios');
@@ -129,9 +129,9 @@
 
                 choice_expiry_interval: null as number|null,
                 // choice_expiry_interval_ms: 10000,
-                // choice_expiry_seconds: 10 * 60, //10 minutes
+                // choice_expiry_max_ms: 10 * 60, //10 minutes
                 choice_expiry_interval_ms: 2000,
-                choice_expiry_seconds: 4,
+                choice_expiry_max_ms: 4,
 
                 is_search_button_shrinked: false,
                 search_button_text: 'Search',
@@ -317,7 +317,7 @@
 
                     //time is up
                     //all event_rooms will have the same when_locked
-                    if(timeRemainingUTC(new Date(this.event_rooms![0].event_room.when_locked), this.choice_expiry_seconds) === ''){
+                    if(timeFromNowMS(new Date(this.event_rooms![0].event_room.when_locked)) <= 0){
 
                         this.stopReplying();
                     }

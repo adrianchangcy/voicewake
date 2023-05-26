@@ -758,7 +758,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         new_data = serializer.validated_data
         auth_user = AuthUser.objects.get(pk=request.user.id)
 
@@ -819,7 +819,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
                 return Response(
                     data={
-                        'message': 'This post no longer exists.',
+                        'message': 'This event no longer exists.',
                     },
                     status=status.HTTP_404_NOT_FOUND
                 )
@@ -829,7 +829,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
                 return Response(
                     data={
-                        'message': 'You cannot reply to this post.',
+                        'message': 'You cannot reply to this event.',
                     },
                     status=status.HTTP_412_PRECONDITION_FAILED
                 )
@@ -908,7 +908,7 @@ class UserActionsAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'message': 'You are already replying in a different post.',
+                    'message': 'You are already replying in a different event.',
                 },
                 status=status.HTTP_412_PRECONDITION_FAILED
             )
@@ -926,7 +926,7 @@ class UserActionsAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'message': 'This post does not exist.',
+                    'message': 'This event does not exist.',
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
@@ -948,7 +948,7 @@ class UserActionsAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'message': 'You cannot select this post for reply.',
+                    'message': 'You cannot select this event for reply.',
                 },
                 status=status.HTTP_412_PRECONDITION_FAILED
             )
@@ -981,7 +981,7 @@ class UserActionsAPI(generics.GenericAPIView):
 
         return Response(
             data={
-                'message': 'Success! You are now replying to this post.',
+                'message': 'Success! You are now replying to this event.',
             },
             status=status.HTTP_202_ACCEPTED
         )
@@ -1002,7 +1002,7 @@ class UserActionsAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'message': 'This post does not exist.',
+                    'message': 'This event does not exist.',
                 },
                 status=status.HTTP_404_NOT_FOUND
             )

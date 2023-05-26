@@ -264,9 +264,9 @@
                     }
 
                 })
-                .catch((errors:any) => {
+                .catch((error:any) => {
 
-                    console.log(errors.data['message']);
+                    console.log(error.response.data['message']);
                     this.is_submitting = false;
                 });
             },

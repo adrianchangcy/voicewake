@@ -12,7 +12,7 @@
                     <button
                         @click.prevent="handleEventToneSelected(event_tone)"
                         :disabled="!is_open"
-                        class="w-10 h-10 shade-when-hover rounded-md transition-colors duration-100 ease-in-out"
+                        class="w-10 h-10 pb-0.5 shade-when-hover rounded-md transition-colors duration-100 ease-in-out"
                         type="button"
                     >
                         <span class="has-emoji">{{event_tone.event_tone_symbol}}</span>

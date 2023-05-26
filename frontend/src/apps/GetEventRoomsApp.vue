@@ -11,28 +11,36 @@
         />
 
         <TransitionFadeSlow>
-            <div v-if="is_this_user_replying">
-
-                <div class="flex flex-row">
-                    <VSectionTitle
-                        propTitle="Replying"
-                        :propTitleDescription="reply_expiry_string"
-                        class="w-full"
-                    />
-                    <div class="pt-8">
-                        <VActionButtonDangerS
-                            class="w-fit flex items-center"
-                            @click.stop="stopReplying()"
-                        >
-                            <span class="px-2 text-base font-medium mx-auto">Cancel</span>
-                        </VActionButtonDangerS>
-                    </div>
-                </div>
-
-                <VCreateEvents
-                    :propIsOriginator="false"
-                    :propEventRoomId="event_room.event_room.id"
+            <div
+                v-if="is_this_user_replying"
+                class="flex flex-col gap-2"
+            >
+                <VUser
+                    :propUsername="getUsername()"
                 />
+                <div class="border border-theme-light-gray rounded-lg px-2 py-4">
+                    <div class="flex flex-row">
+                        <VSectionTitle
+                            propTitle="Replying"
+                            :propTitleDescription="reply_expiry_string"
+                            :propHasPaddingTop="false"
+                            class="w-full"
+                        />
+                        <div class="pt-1">
+                            <VActionButtonDangerS
+                                class="w-fit flex items-center"
+                                @click.stop="stopReplying()"
+                            >
+                                <span class="px-2 text-base font-medium mx-auto">Cancel</span>
+                            </VActionButtonDangerS>
+                        </div>
+                    </div>
+
+                    <VCreateEvents
+                        :propIsOriginator="false"
+                        :propEventRoomId="event_room.event_room.id"
+                    />
+                </div>
             </div>
         </TransitionFadeSlow>
 
@@ -60,12 +68,13 @@
     import VSectionTitle from '@/components/small/VSectionTitle.vue';
     import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
     import VPlayback from '@/components/medium/VPlayback.vue';
+    import VUser from '@/components/small/VUser.vue';
 </script>
 
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import { timeDifferenceUTC, timeRemainingUTC } from '@/helper_functions';
+    import { timeDifferenceUTC, prettyTimeRemaining, getUsername, timeFromNowMS } from '@/helper_functions';
     import EventRoomTypes from '@/types/EventRooms.interface';
     import EventTypes from '@/types/Events.interface';
     const axios = require('axios');
@@ -81,14 +90,17 @@
                 playback_teleport_id: '',
 
                 reply_expiry_interval: null as number|null,
-                reply_expiry_interval_ms: 10000,
                 reply_expiry_string: '',
-                reply_expiry_seconds: 30 * 60,  //30 minutes
+
+                reply_expiry_max_ms: 30 * 60 * 1000,  //30 minutes
+                shorten_interval_ceiling_ms: 80000, //add double slowest_interval_ms to transition from minute to seconds smoothly
+                slowest_interval_ms: 10000,
+                fastest_interval_ms: 1000,
             };
         },
         methods: {
             async stopReplying() : Promise<void> {
-                this.is_this_user_replying = false;
+
                 let data = new FormData();
 
                 data.append('event_room_id', JSON.stringify(this.event_room_id));
@@ -156,21 +168,56 @@
                     return;
                 }
 
-                //set first time expiry string
-                this.reply_expiry_string = timeRemainingUTC(new Date(this.event_room!.event_room.when_locked), this.reply_expiry_seconds);
+                const when_locked_ms = new Date(this.event_room!.event_room.when_locked);
+                const time_elapsed_ms = timeFromNowMS(when_locked_ms);
 
-                //start interval
-                this.reply_expiry_interval = window.setInterval(()=>{
+                //time is up
+                if(time_elapsed_ms >= this.reply_expiry_max_ms){
 
-                    this.reply_expiry_string = timeRemainingUTC(new Date(this.event_room!.event_room.when_locked), this.reply_expiry_seconds);
+                    this.stopReplying();
+                    return;
+                }
+
+                //proceed
+
+                //run every 1s if <120s remaining, else run every 60s
+                //change this again once sped up
+                let interval_ms:number = this.reply_expiry_max_ms - time_elapsed_ms <= this.shorten_interval_ceiling_ms ? this.fastest_interval_ms : this.slowest_interval_ms;
+
+                //set possible first time expiry string
+                const time_remaining = prettyTimeRemaining(time_elapsed_ms, this.reply_expiry_max_ms);
+                this.reply_expiry_string = time_remaining === false ? '' : time_remaining as string;
+
+                //declare this here for reusability
+                const interval_function = ()=>{
+
+                    //get time difference
+                    const time_elapsed_ms = timeFromNowMS(when_locked_ms);
 
                     //time is up
-                    if(this.reply_expiry_string === ''){
-
+                    if(time_elapsed_ms >= this.reply_expiry_max_ms){
+                        
                         this.stopReplying();
                     }
 
-                }, this.reply_expiry_interval_ms);
+                    //if interval started with >1000, be prepared for reinitialisation for new interval with shorter time
+                    if(interval_ms === this.slowest_interval_ms && this.reply_expiry_max_ms - time_elapsed_ms <= this.shorten_interval_ceiling_ms){
+
+                        clearInterval(this.reply_expiry_interval!);
+
+                        this.reply_expiry_interval = window.setInterval(interval_function, this.fastest_interval_ms);
+
+                        //change interval_ms as lazy way to skip this part after the first time
+                        interval_ms = this.fastest_interval_ms;
+                    }
+
+                    //set string
+                    const time_remaining = prettyTimeRemaining(time_elapsed_ms, this.reply_expiry_max_ms);
+                    this.reply_expiry_string = time_remaining === false ? '' : time_remaining as string;
+                }
+
+                //start interval
+                this.reply_expiry_interval = window.setInterval(interval_function, interval_ms);
             },
             axiosSetup() : boolean {
 
@@ -189,7 +236,7 @@
             },
         },
         beforeMount(){
-        
+
             //prepare axios
             this.axiosSetup();
 
