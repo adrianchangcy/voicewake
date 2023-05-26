@@ -1,5 +1,8 @@
 <template>
-    <div class="h-fit pt-7 pb-7">
+    <div
+        class="h-fit pb-7"
+        :class="propHasPaddingTop === true ? 'pt-7' : ''"
+    >
         <div class="w-fit h-fit text-4xl font-light text-theme-black">
             <span>{{propTitle}}</span>
         </div>
@@ -23,6 +26,10 @@
             propTitleDescription: {
                 type: String,
                 default: ''
+            },
+            propHasPaddingTop: {
+                type: Boolean,
+                default: true
             },
         }
     });

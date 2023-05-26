@@ -67,24 +67,24 @@ export function timeDifferenceUTC(date:Date) : string {
             return interval.toString() + ' years ago';
 }
 
-//we don't combine this with timeDifferenceUTC() for less 'if' checks, as these may be run as intervals
-export function timeRemainingUTC(date:Date, max_duration_seconds:number) : string {
+export function prettyTimeRemaining(current_ms:number, max_ms:number) : string|false {
 
     //more optimised version, since visits to newer content will always be more
     //to use: timeDifferenceUTC(new Date('2023-04-26T07:45:22.258243Z'))
     //i.e. can immediately use datetime from Django's Serializer
 
-    let seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    const seconds = (max_ms - current_ms) / 1000;
     let interval = 0;
 
-    seconds = max_duration_seconds - seconds;
-
-    if(seconds < 60 && seconds > 0){
-        return interval.toString() + ' second left';
-    }else if(seconds === 1){
-        return interval.toString() + ' seconds left';
-    }else if(seconds < 0){
-        return '';
+    interval = Math.floor(seconds);
+    if(interval < 60 && interval > 1){
+        return interval + ' seconds left';
+    }else if(interval === 1){
+        return interval + ' second left';
+    }else if(interval === 0){
+        return "Time's up!";
+    }else if(interval < 0){
+        return false;
     }
 
     interval = Math.floor(seconds / 60);
@@ -122,6 +122,11 @@ export function timeRemainingUTC(date:Date, max_duration_seconds:number) : strin
     }
 
     return interval.toString() + ' years left';
+}
+
+export function timeFromNowMS(date:Date) : number {
+
+    return Math.floor(new Date().getTime() - date.getTime());
 }
 
 export function prettyCount(number:number) : string {
@@ -215,6 +220,11 @@ export function prettyDuration(seconds:number) : string {
     return new Date(
         seconds * 1000
     ).toISOString().substring(14, 19);
+}
+
+export function getUsername() : string {
+
+    return JSON.parse(document.getElementById('data-username')!.textContent!);
 }
 
 

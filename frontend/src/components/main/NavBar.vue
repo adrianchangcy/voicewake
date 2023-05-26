@@ -129,6 +129,7 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
+    import { getUsername } from '@/helper_functions';
 
     export default defineComponent({
         data(){
@@ -140,14 +141,12 @@
         },
         beforeMount(){
 
-            //get username, is always string
-            this.username = JSON.parse(document.getElementById('data-username')!.textContent!);
+            this.username = getUsername();
 
-            if(this.username !== ""){
-                
+            if(this.username !== ''){
+
                 this.is_logged_in = true;
             }
-
         },
         methods: {
             toggle_nav_main_more(){
