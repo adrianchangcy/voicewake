@@ -1334,6 +1334,26 @@ video {
   stroke-width: 6px;
 }
 
+.stroke-\[8px\] {
+  stroke-width: 8px;
+}
+
+.stroke-\[2rem\] {
+  stroke-width: 2rem;
+}
+
+.stroke-\[1rem\] {
+  stroke-width: 1rem;
+}
+
+.stroke-\[0\.5rem\] {
+  stroke-width: 0.5rem;
+}
+
+.stroke-\[0\.75rem\] {
+  stroke-width: 0.75rem;
+}
+
 .p-2 {
   padding: 0.5rem;
 }
