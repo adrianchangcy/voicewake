@@ -15,7 +15,7 @@ export function arrayMax(your_array:number[]) : number {
             });
 }
 
-export function timeDifferenceUTC(date:Date) : string {
+export function prettyTimePassed(date:Date) : string {
 
             //more optimised version, since visits to newer content will always be more
             //to use: timeDifferenceUTC(new Date('2023-04-26T07:45:22.258243Z'))

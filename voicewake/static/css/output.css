@@ -898,6 +898,10 @@ video {
   height: 2rem;
 }
 
+.h-\[76px\] {
+  height: 76px;
+}
+
 .w-0 {
   width: 0px;
 }

@@ -74,7 +74,7 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import { timeDifferenceUTC, prettyTimeRemaining, getUsername, timeFromNowMS } from '@/helper_functions';
+    import { prettyTimePassed, prettyTimeRemaining, getUsername, timeFromNowMS } from '@/helper_functions';
     import EventRoomTypes from '@/types/EventRooms.interface';
     import EventTypes from '@/types/Events.interface';
     const axios = require('axios');
@@ -111,10 +111,7 @@
 
                     this.is_this_user_replying = false;
 
-                    if(this.reply_expiry_interval !== null){
-
-                        clearInterval(this.reply_expiry_interval as number);
-                    }
+                    this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
 
                 })
                 .catch((error:any) => {
@@ -158,15 +155,12 @@
             },
             startReplyExpiryInterval() : void {
 
-                if(this.reply_expiry_interval !== null){
-
-                    window.clearInterval(this.reply_expiry_interval);
-                }
-
                 if(this.is_this_user_replying === false){
 
                     return;
                 }
+
+                this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
 
                 const when_locked_ms = new Date(this.event_room!.event_room.when_locked);
                 const time_elapsed_ms = timeFromNowMS(when_locked_ms);
@@ -256,7 +250,7 @@
 
                 const when_created_element = container.getElementsByClassName('when-created')[0];
                 const when_created = (container.getAttribute('data-when-created') as string).replace(/ /g, 'T') + 'Z';
-                when_created_element.textContent = timeDifferenceUTC(new Date(when_created));
+                when_created_element.textContent = prettyTimePassed(new Date(when_created));
             }
         },
     });
