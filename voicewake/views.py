@@ -986,7 +986,7 @@ class UserActionsAPI(generics.GenericAPIView):
             status=status.HTTP_202_ACCEPTED
         )
 
-    #205 success
+    #204 nothing to cancel, 205 success
     def cancel_replying_to_event_room(self, event_room_id):
 
         #get event_room
@@ -1024,7 +1024,7 @@ class UserActionsAPI(generics.GenericAPIView):
                 data={
                     'message': 'Cannot cancel this replying process.',
                 },
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_204_NO_CONTENT
             )
 
         #cancel replying
@@ -1120,6 +1120,15 @@ class UserActionsAPI(generics.GenericAPIView):
             if new_data['to_reply'] is False:
 
                 return self.cancel_reply_choices()
+            
+            else:
+
+                return Response(
+                    data={
+                        'message': 'Invalid data.'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         else:
 

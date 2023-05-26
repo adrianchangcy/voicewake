@@ -2,7 +2,7 @@
     <div
         :class="[
             propIsOpaque ? 'bg-theme-light/60 backdrop-blur' : 'bg-theme-light backdrop-blur-none',
-            'border border-theme-black/5 rounded-lg'
+            'border border-theme-light-gray rounded-lg'
         ]"
     >
         <slot></slot>

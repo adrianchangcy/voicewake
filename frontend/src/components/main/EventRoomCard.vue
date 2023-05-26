@@ -8,13 +8,13 @@
             v-if="propShowTitle === true"
             class="h-fit"
         >
-            <!--title from user 1-->
+            <!--title-->
             <p class="text-xl break-words">
                 {{ propEventRoom.event_room.event_room_name }}
             </p>
-            <!--last updated-->
+            <!--when created-->
             <p class="text-base font-light">
-                {{ prettyWhenCreated }}
+                {{ pretty_when_created }}
             </p>
         </div>
 
@@ -124,7 +124,7 @@
 
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
-    import { timeDifferenceUTC } from '@/helper_functions';
+    import { prettyTimePassed } from '@/helper_functions';
     import EventRoomTypes from '@/types/EventRooms.interface';
     import EventTypes from '@/types/Events.interface';
     const axios = require('axios');
@@ -133,6 +133,7 @@
         data() {
             return {
                 selected_event: null as EventTypes|null,
+                pretty_when_created: '',
             };
         },
         props: {
@@ -150,10 +151,6 @@
                 return this.propEventRoom !== null &&
                     (this.propEventRoom.originator !== null && this.propEventRoom.responder.length >= 1) ||
                     (this.propEventRoom.originator === null && this.propEventRoom.responder.length >= 2);
-            },
-            prettyWhenCreated() : string {
-
-                return timeDifferenceUTC(new Date(this.propEventRoom.event_room.when_created));
             },
         },
         methods: {
@@ -189,6 +186,8 @@
 
             //set up Axios appropriately
             this.axiosSetup();
+
+            this.pretty_when_created = prettyTimePassed(new Date(this.propEventRoom.event_room.when_created));
         },
         beforeUnmount(){
             

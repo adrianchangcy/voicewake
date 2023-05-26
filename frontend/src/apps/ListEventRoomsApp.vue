@@ -91,6 +91,12 @@
                         >
                             Reply
                         </VActionButtonSpecialL>
+                        <span
+                            v-show="choice_expiry_string !== ''"
+                            class="w-full h-fit py-2 text-base text-center text-theme-black"
+                        >
+                            {{ choice_expiry_string }}
+                        </span>
                     </div>
                 </div>
             </TransitionGroupFadeSlow>
@@ -111,7 +117,7 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import { timeFromNowMS } from '@/helper_functions';
+    import { timeFromNowMS, prettyTimeRemaining } from '@/helper_functions';
     import anime from 'animejs';
     import EventRoomTypes from '@/types/EventRooms.interface';
     const axios = require('axios');
@@ -128,10 +134,11 @@
                 spinner_anime: null as InstanceType<typeof anime> | null,
 
                 choice_expiry_interval: null as number|null,
-                // choice_expiry_interval_ms: 10000,
-                // choice_expiry_max_ms: 10 * 60, //10 minutes
-                choice_expiry_interval_ms: 2000,
-                choice_expiry_max_ms: 4,
+                choice_expiry_string: '',
+                choice_expiry_max_ms: 10 * 60 * 1000, //10 minutes
+                shorten_interval_ceiling_ms: 80000, //add double slowest_interval_ms to transition from minute to seconds smoothly
+                slowest_interval_ms: 10000,
+                fastest_interval_ms: 1000,
 
                 is_search_button_shrinked: false,
                 search_button_text: 'Search',
@@ -156,26 +163,25 @@
             },
         },
         methods: {
-            async stopReplying() : Promise<void> {
+            async expireReplyChoices() : Promise<void> {
 
                 let data = new FormData();
 
+                data.append('to_reply', JSON.stringify(false));
+
                 await axios.post('http://127.0.0.1:8000/api/user-actions', data)
-                .then((response:any) => {
+                .then(() => {
+                    
+                    this.choice_expiry_interval !== null ? clearInterval(this.choice_expiry_interval) : null;
+                    this.choice_expiry_string = '';
 
-                    if(response.status === 205){
+                    this.details_logo = 'fas fa-hourglass-end';
+                    this.details_text = 'You ran out of time.\nFeel free to search again!';
+                    this.is_search_button_shrinked = false;
+                    this.search_button_text = 'Search';
+                    this.event_rooms = [];
 
-                        this.choice_expiry_interval !== null ? clearInterval(this.choice_expiry_interval) : null;
-                        this.details_logo = 'fas fa-hourglass-end';
-                        this.details_text = 'You ran out of time.\nFeel free to search again!';
-                        this.is_search_button_shrinked = false;
-                        this.search_button_text = 'Search';
-                        this.event_rooms = [];
-                        
-                        this.handleEndLoadingAnime();
-                    }
-
-                    //do nothing if 204
+                    this.handleEndLoadingAnime();
 
                 })
                 .catch((error:any) => {
@@ -222,6 +228,8 @@
                         this.still_replying = true;
                         this.still_replying_event_room = results.data['data'][0];
                         this.redirect_url = 'hear/' + this.still_replying_event_room!.event_room.id.toString();
+
+                        this.startChoiceExpiryInterval();
 
                     }else{
 
@@ -312,17 +320,58 @@
             },
             startChoiceExpiryInterval() : void {
 
-                //start interval
-                this.choice_expiry_interval = window.setInterval(()=>{
+                this.choice_expiry_interval !== null ? clearInterval(this.choice_expiry_interval) : null;
+
+                const when_locked_ms = new Date(this.event_rooms[0].event_room.when_locked);
+                const time_elapsed_ms = timeFromNowMS(when_locked_ms);
+
+                //time is up
+                if(time_elapsed_ms >= this.choice_expiry_max_ms){
+
+                    this.expireReplyChoices();
+                    return;
+                }
+
+                //proceed
+
+                //run every 1s if <120s remaining, else run every 60s
+                //change this again once sped up
+                let interval_ms:number = this.choice_expiry_max_ms - time_elapsed_ms <= this.shorten_interval_ceiling_ms ? this.fastest_interval_ms : this.slowest_interval_ms;
+
+                //set possible first time expiry string
+                const time_remaining = prettyTimeRemaining(time_elapsed_ms, this.choice_expiry_max_ms);
+                this.choice_expiry_string = time_remaining === false ? '' : time_remaining as string;
+
+                //declare this here for reusability
+                const interval_function = ()=>{
+
+                    //get time difference
+                    const time_elapsed_ms = timeFromNowMS(when_locked_ms);
 
                     //time is up
-                    //all event_rooms will have the same when_locked
-                    if(timeFromNowMS(new Date(this.event_rooms![0].event_room.when_locked)) <= 0){
-
-                        this.stopReplying();
+                    if(time_elapsed_ms >= this.choice_expiry_max_ms){
+                        
+                        this.expireReplyChoices();
                     }
 
-                }, this.choice_expiry_interval_ms);
+                    //if interval started with >1000, be prepared for reinitialisation for new interval with shorter time
+                    if(interval_ms === this.slowest_interval_ms && this.choice_expiry_max_ms - time_elapsed_ms <= this.shorten_interval_ceiling_ms){
+
+                        clearInterval(this.choice_expiry_interval!);
+
+                        this.choice_expiry_interval = window.setInterval(interval_function, this.fastest_interval_ms);
+
+                        //change interval_ms as lazy way to skip this part after the first time
+                        interval_ms = this.fastest_interval_ms;
+                    }
+
+                    //set string
+                    const time_remaining = prettyTimeRemaining(time_elapsed_ms, this.choice_expiry_max_ms);
+                    this.choice_expiry_string = time_remaining === false ? '' : time_remaining as string;
+                }
+
+                //start interval
+                this.choice_expiry_interval = window.setInterval(interval_function, interval_ms);
             },
             handleStartLoadingAnime(){
 
