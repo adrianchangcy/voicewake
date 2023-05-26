@@ -61,7 +61,8 @@ urlpatterns = [
     # path('seek-event', views.SeekEventsFormView.as_view(), name='seek_events'),
 
     #favicon
-    path('favicon.ico', RedirectView.as_view(url=staticfiles_storage.url('website-logo.svg'))),
+    #only for tab icon, not to be used as actual svg
+    path('favicon.ico', RedirectView.as_view(url=staticfiles_storage.url('tab-icon.svg'))),
 ]
 
 #for media files
