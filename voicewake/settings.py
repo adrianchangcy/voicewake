@@ -203,10 +203,17 @@ CHANNEL_LAYERS = {
     },
 }
 
+
 #folder name, only for storage
 MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')
 #URL, trailing slash is compulsory, must not include domain URL
 MEDIA_URL = '/media/'
+
+
+#if you want to hide Django Debug Toolbar, put False
+DEBUG_TOOLBAR_CONFIG = {
+    'SHOW_TOOLBAR_CALLBACK': lambda r: False,
+}
 
 
 STRIPE_PUBLIC_KEY = 'pk_test_51LeYM2GvCzbfbfazgRmGuWQQqOteutZEHYFN6FSfe95fWKqHxbUAAg33EC6Yi8fGdOcg7xQoB0DhHrLuKfgD7hDt00L2kqSIYq'

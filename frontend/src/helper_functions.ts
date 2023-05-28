@@ -81,9 +81,7 @@ export function prettyTimeRemaining(current_ms:number, max_ms:number) : string|f
         return interval + ' seconds left';
     }else if(interval === 1){
         return interval + ' second left';
-    }else if(interval === 0){
-        return "Time's up!";
-    }else if(interval < 0){
+    }else if(interval <= 0){
         return false;
     }
 

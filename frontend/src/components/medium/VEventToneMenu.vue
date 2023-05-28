@@ -1,9 +1,9 @@
 <template>
     <div
         v-show="is_open"
-        class="p-4 w-full h-fit bg-theme-light"
+        class="p-3 w-full h-fit"
     >
-        <div class="h-40 box-content overflow-x-hidden overflow-y-scroll text-2xl">
+        <div class="h-40 p-1 box-content overflow-x-hidden overflow-y-scroll text-2xl">
             <div class="items-center place-items-center grid grid-flow-row grid-cols-4">
                 <div
                     class="col-span-1"

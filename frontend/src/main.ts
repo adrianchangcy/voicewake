@@ -1,6 +1,6 @@
 import { createApp } from 'vue';
 
-import BaseApp from '/src/apps/BaseApp.vue';
+import NavBarApp from '/src/apps/NavBarApp.vue';
 import CreateEventRoomsApp from '/src/apps/CreateEventRoomsApp.vue';
 import ListEventRoomsApp from '/src/apps/ListEventRoomsApp.vue';
 import GetEventRoomsApp from '/src/apps/GetEventRoomsApp.vue';
@@ -71,9 +71,9 @@ const clickOutside = {
     },
 };
 
-createApp(BaseApp)
+createApp(NavBarApp)
     .directive('click-outside', clickOutside)
-    .mount('#base-app');
+    .mount('#nav-bar-app');
 
 //this might not be the most efficient fix
 //https://vuejs.org/guide/essentials/application.html#the-root-component

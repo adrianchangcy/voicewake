@@ -582,16 +582,16 @@ video {
   position: static;
 }
 
+.fixed {
+  position: fixed;
+}
+
 .absolute {
   position: absolute;
 }
 
 .relative {
   position: relative;
-}
-
-.sticky {
-  position: sticky;
 }
 
 .-left-1 {
@@ -700,6 +700,10 @@ video {
 
 .col-span-6 {
   grid-column: span 6 / span 6;
+}
+
+.col-span-4 {
+  grid-column: span 4 / span 4;
 }
 
 .col-start-1 {
@@ -867,6 +871,10 @@ video {
 
 .h-\[300\%\] {
   height: 300%;
+}
+
+.h-\[4\.5rem\] {
+  height: 4.5rem;
 }
 
 .h-\[75\%\] {
@@ -1165,6 +1173,10 @@ video {
   overflow-wrap: break-word;
 }
 
+.rounded-2xl {
+  border-radius: 1rem;
+}
+
 .rounded-full {
   border-radius: 9999px;
 }
@@ -1218,10 +1230,6 @@ video {
 .border-theme-black {
   --tw-border-opacity: 1;
   border-color: rgb(68 68 68 / var(--tw-border-opacity));
-}
-
-.border-theme-black\/5 {
-  border-color: rgb(68 68 68 / 0.05);
 }
 
 .border-theme-danger {
@@ -1330,32 +1338,20 @@ video {
   stroke: #444444;
 }
 
-.stroke-\[6px\] {
-  stroke-width: 6px;
-}
-
-.stroke-\[8px\] {
-  stroke-width: 8px;
-}
-
-.stroke-\[2rem\] {
-  stroke-width: 2rem;
-}
-
-.stroke-\[1rem\] {
-  stroke-width: 1rem;
-}
-
 .stroke-\[0\.5rem\] {
   stroke-width: 0.5rem;
 }
 
-.stroke-\[0\.75rem\] {
-  stroke-width: 0.75rem;
+.p-1 {
+  padding: 0.25rem;
 }
 
 .p-2 {
   padding: 0.5rem;
+}
+
+.p-3 {
+  padding: 0.75rem;
 }
 
 .p-4 {
@@ -1434,6 +1430,10 @@ video {
   padding-top: 0.25rem;
 }
 
+.pt-16 {
+  padding-top: 4rem;
+}
+
 .pt-2 {
   padding-top: 0.5rem;
 }
@@ -1444,6 +1444,10 @@ video {
 
 .pt-7 {
   padding-top: 1.75rem;
+}
+
+.pt-\[4\.5rem\] {
+  padding-top: 4.5rem;
 }
 
 .text-left {
@@ -1841,6 +1845,10 @@ textarea {
   .double-height-when-hover{
     transform: scaleY(2);
   }
+
+  .nav-burger-when-hover:hover > .nav-burger-line{
+    background-color: rgba(168, 162, 158, 1);
+  }
 }
 
 .hover\:scale-105:hover {
@@ -1920,12 +1928,44 @@ textarea {
 }
 
 @media (min-width: 640px) {
+  .sm\:col-span-6 {
+    grid-column: span 6 / span 6;
+  }
+
+  .sm\:col-span-2 {
+    grid-column: span 2 / span 2;
+  }
+
+  .sm\:col-span-1 {
+    grid-column: span 1 / span 1;
+  }
+
+  .sm\:col-start-3 {
+    grid-column-start: 3;
+  }
+
+  .sm\:col-start-5 {
+    grid-column-start: 5;
+  }
+
+  .sm\:col-start-6 {
+    grid-column-start: 6;
+  }
+
+  .sm\:col-start-4 {
+    grid-column-start: 4;
+  }
+
   .sm\:h-40 {
     height: 10rem;
   }
 
   .sm\:w-40 {
     width: 10rem;
+  }
+
+  .sm\:grid-cols-6 {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 
@@ -1946,6 +1986,22 @@ textarea {
 
   .lg\:col-span-4 {
     grid-column: span 4 / span 4;
+  }
+
+  .lg\:col-start-3 {
+    grid-column-start: 3;
+  }
+
+  .lg\:col-start-5 {
+    grid-column-start: 5;
+  }
+
+  .lg\:col-start-8 {
+    grid-column-start: 8;
+  }
+
+  .lg\:col-start-7 {
+    grid-column-start: 7;
   }
 
   .lg\:block {
@@ -1971,6 +2027,10 @@ textarea {
 
   .lg\:grid-cols-10 {
     grid-template-columns: repeat(10, minmax(0, 1fr));
+  }
+
+  .lg\:grid-cols-8 {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
   }
 
   .lg\:border-l {

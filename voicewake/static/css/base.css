@@ -140,4 +140,8 @@ textarea {
     .double-height-when-hover{
         transform: scaleY(2);
     }
+
+    .nav-burger-when-hover:hover > .nav-burger-line{
+        background-color: rgba(168, 162, 158, 1);
+    }
 }

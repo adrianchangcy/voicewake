@@ -183,7 +183,7 @@
                 if(this.propIsOriginator === true){
 
                     return [
-                        'Create event',
+                        'Start an Event',
                         'Fill in the fields below',
                         'Done'
                     ];
