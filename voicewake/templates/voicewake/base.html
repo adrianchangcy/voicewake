@@ -16,25 +16,16 @@
 {% load static %}
 
 {% block body %}
-    <body class="overflow-x-hidden overflow-y-scroll bg-theme-light">
 
-        <div id="base-app" class="sticky top-0 z-50"></div>
+    <!--nav-->
+    <div id="nav-bar-app" class="fixed w-full h-[4.5rem] top-0 z-50"></div>
+
+    <body class="pt-[4.5rem] overflow-x-hidden overflow-y-scroll bg-theme-light">
 
         <div class="md:w-2/4 lg:w-3/6 xl:w-2/6 mx-auto h-fit bg-theme-light text-left text-lg px-[5%] pb-60">
             {% block content %}
             {% endblock %}
         </div>
-
-        {% comment %}
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-        <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.13.2/jquery-ui.min.js"></script>
-        <link
-            href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/ui-lightness/jquery-ui.css"
-            rel="stylesheet"
-            type="text/css"
-        />
-        <script src="{%static 'js/base.js' %}"></script>
-        {% endcomment %}
 
         <link rel="stylesheet" href="{%static 'css/output.css' %}"/>
 

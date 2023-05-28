@@ -1,7 +1,7 @@
 <template>
     <div>
         <VSectionTitle
-            propTitle="Reply"
+            propTitle="Reply to Events"
         />
 
         <div class="flex flex-col gap-8">
@@ -27,7 +27,8 @@
                 <!--spinner-->
                 <div
                     ref="spinner_container"
-                    class="h-full text-theme-black hidden opacity-0 flex-col place-content-center"
+                    class="h-full text-theme-black hidden flex-col place-content-center"
+                    style="opacity: 0;"
                 >
                     <i class="fas fa-spinner text-4xl text-center"></i>
                 </div>
@@ -35,7 +36,8 @@
                 <!--status logo-->
                 <div
                     ref="status_logo_container"
-                    class="h-full text-theme-black hidden opacity-0 flex-col place-content-center"
+                    class="h-full text-theme-black hidden flex-col place-content-center"
+                    style="opacity: 0;"
                 >
                     <i class="text-4xl text-center" :class="status_logo"></i>
                 </div>
@@ -44,7 +46,8 @@
             <!--details-->
             <div
                 ref="details_container"
-                class="w-full h-full text-theme-black hidden opacity-0 flex-col gap-2 place-content-center"
+                class="w-full h-full text-theme-black hidden flex-col gap-2 place-content-center"
+                style="opacity: 0;"
             >
                 <i
                     ref="details_logo"
@@ -53,12 +56,13 @@
                 ></i>
 
                 <span class="block w-fit h-fit text-lg text-center mx-auto whitespace-pre-line">
-                    {{ details_text }}
+                    {{ details_text }} <span v-show="expiry_string !== ''"><br>with {{ expiry_string }}.</span>
                 </span>
 
                 <div
                     ref="still_replying_container"
-                    class="grid-rows-1 grid-cols-4 gap-2 hidden opacity-0"
+                    class="grid-rows-1 grid-cols-4 gap-2 hidden"
+                    style="opacity: 0;"
                 >
                     <a :href="redirect_url" class="row-start-1 col-span-2">
                         <VActionButtonSpecialS
@@ -92,10 +96,10 @@
                             Reply
                         </VActionButtonSpecialL>
                         <span
-                            v-show="choice_expiry_string !== ''"
+                            v-show="expiry_string !== ''"
                             class="w-full h-fit py-2 text-base text-center text-theme-black"
                         >
-                            {{ choice_expiry_string }}
+                            {{ expiry_string }} to decide
                         </span>
                     </div>
                 </div>
@@ -132,16 +136,19 @@
                 details_text: '',
                 is_searching: false,
                 spinner_anime: null as InstanceType<typeof anime> | null,
+                main_anime: null as InstanceType<typeof anime> | null,  //utilise .seek(1 * main_anime.duration)
 
-                choice_expiry_interval: null as number|null,
-                choice_expiry_string: '',
+                expiry_interval: null as number|null,
+                expiry_string: '',
                 choice_expiry_max_ms: 10 * 60 * 1000, //10 minutes
+                reply_expiry_max_ms: 1 * 60 * 1000,    //30 minutes
                 shorten_interval_ceiling_ms: 80000, //add double slowest_interval_ms to transition from minute to seconds smoothly
                 slowest_interval_ms: 10000,
                 fastest_interval_ms: 1000,
 
                 is_search_button_shrinked: false,
                 search_button_text: 'Search',
+                is_page_fresh: true,
 
                 still_replying: false,
                 still_replying_event_room: null as EventRoomTypes | null,
@@ -165,6 +172,8 @@
         methods: {
             async expireReplyChoices() : Promise<void> {
 
+                this.handleStartLoadingAnime();
+
                 let data = new FormData();
 
                 data.append('to_reply', JSON.stringify(false));
@@ -172,8 +181,8 @@
                 await axios.post('http://127.0.0.1:8000/api/user-actions', data)
                 .then(() => {
                     
-                    this.choice_expiry_interval !== null ? clearInterval(this.choice_expiry_interval) : null;
-                    this.choice_expiry_string = '';
+                    this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
+                    this.expiry_string = '';
 
                     this.details_logo = 'fas fa-hourglass-end';
                     this.details_text = 'You ran out of time.\nFeel free to search again!';
@@ -186,6 +195,7 @@
                 })
                 .catch((error:any) => {
 
+                    this.handleEndLoadingAnime();
                     console.log(error.response.data['message']);
                 });
             },
@@ -196,22 +206,20 @@
                     return;
                 }
 
-                //reset
-                this.status_logo = '';
-                this.details_logo = '';
-                this.details_text = '';
-                this.still_replying = false;
-                this.still_replying_event_room = null;
-                this.event_rooms = [];
-                this.redirect_url = '';
-                this.choice_expiry_interval !== null ? clearInterval(this.choice_expiry_interval) : null;
-
                 this.handleStartLoadingAnime();
                 this.is_searching = true;
 
                 //prepare events, then separate
                 await axios.get('http://127.0.0.1:8000/api/events/get/event-room/status/incomplete')
                 .then((results:any) => {
+
+                    //reset
+                    this.status_logo = '';
+                    this.details_logo = '';
+                    this.details_text = '';
+                    this.event_rooms = [];
+                    this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
+                    this.expiry_string = '';
 
                     if(results.data['data'].length === 0){
 
@@ -224,12 +232,12 @@
 
                         this.is_search_button_shrinked = true;
                         this.status_logo = 'fas fa-circle-exclamation';
-                        this.details_text = 'You have an unfinished reply.';
+                        this.details_text = 'You have an unfinished reply';
                         this.still_replying = true;
                         this.still_replying_event_room = results.data['data'][0];
                         this.redirect_url = 'hear/' + this.still_replying_event_room!.event_room.id.toString();
 
-                        this.startChoiceExpiryInterval();
+                        this.startExpiryInterval();
 
                     }else{
 
@@ -237,18 +245,19 @@
                         this.event_rooms = results.data['data'];
                         this.search_button_text = 'Skip';
                         
-                        this.startChoiceExpiryInterval();
+                        this.startExpiryInterval();
                     }
 
                     this.is_searching = false;
+                    this.handleEndLoadingAnime();
 
                 })
                 .catch((error:any) => {
 
                     console.log(error.response.data['message']);
+                    this.is_searching = false;
+                    this.handleEndLoadingAnime();
                 });
-
-                this.handleEndLoadingAnime();
             },
             async deletePreviousReply() : Promise<void> {
 
@@ -266,28 +275,24 @@
                 data.append('to_reply', JSON.stringify(false));
 
                 await axios.post('http://127.0.0.1:8000/api/user-actions', data)
-                .then((results:any) => {
+                .then(() => {
 
-                    if(results.status === 205){
-
-                        this.still_replying = false;
-                        this.still_replying_event_room = null;
-                        this.status_logo = 'fas fa-check';
-                        this.details_text = 'Deleted unfinished reply.\nSearching for new events...';
-                        
-                        this.handleEndLoadingAnime();
-                        window.setTimeout(this.getEventRooms, 500);
-                    }
+                    this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
+                    this.expiry_string = '';
+                    this.still_replying = false;
+                    this.still_replying_event_room = null;
+                    this.status_logo = 'fas fa-check';
+                    this.details_text = 'Deleted unfinished reply.\nSearching for new events...';
+                    
+                    this.handleEndLoadingAnime();
+                    window.setTimeout(this.getEventRooms, 500);
 
                 })
                 .catch((error:any) => {
 
+                    this.handleEndLoadingAnime();
                     console.log(error.response.data['message']);
                 });
-
-
-                //automatically search
-                // this.getEventRooms();
             },
             async confirmReplyChoice(event_room:EventRoomTypes) : Promise<void> {
 
@@ -318,17 +323,35 @@
                     console.log(error.response.data['message']);
                 });
             },
-            startChoiceExpiryInterval() : void {
+            startExpiryInterval() : void {
 
-                this.choice_expiry_interval !== null ? clearInterval(this.choice_expiry_interval) : null;
+                let target_event_room:EventRoomTypes|null = null;
+                let target_max_ms = 0;
 
-                const when_locked_ms = new Date(this.event_rooms[0].event_room.when_locked);
+                if(this.still_replying_event_room !== null){
+
+                    target_event_room = this.still_replying_event_room;
+                    target_max_ms = this.reply_expiry_max_ms;
+
+                }else if(this.event_rooms.length > 0){
+
+                    target_event_room = this.event_rooms[0];
+                    target_max_ms = this.choice_expiry_max_ms;
+
+                }else{
+
+                    return;
+                }
+
+                this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
+
+                const when_locked_ms = new Date(target_event_room.event_room.when_locked);
                 const time_elapsed_ms = timeFromNowMS(when_locked_ms);
 
                 //time is up
-                if(time_elapsed_ms >= this.choice_expiry_max_ms){
+                if(time_elapsed_ms >= target_max_ms){
 
-                    this.expireReplyChoices();
+                    this.still_replying_event_room === null ? this.expireReplyChoices() : this.deletePreviousReply();
                     return;
                 }
 
@@ -336,11 +359,11 @@
 
                 //run every 1s if <120s remaining, else run every 60s
                 //change this again once sped up
-                let interval_ms:number = this.choice_expiry_max_ms - time_elapsed_ms <= this.shorten_interval_ceiling_ms ? this.fastest_interval_ms : this.slowest_interval_ms;
+                let interval_ms:number = target_max_ms - time_elapsed_ms <= this.shorten_interval_ceiling_ms ? this.fastest_interval_ms : this.slowest_interval_ms;
 
                 //set possible first time expiry string
-                const time_remaining = prettyTimeRemaining(time_elapsed_ms, this.choice_expiry_max_ms);
-                this.choice_expiry_string = time_remaining === false ? '' : time_remaining as string;
+                const time_remaining = prettyTimeRemaining(time_elapsed_ms, target_max_ms);
+                this.expiry_string = time_remaining === false ? '' : time_remaining as string;
 
                 //declare this here for reusability
                 const interval_function = ()=>{
@@ -349,33 +372,31 @@
                     const time_elapsed_ms = timeFromNowMS(when_locked_ms);
 
                     //time is up
-                    if(time_elapsed_ms >= this.choice_expiry_max_ms){
+                    if(time_elapsed_ms >= target_max_ms){
                         
-                        this.expireReplyChoices();
+                        this.still_replying_event_room === null ? this.expireReplyChoices() : this.deletePreviousReply();
                     }
 
                     //if interval started with >1000, be prepared for reinitialisation for new interval with shorter time
-                    if(interval_ms === this.slowest_interval_ms && this.choice_expiry_max_ms - time_elapsed_ms <= this.shorten_interval_ceiling_ms){
+                    if(interval_ms === this.slowest_interval_ms && target_max_ms - time_elapsed_ms <= this.shorten_interval_ceiling_ms){
 
-                        clearInterval(this.choice_expiry_interval!);
+                        clearInterval(this.expiry_interval!);
 
-                        this.choice_expiry_interval = window.setInterval(interval_function, this.fastest_interval_ms);
+                        this.expiry_interval = window.setInterval(interval_function, this.fastest_interval_ms);
 
                         //change interval_ms as lazy way to skip this part after the first time
                         interval_ms = this.fastest_interval_ms;
                     }
 
                     //set string
-                    const time_remaining = prettyTimeRemaining(time_elapsed_ms, this.choice_expiry_max_ms);
-                    this.choice_expiry_string = time_remaining === false ? '' : time_remaining as string;
+                    const time_remaining = prettyTimeRemaining(time_elapsed_ms, target_max_ms);
+                    this.expiry_string = time_remaining === false ? '' : time_remaining as string;
                 }
 
                 //start interval
-                this.choice_expiry_interval = window.setInterval(interval_function, interval_ms);
+                this.expiry_interval = window.setInterval(interval_function, interval_ms);
             },
             handleStartLoadingAnime(){
-
-                //run this before values are reset in getEventRooms()
 
                 const search_button_container = (this.$refs.search_button_container as HTMLElement);
                 const details_container = (this.$refs.details_container as HTMLElement);
@@ -389,15 +410,17 @@
                     still_replying_container,
                 ];
 
-                anime.timeline({
+                this.main_anime !== null ? this.main_anime.seek(this.main_anime.duration) : null;
+
+                this.main_anime = anime.timeline({
                     easing: 'linear',
                     autoplay: true,
                     loop: false,
-                    duration: 150,
                 }).add({
                     //hide
                     targets: el_targets,
-                    opacity: ['1', '0'],
+                    opacity: '0',
+                    duration: 100,
                     complete: ()=>{
                         search_button_container.style.display = 'none';
                         details_container.style.display = 'none';
@@ -407,30 +430,13 @@
                 }).add({
                     //show
                     targets: spinner_container,
+                    duration: 100,
                     begin: ()=>{
                         spinner_container.style.display = 'flex';
-
-                        //create or play spinner anime
-                        if(this.spinner_anime === null){
-
-                            this.spinner_anime = anime({
-                                targets: spinner_container,
-                                rotate: 360,
-                                duration: 800,
-                                loop: true,
-                                easing: 'linear',
-                                autoplay: true
-                            });
-                        
-                        }else{
-
-                            this.spinner_anime.play();
-                        }
+                        this.spinner_anime.play();
                     },
-                    opacity: ['0', '1'],
+                    opacity: '1',
                 });
-
-
             },
             handleEndLoadingAnime(){
 
@@ -440,15 +446,17 @@
                 const status_logo_container = (this.$refs.status_logo_container as HTMLElement);
                 const still_replying_container = (this.$refs.still_replying_container as HTMLElement);
 
-                anime.timeline({
+                this.main_anime.seek(this.main_anime.duration);
+
+                this.main_anime = anime.timeline({
                     easing: 'linear',
-                    autoplay: true
+                    autoplay: true,
+                    loop: false
                 }).add({
                     //hide spinner
                     targets: spinner_container,
-                    opacity: ['1', '0'],
-                    duration: 150,
-                    loop: false,
+                    opacity: '0',
+                    duration: 100,
                     complete: ()=>{
 
                         //pause spinner
@@ -478,11 +486,11 @@
 
                         anime({
                             targets: el_targets,
-                            opacity: ['0', '1'],
-                            duration: 150,
-                            loop: false,
+                            opacity: '1',
+                            duration: 100,
                             easing: 'linear',
-                            autoplay: true
+                            autoplay: true,
+                            loop: false
                         });
                     }
                 });
@@ -506,6 +514,15 @@
         mounted(){
 
             this.axiosSetup();
+
+            this.spinner_anime = anime({
+                targets: this.$refs.spinner_container,
+                rotate: 360,
+                duration: 800,
+                loop: true,
+                easing: 'linear',
+                autoplay: false
+            });
         },
     });
 </script>

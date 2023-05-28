@@ -1166,8 +1166,8 @@
                 const recording_visualiser = (this.$refs.recording_visualiser as HTMLElement);
                 const playback_main = (this.$refs.playback_main as HTMLElement);
 
-                //reset all elements
-                //reset all translates to 0
+                //reset
+                this.main_anime !== null ? this.main_anime.seek(this.main_anime.duration) : null;
 
                 switch(this.current_playback_state){
 
@@ -1200,13 +1200,6 @@
 
                         {
                             //'recording'
-
-                            //remove related anime
-                            anime.remove([
-                                volume_ripples,
-                                recording_visualiser,
-                                playback_main,
-                            ]);
 
                             this.main_anime = anime.timeline({
                                 easing: 'linear',
