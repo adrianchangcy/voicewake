@@ -1,6 +1,6 @@
 <template>
     <div
-        class="flex flex-col gap-8"
+        class="flex flex-col gap-6"
     >
 
         <!--title and datetime-->
@@ -26,7 +26,6 @@
             <VUser
                 :propUsername="propEventRoom.originator.user.username"
             />
-
             <div
                 v-if="hasMultipleEvents === false"
                 class="h-fit"
@@ -45,7 +44,6 @@
                     :propIsSelected="checkIsSelected(propEventRoom.originator.id)"
                 />
             </div>
-
             <div class="w-full h-fit grid grid-cols-8">
                 <VLikeDislike
                     :propEventId="propEventRoom.originator.id"
@@ -58,7 +56,7 @@
         </div>
 
         <!--responders-->
-        <div v-if="hasMultipleEvents === false">
+        <div v-if="propEventRoom.responder.length === 1" class="flex flex-col gap-6">
             <div
                 v-for="event in propEventRoom.responder" :key="event.id"
                 class="flex flex-col gap-2"
@@ -85,7 +83,7 @@
                 </div>
             </div>
         </div>
-        <div v-else>
+        <div v-else-if="propEventRoom.responder.length > 1">
             <div
                 v-for="event in propEventRoom.responder" :key="event.id"
                 class="flex flex-col gap-2"

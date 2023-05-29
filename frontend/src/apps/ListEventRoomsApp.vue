@@ -1,14 +1,20 @@
 <template>
     <div>
-        <VSectionTitle
-            propTitle="Reply to Events"
-        />
+        <VSectionTitle>
+            <template #title>
+                <div class="flex flex-col">
+                    <i class="fas fa-comments block text-xl w-full text-center"></i>
+                    <span class="block w-full text-center">Reply</span>
+                </div>
+            </template>
+        </VSectionTitle>
 
-        <div class="flex flex-col gap-8">
+        <div class="flex flex-col">
 
             <div
                 :class="[
                     is_search_button_shrinked ? 'w-full h-20' : 'w-full h-32 sm:h-40',
+                    still_replying === true ? 'hidden' : '',
                     'transition-all duration-150 ease-in-out'
                 ]"
             >
@@ -46,7 +52,7 @@
             <!--details-->
             <div
                 ref="details_container"
-                class="w-full h-full text-theme-black hidden flex-col gap-2 place-content-center"
+                class="w-full h-full pt-8 text-theme-black hidden flex-col gap-2 place-content-center"
                 style="opacity: 0;"
             >
                 <i
@@ -82,16 +88,16 @@
 
             <!--event_rooms-->
             <TransitionGroupFadeSlow>
-                <div v-for="event_room in event_rooms" :key="event_room.event_room.id">
+                <div class="py-6" v-for="event_room in event_rooms" :key="event_room.event_room.id">
                     <div class="flex flex-col">
                         <EventRoomCard
                             :propEventRoom="event_room"
                             :propShowTitle="true"
-                            :propShowOnePlaybackPerEvent="true"
                         />
                         <VActionButtonSpecialL
                             :propIsSmaller="true"
                             @click.stop="confirmReplyChoice(event_room)"
+                            class="mt-6"
                         >
                             Reply
                         </VActionButtonSpecialL>
@@ -141,7 +147,7 @@
                 expiry_interval: null as number|null,
                 expiry_string: '',
                 choice_expiry_max_ms: 10 * 60 * 1000, //10 minutes
-                reply_expiry_max_ms: 1 * 60 * 1000,    //30 minutes
+                reply_expiry_max_ms: 30 * 60 * 1000,    //30 minutes
                 shorten_interval_ceiling_ms: 80000, //add double slowest_interval_ms to transition from minute to seconds smoothly
                 slowest_interval_ms: 10000,
                 fastest_interval_ms: 1000,
@@ -159,8 +165,7 @@
         computed: {
             canSearch(): boolean {
 
-                //removed still_replying===true check to allow getEventRooms() to update still_replying
-                if(this.is_searching === false){
+                if(this.is_searching === false && this.still_replying === false){
 
                     return true;
 
@@ -230,8 +235,8 @@
 
                     }else if(results.data['data'].length > 0 && results.data['data'][0]['event_room']['is_replying'] === true){
 
-                        this.is_search_button_shrinked = true;
-                        this.status_logo = 'fas fa-circle-exclamation';
+                        this.is_search_button_shrinked = false;
+                        this.details_logo = 'fas fa-circle-exclamation';
                         this.details_text = 'You have an unfinished reply';
                         this.still_replying = true;
                         this.still_replying_event_room = results.data['data'][0];
@@ -282,6 +287,7 @@
                     this.still_replying = false;
                     this.still_replying_event_room = null;
                     this.status_logo = 'fas fa-check';
+                    this.details_logo = '';
                     this.details_text = 'Deleted unfinished reply.\nSearching for new events...';
                     
                     this.handleEndLoadingAnime();
@@ -420,7 +426,7 @@
                     //hide
                     targets: el_targets,
                     opacity: '0',
-                    duration: 100,
+                    duration: 200,
                     complete: ()=>{
                         search_button_container.style.display = 'none';
                         details_container.style.display = 'none';
@@ -430,7 +436,7 @@
                 }).add({
                     //show
                     targets: spinner_container,
-                    duration: 100,
+                    duration: 200,
                     begin: ()=>{
                         spinner_container.style.display = 'flex';
                         this.spinner_anime.play();
@@ -456,7 +462,7 @@
                     //hide spinner
                     targets: spinner_container,
                     opacity: '0',
-                    duration: 100,
+                    duration: 200,
                     complete: ()=>{
 
                         //pause spinner
@@ -487,7 +493,7 @@
                         anime({
                             targets: el_targets,
                             opacity: '1',
-                            duration: 100,
+                            duration: 200,
                             easing: 'linear',
                             autoplay: true,
                             loop: false

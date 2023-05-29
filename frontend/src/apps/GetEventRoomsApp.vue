@@ -1,32 +1,35 @@
 <template>
     <div v-if="event_room !== null" class="flex flex-col">
 
+        <!--event-->
         <EventRoomCard
             :propEventRoom="event_room"
             :propShowTitle="false"
-            :propShowOnePlaybackPerEvent="event_room.responder.length === 0"
-            :propShowReplyMenu="true"
-            :propIsInContainer="false"
             @newSelectedEvent=handleNewSelectedEvent($event)
         />
 
+        <!--reply area-->
         <TransitionFadeSlow>
             <div
                 v-if="is_this_user_replying"
-                class="flex flex-col gap-2"
+                class="flex flex-col gap-2 py-6"
             >
                 <VUser
                     :propUsername="getUsername()"
                 />
                 <div class="border border-theme-light-gray rounded-lg px-2 py-4">
                     <div class="flex flex-row">
-                        <VSectionTitle
-                            propTitle="Replying"
-                            :propTitleDescription="reply_expiry_string"
-                            :propHasPaddingTop="false"
-                            class="w-full"
-                        />
-                        <div class="pt-1">
+
+                        <VSectionTitle class="w-full pt-0">
+                            <template #title>
+                                <span>Replying</span>
+                            </template>
+                            <template #titleDescription>
+                                <span>{{ reply_expiry_string }}</span>
+                            </template>
+                        </VSectionTitle>
+                        
+                        <div class="pt-0.5">
                             <VActionButtonDangerS
                                 class="w-fit flex items-center"
                                 @click.stop="stopReplying()"
