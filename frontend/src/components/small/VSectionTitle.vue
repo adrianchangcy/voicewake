@@ -1,36 +1,12 @@
 <template>
     <div
-        class="h-fit pb-7"
-        :class="propHasPaddingTop === true ? 'pt-7' : ''"
+        class="h-fit py-6"
     >
-        <div class="w-fit h-fit text-4xl font-light text-theme-black">
-            <span>{{propTitle}}</span>
+        <div class="h-fit text-4xl font-light text-theme-black">
+            <slot name="title"></slot>
         </div>
-        <div v-show="propTitleDescription !== ''" class="w-fit h-fit text-2xl font-light text-theme-black/80 pt-2">
-            <span>{{propTitleDescription}}</span>
+        <div class="h-fit text-2xl font-light text-theme-black/80 pt-2">
+            <slot name="titleDescription"></slot>
         </div>
     </div>
 </template>
-
-
-<script>
-    import { defineComponent } from 'vue';
-
-    export default defineComponent({
-
-        props: {
-            propTitle: {
-                type: String,
-                default: ''
-            },
-            propTitleDescription: {
-                type: String,
-                default: ''
-            },
-            propHasPaddingTop: {
-                type: Boolean,
-                default: true
-            },
-        }
-    });
-</script>

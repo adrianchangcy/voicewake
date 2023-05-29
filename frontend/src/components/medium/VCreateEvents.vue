@@ -1,114 +1,103 @@
 <template>
-
-    <div>
-
-        <VSectionTitle
-            :propTitle="templateStrings[0]"
-            :propTitleDescription="templateStrings[1]"
+    <div
+        spellcheck="false"
+        class="bg-theme-light flex flex-col text-theme-black"
+        :class="[
+            propIsOriginator ? 'gap-4' : 'gap-2',
+            ''
+        ]"
+    >
+        <VTextArea
+            :propIsRequired="true"
+            propElementId="event-name"
+            propLabel="Title"
+            propPlaceholder=""
+            :propMaxLength="40"
+            :propHasTextCounter="true"
+            :propHasStatusText="false"
+            @newValue="handleNewEventName($event)"
             v-if="propIsOriginator === true"
         />
 
+        <!--fields for open/close-->
+        <div class="grid grid-cols-8 gap-2">
+
+            <!--open/close VRecorderMenu-->
+            <div ref="recorder_field" class="col-span-6">
+                <VRecorderField
+                    propLabel="Recording"
+                    :propIsOpen="is_recorder_menu_open"
+                    :propBucketQuantity="bucket_quantity"
+                    :propHasRecording="final_blob !== null"
+                    :propFileVolumes="blob_volume_peaks"
+                    :propFileDuration="blob_duration"
+                    @isOpen="handleIsRecorderMenuOpen($event)"
+                />
+            </div>
+
+            <!--open/close VEventToneMenu-->
+            <div ref="event_tone_field" class="col-span-2">
+                <VEventToneField
+                    propLabel="Emoji"
+                    :propEventToneChoice="event_tone_choice"
+                    :propIsOpen="is_event_tone_menu_open"
+                    @isOpen="handleIsEventToneMenuOpen($event)"
+                />
+            </div>
+        </div>
+
+        <!--menus-->
+        <div class="w-full h-fit relative">
+
+            <!--arrows, aesthetics only-->
+            <div class="w-full h-0 grid grid-cols-8">
+                <!--arrow for recorder menu-->
+                <div v-show="is_recorder_menu_open" class="col-span-6 col-start-1 relative">
+                    <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"></div>
+                </div>
+                <!--arrow for event_tones menu-->
+                <div v-show="is_event_tone_menu_open" class="col-span-2 col-start-7 relative">
+                    <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"></div>
+                </div>
+            </div>
+
+            <!--recorder menu-->
+            <div>
+                <VRecorderMenu
+                    :propIsOpen="is_recorder_menu_open"
+                    :propBucketQuantity="bucket_quantity"
+                    :propMaxDuration="max_duration"
+                    @newRecording="handleNewRecording($event)"
+                    class="border-2 border-theme-black rounded-lg"
+                />
+            </div>
+
+            <!--event_tone menu-->
+            <div>
+                <VEventToneMenu
+                    :propIsOpen="is_event_tone_menu_open"
+                    @eventToneSelected="handleEventToneSelected($event)"
+                    class="border-2 border-theme-black rounded-lg"
+                />
+            </div>
+        </div>
+
+        <!--submit-->
         <div
-            spellcheck="false"
-            class="bg-theme-light flex flex-col text-theme-black"
             :class="[
-                propIsOriginator ? 'gap-4' : 'gap-2',
+                propIsOriginator === true ? 'pt-4' : '',
                 ''
             ]"
         >
-            <VTextArea
-                :propIsRequired="true"
-                propElementId="event-name"
-                propLabel="Title"
-                propPlaceholder=""
-                :propMaxLength="40"
-                :propHasTextCounter="true"
-                :propHasStatusText="false"
-                @newValue="handleNewEventName($event)"
-                v-if="propIsOriginator === true"
-            />
-
-            <!--fields for open/close-->
-            <div class="grid grid-cols-8 gap-2">
-
-                <!--open/close VRecorderMenu-->
-                <div ref="recorder_field" class="col-span-6">
-                    <VRecorderField
-                        propLabel="Recording"
-                        :propIsOpen="is_recorder_menu_open"
-                        :propBucketQuantity="bucket_quantity"
-                        :propHasRecording="final_blob !== null"
-                        :propFileVolumes="blob_volume_peaks"
-                        :propFileDuration="blob_duration"
-                        @isOpen="handleIsRecorderMenuOpen($event)"
-                    />
-                </div>
-
-                <!--open/close VEventToneMenu-->
-                <div ref="event_tone_field" class="col-span-2">
-                    <VEventToneField
-                        propLabel="Emoji"
-                        :propEventToneChoice="event_tone_choice"
-                        :propIsOpen="is_event_tone_menu_open"
-                        @isOpen="handleIsEventToneMenuOpen($event)"
-                    />
-                </div>
-            </div>
-
-            <!--menus-->
-            <div class="w-full h-fit relative">
-
-                <!--arrows, aesthetics only-->
-                <div class="w-full h-0 grid grid-cols-8">
-                    <!--arrow for recorder menu-->
-                    <div v-show="is_recorder_menu_open" class="col-span-6 col-start-1 relative">
-                        <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"></div>
-                    </div>
-                    <!--arrow for event_tones menu-->
-                    <div v-show="is_event_tone_menu_open" class="col-span-2 col-start-7 relative">
-                        <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"></div>
-                    </div>
-                </div>
-
-                <!--recorder menu-->
-                <div>
-                    <VRecorderMenu
-                        :propIsOpen="is_recorder_menu_open"
-                        :propBucketQuantity="bucket_quantity"
-                        :propMaxDuration="max_duration"
-                        @newRecording="handleNewRecording($event)"
-                        class="border-2 border-theme-black rounded-lg"
-                    />
-                </div>
-
-                <!--event_tone menu-->
-                <div>
-                    <VEventToneMenu
-                        :propIsOpen="is_event_tone_menu_open"
-                        @eventToneSelected="handleEventToneSelected($event)"
-                        class="border-2 border-theme-black rounded-lg"
-                    />
-                </div>
-            </div>
-
-            <!--submit-->
-            <div
-                :class="[
-                    propIsOriginator === true ? 'pt-4' : '',
-                    ''
-                ]"
+            <VActionButtonSpecialL
+                class="w-full"
+                :propIsEnabled="canSubmit"
+                @click.stop="submitForm()"
             >
-                <VActionButtonSpecialL
-                    class="w-full"
-                    :propIsEnabled="canSubmit"
-                    @click.stop="submitForm()"
-                >
-                    <span>{{ templateStrings[2] }}</span>
-                </VActionButtonSpecialL>
-            </div>
-
+                <span v-if="propIsOriginator === true">Start</span>
+                <span v-else>Reply</span>
+            </VActionButtonSpecialL>
         </div>
-
     </div>
 </template>
 
@@ -116,7 +105,6 @@
 <script setup lang="ts">
 
     import VActionButtonSpecialL from '/src/components/small/VActionButtonSpecialL.vue';
-    import VSectionTitle from '/src/components/small/VSectionTitle.vue';
     import VTextArea from '/src/components/small/VTextArea.vue';
     import VEventToneField from '/src/components/medium/VEventToneField.vue';
     import VEventToneMenu from '/src/components/medium/VEventToneMenu.vue';
@@ -178,23 +166,6 @@
             },
         },
         computed: {
-            templateStrings() : string[] {
-
-                if(this.propIsOriginator === true){
-
-                    return [
-                        'Start an Event',
-                        'Fill in the fields below',
-                        'Done'
-                    ];
-                }
-
-                return [
-                    '',
-                    '',
-                    'Done'
-                ];
-            },
             canSubmit() : boolean {
 
                 if(
