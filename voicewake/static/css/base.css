@@ -152,6 +152,12 @@ textarea {
 }
 
 
+.footer-colour {
+    fill: #008C52;  /*svg*/
+    background-color: #008C52;
+}
+
+
 
 @media(hover: hover){
 

@@ -6,14 +6,26 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
     {% endblock %}
-    <title>{% block title %}My Site{% endblock %}</title>
+
+    <title>
+        {% block title %}My Site{% endblock %}
+    </title>
 
     <!--user-->
     {{user.username | json_script:"data-username"}}
 
+
+    <!--critical assets-->
+    <!--if too slow, revert to placing at end of <body> to prioritise content itself-->
+    {% load static %}
+    <link href="{%static 'css/output.css' %}" rel="preload" as="style" type="text/css" onload="this.rel='stylesheet'"/>
+    <!--importing separate styles is slightly more performant than all.css, as per docs-->
+    <!--if you want to use fa-regular, import fontawesomefree/css/regular.css, etc.-->
+    <link href="{% static 'fontawesomefree/css/fontawesome.css' %}" rel="preload" as="style" type="text/css" onload="this.rel='stylesheet'">
+    <link href="{% static 'fontawesomefree/css/solid.css' %}" rel="preload" as="style" type="text/css" onload="this.rel='stylesheet'">
+    <link href="{% static 'fontawesomefree/css/regular.css' %}" rel="preload" as="style" type="text/css" onload="this.rel='stylesheet'">
 </head>
 
-{% load static %}
 
 {% block body %}
 
@@ -29,30 +41,26 @@
         </div>
 
         <!--pretty waves at footer, using lighter + darker combo for 3D effect-->
-        <div class="h-20 relative">
+        <div class="w-full h-fit relative">
             <!--lighter-->
-            <div class="absolute left-0 right-0 bottom-1 m-auto">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="#00A13C" fill-opacity="1" d="M0,160L18.5,133.3C36.9,107,74,53,111,37.3C147.7,21,185,43,222,53.3C258.5,64,295,64,332,90.7C369.2,117,406,171,443,176C480,181,517,139,554,128C590.8,117,628,139,665,128C701.5,117,738,75,775,53.3C812.3,32,849,32,886,64C923.1,96,960,160,997,176C1033.8,192,1071,160,1108,170.7C1144.6,181,1182,235,1218,224C1255.4,213,1292,139,1329,90.7C1366.2,43,1403,21,1422,10.7L1440,0L1440,320L1421.5,320C1403.1,320,1366,320,1329,320C1292.3,320,1255,320,1218,320C1181.5,320,1145,320,1108,320C1070.8,320,1034,320,997,320C960,320,923,320,886,320C849.2,320,812,320,775,320C738.5,320,702,320,665,320C627.7,320,591,320,554,320C516.9,320,480,320,443,320C406.2,320,369,320,332,320C295.4,320,258,320,222,320C184.6,320,148,320,111,320C73.8,320,37,320,18,320L0,320Z"></path></svg>
+            <div class="absolute left-0 right-0 bottom-0 m-auto">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="#00A13C" fill-opacity="0.8" d="M0,160L18.5,133.3C36.9,107,74,53,111,37.3C147.7,21,185,43,222,53.3C258.5,64,295,64,332,90.7C369.2,117,406,171,443,176C480,181,517,139,554,128C590.8,117,628,139,665,128C701.5,117,738,75,775,53.3C812.3,32,849,32,886,64C923.1,96,960,160,997,176C1033.8,192,1071,160,1108,170.7C1144.6,181,1182,235,1218,224C1255.4,213,1292,139,1329,90.7C1366.2,43,1403,21,1422,10.7L1440,0L1440,320L1421.5,320C1403.1,320,1366,320,1329,320C1292.3,320,1255,320,1218,320C1181.5,320,1145,320,1108,320C1070.8,320,1034,320,997,320C960,320,923,320,886,320C849.2,320,812,320,775,320C738.5,320,702,320,665,320C627.7,320,591,320,554,320C516.9,320,480,320,443,320C406.2,320,369,320,332,320C295.4,320,258,320,222,320C184.6,320,148,320,111,320C73.8,320,37,320,18,320L0,320Z"></path></svg>
             </div>
             <!--darker, main colour-->
-            <div class="absolute left-0 right-0 bottom-0 m-auto">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="#008C52" fill-opacity="1" d="M0,32L21.8,26.7C43.6,21,87,11,131,32C174.5,53,218,107,262,133.3C305.5,160,349,160,393,154.7C436.4,149,480,139,524,122.7C567.3,107,611,85,655,96C698.2,107,742,149,785,192C829.1,235,873,277,916,277.3C960,277,1004,235,1047,224C1090.9,213,1135,235,1178,234.7C1221.8,235,1265,213,1309,192C1352.7,171,1396,149,1418,138.7L1440,128L1440,320L1418.2,320C1396.4,320,1353,320,1309,320C1265.5,320,1222,320,1178,320C1134.5,320,1091,320,1047,320C1003.6,320,960,320,916,320C872.7,320,829,320,785,320C741.8,320,698,320,655,320C610.9,320,567,320,524,320C480,320,436,320,393,320C349.1,320,305,320,262,320C218.2,320,175,320,131,320C87.3,320,44,320,22,320L0,320Z"></path></svg>
+            <div class="absolute left-0 right-0 -bottom-1 m-auto">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path class="footer-colour" fill-opacity="1" d="M0,32L21.8,26.7C43.6,21,87,11,131,32C174.5,53,218,107,262,133.3C305.5,160,349,160,393,154.7C436.4,149,480,139,524,122.7C567.3,107,611,85,655,96C698.2,107,742,149,785,192C829.1,235,873,277,916,277.3C960,277,1004,235,1047,224C1090.9,213,1135,235,1178,234.7C1221.8,235,1265,213,1309,192C1352.7,171,1396,149,1418,138.7L1440,128L1440,320L1418.2,320C1396.4,320,1353,320,1309,320C1265.5,320,1222,320,1178,320C1134.5,320,1091,320,1047,320C1003.6,320,960,320,916,320C872.7,320,829,320,785,320C741.8,320,698,320,655,320C610.9,320,567,320,524,320C480,320,436,320,393,320C349.1,320,305,320,262,320C218.2,320,175,320,131,320C87.3,320,44,320,22,320L0,320Z"></path></svg>
             </div>
+            <!--to define parent size-->
+            <svg viewBox="0 0 1440 320"></svg>
         </div>
 
-        <!--own css-->
-        <link rel="stylesheet" href="{%static 'css/output.css' %}"/>
+        <!--footer-->
+        <div class="h-60 footer-colour">
+        </div>
 
         <!--Vue-->
         <script type="text/javascript" src="{% static 'src/vue/dist/js/chunk-vendors.js' %}"></script>
         <script type="text/javascript" src="{% static 'src/vue/dist/js/app.js' %}"></script>
-
-        <!--importing separate styles is slightly more performant than all.css, as per docs-->
-        <!--if you want to use fa-regular, import fontawesomefree/css/regular.css, etc.-->
-        <link href="{% static 'fontawesomefree/css/fontawesome.css' %}" rel="stylesheet" type="text/css">
-        <link href="{% static 'fontawesomefree/css/brands.css' %}" rel="stylesheet" type="text/css">
-        <link href="{% static 'fontawesomefree/css/solid.css' %}" rel="stylesheet" type="text/css">
-        <link href="{% static 'fontawesomefree/css/regular.css' %}" rel="stylesheet" type="text/css">
     </body>
 {% endblock %}
 </html>
