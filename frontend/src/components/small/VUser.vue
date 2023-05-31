@@ -1,8 +1,6 @@
 <template>
-    <div class="w-fit overflow-hidden text-ellipsis whitespace-nowrap text-theme-black shade-text-when-hover transition-colors duration-200 ease-in-out">
-        <a href="yolo">
-            <i class="fas fa-user text-lg"></i> <span class="text-sm">{{ propUsername }}</span>
-        </a>
+    <div class="w-fit overflow-hidden text-ellipsis whitespace-nowrap text-theme-black">
+        <i class="fas fa-user text-lg"></i> <span class="text-sm">{{ propUsername }}</span>
     </div>
 </template>
 

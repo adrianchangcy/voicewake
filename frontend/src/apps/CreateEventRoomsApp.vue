@@ -1,5 +1,5 @@
 <template>
-    <VSectionTitle>
+    <VTitleXL class="py-10">
         <template #title>
             <div class="flex flex-col">
                 <i class="fas fa-comment block text-xl w-full text-center"></i>
@@ -9,14 +9,14 @@
         <template #titleDescription>
             <span class="block w-full text-center">Say something nice</span>
         </template>
-    </VSectionTitle>
+    </VTitleXL>
     <VCreateEvents
         :propIsOriginator="true"
     />
 </template>
 
 <script setup lang="ts">
-    import VSectionTitle from '@/components/small/VSectionTitle.vue';
+    import VTitleXL from '@/components/small/VTitleXL.vue';
 </script>
 
 <script lang="ts">

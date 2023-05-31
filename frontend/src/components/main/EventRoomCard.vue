@@ -1,111 +1,113 @@
 <template>
-    <div
-        class="flex flex-col gap-6"
-    >
+    <div class="flex flex-col">
 
         <!--title and datetime-->
         <div
             v-if="propShowTitle === true"
-            class="h-fit"
+            class="h-fit py-8"
         >
-            <!--title-->
-            <p class="text-xl break-words">
-                {{ propEventRoom.event_room.event_room_name }}
-            </p>
-            <!--when created-->
-            <p class="text-base font-light">
-                {{ pretty_when_created }}
-            </p>
+            <VTitleL class="w-full">
+                <template #title>
+                    <span>{{ propEventRoom.event_room.event_room_name }}</span>
+                </template>
+                <template #titleDescription>
+                    <span>{{ pretty_when_created }}</span>
+                </template>
+            </VTitleL>
         </div>
 
-        <!--originator-->
-        <div
-            v-if="propEventRoom.originator !== null"
-            class="flex flex-col gap-2"
-        >
-            <VUser
-                :propUsername="propEventRoom.originator.user.username"
-            />
-            <div
-                v-if="hasMultipleEvents === false"
-                class="h-fit"
-            >
-                    <VPlayback
-                        :propAudioVolumePeaks="propEventRoom.originator.audio_volume_peaks"
-                        :propBucketQuantity="propEventRoom.originator.audio_volume_peaks.length"
-                        :propAudioURL="propEventRoom.originator.audio_file"
-                        :propEventTone="propEventRoom.originator.event_tone"
-                    />
-            </div>
-            <div v-else>
-                <VEventCard
-                    :propEvent="propEventRoom.originator"
-                    @isSelected="handleNewSelectedEvent($event)"
-                    :propIsSelected="checkIsSelected(propEventRoom.originator.id)"
-                />
-            </div>
-            <div class="w-full h-fit grid grid-cols-8">
-                <VLikeDislike
-                    :propEventId="propEventRoom.originator.id"
-                    :propLikeCount="propEventRoom.originator.like_count"
-                    :propDislikeCount="propEventRoom.originator.dislike_count"
-                    :propIsLiked="propEventRoom.originator.is_liked_by_user"
-                    class="col-span-6 lg:col-span-4"
-                />
-            </div>
-        </div>
+        <!--events-->
+        <div class="flex flex-col gap-6">
 
-        <!--responders-->
-        <div v-if="propEventRoom.responder.length === 1" class="flex flex-col gap-6">
+            <!--originator-->
             <div
-                v-for="event in propEventRoom.responder" :key="event.id"
+                v-if="propEventRoom.originator !== null"
                 class="flex flex-col gap-2"
             >
                 <VUser
-                    :propUsername="event.user.username"
+                    :propUsername="propEventRoom.originator.user.username"
                 />
-                <div class="w-full h-fit">
-                    <VPlayback
-                        :propAudioVolumePeaks="event.audio_volume_peaks"
-                        :propBucketQuantity="event.audio_volume_peaks.length"
-                        :propAudioURL="event.audio_file"
-                        :propEventTone="event.event_tone"
-                    />
+                <div
+                    v-if="hasMultipleEvents === false"
+                    class="h-fit"
+                >
+                        <VPlayback
+                            :propAudioVolumePeaks="propEventRoom.originator.audio_volume_peaks"
+                            :propBucketQuantity="propEventRoom.originator.audio_volume_peaks.length"
+                            :propAudioURL="propEventRoom.originator.audio_file"
+                            :propEventTone="propEventRoom.originator.event_tone"
+                        />
                 </div>
-                <div class="w-full h-fit grid grid-cols-8">
-                    <VLikeDislike
-                        :propEventId="event.id"
-                        :propLikeCount="event.like_count"
-                        :propDislikeCount="event.dislike_count"
-                        :propIsLiked="event.is_liked_by_user"
-                        class="col-span-6 lg:col-span-4"
-                    />
-                </div>
-            </div>
-        </div>
-        <div v-else-if="propEventRoom.responder.length > 1">
-            <div
-                v-for="event in propEventRoom.responder" :key="event.id"
-                class="flex flex-col gap-2"
-            >
-                <VUser
-                    :propUsername="event.user.username"
-                />
-                <div>
+                <div v-else>
                     <VEventCard
-                        :propEvent="event"
+                        :propEvent="propEventRoom.originator"
                         @isSelected="handleNewSelectedEvent($event)"
-                        :propIsSelected="checkIsSelected(event.id)"
+                        :propIsSelected="checkIsSelected(propEventRoom.originator.id)"
                     />
                 </div>
                 <div class="w-full h-fit grid grid-cols-8">
                     <VLikeDislike
-                        :propEventId="event.id"
-                        :propLikeCount="event.like_count"
-                        :propDislikeCount="event.dislike_count"
-                        :propIsLiked="event.is_liked_by_user"
+                        :propEventId="propEventRoom.originator.id"
+                        :propLikeCount="propEventRoom.originator.like_count"
+                        :propDislikeCount="propEventRoom.originator.dislike_count"
+                        :propIsLiked="propEventRoom.originator.is_liked_by_user"
                         class="col-span-6 lg:col-span-4"
                     />
+                </div>
+            </div>
+
+            <!--responders-->
+            <div v-if="propEventRoom.responder.length === 1" class="flex flex-col gap-6">
+                <div
+                    v-for="event in propEventRoom.responder" :key="event.id"
+                    class="flex flex-col gap-2"
+                >
+                    <VUser
+                        :propUsername="event.user.username"
+                    />
+                    <div class="w-full h-fit">
+                        <VPlayback
+                            :propAudioVolumePeaks="event.audio_volume_peaks"
+                            :propBucketQuantity="event.audio_volume_peaks.length"
+                            :propAudioURL="event.audio_file"
+                            :propEventTone="event.event_tone"
+                        />
+                    </div>
+                    <div class="w-full h-fit grid grid-cols-8">
+                        <VLikeDislike
+                            :propEventId="event.id"
+                            :propLikeCount="event.like_count"
+                            :propDislikeCount="event.dislike_count"
+                            :propIsLiked="event.is_liked_by_user"
+                            class="col-span-6 lg:col-span-4"
+                        />
+                    </div>
+                </div>
+            </div>
+            <div v-else-if="propEventRoom.responder.length > 1">
+                <div
+                    v-for="event in propEventRoom.responder" :key="event.id"
+                    class="flex flex-col gap-2"
+                >
+                    <VUser
+                        :propUsername="event.user.username"
+                    />
+                    <div>
+                        <VEventCard
+                            :propEvent="event"
+                            @isSelected="handleNewSelectedEvent($event)"
+                            :propIsSelected="checkIsSelected(event.id)"
+                        />
+                    </div>
+                    <div class="w-full h-fit grid grid-cols-8">
+                        <VLikeDislike
+                            :propEventId="event.id"
+                            :propLikeCount="event.like_count"
+                            :propDislikeCount="event.dislike_count"
+                            :propIsLiked="event.is_liked_by_user"
+                            class="col-span-6 lg:col-span-4"
+                        />
+                    </div>
                 </div>
             </div>
         </div>
@@ -113,6 +115,7 @@
 </template>
 
 <script setup lang="ts">
+    import VTitleL from '../small/VTitleL.vue';
     import VPlayback from '/src/components/medium/VPlayback.vue';
     import VEventCard from '/src/components/small/VEventCard.vue';
     import VLikeDislike from '/src/components/medium/VLikeDislike.vue';
