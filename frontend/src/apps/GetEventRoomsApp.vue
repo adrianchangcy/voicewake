@@ -19,15 +19,15 @@
                 />
                 <div class="border border-theme-light-gray rounded-lg px-2 py-4">
                     <div class="flex flex-row">
-
-                        <VSectionTitle class="w-full pt-0">
+                        
+                        <VTitleL class="w-full">
                             <template #title>
                                 <span>Replying</span>
                             </template>
                             <template #titleDescription>
                                 <span>{{ reply_expiry_string }}</span>
                             </template>
-                        </VSectionTitle>
+                        </VTitleL>
                         
                         <div class="pt-0.5">
                             <VActionButtonDangerS
@@ -68,7 +68,7 @@
     import EventRoomCard from '@/components/main/EventRoomCard.vue';
     import VActionButtonDangerS from '@/components/small/VActionButtonDangerS.vue';
     import VCreateEvents from '@/components/medium/VCreateEvents.vue';
-    import VSectionTitle from '@/components/small/VSectionTitle.vue';
+    import VTitleL from '@/components/small/VTitleL.vue';
     import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
     import VPlayback from '@/components/medium/VPlayback.vue';
     import VUser from '@/components/small/VUser.vue';

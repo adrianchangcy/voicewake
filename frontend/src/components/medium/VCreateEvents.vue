@@ -1,12 +1,9 @@
 <template>
     <div
         spellcheck="false"
-        class="bg-theme-light flex flex-col text-theme-black"
-        :class="[
-            propIsOriginator ? 'gap-4' : 'gap-2',
-            ''
-        ]"
+        class="bg-theme-light text-theme-black flex flex-col gap-4"
     >
+        <!--title-->
         <VTextArea
             :propIsRequired="true"
             propElementId="event-name"
@@ -45,59 +42,58 @@
                 />
             </div>
         </div>
+    </div>
 
-        <!--menus-->
-        <div class="w-full h-fit relative">
+    <!--menus-->
+    <!--we separate it out here to prevent two-sided gap, since this is not hidden, but we still add back one gap at top-->
+    <div
+        :class="hasExtraGap ? 'pt-4' : ''"
+        class="w-full h-fit relative"
+    >
 
-            <!--arrows, aesthetics only-->
-            <div class="w-full h-0 grid grid-cols-8">
-                <!--arrow for recorder menu-->
-                <div v-show="is_recorder_menu_open" class="col-span-6 col-start-1 relative">
-                    <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"></div>
-                </div>
-                <!--arrow for event_tones menu-->
-                <div v-show="is_event_tone_menu_open" class="col-span-2 col-start-7 relative">
-                    <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"></div>
-                </div>
+        <!--arrows, aesthetics only-->
+        <div class="w-full h-0 grid grid-cols-8">
+            <!--arrow for recorder menu-->
+            <div v-show="is_recorder_menu_open" class="col-span-6 col-start-1 relative">
+                <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"></div>
             </div>
-
-            <!--recorder menu-->
-            <div>
-                <VRecorderMenu
-                    :propIsOpen="is_recorder_menu_open"
-                    :propBucketQuantity="bucket_quantity"
-                    :propMaxDuration="max_duration"
-                    @newRecording="handleNewRecording($event)"
-                    class="border-2 border-theme-black rounded-lg"
-                />
-            </div>
-
-            <!--event_tone menu-->
-            <div>
-                <VEventToneMenu
-                    :propIsOpen="is_event_tone_menu_open"
-                    @eventToneSelected="handleEventToneSelected($event)"
-                    class="border-2 border-theme-black rounded-lg"
-                />
+            <!--arrow for event_tones menu-->
+            <div v-show="is_event_tone_menu_open" class="col-span-2 col-start-7 relative">
+                <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"></div>
             </div>
         </div>
 
-        <!--submit-->
-        <div
-            :class="[
-                propIsOriginator === true ? 'pt-4' : '',
-                ''
-            ]"
+        <!--recorder menu-->
+        <div>
+            <VRecorderMenu
+                :propIsOpen="is_recorder_menu_open"
+                :propBucketQuantity="bucket_quantity"
+                :propMaxDuration="max_duration"
+                @newRecording="handleNewRecording($event)"
+                class="border-2 border-theme-black rounded-lg"
+            />
+        </div>
+
+        <!--event_tone menu-->
+        <div>
+            <VEventToneMenu
+                :propIsOpen="is_event_tone_menu_open"
+                @eventToneSelected="handleEventToneSelected($event)"
+                class="border-2 border-theme-black rounded-lg"
+            />
+        </div>
+    </div>
+
+    <!--submit-->
+    <div class="pt-8">
+        <VActionButtonSpecialL
+            class="w-full"
+            :propIsEnabled="canSubmit"
+            @click.stop="submitForm()"
         >
-            <VActionButtonSpecialL
-                class="w-full"
-                :propIsEnabled="canSubmit"
-                @click.stop="submitForm()"
-            >
-                <span v-if="propIsOriginator === true">Start</span>
-                <span v-else>Reply</span>
-            </VActionButtonSpecialL>
-        </div>
+            <span v-if="propIsOriginator === true">Start</span>
+            <span v-else>Reply</span>
+        </VActionButtonSpecialL>
     </div>
 </template>
 
@@ -166,6 +162,10 @@
             },
         },
         computed: {
+            hasExtraGap() : boolean {
+
+                return this.is_recorder_menu_open === true || this.is_event_tone_menu_open === true;
+            },
             canSubmit() : boolean {
 
                 if(

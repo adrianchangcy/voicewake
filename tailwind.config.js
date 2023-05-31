@@ -51,8 +51,6 @@ module.exports = {
                 'theme-mud': '#82846D',
 
                 'theme-cream-pink': '#F9F0F8',
-
-                'theme-yellow': '#facc15', //yellow-400, not used as lead because it's too glaring
             }
         },
     },

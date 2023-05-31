@@ -64,7 +64,19 @@ INSTALLED_APPS = [
 # CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
 # CRISPY_TEMPLATE_PACK = 'bootstrap5'
 
-MIDDLEWARE = [
+MIDDLEWARE = []
+
+#development
+if DEBUG is True:
+
+    REQUEST_TIME_DELAY = 2  #seconds
+
+    MIDDLEWARE += [
+        'voicewake.middleware.drf_api_delay_middleware.TimeDelayMiddleware'
+    ]
+
+#standard
+MIDDLEWARE += [
     'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

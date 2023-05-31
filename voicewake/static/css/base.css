@@ -72,10 +72,13 @@
     input, h-10
 
     GAPS
-    page items, gap-12
-    form items, gap-8
-    related items, gap-6
-    closely related items, gap-4
+    big page title, py-10
+    page title, py-8
+    page main button, pt-8
+    related main items, gap-6
+    related items, gap-2
+    form items, gap-4
+    form label, py-1
 
     GRAY
     least attention-seeking, e.g. border, light-gray
@@ -113,6 +116,41 @@ textarea {
     font-family: "Segoe UI Emoji", "Segoe UI Symbol", "Segoe UI", "Apple Color Emoji", "Twemoji Mozilla",
     "Noto Color Emoji", "EmojiOne Color", "Android Emoji"
 }
+
+/*skeleton*/
+.skeleton {
+    position: relative;
+    overflow: hidden;
+    opacity: 1;
+    background-color: #e7e5e4;
+    border-radius: 0.5rem;  /*rounded-lg*/
+}
+@keyframes shimmer {
+    100% {
+        transform: translateX(100%);
+    }
+}
+.skeleton::after {
+    position: absolute;
+    width: 200%;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+        90deg,
+        /*for opacity, do it like #facc15xx, (00...99...FF lowest to highest)*/
+        /*last colour must not have coma symbol, else it breaks*/
+        #e7e5e400,
+        #d6d3d1,
+        #e7e5e400
+    );
+
+    animation: shimmer 1s infinite linear;
+    content: '';
+}
+
 
 
 @media(hover: hover){
