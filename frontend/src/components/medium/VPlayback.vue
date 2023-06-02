@@ -22,17 +22,17 @@
                 <div class="relative w-full h-full">
                     <div
                         ref="recording_visualiser_circle_0"
-                        class="absolute w-full h-full left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-yellow/60"
+                        class="absolute w-full h-full left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-lead/60"
                         style="transform: scaleX(0) scaleY(0);"
                     ></div>
                     <div
                         ref="recording_visualiser_circle_1"
-                        class="absolute w-full h-full left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-yellow/40"
+                        class="absolute w-full h-full left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-lead/40"
                         style="transform: scaleX(0) scaleY(0);"
                     ></div>
                     <div
                         ref="recording_visualiser_circle_2"
-                        class="absolute w-full h-full left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-yellow/20"
+                        class="absolute w-full h-full left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-lead/20"
                         style="transform: scaleX(0) scaleY(0);"
                     ></div>
                 </div>
