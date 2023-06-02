@@ -3,7 +3,7 @@ module.exports = {
     //mode: 'jit', //so far not needed
     content: [
         "./voicewake/templates/**/*.html",
-        "./voicewake/static/**/*.js",
+        "./voicewake/static/**/*.{js,svg}",
         "./frontend/src/**/*.{vue,js,ts,jsx,tsx}",
         //attempt to fix Tailwind requiring hard refresh for new class uses
         //https://stackoverflow.com/a/75099477
@@ -24,6 +24,11 @@ module.exports = {
                 // 'theme-lead': '#FFD645',    //this yellow isn't as nice as yellow-300
                 'theme-lead': '#facc15', //yellow-400, for highlight
                 'theme-soft-lead': '#f5f5dc',   //for background yellow
+
+                'theme-green-1': '#86FFAF50',
+                'theme-green-2': '#86FFAF',
+                'theme-green-3': '#00B85B',
+                'theme-green-4': '#008C52',
 
                 'theme-danger': '#fa3515',
                 'theme-soft-danger': '#ff4934',

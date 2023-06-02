@@ -43,22 +43,33 @@
         <!--pretty waves at footer, using lighter + darker combo for 3D effect-->
         <!--prefer implementing this way, because inline svg would otherwise unpleasantly appear while other stuff is loading-->
         <div class="w-full h-fit relative">
-            <!--lighter-->
+            <!--mountain 1-->
+            <div class="absolute left-0 right-0 bottom-4 m-auto">
+                <object data="{% static 'svg/footer_mountain_1.svg' %}" type="image/svg+xml"></object>
+            </div>
+            <!--fill gap from mountain 1's bottom-4-->
+            <div class="w-full h-4 absolute left-0 right-0 bottom-0 m-auto bg-green-300">
+            </div>
+            <!--mountain 2-->
             <div class="absolute left-0 right-0 bottom-0 m-auto">
-                <object data="{% static 'svg/footer_wave_lighter.svg' %}" type="image/svg+xml"></object>
+                <object data="{% static 'svg/footer_mountain_2.svg' %}" type="image/svg+xml"></object>
             </div>
-            <!--darker, main colour-->
-            <div class="absolute left-0 right-0 -bottom-1 m-auto">
-                <object data="{% static 'svg/footer_wave_darker.svg' %}" type="image/svg+xml"></object>
+            <!--mountain 3-->
+            <div class="absolute left-0 right-0 bottom-0 m-auto">
+                <object data="{% static 'svg/footer_mountain_3.svg' %}" type="image/svg+xml"></object>
             </div>
-            <!--to define parent size-->
+
+            <!--to define parent size with one mountain (all the same size)-->
             <div class="w-full h-fit opacity-0">
-                <object data="{% static 'svg/footer_wave_lighter.svg' %}" type="image/svg+xml"></object>
+                <object data="{% static 'svg/footer_mountain_1.svg' %}" type="image/svg+xml"></object>
+            </div>
+            <!--any gap used-->
+            <div class="w-full h-4 opacity-0">
             </div>
         </div>
 
         <!--footer-->
-        <div class="h-60 footer-colour">
+        <div class="h-60 bg-gradient-to-b from-green-800 to-theme-black">
         </div>
 
         <!--Vue-->
