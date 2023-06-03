@@ -2,8 +2,7 @@
     <button
         :class="[
             (propIsEnabled ? 'text-theme-black hover:shadow-md hover:shadow-theme-lead/75 hover:bg-theme-soft-lead hover:border-theme-light-trim/40' : 'text-theme-black/10 shadow-md cursor-default'),
-            (propIsSmaller ? 'h-20' : 'h-24'),
-            'text-2xl      rounded-lg border-t-2 shadow-lg    bg-theme-soft-lead/80 border-theme-light-trim shadow-theme-lead/75   transition duration-150 ease-in-out'
+            'h-24 text-2xl      rounded-lg border-t-2 shadow-lg    bg-theme-soft-lead/80 border-theme-light-trim shadow-theme-lead/75   transition'
         ]"
         type="button"
     >
@@ -32,10 +31,6 @@
             propIsEnabled: {
                 type: Boolean,
                 default: true
-            },
-            propIsSmaller: {
-                type: Boolean,
-                default: false
             },
         },
     });

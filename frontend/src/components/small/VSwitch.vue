@@ -2,7 +2,7 @@
     <div class="flex flex-row pr-4 items-center relative">
         <slot></slot>
         <button
-            class="absolute w-fit h-10 right-4 top-0 bottom-0 m-auto cursor-pointer hover:scale-105 transition-transform duration-150 ease-in-out"
+            class="absolute w-fit h-10 right-4 top-0 bottom-0 m-auto cursor-pointer hover:scale-105 transition-transform"
             type="button"
             @click.stop="changeToggle()"
         >

@@ -1,64 +1,76 @@
 <template>
-    <div v-if="event_room !== null" class="flex flex-col">
+    <div v-if="!is_deleted" class="flex flex-col">
 
-        <!--event-->
-        <EventRoomCard
-            :propEventRoom="event_room"
-            :propShowTitle="false"
-            @newSelectedEvent=handleNewSelectedEvent($event)
-        />
+        <div v-if="is_searching" class="flex flex-col gap-6">
 
-        <!--reply area-->
-        <TransitionFadeSlow>
-            <div
-                v-if="is_this_user_replying"
-                class="flex flex-col gap-2 py-6"
-            >
-                <VUser
-                    :propUsername="getUsername()"
-                />
-                <div class="border border-theme-light-gray rounded-lg px-2 py-4">
-                    <div class="flex flex-row">
-                        
-                        <VTitleL class="w-full">
-                            <template #title>
-                                <span>Replying</span>
-                            </template>
-                            <template #titleDescription>
-                                <span>{{ reply_expiry_string }}</span>
-                            </template>
-                        </VTitleL>
-                        
-                        <div class="pt-0.5">
-                            <VActionButtonDangerS
-                                class="w-fit flex items-center"
-                                @click.stop="stopReplying()"
-                            >
-                                <span class="px-2 text-base font-medium mx-auto">Cancel</span>
-                            </VActionButtonDangerS>
-                        </div>
-                    </div>
-
-                    <VCreateEvents
-                        :propIsOriginator="false"
-                        :propEventRoomId="event_room.event_room.id"
-                    />
-                </div>
+            <!--events-->
+            <div v-for="x in event_count" :key="x">
+                <VEventCardSkeleton/>
             </div>
-        </TransitionFadeSlow>
+        </div>
 
-        <div v-if="selected_event !== null">
-            <Teleport :to="playback_teleport_id">
-                <VPlayback
-                    :propIsOpen="true"
-                    :propAudioVolumePeaks="selected_event.audio_volume_peaks"
-                    :propAudioURL="selected_event.audio_file"
-                    :propBucketQuantity="selected_event.audio_volume_peaks.length"
-                    :propEventTone="selected_event.event_tone"
-                    :propHasHighlight="true"
-                    :propAutoPlayOnSourceChange="true"
-                />
-            </Teleport>
+        <div v-else-if="event_room !== null">
+
+            <!--events-->
+            <EventRoomCard
+                :propEventRoom="event_room"
+                :propShowTitle="false"
+                @newSelectedEvent=handleNewSelectedEvent($event)
+            />
+
+            <!--reply area-->
+            <TransitionFadeSlow>
+                <div
+                    v-if="is_this_user_replying"
+                    id="is-replying-area"
+                    class="flex flex-col gap-2 pt-6"
+                >
+                    <VUser
+                        :propUsername="getUsername()"
+                    />
+                    <div class="border border-theme-light-gray rounded-lg px-2 py-6">
+                        <div class="grid grid-cols-4 gap-2 pb-6">
+
+                            <VTitleSection class="col-span-3">
+                                <template #title>
+                                    <span>Replying</span>
+                                </template>
+                                <template #titleDescription>
+                                    <span>{{ reply_expiry_string }}</span>
+                                </template>
+                            </VTitleSection>
+
+                            <div class="col-span-1">
+                                <VActionButtonDangerS
+                                    class="w-full flex items-center"
+                                    @click.stop="stopReplying()"
+                                >
+                                    <span class="px-2 text-base font-medium mx-auto">Delete</span>
+                                </VActionButtonDangerS>
+                            </div>
+                        </div>
+
+                        <VCreateEvents
+                            :propIsOriginator="false"
+                            :propEventRoomId="event_room.event_room.id"
+                        />
+                    </div>
+                </div>
+            </TransitionFadeSlow>
+
+            <div v-if="selected_event !== null">
+                <Teleport :to="playback_teleport_id">
+                    <VPlayback
+                        :propIsOpen="true"
+                        :propAudioVolumePeaks="selected_event.audio_volume_peaks"
+                        :propAudioURL="selected_event.audio_file"
+                        :propBucketQuantity="selected_event.audio_volume_peaks.length"
+                        :propEventTone="selected_event.event_tone"
+                        :propHasHighlight="true"
+                        :propAutoPlayOnSourceChange="true"
+                    />
+                </Teleport>
+            </div>
         </div>
     </div>
 </template>
@@ -68,10 +80,11 @@
     import EventRoomCard from '@/components/main/EventRoomCard.vue';
     import VActionButtonDangerS from '@/components/small/VActionButtonDangerS.vue';
     import VCreateEvents from '@/components/medium/VCreateEvents.vue';
-    import VTitleL from '@/components/small/VTitleL.vue';
+    import VTitleSection from '@/components/small/VTitleSection.vue';
     import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
     import VPlayback from '@/components/medium/VPlayback.vue';
     import VUser from '@/components/small/VUser.vue';
+    import VEventCardSkeleton from '@/components/skeleton/VEventCardSkeleton.vue';
 </script>
 
 
@@ -87,11 +100,15 @@
         data() {
             return {
                 event_room_id: null as number|null,
+                event_count: 0, //from DOM
                 is_this_user_replying: false,
+                is_deleted: false,
+
                 event_room: null as EventRoomTypes|null,
+                is_searching: false,
+                
                 selected_event: null as EventTypes|null,
                 playback_teleport_id: '',
-
                 reply_expiry_interval: null as number|null,
                 reply_expiry_string: '',
 
@@ -129,6 +146,8 @@
                     return;
                 }
 
+                this.is_searching = true;
+
                 //prepare events, then separate
                 await axios.get('http://127.0.0.1:8000/api/events/get/event-room/' + this.event_room_id.toString())
                 .then((results:any) => {
@@ -137,13 +156,39 @@
 
                         //API always returns list, even if there is only one event_room
                         this.event_room = results.data['data'][0];
+                    }
+
+                    this.is_searching = false;
+                })
+                .then(() => {
+
+                    //handle reply-related code
+                    //scroll must be here to find the corresponding rendered DOM
+                    if(this.event_room !== null && this.is_this_user_replying === true){
 
                         this.startReplyExpiryInterval();
+                        this.scrollToReplyArea();
                     }
                 })
                 .catch((error:any) => {
 
                     console.log(error.response.data['message']);
+                    this.is_searching = false;
+                });
+            },
+            scrollToReplyArea() : void {
+
+                const target = document.getElementById('is-replying-area');
+                const nav_bar = document.getElementById('nav-bar-app');
+
+                if(target === null || nav_bar === null){
+
+                    return;
+                }
+
+                window.scrollTo({
+                    top: Math.round(target.offsetTop - (nav_bar.offsetHeight)),
+                    left: target.offsetLeft,
                 });
             },
             handleNewSelectedEvent(event:EventTypes|null) : void {
@@ -242,9 +287,14 @@
             //get data from SSR template
             this.event_room_id = parseInt(container.getAttribute('data-event-room-id') as string);
             this.is_this_user_replying = JSON.parse(container.getAttribute('data-is-this-user-replying') as string);
+            this.is_deleted = JSON.parse(container.getAttribute('data-is-deleted') as string);
+            this.event_count = JSON.parse(container.getAttribute('data-event-count') as string);
 
-            //get everything
-            this.getEventRoom();
+            //if not deleted, get everything
+            if(this.is_deleted === false){
+
+                this.getEventRoom();
+            }
 
             //change '1 Jan 2023' to '1 century ago'
             //we are passing 'YYYY-MM-DD HH:mm:ss' from template

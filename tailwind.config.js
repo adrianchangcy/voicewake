@@ -25,10 +25,14 @@ module.exports = {
                 'theme-lead': '#facc15', //yellow-400, for highlight
                 'theme-soft-lead': '#f5f5dc',   //for background yellow
 
-                'theme-green-1': '#86FFAF50',
-                'theme-green-2': '#86FFAF',
-                'theme-green-3': '#00B85B',
-                'theme-green-4': '#008C52',
+                'theme-green-1': '#90a955',
+                'theme-green-2': '#4f772d',
+                'theme-green-3': '#31572c',
+                
+                //nice, but idk if less attention is what we want
+                // 'theme-green-1': '#b7e4c7',
+                // 'theme-green-2': '#95d5b2',
+                // 'theme-green-3': '#52b788',
 
                 'theme-danger': '#fa3515',
                 'theme-soft-danger': '#ff4934',

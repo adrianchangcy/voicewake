@@ -21,7 +21,10 @@
             };
         },
         props: {
-            propElement: String,
+            propElement: {
+                type: String,
+                required: true
+            },
         }
     });
 </script>

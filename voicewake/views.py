@@ -342,12 +342,14 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 WHERE locked_for_user_id=%s
                 AND is_replying=%s
             )
+            AND generic_statuses.generic_status_name = %s
             GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
             ''',
             params=(
                 self.request.user.id,
                 self.request.user.id,
-                True
+                True,
+                'ok'
             )
         )
 
@@ -411,6 +413,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 SELECT events2.event_room_id FROM events AS events2
                 WHERE user_id=%s
             )
+            AND generic_statuses.generic_status_name = %s
             GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
             LIMIT %s
             ''',
@@ -420,6 +423,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 self.request.user.id,
                 self.request.user.id,
                 self.request.user.id,
+                'ok',
                 INCOMPLETE_EVENT_ROOMS_PER_ROLL,
             )
         )
@@ -475,6 +479,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 AND event_rooms.when_created >= %s
                 LIMIT %s
             )
+            AND generic_statuses.generic_status_name = %s
             GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
             ORDER BY like_count DESC
             ''',
@@ -482,7 +487,8 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 self.request.user.id,
                 'completed',
                 checkpoint_datetime,
-                SPECIAL_EVENT_ROOMS_QUANTITY
+                SPECIAL_EVENT_ROOMS_QUANTITY,
+                'ok'
             )
         )
 
@@ -527,11 +533,13 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             LEFT JOIN event_likes_dislikes ON  events.id = event_likes_dislikes.event_id
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
             WHERE events.event_room_id = %s
+            AND generic_statuses.generic_status_name = %s
             GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
             ''',
             params=(
                 self.request.user.id,
-                self.kwargs['event_room_id']
+                self.kwargs['event_room_id'],
+                'ok'
             )
         )
 
@@ -1315,18 +1323,29 @@ class GetEventRooms(TemplateView):
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
+        
+        #count how many events exist for frontend skeleton
+        event_count = Events.objects.filter(
+            event_room=event_room,
+            generic_status__generic_status_name='ok'
+        ).count()
 
         #check if this user is already supposed to reply
         is_this_user_replying = is_user_logged_in(request) and\
             event_room.locked_for_user is not None and\
             request.user.id == event_room.locked_for_user.id
+        
+        #is event_room deleted
+        is_deleted = event_room.generic_status.generic_status_name == 'deleted'
 
         return render(
             request,
             template_name=self.template_name,
             context={
             'event_room': event_room,
-            'is_deleted': event_room.generic_status.generic_status_name == 'deleted',
+            'is_deleted': is_deleted,
+            'is_deleted_json': json.dumps(is_deleted),
+            'event_count': json.dumps(event_count),
             'is_this_user_replying': json.dumps(is_this_user_replying),
             }
         )

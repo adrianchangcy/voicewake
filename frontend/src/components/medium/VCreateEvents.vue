@@ -85,7 +85,7 @@
     </div>
 
     <!--submit-->
-    <div class="pt-8">
+    <div class="mt-8">
         <VActionButtonSpecialL
             class="w-full"
             :propIsEnabled="canSubmit"
