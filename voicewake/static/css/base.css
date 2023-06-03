@@ -47,7 +47,14 @@
     everything else, nothing, i.e. z-0 by default
 
     FONT SIZES
-    page section title, text-4xl
+    big page title, text-4xl font-light
+    big page title context, text-2xl font-light
+    main page title, text-2xl
+    main page title context, text-base font-light
+    main page title when many pages, text-xl
+    main page title when many pages, text-base font-light
+    section title, text-2xl
+    section title context, text-base
     label for input, be noticeable but smaller than main input, so text-lg font-medium
     input, text-xl
     main text, text-xl
@@ -73,9 +80,10 @@
 
     GAPS
     big page title, py-10
-    page title, py-8
-    page main button, pt-8
+    page title, pb-8
+    page title, when many, pb-6
     related main items, gap-6
+    page main button, mt-8
     related items, gap-2
     form items, gap-4
     form label, py-1
@@ -103,6 +111,10 @@
     -style highlight colour
     -style focus
 */
+
+button, a {
+    -webkit-tap-highlight-color: transparent; /* for removing the highlight */
+}
 
 textarea {
     resize: none;

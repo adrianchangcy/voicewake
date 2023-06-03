@@ -12,21 +12,23 @@
     -->
     <div
         data-event-room-id="{{event_room.id}}"
+        data-is-deleted="{{is_deleted_json}}"
         data-when-created="{{event_room.when_created|date:"Y-m-d H:i:s"}}"
+        data-event-count="{{event_count}}"
         data-is-this-user-replying="{{is_this_user_replying}}"
         class="text-theme-black"
         id="get-event-room"
     >
 
         <!--same as VTitleL-->
-        <div class="h-fit py-8">
+        <div class="h-fit py-8 text-theme-black">
             {% if is_deleted %}
                 <p class="text-2xl font-light italic">
-                    deleted
+                    This post has been deleted
                 </p>
             {% else %}
                 <!--title-->
-                <p class="text-xl break-words">
+                <p class="text-2xl font-light break-words">
                     {{event_room.event_room_name}}
                 </p>
                 <!--last updated-->

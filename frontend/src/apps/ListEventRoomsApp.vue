@@ -2,7 +2,8 @@
     <div>
         <!--big title-->
         <VTitleXL
-            :class="mustShrinkTitle ? '' : 'py-10'"
+            :class="mustShrinkTitle ? '-translate-y-10 scale-75' : 'translate-y-0'"
+            class="py-10 transition-transform"
         >
             <template #title>
                 <div class="flex flex-col">
@@ -12,104 +13,112 @@
             </template>
         </VTitleXL>
 
-        <!--content-->
+        <!--search button and potential dialog after hiding it-->
         <div>
+
+            <!--search-->
+            <!--don't show if user has is_replying choice-->
+            <div
+                v-show="!stillReplying"
+                ref="search_button_container"
+                :class="[
+                    mustShrinkTitle ? '-translate-y-28' : 'translate-y-0',
+                    'transition-transform'
+                ]"
+            >
+                <VActionButtonSpecialXL
+                    :propIsEnabled="canSearch"
+                    :propIsSmaller="mustShrinkTitle"
+                    @click.stop="getEventRooms()"
+                    class="mx-auto"
+                >
+                    {{ search_button_text }}
+                </VActionButtonSpecialXL>
+            </div>
+
+            <!--is_replying dialog-->
+            <VDialogPlain
+                v-if="stillReplying"
+            >
+                <template #title>
+                    <i class="fas fa-file-audio block"></i>
+                    <span class="block">Unfinished reply found</span>
+                </template>
+                <template #content>
+                    <span class="block">Please complete or delete it before searching for new reply choices.</span>
+                    <span class="block pt-2">{{ stillReplyingExpiryString }}</span>
+                    <div
+                        class="grid grid-rows-1 grid-cols-4 mt-2 gap-2"
+                    >
+                        <VActionSpecialS
+                            propElement="a"
+                            :href="redirect_url"
+                            class="col-span-2 flex items-center"
+                        >
+                            <span class="text-base font-medium mx-auto">Open</span>
+                        </VActionSpecialS>
+                        <VActionButtonS
+                            @click.stop="deletePreviousReply()"
+                            :propIsEnabled="!is_loading"
+                            class="col-span-2 flex items-center"
+                        >
+                            <span class="text-base font-medium mx-auto">Delete</span>
+                        </VActionButtonS>
+                    </div>
+                </template>
+            </VDialogPlain>
+        </div>
+
+        <!--content-->
+        <div
+            :class="mustShrinkTitle ? '-translate-y-32' : 'translate-y-0'"
+            class="transition-transform"
+        >
+
+            <!--searching-->
             <EventRoomCardSkeleton
                 v-show="is_searching"
-                :prop-event-quantity="2"
+                :prop-event-quantity="1"
                 :prop-can-reply="true"
             />
-        </div>
 
-        <!--search-->
-        <div
-            ref="search_button_container"
-        >
-            <VActionButtonSpecialXL
-                :propIsEnabled="canSearch"
-                :propIsSmaller="is_search_button_shrinked"
-                @click.stop="getEventRooms()"
-                class="mx-auto"
-            >
-                {{ search_button_text }}
-            </VActionButtonSpecialXL>
-        </div>
-
-
-
-
-
-        <!--details-->
-        <div
-            ref="details_container"
-            class="w-full text-theme-black hidden flex-col place-content-center"
-            style="opacity: 0;"
-        >
-            <!--follows search_spinner_container to place logo at spinner precisely-->
-            <div
-                class="m-auto relative"
-                :class="is_search_button_shrinked ? 'w-24 h-24' : 'w-36 h-36 sm:w-44 sm:h-44'"
-            >
-                <i
-                    ref="details_logo"
-                    class="w-fit h-fit text-3xl absolute left-0 right-0 top-0 bottom-0 m-auto"
-                    :class="details_logo"
-                ></i>
-            </div>
-
-            <span class="block w-fit h-fit text-lg text-center mx-auto whitespace-pre-line">
-                {{ details_text }} <span v-show="expiry_string !== ''"><br>with {{ expiry_string }}.</span>
-            </span>
-
-            <div
-                ref="still_replying_container"
-                class="grid-rows-1 grid-cols-4 pt-2 gap-2 hidden"
-                style="opacity: 0;"
-            >
-                <a :href="redirect_url" class="row-start-1 col-span-2">
-                    <VActionButtonSpecialS
-                        class="w-full flex items-center"
-                    >
-                        <span class="text-base font-medium mx-auto">Open</span>
-                    </VActionButtonSpecialS>
-                </a>
-                <VActionButtonS
-                    @click.stop="deletePreviousReply()"
-                    class="row-start-1 col-span-2 flex items-center"
-                >
-                    <span class="text-base font-medium mx-auto">Delete</span>
-                </VActionButtonS>
-            </div>
-        </div>
-
-
-
-        <!--event_rooms-->
-        <div class="flex flex-col">
-            <TransitionGroupFadeSlow>
-                <div v-for="event_room in event_rooms" :key="event_room.event_room.id">
-                    <div class="flex flex-col">
-                        <EventRoomCard
-                            :propEventRoom="event_room"
-                            :propShowTitle="true"
-                        />
-                        <VActionButtonSpecialL
-                            :propIsSmaller="false"
-                            @click.stop="confirmReplyChoice(event_room)"
-                            class="mt-6"
-                        >
-                            Reply
-                        </VActionButtonSpecialL>
-                        <span
-                            v-show="expiry_string !== ''"
-                            class="w-full h-fit py-2 text-base text-center text-theme-black"
-                        >
-                            {{ expiry_string }} to decide
-                        </span>
+            <!--can show reply choices-->
+            <div v-show="!is_searching && hasReplyChoices && !stillReplying">
+                <div class="flex flex-col">
+                    <div v-for="event_room in event_rooms" :key="event_room.event_room.id">
+                        <div class="flex flex-col">
+                            <EventRoomCard
+                                :propEventRoom="event_room"
+                                :propShowTitle="true"
+                            />
+                            <VActionButtonSpecialL
+                                @click.stop="confirmReplyChoice(event_room)"
+                                class="mt-8"
+                            >
+                                Reply
+                            </VActionButtonSpecialL>
+                            <span class="w-full h-fit py-2 text-base text-center text-theme-black">
+                                {{ replyChoiceExpiryString }}
+                            </span>
+                        </div>
                     </div>
                 </div>
-            </TransitionGroupFadeSlow>
+            </div>
         </div>
+
+        <!--for dialogs that don't involve hiding 'search' button-->
+        <VDialogPlain
+            v-show="hasDetailsForDialog"
+            class="mt-10"
+        >
+            <template #title>
+                <i class="block" :class="details_logo"></i>
+                <span class="block">{{ details_title }}</span>
+            </template>
+            <template #content>
+                <span>{{ details_content }}</span>
+            </template>
+        </VDialogPlain>
     </div>
 </template>
 
@@ -117,12 +126,12 @@
 <script setup lang="ts">
     import VTitleXL from '/src/components/small/VTitleXL.vue';
     import VActionButtonSpecialXL from '/src/components/small/VActionButtonSpecialXL.vue';
-    import VActionButtonSpecialS from '/src/components/small/VActionButtonSpecialS.vue';
+    import VActionSpecialS from '/src/components/small/VActionSpecialS.vue';
     import VActionButtonS from '/src/components/small/VActionButtonS.vue';
     import VActionButtonSpecialL from '@/components/small/VActionButtonSpecialL.vue';
     import EventRoomCard from '/src/components/main/EventRoomCard.vue';
-    import TransitionGroupFadeSlow from '@/transitions/TransitionGroupFadeSlow.vue';
     import EventRoomCardSkeleton from '@/components/skeleton/EventRoomCardSkeleton.vue';
+    import VDialogPlain from '@/components/small/VDialogPlain.vue';
 </script>
 
 <script lang="ts">
@@ -140,13 +149,14 @@
                 still_replying_event_room: null as EventRoomTypes | null,
                 redirect_url: "",
                 details_logo: "",
-                details_text: "",
+                details_title: "",
+                details_content: "",
                 main_anime: null as InstanceType<typeof anime> | null,
 
                 expiry_interval: null as number | null,
                 expiry_string: "",
-                choice_expiry_max_ms: 10 * 60 * 1000,
-                reply_expiry_max_ms: 30 * 60 * 1000,
+                choice_expiry_max_ms: 1 * 60 * 1000,
+                reply_expiry_max_ms: 0.5 * 60 * 1000,
                 shorten_interval_ceiling_ms: 80000,
                 slowest_interval_ms: 10000,
                 fastest_interval_ms: 1000,
@@ -155,13 +165,44 @@
                 search_button_anime: null as InstanceType<typeof anime> | null,
                 is_search_button_shrinked: false,
                 search_button_text: "Search",
+                is_loading: false,
 
             };
         },
         computed: {
-            mustShrinkTitle() : boolean {
+            stillReplyingExpiryString() : string {
+
+                if(this.expiry_string === ""){
+
+                    return "";
+                }
+
+                return this.expiry_string + " to decide:";
+            },
+            replyChoiceExpiryString() : string {
+
+                if(this.expiry_string === ""){
+
+                    return "";
+                }
+
+                return this.expiry_string + " to decide";
+            },
+            hasDetailsForDialog() : boolean {
+
+                return this.details_logo !== "" && this.details_title !== "" && this.details_content !== "";
+            },
+            stillReplying() : boolean {
+
+                return this.still_replying_event_room !== null;
+            },
+            hasReplyChoices() : boolean {
 
                 return this.event_rooms.length > 0;
+            },
+            mustShrinkTitle() : boolean {
+
+                return this.is_searching === true || this.event_rooms.length > 0 || this.still_replying_event_room !== null;
             },
             canSearch(): boolean {
 
@@ -172,6 +213,7 @@
             async expireReplyChoices(): Promise<void> {
 
                 this.handleStartLoadingAnime();
+                this.is_loading = true;
 
                 let data = new FormData();
                 data.append("to_reply", JSON.stringify(false));
@@ -181,14 +223,17 @@
                     this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                     this.expiry_string = "";
                     this.details_logo = "fas fa-hourglass-end";
-                    this.details_text = "You ran out of time.\nFeel free to search again!";
+                    this.details_title = "Reply choice removed";
+                    this.details_content = "You ran out of time. Feel free to search for another!";
                     this.is_search_button_shrinked = false;
                     this.search_button_text = "Search";
                     this.event_rooms = [];
                     this.handleEndLoadingAnime();
+                    this.is_loading = false;
                 })
                 .catch((error: any) => {
                     this.handleEndLoadingAnime();
+                    this.is_loading = false;
                     console.log(error.response.data["message"]);
                 });
             },
@@ -198,30 +243,32 @@
                     return;
                 }
 
+                //reset
+                this.details_logo = "";
+                this.details_title = "";
+                this.details_content = "";
+                this.event_rooms = [];
+                this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
+                this.expiry_string = "";
+
                 this.handleStartLoadingAnime();
                 this.is_searching = true;
 
                 await axios.get("http://127.0.0.1:8000/api/events/get/event-room/status/incomplete")
                 .then((results: any) => {
-                    //reset
-                    this.details_logo = "";
-                    this.details_text = "";
-                    this.event_rooms = [];
-                    this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
-                    this.expiry_string = "";
 
                     if(results.data["data"].length === 0){
 
                         this.is_search_button_shrinked = false;
                         this.details_logo = "far fa-face-meh-blank";
-                        this.details_text = "No events found.\nTry again in a moment!";
+                        this.details_title = "No new events found";
+                        this.details_content = "Try again in a moment!";
                         this.search_button_text = "Search";
 
                     }else if(results.data["data"].length > 0 && results.data["data"][0]["event_room"]["is_replying"] === true){
 
+                        //no need to add details here, currently pre-written in template
                         this.is_search_button_shrinked = false;
-                        this.details_logo = "fas fa-circle-exclamation";
-                        this.details_text = "You have an unfinished reply";
                         this.still_replying_event_room = results.data["data"][0];
                         this.redirect_url = "hear/" + this.still_replying_event_room!.event_room.id.toString();
                         this.startExpiryInterval();
@@ -250,6 +297,7 @@
                 }
 
                 this.handleStartLoadingAnime();
+                this.is_loading = true;
 
                 //cancel previous reply choice
                 let data = new FormData();
@@ -261,10 +309,9 @@
                     this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                     this.expiry_string = "";
                     this.still_replying_event_room = null;
-                    this.details_logo = "fas fa-check";
-                    this.details_text = "Deleted unfinished reply.\nSearching for new events...";
 
                     this.handleEndLoadingAnime();
+                    this.is_loading = false;
 
                     window.setTimeout(() => {
                         this.getEventRooms();
@@ -272,6 +319,7 @@
                 })
                 .catch((error: any) => {
                     this.handleEndLoadingAnime();
+                    this.is_loading = false;
                     console.log(error.response.data["message"]);
                 });
             },

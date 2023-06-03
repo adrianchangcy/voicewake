@@ -13,19 +13,9 @@
 
     <!--user-->
     {{user.username | json_script:"data-username"}}
-
-
-    <!--critical assets-->
-    <!--if too slow, revert to placing at end of <body> to prioritise content itself-->
-    {% load static %}
-    <link href="{% static 'css/output.css' %}" rel="preload" as="style" type="text/css" onload="this.rel='stylesheet'"/>
-    <!--importing separate styles is slightly more performant than all.css, as per docs-->
-    <!--if you want to use fa-regular, import fontawesomefree/css/regular.css, etc.-->
-    <link href="{% static 'fontawesomefree/css/fontawesome.css' %}" rel="preload" as="style" type="text/css" onload="this.rel='stylesheet'">
-    <link href="{% static 'fontawesomefree/css/solid.css' %}" rel="preload" as="style" type="text/css" onload="this.rel='stylesheet'">
-    <link href="{% static 'fontawesomefree/css/regular.css' %}" rel="preload" as="style" type="text/css" onload="this.rel='stylesheet'">
 </head>
 
+{% load static %}
 
 {% block body %}
 
@@ -48,7 +38,7 @@
                 <object data="{% static 'svg/footer_mountain_1.svg' %}" type="image/svg+xml"></object>
             </div>
             <!--fill gap from mountain 1's bottom-4-->
-            <div class="w-full h-4 absolute left-0 right-0 bottom-0 m-auto bg-green-300">
+            <div class="w-full h-4 absolute left-0 right-0 bottom-0 m-auto bg-theme-green-1">
             </div>
             <!--mountain 2-->
             <div class="absolute left-0 right-0 bottom-0 m-auto">
@@ -59,18 +49,23 @@
                 <object data="{% static 'svg/footer_mountain_3.svg' %}" type="image/svg+xml"></object>
             </div>
 
-            <!--to define parent size with one mountain (all the same size)-->
+            <!--to define parent size with one mountain (all the same size) and any gap used-->
             <div class="w-full h-fit opacity-0">
                 <object data="{% static 'svg/footer_mountain_1.svg' %}" type="image/svg+xml"></object>
             </div>
-            <!--any gap used-->
             <div class="w-full h-4 opacity-0">
             </div>
         </div>
 
         <!--footer-->
-        <div class="h-60 bg-gradient-to-b from-green-800 to-theme-black">
+        <div class="h-60 bg-gradient-to-b from-theme-green-3 to-theme-black">
         </div>
+
+        <!--CSS-->
+        <link href="{% static 'css/output.css' %}" rel="stylesheet"/>
+        <link href="{% static 'fontawesomefree/css/fontawesome.css' %}" rel="stylesheet">
+        <link href="{% static 'fontawesomefree/css/solid.css' %}" rel="stylesheet">
+        <link href="{% static 'fontawesomefree/css/regular.css' %}" rel="stylesheet">
 
         <!--Vue-->
         <script type="text/javascript" src="{% static 'src/vue/dist/js/chunk-vendors.js' %}"></script>
