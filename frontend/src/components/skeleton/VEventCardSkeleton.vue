@@ -1,7 +1,7 @@
 <template>
     <div class="flex flex-col gap-2">
         <!--user-->
-        <div class="h-5 flex flex-row gap-2">
+        <div class="h-4 flex flex-row gap-2">
             <div class="w-4 h-full skeleton"></div>
             <div class="w-[25%] h-full skeleton"></div>
         </div>
