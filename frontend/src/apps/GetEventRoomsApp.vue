@@ -44,6 +44,7 @@
                                 <VActionButtonDangerS
                                     class="w-full flex items-center"
                                     @click.stop="stopReplying()"
+                                    :prop-is-enabled="!is_loading"
                                 >
                                     <span class="px-2 text-base font-medium mx-auto">Delete</span>
                                 </VActionButtonDangerS>
@@ -102,6 +103,7 @@
                 event_room_id: null as number|null,
                 event_count: 0, //from DOM
                 is_this_user_replying: false,
+                is_loading: false,
                 is_deleted: false,
 
                 event_room: null as EventRoomTypes|null,
@@ -121,8 +123,14 @@
         methods: {
             async stopReplying() : Promise<void> {
 
-                let data = new FormData();
+                if(this.is_loading === true){
 
+                    return;
+                }
+
+                this.is_loading = true;
+
+                let data = new FormData();
                 data.append('event_room_id', JSON.stringify(this.event_room_id));
                 data.append('to_reply', JSON.stringify(false));
 
@@ -130,12 +138,13 @@
                 .then(() => {
 
                     this.is_this_user_replying = false;
-
+                    this.is_loading = false;
                     this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
 
                 })
                 .catch((error:any) => {
 
+                    this.is_loading = false;
                     console.log(error.response.data['message']);
                 });
             },

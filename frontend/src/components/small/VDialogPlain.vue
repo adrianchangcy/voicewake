@@ -1,10 +1,17 @@
 <template>
-    <div class="w-full h-fit flex flex-col text-theme-black rounded-lg border border-theme-light-gray divide-y divide-theme-light-gray">
-        <div class="flex flex-row items-center gap-2 text-lg font-medium p-2">
-            <slot name="title"></slot>
+    <div class="w-full">
+        <div class="flex flex-col items-center text-2xl px-2 pb-2 text-theme-black">
+            <slot name="logo"></slot>
         </div>
-        <div class="text-base px-2 py-4">
-            <slot name="content"></slot>
+        <div class="w-full h-fit flex flex-col text-theme-black rounded-lg border border-theme-light-gray divide-y divide-theme-light-gray">
+            <div class="flex flex-col items-center text-lg font-medium p-2">
+                <div class="w-full h-fit text-center">
+                    <slot name="title"></slot>
+                </div>
+            </div>
+            <div class="text-base px-2 py-4 text-center">
+                <slot name="content"></slot>
+            </div>
         </div>
     </div>
 </template>

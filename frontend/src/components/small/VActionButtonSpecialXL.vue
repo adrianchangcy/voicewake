@@ -8,7 +8,7 @@
         type="button"
     >
         <div
-            :class="propIsSmaller ? 'scale-150' : ''"
+            :class="propIsSmaller ? 'scale-150 font-medium' : ''"
             class="mx-auto transition"
         >
             <slot></slot>

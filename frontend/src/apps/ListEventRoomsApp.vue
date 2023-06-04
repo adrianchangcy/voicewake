@@ -2,7 +2,7 @@
     <div>
         <!--big title-->
         <VTitleXL
-            :class="mustShrinkTitle ? '-translate-y-10 scale-75' : 'translate-y-0'"
+            :class="mustShrinkTitle ? '-translate-y-8' : 'translate-y-0'"
             class="py-10 transition-transform"
         >
             <template #title>
@@ -22,7 +22,7 @@
                 v-show="!stillReplying"
                 ref="search_button_container"
                 :class="[
-                    mustShrinkTitle ? '-translate-y-28' : 'translate-y-0',
+                    mustShrinkTitle ? '-translate-y-24' : 'translate-y-0',
                     'transition-transform'
                 ]"
             >
@@ -40,13 +40,15 @@
             <VDialogPlain
                 v-if="stillReplying"
             >
-                <template #title>
+                <template #logo>
                     <i class="fas fa-file-audio block"></i>
+                </template>
+                <template #title>
                     <span class="block">Unfinished reply found</span>
                 </template>
                 <template #content>
-                    <span class="block">Please complete or delete it before searching for new reply choices.</span>
-                    <span class="block pt-2">{{ stillReplyingExpiryString }}</span>
+                    <span class="block text-left">Please complete or delete it before searching for new reply choices.</span>
+                    <span v-show="!is_loading" class="block text-left pt-2">{{ stillReplyingExpiryString }}</span>
                     <div
                         class="grid grid-rows-1 grid-cols-4 mt-2 gap-2"
                     >
@@ -71,7 +73,7 @@
 
         <!--content-->
         <div
-            :class="mustShrinkTitle ? '-translate-y-32' : 'translate-y-0'"
+            :class="mustShrinkTitle ? '-translate-y-24' : 'translate-y-0'"
             class="transition-transform"
         >
 
@@ -92,12 +94,13 @@
                                 :propShowTitle="true"
                             />
                             <VActionButtonSpecialL
+                                :prop-is-enabled="!is_loading"
                                 @click.stop="confirmReplyChoice(event_room)"
                                 class="mt-8"
                             >
                                 Reply
                             </VActionButtonSpecialL>
-                            <span class="w-full h-fit py-2 text-base text-center text-theme-black">
+                            <span v-show="!is_loading" class="w-full h-fit py-2 text-base text-center text-theme-black">
                                 {{ replyChoiceExpiryString }}
                             </span>
                         </div>
@@ -111,8 +114,10 @@
             v-show="hasDetailsForDialog"
             class="mt-10"
         >
-            <template #title>
+            <template #logo>
                 <i class="block" :class="details_logo"></i>
+            </template>
+            <template #title>
                 <span class="block">{{ details_title }}</span>
             </template>
             <template #content>
@@ -155,8 +160,8 @@
 
                 expiry_interval: null as number | null,
                 expiry_string: "",
-                choice_expiry_max_ms: 1 * 60 * 1000,
-                reply_expiry_max_ms: 0.5 * 60 * 1000,
+                choice_expiry_max_ms: 10 * 60 * 1000,
+                still_replying_expiry_max_ms: 30 * 60 * 1000,
                 shorten_interval_ceiling_ms: 80000,
                 slowest_interval_ms: 10000,
                 fastest_interval_ms: 1000,
@@ -206,11 +211,16 @@
             },
             canSearch(): boolean {
 
-                return this.is_searching === false && this.still_replying_event_room === null;
+                return this.is_searching === false && this.still_replying_event_room === null && this.is_loading === false;
             },
         },
         methods: {
             async expireReplyChoices(): Promise<void> {
+
+                if(this.is_loading === true){
+
+                    return;
+                }
 
                 this.handleStartLoadingAnime();
                 this.is_loading = true;
@@ -223,8 +233,8 @@
                     this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                     this.expiry_string = "";
                     this.details_logo = "fas fa-hourglass-end";
-                    this.details_title = "Reply choice removed";
-                    this.details_content = "You ran out of time. Feel free to search for another!";
+                    this.details_title = "Reply choice expired";
+                    this.details_content = "You ran out of time. Feel free to search again!";
                     this.is_search_button_shrinked = false;
                     this.search_button_text = "Search";
                     this.event_rooms = [];
@@ -292,7 +302,7 @@
             },
             async deletePreviousReply(): Promise<void> {
 
-                if(this.still_replying_event_room === null){
+                if(this.still_replying_event_room === null || this.is_loading === true){
                     return;
                 }
 
@@ -325,26 +335,33 @@
             },
             async confirmReplyChoice(event_room: EventRoomTypes): Promise<void> {
 
-                if (event_room === null || this.is_searching === true) {
+                if (event_room === null || this.is_searching === true || this.is_loading === true) {
 
                     return;
                 }
                 
+                this.is_loading = true;
+
                 let data = new FormData();
                 data.append("event_room_id", JSON.stringify(event_room.event_room.id));
                 data.append("to_reply", JSON.stringify(true));
 
                 await axios.post("http://127.0.0.1:8000/api/user-actions", data)
                 .then((results: any) => {
-                    if (results.status === 202) {
+                    if(results.status === 202){
+
                         window.location.href = "http://127.0.0.1:8000/hear/" + event_room.event_room.id.toString();
-                    }
-                    else {
+
+                    }else{
+
                         console.log(results);
                     }
+                    this.is_loading = false;
                 })
                 .catch((error: any) => {
+
                     console.log(error.response.data["message"]);
+                    this.is_loading = false;
                 });
             },
             startExpiryInterval(): void {
@@ -355,7 +372,7 @@
                 if(this.still_replying_event_room !== null){
 
                     target_event_room = this.still_replying_event_room;
-                    target_max_ms = this.reply_expiry_max_ms;
+                    target_max_ms = this.still_replying_expiry_max_ms;
 
                 }else if(this.event_rooms.length > 0){
 
