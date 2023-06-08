@@ -230,6 +230,7 @@
 
                 await axios.post("http://127.0.0.1:8000/api/user-actions", data)
                 .then(() => {
+
                     this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                     this.expiry_string = "";
                     this.details_logo = "fas fa-hourglass-end";
@@ -242,6 +243,7 @@
                     this.is_loading = false;
                 })
                 .catch((error: any) => {
+
                     this.handleEndLoadingAnime();
                     this.is_loading = false;
                     console.log(error.response.data["message"]);
@@ -308,6 +310,8 @@
 
                 this.handleStartLoadingAnime();
                 this.is_loading = true;
+                this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
+                this.expiry_string = "";
 
                 //cancel previous reply choice
                 let data = new FormData();
@@ -316,8 +320,7 @@
 
                 await axios.post("http://127.0.0.1:8000/api/user-actions", data)
                 .then(() => {
-                    this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
-                    this.expiry_string = "";
+
                     this.still_replying_event_room = null;
 
                     this.handleEndLoadingAnime();
@@ -325,9 +328,10 @@
 
                     window.setTimeout(() => {
                         this.getEventRooms();
-                    }, 5000);
+                    }, 500);
                 })
                 .catch((error: any) => {
+
                     this.handleEndLoadingAnime();
                     this.is_loading = false;
                     console.log(error.response.data["message"]);
@@ -341,6 +345,8 @@
                 }
                 
                 this.is_loading = true;
+                this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
+                this.expiry_string = "";
 
                 let data = new FormData();
                 data.append("event_room_id", JSON.stringify(event_room.event_room.id));
@@ -348,6 +354,7 @@
 
                 await axios.post("http://127.0.0.1:8000/api/user-actions", data)
                 .then((results: any) => {
+
                     if(results.status === 202){
 
                         window.location.href = "http://127.0.0.1:8000/hear/" + event_room.event_room.id.toString();
@@ -356,12 +363,14 @@
 
                         console.log(results);
                     }
-                    this.is_loading = false;
+
+                    //don't do is_loading=true here
                 })
                 .catch((error: any) => {
 
                     console.log(error.response.data["message"]);
                     this.is_loading = false;
+                    this.startExpiryInterval();
                 });
             },
             startExpiryInterval(): void {

@@ -22,7 +22,7 @@
             <!--open/close VRecorderMenu-->
             <div ref="recorder_field" class="col-span-6">
                 <VRecorderField
-                    propLabel="Recording"
+                    propLabel="Voice"
                     :propIsOpen="is_recorder_menu_open"
                     :propBucketQuantity="bucket_quantity"
                     :propHasRecording="final_blob !== null"

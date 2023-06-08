@@ -28,11 +28,6 @@ module.exports = {
                 'theme-green-1': '#90a955',
                 'theme-green-2': '#4f772d',
                 'theme-green-3': '#31572c',
-                
-                //nice, but idk if less attention is what we want
-                // 'theme-green-1': '#b7e4c7',
-                // 'theme-green-2': '#95d5b2',
-                // 'theme-green-3': '#52b788',
 
                 'theme-danger': '#fa3515',
                 'theme-soft-danger': '#ff4934',
@@ -41,8 +36,11 @@ module.exports = {
                 'theme-light-trim': '#FDFDFD',
                 'theme-dark': '#22333B',
 
-                'theme-ok': '#00ff00',
-                'theme-warning': '#FFE178',
+                'theme-toast-success': '#379d00',   //as text, or bg and use text-theme-light
+                'theme-toast-warning': '#ffc500',   //as text, or bg and use text-theme-black
+                'theme-toast-warning-2': '#daa520', //as text only
+                'theme-toast-danger': '#d81a1a',    //as text, or bg and use text-theme-light
+                'theme-toast': '#e6e6e6',           //as text, or bg and use text-theme-black
 
                 //for disabled feature, advised to use opacity until unreadable, and not gray
                 'theme-light-gray': '#e7e5e4',
