@@ -46,7 +46,7 @@
                                     @click.stop="stopReplying()"
                                     :prop-is-enabled="!is_loading"
                                 >
-                                    <span class="px-2 text-base font-medium mx-auto">Delete</span>
+                                    <span class="px-2 text-base font-medium mx-auto">Cancel</span>
                                 </VActionButtonDangerS>
                             </div>
                         </div>

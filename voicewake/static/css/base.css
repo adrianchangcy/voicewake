@@ -57,12 +57,14 @@
     section title context, text-base
     label for input, be noticeable but smaller than main input, so text-lg font-medium
     input, text-xl
-    main text, text-xl
-    form labels, text-lg font-medium
-    form label subtext, text-lg
+    input text, text-xl
+    main text, text-lg
+    form labels, text-base font-medium
+    form label subtext, text-base
     details, if important, text-base font-medium
     details, text-base
-    action, text-2xl
+    main action, text-2xl
+    normal action, text-base font-medium
 
     FONT TYPES
     if text is not from user, use formal font
@@ -86,7 +88,8 @@
     page main button, mt-8
     related items, gap-2
     form items, gap-4
-    form label, py-1
+    form label, mb-1
+    any label, block leading-none (so spacing of layout is consistent)
 
     GRAY
     least attention-seeking, e.g. border, light-gray
@@ -162,7 +165,6 @@ textarea {
     animation: shimmer 1s infinite linear;
     content: '';
 }
-
 
 
 

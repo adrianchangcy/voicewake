@@ -3,34 +3,8 @@
 
 {% block content %}
 
+<div id="user-options-app"></div>
 
 
 
-
-{% comment %} <div class="card mt-2">
-    {% for option in user_verification_options %}
-        <div class="card-header">
-            <strong>@{{option.id}}</strong>
-        </div>
-        <div class="card-body d-flex flex-row justify-content-between">
-            <div>
-                <h5 class="card-title">{{option.user_verification_option_name}}</h5>
-                <p>{{option.when_created}}</p>
-            </div>
-            <div>
-                {% if user.is_superuser %}
-                    <form method="post">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-danger" name="delete_user_verification_option" value="{{option.id}}">Delete</button>
-                    </form>
-                {% endif %}
-            </div>
-        </div>
-        <div class="card-footer text-muted">
-            {{"hahaha"}}
-        </div>
-    {% empty %}
-        <p>Nothing yet :(</p>
-    {% endfor %}
-</div> {% endcomment %}
 {% endblock %}

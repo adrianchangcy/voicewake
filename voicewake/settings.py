@@ -146,9 +146,11 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 #not needed, but required by django-debug-toolbar
-INTERNAL_IPS = [
-    '127.0.0.1',
-]
+if DEBUG is True:
+
+    INTERNAL_IPS = [
+        '127.0.0.1',
+    ]
 
 
 # Internationalization
@@ -228,6 +230,15 @@ DEBUG_TOOLBAR_CONFIG = {
 }
 
 
-STRIPE_PUBLIC_KEY = 'pk_test_51LeYM2GvCzbfbfazgRmGuWQQqOteutZEHYFN6FSfe95fWKqHxbUAAg33EC6Yi8fGdOcg7xQoB0DhHrLuKfgD7hDt00L2kqSIYq'
-STRIPE_SECRET_KEY = 'sk_test_51LeYM2GvCzbfbfazCqq0CeroacrDD2QWEFxrhainIb047gprAu4yEsVLG8RhfoCHcqGcLxBX6VeR2zuTFiijf0Z900aZi78B7n'
-STRIPE_WEBHOOK_SECRET = ''
+#EMAIL
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+MAILER_EMAIL_BACKEND = EMAIL_BACKEND
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = 'adrianchangcy@gmail.com'
+EMAIL_HOST_PASSWORD = 'qjxtrlcllrtbnmvn'
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+
+

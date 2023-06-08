@@ -5,6 +5,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db import connection, transaction
+from django.core.mail import send_mail
 
 from rest_framework.response import Response
 from rest_framework.decorators import api_view

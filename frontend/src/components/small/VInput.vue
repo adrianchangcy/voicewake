@@ -20,20 +20,21 @@
                 type="text"
                 :id="propElementId"
                 v-model="input_value"
-                class="w-full h-10 p-2 pr-10 border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black rounded-lg"
+                class="w-full h-10 p-2 pr-10 bg-theme-light border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black rounded-lg"
                 :placeholder="propPlaceholder"
                 autocomplete="off"
+                spellcheck="false"
                 :maxlength="propMaxLength"
             >
-            <i v-if="propIsOk" class="w-0 h-0 fas fa-check relative py-2 right-8 text-theme-ok"></i>
-            <i v-if="propIsWarning" class="w-0 h-0 fas fa-triangle-exclamation relative py-2 right-9 text-theme-warning"></i>
-            <i v-if="propIsError" class="w-0 h-0 fas fa-exclamation relative py-2 right-6 text-theme-danger"></i>
+            <i v-show="propIsOk" class="w-0 h-0 fas fa-check relative py-2 right-8 text-theme-toast-success"></i>
+            <i v-show="propIsWarning" class="w-0 h-0 fas fa-triangle-exclamation relative py-2 right-9 text-theme-toast-warning"></i>
+            <i v-show="propIsError" class="w-0 h-0 fas fa-exclamation relative py-2 right-6 text-theme-toast-danger"></i>
         </div>
-        <div v-show="propHasStatusText" class="h-5 text-base px-2">
-            <span v-if="propIsOk" class="text-theme-ok">{{propStatusText}}</span>
-            <span v-if="propIsWarning" class="text-theme-warning">{{propStatusText}}</span>
-            <span v-if="propIsError" class="text-theme-danger">{{propStatusText}}</span>
-            <span v-if="propIsRequired && !propIsOk && !propIsWarning && !propIsError" class="text-theme-danger">required</span>
+        <div v-show="propHasStatusText" class="h-6 text-base px-2">
+            <span v-show="propIsOk" class="text-theme-toast-success">{{propStatusText}}</span>
+            <span v-show="propIsWarning" class="text-theme-toast-warning-2">{{propStatusText}}</span>
+            <span v-show="propIsError" class="text-theme-toast-danger">{{propStatusText}}</span>
+            <span v-show="propIsRequired && !propIsOk && !propIsWarning && !propIsError" class="text-theme-toast-danger">required</span>
         </div>
     </div>
 </template>

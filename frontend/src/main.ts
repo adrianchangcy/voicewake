@@ -4,6 +4,7 @@ import NavBarApp from '/src/apps/NavBarApp.vue';
 import CreateEventRoomsApp from '/src/apps/CreateEventRoomsApp.vue';
 import ListEventRoomsApp from '/src/apps/ListEventRoomsApp.vue';
 import GetEventRoomsApp from '/src/apps/GetEventRoomsApp.vue';
+import UserOptionsApp from '/src/apps/UserOptionsApp.vue';
 
 const clickOutside = {
 
@@ -96,6 +97,13 @@ if(document.querySelector('#get-event-rooms-app')){
     createApp(GetEventRoomsApp)
         .directive('click-outside', clickOutside)
         .mount('#get-event-rooms-app');
+}
+
+if(document.querySelector('#user-options-app')){
+
+    createApp(UserOptionsApp)
+        .directive('click-outside', clickOutside)
+        .mount('#user-options-app');
 }
 
 
