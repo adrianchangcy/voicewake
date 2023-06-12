@@ -6,14 +6,8 @@ from .models import *
 
 class AuthUserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = AuthUser
-        fields = ['username']
-
-
-class CountriesSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Countries
-        fields = ['id', 'country_name', 'country_name_shortened', 'when_created']
+        model = User
+        fields = ['id', 'username']
 
 
 class EventRolesSerializer(serializers.ModelSerializer):
@@ -32,18 +26,6 @@ class UserVerificationOptionsSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserVerificationOptions
         fields = ['id', 'user_verification_option_name', 'when_created']
-
-
-class LanguagesSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Languages
-        exclude = ['when_created']
-
-
-class AuthUserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AuthUser
-        fields = ['id', 'username']
 
 
 class EventLikesDislikesSerializer(serializers.ModelSerializer):

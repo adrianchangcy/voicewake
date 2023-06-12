@@ -1,5 +1,6 @@
 from django.apps import AppConfig
 from django.conf import settings
+from django.contrib.auth import get_user_model
 
 class VoicewakeConfig(AppConfig):
     
@@ -13,7 +14,7 @@ class VoicewakeConfig(AppConfig):
         from django.contrib.auth.models import Group
         from django.db.models.signals import post_save
             #signals sent by model system
-        from .models import AuthUser, UserDetails
+        from .models import UserDetails
 
         def handle_new_registered_users(sender, **kwargs):
 
@@ -21,17 +22,15 @@ class VoicewakeConfig(AppConfig):
 
                 try:
 
-                    user_detail = UserDetails.objects.get(user__id=user.id)
+                    UserDetails.objects.get(user__id=user.id)
 
                 except UserDetails.DoesNotExist:
 
-                    #as with all non-Django-default tables, we use user=AuthUser
-                    user_detail = UserDetails.objects.create(
-                        user=AuthUser.objects.get(pk=user.id),
-                        country=None,
-                        language=None,
+                    User = get_user_model()
+
+                    UserDetails.objects.create(
+                        user=User.objects.get(pk=user.id),
                         user_display_name=user.username,  #user can change again later
-                        user_birthdate='2022-01-01',
                     )
 
             #expects User

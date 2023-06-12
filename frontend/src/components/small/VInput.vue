@@ -2,13 +2,14 @@
     <div class="text-left">
         <div class="w-full grid grid-cols-4">
             <VInputLabel
-                class="col-span-3 w-fit"
                 :for="propElementId"
+                class="col-span-3 w-fit"
             >
                 {{propLabel}}
             </VInputLabel>
             <VInputLabel
                 v-if="propHasTextCounter"
+                :for="propElementId"
                 class="col-span-1 w-full text-right"
             >
                 {{current_length}}/{{propMaxLength}}
@@ -16,15 +17,18 @@
         </div>
         <div class="text-xl">
             <input
+                v-model="input_value"
                 :required="propIsRequired"
                 type="text"
                 :id="propElementId"
-                v-model="input_value"
-                class="w-full h-10 p-2 pr-10 bg-theme-light border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black rounded-lg"
                 :placeholder="propPlaceholder"
                 autocomplete="off"
                 spellcheck="false"
                 :maxlength="propMaxLength"
+                :class="[
+                    propHasStatusText ? 'pr-10' : '',
+                    'w-full h-10 p-2 pr-10 bg-theme-light border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black rounded-lg'
+                ]"
             >
             <i v-show="propIsOk" class="w-0 h-0 fas fa-check relative py-2 right-8 text-theme-toast-success"></i>
             <i v-show="propIsWarning" class="w-0 h-0 fas fa-triangle-exclamation relative py-2 right-9 text-theme-toast-warning"></i>
@@ -34,7 +38,6 @@
             <span v-show="propIsOk" class="text-theme-toast-success">{{propStatusText}}</span>
             <span v-show="propIsWarning" class="text-theme-toast-warning-2">{{propStatusText}}</span>
             <span v-show="propIsError" class="text-theme-toast-danger">{{propStatusText}}</span>
-            <span v-show="propIsRequired && !propIsOk && !propIsWarning && !propIsError" class="text-theme-toast-danger">required</span>
         </div>
     </div>
 </template>
@@ -72,7 +75,6 @@
         watch: {
             input_value(new_value){
 
-                this.input_value = new_value;
                 this.current_length = new_value.length;
                 this.$emit('hasNewValue', this.input_value);
             },

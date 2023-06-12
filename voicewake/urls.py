@@ -47,7 +47,7 @@ urlpatterns = [
     #user management
     #refer to link below for all URLs/APIs already provided
     #https://github.com/django/django/blob/main/django/contrib/auth/urls.py
-    path('', include('django.contrib.auth.urls')),
+    # path('', include('django.contrib.auth.urls')),
 
     # templates
     #still need to make these pretty, but leave it for last

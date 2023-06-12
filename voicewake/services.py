@@ -1,12 +1,13 @@
-#here, we define business logic
+#here, we define helpers
 
 #Django libraries
 from django.db.models import Q, Case, When, Value
 from django.db import connection
 from django.core.files import File
-
 from rest_framework.response import Response
 from rest_framework import status
+from django_otp.oath import TOTP
+from django.contrib.auth import get_user_model
 
 #Python libraries
 from datetime import datetime, timezone, timedelta, tzinfo
@@ -14,11 +15,11 @@ from genericpath import isfile
 from zoneinfo import ZoneInfo
 from pydub import AudioSegment
 import os
+import time
 
 #app files
 from .models import *
 from .serializers import *
-from .settings import MEDIA_ROOT
 
 #miscellaneous
 from .static.values.values import *
@@ -132,25 +133,26 @@ def is_user_banned(request):
 
 def check_user_is_replying(request, exclude_event_room_id=None):
 
+    User = get_user_model()
+
     #check if user is replying to anything
     if exclude_event_room_id is None:
 
         the_count = EventRooms.objects.filter(
-            locked_for_user=AuthUser(pk=request.user.id),
+            locked_for_user=User(pk=request.user.id),
             is_replying=True
         ).count()
 
     else:
 
         the_count = EventRooms.objects.filter(
-            locked_for_user=AuthUser(pk=request.user.id),
+            locked_for_user=User(pk=request.user.id),
             is_replying=True
         ).exclude(
             pk=exclude_event_room_id
         ).count()
 
     return the_count > 0
-
 
 def prevent_event_room_from_queuing_twice_for_reply(auth_user, event_room):
 
@@ -161,6 +163,108 @@ def prevent_event_room_from_queuing_twice_for_reply(auth_user, event_room):
 
     user_event_room.is_excluded_for_reply = True
     user_event_room.save()
+
+
+
+#for OTP
+class TOTPVerification:
+
+    #thanks to link below
+    #https://medium.com/viithiisys/creating-and-verifying-one-time-passwords-with-django-otp-861f472f602f
+
+    def __init__(self, number_of_digits, validity_seconds, tolerance_seconds):
+
+        #1 byte is 8 bits, so therefore minimum 15 bytes, recommended 20 bytes
+        #it seems that key must always be a new random one on every new token
+        #else you will forever get the same token, all things being equal
+        self.key = None
+
+        # counter with which last token was verified.
+        # Next token must be generated at a higher counter value.
+        self.last_verified_counter = -1
+
+        # this value will return True, if a token has been successfully
+        # verified.
+        self.verified = False
+
+        # number of digits in a token. Default is 6.
+        self.number_of_digits = number_of_digits
+
+        # validity period of a token. Default is 30 seconds.
+        self.token_validity_period = validity_seconds
+
+        self.token_validity_tolerance = tolerance_seconds
+
+    def totp_obj(self):
+
+        # create a TOTP object
+        totp = TOTP(
+            key=self.key,
+            step=self.token_validity_period,
+            digits=self.number_of_digits
+        )
+
+        # the current time will be used to generate a counter
+        totp.time = time.time()
+
+        return totp
+    
+    def set_key(self, key):
+
+        self.key = key
+
+    def create_key(self, key_byte_size):
+
+        self.key = os.urandom(key_byte_size)
+
+    def get_key(self):
+
+        return self.key
+
+    def generate_token(self):
+
+        # get the TOTP object and use that to create token
+        totp = self.totp_obj()
+
+        # token can be obtained with `totp.token()`
+        token = str(totp.token())
+        token = token.zfill(self.number_of_digits)
+        return token
+
+    def verify_token(self, token):
+
+        try:
+
+            # convert the input token to integer
+            token = int(token)
+
+        except ValueError:
+
+            # return False, if token could not be converted to an integer
+            self.verified = False
+
+        else:
+
+            totp = self.totp_obj()
+            # check if the current counter value is higher than the value of
+            # last verified counter and check if entered token is correct by
+            # calling totp.verify_token()
+            if ((totp.t() > self.last_verified_counter) and (totp.verify(token, tolerance=self.token_validity_tolerance))):
+
+                # if the condition is true, set the last verified counter value
+                # to current counter value, and return True
+                self.last_verified_counter = totp.t()
+                self.verified = True
+
+            else:
+
+                # if the token entered was invalid or if the counter value
+                # was less than last verified counter, then return False
+                self.verified = False
+
+        return self.verified
+
+
 
 
 

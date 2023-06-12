@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     #optional, provides template when returning Response() and not JsonResponse()
     #Django expects this when returning Response(), else error TemplateDoesNotExist ... rest_framework/api.html
 
-    #apps.py
+    #app from apps.py
     'voicewake.apps.VoicewakeConfig',
 
     #token for DRF
@@ -58,7 +58,18 @@ INSTALLED_APPS = [
 
     #debug
     'debug_toolbar',
+
+    #OTP
+    'django_otp',
+    # 'django_otp.plugins.otp_totp',
+    # 'django_otp.plugins.otp_hotp',
+    # 'django_otp.plugins.otp_static',
 ]
+
+
+#custom user model
+AUTH_USER_MODEL = 'voicewake.User'
+
 
 #if you have issues with bootstrap, try this:
 # CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
@@ -83,6 +94,7 @@ MIDDLEWARE += [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # 'django_otp.middleware.OTPMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
@@ -119,7 +131,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'voicewake',
         'USER': 'postgres',
-        'PASSWORD': 'Learningsoftware101.',
+        'PASSWORD': 'postgresqllocalhost',
         'HOST': 'localhost',
         'PORT': '5432',
     }
@@ -239,6 +251,15 @@ EMAIL_HOST_PASSWORD = 'qjxtrlcllrtbnmvn'
 EMAIL_PORT = 465
 EMAIL_USE_SSL = True
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+
+#TOTP token arguments
+#key minimum 120 bits, recommended 160 bits
+#1 byte is 8 bits, so therefore minimum 15 bytes, recommended 20 bytes
+TOTP_KEY_BYTE_SIZE = 20         #to pass into os.urandom() for new random key
+TOTP_NUMBER_OF_DIGITS = 6       #digits in OTP
+TOTP_VALIDITY_SECONDS = 300     #seconds until expiry, a.k.a. steps
+TOTP_TOLERANCE_SECONDS = 120    #allow early/late by x seconds until truly not allowed
 
 
 

@@ -7,10 +7,13 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.db import connection, transaction
 from django.core.mail import send_mail
 
+#auth
+from django.contrib.auth import get_user_model
+from rest_framework.authtoken.models import Token
+
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
-from rest_framework.authtoken.models import Token
 
 #class-based views
 from rest_framework import viewsets, generics
@@ -29,12 +32,14 @@ from dateutil.relativedelta import relativedelta
 import zoneinfo
 import os
 import json
+import time
 
 #app files
 from voicewake.forms import *
 from voicewake.models import *
 from voicewake.serializers import *
 from voicewake.services import *
+from voicewake.settings import *
 
 #static values for configuring throughout the app
 from voicewake.static.values.values import *
@@ -152,20 +157,6 @@ def first_time_setup():
             EventTones(event_tone_name='keep it 100', event_tone_symbol='💯'),
         ])
 
-    if Countries.objects.count() == 0:
-
-        Countries.objects.create(
-            country_name='United States of America',
-            country_name_shortened='USA'
-        )
-
-    if Languages.objects.count() == 0:
-
-        Languages.objects.create(
-                    language_name='English',
-                    language_name_shortened='ENG'
-        )
-
     if Group.objects.count() == 0:
 
         Group.objects.create(
@@ -188,13 +179,21 @@ def first_time_setup():
             EventRoles(event_role_name='responder')
         ])
 
-
 # @login_required(login_url='/login')
 def home(request):
+
+    totp_obj = TOTPVerification(TOTP_NUMBER_OF_DIGITS, TOTP_VALIDITY_SECONDS, TOTP_TOLERANCE_SECONDS)
+    totp_obj.create_key(TOTP_KEY_BYTE_SIZE)
+    my_token = totp_obj.generate_token()
+    print(my_token)
+    print(totp_obj.verify_token(my_token))
+
+    
 
     return render(request, template_name='voicewake/home.html')
 
 
+#account actions
 def sign_up(request):
 
     if request.method == 'POST':
@@ -548,11 +547,13 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
     def unlock_event_rooms_from_past_reply_choices(self):
 
+        User = get_user_model()
+
         event_rooms = EventRooms.objects.filter(
-            locked_for_user=AuthUser(pk=self.request.user.id)
+            locked_for_user=User(pk=self.request.user.id)
         )
         
-        auth_user = AuthUser(pk=self.request.user.id)
+        auth_user = User(pk=self.request.user.id)
         datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
 
         for event_room in event_rooms:
@@ -569,6 +570,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
     def lock_event_rooms_for_reply_choices(self, events):
 
+        User = get_user_model()
         event_room_ids = []
         datetime_now = get_datetime_now()
 
@@ -580,7 +582,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
                 #lock for reply choices
                 event.event_room.when_locked = datetime_now
-                event.event_room.locked_for_user = AuthUser(pk=self.request.user.id)
+                event.event_room.locked_for_user = User(pk=self.request.user.id)
                 event.event_room.is_replying = False
                 event.event_room.save()
 
@@ -755,6 +757,8 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
     def post(self, request, *args, **kwargs):
 
+        User = get_user_model()
+
         #deserialize
         serializer = CreateEventsSerializer(data=request.data, many=False)
 
@@ -769,7 +773,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             )
 
         new_data = serializer.validated_data
-        auth_user = AuthUser.objects.get(pk=request.user.id)
+        auth_user = User(pk=request.user.id)
 
         #event_tone
         try:
@@ -912,6 +916,8 @@ class UserActionsAPI(generics.GenericAPIView):
     #202 success, 205 reset due to user inactivity
     def start_replying_to_event_room(self, event_room_id):
 
+        User = get_user_model()
+
         #check if user is replying to any other event_room
         if check_user_is_replying(request=self.request, exclude_event_room_id=event_room_id) is True:
 
@@ -940,7 +946,7 @@ class UserActionsAPI(generics.GenericAPIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        auth_user = AuthUser(self.request.user.id)
+        auth_user = User(self.request.user.id)
         
         #check if user can reply
         if\
@@ -998,6 +1004,8 @@ class UserActionsAPI(generics.GenericAPIView):
     #204 nothing to cancel, 205 success
     def cancel_replying_to_event_room(self, event_room_id):
 
+        User = get_user_model()
+
         #get event_room
         try:
 
@@ -1044,7 +1052,7 @@ class UserActionsAPI(generics.GenericAPIView):
 
         #prevent repeated queue
         prevent_event_room_from_queuing_twice_for_reply(
-            AuthUser(pk=self.request.user.id),
+            User(pk=self.request.user.id),
             event_room
         )
 
@@ -1058,7 +1066,8 @@ class UserActionsAPI(generics.GenericAPIView):
     #204 nothing to cancel, 205 success
     def cancel_reply_choices(self):
 
-        auth_user = AuthUser(pk=self.request.user.id)
+        User = get_user_model()
+        auth_user = User(pk=self.request.user.id)
 
         event_rooms = EventRooms.objects.select_related(
             'generic_status', 'locked_for_user'
@@ -1159,6 +1168,8 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
     #create
     def post(self, request, *args, **kwargs):
 
+        User = get_user_model()
+
         if is_user_logged_in(request) is False:
 
             return Response(
@@ -1200,7 +1211,7 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
 
             event_like_dislike = EventLikesDislikes.objects.get(
                 event=event,
-                user=AuthUser(pk=request.user.id)
+                user=User(pk=request.user.id)
             )
 
             if new_data['is_liked'] is not None:
@@ -1218,7 +1229,7 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
 
                 EventLikesDislikes.objects.create(
                     event=event,
-                    user=AuthUser(pk=request.user.id),
+                    user=User(pk=request.user.id),
                     is_liked=new_data['is_liked']
                 )
 
