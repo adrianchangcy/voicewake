@@ -1,13 +1,13 @@
 <template>
-    <div class="w-full">
+    <div class="w-full text-theme-black">
+        <!--test-->
         <VTitleXL class="py-8">
             <template #title>
-                <span class="block text-center">Sign Up</span>
+                <span class="block text-center">Create Account</span>
             </template>
         </VTitleXL>
-
-        <!--test-->
-        <div class="flex flex-col gap-10">
+        <p class="text-lg">Start with an email address.</p>
+        <div class="mt-4 flex flex-col gap-10">
             <!--step 1, insert email-->
             <div>
                 <VInput
@@ -21,6 +21,7 @@
                     :propIsError="can_send_email === false"
                     :propIsOk="can_send_email === true"
                     @hasNewValue="validateEmail($event)"
+                    ref="yolo"
                 />
 
                 <div class="h-fit flex flex-col items-end">
@@ -49,28 +50,20 @@
                 </div>
 
                 <!--verification code-->
-                <div class="mt-8 flex flex-col gap-2">
+                <div class="mt-8 flex flex-col">
                     <VNumberSlots
                         propLabelText="Enter 6-digit verification code"
                         propElementId="email-verification-code-input"
                         @hasNewValue="handleNewPIN($event)"
                     />
-                    <div class="h-10 grid grid-cols-2 gap-2">
-                        <VActionButtonS
-                            v-show="can_resend_verification_code"
-                            class="col-span-1 flex items-center"
-                            :propIsEnabled="false"
-                        >
-                            <span class="text-base font-medium mx-auto">Resend code</span>
-                        </VActionButtonS>
-                        <div
-                            v-show="!can_resend_verification_code"
-                            class="col-span-1 flex items-start"
-                        >
-                            <span class="text-base font-light block">Can resend in 27s</span>
-                        </div>
-                        <!--implement hidden logic to limit attempts, only showing when limit has been reached-->
-                    </div>
+
+                    <VActionButtonTextOnly
+                        class="mt-4"
+                        :propIsEnabled="false"
+                    >
+                        <span>Resend code? Can resend in 27s</span>
+                    </VActionButtonTextOnly>
+                    <!--implement hidden logic to limit attempts, only showing when limit has been reached-->
                 </div>
 
                 <!--continue-->
@@ -94,20 +87,19 @@
                     prop-element-id="new-password"
                     prop-label="New password"
                     :prop-has-status-text="true"
-                    :prop-has-text-counter="true"
                     :prop-max-length="20"
+                    @has-new-value="handleNewPassword($event)"
                 />
                 <div class="h-fit flex flex-col items-end">
-                    <VActionSpecialM
-                        :propIsEnabled="false"
+                    <VActionButtonSpecialL
+                        :propIsEnabled="canSignUpAndLogIn"
                         propElement="button"
-                        :propIsRound="true"
+                        :propIsRound="false"
                         type="button"
-                        class="mt-8 flex items-center"
+                        class="w-full mt-8 flex items-center"
                     >
-                        <i class="fas fa-arrow-right w-fit h-fit mx-auto"></i>
-                        <span class="sr-only">continue</span>
-                    </VActionSpecialM>
+                        <span class="mx-auto">Create Account</span>
+                    </VActionButtonSpecialL>
                 </div>
                 <!--put password help/guide-->
                 <!--allow browser to save password-->
@@ -128,8 +120,9 @@
     import VTitleXL from '@/components/small/VTitleXL.vue';
     import VNumberSlots from '@/components/small/VNumberSlots.vue';
     import VActionSpecialM from '@/components/small/VActionSpecialM.vue';
-    import VActionButtonS from '@/components/small/VActionButtonS.vue';
+    import VActionButtonSpecialL from '@/components/small/VActionButtonSpecialL.vue';
     import VPassword from '@/components/small/VPassword.vue';
+    import VActionButtonTextOnly from '@/components/small/VActionButtonTextOnly.vue';
 </script>
 
 
@@ -149,6 +142,9 @@
                 can_resend_verification_code: false,
                 verification_code_status_text: "",
 
+                new_password: "",
+                yolo: true,
+
             };
         },
         computed: {
@@ -156,8 +152,24 @@
 
                 return this.verification_code !== "";
             },
+            canSignUpAndLogIn() : boolean {
+
+                return this.new_password !== "";
+            },
         },
         methods: {
+            proceedWithEmail() : void {
+
+                console.log('');
+            },
+            sendVerificationCodeToEmail() : void {
+
+                console.log('');
+            },
+            handleNewPassword(new_value:string) : void {
+
+                this.new_password = new_value;
+            },
             handleNewPIN(new_value:string) : void {
 
                 //when VNumberSlots is not successful, always expect ""
@@ -212,6 +224,7 @@
             },
         },
         mounted(){
+            setTimeout(()=>{this.yolo = false;}, 1000);
         }
     });
 </script>

@@ -2,20 +2,15 @@
     <div class="text-left">
         <div class="w-full grid grid-cols-4">
             <VInputLabel
-                class="col-span-3 w-fit"
                 :for="propElementId"
+                class="col-span-3 w-fit"
             >
                 {{propLabel}}
-            </VInputLabel>
-            <VInputLabel
-                v-if="propHasTextCounter"
-                class="col-span-1 w-full text-right"
-            >
-                {{current_length}}/{{propMaxLength}}
             </VInputLabel>
         </div>
         <div class="text-xl relative">
             <input
+                ref="yolo"
                 :required="propIsRequired"
                 :type="inputTypeForPassword"
                 :id="propElementId"
@@ -46,17 +41,26 @@
         </div>
 
         <!--help-->
-        <p class="px-2">Password help?</p>
+        <VActionButtonTextOnly
+            class="mt-4"
+        >
+            <span>Password help?</span>
+        </VActionButtonTextOnly>
     </div>
 </template>
 
 
 <script setup lang="ts">
-
     import VInputLabel from './VInputLabel.vue';
+    import VActionButtonTextOnly from './VActionButtonTextOnly.vue';
 </script>
 
 <script lang="ts">
+
+    //warning
+    //when browser detects input + password, autofill occurs
+    //there is no reliable way to capture the autofill
+
     import { defineComponent } from 'vue';
 
     export default defineComponent({
@@ -65,6 +69,7 @@
                 input_value: '',
                 current_length: 0,
                 show_password: false,
+                validate_timeout: null as number|null,
                 
                 status_text: '',
                 is_success: false,
@@ -78,7 +83,6 @@
             propLabel: String,
             propPlaceholder: String,
             propMaxLength: Number,
-            propHasTextCounter: Boolean,
             propHasStatusText: Boolean,
             propIsOk: Boolean,
             propIsWarning: Boolean,
@@ -88,13 +92,21 @@
         watch: {
             input_value(new_value){
 
-                this.input_value = new_value;
                 this.current_length = new_value.length;
 
-                //validate
-                this.validateNewPassword();
+                //reset
+                this.status_text = "";
+                this.validate_timeout !== null ? clearTimeout(this.validate_timeout) : null;
+                this.$emit("hasNewValue", "");
 
-                this.$emit('hasNewValue', this.input_value);
+                this.validate_timeout = window.setTimeout(() => {
+
+                    //validate and emit
+                    if(this.validateNewPassword(this.input_value) === true){
+
+                        this.$emit("hasNewValue", this.input_value);
+                    }
+                }, 600);
             },
         },
         computed: {
@@ -109,7 +121,7 @@
             },
         },
         methods: {
-            validateNewPassword() : void {
+            validateNewPassword(new_value:string, minimum_passed:number=2) : boolean {
 
                 let passed_count = 0;
                 this.is_success = false;
@@ -117,33 +129,33 @@
                 this.is_error = false;
 
                 //length
-                if(this.input_value.length < 8){
+                if(new_value.length < 8){
 
-                    this.status_text = "Password must have a minimum of 8 characters.";
+                    this.status_text = "Password must have at least 8 characters.";
                     this.is_error = true;
-                    return;
+                    return false;
                 }
 
                 //has >= 1 uppercase
-                if(/(?=.*[A-Z])/.test(this.input_value) === true){
+                if(/(?=.*[A-Z])/.test(new_value) === true){
 
                     passed_count += 1;
                 }
 
                 //has >= 1 number
-                if(/(?=.*[0-9])/.test(this.input_value) === true){
+                if(/(?=.*[0-9])/.test(new_value) === true){
 
                     passed_count += 1;
                 }
 
                 //has >= 1 non-letter and non-number (space, etc.)
-                if(/([^0-9a-zA-Z])/.test(this.input_value) === true){
+                if(/([^0-9a-zA-Z])/.test(new_value) === true){
 
                     passed_count += 1;
                 }
 
                 //very strong requires >= 14
-                if(this.input_value.length >= 14){
+                if(new_value.length >= 14){
 
                     passed_count += 1;
                 }
@@ -182,6 +194,13 @@
                 //follows guide below
                 //https://auth0.com/blog/dont-pass-on-the-new-nist-password-guidelines/
                 //https://www.section.io/engineering-education/password-strength-checker-javascript/
+                
+                if(passed_count >= minimum_passed){
+
+                    return true;
+                }
+
+                return false;
             },
             togglePasswordShow() : void {
 
@@ -189,8 +208,5 @@
             }
 
         },
-        components: {
-            VInputLabel,
-        }
     });
 </script>

@@ -34,18 +34,18 @@
         <!--prefer implementing this way, because inline svg would otherwise unpleasantly appear while other stuff is loading-->
         <div class="w-full h-fit relative">
             <!--mountain 1-->
-            <div class="absolute left-0 right-0 bottom-4 m-auto">
+            <div class="w-full absolute left-0 right-0 bottom-4 m-auto">
                 <object data="{% static 'svg/footer_mountain_1.svg' %}" type="image/svg+xml"></object>
             </div>
             <!--fill gap from mountain 1's bottom-4-->
             <div class="w-full h-4 absolute left-0 right-0 bottom-0 m-auto bg-theme-green-1">
             </div>
             <!--mountain 2-->
-            <div class="absolute left-0 right-0 bottom-0 m-auto">
+            <div class="w-full absolute left-0 right-0 bottom-0 m-auto">
                 <object data="{% static 'svg/footer_mountain_2.svg' %}" type="image/svg+xml"></object>
             </div>
             <!--mountain 3-->
-            <div class="absolute left-0 right-0 bottom-0 m-auto">
+            <div class="w-full absolute left-0 right-0 bottom-0 m-auto">
                 <object data="{% static 'svg/footer_mountain_3.svg' %}" type="image/svg+xml"></object>
             </div>
 

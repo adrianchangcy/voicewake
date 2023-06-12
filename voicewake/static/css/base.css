@@ -9,6 +9,16 @@
     outline: 1px solid #f00 !important;
 } */
 
+/*fonts*/
+/* @font-face {
+    font-family: fun-font;
+    src: url(Dongle-Regular.ttf);
+}
+.fun-font {
+    font-family: fun-font;
+    font-size: 2rem;
+} */
+
 /*since we use placeholders for label, make them more visible*/
 ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
     color: rgb(160, 160, 160) !important;
@@ -59,12 +69,19 @@
     input, text-xl
     input text, text-xl
     main text, text-lg
+    action text, text-lg font-medium
     form labels, text-base font-medium
     form label subtext, text-base
     details, if important, text-base font-medium
     details, text-base
-    main action, text-2xl
-    normal action, text-base font-medium
+    main action, text text-2xl, icon text-4xl
+    normal action, text text-base font-medium, icon text-2xl
+
+    FONT SIZES (NEW AND IN THE MAKING)
+    //maybe size doesn't precisely matter, but the perceivable difference does (case-by-case basis of fonts)
+    biggest (header, etc.) text-6xl
+    main (user input, default long sentences), text-xl
+    small (details), text-base
 
     FONT TYPES
     if text is not from user, use formal font
@@ -179,6 +196,9 @@ textarea {
     /*from theme-black to theme-dark-gray*/
     .shade-text-when-hover:hover{
         color: rgba(168, 162, 158, 1);
+    }
+    .handle-action-text-when-hover:hover{
+        text-decoration-thickness: 4px;
     }
     .shade-background-when-hover:hover{
         background-color: rgba(168, 162, 158, 1);

@@ -849,6 +849,10 @@ video {
   height: 2.5rem;
 }
 
+.h-12 {
+  height: 3rem;
+}
+
 .h-2 {
   height: 0.5rem;
 }
@@ -920,6 +924,10 @@ video {
 
 .h-screen {
   height: 100vh;
+}
+
+.h-0\.5 {
+  height: 0.125rem;
 }
 
 .min-h-screen {
@@ -1115,10 +1123,6 @@ video {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.grid-cols-6 {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-}
-
 .grid-cols-8 {
   grid-template-columns: repeat(8, minmax(0, 1fr));
 }
@@ -1149,10 +1153,6 @@ video {
 
 .place-items-center {
   place-items: center;
-}
-
-.items-start {
-  align-items: flex-start;
 }
 
 .items-end {
@@ -1201,6 +1201,10 @@ video {
 
 .gap-6 {
   gap: 1.5rem;
+}
+
+.gap-8 {
+  gap: 2rem;
 }
 
 .gap-x-2 {
@@ -1650,8 +1654,8 @@ video {
   color: rgb(242 244 243 / var(--tw-text-opacity));
 }
 
-.text-theme-light\/10 {
-  color: rgb(242 244 243 / 0.1);
+.text-theme-light\/50 {
+  color: rgb(242 244 243 / 0.5);
 }
 
 .text-theme-toast-danger {
@@ -1672,6 +1676,26 @@ video {
 .text-theme-toast-warning-2 {
   --tw-text-opacity: 1;
   color: rgb(218 165 32 / var(--tw-text-opacity));
+}
+
+.underline {
+  text-decoration-line: underline;
+}
+
+.decoration-theme-black {
+  text-decoration-color: #444444;
+}
+
+.decoration-theme-black\/0 {
+  text-decoration-color: rgb(68 68 68 / 0);
+}
+
+.decoration-2 {
+  text-decoration-thickness: 2px;
+}
+
+.underline-offset-2 {
+  text-underline-offset: 2px;
 }
 
 .opacity-0 {
@@ -1807,6 +1831,17 @@ video {
     outline: 1px solid #f00 !important;
 } */
 
+/*fonts*/
+
+/* @font-face {
+    font-family: fun-font;
+    src: url(Dongle-Regular.ttf);
+}
+.fun-font {
+    font-family: fun-font;
+    font-size: 2rem;
+} */
+
 /*since we use placeholders for label, make them more visible*/
 
 ::-moz-placeholder {
@@ -1872,12 +1907,19 @@ video {
     input, text-xl
     input text, text-xl
     main text, text-lg
+    action text, text-lg font-medium
     form labels, text-base font-medium
     form label subtext, text-base
     details, if important, text-base font-medium
     details, text-base
-    main action, text-2xl
-    normal action, text-base font-medium
+    main action, text text-2xl, icon text-4xl
+    normal action, text text-base font-medium, icon text-2xl
+
+    FONT SIZES (NEW AND IN THE MAKING)
+    //maybe size doesn't precisely matter, but the perceivable difference does (case-by-case basis of fonts)
+    biggest (header, etc.) text-6xl
+    main (user input, default long sentences), text-xl
+    small (details), text-base
 
     FONT TYPES
     if text is not from user, use formal font
@@ -1994,6 +2036,10 @@ textarea {
 
   .shade-text-when-hover:hover{
     color: rgba(168, 162, 158, 1);
+  }
+
+  .handle-action-text-when-hover:hover{
+    text-decoration-thickness: 4px;
   }
 
   .shade-background-when-hover:hover{

@@ -1,5 +1,5 @@
 <template>
-    <div class="h-10 text-xl">
+    <div class="h-10 text-xl text-theme-black">
         <div class="w-full h-full grid grid-cols-2 gap-0.5">
             <!--like-->
             <button
@@ -24,7 +24,7 @@
                 <!--like count-->
                 <div class="w-full h-full relative text-base font-medium">
                     <span class="absolute w-fit h-fit left-2 top-0 bottom-0 m-auto">
-                        <span v-if="is_liked" class="sr-only">you have liked this</span>
+                        <span v-show="is_liked === true" class="sr-only">you have liked this</span>
                         <span class="sr-only">current like count is </span>{{ prettyLikeCount }}
                     </span>
                 </div>
@@ -52,7 +52,7 @@
                 <!--dislike count-->
                 <div class="w-full h-full relative text-base font-medium">
                     <span class="absolute w-fit h-fit left-2 top-0 bottom-0 m-auto">
-                        <span v-if="is_liked === false" class="sr-only">you have disliked this</span>
+                        <span v-show="is_liked === false" class="sr-only">you have disliked this</span>
                         <span class="sr-only">current dislike count is </span>{{ prettyDislikeCount }}
                     </span>
                 </div>

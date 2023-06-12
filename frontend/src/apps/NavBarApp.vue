@@ -67,21 +67,21 @@
                         <div
                             :class="[
                                 is_nav_main_more_open ? 'mb-0 rotate-45' : 'mb-4 rotate-0',
-                                'nav-burger-line row-span-1 bg-theme-black absolute   w-5 h-1     transition-all duration-200 ease-in-out',
+                                'nav-burger-line row-span-1 bg-theme-black absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
                             ]"
                         >
                         </div>
                         <div
                             :class="[
                                 is_nav_main_more_open ? 'opacity-0' : 'opacity-100',
-                                'nav-burger-line row-span-1 bg-theme-black absolute   w-5 h-1     transition-all duration-200 ease-in-out',
+                                'nav-burger-line row-span-1 bg-theme-black absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
                             ]"
                         >
                         </div>
                         <div
                             :class="[
                                 is_nav_main_more_open ? 'mt-0 -rotate-45' : 'mt-4 rotate-0',
-                                'nav-burger-line row-span-1 bg-theme-black absolute   w-5 h-1     transition-all duration-200 ease-in-out',
+                                'nav-burger-line row-span-1 bg-theme-black absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
                             ]"
                         >
                         </div>
@@ -169,7 +169,7 @@
                                 </div>
                                 <div class="col-span-3 flex items-center">
                                     <span class="w-full h-fit text-left text-base font-medium">
-                                        Sign Up
+                                        Create Account
                                     </span>
                                 </div>
                             </VNavigationButton>
