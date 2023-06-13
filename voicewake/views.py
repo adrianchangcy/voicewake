@@ -10,6 +10,8 @@ from django.core.mail import send_mail
 #auth
 from django.contrib.auth import get_user_model
 from rest_framework.authtoken.models import Token
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
@@ -30,7 +32,6 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from datetime import datetime, timezone, timedelta
 from dateutil.relativedelta import relativedelta
 import zoneinfo
-import os
 import json
 import time
 
@@ -180,17 +181,121 @@ def first_time_setup():
         ])
 
 # @login_required(login_url='/login')
+import secrets
 def home(request):
-
-    totp_obj = TOTPVerification(TOTP_NUMBER_OF_DIGITS, TOTP_VALIDITY_SECONDS, TOTP_TOLERANCE_SECONDS)
-    totp_obj.create_key(TOTP_KEY_BYTE_SIZE)
-    my_token = totp_obj.generate_token()
-    print(my_token)
-    print(totp_obj.verify_token(my_token))
-
-    
-
+    print(secrets.token_bytes(TOTP_KEY_BYTE_SIZE))
     return render(request, template_name='voicewake/home.html')
+
+
+
+class CheckUsernameExistsAPI(generics.GenericAPIView):
+
+    serializer_class = None
+    permission_classes = []
+
+    def get(self, request, *args, **kwargs):
+
+        serializer = CheckUsernameExistsSerializer(data=kwargs, many=False)
+
+        if serializer.is_valid() is False:
+
+            return Response(
+                data={
+                    'message': 'Invalid data.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        new_data = serializer.validated_data
+
+        User = get_user_model()
+        
+        exists = User.objects.filter(username=new_data['username']).exists()
+
+        return Response(
+            {
+                'data': {
+                    'username': new_data['username'],
+                    'exists': exists
+                },
+                'message': 'Request successful.',
+            },
+            status.HTTP_200_OK
+        )
+
+
+class CreateUserAPI(generics.GenericAPIView):
+
+    serializer_class = None
+    permission_classes = []
+
+    def post(self, request, *args, **kwargs):
+
+        serializer = CreateUserSerializer(data=request.data, many=False)
+
+        if serializer.is_valid() is False:
+
+            return Response(
+                data={
+                    'message': 'Invalid data.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        new_data = serializer.validated_data
+
+        User = get_user_model()
+        # return_this_for_login_to_use_as_url_param = urlsafe_base64_encode(force_bytes(user_id))
+
+        #prepare TOTP early so we can give user a unique key first
+        totp_instance = TOTPVerification(TOTP_NUMBER_OF_DIGITS, TOTP_VALIDITY_SECONDS, TOTP_TOLERANCE_SECONDS)
+        totp_instance.create_key(TOTP_KEY_BYTE_SIZE)
+
+        #create user first
+        #also catch unique field violation here
+        new_user = User.objects.create_user(
+            username=new_data['username'],
+            email=new_data['email'],
+        )
+
+
+        # totp_obj = TOTPVerification(TOTP_NUMBER_OF_DIGITS, TOTP_VALIDITY_SECONDS, TOTP_TOLERANCE_SECONDS)
+        # totp_obj.create_key(TOTP_KEY_BYTE_SIZE)
+        # my_token = totp_obj.generate_token()
+        # print(my_token)
+        # print(totp_obj.verify_token(my_token))
+
+        return Response(
+            data={
+                'data': {
+                    
+                },
+                'message': 'Request successful.'
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+
+
+class TestAPI(generics.GenericAPIView):
+
+    serializer_class = None
+    permission_classes = []
+
+    def get(self, request, *args, **kwargs):
+
+        return Response(
+            data={
+                'data': {
+                },
+                'message': ''
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+
 
 
 #account actions
@@ -553,13 +658,13 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             locked_for_user=User(pk=self.request.user.id)
         )
         
-        auth_user = User(pk=self.request.user.id)
+        user = User(pk=self.request.user.id)
         datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
 
         for event_room in event_rooms:
 
             #prevent these event_rooms from being queued again
-            prevent_event_room_from_queuing_twice_for_reply(auth_user, event_room)
+            prevent_event_room_from_queuing_twice_for_reply(user, event_room)
 
             #unlock
             event_room.when_locked = None
@@ -588,14 +693,14 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
         return True
 
-    def check_user_created_up_to_daily_limit(self, auth_user):
+    def check_user_created_up_to_daily_limit(self, user):
 
         #this is for "X max new posts every __", which in this case is every 24h
         checkpoint_datetime = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
         checkpoint_datetime = datetime.strptime(checkpoint_datetime, '%Y-%m-%d %H:%M:%S %z')
 
         the_count = EventRooms.objects.filter(
-            created_by=auth_user,
+            created_by=user,
             when_created__gte=checkpoint_datetime
         ).count()
 
@@ -605,14 +710,14 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
         return True
     
-    def check_user_replied_up_to_daily_limit(self, auth_user):
+    def check_user_replied_up_to_daily_limit(self, user):
 
         #this is for "X max new posts every __", which in this case is every 24h
         checkpoint_datetime = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
         checkpoint_datetime = datetime.strptime(checkpoint_datetime, '%Y-%m-%d %H:%M:%S %z')
 
         the_count = Events.objects.filter(
-            created_by=auth_user,
+            created_by=user,
             when_created__gte=checkpoint_datetime
         ).count()
 
@@ -773,7 +878,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             )
 
         new_data = serializer.validated_data
-        auth_user = User(pk=request.user.id)
+        user = User(pk=request.user.id)
 
         #event_tone
         try:
@@ -794,7 +899,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         if new_data['is_originator'] is True:
 
             #check if created event_room limit is not yet reached
-            if self.check_user_created_up_to_daily_limit(auth_user) is True:
+            if self.check_user_created_up_to_daily_limit(user) is True:
 
                 return Response(
                     data={
@@ -809,13 +914,13 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             event_room = EventRooms.objects.create(
                 event_room_name=new_data['event_room_name'],
                 generic_status=GenericStatuses.objects.get(generic_status_name='incomplete'),
-                created_by=auth_user
+                created_by=user
             )
 
         else:
 
             #check if reply event limit is not yet reached
-            if self.check_user_replied_up_to_daily_limit(auth_user) is True:
+            if self.check_user_replied_up_to_daily_limit(user) is True:
 
                 return Response(
                     data={
@@ -857,7 +962,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 event_room.save()
 
                 #prevent from being queued twice
-                prevent_event_room_from_queuing_twice_for_reply(auth_user, event_room)
+                prevent_event_room_from_queuing_twice_for_reply(user, event_room)
 
                 return Response(
                     data={
@@ -874,7 +979,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             event_room.save()
 
             #prevent from being queued twice
-            prevent_event_room_from_queuing_twice_for_reply(auth_user, event_room)
+            prevent_event_room_from_queuing_twice_for_reply(user, event_room)
 
             #proceed
             event_role = EventRoles.objects.get(event_role_name='responder')
@@ -882,7 +987,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         #create event, excluding audio_file and event_room
         #generic_status is handled by default, so it is skipped here
         new_event = Events.objects.create(
-            user=auth_user,
+            user=user,
             event_role=event_role,
             event_tone=event_tone,
             audio_volume_peaks=new_data['audio_volume_peaks'],
@@ -903,7 +1008,6 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             },
             status.HTTP_201_CREATED
         )
-
 
 
 #to handle specific actions related to user
@@ -946,7 +1050,7 @@ class UserActionsAPI(generics.GenericAPIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        auth_user = User(self.request.user.id)
+        user = User(self.request.user.id)
         
         #check if user can reply
         if\
@@ -973,7 +1077,7 @@ class UserActionsAPI(generics.GenericAPIView):
         #unlock any other event_room that were locked for reply choices
         #also save to user_event_rooms to prevent unlocked event_rooms from being queued twice
         event_rooms = EventRooms.objects.filter(
-            locked_for_user=auth_user
+            locked_for_user=user
         ).exclude(
             pk=event_room_id
         )
@@ -981,7 +1085,7 @@ class UserActionsAPI(generics.GenericAPIView):
         for event_room_row in event_rooms:
 
             #prevent these event_rooms from being queued again
-            prevent_event_room_from_queuing_twice_for_reply(auth_user, event_room_row)
+            prevent_event_room_from_queuing_twice_for_reply(user, event_room_row)
 
             event_room_row.when_locked = None
             event_room_row.locked_for_user = None
@@ -1067,13 +1171,13 @@ class UserActionsAPI(generics.GenericAPIView):
     def cancel_reply_choices(self):
 
         User = get_user_model()
-        auth_user = User(pk=self.request.user.id)
+        user = User(pk=self.request.user.id)
 
         event_rooms = EventRooms.objects.select_related(
             'generic_status', 'locked_for_user'
         ).filter(
             generic_status__generic_status_name='incomplete',
-            locked_for_user=auth_user,
+            locked_for_user=user,
             when_locked__lte=datetime.now(timezone.utc) - relativedelta(minutes=REPLY_CHOICE_INACTIVE_MAX_MINUTES),
             is_replying=False
         )
@@ -1091,7 +1195,7 @@ class UserActionsAPI(generics.GenericAPIView):
 
             #prevent repeated queue
             prevent_event_room_from_queuing_twice_for_reply(
-                auth_user,
+                user,
                 event_room
             )
 

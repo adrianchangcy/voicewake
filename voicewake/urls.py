@@ -43,6 +43,9 @@ urlpatterns = [
     path('api/events/create', views.EventsAPI.as_view(), name='create_events'),
     path('api/event-likes-dislikes', views.EventLikesDislikesAPI.as_view(), name='event_likes_dislikes'),
     path('api/user-actions', views.UserActionsAPI.as_view(), name='user_actions'),
+    path('api/user/username/check-exists/<str:username>', views.CheckUsernameExistsAPI.as_view(), name='check_username_exists'),
+    path('api/user/create', views.CreateUserAPI.as_view(), name='create_user'),
+    path('api/test', views.TestAPI.as_view(), name='test'),
     
     #user management
     #refer to link below for all URLs/APIs already provided

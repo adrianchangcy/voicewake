@@ -3,7 +3,7 @@ from django.contrib.postgres.fields import ArrayField
 
 #custom user model
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
-from django.conf import settings    #settings.AUTH_USER_MODEL
+from django.conf import settings    #AUTH_USER_MODEL, TOTP_KEY_BYTE_SIZE
 
 #Python packages
 from datetime import datetime, timedelta
@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 import os
 import shutil
 from decimal import Decimal
+import secrets
 
 #defaults
 #'any' means randomise later
@@ -53,47 +54,57 @@ def get_default_generic_status():
 #custom user model
 class UserManager(BaseUserManager):
 
-  def _create_user(self, email, username, password, is_staff, is_superuser, **extra_fields):
+    def _create_user(self, email, username, password, is_active, is_staff, is_superuser, **extra_fields):
 
-    if not email:
-        raise ValueError('Users must have an email address.')
-    
-    now = get_current_datetime_with_tz()
-    email = self.normalize_email(email)
-    user = self.model(
-        email=email,
-        username=username,
-        is_staff=is_staff,
-        is_active=True,
-        is_superuser=is_superuser,
-        last_login=now,
-        date_joined=now,
-        **extra_fields
-    )
+        if not email:
+            raise ValueError('Users must have an email address.')
 
-    #FYI, set_password() falls back to set_unusable_password() when None
-    user.set_password(password)
-    user.save(using=self._db)
-    return user
+        now = get_current_datetime_with_tz()
+        email = self.normalize_email(email)
+        totp_key = secrets.token_bytes(settings.TOTP_KEY_BYTE_SIZE)
 
-  def create_user(self, email, username, password, **extra_fields):
-    return self._create_user(email, username, password, False, False, **extra_fields)
+        user = self.model(
+            email=email,
+            username=username,
+            totp_key=totp_key,
+            is_active=is_active,
+            is_staff=is_staff,
+            is_superuser=is_superuser,
+            last_login=now,
+            date_joined=now,
+            **extra_fields
+        )
 
-  def create_superuser(self, email, username, password, **extra_fields):
-    return self._create_user(email, username, password, True, True, **extra_fields)
+        #FYI, set_password() falls back to set_unusable_password() when None
+        #password=None for regular users
+        user.set_password(password)
+        user.save(using=self._db)
+
+        return user
+
+    #for normal users, if manual, call get_user_model().objects.create_user()
+    #py manage.py createsuperuser and UserCreationForm will auto-call these methods
+
+    def create_user(self, email, username, **extra_fields):
+        return self._create_user(email, username, None, False, False, False, **extra_fields)
+
+    def create_superuser(self, email, username, password, **extra_fields):
+        return self._create_user(email, username, password, True, True, True, **extra_fields)
 
 
 class User(AbstractBaseUser, PermissionsMixin):
     id = models.BigAutoField(primary_key=True)
     email = models.EmailField(max_length=254, unique=True)
-    username = models.CharField(max_length=254, unique=True)
-    password = models.CharField(max_length=128)
+    username = models.CharField(max_length=30, unique=True)
+    totp_key = models.BinaryField()
+    password = models.CharField(max_length=128) #still used for superuser
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     last_login = models.DateTimeField(null=True, blank=True)
     date_joined = models.DateTimeField(auto_now_add=True)
     
+    #FYI, do not need unique_together for email and username, else two unique emails can have the same username, and vice versa
 
     #can be anything, but must be unique field
     USERNAME_FIELD = 'username'
@@ -113,6 +124,17 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 
+class UserOTP(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    otp = models.CharField(max_length=6)    #remember to also verify submitted token first before comparing
+    attempts = models.SmallIntegerField(default=0)
+    last_attempted = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = 'voicewake'
+        managed = True
+        db_table = 'user_otp'
 
 
 class EventLikesDislikes(models.Model):
