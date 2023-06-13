@@ -14,8 +14,9 @@ from datetime import datetime, timezone, timedelta, tzinfo
 from genericpath import isfile
 from zoneinfo import ZoneInfo
 from pydub import AudioSegment
-import os
+import secrets
 import time
+import re
 
 #app files
 from .models import *
@@ -121,6 +122,11 @@ def get_datetime_now():
     #hours_passed = (get_datetime_now() - event_room.when_locked).total_seconds() / 60 / 60
 
 
+def remove_all_whitespace(string_value):
+
+    return re.sub(r'\s+', '', string_value, flags=re.UNICODE)
+
+
 #you do not need this if you have appropriate permission_classes=[]
 def is_user_logged_in(request):
 
@@ -154,10 +160,10 @@ def check_user_is_replying(request, exclude_event_room_id=None):
 
     return the_count > 0
 
-def prevent_event_room_from_queuing_twice_for_reply(auth_user, event_room):
+def prevent_event_room_from_queuing_twice_for_reply(user, event_room):
 
     user_event_room, ok = UserEventRooms.objects.get_or_create(
-        user=auth_user,
+        user=user,
         event_room=event_room,
     )
 
@@ -215,7 +221,7 @@ class TOTPVerification:
 
     def create_key(self, key_byte_size):
 
-        self.key = os.urandom(key_byte_size)
+        self.key = secrets.token_bytes(key_byte_size)
 
     def get_key(self):
 

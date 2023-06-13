@@ -1,10 +1,11 @@
 from django.forms import CharField, DateTimeField
 from rest_framework import serializers
 
+from .services import *
 from .models import *
 
 
-class AuthUserSerializer(serializers.ModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'username']
@@ -29,7 +30,7 @@ class UserVerificationOptionsSerializer(serializers.ModelSerializer):
 
 
 class EventLikesDislikesSerializer(serializers.ModelSerializer):
-    user = AuthUserSerializer()
+    user = UserSerializer()
     class Meta:
         model = EventLikesDislikes
         fields = '__all__'
@@ -43,15 +44,15 @@ class GenericStatusesSerializer(serializers.ModelSerializer):
 
 class EventRoomsSerializer(serializers.ModelSerializer):
     generic_status = GenericStatusesSerializer()
-    locked_for_user = AuthUserSerializer()
-    created_by = AuthUserSerializer()
+    locked_for_user = UserSerializer()
+    created_by = UserSerializer()
     class Meta:
         model = EventRooms
         fields = '__all__'
 
 
 class GetEventsSerializer(serializers.ModelSerializer):
-    user = AuthUserSerializer()
+    user = UserSerializer()
     event_role = EventRolesSerializer()
     event_tone = EventTonesSerializer()
     event_room = EventRoomsSerializer()
@@ -166,5 +167,43 @@ class UserActionsSerializer(serializers.Serializer):
         else:
 
             raise serializers.ValidationError('Missing paired data.')
+
+
+class CheckUsernameExistsSerializer(serializers.Serializer):
+
+    username = serializers.CharField(
+        min_length=1,
+        max_length=30,
+    )
+
+    def validate_username(self, value):
+
+        if len(remove_all_whitespace(value)) == 0:
+
+            raise serializers.ValidationError('Empty username.')
+        
+        return value
+
+
+class CreateUserSerializer(serializers.Serializer):
+
+    #no need to do our own regex check for EmailField
+    username = serializers.CharField(
+        min_length=1,
+        max_length=30,
+    )
+    email = serializers.EmailField(max_length=254)
+
+    def validate_username(self, value):
+
+        if len(remove_all_whitespace(value)) == 0:
+
+            raise serializers.ValidationError('Empty username.')
+        
+        return value
+
+
+
+
 
 

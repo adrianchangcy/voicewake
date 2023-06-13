@@ -46,7 +46,7 @@ class VoicewakeConfig(AppConfig):
 
                 #passes User instance
                 create_user_details(kwargs['instance'])
-                add_to_default_group(kwargs['instance'])
+                # add_to_default_group(kwargs['instance'])
             
             return
 
