@@ -182,16 +182,16 @@ class CheckUsernameExistsSerializer(serializers.Serializer):
 
             raise serializers.ValidationError('Empty username.')
         
-        return value
+        return value.lower()
 
 
 class CreateUserSerializer(serializers.Serializer):
 
-    #no need to do our own regex check for EmailField
     username = serializers.CharField(
         min_length=1,
         max_length=30,
     )
+    #no need to do our own regex check for EmailField
     email = serializers.EmailField(max_length=254)
 
     def validate_username(self, value):
@@ -200,7 +200,15 @@ class CreateUserSerializer(serializers.Serializer):
 
             raise serializers.ValidationError('Empty username.')
         
-        return value
+        return value.lower()
+    
+    def validate_email(self, value):
+
+        return value.lower()
+
+
+
+
 
 
 

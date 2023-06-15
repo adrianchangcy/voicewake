@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django_otp.oath import TOTP
 from django.contrib.auth import get_user_model
+from django.db import transaction
 
 #Python libraries
 from datetime import datetime, timezone, timedelta, tzinfo
@@ -21,6 +22,7 @@ import re
 #app files
 from .models import *
 from .serializers import *
+from .settings import *
 
 #miscellaneous
 from .static.values.values import *
@@ -269,6 +271,66 @@ class TOTPVerification:
                 self.verified = False
 
         return self.verified
+
+class HandleUserOTP:
+
+    def __init__(self, user_instance):
+
+        #User row
+        self.user_instance = user_instance
+
+
+
+
+
+#True when updated, False when still under timeout
+#pass is_reset=True to reset, when user's submitted OTP is verified successfully
+def increment_user_otp_attempt(hard_reset=False):
+
+    user_instance = get_user_model()(pk=1)
+    datetime_now = get_datetime_now()
+
+    try:
+
+        with transaction.atomic():
+
+            user_otp_instance = UserOTP.objects.select_for_update().get(
+                user=user_instance
+            )
+
+            #hard reset on OTP success
+            if hard_reset is True:
+
+                user_otp_instance.attempts = -1
+                user_otp_instance.save()
+                return True
+
+            #max attempts reached
+            if user_otp_instance.attempts >= TOTP_MAX_ATTEMPTS:
+
+                #check for timeout
+                timeout_end = user_otp_instance.last_attempted + timedelta(seconds=TOTP_MAX_ATTEMPT_TIMEOUT_SECONDS)
+
+                if datetime_now < timeout_end:
+
+                    #still under timeout
+                    return False
+
+                else:
+
+                    #can reset after timeout
+                    user_otp_instance.attempts = -1
+                    user_otp_instance.save()
+                    return True
+
+            #proceed
+            user_otp_instance.attempts += 1
+            user_otp_instance.save()
+            return True
+
+    except:
+
+        return False
 
 
 
