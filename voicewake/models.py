@@ -59,8 +59,11 @@ class UserManager(BaseUserManager):
         if not email:
             raise ValueError('Users must have an email address.')
 
+        #always convert to lowercase when dealing with username and email
+        username = username.lower()
+        email = email.lower()
+
         now = get_current_datetime_with_tz()
-        email = self.normalize_email(email)
         totp_key = secrets.token_bytes(settings.TOTP_KEY_BYTE_SIZE)
 
         user = self.model(
@@ -80,6 +83,11 @@ class UserManager(BaseUserManager):
         user.set_password(password)
         user.save(using=self._db)
 
+        #create UserOTP row
+        UserOTP.objects.create(
+            user=user
+        )
+
         return user
 
     #for normal users, if manual, call get_user_model().objects.create_user()
@@ -94,8 +102,8 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     id = models.BigAutoField(primary_key=True)
-    email = models.EmailField(max_length=254, unique=True)
-    username = models.CharField(max_length=30, unique=True)
+    email = models.EmailField(max_length=254, unique=True)  #always lowercase
+    username = models.CharField(max_length=30, unique=True) #always lowercase
     totp_key = models.BinaryField()
     password = models.CharField(max_length=128) #still used for superuser
     is_staff = models.BooleanField(default=False)
@@ -123,12 +131,11 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 
-
+#attempts=-1, so it becomes =0 at first OTP sent, then =1 as user fails once and next OTP is sent
 class UserOTP(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    otp = models.CharField(max_length=6)    #remember to also verify submitted token first before comparing
-    attempts = models.SmallIntegerField(default=0)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    attempts = models.SmallIntegerField(default=-1)
     last_attempted = models.DateTimeField(auto_now=True)
 
     class Meta:
