@@ -51,6 +51,7 @@ def get_default_generic_status():
     return GenericStatuses.objects.get_or_create(generic_status_name='ok')[0].id
 
 
+
 #custom user model
 class UserManager(BaseUserManager):
 
