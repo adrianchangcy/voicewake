@@ -83,11 +83,7 @@ class UserManager(BaseUserManager):
         user.set_password(password)
         user.save(using=self._db)
 
-        #create UserOTP row
-        UserOTP.objects.create(
-            user=user
-        )
-
+        #don't create UserOTP() here, as it's only needed when OTP is needed
         return user
 
     #for normal users, if manual, call get_user_model().objects.create_user()
@@ -131,11 +127,13 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 
-#attempts=-1, so it becomes =0 at first OTP sent, then =1 as user fails once and next OTP is sent
+#delete on success or on max attempts once max attempt timeout has passed
 class UserOTP(models.Model):
     id = models.BigAutoField(primary_key=True)
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    attempts = models.SmallIntegerField(default=-1)
+    otp = models.CharField(max_length=6)
+    when_created = models.DateTimeField(auto_now_add=True)
+    attempts = models.SmallIntegerField(default=0)
     last_attempted = models.DateTimeField(auto_now=True)
 
     class Meta:

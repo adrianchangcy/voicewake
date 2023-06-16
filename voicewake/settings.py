@@ -260,8 +260,11 @@ TOTP_KEY_BYTE_SIZE = 20         #to pass into os.urandom() for new random key
 TOTP_NUMBER_OF_DIGITS = 6       #digits in OTP
 TOTP_VALIDITY_SECONDS = 300     #seconds until expiry, a.k.a. steps
 TOTP_TOLERANCE_SECONDS = 120    #allow early/late by x seconds until truly not allowed
-TOTP_MAX_ATTEMPTS = 5
-TOTP_MAX_ATTEMPT_TIMEOUT_SECONDS = 600
+
+#UserOTP-related arguments
+OTP_CREATE_TIMEOUT_SECONDS = 30    #for creating new OTP
+OTP_MAX_ATTEMPTS = 4            #times someone can try before being timed out
+OTP_MAX_ATTEMPT_TIMEOUT_SECONDS = 600
 
 
 
