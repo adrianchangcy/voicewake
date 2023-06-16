@@ -184,6 +184,9 @@ def first_time_setup():
 # @login_required(login_url='/login')
 def home(request):
 
+
+
+
     return render(request, template_name='voicewake/home.html')
 
 
@@ -266,52 +269,48 @@ class CreateUserAPI(generics.GenericAPIView):
             )
         
         #check if email already exists
-        email_exists = User.objects.filter(email=new_data['email']).exists()
+        #sign up always leads to login, regardless of new or existing account, for email fishing protection
+        user_instance = None
 
-        if email_exists is True:
+        try:
 
             #get user
             user_instance = User.objects.get(
                 email=new_data['email']
             )
 
-        else:
+        except User.DoesNotExist:
 
             #create user
-            # user_instance = User.objects.create_user(
-            #     username=new_data['username'],
-            #     email=new_data['email'],
-            # )
+            user_instance = User.objects.create_user(
+                username=new_data['username'],
+                email=new_data['email'],
+            )
+
+
             
-            #current:
-                #sign up --> is_active=False --> enter OTP --> is_active=True
-            #Medium:
-                #sign up --> has account? --> sign in with hex and action=register in URL
-                #sign up --> has account --> sign in with hex and action=register in URL --> delete if not registered after 7 days
-            pass
+        # #create OTP
+        # totp_object = TOTPVerification(TOTP_NUMBER_OF_DIGITS, TOTP_VALIDITY_SECONDS, TOTP_TOLERANCE_SECONDS)
+        # totp_object.set_key(user_instance.totp_key)
+        # totp_token = totp_object.generate_token()
+        # totp_expiry_text = '%d minutes' % (TOTP_VALIDITY_SECONDS / 60)
 
-        #create OTP
-        totp_object = TOTPVerification(TOTP_NUMBER_OF_DIGITS, TOTP_VALIDITY_SECONDS, TOTP_TOLERANCE_SECONDS)
-        totp_object.set_key(user_instance.totp_key)
-        totp_token = totp_object.generate_token()
-        totp_expiry_text = '%d minutes' % (TOTP_VALIDITY_SECONDS / 60)
+        # #prepare email
+        # email_subject = 'Code for logging in'
+        # email_message = get_template('email/otp.html').render(context={
+        #     'otp_direction': 'Log in with this code',
+        #     'otp': totp_token,
+        #     'otp_expiry': totp_expiry_text
+        # })
 
-        #prepare email
-        email_subject = 'Code for logging in'
-        email_message = get_template('email/otp.html').render(context={
-            'otp_direction': 'Log in with this code',
-            'otp': totp_token,
-            'otp_expiry': totp_expiry_text
-        })
-
-        send_mail(
-            subject=email_subject,
-            message='',
-            html_message=email_message,
-            from_email=DEFAULT_FROM_EMAIL,
-            recipient_list=[new_data['email']],
-            fail_silently=False
-        )
+        # send_mail(
+        #     subject=email_subject,
+        #     message='',
+        #     html_message=email_message,
+        #     from_email=DEFAULT_FROM_EMAIL,
+        #     recipient_list=[new_data['email']],
+        #     fail_silently=False
+        # )
 
         return Response(
             data={
@@ -320,7 +319,7 @@ class CreateUserAPI(generics.GenericAPIView):
                 },
                 'message': 'Request successful.'
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_201_CREATED
         )
 
 

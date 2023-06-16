@@ -180,7 +180,7 @@ class TOTPVerification:
     #thanks to link below
     #https://medium.com/viithiisys/creating-and-verifying-one-time-passwords-with-django-otp-861f472f602f
 
-    def __init__(self, number_of_digits, validity_seconds, tolerance_seconds):
+    def __init__(self, totp_number_of_digits, totp_validity_seconds, totp_tolerance_seconds):
 
         #1 byte is 8 bits, so therefore minimum 15 bytes, recommended 20 bytes
         #it seems that key must always be a new random one on every new token
@@ -196,12 +196,12 @@ class TOTPVerification:
         self.verified = False
 
         # number of digits in a token. Default is 6.
-        self.number_of_digits = number_of_digits
+        self.totp_number_of_digits = totp_number_of_digits
 
         # validity period of a token. Default is 30 seconds.
-        self.token_validity_period = validity_seconds
+        self.token_validity_period = totp_validity_seconds
 
-        self.token_validity_tolerance = tolerance_seconds
+        self.token_validity_tolerance = totp_tolerance_seconds
 
     def totp_obj(self):
 
@@ -209,7 +209,7 @@ class TOTPVerification:
         totp = TOTP(
             key=self.key,
             step=self.token_validity_period,
-            digits=self.number_of_digits
+            digits=self.totp_number_of_digits
         )
 
         # the current time will be used to generate a counter
@@ -221,9 +221,9 @@ class TOTPVerification:
 
         self.key = key
 
-    def create_key(self, key_byte_size):
+    def create_key(self, totp_key_byte_size):
 
-        self.key = secrets.token_bytes(key_byte_size)
+        self.key = secrets.token_bytes(totp_key_byte_size)
 
     def get_key(self):
 
@@ -236,7 +236,7 @@ class TOTPVerification:
 
         # token can be obtained with `totp.token()`
         token = str(totp.token())
-        token = token.zfill(self.number_of_digits)
+        token = token.zfill(self.totp_number_of_digits)
         return token
 
     def verify_token(self, token):
@@ -272,65 +272,119 @@ class TOTPVerification:
 
         return self.verified
 
-class HandleUserOTP:
 
-    def __init__(self, user_instance):
 
-        #User row
+
+#utilise this class in transaction.atomic()
+class HandleUserOTP(TOTPVerification):
+
+    def __init__(
+        self, user_instance,
+        totp_number_of_digits, totp_validity_seconds, totp_tolerance_seconds,
+        otp_create_timeout_seconds, otp_max_attempts, otp_max_attempt_timeout_seconds
+    ):
+
         self.user_instance = user_instance
+        self.user_otp_instance = None
 
+        self.otp_create_timeout_seconds = otp_create_timeout_seconds
+        self.otp_max_attempts = otp_max_attempts
+        self.otp_max_attempt_timeout_seconds = otp_max_attempt_timeout_seconds
 
+        TOTPVerification.__init__(self, totp_number_of_digits, totp_validity_seconds, totp_tolerance_seconds)
 
+    def __set_key_if_none(self):
 
+        if self.key is None:
 
-#True when updated, False when still under timeout
-#pass is_reset=True to reset, when user's submitted OTP is verified successfully
-def increment_user_otp_attempt(hard_reset=False):
+            self.key = self.user_instance.totp_key
 
-    user_instance = get_user_model()(pk=1)
-    datetime_now = get_datetime_now()
+    def create_user_otp_instance(self):
 
-    try:
+        try:
 
-        with transaction.atomic():
+            self.user_otp_instance = UserOTP.objects.select_for_update().get(user=self.user_instance)
 
-            user_otp_instance = UserOTP.objects.select_for_update().get(
-                user=user_instance
-            )
+        except UserOTP.DoesNotExist:
 
-            #hard reset on OTP success
-            if hard_reset is True:
+            self.user_otp_instance, created = UserOTP.objects.select_for_update().get_or_create(user=self.user_instance)
 
-                user_otp_instance.attempts = -1
-                user_otp_instance.save()
+    def get_user_instance(self):
+
+        return self.user_instance
+    
+    def get_user_otp_instance(self):
+
+        return self.user_otp_instance
+
+    def is_max_attempts_timed_out(self):
+
+        #max attempts reached
+        if self.user_otp_instance.attempts >= self.otp_max_attempts:
+
+            #check for timeout
+            max_timeout_end = self.user_otp_instance.last_attempted + timedelta(seconds=self.otp_max_attempt_timeout_seconds)
+
+            if get_datetime_now() < max_timeout_end:
+
+                #still under timeout
                 return True
 
-            #max attempts reached
-            if user_otp_instance.attempts >= TOTP_MAX_ATTEMPTS:
-
-                #check for timeout
-                timeout_end = user_otp_instance.last_attempted + timedelta(seconds=TOTP_MAX_ATTEMPT_TIMEOUT_SECONDS)
-
-                if datetime_now < timeout_end:
-
-                    #still under timeout
-                    return False
-
-                else:
-
-                    #can reset after timeout
-                    user_otp_instance.attempts = -1
-                    user_otp_instance.save()
-                    return True
-
-            #proceed
-            user_otp_instance.attempts += 1
-            user_otp_instance.save()
-            return True
-
-    except:
-
+            #can reset after timeout
+            self.user_otp_instance.attempts = 0
+            self.user_otp_instance.save()
+            return False
+        
         return False
+            
+    def is_creating_otp_timed_out(self):
+
+        #check for timeout
+        timeout_end = self.user_otp_instance.when_created + timedelta(seconds=self.otp_create_timeout_seconds)
+
+        if get_datetime_now() < timeout_end:
+
+            return True
+        
+        return False
+
+    def generate_and_save_otp(self):
+
+        self.__set_key_if_none()
+
+        if self.is_creating_otp_timed_out is True or self.is_max_attempts_timed_out is True:
+
+            return ''
+
+        self.user_otp_instance.otp = self.generate_token()
+        self.user_otp_instance.when_created = get_datetime_now()
+        self.user_otp_instance.save()
+        return self.user_otp_instance.otp
+    
+    def verify_otp(self, otp:str):
+
+        self.__set_key_if_none()
+
+        if self.is_max_attempts_timed_out is True:
+
+            return False
+
+        #record attempt
+        self.user_otp_instance.attempts += 1
+        self.user_otp_instance.last_attempted = get_datetime_now()
+
+        #check token validity
+        if otp != self.user_otp_instance.otp or self.verify_token(otp) is False:
+
+            self.user_otp_instance.save()
+            return False
+        
+        #ok
+        self.user_otp_instance.delete()
+        self.user_otp_instance = None
+        return True
+
+        
 
 
 
