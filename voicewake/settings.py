@@ -256,7 +256,7 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 #TOTP token arguments
 #key minimum 120 bits, recommended 160 bits
 #1 byte is 8 bits, so therefore minimum 15 bytes, recommended 20 bytes
-TOTP_KEY_BYTE_SIZE = 20         #to pass into os.urandom() for new random key
+TOTP_KEY_BYTE_SIZE = 20         #to pass into secrets.token_bytes(int) for creating totp_key
 TOTP_NUMBER_OF_DIGITS = 6       #digits in OTP
 TOTP_VALIDITY_SECONDS = 300     #seconds until expiry, a.k.a. steps
 TOTP_TOLERANCE_SECONDS = 120    #allow early/late by x seconds until truly not allowed

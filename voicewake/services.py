@@ -297,7 +297,7 @@ class HandleUserOTP(TOTPVerification):
 
         if self.key is None:
 
-            self.key = self.user_instance.totp_key
+            self.key = bytes(self.user_instance.totp_key)
 
     def create_user_otp_instance(self):
 
