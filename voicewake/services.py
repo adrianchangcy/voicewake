@@ -250,10 +250,12 @@ class TOTPVerification:
 
             # return False, if token could not be converted to an integer
             self.verified = False
+            print('Could not convert token to int.')
 
         else:
 
             totp = self.totp_obj()
+
             # check if the current counter value is higher than the value of
             # last verified counter and check if entered token is correct by
             # calling totp.verify_token()
@@ -299,13 +301,9 @@ class HandleUserOTP(TOTPVerification):
 
             self.key = bytes(self.user_instance.totp_key)
 
-    def create_user_otp_instance(self):
+    def get_or_create_user_otp_instance(self):
 
-        try:
-
-            self.user_otp_instance = UserOTP.objects.select_for_update().get(user=self.user_instance)
-
-        except UserOTP.DoesNotExist:
+        if self.user_otp_instance is None:
 
             self.user_otp_instance, created = UserOTP.objects.select_for_update().get_or_create(user=self.user_instance)
 
@@ -328,6 +326,7 @@ class HandleUserOTP(TOTPVerification):
             if get_datetime_now() < max_timeout_end:
 
                 #still under timeout
+                print('Is timed out from max attempts.')
                 return True
 
             #can reset after timeout
@@ -342,8 +341,10 @@ class HandleUserOTP(TOTPVerification):
         #check for timeout
         timeout_end = self.user_otp_instance.when_created + timedelta(seconds=self.otp_create_timeout_seconds)
 
-        if get_datetime_now() < timeout_end:
+        #UserOTP will first be created with otp == ''
+        if get_datetime_now() < timeout_end and len(self.user_otp_instance.otp) > 0:
 
+            print('Is timed out from creating OTP.')
             return True
         
         return False
@@ -352,7 +353,7 @@ class HandleUserOTP(TOTPVerification):
 
         self.__set_key_if_none()
 
-        if self.is_creating_otp_timed_out is True or self.is_max_attempts_timed_out is True:
+        if self.is_creating_otp_timed_out() is True or self.is_max_attempts_timed_out() is True:
 
             return ''
 
@@ -365,7 +366,7 @@ class HandleUserOTP(TOTPVerification):
 
         self.__set_key_if_none()
 
-        if self.is_max_attempts_timed_out is True:
+        if self.is_max_attempts_timed_out() is True:
 
             return False
 
@@ -384,7 +385,9 @@ class HandleUserOTP(TOTPVerification):
         self.user_otp_instance = None
         return True
 
-        
+
+
+
 
 
 
