@@ -55,16 +55,14 @@
                         <VActionSpecialS
                             propElement="a"
                             :href="redirect_url"
-                            class="col-span-2 flex items-center"
                         >
-                            <span class="text-base font-medium mx-auto">Open</span>
+                            <span>Open</span>
                         </VActionSpecialS>
                         <VActionButtonS
                             @click.stop="deletePreviousReply()"
                             :propIsEnabled="!is_loading"
-                            class="col-span-2 flex items-center"
                         >
-                            <span class="text-base font-medium mx-auto">Delete</span>
+                            <span>Delete</span>
                         </VActionButtonS>
                     </div>
                 </template>

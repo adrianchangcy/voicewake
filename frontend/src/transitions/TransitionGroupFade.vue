@@ -6,7 +6,7 @@
         enter-active-class="transition-opacity duration-150 ease-in-out"
         enter-to-class="opacity-100"
         leave-from-class="opacity-100"
-        leave-active-class="transition-opacity duration-150 ease-in-out"
+        leave-active-class="transition-opacity duration-150 ease-in-out absolute"
         leave-to-class="opacity-0"
     >
         <slot></slot>

@@ -52,11 +52,13 @@ urlpatterns = [
     #https://github.com/django/django/blob/main/django/contrib/auth/urls.py
     # path('', include('django.contrib.auth.urls')),
 
+    #allauth for Google, etc.
+    # path('accounts/', include('allauth.urls')),
+
     # templates
     #still need to make these pretty, but leave it for last
     #we specify 'name' arg for auto-construction of full URL via reverse()
     path('', views.home, name='home'),
-    path('sign-up', views.sign_up, name='sign_up'),
     path('say', views.CreateEventRooms.as_view(), name='create_event_room'),
     path('hear', views.ListEventRooms.as_view(), name='list_event_rooms'),
     path('hear/<int:event_room_id>', views.GetEventRooms.as_view(), name='get_event_room'),

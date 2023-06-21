@@ -61,7 +61,8 @@ class UserManager(BaseUserManager):
             raise ValueError('Users must have an email address.')
 
         #always convert to lowercase when dealing with username and email
-        username = username.lower()
+        if username is not None:
+            username = username.lower()
         email = email.lower()
 
         now = get_current_datetime_with_tz()
@@ -90,8 +91,8 @@ class UserManager(BaseUserManager):
     #for normal users, if manual, call get_user_model().objects.create_user()
     #py manage.py createsuperuser and UserCreationForm will auto-call these methods
 
-    def create_user(self, email, username, **extra_fields):
-        return self._create_user(email, username, None, False, False, False, **extra_fields)
+    def create_user(self, email, **extra_fields):
+        return self._create_user(email, None, None, False, False, False, **extra_fields)
 
     def create_superuser(self, email, username, password, **extra_fields):
         return self._create_user(email, username, password, True, True, True, **extra_fields)
@@ -100,7 +101,7 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
     id = models.BigAutoField(primary_key=True)
     email = models.EmailField(max_length=254, unique=True)  #always lowercase
-    username = models.CharField(max_length=30, unique=True) #always lowercase
+    username = models.CharField(max_length=30, unique=True, null=True, blank=True, default=None) #always lowercase
     totp_key = models.BinaryField()
     password = models.CharField(max_length=128) #still used for superuser
     is_staff = models.BooleanField(default=False)
@@ -110,6 +111,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     date_joined = models.DateTimeField(auto_now_add=True)
     
     #FYI, do not need unique_together for email and username, else two unique emails can have the same username, and vice versa
+    #for username, string should always use '', but due to unique constraint, we must use null
 
     #can be anything, but must be unique field
     USERNAME_FIELD = 'username'
