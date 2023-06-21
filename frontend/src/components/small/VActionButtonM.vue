@@ -2,11 +2,14 @@
     <button
         :class="[
             (propIsEnabled ? 'hover:bg-theme-light/80 hover:border-theme-light-trim/40 hover:shadow-sm' : 'opacity-10 cursor-default'),
-            'h-20 p-2 text-4xl bg-theme-light/60       border-t-2 border-theme-light-trim rounded-lg shadow-md transition'
+            'h-20 p-2 text-4xl flex items-center bg-theme-light/60       border-t-2 border-theme-light-trim rounded-lg shadow-md transition'
         ]"
         type="button"
+        :disabled="!propIsEnabled"
     >
-        <slot></slot>
+        <div class="w-fit h-fit mx-auto">
+            <slot></slot>
+        </div>
     </button>
 </template>
 

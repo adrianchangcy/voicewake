@@ -3,13 +3,14 @@
         :class="[
             (propIsEnabled ? 'text-theme-black hover:shadow-md hover:shadow-theme-lead/75 hover:bg-theme-soft-lead hover:border-theme-light-trim/40' : 'text-theme-black/10 shadow-md cursor-default'),
             (propIsSmaller ? 'scale-50' : ''),
-            'flex items-center  w-40 h-40 text-2xl      rounded-full border-t-2 shadow-lg    bg-theme-soft-lead/80 border-theme-light-trim shadow-theme-lead/75   transition'
+            'w-40 h-40 text-2xl flex items-center      rounded-full border-t-2 shadow-lg    bg-theme-soft-lead/80 border-theme-light-trim shadow-theme-lead/75   transition'
         ]"
         type="button"
+        :disabled="!propIsEnabled"
     >
         <div
             :class="propIsSmaller ? 'scale-150 font-medium' : ''"
-            class="mx-auto transition"
+            class="w-fit h-fit mx-auto transition"
         >
             <slot></slot>
         </div>

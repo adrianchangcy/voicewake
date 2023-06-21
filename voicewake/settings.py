@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',     #requires SITE_ID later, so db can manage content for multiple sites
 
     'rest_framework',
     #optional, provides template when returning Response() and not JsonResponse()
@@ -64,7 +65,19 @@ INSTALLED_APPS = [
     # 'django_otp.plugins.otp_totp',
     # 'django_otp.plugins.otp_hotp',
     # 'django_otp.plugins.otp_static',
+
+    #allauth
+    # 'allauth',
+    # 'allauth.account',
+    # 'allauth.socialaccount',
+
+    #social providers
+    # 'allauth.socialaccount.providers.google',
 ]
+
+
+#if this doesn't work, check django_site in db
+SITE_ID = 1
 
 
 #custom user model

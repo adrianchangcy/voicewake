@@ -4,10 +4,13 @@
         :class="[
             (propIsEnabled ? 'text-theme-black hover:shadow-sm hover:shadow-theme-lead/75 hover:bg-theme-soft-lead hover:border-theme-light-trim/40' : 'text-theme-black/10 shadow-md cursor-default'),
             (propIsRound ? 'w-10 rounded-full' : 'rounded-lg'),
-            'h-10 text-2xl      border-t-2 shadow-md    bg-theme-soft-lead/80 border-theme-light-trim shadow-theme-lead/75   transition'
+            'h-10 text-base font-medium flex items-center      border-t-2 shadow-md    bg-theme-soft-lead/80 border-theme-light-trim shadow-theme-lead/75   transition'
         ]"
+        :disabled="!propIsEnabled"
     >
-        <slot></slot>
+        <div class="w-fit h-fit mx-auto">
+            <slot></slot>
+        </div>
     </component>
 </template>
 

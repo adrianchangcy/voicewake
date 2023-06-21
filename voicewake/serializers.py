@@ -178,11 +178,14 @@ class CheckUsernameExistsSerializer(serializers.Serializer):
 
     def validate_username(self, value):
 
-        if len(remove_all_whitespace(value)) == 0:
+        value = value.lower()
+        value = remove_all_whitespace(value)
+
+        if len(value) == 0:
 
             raise serializers.ValidationError('Empty username.')
         
-        return value.lower()
+        return value
 
 
 class CreateUserSerializer(serializers.Serializer):
@@ -196,15 +199,27 @@ class CreateUserSerializer(serializers.Serializer):
 
     def validate_username(self, value):
 
-        if len(remove_all_whitespace(value)) == 0:
+        value = value.lower()
+        value = remove_all_whitespace(value)
+
+        if len(value) == 0:
 
             raise serializers.ValidationError('Empty username.')
         
-        return value.lower()
+        return value
     
     def validate_email(self, value):
 
-        return value.lower()
+        value = value.lower()
+        value = remove_all_whitespace(value)
+
+        if len(value) == 0:
+
+            raise serializers.ValidationError('Empty email.')
+        
+        return value
+
+
 
 
 

@@ -10,9 +10,6 @@ from django.template.loader import get_template
 
 #auth
 from django.contrib.auth import get_user_model
-from rest_framework.authtoken.models import Token
-from django.utils.encoding import force_bytes
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
@@ -229,6 +226,7 @@ class CheckUsernameExistsAPI(generics.GenericAPIView):
         )
 
 
+
 class CreateUserAPI(generics.GenericAPIView):
 
     serializer_class = None
@@ -252,26 +250,6 @@ class CreateUserAPI(generics.GenericAPIView):
         user_instance = None
         # return_this_for_login_to_use_as_url_param = urlsafe_base64_encode(force_bytes(user_id))
 
-        #check again if username exists
-        username_exists = User.objects.filter(username=new_data['username']).exists()
-
-        if username_exists is True:
-
-            return Response(
-                {
-                    'data': {
-                        'username': new_data['username'],
-                        'exists': username_exists
-                    },
-                    'message': 'Request successful.',
-                },
-                status.HTTP_200_OK
-            )
-        
-        #check if email already exists
-        #sign up always leads to login, regardless of new or existing account, for email fishing protection
-        user_instance = None
-
         try:
 
             #get user
@@ -281,9 +259,10 @@ class CreateUserAPI(generics.GenericAPIView):
 
         except User.DoesNotExist:
 
+            pass
+
             #create user
             user_instance = User.objects.create_user(
-                username=new_data['username'],
                 email=new_data['email'],
             )
 
@@ -360,30 +339,6 @@ class TestAPI(generics.GenericAPIView):
 
 
 
-
-
-#account actions
-def sign_up(request):
-
-    if request.method == 'POST':
-
-        form = UserSignUpForm(request.POST)
-
-        if form.is_valid():
-
-            user = form.save()
-
-            Token.objects.create(user=user)
-
-            login(request, user)
-            return redirect('/')
-
-    else:
-
-        #show empty form
-        form = UserSignUpForm()
-
-    return render(request, 'registration/sign_up.html', {"form":form})
 
 
 

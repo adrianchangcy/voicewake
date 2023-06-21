@@ -2,11 +2,14 @@
     <button
         :class="[
             (propIsEnabled ? 'text-theme-black hover:shadow-md hover:shadow-theme-lead/75 hover:bg-theme-soft-lead hover:border-theme-light-trim/40' : 'text-theme-black/10 shadow-md cursor-default'),
-            'h-24 text-2xl      rounded-lg border-t-2 shadow-lg    bg-theme-soft-lead/80 border-theme-light-trim shadow-theme-lead/75   transition'
+            'h-24 text-2xl flex items-center      rounded-lg border-t-2 shadow-lg    bg-theme-soft-lead/80 border-theme-light-trim shadow-theme-lead/75   transition'
         ]"
         type="button"
+        :disabled="!propIsEnabled"
     >
-        <slot></slot>
+        <div class="w-fit h-fit mx-auto">
+            <slot></slot>
+        </div>
     </button>
 </template>
 

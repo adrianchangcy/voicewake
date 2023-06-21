@@ -276,7 +276,6 @@ class TOTPVerification:
 
 
 
-
 #utilise this class in transaction.atomic()
 class HandleUserOTP(TOTPVerification):
 
@@ -384,7 +383,6 @@ class HandleUserOTP(TOTPVerification):
         self.user_otp_instance.delete()
         self.user_otp_instance = None
         return True
-
 
 
 

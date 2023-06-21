@@ -9,32 +9,32 @@
                 :id="propElementId"
                 type="text" inputmode="numeric" maxlength="1" autocomplete="off"
                 name="number-slot-field"
-                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray focus:border-theme-black"
+                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black"
             />
             <input
                 type="text" inputmode="numeric" maxlength="1" autocomplete="off"
                 name="number-slot-field"
-                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray focus:border-theme-black"
+                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black"
             />
             <input
                 type="text" inputmode="numeric" maxlength="1" autocomplete="off"
                 name="number-slot-field"
-                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray focus:border-theme-black"
+                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black"
             />
             <input
                 type="text" inputmode="numeric" maxlength="1" autocomplete="off"
                 name="number-slot-field"
-                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray focus:border-theme-black"
+                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black"
             />
             <input
                 type="text" inputmode="numeric" maxlength="1" autocomplete="off"
                 name="number-slot-field"
-                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray focus:border-theme-black"
+                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black"
             />
             <input
                 type="text" inputmode="numeric" maxlength="1" autocomplete="off"
                 name="number-slot-field"
-                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray focus:border-theme-black"
+                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black"
             />
         </div>
         <TransitionFade>
@@ -42,10 +42,6 @@
                 <p>{{ status_text }}</p>
             </div>
         </TransitionFade>
-
-        <!--empty block to keep spacing consistent-->
-        <div class="w-0 h-6">
-        </div>
     </div>
 </template>
 
