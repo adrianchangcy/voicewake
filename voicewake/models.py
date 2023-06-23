@@ -12,6 +12,7 @@ import os
 import shutil
 from decimal import Decimal
 import secrets
+import re
 
 #defaults
 #'any' means randomise later
@@ -51,26 +52,43 @@ def get_default_generic_status():
     return GenericStatuses.objects.get_or_create(generic_status_name='ok')[0].id
 
 
+#cannot import from services.py, perhaps due to circular dependency
+def remove_all_whitespace(string_value):
+
+    return re.sub(r'\s+', '', string_value, flags=re.UNICODE)
+
+
 
 #custom user model
 class UserManager(BaseUserManager):
 
     def _create_user(self, email, username, password, is_active, is_staff, is_superuser, **extra_fields):
 
-        if not email:
+        if email is None:
+
             raise ValueError('Users must have an email address.')
 
-        #always convert to lowercase when dealing with username and email
+        email = remove_all_whitespace(email)
+        email_lowercase = email.lower()
+
+        if len(email) == 0:
+
+            raise ValueError('Users must have an email address.')
+
+        username_lowercase = None
+
         if username is not None:
-            username = username.lower()
-        email = email.lower()
+            username = remove_all_whitespace(username)
+            username_lowercase = username.lower()
 
         now = get_current_datetime_with_tz()
         totp_key = secrets.token_bytes(settings.TOTP_KEY_BYTE_SIZE)
 
         user = self.model(
             email=email,
+            email_lowercase=email_lowercase,
             username=username,
+            username_lowercase=username_lowercase,
             totp_key=totp_key,
             is_active=is_active,
             is_staff=is_staff,
@@ -100,8 +118,10 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     id = models.BigAutoField(primary_key=True)
-    email = models.EmailField(max_length=254, unique=True)  #always lowercase
-    username = models.CharField(max_length=30, unique=True, null=True, blank=True, default=None) #always lowercase
+    email = models.EmailField(max_length=254, unique=True)  #preserve uppercase
+    email_lowercase = models.CharField(max_length=254, unique=True) #all lowercase
+    username = models.CharField(max_length=30, unique=True, null=True, blank=True, default=None) #preserve uppercase
+    username_lowercase = models.CharField(max_length=30, unique=True, null=True, blank=True, default=None) #all lowercase
     totp_key = models.BinaryField()
     password = models.CharField(max_length=128) #still used for superuser
     is_staff = models.BooleanField(default=False)
@@ -110,17 +130,20 @@ class User(AbstractBaseUser, PermissionsMixin):
     last_login = models.DateTimeField(null=True, blank=True)
     date_joined = models.DateTimeField(auto_now_add=True)
     
+    #email_lowercase and username_lowercase are for matching against db
+    #email and username are for displaying and general usage
+
     #FYI, do not need unique_together for email and username, else two unique emails can have the same username, and vice versa
     #for username, string should always use '', but due to unique constraint, we must use null
 
-    #can be anything, but must be unique field
-    USERNAME_FIELD = 'username'
+    #main field for account's identifier, must also be unique
+    USERNAME_FIELD = 'email'
 
     #should match the email field's name
     EMAIL_FIELD = 'email'
 
     #only for extra fields when running manage.py createsuperuser, excluding username and password
-    REQUIRED_FIELDS = ['email']
+    REQUIRED_FIELDS = ['username']
 
     objects = UserManager()
 

@@ -8,9 +8,7 @@
         :disabled="!propIsEnabled"
         type="button"
     >
-        <div class="w-fit h-fit mx-auto">
-            <slot></slot>
-        </div>
+        <slot></slot>
     </button>
 </template>
 

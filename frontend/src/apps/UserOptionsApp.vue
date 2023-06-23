@@ -1,5 +1,5 @@
 <template>
-    <div class="w-full text-theme-black">
+    <div class="text-theme-black">
 
         <!--title-->
         <VTitleXL class="py-8">
@@ -26,48 +26,64 @@
             <!--sign in-->
             <div
                 v-if="current_section === 'sign-in-section'"
-                class="flex flex-col relative overflow-hidden"
+                class="flex flex-col relative overflow-hidden h-[30rem]"
             >
 
                 <TransitionGroupSlide
-                    :prop-is-forward="true"
+                    :prop-is-forward="transition_slide_is_forward"
                 >
                     <!--step 0-->
                     <div
-                        class="w-full flex flex-col"
+                        class="w-full flex flex-col p-2 pt-0"
                         v-show="current_step === 'sign-in-step-0'"
                     >
 
-                        <p class="text-2xl font-light block w-full text-center">
-                            Choose a method.
-                        </p>
-
                         <!--choices-->
-                        <div class="flex flex-col gap-2 mt-6">
-                            <VActionButtonS
-                                @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-1')"
-                            >
-                                <span>Sign in with email</span>
-                            </VActionButtonS>
+                        <div class="flex flex-col">
+
+                            <p class="text-2xl block">
+                                Select a sign-in option.
+                            </p>
+
+                            <div class="flex flex-col gap-4 mt-6">
+                                <VActionButtonS
+                                    @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-1')"
+                                    class="w-full px-4 gap-4"
+                                >
+                                    <i class="fas fa-hat-wizard text-2xl"></i>
+                                    <span>Sign in with email</span>
+                                </VActionButtonS>
+                                <VActionButtonS
+                                    @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-1')"
+                                    class="w-full px-4 gap-4"
+                                >
+                                    <i class="fas fa-hat-wizard text-2xl"></i>
+                                    <span>Sign in with Google</span>
+                                </VActionButtonS>
+                            </div>
                         </div>
 
                         <!--extra options-->
                         <div class="mt-8 h-fit flex flex-col">
                             <VActionButtonTextOnly
                                 @click.stop="overrideNavigation('create-account-section', 'create-account-step-0')"
-                                :prop-is-enabled="true"
-                                class="w-fit mx-auto"
                             >
-                                <span>Create account</span>
+                                <span class="mx-auto font-bold">Don't have an account?</span>
                             </VActionButtonTextOnly>
                         </div>
                     </div>
 
                     <!--step 1-->
                     <div
-                        class="w-full flex flex-col"
+                        class="w-full flex flex-col p-2 pt-0"
                         v-show="current_step === 'sign-in-step-1'"
                     >
+
+                        <div class="flex flex-col">
+                            <p class="text-2xl block">
+                                Start with an email address.
+                            </p>
+                        </div>
 
                         <VInput
                             propElementId="email-address"
@@ -79,46 +95,54 @@
                             :propStatusText="email_validation_status_text"
                             :propIsError="can_send_email === false"
                             :propIsOk="can_send_email === true"
+                            propRegex="\s+"
                             @hasNewValue="validateEmail($event)"
+                            class="mt-6"
                         />
 
                         <!--navigation-->
                         <div class="mt-8 w-full h-fit flex">
                             <VActionSpecialM
+                                @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-2')"
                                 :propIsEnabled="true"
                                 propElement="button"
                                 :propIsRound="true"
                                 type="button"
-                                class="flex items-center ml-auto"
+                                class="ml-auto"
                             >
-                                <i class="fas fa-arrow-right w-fit h-fit mx-auto"></i>
+                                <i class="fas fa-arrow-right text-2xl block mx-auto"></i>
                                 <span class="sr-only">continue</span>
                             </VActionSpecialM>
                         </div>
 
                         <!--extra options-->
-                        <div class="mt-2 h-fit flex flex-col">
+                        <div class="h-fit flex flex-col mt-6">
                             <VActionButtonTextOnly
-                                @click.stop="overrideNavigation('create-account-section', 'create-account-step-0')"
+                                @click.stop="overrideNavigation('create-account-section', 'create-account-step-0', false)"
                                 :prop-is-enabled="true"
-                                class="flex flex-row"
                             >
                                 <span class="font-bold">Create account</span>
+                            </VActionButtonTextOnly>
+                            <VActionButtonTextOnly
+                                @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-0', false)"
+                                :prop-is-enabled="true"
+                            >
+                                <span class="font-bold">Sign in with another method</span>
                             </VActionButtonTextOnly>
                         </div>
                     </div>
 
                     <!--step 2-->
                     <div
-                        class="flex flex-col"
+                        class="w-full flex flex-col p-2 pt-0"
                         v-show="current_step === 'sign-in-step-2'"
                     >
 
                         <div class="flex flex-col">
-                            <p class="text-2xl font-light block">
-                                Verification code sent!
+                            <p class="text-2xl block">
+                                Enter the sign-in code.
                             </p>
-                            <span class="text-base font-light block break-words">adrianchangcy@gmail.com</span>
+                            <span class="text-base block break-words">adrianchangcy@gmail.com</span>
                         </div>
 
                         <VNumberSlots
@@ -126,9 +150,10 @@
                             prop-label-text="6-digit code"
                             class="mt-6"
                         />
+
                         <VActionButtonTextOnly
                             :prop-is-enabled="true"
-                            class="mt-4"
+                            class="mt-8"
                         >
                             <span class="font-bold">Can resend in 30s</span>
                         </VActionButtonTextOnly>
@@ -138,6 +163,7 @@
                             <div class="flex flex-row items-center">
                                 <div class="w-full">
                                     <VActionButtonTextOnly
+                                        @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-1', false)"
                                         :prop-is-enabled="true"
                                         class="flex-row"
                                     >
@@ -145,7 +171,7 @@
                                         <span class="block my-auto">Change email</span>
                                     </VActionButtonTextOnly>
                                 </div>
-                                <div class="w-full">
+                                <div>
                                     <VActionSpecialM
                                         :propIsEnabled="true"
                                         propElement="button"
@@ -153,7 +179,7 @@
                                         type="button"
                                         class="ml-auto"
                                     >
-                                        <i class="fas fa-arrow-right w-fit h-fit mx-auto"></i>
+                                        <i class="fas fa-arrow-right text-2xl block mx-auto"></i>
                                         <span class="sr-only">continue</span>
                                     </VActionSpecialM>
                                 </div>
@@ -161,12 +187,18 @@
                         </div>
 
                         <!--extra options-->
-                        <div class="mt-2 h-fit flex flex-col">
+                        <div class="h-fit flex flex-col mt-6">
                             <VActionButtonTextOnly
-                                @click.stop="overrideNavigation('create-account-section', 'create-account-step-0')"
+                                @click.stop="overrideNavigation('create-account-section', 'create-account-step-0', false)"
                                 :prop-is-enabled="true"
                             >
                                 <span class="font-bold">Create account</span>
+                            </VActionButtonTextOnly>
+                            <VActionButtonTextOnly
+                                @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-0', false)"
+                                :prop-is-enabled="true"
+                            >
+                                <span class="font-bold">Sign in with another method</span>
                             </VActionButtonTextOnly>
                         </div>
                     </div>
@@ -176,7 +208,7 @@
             <!--create account-->
             <div
                 v-else-if="current_section === 'create-account-section'"
-                class="flex flex-col relative overflow-hidden pb-10"
+                class="flex flex-col relative overflow-hidden h-[30rem]"
             >
 
                 <TransitionGroupSlide
@@ -184,12 +216,12 @@
                 >
                     <!--step 0-->
                     <div
-                        class="w-full flex flex-col"
+                        class="w-full flex flex-col p-2 pt-0"
                         v-show="current_step === 'create-account-step-0'"
                     >
 
-                        <p class="text-2xl font-light block">
-                            Choose a method to create an account.
+                        <p class="text-2xl block mx-auto">
+                            Choose a method.
                         </p>
 
                         <!--choices-->
@@ -199,15 +231,16 @@
                             <VActionButtonTextOnly
                                 @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-0')"
                                 :prop-is-enabled="true"
+                                class="w-fit mx-auto"
                             >
-                                <span>Have an account? Sign in here.</span>
+                                <span class="font-bold">Sign in</span>
                             </VActionButtonTextOnly>
                         </div>
                     </div>
 
                     <!--step 1-->
                     <div
-                        class="w-full flex flex-col"
+                        class="w-full flex flex-col p-2 pt-0"
                         v-show="current_step === 'create-account-step-1'"
                     >
 
@@ -233,7 +266,7 @@
                                 type="button"
                                 class="flex items-center ml-auto"
                             >
-                                <i class="fas fa-arrow-right w-fit h-fit mx-auto"></i>
+                                <i class="fas fa-arrow-right text-2xl block mx-auto"></i>
                                 <span class="sr-only">continue</span>
                             </VActionSpecialM>
                         </div>
@@ -244,19 +277,19 @@
                                 @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-0')"
                                 :prop-is-enabled="true"
                             >
-                                <span class="font-bold">Have an account? Sign in here.</span>
+                                <span class="font-bold">Sign in</span>
                             </VActionButtonTextOnly>
                         </div>
                     </div>
 
                     <!--step 2-->
                     <div
-                        class="flex flex-col"
+                        class="w-full flex flex-col p-2 pt-0"
                         v-show="current_step === 'create-account-step-2'"
                     >
 
                         <div class="flex flex-col">
-                            <p class="text-2xl font-light block">
+                            <p class="text-2xl block">
                                 Verification code sent!
                             </p>
                             <span class="text-base font-light block break-words">adrianchangcy@gmail.com</span>
@@ -283,7 +316,7 @@
                                         :prop-is-enabled="true"
                                         class="flex-row"
                                     >
-                                        <i class="fas fa-arrow-left w-fit h-fit text-2xl block my-auto pr-2"></i>
+                                        <i class="fas fa-arrow-left text-2xl block my-auto pr-2"></i>
                                         <span class="block my-auto">Change email</span>
                                     </VActionButtonTextOnly>
                                 </div>
@@ -295,7 +328,7 @@
                                         type="button"
                                         class="ml-auto"
                                     >
-                                        <i class="fas fa-arrow-right w-fit h-fit"></i>
+                                        <i class="fas fa-arrow-right block mx-auto"></i>
                                         <span class="sr-only">continue</span>
                                     </VActionSpecialM>
                                 </div>
@@ -307,9 +340,8 @@
                             <VActionButtonTextOnly
                                 @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-0')"
                                 :prop-is-enabled="true"
-                                class="flex flex-row"
                             >
-                                <span class="block my-auto font-bold">Have an account? Sign in here.</span>
+                                <span class="font-bold">Sign in</span>
                             </VActionButtonTextOnly>
                         </div>
                     </div>
@@ -357,8 +389,6 @@
                 can_resend_verification_code: false,
                 verification_code_status_text: "",
 
-                new_password: "",
-
                 current_section: "",
                 sections: ["sign-in-section", "create-account-section"] as string[],
 
@@ -367,20 +397,28 @@
                     0: ["sign-in-step-0", "sign-in-step-1", "sign-in-step-2"],
                     1: ["create-account-step-0", "create-account-step-0", "create-account-step-2"],
                 } as StepsType,
+                transition_slide_is_forward: true,
             };
+        },
+        watch: {
+            current_section(){
+
+                //when new section, always reset current section's data
+                this.email_validation_status_text = "";
+                this.can_send_email = null;
+                this.email_string = "";
+            },
         },
         computed: {
             canSubmitVerificationCode() : boolean {
 
                 return this.verification_code !== "";
             },
-            canSignUpAndLogIn() : boolean {
-
-                return this.new_password !== "";
-            },
         },
         methods: {
-            overrideNavigation(section:string="", step:string="") : void {
+            overrideNavigation(section:string="", step:string="", transition_slide_is_forward=true) : void {
+
+                this.transition_slide_is_forward = transition_slide_is_forward;
 
                 let section_index = this.sections.indexOf(section);
 
@@ -404,10 +442,6 @@
             sendVerificationCodeToEmail() : void {
 
                 console.log('');
-            },
-            handleNewPassword(new_value:string) : void {
-
-                this.new_password = new_value;
             },
             handleNewPIN(new_value:string) : void {
 

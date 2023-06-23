@@ -13,9 +13,7 @@
                         :propIsEnabled="canClickAfterAnimeReady"
                         :propIsDefaultTextSize="false"
                     >
-                        <div class="text-2xl">
-                            <i class="fas fa-xmark"></i>
-                        </div>
+                        <i class="fas fa-xmark text-2xl mx-auto"></i>
                     </VActionButtonM>
 
                     <!--timer-->
@@ -34,7 +32,7 @@
                             :class="[
                                 (recorder_state === 'recording' ? 'fas fa-pause' : 'fas fa-pause'),
                                 (recorder_state === 'paused' ? 'fas fa-play' : 'fas fa-pause'),
-                                ''
+                                'text-2xl mx-auto'
                             ]"
                         ></i>
                     </VActionButtonS>
@@ -47,9 +45,7 @@
                         :propIsDefaultTextSize="false"
                         :propIsEnabled="canClickAfterAnimeReady"
                     >
-                        <div class="text-2xl">
-                            <i class="fas fa-check"></i>
-                        </div>
+                        <i class="fas fa-check text-2xl mx-auto"></i>
                     </VActionButtonM>
                 </div>
             </div>
@@ -62,7 +58,7 @@
                     :propIsEnabled="is_anime_playback_truly_completed === true && is_recording === false"
                     class="w-full"
                 >
-                    <i class="fas fa-microphone-lines"></i>
+                    <i class="fas fa-microphone-lines text-4xl mx-auto"></i>
                 </VActionButtonM>
             </div>
         </div>

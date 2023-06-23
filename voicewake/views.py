@@ -232,6 +232,7 @@ class CreateUserAPI(generics.GenericAPIView):
     serializer_class = None
     permission_classes = []
 
+
     def post(self, request, *args, **kwargs):
 
         serializer = CreateUserSerializer(data=request.data, many=False)
@@ -248,7 +249,6 @@ class CreateUserAPI(generics.GenericAPIView):
         new_data = serializer.validated_data
         User = get_user_model()
         user_instance = None
-        # return_this_for_login_to_use_as_url_param = urlsafe_base64_encode(force_bytes(user_id))
 
         try:
 
