@@ -17,7 +17,6 @@
         </div>
         <div class="text-xl">
             <input
-                v-model="input_value"
                 :required="propIsRequired"
                 type="text"
                 :id="propElementId"
@@ -43,12 +42,12 @@
 </template>
 
 
-<script setup>
+<script setup lang="ts">
 
     import VInputLabel from './VInputLabel.vue';
 </script>
 
-<script>
+<script lang="ts">
     import { defineComponent } from 'vue';
 
     export default defineComponent({
@@ -56,6 +55,7 @@
             return {
                 input_value: '',
                 current_length: 0,
+                regexp: null as RegExp|null,
             };
         },
         props: {
@@ -70,17 +70,52 @@
             propIsWarning: Boolean,
             propIsError: Boolean,
             propStatusText: String,
-        },
-        emits: ['hasNewValue'],
-        watch: {
-            input_value(new_value){
-
-                this.current_length = new_value.length;
-                this.$emit('hasNewValue', this.input_value);
+            propRegex: {
+                type: String,
+                default: ''
             },
         },
-        components: {
-            VInputLabel,
+        emits: ['hasNewValue'],
+        methods: {
+            validateInputWithRegex(event:InputEvent, input_field:HTMLInputElement) : void {
+
+                if(this.propRegex !== null && event.data !== null && this.regexp.test(event.data) === true){
+                    
+                    //undo to previous regex success string
+                    input_field.value = this.input_value;
+                    return;
+                }
+
+                //put this here instead of using watcher, since it clashes
+                this.current_length = input_field.value.length;
+                this.$emit('hasNewValue', input_field.value);
+                this.input_value = input_field.value;
+            },
+        },
+        mounted(){
+
+            if(this.propRegex !== ''){
+
+                this.regexp = new RegExp(this.propRegex, 'm');
+            }
+
+            const input_field = document.querySelector("#"+this.propElementId);
+
+            //we need input listener to validate before the input actually shows up
+            input_field.addEventListener("input", (e) => {
+                    e.stopPropagation();
+                    this.validateInputWithRegex(e as InputEvent, input_field as HTMLInputElement);
+            });
+        },
+        beforeUnmount(){
+
+            const input_field = document.querySelector("#"+this.propElementId);
+            
+            //we need input listener to validate before the input actually shows up
+            input_field.removeEventListener("input", (e) => {
+                    e.stopPropagation();
+                    this.validateInputWithRegex(e as InputEvent, input_field as HTMLInputElement);
+            });
         }
     });
 </script>

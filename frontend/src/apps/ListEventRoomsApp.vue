@@ -32,7 +32,9 @@
                     @click.stop="getEventRooms()"
                     class="mx-auto"
                 >
-                    {{ search_button_text }}
+                    <span class="block mx-auto">
+                        {{ search_button_text }}
+                    </span>
                 </VActionButtonSpecialXL>
             </div>
 
@@ -56,13 +58,13 @@
                             propElement="a"
                             :href="redirect_url"
                         >
-                            <span>Open</span>
+                            <span class="block mx-auto">Open</span>
                         </VActionSpecialS>
                         <VActionButtonS
                             @click.stop="deletePreviousReply()"
                             :propIsEnabled="!is_loading"
                         >
-                            <span>Delete</span>
+                            <span class="block mx-auto">Delete</span>
                         </VActionButtonS>
                     </div>
                 </template>
@@ -96,7 +98,7 @@
                                 @click.stop="confirmReplyChoice(event_room)"
                                 class="mt-8"
                             >
-                                Reply
+                                <span class="block mx-auto">Reply</span>
                             </VActionButtonSpecialL>
                             <span v-show="!is_loading" class="w-full h-fit py-2 text-base text-center text-theme-black">
                                 {{ replyChoiceExpiryString }}

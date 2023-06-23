@@ -8,12 +8,7 @@
         type="button"
         :disabled="!propIsEnabled"
     >
-        <div
-            :class="propIsSmaller ? 'scale-150 font-medium' : ''"
-            class="w-fit h-fit mx-auto transition"
-        >
-            <slot></slot>
-        </div>
+        <slot></slot>
     </button>
 </template>
 

@@ -42,11 +42,11 @@
 
                             <div class="col-span-1">
                                 <VActionButtonDangerS
-                                    class="w-full flex items-center"
+                                    class="w-full"
                                     @click.stop="stopReplying()"
                                     :prop-is-enabled="!is_loading"
                                 >
-                                    <span class="px-2 text-base font-medium mx-auto">Cancel</span>
+                                    <span class="mx-auto">Cancel</span>
                                 </VActionButtonDangerS>
                             </div>
                         </div>
