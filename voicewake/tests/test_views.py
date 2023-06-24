@@ -12,7 +12,7 @@ from django.contrib.auth import get_user_model
 #apps
 from voicewake.services import *
 from voicewake.models import *
-from voicewake.settings import BASE_DIR
+from django.conf import settings
 
 #py packages
 import json
@@ -46,21 +46,29 @@ class UserSignIn_TestCase(TestCase):
         )
 
 
+
     def test_sign_in_process(self):
 
         user_instance = get_user_model().objects.get(email='user1@gmail.com')
 
         #generate OTP
-        handle_user_otp = HandleUserOTP(
+        handle_user_otp_class = HandleUserOTP(
             user_instance,
-            TOTP_NUMBER_OF_DIGITS, TOTP_VALIDITY_SECONDS, TOTP_TOLERANCE_SECONDS,
-            OTP_CREATE_TIMEOUT_SECONDS, OTP_MAX_ATTEMPTS, OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
+            settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
         )
 
-        handle_user_otp.get_or_create_user_otp_instance()
-        new_otp = handle_user_otp.generate_and_save_otp()
+        handle_user_otp_class.get_or_create_user_otp_instance()
+        new_otp = handle_user_otp_class.generate_and_save_otp()
 
-        self.client.post(reverse('users_sign_in'), data={
+        response = self.client.post(reverse('users_sign_in'), data={
             'email': 'user1@gmail.com',
             'otp': new_otp
         })
+
+        print(response.status_code)
+        
+
+
+
+

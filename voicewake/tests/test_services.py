@@ -12,7 +12,7 @@ from django.contrib.auth import get_user_model
 #apps
 from voicewake.services import *
 from voicewake.models import *
-from voicewake.settings import BASE_DIR
+from django.conf import settings
 
 #py packages
 import json
@@ -58,20 +58,20 @@ class UserOTP_TestCase(TestCase):
 
         user_instance = get_user_model().objects.get(email='user1@gmail.com')
 
-        user_otp_object = HandleUserOTP(
+        handle_user_otp_class = HandleUserOTP(
             user_instance,
-            TOTP_NUMBER_OF_DIGITS, 2, 1,
-            OTP_CREATE_TIMEOUT_SECONDS, OTP_MAX_ATTEMPTS, OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+            settings.TOTP_NUMBER_OF_DIGITS, 2, 1,
+            settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
         )
 
         #create UserOTP instance
-        user_otp_object.get_or_create_user_otp_instance()
-        user_otp_instance = user_otp_object.get_user_otp_instance()
+        handle_user_otp_class.get_or_create_user_otp_instance()
+        user_otp_instance = handle_user_otp_class.get_user_otp_instance()
         self.assertNotEqual(user_otp_instance, None)
 
         #attempt to create another UserOTP instance
-        user_otp_object.get_or_create_user_otp_instance()
-        user_otp_instance_2 = user_otp_object.get_user_otp_instance()
+        handle_user_otp_class.get_or_create_user_otp_instance()
+        user_otp_instance_2 = handle_user_otp_class.get_user_otp_instance()
 
         #should always be the same
         self.assertEqual(
@@ -88,41 +88,41 @@ class UserOTP_TestCase(TestCase):
 
         user_instance = get_user_model().objects.get(email='user1@gmail.com')
 
-        user_otp_object = HandleUserOTP(
+        handle_user_otp_class = HandleUserOTP(
             user_instance,
-            TOTP_NUMBER_OF_DIGITS, TOTP_VALIDITY_SECONDS, TOTP_TOLERANCE_SECONDS,
-            OTP_CREATE_TIMEOUT_SECONDS, OTP_MAX_ATTEMPTS, OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
+            settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
         )
 
         #create UserOTP instance
-        user_otp_object.get_or_create_user_otp_instance()
+        handle_user_otp_class.get_or_create_user_otp_instance()
 
-        self.assertNotEqual(user_otp_object.get_user_otp_instance(), None)
-        self.assertEqual(user_otp_object.get_user_otp_instance().attempts, 0)
-        self.assertFalse(user_otp_object.is_creating_otp_timed_out())
-        self.assertFalse(user_otp_object.is_max_attempts_timed_out())
-        self.assertEqual(user_otp_object.get_creating_otp_timed_out_seconds_left(), 0)
-        self.assertEqual(user_otp_object.get_max_attempts_timed_out_seconds_left(), 0)
+        self.assertNotEqual(handle_user_otp_class.get_user_otp_instance(), None)
+        self.assertEqual(handle_user_otp_class.get_user_otp_instance().attempts, 0)
+        self.assertFalse(handle_user_otp_class.is_creating_otp_timed_out())
+        self.assertFalse(handle_user_otp_class.is_max_attempts_timed_out())
+        self.assertEqual(handle_user_otp_class.get_creating_otp_timed_out_seconds_left(), 0)
+        self.assertEqual(handle_user_otp_class.get_max_attempts_timed_out_seconds_left(), 0)
 
         #create OTP and also save to db
-        new_otp = user_otp_object.generate_and_save_otp()
+        new_otp = handle_user_otp_class.generate_and_save_otp()
         print(new_otp)
 
         #expected data
-        self.assertNotEqual(user_otp_object.get_user_otp_instance().otp, '')
-        self.assertTrue(user_otp_object.is_creating_otp_timed_out())
-        self.assertFalse(user_otp_object.is_max_attempts_timed_out())
-        self.assertGreater(user_otp_object.get_creating_otp_timed_out_seconds_left(), 0)
-        self.assertEqual(user_otp_object.get_max_attempts_timed_out_seconds_left(), 0)
+        self.assertNotEqual(handle_user_otp_class.get_user_otp_instance().otp, '')
+        self.assertTrue(handle_user_otp_class.is_creating_otp_timed_out())
+        self.assertFalse(handle_user_otp_class.is_max_attempts_timed_out())
+        self.assertGreater(handle_user_otp_class.get_creating_otp_timed_out_seconds_left(), 0)
+        self.assertEqual(handle_user_otp_class.get_max_attempts_timed_out_seconds_left(), 0)
 
         #since we are still timed out from creating new OTP, we attempt and expect failure
-        new_otp = user_otp_object.generate_and_save_otp()
+        new_otp = handle_user_otp_class.generate_and_save_otp()
         self.assertEqual(new_otp, '')
-        self.assertNotEqual(user_otp_object.get_user_otp_instance().otp, '')
-        self.assertTrue(user_otp_object.is_creating_otp_timed_out())
-        self.assertFalse(user_otp_object.is_max_attempts_timed_out())
-        self.assertGreater(user_otp_object.get_creating_otp_timed_out_seconds_left(), 0)
-        self.assertEqual(user_otp_object.get_max_attempts_timed_out_seconds_left(), 0)
+        self.assertNotEqual(handle_user_otp_class.get_user_otp_instance().otp, '')
+        self.assertTrue(handle_user_otp_class.is_creating_otp_timed_out())
+        self.assertFalse(handle_user_otp_class.is_max_attempts_timed_out())
+        self.assertGreater(handle_user_otp_class.get_creating_otp_timed_out_seconds_left(), 0)
+        self.assertEqual(handle_user_otp_class.get_max_attempts_timed_out_seconds_left(), 0)
 
         return new_otp
 
@@ -134,21 +134,21 @@ class UserOTP_TestCase(TestCase):
         user_instance = get_user_model().objects.get(email='user1@gmail.com')
 
         #notice validity and tolerance seconds being 1 here
-        user_otp_object = HandleUserOTP(
+        handle_user_otp_class = HandleUserOTP(
             user_instance,
-            TOTP_NUMBER_OF_DIGITS, 1, 1,
-            OTP_CREATE_TIMEOUT_SECONDS, OTP_MAX_ATTEMPTS, OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+            settings.TOTP_NUMBER_OF_DIGITS, 1, 1,
+            settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
         )
 
-        user_otp_object.get_or_create_user_otp_instance()
+        handle_user_otp_class.get_or_create_user_otp_instance()
 
-        self.assertEqual(len(user_otp_object.get_user_otp_instance().otp), TOTP_NUMBER_OF_DIGITS)
+        self.assertEqual(len(handle_user_otp_class.get_user_otp_instance().otp), settings.TOTP_NUMBER_OF_DIGITS)
 
         time.sleep(3)
 
         #verify OTP
-        self.assertFalse(user_otp_object.verify_otp(new_otp))
-        self.assertEqual(user_otp_object.get_user_otp_instance().attempts, 1)
+        self.assertFalse(handle_user_otp_class.verify_otp(new_otp))
+        self.assertEqual(handle_user_otp_class.get_user_otp_instance().attempts, 1)
 
 
     def test_new_otp_maintains_attempts(self):
@@ -156,74 +156,74 @@ class UserOTP_TestCase(TestCase):
         user_instance = get_user_model().objects.get(email='user1@gmail.com')
 
         #we shorten OTP timeouts
-        user_otp_object = HandleUserOTP(
+        handle_user_otp_class = HandleUserOTP(
             user_instance,
-            TOTP_NUMBER_OF_DIGITS, 2, 2,
-            1, OTP_MAX_ATTEMPTS, 1
+            settings.TOTP_NUMBER_OF_DIGITS, 2, 2,
+            1, settings.OTP_MAX_ATTEMPTS, 1
         )
 
-        user_otp_object.get_or_create_user_otp_instance()
-        user_otp_object.generate_and_save_otp()
+        handle_user_otp_class.get_or_create_user_otp_instance()
+        handle_user_otp_class.generate_and_save_otp()
 
-        self.assertEqual(len(user_otp_object.get_user_otp_instance().otp), TOTP_NUMBER_OF_DIGITS)
+        self.assertEqual(len(handle_user_otp_class.get_user_otp_instance().otp), settings.TOTP_NUMBER_OF_DIGITS)
 
         #create OTP attempt that is always incorrect
-        otp_to_submit = user_otp_object.get_user_otp_instance().otp
+        otp_to_submit = handle_user_otp_class.get_user_otp_instance().otp
         otp_to_submit = ensure_otp_is_always_wrong(otp_to_submit)
 
-        for x in range(0, OTP_MAX_ATTEMPTS):
+        for x in range(0, settings.OTP_MAX_ATTEMPTS):
 
             #when we reach about half of max attempts, we generate new OTP
             #current attempts should stay the same
-            if x == math.ceil(OTP_MAX_ATTEMPTS / 2):
+            if x == math.ceil(settings.OTP_MAX_ATTEMPTS / 2):
 
                 #wait until creating OTP is no longer timed out
                 time.sleep(3)
-                self.assertFalse(user_otp_object.is_creating_otp_timed_out())
-                self.assertFalse(user_otp_object.is_max_attempts_timed_out())
+                self.assertFalse(handle_user_otp_class.is_creating_otp_timed_out())
+                self.assertFalse(handle_user_otp_class.is_max_attempts_timed_out())
 
                 #should be able to create new OTP, and they will not match
-                current_otp = user_otp_object.get_user_otp_instance().otp
-                new_otp = user_otp_object.generate_and_save_otp()
+                current_otp = handle_user_otp_class.get_user_otp_instance().otp
+                new_otp = handle_user_otp_class.generate_and_save_otp()
                 self.assertNotEqual(current_otp, new_otp)
 
                 #update otp_to_submit to prevent the rare chance that it matches the newly generated one
                 otp_to_submit = ensure_otp_is_always_wrong(new_otp)
 
                 #attempts should stay the same after generating new OTP
-                self.assertEqual(user_otp_object.get_user_otp_instance().attempts, x)
+                self.assertEqual(handle_user_otp_class.get_user_otp_instance().attempts, x)
 
             #verify OTP until we reach max attempts
-            self.assertFalse(user_otp_object.verify_otp(otp_to_submit))
-            self.assertEqual(user_otp_object.get_user_otp_instance().attempts, x+1)
+            self.assertFalse(handle_user_otp_class.verify_otp(otp_to_submit))
+            self.assertEqual(handle_user_otp_class.get_user_otp_instance().attempts, x+1)
 
-            if user_otp_object.get_user_otp_instance().attempts < OTP_MAX_ATTEMPTS:
+            if handle_user_otp_class.get_user_otp_instance().attempts < settings.OTP_MAX_ATTEMPTS:
 
-                self.assertFalse(user_otp_object.is_max_attempts_timed_out())
-                self.assertEqual(user_otp_object.get_max_attempts_timed_out_seconds_left(), 0)
+                self.assertFalse(handle_user_otp_class.is_max_attempts_timed_out())
+                self.assertEqual(handle_user_otp_class.get_max_attempts_timed_out_seconds_left(), 0)
 
             else:
 
-                self.assertTrue(user_otp_object.is_max_attempts_timed_out())
-                self.assertGreater(user_otp_object.get_max_attempts_timed_out_seconds_left(), 0)
+                self.assertTrue(handle_user_otp_class.is_max_attempts_timed_out())
+                self.assertGreater(handle_user_otp_class.get_max_attempts_timed_out_seconds_left(), 0)
 
         #while timed out, attempts shall fail
-        self.assertFalse(user_otp_object.verify_otp(otp_to_submit))
-        self.assertFalse(user_otp_object.verify_otp(user_otp_object.get_user_otp_instance().otp))
-        self.assertEqual(user_otp_object.get_user_otp_instance().attempts, OTP_MAX_ATTEMPTS)
+        self.assertFalse(handle_user_otp_class.verify_otp(otp_to_submit))
+        self.assertFalse(handle_user_otp_class.verify_otp(handle_user_otp_class.get_user_otp_instance().otp))
+        self.assertEqual(handle_user_otp_class.get_user_otp_instance().attempts, settings.OTP_MAX_ATTEMPTS)
 
         time.sleep(3)
 
         #when is_max_attempts_timed_out() is called after timeout, it resets OTP and attempts in instance
         #thus, verify will fail
-        self.assertFalse(user_otp_object.verify_otp(otp_to_submit))
-        self.assertEqual(user_otp_object.get_user_otp_instance().attempts, 0)
-        self.assertEqual(user_otp_object.get_user_otp_instance().otp, '')
-        self.assertFalse(user_otp_object.has_otp_saved())
+        self.assertFalse(handle_user_otp_class.verify_otp(otp_to_submit))
+        self.assertEqual(handle_user_otp_class.get_user_otp_instance().attempts, 0)
+        self.assertEqual(handle_user_otp_class.get_user_otp_instance().otp, '')
+        self.assertFalse(handle_user_otp_class.has_otp_saved())
 
         #should be able to create new OTP now
-        self.assertEqual(len(user_otp_object.generate_and_save_otp()), TOTP_NUMBER_OF_DIGITS)
-        self.assertEqual(len(user_otp_object.get_user_otp_instance().otp), TOTP_NUMBER_OF_DIGITS)
+        self.assertEqual(len(handle_user_otp_class.generate_and_save_otp()), settings.TOTP_NUMBER_OF_DIGITS)
+        self.assertEqual(len(handle_user_otp_class.get_user_otp_instance().otp), settings.TOTP_NUMBER_OF_DIGITS)
 
 
     def test_verify_otp_incorrect_max_attempts(self):
@@ -231,55 +231,55 @@ class UserOTP_TestCase(TestCase):
         user_instance = get_user_model().objects.get(email='user1@gmail.com')
 
         #we shorten OTP timeouts
-        user_otp_object = HandleUserOTP(
+        handle_user_otp_class = HandleUserOTP(
             user_instance,
-            TOTP_NUMBER_OF_DIGITS, TOTP_VALIDITY_SECONDS, TOTP_TOLERANCE_SECONDS,
-            1, OTP_MAX_ATTEMPTS, 1
+            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
+            1, settings.OTP_MAX_ATTEMPTS, 1
         )
 
-        user_otp_object.get_or_create_user_otp_instance()
-        user_otp_object.generate_and_save_otp()
+        handle_user_otp_class.get_or_create_user_otp_instance()
+        handle_user_otp_class.generate_and_save_otp()
 
-        self.assertEqual(len(user_otp_object.get_user_otp_instance().otp), TOTP_NUMBER_OF_DIGITS)
+        self.assertEqual(len(handle_user_otp_class.get_user_otp_instance().otp), settings.TOTP_NUMBER_OF_DIGITS)
 
         #create OTP attempt that is always incorrect
-        otp_to_submit = user_otp_object.get_user_otp_instance().otp
+        otp_to_submit = handle_user_otp_class.get_user_otp_instance().otp
         otp_to_submit = ensure_otp_is_always_wrong(otp_to_submit)
 
-        for x in range(0, OTP_MAX_ATTEMPTS):
+        for x in range(0, settings.OTP_MAX_ATTEMPTS):
 
             #verify OTP until we reach max attempts
-            self.assertFalse(user_otp_object.verify_otp(otp_to_submit))
-            self.assertEqual(user_otp_object.get_user_otp_instance().attempts, x+1)
+            self.assertFalse(handle_user_otp_class.verify_otp(otp_to_submit))
+            self.assertEqual(handle_user_otp_class.get_user_otp_instance().attempts, x+1)
 
-            if user_otp_object.get_user_otp_instance().attempts < OTP_MAX_ATTEMPTS:
+            if handle_user_otp_class.get_user_otp_instance().attempts < settings.OTP_MAX_ATTEMPTS:
 
-                self.assertFalse(user_otp_object.is_max_attempts_timed_out())
-                self.assertEqual(user_otp_object.get_max_attempts_timed_out_seconds_left(), 0)
+                self.assertFalse(handle_user_otp_class.is_max_attempts_timed_out())
+                self.assertEqual(handle_user_otp_class.get_max_attempts_timed_out_seconds_left(), 0)
 
             else:
 
-                self.assertTrue(user_otp_object.is_max_attempts_timed_out())
-                self.assertGreater(user_otp_object.get_max_attempts_timed_out_seconds_left(), 0)
+                self.assertTrue(handle_user_otp_class.is_max_attempts_timed_out())
+                self.assertGreater(handle_user_otp_class.get_max_attempts_timed_out_seconds_left(), 0)
 
         #while timed out, attempts shall fail
-        self.assertFalse(user_otp_object.verify_otp(otp_to_submit))
-        self.assertFalse(user_otp_object.verify_otp(user_otp_object.get_user_otp_instance().otp))
-        self.assertEqual(user_otp_object.get_user_otp_instance().attempts, OTP_MAX_ATTEMPTS)
+        self.assertFalse(handle_user_otp_class.verify_otp(otp_to_submit))
+        self.assertFalse(handle_user_otp_class.verify_otp(handle_user_otp_class.get_user_otp_instance().otp))
+        self.assertEqual(handle_user_otp_class.get_user_otp_instance().attempts, settings.OTP_MAX_ATTEMPTS)
 
         time.sleep(3)
 
         #when is_max_attempts_timed_out() is called after timeout, it resets OTP and attempts in instance
-        self.assertEqual(user_otp_object.get_user_otp_instance().attempts, OTP_MAX_ATTEMPTS)
-        self.assertFalse(user_otp_object.verify_otp(otp_to_submit))
-        self.assertEqual(user_otp_object.get_user_otp_instance().attempts, 0)
-        self.assertEqual(user_otp_object.get_user_otp_instance().otp, '')
-        self.assertFalse(user_otp_object.has_otp_saved())
+        self.assertEqual(handle_user_otp_class.get_user_otp_instance().attempts, settings.OTP_MAX_ATTEMPTS)
+        self.assertFalse(handle_user_otp_class.verify_otp(otp_to_submit))
+        self.assertEqual(handle_user_otp_class.get_user_otp_instance().attempts, 0)
+        self.assertEqual(handle_user_otp_class.get_user_otp_instance().otp, '')
+        self.assertFalse(handle_user_otp_class.has_otp_saved())
 
         #should be able to create new OTP now
-        self.assertEqual(len(user_otp_object.generate_and_save_otp()), TOTP_NUMBER_OF_DIGITS)
-        self.assertEqual(user_otp_object.get_user_otp_instance().attempts, 0)
-        self.assertEqual(len(user_otp_object.get_user_otp_instance().otp), TOTP_NUMBER_OF_DIGITS)
+        self.assertEqual(len(handle_user_otp_class.generate_and_save_otp()), settings.TOTP_NUMBER_OF_DIGITS)
+        self.assertEqual(handle_user_otp_class.get_user_otp_instance().attempts, 0)
+        self.assertEqual(len(handle_user_otp_class.get_user_otp_instance().otp), settings.TOTP_NUMBER_OF_DIGITS)
 
 
     def test_verify_otp_immediate_success(self):
@@ -288,19 +288,19 @@ class UserOTP_TestCase(TestCase):
 
         user_instance = get_user_model().objects.get(email='user1@gmail.com')
 
-        user_otp_object = HandleUserOTP(
+        handle_user_otp_class = HandleUserOTP(
             user_instance,
-            TOTP_NUMBER_OF_DIGITS, TOTP_VALIDITY_SECONDS, TOTP_TOLERANCE_SECONDS,
-            OTP_CREATE_TIMEOUT_SECONDS, OTP_MAX_ATTEMPTS, OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
+            settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
         )
 
-        user_otp_object.get_or_create_user_otp_instance()
+        handle_user_otp_class.get_or_create_user_otp_instance()
 
-        self.assertEqual(len(user_otp_object.get_user_otp_instance().otp), TOTP_NUMBER_OF_DIGITS)
+        self.assertEqual(len(handle_user_otp_class.get_user_otp_instance().otp), settings.TOTP_NUMBER_OF_DIGITS)
 
         #submit correct OTP
-        self.assertTrue(user_otp_object.verify_otp(user_otp_object.get_user_otp_instance().otp))
-        self.assertIsNone(user_otp_object.get_user_otp_instance())
+        self.assertTrue(handle_user_otp_class.verify_otp(handle_user_otp_class.get_user_otp_instance().otp))
+        self.assertIsNone(handle_user_otp_class.get_user_otp_instance())
         self.assertFalse(
             UserOTP.objects.filter(user=user_instance).exists()
         )
@@ -312,18 +312,18 @@ class UserOTP_TestCase(TestCase):
 
         user_instance = get_user_model().objects.get(email='user1@gmail.com')
 
-        user_otp_object = HandleUserOTP(
+        handle_user_otp_class = HandleUserOTP(
             user_instance,
-            TOTP_NUMBER_OF_DIGITS, TOTP_VALIDITY_SECONDS, TOTP_TOLERANCE_SECONDS,
-            OTP_CREATE_TIMEOUT_SECONDS, OTP_MAX_ATTEMPTS, OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
+            settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
         )
 
-        user_otp_object.get_or_create_user_otp_instance()
+        handle_user_otp_class.get_or_create_user_otp_instance()
 
-        self.assertEqual(len(user_otp_object.get_user_otp_instance().otp), TOTP_NUMBER_OF_DIGITS)
+        self.assertEqual(len(handle_user_otp_class.get_user_otp_instance().otp), settings.TOTP_NUMBER_OF_DIGITS)
 
         #create OTP attempt that is always incorrect
-        otp_to_submit = user_otp_object.get_user_otp_instance().otp
+        otp_to_submit = handle_user_otp_class.get_user_otp_instance().otp
 
         if int(otp_to_submit[0]) == 0:
             otp_to_submit = '1' + otp_to_submit[1:]
@@ -331,14 +331,14 @@ class UserOTP_TestCase(TestCase):
             otp_to_submit = str(int(otp_to_submit[0]) - 1) + otp_to_submit[1:]
 
         #two times incorrect OTP
-        self.assertFalse(user_otp_object.verify_otp(otp_to_submit))
-        self.assertEqual(user_otp_object.get_user_otp_instance().attempts, 1)
-        self.assertFalse(user_otp_object.verify_otp(otp_to_submit))
-        self.assertEqual(user_otp_object.get_user_otp_instance().attempts, 2)
+        self.assertFalse(handle_user_otp_class.verify_otp(otp_to_submit))
+        self.assertEqual(handle_user_otp_class.get_user_otp_instance().attempts, 1)
+        self.assertFalse(handle_user_otp_class.verify_otp(otp_to_submit))
+        self.assertEqual(handle_user_otp_class.get_user_otp_instance().attempts, 2)
 
         #submit correct OTP
-        self.assertTrue(user_otp_object.verify_otp(user_otp_object.get_user_otp_instance().otp))
-        self.assertIsNone(user_otp_object.get_user_otp_instance())
+        self.assertTrue(handle_user_otp_class.verify_otp(handle_user_otp_class.get_user_otp_instance().otp))
+        self.assertIsNone(handle_user_otp_class.get_user_otp_instance())
         self.assertFalse(
             UserOTP.objects.filter(user=user_instance).exists()
         )

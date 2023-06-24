@@ -22,8 +22,6 @@ import math
 
 #app files
 from .models import *
-from .serializers import *
-from .settings import *
 
 #miscellaneous
 from .static.values.values import *

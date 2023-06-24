@@ -1,9 +1,9 @@
 from django.forms import CharField, DateTimeField
 from rest_framework import serializers
 
-from .services import *
+from .services import has_numbers_only, remove_all_whitespace
 from .models import *
-from .settings import *
+from django.conf import settings
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -245,8 +245,8 @@ class VerifyOTPAPISerializer(serializers.Serializer):
     #no need to do our own regex check for EmailField
     email = serializers.EmailField(max_length=254)
     otp = serializers.CharField(
-        min_length=TOTP_NUMBER_OF_DIGITS,
-        max_length=TOTP_NUMBER_OF_DIGITS
+        min_length=settings.TOTP_NUMBER_OF_DIGITS,
+        max_length=settings.TOTP_NUMBER_OF_DIGITS
     )
 
 
@@ -265,7 +265,7 @@ class VerifyOTPAPISerializer(serializers.Serializer):
 
         value = remove_all_whitespace(value)
 
-        if len(value) != TOTP_NUMBER_OF_DIGITS or has_numbers_only(value) is False:
+        if len(value) != settings.TOTP_NUMBER_OF_DIGITS or has_numbers_only(value) is False:
 
             raise serializers.ValidationError('Invalid OTP.')
 
