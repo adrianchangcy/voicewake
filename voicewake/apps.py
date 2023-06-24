@@ -14,29 +14,13 @@ class VoicewakeConfig(AppConfig):
         from django.contrib.auth.models import Group
         from django.db.models.signals import post_save
             #signals sent by model system
-        from .models import UserDetails
 
         def handle_new_registered_users(sender, **kwargs):
-
-            def create_user_details(user):
-
-                try:
-
-                    UserDetails.objects.get(user__id=user.id)
-
-                except UserDetails.DoesNotExist:
-
-                    User = get_user_model()
-
-                    UserDetails.objects.create(
-                        user=User.objects.get(pk=user.id),
-                        user_display_name=user.username,  #user can change again later
-                    )
 
             #expects User
             def add_to_default_group(user):
 
-                group = Group.objects.get(name='regular')
+                group, created = Group.objects.get_or_create(name='regular')
 
                 #expects User instance
                 group.user_set.add(user)
@@ -45,8 +29,7 @@ class VoicewakeConfig(AppConfig):
             if kwargs['created']:
 
                 #passes User instance
-                create_user_details(kwargs['instance'])
-                # add_to_default_group(kwargs['instance'])
+                add_to_default_group(kwargs['instance'])
             
             return
 

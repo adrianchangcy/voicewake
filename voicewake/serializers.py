@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from .services import *
 from .models import *
+from .settings import *
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -132,6 +133,7 @@ class CreateEventsSerializer(serializers.Serializer):
         max_length=20
     )
 
+
     def validate(self, data):
 
         #if originator, must have event_room_name
@@ -153,6 +155,7 @@ class CreateEventsSerializer(serializers.Serializer):
 class UserActionsSerializer(serializers.Serializer):
     event_room_id = serializers.IntegerField(required=False)
     to_reply = serializers.BooleanField(required=False)
+
 
     def validate(self, data):
 
@@ -220,11 +223,53 @@ class CreateUserSerializer(serializers.Serializer):
         return value
 
 
+class CreateOTPAPISerializer(serializers.Serializer):
+
+    #no need to do our own regex check for EmailField
+    email = serializers.EmailField(max_length=254)
 
 
+    def validate_email(self, value):
+
+        value = remove_all_whitespace(value)
+
+        if len(value) == 0:
+
+            raise serializers.ValidationError('Empty email.')
+        
+        return value
 
 
+class VerifyOTPAPISerializer(serializers.Serializer):
 
+    #no need to do our own regex check for EmailField
+    email = serializers.EmailField(max_length=254)
+    otp = serializers.CharField(
+        min_length=TOTP_NUMBER_OF_DIGITS,
+        max_length=TOTP_NUMBER_OF_DIGITS
+    )
+
+
+    def validate_email(self, value):
+
+        value = remove_all_whitespace(value)
+
+        if len(value) == 0:
+
+            raise serializers.ValidationError('Empty email.')
+        
+        return value
+
+
+    def validate_otp(self, value):
+
+        value = remove_all_whitespace(value)
+
+        if len(value) != TOTP_NUMBER_OF_DIGITS or has_numbers_only(value) is False:
+
+            raise serializers.ValidationError('Invalid OTP.')
+
+        return value
 
 
 
