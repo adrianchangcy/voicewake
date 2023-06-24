@@ -18,6 +18,7 @@ from pydub import AudioSegment
 import secrets
 import time
 import re
+import math
 
 #app files
 from .models import *
@@ -127,6 +128,50 @@ def get_datetime_now():
 def remove_all_whitespace(string_value):
 
     return re.sub(r'\s+', '', string_value, flags=re.UNICODE)
+
+
+def has_numbers_only(string_value):
+
+    return re.match(r'^[0-9]+$', string_value, flags=re.UNICODE) is not None
+
+
+def construct_timed_out_message(seconds:float, error_description='', text_before_timeout=''):
+
+        timeout_pretty_minutes = seconds / 60
+        timeout_pretty_seconds = seconds % 60
+
+        if timeout_pretty_minutes > 0 and timeout_pretty_seconds > 0:
+
+            return '''
+                %s %s %s minutes and %s seconds.
+                ''' % (
+                    error_description,
+                    text_before_timeout,
+                    str(timeout_pretty_minutes),
+                    str(timeout_pretty_seconds)
+                )
+
+        elif timeout_pretty_minutes > 0:
+
+            return '''
+                %s %s %s minutes.
+                ''' % (
+                    error_description,
+                    text_before_timeout,
+                    str(timeout_pretty_minutes)
+                )
+
+        elif timeout_pretty_seconds > 0:
+
+            return '''
+                %s %s %s seconds.
+                ''' % (
+                    error_description,
+                    text_before_timeout,
+                    str(timeout_pretty_seconds)
+                )
+        
+        return ''
 
 
 #you do not need this if you have appropriate permission_classes=[]
@@ -294,11 +339,13 @@ class HandleUserOTP(TOTPVerification):
 
         TOTPVerification.__init__(self, totp_number_of_digits, totp_validity_seconds, totp_tolerance_seconds)
 
-    def __set_key_if_none(self):
+
+    def _set_key_if_none(self):
 
         if self.key is None:
 
             self.key = bytes(self.user_instance.totp_key)
+
 
     def get_or_create_user_otp_instance(self):
 
@@ -306,13 +353,25 @@ class HandleUserOTP(TOTPVerification):
 
             self.user_otp_instance, created = UserOTP.objects.select_for_update().get_or_create(user=self.user_instance)
 
+
     def get_user_instance(self):
 
         return self.user_instance
-    
+
+
     def get_user_otp_instance(self):
 
         return self.user_otp_instance
+    
+
+    def reset_user_otp_instance(self):
+
+        if self.user_otp_instance is not None:
+
+            self.user_otp_instance.attempts = 0
+            self.user_otp_instance.otp = ''
+            self.user_otp_instance.save()
+
 
     def is_max_attempts_timed_out(self):
 
@@ -320,21 +379,32 @@ class HandleUserOTP(TOTPVerification):
         if self.user_otp_instance.attempts >= self.otp_max_attempts:
 
             #check for timeout
-            max_timeout_end = self.user_otp_instance.last_attempted + timedelta(seconds=self.otp_max_attempt_timeout_seconds)
+            timeout_end = self.user_otp_instance.last_attempted + timedelta(seconds=self.otp_max_attempt_timeout_seconds)
 
-            if get_datetime_now() < max_timeout_end:
+            if get_datetime_now() < timeout_end:
 
                 #still under timeout
                 print('Is timed out from max attempts.')
                 return True
 
-            #can reset after timeout
-            self.user_otp_instance.attempts = 0
-            self.user_otp_instance.save()
+            #reset after timeout
+            self.reset_user_otp_instance()
             return False
         
         return False
-            
+
+
+    def get_max_attempts_timed_out_seconds_left(self):
+
+        if self.is_max_attempts_timed_out() is False:
+
+            return 0
+        
+        timeout_end = self.user_otp_instance.last_attempted + timedelta(seconds=self.otp_max_attempt_timeout_seconds)
+
+        return (timeout_end - get_datetime_now()).total_seconds()
+
+
     def is_creating_otp_timed_out(self):
 
         #check for timeout
@@ -348,27 +418,47 @@ class HandleUserOTP(TOTPVerification):
         
         return False
 
+
+    def get_creating_otp_timed_out_seconds_left(self):
+
+        if self.is_creating_otp_timed_out() is False:
+
+            return 0
+        
+        timeout_end = self.user_otp_instance.when_created + timedelta(seconds=self.otp_create_timeout_seconds)
+
+        return (timeout_end - get_datetime_now()).total_seconds()
+
+
+    def has_otp_saved(self):
+
+        return self.user_otp_instance.otp != ''
+
+
     def generate_and_save_otp(self):
 
-        self.__set_key_if_none()
+        self._set_key_if_none()
 
         if self.is_creating_otp_timed_out() is True or self.is_max_attempts_timed_out() is True:
 
             return ''
 
+        #having an existing OTP already saved does not matter, just replace
         self.user_otp_instance.otp = self.generate_token()
         self.user_otp_instance.when_created = get_datetime_now()
         self.user_otp_instance.save()
         return self.user_otp_instance.otp
-    
+
+
     def verify_otp(self, otp:str):
 
-        self.__set_key_if_none()
+        self._set_key_if_none()
 
-        if self.is_max_attempts_timed_out() is True:
+        #reminder that is_max_attempts_timed_out() calls reset_user_otp_instance() appropriately for us
+        if self.is_max_attempts_timed_out() is True or self.has_otp_saved() is False:
 
             return False
-
+        
         #record attempt
         self.user_otp_instance.attempts += 1
         self.user_otp_instance.last_attempted = get_datetime_now()
@@ -384,6 +474,16 @@ class HandleUserOTP(TOTPVerification):
         self.user_otp_instance = None
         return True
 
+
+    def get_default_error_response(self):
+
+        #always return this Response when error to give 0 clues on whether user exists or not
+        return Response(
+            data={
+                'message': 'Your verification code did not match the latest one that was sent.',
+            },
+            status=status.HTTP_200_OK
+        )
 
 
 

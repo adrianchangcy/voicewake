@@ -10,6 +10,7 @@ from django.template.loader import get_template
 
 #auth
 from django.contrib.auth import get_user_model
+from django.contrib.auth import login
 
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
@@ -32,6 +33,7 @@ from dateutil.relativedelta import relativedelta
 import zoneinfo
 import json
 import time
+import math
 
 #app files
 from voicewake.forms import *
@@ -182,8 +184,6 @@ def first_time_setup():
 def home(request):
 
 
-
-
     return render(request, template_name='voicewake/home.html')
 
 
@@ -227,6 +227,129 @@ class CheckUsernameExistsAPI(generics.GenericAPIView):
 
 
 
+class CreateOTPAPI(generics.GenericAPIView):
+
+    serializer_class = None
+    permission_classes = []
+
+    def post(self, request, *args, **kwargs):
+
+        serializer = CreateOTPAPISerializer(data=request.data, many=False)
+
+        if serializer.is_valid() is False:
+
+            return Response(
+                data={
+                    'message': 'Invalid data.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        new_data = serializer.validated_data
+        User = get_user_model()
+        user_instance = None
+
+        #always return this Response to give 0 clues on whether user exists or not
+        same_response = Response(
+            data={
+                'message': 'Verification code has been sent to %s.' % (new_data['email']),
+            },
+            status=status.HTTP_200_OK
+        )
+
+        #get user
+        try:
+
+            user_instance = User.objects.get(email_lowercase = new_data['email'].lower())
+
+        except User.DoesNotExist:
+
+            return same_response
+
+        handle_user_otp = HandleUserOTP(
+            user_instance,
+            TOTP_NUMBER_OF_DIGITS, TOTP_VALIDITY_SECONDS, TOTP_TOLERANCE_SECONDS,
+            OTP_CREATE_TIMEOUT_SECONDS, OTP_MAX_ATTEMPTS, OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+        )
+
+        handle_user_otp.get_or_create_user_otp_instance()
+        new_otp = handle_user_otp.generate_and_save_otp()
+
+        #when generating new OTP is successful, returns OTP, else ''
+        if len(new_otp) == TOTP_NUMBER_OF_DIGITS:
+
+            #prepare email
+            email_subject = 'Verification code'
+            email_message = get_template('email/otp.html').render(context={
+                'otp_direction': 'Sign in with this code:',
+                'otp': new_otp,
+                'otp_expiry': '%s minutes' % (str(TOTP_VALIDITY_SECONDS / 60))
+            })
+
+            send_mail(
+                subject=email_subject,
+                message='',
+                html_message=email_message,
+                from_email=DEFAULT_FROM_EMAIL,
+                recipient_list=[new_data['email']],
+                fail_silently=True
+            )
+
+        return same_response
+
+
+
+class UserSignInAPI(generics.GenericAPIView):
+
+    serializer_class = None
+    permission_classes = []
+
+    def post(self, request, *args, **kwargs):
+
+        serializer = VerifyOTPAPISerializer(data=request.data, many=False)
+
+        if serializer.is_valid() is False:
+
+            return Response(
+                data={
+                    'message': 'Invalid data.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        new_data = serializer.validated_data
+        User = get_user_model()
+        user_instance = None
+
+        #prepare
+        handle_user_otp = HandleUserOTP(
+            user_instance,
+            TOTP_NUMBER_OF_DIGITS, TOTP_VALIDITY_SECONDS, TOTP_TOLERANCE_SECONDS,
+            OTP_CREATE_TIMEOUT_SECONDS, OTP_MAX_ATTEMPTS, OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+        )
+
+        #get user
+        try:
+
+            user_instance = User.objects.get(email_lowercase = new_data['email'].lower())
+
+        except User.DoesNotExist:
+
+            #user tried to sign in with an account that does not exist
+            return handle_user_otp.get_default_error_response()
+
+        #reminder that verify_otp() does all the checks for us
+        if handle_user_otp.verify_otp(new_data['otp']) is True:
+
+            #sign in
+            login(request, user_instance)
+
+        else:
+
+            return handle_user_otp.get_default_error_response()
+
+
+
 class CreateUserAPI(generics.GenericAPIView):
 
     serializer_class = None
@@ -249,30 +372,41 @@ class CreateUserAPI(generics.GenericAPIView):
         new_data = serializer.validated_data
         User = get_user_model()
         user_instance = None
+        email_lowercase = new_data['email'].lower()
 
         try:
 
             #get user
             user_instance = User.objects.get(
-                email=new_data['email']
+                email_lowercase=email_lowercase
             )
 
         except User.DoesNotExist:
 
-            pass
-
             #create user
             user_instance = User.objects.create_user(
                 email=new_data['email'],
+                email_lowercase=email_lowercase
             )
 
+        #start with OTP
+        totp_object = HandleUserOTP(
+            user_instance, TOTP_NUMBER_OF_DIGITS, TOTP_VALIDITY_SECONDS, TOTP_TOLERANCE_SECONDS,
+            OTP_CREATE_TIMEOUT_SECONDS, OTP_MAX_ATTEMPTS, OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+        )
 
-            
-        # #create OTP
-        # totp_object = TOTPVerification(TOTP_NUMBER_OF_DIGITS, TOTP_VALIDITY_SECONDS, TOTP_TOLERANCE_SECONDS)
-        # totp_object.set_key(user_instance.totp_key)
-        # totp_token = totp_object.generate_token()
-        # totp_expiry_text = '%d minutes' % (TOTP_VALIDITY_SECONDS / 60)
+        #prepare instance in db
+        totp_object.get_or_create_user_otp_instance()
+
+        #generate and save
+        new_otp = totp_object.generate_and_save_otp()
+
+        #if no OTP, figure out the issue
+        if len(new_otp) == 0:
+
+            pass
+
+
 
         # #prepare email
         # email_subject = 'Code for logging in'

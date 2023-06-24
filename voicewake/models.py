@@ -148,6 +148,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
 
+    def save(self, *args, **kwargs):
+
+        self.email_lowercase = self.email.lower()
+
+        if self.username is not None:
+            self.username_lowercase = self.username.lower()
+
+        super(User, self).save(*args, **kwargs)
 
 
 
@@ -362,14 +370,5 @@ class UserVerificationStatuses(models.Model):
         db_table = 'user_verification_statuses'
 
 
-class UserDetails(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, unique=True)
-    user_display_name = models.TextField(max_length=20)
-    when_created = models.DateTimeField(auto_now_add=True)
-    last_modified = models.DateTimeField(auto_now=True)
 
-    class Meta:
-        app_label = 'voicewake'
-        managed = True
-        db_table = 'user_details'
+
