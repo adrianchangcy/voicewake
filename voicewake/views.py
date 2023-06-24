@@ -40,7 +40,7 @@ from voicewake.forms import *
 from voicewake.models import *
 from voicewake.serializers import *
 from voicewake.services import *
-from voicewake.settings import *
+from django.conf import settings
 
 #static values for configuring throughout the app
 from voicewake.static.values.values import *
@@ -266,31 +266,31 @@ class CreateOTPAPI(generics.GenericAPIView):
 
             return same_response
 
-        handle_user_otp = HandleUserOTP(
+        handle_user_otp_class = HandleUserOTP(
             user_instance,
-            TOTP_NUMBER_OF_DIGITS, TOTP_VALIDITY_SECONDS, TOTP_TOLERANCE_SECONDS,
-            OTP_CREATE_TIMEOUT_SECONDS, OTP_MAX_ATTEMPTS, OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
+            settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
         )
 
-        handle_user_otp.get_or_create_user_otp_instance()
-        new_otp = handle_user_otp.generate_and_save_otp()
+        handle_user_otp_class.get_or_create_user_otp_instance()
+        new_otp = handle_user_otp_class.generate_and_save_otp()
 
         #when generating new OTP is successful, returns OTP, else ''
-        if len(new_otp) == TOTP_NUMBER_OF_DIGITS:
+        if len(new_otp) == settings.TOTP_NUMBER_OF_DIGITS:
 
             #prepare email
             email_subject = 'Verification code'
             email_message = get_template('email/otp.html').render(context={
                 'otp_direction': 'Sign in with this code:',
                 'otp': new_otp,
-                'otp_expiry': '%s minutes' % (str(TOTP_VALIDITY_SECONDS / 60))
+                'otp_expiry': '%s minutes' % (str(settings.TOTP_VALIDITY_SECONDS / 60))
             })
 
             send_mail(
                 subject=email_subject,
                 message='',
                 html_message=email_message,
-                from_email=DEFAULT_FROM_EMAIL,
+                from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[new_data['email']],
                 fail_silently=True
             )
@@ -321,13 +321,6 @@ class UserSignInAPI(generics.GenericAPIView):
         User = get_user_model()
         user_instance = None
 
-        #prepare
-        handle_user_otp = HandleUserOTP(
-            user_instance,
-            TOTP_NUMBER_OF_DIGITS, TOTP_VALIDITY_SECONDS, TOTP_TOLERANCE_SECONDS,
-            OTP_CREATE_TIMEOUT_SECONDS, OTP_MAX_ATTEMPTS, OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
-        )
-
         #get user
         try:
 
@@ -336,17 +329,32 @@ class UserSignInAPI(generics.GenericAPIView):
         except User.DoesNotExist:
 
             #user tried to sign in with an account that does not exist
-            return handle_user_otp.get_default_error_response()
+            return HandleUserOTP.get_default_error_response()
+
+        #prepare
+        handle_user_otp_class = HandleUserOTP(
+            user_instance,
+            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
+            settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+        )
+        handle_user_otp_class.get_or_create_user_otp_instance()
 
         #reminder that verify_otp() does all the checks for us
-        if handle_user_otp.verify_otp(new_data['otp']) is True:
+        if handle_user_otp_class.verify_otp(new_data['otp']) is True:
 
             #sign in
             login(request, user_instance)
+            
+            return Response(
+                data={
+                    'message': 'You are now logged in!',
+                },
+                status=status.HTTP_200_OK
+            )
 
         else:
 
-            return handle_user_otp.get_default_error_response()
+            return handle_user_otp_class.get_default_error_response()
 
 
 
@@ -391,8 +399,8 @@ class CreateUserAPI(generics.GenericAPIView):
 
         #start with OTP
         totp_object = HandleUserOTP(
-            user_instance, TOTP_NUMBER_OF_DIGITS, TOTP_VALIDITY_SECONDS, TOTP_TOLERANCE_SECONDS,
-            OTP_CREATE_TIMEOUT_SECONDS, OTP_MAX_ATTEMPTS, OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+            user_instance, settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
+            settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
         )
 
         #prepare instance in db
@@ -420,7 +428,7 @@ class CreateUserAPI(generics.GenericAPIView):
         #     subject=email_subject,
         #     message='',
         #     html_message=email_message,
-        #     from_email=DEFAULT_FROM_EMAIL,
+        #     from_email=settings.DEFAULT_FROM_EMAIL,
         #     recipient_list=[new_data['email']],
         #     fail_silently=False
         # )
@@ -436,8 +444,8 @@ class CreateUserAPI(generics.GenericAPIView):
         )
 
 
-        # totp_obj = TOTPVerification(TOTP_NUMBER_OF_DIGITS, TOTP_VALIDITY_SECONDS, TOTP_TOLERANCE_SECONDS)
-        # totp_obj.create_key(TOTP_KEY_BYTE_SIZE)
+        # totp_obj = TOTPVerification(settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS)
+        # totp_obj.create_key(TOTP_KEY_BYTE_SIZEsettings.)
         # my_token = totp_obj.generate_token()
         # print(my_token)
         # print(totp_obj.verify_token(my_token))
