@@ -82,8 +82,8 @@ class GetEventRoomsSerializer(serializers.Serializer):
 
 
 class CreateEventLikesDislikesSerializer(serializers.Serializer):
-    event_id = serializers.IntegerField(required=True)
-    is_liked = serializers.BooleanField(required=True, allow_null=True)
+    event_id = serializers.IntegerField()
+    is_liked = serializers.BooleanField(allow_null=True)
 
 
 class CreateEventsSerializer(serializers.Serializer):
@@ -100,24 +100,15 @@ class CreateEventsSerializer(serializers.Serializer):
         max_length=200, #follow EventRooms.event_room_name
     )
 
-    #BooleanField has bug where if arg is not passed and required=False,
-    #it still unintentionally appears in your data with value False
-    #https://github.com/encode/django-rest-framework/issues/8300
-    is_originator = serializers.BooleanField(
-        required=True,
-    )
+    is_originator = serializers.BooleanField()
     
-    event_tone_id = serializers.IntegerField(
-        required=True,
-    )
+    event_tone_id = serializers.IntegerField()
 
     audio_file = serializers.FileField(
-        required=True,
-        allow_empty_file=False,
+        allow_empty_file=False
     )
 
     audio_file_seconds = serializers.DecimalField(
-        required=True,
         max_digits=6,
         decimal_places=2,
     )
@@ -191,7 +182,7 @@ class CheckUsernameExistsSerializer(serializers.Serializer):
         return value
 
 
-class CreateUserSerializer(serializers.Serializer):
+class UsersCreateAPISerializer(serializers.Serializer):
 
     username = serializers.CharField(
         min_length=1,
@@ -223,30 +214,22 @@ class CreateUserSerializer(serializers.Serializer):
         return value
 
 
-class CreateOTPAPISerializer(serializers.Serializer):
 
-    #no need to do our own regex check for EmailField
-    email = serializers.EmailField(max_length=254)
-
-
-    def validate_email(self, value):
-
-        value = remove_all_whitespace(value)
-
-        if len(value) == 0:
-
-            raise serializers.ValidationError('Empty email.')
-        
-        return value
-
-
-class VerifyOTPAPISerializer(serializers.Serializer):
+#used for both signing in and creating account
+class UsersSignInAPISerializer(serializers.Serializer):
 
     #no need to do our own regex check for EmailField
     email = serializers.EmailField(max_length=254)
     otp = serializers.CharField(
         min_length=settings.TOTP_NUMBER_OF_DIGITS,
-        max_length=settings.TOTP_NUMBER_OF_DIGITS
+        max_length=settings.TOTP_NUMBER_OF_DIGITS,
+        required=False
+    )
+    #BooleanField has bug where if arg is not passed and required=False,
+    #it still unintentionally appears in your data with value False
+    #https://github.com/encode/django-rest-framework/issues/8300
+    is_requesting_new_otp = serializers.BooleanField(
+        default=False
     )
 
 
@@ -270,6 +253,17 @@ class VerifyOTPAPISerializer(serializers.Serializer):
             raise serializers.ValidationError('Invalid OTP.')
 
         return value
+    
+
+    def validate(self, data):
+
+        if 'otp' in data and data['is_requesting_new_otp'] is True:
+
+            raise serializers.ValidationError('Cannot request for new OTP while submitting OTP.')
+
+        return data
+
+
 
 
 

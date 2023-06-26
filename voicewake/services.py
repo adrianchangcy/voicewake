@@ -9,6 +9,8 @@ from rest_framework import status
 from django_otp.oath import TOTP
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.template.loader import get_template
+from django.core.mail import send_mail
 
 #Python libraries
 from datetime import datetime, timezone, timedelta, tzinfo
@@ -133,7 +135,7 @@ def has_numbers_only(string_value):
     return re.match(r'^[0-9]+$', string_value, flags=re.UNICODE) is not None
 
 
-def construct_timed_out_message(seconds:float, error_description='', text_before_timeout=''):
+def construct_timed_out_message(seconds:float, text_before_timeout='', text_after_timeout=''):
 
         timeout_pretty_minutes = seconds / 60
         timeout_pretty_seconds = seconds % 60
@@ -141,32 +143,32 @@ def construct_timed_out_message(seconds:float, error_description='', text_before
         if timeout_pretty_minutes > 0 and timeout_pretty_seconds > 0:
 
             return '''
-                %s %s %s minutes and %s seconds.
+                %s%s minutes and %s seconds%s
                 ''' % (
-                    error_description,
                     text_before_timeout,
                     str(timeout_pretty_minutes),
-                    str(timeout_pretty_seconds)
+                    str(timeout_pretty_seconds),
+                    text_after_timeout
                 )
 
         elif timeout_pretty_minutes > 0:
 
             return '''
-                %s %s %s minutes.
+                %s%s minutes%s
                 ''' % (
-                    error_description,
                     text_before_timeout,
-                    str(timeout_pretty_minutes)
+                    str(timeout_pretty_minutes),
+                    text_after_timeout
                 )
 
         elif timeout_pretty_seconds > 0:
 
             return '''
-                %s %s %s seconds.
+                %s%s seconds%s
                 ''' % (
-                    error_description,
                     text_before_timeout,
-                    str(timeout_pretty_seconds)
+                    str(timeout_pretty_seconds),
+                    text_after_timeout
                 )
         
         return ''
@@ -399,8 +401,10 @@ class HandleUserOTP(TOTPVerification):
             return 0
         
         timeout_end = self.user_otp_instance.last_attempted + timedelta(seconds=self.otp_max_attempt_timeout_seconds)
+        time_remaining = (timeout_end - get_datetime_now()).total_seconds()
+        time_remaining = math.ceil(time_remaining)
 
-        return (timeout_end - get_datetime_now()).total_seconds()
+        return time_remaining
 
 
     def is_creating_otp_timed_out(self):
@@ -424,20 +428,22 @@ class HandleUserOTP(TOTPVerification):
             return 0
         
         timeout_end = self.user_otp_instance.when_created + timedelta(seconds=self.otp_create_timeout_seconds)
+        time_remaining = (timeout_end - get_datetime_now()).total_seconds()
+        time_remaining = math.ceil(time_remaining)
 
-        return (timeout_end - get_datetime_now()).total_seconds()
+        return time_remaining
 
 
     def has_otp_saved(self):
 
-        return self.user_otp_instance.otp != ''
+        return self.user_otp_instance is not None and self.user_otp_instance.otp != ''
 
 
     def generate_and_save_otp(self):
 
         self._set_key_if_none()
 
-        if self.is_creating_otp_timed_out() is True or self.is_max_attempts_timed_out() is True:
+        if self.is_creating_otp_timed_out() is True:
 
             return ''
 
@@ -473,7 +479,7 @@ class HandleUserOTP(TOTPVerification):
         return True
 
 
-    def get_default_error_response(self):
+    def get_default_verify_otp_response(self):
 
         #always return this Response when error to give 0 clues on whether user exists or not
         return Response(
@@ -482,6 +488,46 @@ class HandleUserOTP(TOTPVerification):
             },
             status=status.HTTP_200_OK
         )
+
+
+    def get_default_create_otp_response(self, email):
+
+        #always return this Response when error to give 0 clues on whether user exists or not
+        return Response(
+            data={
+                'message': 'Verification code has been sent to %s.' % (email),
+            },
+            status=status.HTTP_200_OK
+        )
+    
+
+    def send_otp_email(self, recipient_email, subject, direction, otp):
+
+        #we can freely use math.ceil() as long as TOTP_TOLERANCE_SECONDS is sufficient
+        otp_expiry = settings.TOTP_VALIDITY_SECONDS / 60
+        otp_expiry = str(math.ceil(otp_expiry))
+
+        email_message = get_template('email/otp.html').render(context={
+            'otp_direction': direction,
+            'otp': otp,
+            'otp_expiry': '%s minutes' % (otp_expiry)
+        })
+
+        send_mail(
+            subject=subject,
+            message='',
+            html_message=email_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[recipient_email],
+            fail_silently=True
+        )
+
+        return True
+
+
+
+
+
 
 
 
