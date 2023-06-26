@@ -225,12 +225,12 @@
                     this.is_submitting = false;
                     return;
                 }
-                await axios.post('http://127.0.0.1:8000/api/events/create', data)
+                await axios.post(window.location.origin + '/api/events/create', data)
                 .then((response:any) => {
 
                     if(response.status === 201 && 'event_room_id' in response.data['data']){
 
-                        window.location.href = "http://127.0.0.1:8000/hear/" + response.data['data']['event_room_id'].toString();
+                        window.location.href = window.location.origin + "/hear/" + response.data['data']['event_room_id'].toString();
                         //no need to do is_submitting=true on success
                     }
 

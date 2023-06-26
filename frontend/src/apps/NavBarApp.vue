@@ -6,19 +6,19 @@
 
             <!--home-->
             <div class="col-start-1 col-span-1">
-                <VNavigationButton
+                <VActionButtonTextOnly
                     propElement="a"
                     href="/"
                     class="block w-full h-full relative"
                 >
                     <i class="fas fa-wave-square text-xl absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto"></i>
                     <span class="sr-only">home</span>
-                </VNavigationButton>
+                </VActionButtonTextOnly>
             </div>
 
             <!--start-->
             <div class="col-start-2 col-span-1 sm:col-start-3 sm:col-span-2 xl:col-start-5">
-                <VNavigationButton
+                <VActionButtonTextOnly
                     propElement="a"
                     href="/say"
                     class="block w-full h-full relative"
@@ -30,12 +30,12 @@
                             <span class="sr-only">start event</span>
                         </span>
                     </span>
-                </VNavigationButton>
+                </VActionButtonTextOnly>
             </div>
 
             <!--reply-->
             <div class="col-start-3 col-span-1 sm:col-start-5 sm:col-span-2 xl:col-start-7">
-                <VNavigationButton
+                <VActionButtonTextOnly
                     propElement="a"
                     href="/hear"
                     class="block w-full h-full relative"
@@ -47,7 +47,7 @@
                             <span class="sr-only">reply to events</span>
                         </span>
                     </span>
-                </VNavigationButton>
+                </VActionButtonTextOnly>
             </div>
 
             <!--more options-->
@@ -55,7 +55,7 @@
                 ref="nav_main_more_button"
                 class="col-start-4 col-span-1 sm:col-start-8 xl:col-start-12"
             >
-                <VNavigationButton
+                <VActionButtonTextOnly
                     @click.stop="toggle_nav_main_more"
                     :class="is_logged_in === false ? 'lg:hidden' : ''"
                     class="w-full h-full"
@@ -92,18 +92,18 @@
                     <div v-if="is_logged_in === true" class="hidden lg:block w-full h-full relative">
                         <i class="fas fa-circle-user text-2xl w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto"></i>
                     </div>
-                </VNavigationButton>
+                </VActionButtonTextOnly>
 
-                <VNavigationButton
+                <VActionButtonTextOnly
                     v-if="is_logged_in === false"
                     propElement="a"
                     href="/"
                     class="hidden lg:block w-full h-full relative"
                 >
                     <span class="text-lg font-medium leading-none w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">
-                        <span><i class="fas fa-circle-user pr-1"></i>Log In</span>
+                        <span><i class="fas fa-circle-user pr-1"></i>Sign In</span>
                     </span>
-                </VNavigationButton>
+                </VActionButtonTextOnly>
 
             </div>
         </nav>
@@ -141,28 +141,28 @@
                         <div class="h-fit grid grid-rows-5 gap-2">
 
                             <!--sign in-->
-                            <VNavigationButton
+                            <VActionButtonTextOnly
                                 v-if="is_logged_in === false"
                                 propElement="a"
                                 href="/"
-                                class="row-start-1 row-span-1 h-10 relative grid grid-cols-4"
+                                class="w-full row-start-1 row-span-1 relative grid grid-cols-4"
                             >
                                 <div class="col-span-1 flex items-center">
                                     <i class="fas fa-circle-user text-xl w-fit h-fit mx-auto"></i>
                                 </div>
                                 <div class="col-span-3 flex items-center">
                                     <span class="w-full h-fit text-left text-base font-medium">
-                                        Log In
+                                        Sign In
                                     </span>
                                 </div>
-                            </VNavigationButton>
+                            </VActionButtonTextOnly>
 
                             <!--create account-->
-                            <VNavigationButton
+                            <VActionButtonTextOnly
                                 v-if="is_logged_in === false"
                                 propElement="a"
                                 href="/"
-                                class="row-start-2 row-span-1 h-10 relative grid grid-cols-4"
+                                class="w-full row-start-2 row-span-1 relative grid grid-cols-4"
                             >
                                 <div class="col-span-1 flex items-center">
                                     <i class="fas fa-right-to-bracket text-xl w-fit h-fit mx-auto"></i>
@@ -172,14 +172,14 @@
                                         Create Account
                                     </span>
                                 </div>
-                            </VNavigationButton>
+                            </VActionButtonTextOnly>
 
                             <!--sign out-->
-                            <VNavigationButton
+                            <VActionButtonTextOnly
                                 v-if="is_logged_in === true"
                                 propElement="a"
                                 href="/"
-                                class="row-start-1 row-span-1 w-full h-10 relative grid grid-cols-4"
+                                class="row-start-1 row-span-1 w-full relative grid grid-cols-4"
                             >
                                 <div class="col-span-1 flex items-center">
                                     <i class="fas fa-door-open text-xl w-fit h-fit mx-auto"></i>
@@ -189,7 +189,7 @@
                                         Log Out
                                     </span>
                                 </div>
-                            </VNavigationButton>
+                            </VActionButtonTextOnly>
                         </div>
                     </div>
                 </TransitionFade>
@@ -201,7 +201,7 @@
 <script setup lang="ts">
     // import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
     import TransitionFade from '/src/transitions/TransitionFade.vue';
-    import VNavigationButton from '@/components/small/VNavigationButton.vue';
+    import VActionButtonTextOnly from '@/components/small/VActionButtonTextOnly.vue';
 </script>
 
 

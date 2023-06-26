@@ -228,7 +228,7 @@
                 let data = new FormData();
                 data.append("to_reply", JSON.stringify(false));
 
-                await axios.post("http://127.0.0.1:8000/api/user-actions", data)
+                await axios.post(window.location.origin + "/api/user-actions", data)
                 .then(() => {
 
                     this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
@@ -266,7 +266,7 @@
                 this.handleStartLoadingAnime();
                 this.is_searching = true;
 
-                await axios.get("http://127.0.0.1:8000/api/events/get/event-room/status/incomplete")
+                await axios.get(window.location.origin + "/api/events/get/event-room/status/incomplete")
                 .then((results: any) => {
 
                     if(results.data["data"].length === 0){
@@ -318,7 +318,7 @@
                 data.append("event_room_id", JSON.stringify(this.still_replying_event_room.event_room.id));
                 data.append("to_reply", JSON.stringify(false));
 
-                await axios.post("http://127.0.0.1:8000/api/user-actions", data)
+                await axios.post(window.location.origin + "/api/user-actions", data)
                 .then(() => {
 
                     this.still_replying_event_room = null;
@@ -352,12 +352,12 @@
                 data.append("event_room_id", JSON.stringify(event_room.event_room.id));
                 data.append("to_reply", JSON.stringify(true));
 
-                await axios.post("http://127.0.0.1:8000/api/user-actions", data)
+                await axios.post(window.location.origin + "/api/user-actions", data)
                 .then((results: any) => {
 
                     if(results.status === 202){
 
-                        window.location.href = "http://127.0.0.1:8000/hear/" + event_room.event_room.id.toString();
+                        window.location.href = window.location.origin + "/hear/" + event_room.event_room.id.toString();
 
                     }else{
 

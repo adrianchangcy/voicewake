@@ -12,26 +12,7 @@
                 class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black"
             />
             <input
-                type="text" inputmode="numeric" maxlength="1" autocomplete="off"
-                name="number-slot-field"
-                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black"
-            />
-            <input
-                type="text" inputmode="numeric" maxlength="1" autocomplete="off"
-                name="number-slot-field"
-                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black"
-            />
-            <input
-                type="text" inputmode="numeric" maxlength="1" autocomplete="off"
-                name="number-slot-field"
-                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black"
-            />
-            <input
-                type="text" inputmode="numeric" maxlength="1" autocomplete="off"
-                name="number-slot-field"
-                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black"
-            />
-            <input
+                v-for="x in propExtraSlots" :key="x"
                 type="text" inputmode="numeric" maxlength="1" autocomplete="off"
                 name="number-slot-field"
                 class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black"
@@ -68,6 +49,10 @@
         props: {
             propElementId: String,
             propLabelText: String,
+            propExtraSlots: {
+                type: Number,
+                required: true
+            },
         },
         emits: ["hasNewValue"],
         computed: {
@@ -107,6 +92,11 @@
                     }
                 });
 
+                if(concat_string.length != this.slot_quantity){
+
+                    return;
+                }
+
                 this.new_full_string = concat_string;
             },
             handlePaste(event:ClipboardEvent, input_fields:any) : void {
@@ -117,10 +107,11 @@
                 const pasted_value:string = (event.clipboardData as DataTransfer).getData("text/plain").replace(/\s/g, "");
 
                 //check
-                if(/^[0-9]+$/.test(pasted_value) === false){
+                if(/^[0-9]+$/.test(pasted_value) === false && pasted_value.length != this.slot_quantity){
 
                     this.status_text = "The code must have only " + this.slot_quantity.toString() + " numbers.\nWhat you had copied: ";
 
+                    //shorten the problematic text that the user had pasted
                     if(pasted_value.length > (this.slot_quantity + 3)){
 
                         this.status_text += pasted_value.slice(0, this.slot_quantity) + "...";
@@ -130,13 +121,14 @@
                         this.status_text += pasted_value;
                     }
 
-                    this.concatenateSlots(input_fields);
+                    //reset
+                    this.new_full_string = "";
                     return;
                 }
 
                 let last_filled_input_index = 0;
 
-                //insert
+                //can continue, so insert
                 for(let x = 0; x < input_fields.length; x++){
 
                     if(x < pasted_value.length){
@@ -167,7 +159,8 @@
                     previous_input_field.focus();
                     previous_input_field.setSelectionRange(0, previous_input_field.value.length);
 
-                    this.concatenateSlots(input_fields);
+                    //reset
+                    this.new_full_string = "";
                     return;
                 }
             },
@@ -180,9 +173,6 @@
                 // This code gets the previous sibling element of the current input element and stores it in the prevInput variable
                 const next_input_field = current_input_field.nextElementSibling as HTMLInputElement;
 
-                //concatenate early to also emit "" on error
-                this.concatenateSlots(input_fields);
-
                 //prevent > 1 number
                 if(current_input_field.value.length > 1){
 
@@ -193,28 +183,31 @@
                 //handle validation
                 if(/^[0-9]+$/.test(event.data!) === true){
 
-                    //ok
+                    //has valid new manual input
                     current_input_field.value = event.data!;
+
+                    this.concatenateSlots(input_fields);
+
+                    //handle input position
+                    if(current_input_field_index < (input_fields.length - 1)){
+
+                        //go to next input if not last
+                        next_input_field.focus();
+                        next_input_field.setSelectionRange(0, next_input_field.value.length);
+                    }
 
                 }else if(/^[0-9]+$/.test(current_input_field.value) === true){
 
-                    //invalid input on current valid value
-                    return;
+                    //no valid new manual input, so event.data === null
+                    //but current value is valid, e.g. when pasted and programmatically inserted
+                    this.concatenateSlots(input_fields);
 
                 }else{
 
-                    //invalid input on current invalid value
+                    //possibly invalid input
+                    //normal Backspace when deleting value is also handled here
                     current_input_field.value = "";
-                    return;
-                }
-
-                //handle input position
-                if(current_input_field_index < (input_fields.length - 1)){
-
-                    //go to next input if not last
-                    next_input_field.focus();
-                    next_input_field.setSelectionRange(0, next_input_field.value.length);
-                    return;
+                    this.new_full_string = "";
                 }
             },
         },
@@ -246,9 +239,6 @@
             input_fields[0].addEventListener("paste", (e) => {
                 this.handlePaste(e as ClipboardEvent, input_fields);
             });
-
-            //focus the first input which index is 0 on mounted
-            (input_fields[0] as HTMLInputElement).focus();
         },
         beforeUnmount(){
 

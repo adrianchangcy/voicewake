@@ -17,6 +17,7 @@
         </div>
         <div class="text-xl">
             <input
+                ref="v_input_field"
                 :required="propIsRequired"
                 type="text"
                 :id="propElementId"
@@ -55,7 +56,6 @@
             return {
                 input_value: '',
                 current_length: 0,
-                regexp: null as RegExp|null,
             };
         },
         props: {
@@ -63,30 +63,32 @@
             propElementId: String,
             propLabel: String,
             propPlaceholder: String,
-            propMaxLength: Number,
+            propMaxLength: {
+                type: Number,
+                required: true
+            },
             propHasTextCounter: Boolean,
             propHasStatusText: Boolean,
             propIsOk: Boolean,
             propIsWarning: Boolean,
             propIsError: Boolean,
             propStatusText: String,
-            propRegex: {
-                type: String,
-                default: ''
+            propAllowWhitespace: {
+                type: Boolean,
+                default: true
             },
         },
         emits: ['hasNewValue'],
         methods: {
-            validateInputWithRegex(event:InputEvent, input_field:HTMLInputElement) : void {
+            validateInputWithRegex(new_value:string, input_field:HTMLInputElement) : void {
 
-                if(this.propRegex !== null && event.data !== null && this.regexp.test(event.data) === true){
-                    
-                    //undo to previous regex success string
+                if(this.propAllowWhitespace === false && /\s+/g.test(new_value) === true){
+
+                    //user inserts whitespace, set input_field value to be of last regex success string
                     input_field.value = this.input_value;
                     return;
                 }
 
-                //put this here instead of using watcher, since it clashes
                 this.current_length = input_field.value.length;
                 this.$emit('hasNewValue', input_field.value);
                 this.input_value = input_field.value;
@@ -94,27 +96,24 @@
         },
         mounted(){
 
-            if(this.propRegex !== ''){
-
-                this.regexp = new RegExp(this.propRegex, 'm');
-            }
-
-            const input_field = document.querySelector("#"+this.propElementId);
+            const input_field = this.$refs.v_input_field as HTMLInputElement;
 
             //we need input listener to validate before the input actually shows up
+            //using watcher will not be as capable as this
             input_field.addEventListener("input", (e) => {
-                    e.stopPropagation();
-                    this.validateInputWithRegex(e as InputEvent, input_field as HTMLInputElement);
+                e.stopPropagation();
+                const new_value = (e as InputEvent).data === null ? '' : (e as InputEvent).data!;
+                this.validateInputWithRegex(new_value, input_field as HTMLInputElement);
             });
         },
         beforeUnmount(){
 
-            const input_field = document.querySelector("#"+this.propElementId);
-            
-            //we need input listener to validate before the input actually shows up
+            const input_field = this.$refs.v_input_field as HTMLInputElement;
+
             input_field.removeEventListener("input", (e) => {
-                    e.stopPropagation();
-                    this.validateInputWithRegex(e as InputEvent, input_field as HTMLInputElement);
+                e.stopPropagation();
+                const new_value = (e as InputEvent).data === null ? '' : (e as InputEvent).data!;
+                this.validateInputWithRegex(new_value, input_field as HTMLInputElement);
             });
         }
     });
