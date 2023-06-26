@@ -297,34 +297,36 @@ class UsersSignInAPI(generics.GenericAPIView):
             
             return HandleUserOTP.get_default_verify_otp_response()
         
-        #prepare
-        handle_user_otp_class = HandleUserOTP(
-            user_instance,
-            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-            settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
-        )
-        handle_user_otp_class.get_or_create_user_otp_instance()
-        
-        #handle request for new OTP
-        if new_data['is_requesting_new_otp'] is True:
+        with transaction.atomic():
 
-            new_otp = handle_user_otp_class.generate_and_save_otp()
+            #prepare
+            handle_user_otp_class = HandleUserOTP(
+                user_instance,
+                settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
+                settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+            )
+            handle_user_otp_class.get_or_create_user_otp_instance()
 
-            #only send email if has legitimate new OTP
-            if len(new_otp) == settings.TOTP_NUMBER_OF_DIGITS:
+            #handle request for new OTP
+            if new_data['is_requesting_new_otp'] is True:
 
-                handle_user_otp_class.send_otp_email(
-                    new_data['email'],
-                    'Code for signing in',
-                    'Sign-in code:',
-                    new_otp
-                )
+                new_otp = handle_user_otp_class.generate_and_save_otp()
 
-            return handle_user_otp_class.get_default_create_otp_response(new_data['email'])
+                #only send email if has legitimate new OTP
+                if len(new_otp) == settings.TOTP_NUMBER_OF_DIGITS:
 
-        #continue to verifying OTP and logging in
-        #will always return Response()
-        return self.verify_and_log_in(request, user_instance, handle_user_otp_class, new_data['otp'])
+                    handle_user_otp_class.send_otp_email(
+                        new_data['email'],
+                        'Code for signing in',
+                        'Sign-in code:',
+                        new_otp
+                    )
+
+                return handle_user_otp_class.get_default_create_otp_response(new_data['email'])
+
+            #continue to verifying OTP and logging in
+            #will always return Response()
+            return self.verify_and_log_in(request, user_instance, handle_user_otp_class, new_data['otp'])
 
 
 
@@ -367,33 +369,35 @@ class UsersCreateAPI(UsersSignInAPI):
                 email=new_data['email'],
             )
 
-        #start with OTP
-        handle_user_otp_class = HandleUserOTP(
-            user_instance, settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-            settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
-        )
-        handle_user_otp_class.get_or_create_user_otp_instance()
-        
-        #handle request for new OTP
-        if new_data['is_requesting_new_otp'] is True:
+        with transaction.atomic():
 
-            new_otp = handle_user_otp_class.generate_and_save_otp()
-
-            #only send email if has legitimate new OTP
-            if len(new_otp) == settings.TOTP_NUMBER_OF_DIGITS:
-
-                handle_user_otp_class.send_otp_email(
-                    new_data['email'],
-                    'Code for creating new account',
-                    'Create your new account with this code:',
-                    new_otp
-                )
-
-            return handle_user_otp_class.get_default_create_otp_response(new_data['email'])
-
-        #continue to verifying OTP and logging in
-        #will always return Response()
-        return self.verify_and_log_in(request, user_instance, handle_user_otp_class, new_data['otp'])
+            #start with OTP
+            handle_user_otp_class = HandleUserOTP(
+                user_instance, settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
+                settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+            )
+            handle_user_otp_class.get_or_create_user_otp_instance()
+            
+            #handle request for new OTP
+            if new_data['is_requesting_new_otp'] is True:
+            
+                new_otp = handle_user_otp_class.generate_and_save_otp()
+    
+                #only send email if has legitimate new OTP
+                if len(new_otp) == settings.TOTP_NUMBER_OF_DIGITS:
+                
+                    handle_user_otp_class.send_otp_email(
+                        new_data['email'],
+                        'Code for creating new account',
+                        'Create your new account with this code:',
+                        new_otp
+                    )
+    
+                return handle_user_otp_class.get_default_create_otp_response(new_data['email'])
+    
+            #continue to verifying OTP and logging in
+            #will always return Response()
+            return self.verify_and_log_in(request, user_instance, handle_user_otp_class, new_data['otp'])
 
 
 

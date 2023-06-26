@@ -93,9 +93,9 @@
                             :propIsRequired="true"
                             :propHasStatusText="true"
                             :propStatusText="email_validation_status_text"
-                            :propIsError="can_send_email === false"
-                            :propIsOk="can_send_email === true"
-                            propRegex="\s+"
+                            :propIsError="email_validation_has_error"
+                            :propIsOk="can_submit_email === true"
+                            :propAllowWhitespace="false"
                             @hasNewValue="validateEmail($event)"
                             class="mt-6"
                         />
@@ -103,8 +103,8 @@
                         <!--navigation-->
                         <div class="mt-8 w-full h-fit flex">
                             <VActionSpecialM
-                                @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-2')"
-                                :propIsEnabled="true"
+                                @click.stop="[overrideNavigation('sign-in-section', 'sign-in-step-2')]"
+                                :propIsEnabled="canSubmitEmailAndRequestOTP"
                                 propElement="button"
                                 :propIsRound="true"
                                 type="button"
@@ -142,20 +142,23 @@
                             <p class="text-2xl block">
                                 Enter the sign-in code.
                             </p>
-                            <span class="text-base block break-words">adrianchangcy@gmail.com</span>
+                            <span class="text-base block break-words">{{ email_string }}</span>
                         </div>
 
                         <VNumberSlots
+                            @hasNewValue="validateOTP($event)"
                             prop-element-id="sign-in-otp"
                             prop-label-text="6-digit code"
+                            :prop-extra-slots="calcExtraVNumberSlots"
                             class="mt-6"
                         />
 
+                        <!--resend OTP-->
                         <VActionButtonTextOnly
-                            :prop-is-enabled="true"
+                            :prop-is-enabled="canSubmitEmailAndRequestOTP"
                             class="mt-8"
                         >
-                            <span class="font-bold">Can resend in 30s</span>
+                            <span class="font-bold">{{ otp_request_status_text }}</span>
                         </VActionButtonTextOnly>
 
                         <!--navigation-->
@@ -164,7 +167,6 @@
                                 <div class="w-full">
                                     <VActionButtonTextOnly
                                         @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-1', false)"
-                                        :prop-is-enabled="true"
                                         class="flex-row"
                                     >
                                         <i class="fas fa-arrow-left w-fit h-fit text-2xl block my-auto pr-2"></i>
@@ -173,7 +175,8 @@
                                 </div>
                                 <div>
                                     <VActionSpecialM
-                                        :propIsEnabled="true"
+                                        :propIsEnabled="canSubmitOTP"
+                                        @click.stop="submitOTP()"
                                         propElement="button"
                                         :propIsRound="true"
                                         type="button"
@@ -252,8 +255,8 @@
                             :propIsRequired="true"
                             :propHasStatusText="true"
                             :propStatusText="email_validation_status_text"
-                            :propIsError="can_send_email === false"
-                            :propIsOk="can_send_email === true"
+                            :propIsError="can_submit_email === false"
+                            :propIsOk="can_submit_email === true"
                             @hasNewValue="validateEmail($event)"
                         />
 
@@ -298,6 +301,7 @@
                         <VNumberSlots
                             prop-element-id="create-account-otp"
                             prop-label-text="6-digit code"
+                            :prop-extra-slots="calcExtraVNumberSlots"
                             class="mt-6"
                         />
                         <VActionButtonTextOnly
@@ -371,6 +375,7 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
+    const axios = require('axios');
 
     interface StepsType {
         [key: number]: string[],
@@ -380,14 +385,20 @@
         name: "UserOptionsApp",
         data() {
             return {
-                email_validation_status_text: "",
-                email_check_timeout: null as number|null,
-                can_send_email: null as boolean|null,
                 email_string: "",
+                email_check_timeout: null as number|null,
+                can_submit_email: false,
+                email_validation_has_error: false,
+                email_validation_status_text: "",
 
-                verification_code: "",
-                can_resend_verification_code: false,
-                verification_code_status_text: "",
+                otp: "",
+                otp_length: 6,
+
+                otp_status_text: "",
+                otp_request_cooldown_interval: null as number|null,
+                otp_request_cooldown_duration_s: 30,
+                otp_request_cooldown_s: 0,
+                otp_request_status_text: "",
 
                 current_section: "",
                 sections: ["sign-in-section", "create-account-section"] as string[],
@@ -404,18 +415,35 @@
             current_section(){
 
                 //when new section, always reset current section's data
-                this.email_validation_status_text = "";
-                this.can_send_email = null;
-                this.email_string = "";
+                this.resetEmailRelatedValues();
             },
         },
         computed: {
-            canSubmitVerificationCode() : boolean {
+            calcExtraVNumberSlots() : number {
 
-                return this.verification_code !== "";
+                return this.otp_length - 1;
+            },
+            canSubmitOTP() : boolean {
+
+                //VNumberSlots only returns full string when successful and valid
+                return this.otp !== "" && this.otp.length === this.otp_length;
+            },
+            canSubmitEmailAndRequestOTP() : boolean {
+
+                return this.can_submit_email &&
+                    this.otp_request_cooldown_interval === null &&
+                    this.otp_request_cooldown_s === 0;
             },
         },
         methods: {
+            resetEmailRelatedValues() : void {
+
+                this.email_string = "";
+                this.email_check_timeout !== null ? window.clearTimeout(this.email_check_timeout) : null;
+                this.can_submit_email = false;
+                this.email_validation_has_error = false;
+                this.email_validation_status_text = "";
+            },
             overrideNavigation(section:string="", step:string="", transition_slide_is_forward=true) : void {
 
                 this.transition_slide_is_forward = transition_slide_is_forward;
@@ -435,36 +463,75 @@
                     this.current_step = (this.steps as StepsType)[section_index][steps_value_index];
                 }
             },
-            proceedWithEmail() : void {
+            async submitOTP() : Promise<void> {
 
-                console.log('');
-            },
-            sendVerificationCodeToEmail() : void {
+                if(this.canSubmitOTP === false){
 
-                console.log('');
-            },
-            handleNewPIN(new_value:string) : void {
-
-                //when VNumberSlots is not successful, always expect ""
-                if(new_value.length > 0){
-
-                    this.verification_code = new_value;
-
-                }else{
-
-                    this.verification_code = "";
+                    return;
                 }
+
+                let data = new FormData();
+                data.append("email", this.email_string);
+                data.append("otp", this.otp);
+
+                await axios.post(window.location.origin + "/api/users/create", data)
+                .then((response:any) => {
+
+                    console.log(response.data['message']);
+
+                })
+                .catch((error: any) => {
+
+                    console.log(error.response.data['message']);
+                });
+            },
+            async submitEmailAndRequestOTP() : Promise<void> {
+
+                if(this.canSubmitEmailAndRequestOTP === false){
+
+                    return;
+                }
+
+                let data = new FormData();
+                data.append("email", this.email_string);
+                data.append("is_requesting_new_otp", JSON.stringify(true));
+
+                await axios.post(window.location.origin + "/api/users/create", data)
+                .then((response:any) => {
+
+                    console.log(response.data['message']);
+
+                })
+                .catch((error: any) => {
+
+                    console.log(error.response.data['message']);
+                });
+
+                //set cooldown
+                this.otp_request_cooldown_s = this.otp_request_cooldown_duration_s;
+
+                this.otp_request_cooldown_interval = window.setInterval(()=>{
+
+                    if(this.otp_request_cooldown_s === 0 && this.otp_request_cooldown_interval !== null){
+
+                        window.clearInterval(this.otp_request_cooldown_interval);
+                        this.otp_request_cooldown_interval = null;
+                        this.otp_request_status_text = "Resend code?";
+                        return;
+                    }
+
+                    this.otp_request_status_text = "Can resend in " + this.otp_request_cooldown_s.toString() + "s";
+                    this.otp_request_cooldown_s -= 1;
+
+                }, 1000);
+            },
+            validateOTP(new_value:string) : void {
+
+                this.otp = new_value;
             },
             validateEmail(new_value:string) : void {
 
-                this.can_send_email = null;
-                this.email_string = "";
-
-                //clear timeout
-                if(this.email_check_timeout !== null){
-
-                    clearTimeout(this.email_check_timeout);
-                }
+                this.resetEmailRelatedValues();
                 
                 //do nothing if there is no text
                 if(new_value.length === 0){
@@ -479,21 +546,31 @@
                     //do not make this too complicated, it is easier to just send email and see if user receives it
                     if(/^\S+@\S+\.\S+$/.test(new_value) === true) {
 
-                        this.email_validation_status_text = "All good!";
                         this.email_string = new_value;
-                        this.can_send_email = true;
+                        this.can_submit_email = true;
+                        this.email_validation_has_error = false;
+                        this.email_validation_status_text = "All good!";
+
+                    }else if(/\s+/g.test(new_value) === true){
+
+                        this.email_string = "";
+                        this.can_submit_email = false;
+                        this.email_validation_has_error = true;
+                        this.email_validation_status_text = "Spaces detected. Please remove them.";
 
                     }else{
 
+                        this.email_string = "";
+                        this.can_submit_email = false;
+                        this.email_validation_has_error = true;
                         this.email_validation_status_text = "That does not look like a proper email.";
-                        this.can_send_email = false;
                     }
 
                     //maximum 254 characters for email
                     //since email path has 256 limit and needs to add "<" and ">"
                     //https://stackoverflow.com/questions/386294/what-is-the-maximum-length-of-a-valid-email-address
 
-                }, 600);
+                }, 400);
             },
         },
         beforeMount(){

@@ -57,7 +57,7 @@
         methods: {
             async getEventTonesData(){
 
-                await axios.get('http://127.0.0.1:8000/api/event-tones')
+                await axios.get(window.location.origin + '/api/event-tones')
                 .then((results) => {
                     this.event_tones = results.data;
                 });

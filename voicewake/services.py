@@ -127,12 +127,12 @@ def get_datetime_now():
 
 def remove_all_whitespace(string_value):
 
-    return re.sub(r'\s+', '', string_value, flags=re.UNICODE)
+    return re.sub(r'\s+', '', string_value)
 
 
 def has_numbers_only(string_value):
 
-    return re.match(r'^[0-9]+$', string_value, flags=re.UNICODE) is not None
+    return re.match(r'^[0-9]+$', string_value) is not None
 
 
 def construct_timed_out_message(seconds:float, text_before_timeout='', text_after_timeout=''):

@@ -817,10 +817,6 @@ video {
   margin-top: 4.5rem;
 }
 
-.mt-7 {
-  margin-top: 1.75rem;
-}
-
 .box-content {
   box-sizing: content-box;
 }
@@ -1015,16 +1011,8 @@ video {
   width: 100%;
 }
 
-.flex-1 {
-  flex: 1 1 0%;
-}
-
 .shrink-0 {
   flex-shrink: 0;
-}
-
-.grow {
-  flex-grow: 1;
 }
 
 .border-collapse {
@@ -2203,10 +2191,6 @@ textarea {
 @media (min-width: 768px) {
   .md\:w-2\/4 {
     width: 50%;
-  }
-
-  .md\:grid-cols-6 {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 
