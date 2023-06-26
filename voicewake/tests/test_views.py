@@ -2,12 +2,13 @@
 #proper ways coming soon
 #Django
 from time import sleep
-from django.test import TestCase, override_settings
+from django.test import TestCase, Client
 from django.urls import reverse
 from rest_framework import status
 from django.core.files import File
 from django.http import StreamingHttpResponse
 from django.contrib.auth import get_user_model
+from django.core import mail
 
 #apps
 from voicewake.services import *
@@ -39,35 +40,86 @@ class UserSignIn_TestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
-        User = get_user_model()
+        cls.email = 'user1@gmail.com'
 
-        User.objects.create_user(
-            email='user1@gmail.com'
+
+    def test_create_account_correctly(self):
+
+        #create and request OTP at the same time
+        response = self.client.post(reverse('users_create'), data={
+            'email': self.email,
+            'is_requesting_new_otp': True
+        })
+
+        #has email sent
+        self.assertEqual(len(mail.outbox), 1)
+
+        user_instance = get_user_model().objects.get(
+            email_lowercase=self.email.lower()
         )
 
+        #get OTP
+        new_otp = UserOTP.objects.get(user=user_instance).otp
 
-
-    def test_sign_in_process(self):
-
-        user_instance = get_user_model().objects.get(email='user1@gmail.com')
-
-        #generate OTP
-        handle_user_otp_class = HandleUserOTP(
-            user_instance,
-            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-            settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
-        )
-
-        handle_user_otp_class.get_or_create_user_otp_instance()
-        new_otp = handle_user_otp_class.generate_and_save_otp()
-
-        response = self.client.post(reverse('users_sign_in'), data={
-            'email': 'user1@gmail.com',
+        #create and sign in
+        response = self.client.post(reverse('users_create'), data={
+            'email': self.email,
             'otp': new_otp
         })
 
         print(response.status_code)
-        
+        print(response.data)
+
+        #expected values
+        self.assertTrue(response.data['is_signed_in'])
+        user_instance = get_user_model().objects.get(
+            email_lowercase=self.email.lower()
+        )
+        self.assertTrue(user_instance.is_active)
+        self.assertIsNotNone(user_instance.last_login)
+        self.assertFalse(UserOTP.objects.filter(user=user_instance).exists())
+
+
+    def test_sign_in_correctly(self):
+
+        self.test_create_account_correctly()
+
+        #generate OTP
+        response = self.client.post(reverse('users_sign_in'), data={
+            'email': self.email,
+            'is_requesting_new_otp': True
+        })
+
+        #has email sent
+        self.assertEqual(len(mail.outbox), 2)
+
+        user_instance = get_user_model().objects.get(
+            email_lowercase=self.email.lower()
+        )
+
+        #get correct OTP
+        #should exist even after signing in from creating account,
+        #because HandleUserOTP.verify_otp() deletes UserOTP row on success
+        new_otp = UserOTP.objects.get(user=user_instance).otp
+
+        #sign in
+        response = self.client.post(reverse('users_sign_in'), data={
+            'email': self.email,
+            'otp': new_otp
+        })
+
+        print(response.status_code)
+        print(response.data)
+
+        #expected values
+        self.assertTrue(response.data['is_signed_in'])
+        user_instance = get_user_model().objects.get(
+            email_lowercase=self.email.lower()
+        )
+        self.assertTrue(user_instance.is_active)
+        self.assertIsNotNone(user_instance.last_login)
+        self.assertFalse(UserOTP.objects.filter(user=user_instance).exists())
+
 
 
 

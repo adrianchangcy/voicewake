@@ -40,9 +40,9 @@ class UserOTP_TestCase(TestCase):
     def setUpTestData(cls):
 
         User = get_user_model()
-
+        cls.email = 'user1@gmail.com'
         User.objects.create_user(
-            email='user1@gmail.com'
+            email=cls.email
         )
 
     # def post_req_ex(self):
@@ -56,7 +56,7 @@ class UserOTP_TestCase(TestCase):
 
     def test_create_otp_instance_no_duplicate(self):
 
-        user_instance = get_user_model().objects.get(email='user1@gmail.com')
+        user_instance = get_user_model().objects.get(email=self.email)
 
         handle_user_otp_class = HandleUserOTP(
             user_instance,
@@ -86,7 +86,7 @@ class UserOTP_TestCase(TestCase):
 
     def test_create_otp(self):
 
-        user_instance = get_user_model().objects.get(email='user1@gmail.com')
+        user_instance = get_user_model().objects.get(email=self.email)
 
         handle_user_otp_class = HandleUserOTP(
             user_instance,
@@ -131,7 +131,7 @@ class UserOTP_TestCase(TestCase):
 
         new_otp = self.test_create_otp()
 
-        user_instance = get_user_model().objects.get(email='user1@gmail.com')
+        user_instance = get_user_model().objects.get(email=self.email)
 
         #notice validity and tolerance seconds being 1 here
         handle_user_otp_class = HandleUserOTP(
@@ -153,7 +153,7 @@ class UserOTP_TestCase(TestCase):
 
     def test_new_otp_maintains_attempts(self):
 
-        user_instance = get_user_model().objects.get(email='user1@gmail.com')
+        user_instance = get_user_model().objects.get(email=self.email)
 
         #we shorten OTP timeouts
         handle_user_otp_class = HandleUserOTP(
@@ -185,6 +185,7 @@ class UserOTP_TestCase(TestCase):
                 #should be able to create new OTP, and they will not match
                 current_otp = handle_user_otp_class.get_user_otp_instance().otp
                 new_otp = handle_user_otp_class.generate_and_save_otp()
+                self.assertEqual(len(new_otp), settings.TOTP_NUMBER_OF_DIGITS)
                 self.assertNotEqual(current_otp, new_otp)
 
                 #update otp_to_submit to prevent the rare chance that it matches the newly generated one
@@ -228,7 +229,7 @@ class UserOTP_TestCase(TestCase):
 
     def test_verify_otp_incorrect_max_attempts(self):
 
-        user_instance = get_user_model().objects.get(email='user1@gmail.com')
+        user_instance = get_user_model().objects.get(email=self.email)
 
         #we shorten OTP timeouts
         handle_user_otp_class = HandleUserOTP(
@@ -286,7 +287,7 @@ class UserOTP_TestCase(TestCase):
 
         self.test_create_otp()
 
-        user_instance = get_user_model().objects.get(email='user1@gmail.com')
+        user_instance = get_user_model().objects.get(email=self.email)
 
         handle_user_otp_class = HandleUserOTP(
             user_instance,
@@ -310,7 +311,7 @@ class UserOTP_TestCase(TestCase):
 
         self.test_create_otp()
 
-        user_instance = get_user_model().objects.get(email='user1@gmail.com')
+        user_instance = get_user_model().objects.get(email=self.email)
 
         handle_user_otp_class = HandleUserOTP(
             user_instance,
@@ -335,7 +336,9 @@ class UserOTP_TestCase(TestCase):
         self.assertEqual(handle_user_otp_class.get_user_otp_instance().attempts, 1)
         self.assertFalse(handle_user_otp_class.verify_otp(otp_to_submit))
         self.assertEqual(handle_user_otp_class.get_user_otp_instance().attempts, 2)
-
+        self.assertTrue(
+            UserOTP.objects.filter(user=user_instance).exists()
+        )
         #submit correct OTP
         self.assertTrue(handle_user_otp_class.verify_otp(handle_user_otp_class.get_user_otp_instance().otp))
         self.assertIsNone(handle_user_otp_class.get_user_otp_instance())

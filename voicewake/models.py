@@ -93,7 +93,7 @@ class UserManager(BaseUserManager):
             is_active=is_active,
             is_staff=is_staff,
             is_superuser=is_superuser,
-            last_login=now,
+            last_login=None,
             date_joined=now,
             **extra_fields
         )

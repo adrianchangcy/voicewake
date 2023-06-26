@@ -227,86 +227,47 @@ class CheckUsernameExistsAPI(generics.GenericAPIView):
 
 
 
-class CreateOTPAPI(generics.GenericAPIView):
+class UsersSignInAPI(generics.GenericAPIView):
 
     serializer_class = None
     permission_classes = []
 
-    def post(self, request, *args, **kwargs):
 
-        serializer = CreateOTPAPISerializer(data=request.data, many=False)
+    def verify_and_log_in(self, request, user_instance, handle_user_otp_class:HandleUserOTP, otp):
 
-        if serializer.is_valid() is False:
+        #reminder that verify_otp() does all the checks for us
+        if handle_user_otp_class.verify_otp(otp) is False:
 
-            return Response(
-                data={
-                    'message': 'Invalid data.'
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return handle_user_otp_class.get_default_verify_otp_response()
 
-        new_data = serializer.validated_data
-        User = get_user_model()
-        user_instance = None
+        #OTP verified, continue
 
-        #always return this Response to give 0 clues on whether user exists or not
-        same_response = Response(
+        #currently set to True because we have no implication for is_active=False
+        if user_instance.is_active is False:
+
+            user_instance.is_active = True
+
+        #set last_login
+        user_instance.last_login = get_datetime_now()
+
+        #save
+        user_instance.save()
+
+        #log in
+        login(request, user_instance)
+
+        return Response(
             data={
-                'message': 'Verification code has been sent to %s.' % (new_data['email']),
+                'message': 'You are now logged in!',
+                'is_signed_in': True
             },
             status=status.HTTP_200_OK
         )
 
-        #get user
-        try:
-
-            user_instance = User.objects.get(email_lowercase = new_data['email'].lower())
-
-        except User.DoesNotExist:
-
-            return same_response
-
-        handle_user_otp_class = HandleUserOTP(
-            user_instance,
-            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-            settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
-        )
-
-        handle_user_otp_class.get_or_create_user_otp_instance()
-        new_otp = handle_user_otp_class.generate_and_save_otp()
-
-        #when generating new OTP is successful, returns OTP, else ''
-        if len(new_otp) == settings.TOTP_NUMBER_OF_DIGITS:
-
-            #prepare email
-            email_subject = 'Verification code'
-            email_message = get_template('email/otp.html').render(context={
-                'otp_direction': 'Sign in with this code:',
-                'otp': new_otp,
-                'otp_expiry': '%s minutes' % (str(settings.TOTP_VALIDITY_SECONDS / 60))
-            })
-
-            send_mail(
-                subject=email_subject,
-                message='',
-                html_message=email_message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[new_data['email']],
-                fail_silently=True
-            )
-
-        return same_response
-
-
-
-class UserSignInAPI(generics.GenericAPIView):
-
-    serializer_class = None
-    permission_classes = []
 
     def post(self, request, *args, **kwargs):
 
-        serializer = VerifyOTPAPISerializer(data=request.data, many=False)
+        serializer = UsersSignInAPISerializer(data=request.data, many=False)
 
         if serializer.is_valid() is False:
 
@@ -322,15 +283,20 @@ class UserSignInAPI(generics.GenericAPIView):
         user_instance = None
 
         #get user
+        #reminder that user shall always exist if following through account creation
         try:
 
             user_instance = User.objects.get(email_lowercase = new_data['email'].lower())
 
         except User.DoesNotExist:
 
-            #user tried to sign in with an account that does not exist
-            return HandleUserOTP.get_default_error_response()
+            #we do this to obscure clues that a user may or may not exist
+            if new_data['is_requesting_new_otp'] is True:
 
+                return HandleUserOTP.get_default_create_otp_response(email=new_data['email'])
+            
+            return HandleUserOTP.get_default_verify_otp_response()
+        
         #prepare
         handle_user_otp_class = HandleUserOTP(
             user_instance,
@@ -338,27 +304,31 @@ class UserSignInAPI(generics.GenericAPIView):
             settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
         )
         handle_user_otp_class.get_or_create_user_otp_instance()
+        
+        #handle request for new OTP
+        if new_data['is_requesting_new_otp'] is True:
 
-        #reminder that verify_otp() does all the checks for us
-        if handle_user_otp_class.verify_otp(new_data['otp']) is True:
+            new_otp = handle_user_otp_class.generate_and_save_otp()
 
-            #sign in
-            login(request, user_instance)
-            
-            return Response(
-                data={
-                    'message': 'You are now logged in!',
-                },
-                status=status.HTTP_200_OK
-            )
+            #only send email if has legitimate new OTP
+            if len(new_otp) == settings.TOTP_NUMBER_OF_DIGITS:
 
-        else:
+                handle_user_otp_class.send_otp_email(
+                    new_data['email'],
+                    'Code for signing in',
+                    'Sign-in code:',
+                    new_otp
+                )
 
-            return handle_user_otp_class.get_default_error_response()
+            return handle_user_otp_class.get_default_create_otp_response(new_data['email'])
+
+        #continue to verifying OTP and logging in
+        #will always return Response()
+        return self.verify_and_log_in(request, user_instance, handle_user_otp_class, new_data['otp'])
 
 
 
-class CreateUserAPI(generics.GenericAPIView):
+class UsersCreateAPI(UsersSignInAPI):
 
     serializer_class = None
     permission_classes = []
@@ -366,7 +336,8 @@ class CreateUserAPI(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
 
-        serializer = CreateUserSerializer(data=request.data, many=False)
+        #same data as signing in
+        serializer = UsersSignInAPISerializer(data=request.data, many=False)
 
         if serializer.is_valid() is False:
 
@@ -394,72 +365,35 @@ class CreateUserAPI(generics.GenericAPIView):
             #create user
             user_instance = User.objects.create_user(
                 email=new_data['email'],
-                email_lowercase=email_lowercase
             )
 
         #start with OTP
-        totp_object = HandleUserOTP(
+        handle_user_otp_class = HandleUserOTP(
             user_instance, settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
             settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
         )
+        handle_user_otp_class.get_or_create_user_otp_instance()
+        
+        #handle request for new OTP
+        if new_data['is_requesting_new_otp'] is True:
 
-        #prepare instance in db
-        totp_object.get_or_create_user_otp_instance()
+            new_otp = handle_user_otp_class.generate_and_save_otp()
 
-        #generate and save
-        new_otp = totp_object.generate_and_save_otp()
+            #only send email if has legitimate new OTP
+            if len(new_otp) == settings.TOTP_NUMBER_OF_DIGITS:
 
-        #if no OTP, figure out the issue
-        if len(new_otp) == 0:
+                handle_user_otp_class.send_otp_email(
+                    new_data['email'],
+                    'Code for creating new account',
+                    'Create your new account with this code:',
+                    new_otp
+                )
 
-            pass
+            return handle_user_otp_class.get_default_create_otp_response(new_data['email'])
 
-
-
-        # #prepare email
-        # email_subject = 'Code for logging in'
-        # email_message = get_template('email/otp.html').render(context={
-        #     'otp_direction': 'Log in with this code',
-        #     'otp': totp_token,
-        #     'otp_expiry': totp_expiry_text
-        # })
-
-        # send_mail(
-        #     subject=email_subject,
-        #     message='',
-        #     html_message=email_message,
-        #     from_email=settings.DEFAULT_FROM_EMAIL,
-        #     recipient_list=[new_data['email']],
-        #     fail_silently=False
-        # )
-
-        return Response(
-            data={
-                'data': {
-                    'redirect_url': '',
-                },
-                'message': 'Request successful.'
-            },
-            status=status.HTTP_201_CREATED
-        )
-
-
-        # totp_obj = TOTPVerification(settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS)
-        # totp_obj.create_key(TOTP_KEY_BYTE_SIZEsettings.)
-        # my_token = totp_obj.generate_token()
-        # print(my_token)
-        # print(totp_obj.verify_token(my_token))
-
-        return Response(
-            data={
-                'data': {
-                    'redirect_url': '',
-                },
-                'message': 'Request successful.'
-            },
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
+        #continue to verifying OTP and logging in
+        #will always return Response()
+        return self.verify_and_log_in(request, user_instance, handle_user_otp_class, new_data['otp'])
 
 
 
