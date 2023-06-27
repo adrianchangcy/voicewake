@@ -18,11 +18,13 @@
                 class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black"
             />
         </div>
-        <TransitionFade>
-            <div v-show="hasStatusText" class="w-full h-fit text-theme-toast-danger text-base whitespace-break-spaces">
-                <p>{{ status_text }}</p>
-            </div>
-        </TransitionFade>
+        <div class="h-6">
+            <TransitionFade>
+                <div v-show="hasStatusText" class="w-full h-fit text-theme-toast-danger text-base whitespace-break-spaces">
+                    <p>{{ status_text }}</p>
+                </div>
+            </TransitionFade>
+        </div>
     </div>
 </template>
 
@@ -41,9 +43,9 @@
         data() {
             return {
                 status_text: "",
-                slot_quantity: 6,   //too lazy to dynamically set this with prop, due to DOM being a headache with listeners
                 new_full_string: "",
-                current_focused_input_index: 0,
+
+                input_fields: null as any,  //NodeListOf<Element> from querySelectorAll() is undefined
             };
         },
         props: {
@@ -53,10 +55,18 @@
                 type: Number,
                 required: true
             },
+            propTriggerReset: { //use this to reset the slots
+                type: String
+            }
         },
         emits: ["hasNewValue"],
         computed: {
+            getTotalSlotsQuantity() : number {
+
+                return this.propExtraSlots + 1;
+            },
             hasStatusText() : boolean {
+
                 return this.status_text.length > 0;
             },
         },
@@ -66,7 +76,7 @@
                 //we use watcher for emit so we can reduce redundant emit
                 //since watchers don't fire when new_value is the same as next new_value
                 //e.g. spamming 1 with no change when it is already 111111 will not trigger emit
-                if(new_value.length === this.slot_quantity){
+                if(new_value.length === this.getTotalSlotsQuantity){
 
                     this.$emit("hasNewValue", new_value);
 
@@ -75,8 +85,28 @@
                     this.$emit("hasNewValue", "");
                 }
             },
+            propTriggerReset() : void {
+
+                this.resetEverything();
+            },
         },
         methods: {
+            resetEverything() : void {
+
+                this.new_full_string = "";
+                this.status_text = "";
+
+                if(this.input_fields === null){
+
+                    return;
+                }
+
+                //reset
+                this.input_fields.forEach((input_field:Element) => {
+
+                    (input_field as HTMLInputElement).value = "";
+                });
+            },
             concatenateSlots(input_fields:any) : void {
 
                 //reset
@@ -92,7 +122,7 @@
                     }
                 });
 
-                if(concat_string.length != this.slot_quantity){
+                if(concat_string.length != this.getTotalSlotsQuantity){
 
                     return;
                 }
@@ -107,19 +137,21 @@
                 const pasted_value:string = (event.clipboardData as DataTransfer).getData("text/plain").replace(/\s/g, "");
 
                 //check
-                if(/^[0-9]+$/.test(pasted_value) === false && pasted_value.length != this.slot_quantity){
+                if(/^[0-9]+$/.test(pasted_value) === false){
 
-                    this.status_text = "The code must have only " + this.slot_quantity.toString() + " numbers.\nWhat you had copied: ";
+                    this.status_text = "Could not paste '";
 
                     //shorten the problematic text that the user had pasted
-                    if(pasted_value.length > (this.slot_quantity + 3)){
+                    if(pasted_value.length > (this.getTotalSlotsQuantity + 3)){
 
-                        this.status_text += pasted_value.slice(0, this.slot_quantity) + "...";
+                        this.status_text += pasted_value.slice(0, this.getTotalSlotsQuantity) + "...";
 
                     }else{
 
                         this.status_text += pasted_value;
                     }
+
+                    this.status_text += "'.";
 
                     //reset
                     this.new_full_string = "";
@@ -218,6 +250,7 @@
             //add listeners
             //not declaring as NodeListOf<HTMLInputElement> due to unfixable no-undef warning
             const input_fields = document.querySelectorAll(".number-slot-field > input");
+            this.input_fields = input_fields;
 
             input_fields.forEach((input_field:Element, x:number) => {
 

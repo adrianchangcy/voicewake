@@ -769,6 +769,10 @@ video {
   margin-bottom: auto;
 }
 
+.-mt-2 {
+  margin-top: -0.5rem;
+}
+
 .mb-0 {
   margin-bottom: 0px;
 }
@@ -815,6 +819,10 @@ video {
 
 .mt-\[4\.5rem\] {
   margin-top: 4.5rem;
+}
+
+.-mt-4 {
+  margin-top: -1rem;
 }
 
 .box-content {
@@ -1009,6 +1017,10 @@ video {
 
 .w-full {
   width: 100%;
+}
+
+.max-w-full {
+  max-width: 100%;
 }
 
 .shrink-0 {
@@ -1267,6 +1279,10 @@ video {
   overflow-wrap: break-word;
 }
 
+.break-all {
+  word-break: break-all;
+}
+
 .rounded-2xl {
   border-radius: 1rem;
 }
@@ -1413,6 +1429,11 @@ video {
 
 .bg-theme-soft-lead\/80 {
   background-color: rgb(245 245 220 / 0.8);
+}
+
+.bg-theme-light-gray {
+  --tw-bg-opacity: 1;
+  background-color: rgb(231 229 228 / var(--tw-bg-opacity));
 }
 
 .bg-gradient-to-b {
@@ -1591,6 +1612,10 @@ video {
   text-align: right;
 }
 
+.text-start {
+  text-align: start;
+}
+
 .text-2xl {
   font-size: 1.5rem;
   line-height: 2rem;
@@ -1636,6 +1661,10 @@ video {
 
 .font-medium {
   font-weight: 500;
+}
+
+.font-normal {
+  font-weight: 400;
 }
 
 .uppercase {
@@ -1913,12 +1942,12 @@ video {
     main page title context, text-base font-light
     main page title when many pages, text-xl
     main page title when many pages, text-base font-light
-    section title, text-2xl
-    section title context, text-base
     label for input, be noticeable but smaller than main input, so text-lg font-medium
-    input, text-xl
-    input text, text-xl
+    input, text-lg
+    input text, text-lg
     main text, text-lg
+    dialog text, i.e. section title, text-xl font-medium
+    section title context, text-base
     action text, text-lg font-medium
     form labels, text-base font-medium
     form label subtext, text-base
@@ -1926,12 +1955,6 @@ video {
     details, text-base
     main action, text text-2xl, icon text-4xl
     normal action, text text-base font-medium, icon text-2xl
-
-    FONT SIZES (NEW AND IN THE MAKING)
-    //maybe size doesn't precisely matter, but the perceivable difference does (case-by-case basis of fonts)
-    biggest (header, etc.) text-6xl
-    main (user input, default long sentences), text-xl
-    small (details), text-base
 
     FONT TYPES
     if text is not from user, use formal font
