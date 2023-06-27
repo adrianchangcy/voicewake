@@ -63,12 +63,12 @@
     main page title context, text-base font-light
     main page title when many pages, text-xl
     main page title when many pages, text-base font-light
-    section title, text-2xl
-    section title context, text-base
     label for input, be noticeable but smaller than main input, so text-lg font-medium
-    input, text-xl
-    input text, text-xl
+    input, text-lg
+    input text, text-lg
     main text, text-lg
+    dialog text, i.e. section title, text-xl font-medium
+    section title context, text-base
     action text, text-lg font-medium
     form labels, text-base font-medium
     form label subtext, text-base
@@ -76,12 +76,6 @@
     details, text-base
     main action, text text-2xl, icon text-4xl
     normal action, text text-base font-medium, icon text-2xl
-
-    FONT SIZES (NEW AND IN THE MAKING)
-    //maybe size doesn't precisely matter, but the perceivable difference does (case-by-case basis of fonts)
-    biggest (header, etc.) text-6xl
-    main (user input, default long sentences), text-xl
-    small (details), text-base
 
     FONT TYPES
     if text is not from user, use formal font

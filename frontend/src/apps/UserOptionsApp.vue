@@ -4,18 +4,21 @@
         <!--title-->
         <VTitleXL class="py-8">
             <template #title>
+                <span class="block text-center">Voicewake</span>
+            </template>
+            <template #titleDescription>
                 <TransitionFade>
                     <span
                         v-if="current_section === 'sign-in-section'"
                         class="block text-center"
                     >
-                        Sign In
+                        Log In
                     </span>
                     <span
                         v-else-if="current_section === 'create-account-section'"
                         class="block text-center"
                     >
-                        Create Account
+                        Sign Up
                     </span>
                 </TransitionFade>
             </template>
@@ -41,10 +44,6 @@
                         <!--choices-->
                         <div class="flex flex-col">
 
-                            <p class="text-2xl block">
-                                Select a sign-in option.
-                            </p>
-
                             <div class="flex flex-col gap-4 mt-6">
                                 <VActionButtonS
                                     @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-1')"
@@ -52,13 +51,6 @@
                                 >
                                     <i class="fas fa-hat-wizard text-2xl"></i>
                                     <span>Sign in with email</span>
-                                </VActionButtonS>
-                                <VActionButtonS
-                                    @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-1')"
-                                    class="w-full px-4 gap-4"
-                                >
-                                    <i class="fas fa-hat-wizard text-2xl"></i>
-                                    <span>Sign in with Google</span>
                                 </VActionButtonS>
                             </div>
                         </div>
@@ -77,6 +69,160 @@
                     <div
                         class="w-full flex flex-col p-2 pt-0"
                         v-show="current_step === 'sign-in-step-1'"
+                    >
+
+                        <VInput
+                            propElementId="email-address"
+                            propLabel="Email address"
+                            propPlaceholder=""
+                            :propMaxLength="254"
+                            :propIsRequired="true"
+                            :propHasStatusText="true"
+                            :propStatusText="email_validation_status_text"
+                            :propIsError="email_validation_has_error"
+                            :propIsOk="can_submit_email === true"
+                            :propAllowWhitespace="false"
+                            @hasNewValue="validateEmail($event)"
+                        />
+
+                        <!--navigation-->
+                        <div class="mt-10 w-full h-fit flex">
+                            <VActionSpecialM
+                                @click.stop="[overrideNavigation('sign-in-section', 'sign-in-step-2')]"
+                                :propIsEnabled="canSubmitEmailAndRequestOTP"
+                                propElement="button"
+                                type="button"
+                                class="w-full"
+                            >
+                                <span class="mx-auto">Continue</span>
+                            </VActionSpecialM>
+                        </div>
+
+                        <!--extra options-->
+                        <div class="h-fit flex flex-col mt-4">
+                            <div class="mx-auto flex flex-row items-center">
+                                <span class="text-base block">Don't have an account?&nbsp;</span>
+                                <VActionButtonTextOnly
+                                    @click.stop="overrideNavigation('create-account-section', 'create-account-step-1', false)"
+                                    :prop-is-enabled="true"
+                                >
+                                    <span class="font-bold">Sign up</span>
+                                </VActionButtonTextOnly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!--step 2-->
+                    <div
+                        class="w-full flex flex-col p-2 pt-0"
+                        v-show="current_step === 'sign-in-step-2'"
+                    >
+
+                        <VActionButtonTextOnly
+                            @click.stop="[overrideNavigation('sign-in-section', 'sign-in-step-1', false), resetOTPRelatedValues()]"
+                            class="flex-row"
+                        >
+                            <i class="fas fa-arrow-left w-fit h-fit text-2xl block pr-2"></i>
+                            <span class="font-bold break-words">Back to email</span>
+                        </VActionButtonTextOnly>
+
+                        <p class="text-xl font-medium block mt-6">
+                            Check your email at <span class="break-words">{{ email_string }}</span> for the login code.
+                        </p>
+
+                        <VNumberSlots
+                            @hasNewValue="validateOTP($event)"
+                            prop-element-id="sign-in-otp"
+                            prop-label-text="Login code"
+                            :prop-extra-slots="calcExtraVNumberSlots"
+                            :prop-trigger-reset="current_step"
+                            class="mt-6"
+                        />
+
+                        <!--resend OTP-->
+                        <div class="flex flex-row items-center">
+                            <span class="text-base">Didn't receive code?&nbsp;</span>
+                                <VActionButtonTextOnly
+                                    :prop-is-enabled="true"
+                                    @click.stop="submitEmailAndRequestOTPForSignIn()"
+                                >
+                                    <span class="font-bold">Resend</span>
+                                </VActionButtonTextOnly>
+                        </div>
+
+                        <!--navigation-->
+                        <div class="mt-8 h-fit">
+                            <div class="flex flex-row items-center">
+                                <VActionSpecialM
+                                    :propIsEnabled="canSubmitOTP"
+                                    propElement="button"
+                                    type="button"
+                                    class="w-full"
+                                >
+                                    <span class="mx-auto">Log in</span>
+                                </VActionSpecialM>
+                            </div>
+                        </div>
+
+                        <!--extra options-->
+                        <div class="h-fit flex flex-col mt-6 gap-2">
+                            <div class="mx-auto flex flex-row items-center">
+                                <span class="text-base block">Don't have an account?&nbsp;</span>
+                                <VActionButtonTextOnly
+                                    @click.stop="overrideNavigation('create-account-section', 'create-account-step-1', false)"
+                                    :prop-is-enabled="true"
+                                >
+                                    <span class="font-bold">Sign up</span>
+                                </VActionButtonTextOnly>
+                            </div>
+                        </div>
+                    </div>
+                </TransitionGroupSlide>
+            </div>
+
+            <!--create account-->
+            <div
+                v-else-if="current_section === 'create-account-section'"
+                class="flex flex-col relative overflow-hidden h-[30rem]"
+            >
+
+                <TransitionGroupSlide
+                    :prop-is-forward="transition_slide_is_forward"
+                >
+                    <!--step 0-->
+                    <div
+                        class="w-full flex flex-col p-2 pt-0"
+                        v-show="current_step === 'create-account-step-0'"
+                    >
+
+                        <!--choices-->
+                        <div class="flex flex-col">
+
+                            <div class="flex flex-col gap-4 mt-6">
+                                <VActionButtonS
+                                    @click.stop="overrideNavigation('create-account-section', 'create-account-step-1')"
+                                    class="w-full px-4 gap-4"
+                                >
+                                    <i class="fas fa-hat-wizard text-2xl"></i>
+                                    <span>Create account with email</span>
+                                </VActionButtonS>
+                            </div>
+                        </div>
+
+                        <!--extra options-->
+                        <div class="mt-8 h-fit flex flex-col">
+                            <VActionButtonTextOnly
+                                @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-0')"
+                            >
+                                <span class="mx-auto font-bold">Already have an account?</span>
+                            </VActionButtonTextOnly>
+                        </div>
+                    </div>
+
+                    <!--step 1-->
+                    <div
+                        class="w-full flex flex-col p-2 pt-0"
+                        v-show="current_step === 'create-account-step-1'"
                     >
 
                         <div class="flex flex-col">
@@ -103,7 +249,7 @@
                         <!--navigation-->
                         <div class="mt-8 w-full h-fit flex">
                             <VActionSpecialM
-                                @click.stop="[overrideNavigation('sign-in-section', 'sign-in-step-2')]"
+                                @click.stop="[overrideNavigation('create-account-section', 'create-account-step-2'), ]"
                                 :propIsEnabled="canSubmitEmailAndRequestOTP"
                                 propElement="button"
                                 :propIsRound="true"
@@ -116,18 +262,18 @@
                         </div>
 
                         <!--extra options-->
-                        <div class="h-fit flex flex-col mt-6">
-                            <VActionButtonTextOnly
-                                @click.stop="overrideNavigation('create-account-section', 'create-account-step-0', false)"
-                                :prop-is-enabled="true"
-                            >
-                                <span class="font-bold">Create account</span>
-                            </VActionButtonTextOnly>
+                        <div class="h-fit flex flex-col mt-6 gap-2">
                             <VActionButtonTextOnly
                                 @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-0', false)"
                                 :prop-is-enabled="true"
                             >
-                                <span class="font-bold">Sign in with another method</span>
+                                <span class="font-bold">Sign in</span>
+                            </VActionButtonTextOnly>
+                            <VActionButtonTextOnly
+                                @click.stop="overrideNavigation('create-account-section', 'create-account-step-0', false)"
+                                :prop-is-enabled="true"
+                            >
+                                <span class="font-bold text-start">Create account with another method</span>
                             </VActionButtonTextOnly>
                         </div>
                     </div>
@@ -135,19 +281,19 @@
                     <!--step 2-->
                     <div
                         class="w-full flex flex-col p-2 pt-0"
-                        v-show="current_step === 'sign-in-step-2'"
+                        v-show="current_step === 'create-account-step-2'"
                     >
 
                         <div class="flex flex-col">
                             <p class="text-2xl block">
-                                Enter the sign-in code.
+                                Enter the code for creating your account.
                             </p>
                             <span class="text-base block break-words">{{ email_string }}</span>
                         </div>
 
                         <VNumberSlots
                             @hasNewValue="validateOTP($event)"
-                            prop-element-id="sign-in-otp"
+                            prop-element-id="create-account-otp"
                             prop-label-text="6-digit code"
                             :prop-extra-slots="calcExtraVNumberSlots"
                             class="mt-6"
@@ -156,6 +302,7 @@
                         <!--resend OTP-->
                         <VActionButtonTextOnly
                             :prop-is-enabled="canSubmitEmailAndRequestOTP"
+                            @click.stop="submitEmailAndRequestOTPForCreateAccount()"
                             class="mt-8"
                         >
                             <span class="font-bold">{{ otp_request_status_text }}</span>
@@ -166,7 +313,7 @@
                             <div class="flex flex-row items-center">
                                 <div class="w-full">
                                     <VActionButtonTextOnly
-                                        @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-1', false)"
+                                        @click.stop="[overrideNavigation('create-account-section', 'create-account-step-1', false), resetOTPRelatedValues()]"
                                         class="flex-row"
                                     >
                                         <i class="fas fa-arrow-left w-fit h-fit text-2xl block my-auto pr-2"></i>
@@ -176,7 +323,6 @@
                                 <div>
                                     <VActionSpecialM
                                         :propIsEnabled="canSubmitOTP"
-                                        @click.stop="submitOTP()"
                                         propElement="button"
                                         :propIsRound="true"
                                         type="button"
@@ -190,162 +336,18 @@
                         </div>
 
                         <!--extra options-->
-                        <div class="h-fit flex flex-col mt-6">
-                            <VActionButtonTextOnly
-                                @click.stop="overrideNavigation('create-account-section', 'create-account-step-0', false)"
-                                :prop-is-enabled="true"
-                            >
-                                <span class="font-bold">Create account</span>
-                            </VActionButtonTextOnly>
+                        <div class="h-fit flex flex-col mt-6 gap-2">
                             <VActionButtonTextOnly
                                 @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-0', false)"
                                 :prop-is-enabled="true"
                             >
-                                <span class="font-bold">Sign in with another method</span>
-                            </VActionButtonTextOnly>
-                        </div>
-                    </div>
-                </TransitionGroupSlide>
-            </div>
-
-            <!--create account-->
-            <div
-                v-else-if="current_section === 'create-account-section'"
-                class="flex flex-col relative overflow-hidden h-[30rem]"
-            >
-
-                <TransitionGroupSlide
-                    :prop-is-forward="true"
-                >
-                    <!--step 0-->
-                    <div
-                        class="w-full flex flex-col p-2 pt-0"
-                        v-show="current_step === 'create-account-step-0'"
-                    >
-
-                        <p class="text-2xl block mx-auto">
-                            Choose a method.
-                        </p>
-
-                        <!--choices-->
-
-                        <!--extra options-->
-                        <div class="mt-8 h-fit flex flex-col">
-                            <VActionButtonTextOnly
-                                @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-0')"
-                                :prop-is-enabled="true"
-                                class="w-fit mx-auto"
-                            >
                                 <span class="font-bold">Sign in</span>
                             </VActionButtonTextOnly>
-                        </div>
-                    </div>
-
-                    <!--step 1-->
-                    <div
-                        class="w-full flex flex-col p-2 pt-0"
-                        v-show="current_step === 'create-account-step-1'"
-                    >
-
-                        <VInput
-                            propElementId="email-address"
-                            propLabel="Email address"
-                            propPlaceholder=""
-                            :propMaxLength="254"
-                            :propIsRequired="true"
-                            :propHasStatusText="true"
-                            :propStatusText="email_validation_status_text"
-                            :propIsError="can_submit_email === false"
-                            :propIsOk="can_submit_email === true"
-                            @hasNewValue="validateEmail($event)"
-                        />
-
-                        <!--navigation-->
-                        <div class="mt-8 w-full h-fit flex">
-                            <VActionSpecialM
-                                :propIsEnabled="true"
-                                propElement="button"
-                                :propIsRound="true"
-                                type="button"
-                                class="flex items-center ml-auto"
-                            >
-                                <i class="fas fa-arrow-right text-2xl block mx-auto"></i>
-                                <span class="sr-only">continue</span>
-                            </VActionSpecialM>
-                        </div>
-
-                        <!--extra options-->
-                        <div class="mt-2 h-fit flex flex-col">
                             <VActionButtonTextOnly
-                                @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-0')"
+                                @click.stop="overrideNavigation('create-account-section', 'create-account-step-0', false)"
                                 :prop-is-enabled="true"
                             >
-                                <span class="font-bold">Sign in</span>
-                            </VActionButtonTextOnly>
-                        </div>
-                    </div>
-
-                    <!--step 2-->
-                    <div
-                        class="w-full flex flex-col p-2 pt-0"
-                        v-show="current_step === 'create-account-step-2'"
-                    >
-
-                        <div class="flex flex-col">
-                            <p class="text-2xl block">
-                                Verification code sent!
-                            </p>
-                            <span class="text-base font-light block break-words">adrianchangcy@gmail.com</span>
-                        </div>
-
-                        <VNumberSlots
-                            prop-element-id="create-account-otp"
-                            prop-label-text="6-digit code"
-                            :prop-extra-slots="calcExtraVNumberSlots"
-                            class="mt-6"
-                        />
-                        <VActionButtonTextOnly
-                            :prop-is-enabled="true"
-                            class="mt-4"
-                        >
-                            <span class="font-bold">Can resend in 30s</span>
-                        </VActionButtonTextOnly>
-
-                        <!--navigation-->
-                        <div class="mt-8 h-fit">
-                            <div class="flex flex-row items-center">
-                                <div class="w-full">
-                                    <VActionButtonTextOnly
-                                        @click.stop="overrideNavigation('create-account-section', 'sign-in-step-1')"
-                                        :prop-is-enabled="true"
-                                        class="flex-row"
-                                    >
-                                        <i class="fas fa-arrow-left text-2xl block my-auto pr-2"></i>
-                                        <span class="block my-auto">Change email</span>
-                                    </VActionButtonTextOnly>
-                                </div>
-                                <div class="w-full">
-                                    <VActionSpecialM
-                                        :propIsEnabled="true"
-                                        propElement="button"
-                                        :propIsRound="true"
-                                        type="button"
-                                        class="ml-auto"
-                                    >
-                                        <i class="fas fa-arrow-right block mx-auto"></i>
-                                        <span class="sr-only">continue</span>
-                                    </VActionSpecialM>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!--extra options-->
-                        <div class="mt-2 h-fit flex flex-col">
-                            <VActionButtonTextOnly
-                                @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-0')"
-                                :prop-is-enabled="true"
-                            >
-                                <span class="font-bold">Sign in</span>
+                                <span class="font-bold">Create account with another method</span>
                             </VActionButtonTextOnly>
                         </div>
                     </div>
@@ -394,11 +396,11 @@
                 otp: "",
                 otp_length: 6,
 
-                otp_status_text: "",
                 otp_request_cooldown_interval: null as number|null,
                 otp_request_cooldown_duration_s: 30,
                 otp_request_cooldown_s: 0,
                 otp_request_status_text: "",
+                otp_request_is_first_time: true,
 
                 current_section: "",
                 sections: ["sign-in-section", "create-account-section"] as string[],
@@ -406,7 +408,7 @@
                 current_step: "",
                 steps: {
                     0: ["sign-in-step-0", "sign-in-step-1", "sign-in-step-2"],
-                    1: ["create-account-step-0", "create-account-step-0", "create-account-step-2"],
+                    1: ["create-account-step-0", "create-account-step-1", "create-account-step-2"],
                 } as StepsType,
                 transition_slide_is_forward: true,
             };
@@ -416,6 +418,7 @@
 
                 //when new section, always reset current section's data
                 this.resetEmailRelatedValues();
+                this.resetOTPRelatedValues();
             },
         },
         computed: {
@@ -436,6 +439,13 @@
             },
         },
         methods: {
+            resetOTPRelatedValues() : void {
+
+                this.otp_request_cooldown_interval !== null ? window.clearTimeout(this.otp_request_cooldown_interval) : null;
+                this.otp_request_cooldown_duration_s = 30;
+                this.otp_request_cooldown_s = 0;
+                this.otp_request_status_text = "";
+            },
             resetEmailRelatedValues() : void {
 
                 this.email_string = "";
@@ -463,7 +473,29 @@
                     this.current_step = (this.steps as StepsType)[section_index][steps_value_index];
                 }
             },
-            async submitOTP() : Promise<void> {
+            async submitOTPForSignIn() : Promise<void> {
+
+                if(this.canSubmitOTP === false){
+
+                    return;
+                }
+
+                let data = new FormData();
+                data.append("email", this.email_string);
+                data.append("otp", this.otp);
+
+                await axios.post(window.location.origin + "/api/users/sign-in", data)
+                .then((response:any) => {
+
+                    console.log(response.data['message']);
+
+                })
+                .catch((error: any) => {
+
+                    console.log(error.response.data['message']);
+                });
+            },
+            async submitOTPForCreateAccount() : Promise<void> {
 
                 if(this.canSubmitOTP === false){
 
@@ -485,7 +517,47 @@
                     console.log(error.response.data['message']);
                 });
             },
-            async submitEmailAndRequestOTP() : Promise<void> {
+            async submitEmailAndRequestOTPForSignIn() : Promise<void> {
+
+                if(this.canSubmitEmailAndRequestOTP === false){
+
+                    return;
+                }
+
+                let data = new FormData();
+                data.append("email", this.email_string);
+                data.append("is_requesting_new_otp", JSON.stringify(true));
+
+                await axios.post(window.location.origin + "/api/users/sign-in", data)
+                .then((response:any) => {
+
+                    console.log(response.data['message']);
+
+                })
+                .catch((error: any) => {
+
+                    console.log(error.response.data['message']);
+                });
+
+                //set cooldown
+                this.otp_request_cooldown_s = this.otp_request_cooldown_duration_s;
+
+                this.otp_request_cooldown_interval = window.setInterval(()=>{
+
+                    if(this.otp_request_cooldown_s === 0 && this.otp_request_cooldown_interval !== null){
+
+                        window.clearInterval(this.otp_request_cooldown_interval);
+                        this.otp_request_cooldown_interval = null;
+                        this.otp_request_status_text = "Didn't receive code?";
+                        return;
+                    }
+
+                    this.otp_request_status_text = "Code should arrive in " + this.otp_request_cooldown_s.toString() + "s";
+                    this.otp_request_cooldown_s -= 1;
+
+                }, 1000);
+            },
+            async submitEmailAndRequestOTPForCreateAccount() : Promise<void> {
 
                 if(this.canSubmitEmailAndRequestOTP === false){
 
@@ -576,7 +648,10 @@
         beforeMount(){
 
             this.current_section = this.sections[0];
-            this.current_step = this.steps[0][0];
+            // this.current_step = this.steps[0][1];
+
+            this.current_step = this.steps[0][1];
         },
+
     });
 </script>
