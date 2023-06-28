@@ -182,41 +182,9 @@ class CheckUsernameExistsSerializer(serializers.Serializer):
         return value
 
 
-class UsersCreateAPISerializer(serializers.Serializer):
-
-    username = serializers.CharField(
-        min_length=1,
-        max_length=30,
-    )
-    #no need to do our own regex check for EmailField
-    email = serializers.EmailField(max_length=254)
-
-
-    def validate_username(self, value):
-
-        value = remove_all_whitespace(value)
-
-        if len(value) == 0:
-
-            raise serializers.ValidationError('Empty username.')
-        
-        return value
-
-
-    def validate_email(self, value):
-
-        value = remove_all_whitespace(value)
-
-        if len(value) == 0:
-
-            raise serializers.ValidationError('Empty email.')
-        
-        return value
-
-
 
 #used for both signing in and creating account
-class UsersSignInAPISerializer(serializers.Serializer):
+class UsersLogInAPISerializer(serializers.Serializer):
 
     #no need to do our own regex check for EmailField
     email = serializers.EmailField(max_length=254)

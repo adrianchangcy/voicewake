@@ -9,16 +9,16 @@
             <template #titleDescription>
                 <TransitionFade>
                     <span
-                        v-if="current_section === 'sign-in-section'"
+                        v-if="current_section === 'log-in-section'"
                         class="block text-center"
                     >
-                        Log In
+                        Log in
                     </span>
                     <span
-                        v-else-if="current_section === 'create-account-section'"
+                        v-else-if="current_section === 'sign-up-section'"
                         class="block text-center"
                     >
-                        Sign Up
+                        Sign up
                     </span>
                 </TransitionFade>
             </template>
@@ -26,10 +26,10 @@
 
         <TransitionFade>
 
-            <!--sign in-->
+            <!--log in-->
             <div
-                v-if="current_section === 'sign-in-section'"
-                class="flex flex-col relative overflow-hidden h-[30rem]"
+                v-if="current_section === 'log-in-section'"
+                class="flex flex-col relative overflow-hidden min-h-[32rem]"
             >
 
                 <TransitionGroupSlide
@@ -37,8 +37,8 @@
                 >
                     <!--step 0-->
                     <div
-                        class="w-full flex flex-col p-2 pt-0"
-                        v-show="current_step === 'sign-in-step-0'"
+                        class="w-full flex flex-col p-2"
+                        v-show="current_step === 'log-in-step-0'"
                     >
 
                         <!--choices-->
@@ -46,50 +46,65 @@
 
                             <div class="flex flex-col gap-4 mt-6">
                                 <VActionButtonS
-                                    @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-1')"
+                                    @click.stop="overrideNavigation('log-in-section', 'log-in-step-1')"
                                     class="w-full px-4 gap-4"
                                 >
                                     <i class="fas fa-hat-wizard text-2xl"></i>
-                                    <span>Sign in with email</span>
+                                    <span>Log in with email</span>
                                 </VActionButtonS>
                             </div>
                         </div>
 
                         <!--extra options-->
-                        <div class="mt-8 h-fit flex flex-col">
-                            <VActionButtonTextOnly
-                                @click.stop="overrideNavigation('create-account-section', 'create-account-step-0')"
-                            >
-                                <span class="mx-auto font-bold">Don't have an account?</span>
-                            </VActionButtonTextOnly>
+                        <div class="h-fit flex flex-col mt-2 gap-2">
+                            <div class="mx-auto flex flex-row items-center">
+                                <span class="text-base block">Don't have an account?&nbsp;</span>
+                                <VActionButtonTextOnly
+                                    @click.stop="overrideNavigation('sign-up-section', 'sign-up-step-0', false)"
+                                    :prop-is-enabled="true"
+                                >
+                                    <span class="font-bold">Sign up</span>
+                                </VActionButtonTextOnly>
+                            </div>
                         </div>
                     </div>
 
                     <!--step 1-->
                     <div
-                        class="w-full flex flex-col p-2 pt-0"
-                        v-show="current_step === 'sign-in-step-1'"
+                        class="w-full flex flex-col p-2"
+                        v-show="current_step === 'log-in-step-1'"
                     >
+
+                        <p class="text-xl font-medium block">
+                            Enter your email
+                        </p>
 
                         <VInput
                             propElementId="email-address"
                             propLabel="Email address"
                             propPlaceholder=""
+                            propType="email"
+                            propName="email"
+                            propAutocomplete="on"
                             :propMaxLength="254"
                             :propIsRequired="true"
                             :propHasStatusText="true"
                             :propStatusText="email_validation_status_text"
                             :propIsError="email_validation_has_error"
-                            :propIsOk="can_submit_email === true"
+                            :propIsOk="email_is_ok === true"
                             :propAllowWhitespace="false"
                             @hasNewValue="validateEmail($event)"
+                            class="mt-6"
                         />
 
-                        <!--navigation-->
-                        <div class="mt-10 w-full h-fit flex">
+                        <!--main action-->
+                        <div class="mt-8 w-full h-fit flex">
                             <VActionSpecialM
-                                @click.stop="[overrideNavigation('sign-in-section', 'sign-in-step-2')]"
-                                :propIsEnabled="canSubmitEmailAndRequestOTP"
+                                @click.stop="[
+                                    overrideNavigation('log-in-section', 'log-in-step-2'),
+                                    submitEmailAndRequestOTPForLogIn()
+                                ]"
+                                :propIsEnabled="email_is_ok"
                                 propElement="button"
                                 type="button"
                                 class="w-full"
@@ -99,11 +114,11 @@
                         </div>
 
                         <!--extra options-->
-                        <div class="h-fit flex flex-col mt-4">
+                        <div class="h-fit flex flex-col mt-2">
                             <div class="mx-auto flex flex-row items-center">
                                 <span class="text-base block">Don't have an account?&nbsp;</span>
                                 <VActionButtonTextOnly
-                                    @click.stop="overrideNavigation('create-account-section', 'create-account-step-1', false)"
+                                    @click.stop="overrideNavigation('sign-up-section', 'sign-up-step-1', false)"
                                     :prop-is-enabled="true"
                                 >
                                     <span class="font-bold">Sign up</span>
@@ -114,47 +129,51 @@
 
                     <!--step 2-->
                     <div
-                        class="w-full flex flex-col p-2 pt-0"
-                        v-show="current_step === 'sign-in-step-2'"
+                        class="w-full flex flex-col p-2"
+                        v-show="current_step === 'log-in-step-2'"
                     >
 
                         <VActionButtonTextOnly
-                            @click.stop="[overrideNavigation('sign-in-section', 'sign-in-step-1', false), resetOTPRelatedValues()]"
+                            @click.stop="[overrideNavigation('log-in-section', 'log-in-step-1', false)]"
                             class="flex-row"
                         >
                             <i class="fas fa-arrow-left w-fit h-fit text-2xl block pr-2"></i>
                             <span class="font-bold break-words">Back to email</span>
                         </VActionButtonTextOnly>
 
-                        <p class="text-xl font-medium block mt-6">
+                        <p class="text-xl font-medium block mt-8">
+                            Enter the login code
+                        </p>
+                        <p class="text-base block">
                             Check your email at <span class="break-words">{{ email_string }}</span> for the login code.
                         </p>
 
                         <VNumberSlots
                             @hasNewValue="validateOTP($event)"
-                            prop-element-id="sign-in-otp"
+                            prop-element-id="log-in-otp"
                             prop-label-text="Login code"
                             :prop-extra-slots="calcExtraVNumberSlots"
-                            :prop-trigger-reset="current_step"
+                            :prop-trigger-reset="email_has_change"
                             class="mt-6"
                         />
 
                         <!--resend OTP-->
-                        <div class="flex flex-row items-center">
-                            <span class="text-base">Didn't receive code?&nbsp;</span>
-                                <VActionButtonTextOnly
-                                    :prop-is-enabled="true"
-                                    @click.stop="submitEmailAndRequestOTPForSignIn()"
-                                >
-                                    <span class="font-bold">Resend</span>
-                                </VActionButtonTextOnly>
+                        <div class="h-10 flex flex-row items-center">
+                            <span class="text-base">{{ otp_request_status_text }}&nbsp;</span>
+                            <VActionButtonTextOnly
+                                v-show="canSubmitEmailAndRequestOTP"
+                                @click.stop="submitEmailAndRequestOTPForLogIn(true)"
+                            >
+                                <span class="font-bold">Resend</span>
+                            </VActionButtonTextOnly>
                         </div>
 
-                        <!--navigation-->
+                        <!--main action-->
                         <div class="mt-8 h-fit">
                             <div class="flex flex-row items-center">
                                 <VActionSpecialM
                                     :propIsEnabled="canSubmitOTP"
+                                    @click.stop="submitOTPForLogIn()"
                                     propElement="button"
                                     type="button"
                                     class="w-full"
@@ -165,11 +184,11 @@
                         </div>
 
                         <!--extra options-->
-                        <div class="h-fit flex flex-col mt-6 gap-2">
+                        <div class="h-fit flex flex-col mt-2 gap-2">
                             <div class="mx-auto flex flex-row items-center">
                                 <span class="text-base block">Don't have an account?&nbsp;</span>
                                 <VActionButtonTextOnly
-                                    @click.stop="overrideNavigation('create-account-section', 'create-account-step-1', false)"
+                                    @click.stop="overrideNavigation('sign-up-section', 'sign-up-step-1', false)"
                                     :prop-is-enabled="true"
                                 >
                                     <span class="font-bold">Sign up</span>
@@ -180,10 +199,10 @@
                 </TransitionGroupSlide>
             </div>
 
-            <!--create account-->
+            <!--signup-->
             <div
-                v-else-if="current_section === 'create-account-section'"
-                class="flex flex-col relative overflow-hidden h-[30rem]"
+                v-else-if="current_section === 'sign-up-section'"
+                class="flex flex-col relative overflow-hidden min-h-[32rem]"
             >
 
                 <TransitionGroupSlide
@@ -191,8 +210,8 @@
                 >
                     <!--step 0-->
                     <div
-                        class="w-full flex flex-col p-2 pt-0"
-                        v-show="current_step === 'create-account-step-0'"
+                        class="w-full flex flex-col p-2"
+                        v-show="current_step === 'sign-up-step-0'"
                     >
 
                         <!--choices-->
@@ -200,155 +219,154 @@
 
                             <div class="flex flex-col gap-4 mt-6">
                                 <VActionButtonS
-                                    @click.stop="overrideNavigation('create-account-section', 'create-account-step-1')"
+                                    @click.stop="overrideNavigation('sign-up-section', 'sign-up-step-1')"
                                     class="w-full px-4 gap-4"
                                 >
                                     <i class="fas fa-hat-wizard text-2xl"></i>
-                                    <span>Create account with email</span>
+                                    <span>Sign in with email</span>
                                 </VActionButtonS>
                             </div>
                         </div>
 
                         <!--extra options-->
-                        <div class="mt-8 h-fit flex flex-col">
-                            <VActionButtonTextOnly
-                                @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-0')"
-                            >
-                                <span class="mx-auto font-bold">Already have an account?</span>
-                            </VActionButtonTextOnly>
+                        <div class="h-fit flex flex-col mt-2 gap-2">
+                            <div class="mx-auto flex flex-row items-center">
+                                <span class="text-base block">Already have an account?&nbsp;</span>
+                                <VActionButtonTextOnly
+                                    @click.stop="overrideNavigation('log-in-section', 'log-in-step-0', false)"
+                                    :prop-is-enabled="true"
+                                >
+                                    <span class="font-bold">Log in</span>
+                                </VActionButtonTextOnly>
+                            </div>
                         </div>
                     </div>
 
                     <!--step 1-->
                     <div
-                        class="w-full flex flex-col p-2 pt-0"
-                        v-show="current_step === 'create-account-step-1'"
+                        class="w-full flex flex-col p-2"
+                        v-show="current_step === 'sign-up-step-1'"
                     >
 
-                        <div class="flex flex-col">
-                            <p class="text-2xl block">
-                                Start with an email address.
-                            </p>
-                        </div>
+                        <p class="text-xl font-medium block">
+                            Enter your email
+                        </p>
 
                         <VInput
                             propElementId="email-address"
                             propLabel="Email address"
                             propPlaceholder=""
+                            propType="email"
+                            propName="email"
+                            propAutocomplete="on"
                             :propMaxLength="254"
                             :propIsRequired="true"
                             :propHasStatusText="true"
                             :propStatusText="email_validation_status_text"
                             :propIsError="email_validation_has_error"
-                            :propIsOk="can_submit_email === true"
+                            :propIsOk="email_is_ok === true"
                             :propAllowWhitespace="false"
                             @hasNewValue="validateEmail($event)"
                             class="mt-6"
                         />
 
-                        <!--navigation-->
+                        <!--main action-->
                         <div class="mt-8 w-full h-fit flex">
                             <VActionSpecialM
-                                @click.stop="[overrideNavigation('create-account-section', 'create-account-step-2'), ]"
-                                :propIsEnabled="canSubmitEmailAndRequestOTP"
+                                @click.stop="[
+                                    overrideNavigation('sign-up-section', 'sign-up-step-2'),
+                                    submitEmailAndRequestOTPForSignUp()
+                                ]"
+                                :propIsEnabled="email_is_ok"
                                 propElement="button"
-                                :propIsRound="true"
                                 type="button"
-                                class="ml-auto"
+                                class="w-full"
                             >
-                                <i class="fas fa-arrow-right text-2xl block mx-auto"></i>
-                                <span class="sr-only">continue</span>
+                                <span class="mx-auto">Continue</span>
                             </VActionSpecialM>
                         </div>
 
                         <!--extra options-->
-                        <div class="h-fit flex flex-col mt-6 gap-2">
-                            <VActionButtonTextOnly
-                                @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-0', false)"
-                                :prop-is-enabled="true"
-                            >
-                                <span class="font-bold">Sign in</span>
-                            </VActionButtonTextOnly>
-                            <VActionButtonTextOnly
-                                @click.stop="overrideNavigation('create-account-section', 'create-account-step-0', false)"
-                                :prop-is-enabled="true"
-                            >
-                                <span class="font-bold text-start">Create account with another method</span>
-                            </VActionButtonTextOnly>
+                        <div class="h-fit flex flex-col mt-2">
+                            <div class="mx-auto flex flex-row items-center">
+                                <span class="text-base block">Already have an account?&nbsp;</span>
+                                <VActionButtonTextOnly
+                                    @click.stop="overrideNavigation('log-in-section', 'log-in-step-1', false)"
+                                    :prop-is-enabled="true"
+                                >
+                                    <span class="font-bold">Log in</span>
+                                </VActionButtonTextOnly>
+                            </div>
                         </div>
                     </div>
 
                     <!--step 2-->
                     <div
-                        class="w-full flex flex-col p-2 pt-0"
-                        v-show="current_step === 'create-account-step-2'"
+                        class="w-full flex flex-col p-2"
+                        v-show="current_step === 'sign-up-step-2'"
                     >
 
-                        <div class="flex flex-col">
-                            <p class="text-2xl block">
-                                Enter the code for creating your account.
-                            </p>
-                            <span class="text-base block break-words">{{ email_string }}</span>
-                        </div>
+                        <VActionButtonTextOnly
+                            @click.stop="[overrideNavigation('sign-up-section', 'sign-up-step-1', false)]"
+                            class="flex-row"
+                        >
+                            <i class="fas fa-arrow-left w-fit h-fit text-2xl block pr-2"></i>
+                            <span class="font-bold break-words">Back to email</span>
+                        </VActionButtonTextOnly>
+
+                        <p class="text-xl font-medium block mt-8">
+                            Enter the sign-up code
+                        </p>
+                        <p class="text-base block">
+                            Check your email at <span class="break-words">{{ email_string }}</span> for the sign-up code.
+                        </p>
 
                         <VNumberSlots
                             @hasNewValue="validateOTP($event)"
-                            prop-element-id="create-account-otp"
-                            prop-label-text="6-digit code"
+                            prop-element-id="sign-up-otp"
+                            prop-label-text="Sign-up code"
                             :prop-extra-slots="calcExtraVNumberSlots"
+                            :prop-trigger-reset="email_has_change"
                             class="mt-6"
                         />
 
                         <!--resend OTP-->
-                        <VActionButtonTextOnly
-                            :prop-is-enabled="canSubmitEmailAndRequestOTP"
-                            @click.stop="submitEmailAndRequestOTPForCreateAccount()"
-                            class="mt-8"
-                        >
-                            <span class="font-bold">{{ otp_request_status_text }}</span>
-                        </VActionButtonTextOnly>
+                        <div class="h-10 flex flex-row items-center">
+                            <span class="text-base">{{ otp_request_status_text }}&nbsp;</span>
+                            <VActionButtonTextOnly
+                                v-show="canSubmitEmailAndRequestOTP"
+                                @click.stop="submitEmailAndRequestOTPForSignUp(true)"
+                            >
+                                <span class="font-bold">Resend</span>
+                            </VActionButtonTextOnly>
+                        </div>
 
-                        <!--navigation-->
+                        <!--main action-->
                         <div class="mt-8 h-fit">
                             <div class="flex flex-row items-center">
-                                <div class="w-full">
-                                    <VActionButtonTextOnly
-                                        @click.stop="[overrideNavigation('create-account-section', 'create-account-step-1', false), resetOTPRelatedValues()]"
-                                        class="flex-row"
-                                    >
-                                        <i class="fas fa-arrow-left w-fit h-fit text-2xl block my-auto pr-2"></i>
-                                        <span class="block my-auto">Change email</span>
-                                    </VActionButtonTextOnly>
-                                </div>
-                                <div>
-                                    <VActionSpecialM
-                                        :propIsEnabled="canSubmitOTP"
-                                        propElement="button"
-                                        :propIsRound="true"
-                                        type="button"
-                                        class="ml-auto"
-                                    >
-                                        <i class="fas fa-arrow-right text-2xl block mx-auto"></i>
-                                        <span class="sr-only">continue</span>
-                                    </VActionSpecialM>
-                                </div>
+                                <VActionSpecialM
+                                    :propIsEnabled="canSubmitOTP"
+                                    @click.stop="submitOTPForSignUp()"
+                                    propElement="button"
+                                    type="button"
+                                    class="w-full"
+                                >
+                                    <span class="mx-auto">Sign up</span>
+                                </VActionSpecialM>
                             </div>
                         </div>
 
                         <!--extra options-->
-                        <div class="h-fit flex flex-col mt-6 gap-2">
-                            <VActionButtonTextOnly
-                                @click.stop="overrideNavigation('sign-in-section', 'sign-in-step-0', false)"
-                                :prop-is-enabled="true"
-                            >
-                                <span class="font-bold">Sign in</span>
-                            </VActionButtonTextOnly>
-                            <VActionButtonTextOnly
-                                @click.stop="overrideNavigation('create-account-section', 'create-account-step-0', false)"
-                                :prop-is-enabled="true"
-                            >
-                                <span class="font-bold">Create account with another method</span>
-                            </VActionButtonTextOnly>
+                        <div class="h-fit flex flex-col mt-2">
+                            <div class="mx-auto flex flex-row items-center">
+                                <span class="text-base block">Already have an account?&nbsp;</span>
+                                <VActionButtonTextOnly
+                                    @click.stop="overrideNavigation('log-in-section', 'log-in-step-1', false)"
+                                    :prop-is-enabled="true"
+                                >
+                                    <span class="font-bold">Log in</span>
+                                </VActionButtonTextOnly>
+                            </div>
                         </div>
                     </div>
                 </TransitionGroupSlide>
@@ -389,7 +407,7 @@
             return {
                 email_string: "",
                 email_check_timeout: null as number|null,
-                can_submit_email: false,
+                email_is_ok: false,
                 email_validation_has_error: false,
                 email_validation_status_text: "",
 
@@ -401,14 +419,15 @@
                 otp_request_cooldown_s: 0,
                 otp_request_status_text: "",
                 otp_request_is_first_time: true,
+                email_has_change: false,    //used to determine whether otp resets
 
                 current_section: "",
-                sections: ["sign-in-section", "create-account-section"] as string[],
+                sections: ["log-in-section", "sign-up-section"] as string[],
 
                 current_step: "",
                 steps: {
-                    0: ["sign-in-step-0", "sign-in-step-1", "sign-in-step-2"],
-                    1: ["create-account-step-0", "create-account-step-1", "create-account-step-2"],
+                    0: ["log-in-step-0", "log-in-step-1", "log-in-step-2"],
+                    1: ["sign-up-step-0", "sign-up-step-1", "sign-up-step-2"],
                 } as StepsType,
                 transition_slide_is_forward: true,
             };
@@ -433,24 +452,24 @@
             },
             canSubmitEmailAndRequestOTP() : boolean {
 
-                return this.can_submit_email &&
-                    this.otp_request_cooldown_interval === null &&
-                    this.otp_request_cooldown_s === 0;
-            },
+                return this.email_is_ok === true && this.otp_request_cooldown_interval === null;
+            }
         },
         methods: {
             resetOTPRelatedValues() : void {
 
                 this.otp_request_cooldown_interval !== null ? window.clearTimeout(this.otp_request_cooldown_interval) : null;
+                this.otp_request_cooldown_interval = null;
                 this.otp_request_cooldown_duration_s = 30;
                 this.otp_request_cooldown_s = 0;
                 this.otp_request_status_text = "";
+                this.email_has_change = false;
             },
             resetEmailRelatedValues() : void {
 
                 this.email_string = "";
                 this.email_check_timeout !== null ? window.clearTimeout(this.email_check_timeout) : null;
-                this.can_submit_email = false;
+                this.email_is_ok = false;
                 this.email_validation_has_error = false;
                 this.email_validation_status_text = "";
             },
@@ -473,7 +492,7 @@
                     this.current_step = (this.steps as StepsType)[section_index][steps_value_index];
                 }
             },
-            async submitOTPForSignIn() : Promise<void> {
+            async submitOTPForLogIn() : Promise<void> {
 
                 if(this.canSubmitOTP === false){
 
@@ -484,7 +503,7 @@
                 data.append("email", this.email_string);
                 data.append("otp", this.otp);
 
-                await axios.post(window.location.origin + "/api/users/sign-in", data)
+                await axios.post(window.location.origin + "/api/users/log-in", data)
                 .then((response:any) => {
 
                     console.log(response.data['message']);
@@ -492,10 +511,10 @@
                 })
                 .catch((error: any) => {
 
-                    console.log(error.response.data['message']);
+                    console.log(error);
                 });
             },
-            async submitOTPForCreateAccount() : Promise<void> {
+            async submitOTPForSignUp() : Promise<void> {
 
                 if(this.canSubmitOTP === false){
 
@@ -506,7 +525,7 @@
                 data.append("email", this.email_string);
                 data.append("otp", this.otp);
 
-                await axios.post(window.location.origin + "/api/users/create", data)
+                await axios.post(window.location.origin + "/api/users/sign-up", data)
                 .then((response:any) => {
 
                     console.log(response.data['message']);
@@ -514,30 +533,20 @@
                 })
                 .catch((error: any) => {
 
-                    console.log(error.response.data['message']);
+                    console.log(error);
                 });
             },
-            async submitEmailAndRequestOTPForSignIn() : Promise<void> {
+            async submitEmailAndRequestOTPForLogIn(is_resubmit=false) : Promise<void> {
 
-                if(this.canSubmitEmailAndRequestOTP === false){
+                //no need to proceed if error on validating email
+                //no need to proceed if email from step 1 to 2 has no change
+                if(this.email_is_ok === false || (this.email_has_change === false && is_resubmit === false)){
 
                     return;
                 }
 
-                let data = new FormData();
-                data.append("email", this.email_string);
-                data.append("is_requesting_new_otp", JSON.stringify(true));
-
-                await axios.post(window.location.origin + "/api/users/sign-in", data)
-                .then((response:any) => {
-
-                    console.log(response.data['message']);
-
-                })
-                .catch((error: any) => {
-
-                    console.log(error.response.data['message']);
-                });
+                //reset step 2 if email has change during step 1
+                this.resetOTPRelatedValues();
 
                 //set cooldown
                 this.otp_request_cooldown_s = this.otp_request_cooldown_duration_s;
@@ -552,23 +561,21 @@
                         return;
                     }
 
-                    this.otp_request_status_text = "Code should arrive in " + this.otp_request_cooldown_s.toString() + "s";
+                    if(this.otp_request_cooldown_s === 1){
+                        this.otp_request_status_text = "Code should arrive in " + this.otp_request_cooldown_s.toString() + " second...";
+                    }else{
+                        this.otp_request_status_text = "Code should arrive in " + this.otp_request_cooldown_s.toString() + " seconds...";
+                    }
+
                     this.otp_request_cooldown_s -= 1;
 
                 }, 1000);
-            },
-            async submitEmailAndRequestOTPForCreateAccount() : Promise<void> {
-
-                if(this.canSubmitEmailAndRequestOTP === false){
-
-                    return;
-                }
 
                 let data = new FormData();
                 data.append("email", this.email_string);
                 data.append("is_requesting_new_otp", JSON.stringify(true));
 
-                await axios.post(window.location.origin + "/api/users/create", data)
+                await axios.post(window.location.origin + "/api/users/log-in", data)
                 .then((response:any) => {
 
                     console.log(response.data['message']);
@@ -576,8 +583,29 @@
                 })
                 .catch((error: any) => {
 
-                    console.log(error.response.data['message']);
+                    console.log(error);
+
+                    //unexpected error
+                    if(this.otp_request_cooldown_interval !== null){
+
+                        window.clearInterval(this.otp_request_cooldown_interval);
+                        this.otp_request_cooldown_interval = null;
+                    }
+                    
+                    this.otp_request_status_text = "Oops, could not send code.";
                 });
+            },
+            async submitEmailAndRequestOTPForSignUp(is_resubmit=false) : Promise<void> {
+
+                //no need to proceed if error on validating email
+                //no need to proceed if email from step 1 to 2 has no change
+                if(this.email_is_ok === false || (this.email_has_change === false && is_resubmit === false)){
+
+                    return;
+                }
+
+                //reset step 2 if email has change during step 1
+                this.resetOTPRelatedValues();
 
                 //set cooldown
                 this.otp_request_cooldown_s = this.otp_request_cooldown_duration_s;
@@ -588,14 +616,43 @@
 
                         window.clearInterval(this.otp_request_cooldown_interval);
                         this.otp_request_cooldown_interval = null;
-                        this.otp_request_status_text = "Resend code?";
+                        this.otp_request_status_text = "Didn't receive code?";
                         return;
                     }
 
-                    this.otp_request_status_text = "Can resend in " + this.otp_request_cooldown_s.toString() + "s";
+                    if(this.otp_request_cooldown_s === 1){
+                        this.otp_request_status_text = "Code should arrive in " + this.otp_request_cooldown_s.toString() + " second...";
+                    }else{
+                        this.otp_request_status_text = "Code should arrive in " + this.otp_request_cooldown_s.toString() + " seconds...";
+                    }
+
                     this.otp_request_cooldown_s -= 1;
 
                 }, 1000);
+
+                let data = new FormData();
+                data.append("email", this.email_string);
+                data.append("is_requesting_new_otp", JSON.stringify(true));
+
+                await axios.post(window.location.origin + "/api/users/sign-up", data)
+                .then((response:any) => {
+
+                    console.log(response.data['message']);
+
+                })
+                .catch((error: any) => {
+
+                    console.log(error);
+
+                    //unexpected error
+                    if(this.otp_request_cooldown_interval !== null){
+
+                        window.clearInterval(this.otp_request_cooldown_interval);
+                        this.otp_request_cooldown_interval = null;
+                    }
+                    
+                    this.otp_request_status_text = "Oops, could not send code.";
+                });
             },
             validateOTP(new_value:string) : void {
 
@@ -603,7 +660,10 @@
             },
             validateEmail(new_value:string) : void {
 
+                //reset everything on any change
                 this.resetEmailRelatedValues();
+
+                this.email_has_change = true;
                 
                 //do nothing if there is no text
                 if(new_value.length === 0){
@@ -619,23 +679,23 @@
                     if(/^\S+@\S+\.\S+$/.test(new_value) === true) {
 
                         this.email_string = new_value;
-                        this.can_submit_email = true;
+                        this.email_is_ok = true;
                         this.email_validation_has_error = false;
                         this.email_validation_status_text = "All good!";
 
                     }else if(/\s+/g.test(new_value) === true){
 
                         this.email_string = "";
-                        this.can_submit_email = false;
+                        this.email_is_ok = false;
                         this.email_validation_has_error = true;
-                        this.email_validation_status_text = "Spaces detected. Please remove them.";
+                        this.email_validation_status_text = "Please remove the spaces.";
 
                     }else{
 
                         this.email_string = "";
-                        this.can_submit_email = false;
+                        this.email_is_ok = false;
                         this.email_validation_has_error = true;
-                        this.email_validation_status_text = "That does not look like a proper email.";
+                        this.email_validation_status_text = "Does not look like a proper email.";
                     }
 
                     //maximum 254 characters for email

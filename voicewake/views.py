@@ -2,15 +2,14 @@ from django import views
 from django.http import JsonResponse, QueryDict
 from django.db.models import Case, Value, When, Sum, Q, F, Count
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, logout, authenticate
-from django.contrib.auth.decorators import login_required, permission_required
 from django.db import connection, transaction
 from django.core.mail import send_mail
 from django.template.loader import get_template
 
 #auth
 from django.contrib.auth import get_user_model
-from django.contrib.auth import login
+from django.contrib.auth import login, logout
+from django.contrib.auth.decorators import login_required, permission_required
 
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
@@ -184,6 +183,7 @@ def first_time_setup():
 def home(request):
 
 
+
     return render(request, template_name='voicewake/home.html')
 
 
@@ -227,7 +227,7 @@ class CheckUsernameExistsAPI(generics.GenericAPIView):
 
 
 
-class UsersSignInAPI(generics.GenericAPIView):
+class UsersLogInAPI(generics.GenericAPIView):
 
     serializer_class = None
     permission_classes = []
@@ -238,7 +238,7 @@ class UsersSignInAPI(generics.GenericAPIView):
         #reminder that verify_otp() does all the checks for us
         if handle_user_otp_class.verify_otp(otp) is False:
 
-            return handle_user_otp_class.get_default_verify_otp_response()
+            return HandleUserOTP.get_default_verify_otp_response()
 
         #OTP verified, continue
 
@@ -259,7 +259,7 @@ class UsersSignInAPI(generics.GenericAPIView):
         return Response(
             data={
                 'message': 'You are now logged in!',
-                'is_signed_in': True
+                'is_logged_in': True
             },
             status=status.HTTP_200_OK
         )
@@ -267,7 +267,7 @@ class UsersSignInAPI(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
 
-        serializer = UsersSignInAPISerializer(data=request.data, many=False)
+        serializer = UsersLogInAPISerializer(data=request.data, many=False)
 
         if serializer.is_valid() is False:
 
@@ -317,12 +317,12 @@ class UsersSignInAPI(generics.GenericAPIView):
 
                     handle_user_otp_class.send_otp_email(
                         new_data['email'],
-                        'Code for signing in',
-                        'Sign-in code:',
+                        'Code for login',
+                        'Log in with this code:',
                         new_otp
                     )
 
-                return handle_user_otp_class.get_default_create_otp_response(new_data['email'])
+                return HandleUserOTP.get_default_create_otp_response(new_data['email'])
 
             #continue to verifying OTP and logging in
             #will always return Response()
@@ -330,7 +330,7 @@ class UsersSignInAPI(generics.GenericAPIView):
 
 
 
-class UsersCreateAPI(UsersSignInAPI):
+class UsersSignUpAPI(UsersLogInAPI):
 
     serializer_class = None
     permission_classes = []
@@ -339,7 +339,7 @@ class UsersCreateAPI(UsersSignInAPI):
     def post(self, request, *args, **kwargs):
 
         #same data as signing in
-        serializer = UsersSignInAPISerializer(data=request.data, many=False)
+        serializer = UsersLogInAPISerializer(data=request.data, many=False)
 
         if serializer.is_valid() is False:
 
@@ -388,16 +388,37 @@ class UsersCreateAPI(UsersSignInAPI):
                 
                     handle_user_otp_class.send_otp_email(
                         new_data['email'],
-                        'Code for creating new account',
-                        'Create your new account with this code:',
+                        'Code for sign-up',
+                        'Complete your sign-up with this code:',
                         new_otp
                     )
     
-                return handle_user_otp_class.get_default_create_otp_response(new_data['email'])
+                return HandleUserOTP.get_default_create_otp_response(new_data['email'])
     
             #continue to verifying OTP and logging in
             #will always return Response()
             return self.verify_and_log_in(request, user_instance, handle_user_otp_class, new_data['otp'])
+
+
+
+class UsersLogOutAPI(generics.GenericAPIView):
+
+    serializer_class = None
+    permission_classes = []
+
+    def get(self, request, *args, **kwargs):
+
+        logout(request)
+
+        return Response(
+            data={
+                'data': {
+                    'is_logged_in': False
+                },
+                'message': 'You are now logged out!'
+            },
+            status=status.HTTP_200_OK
+        )
 
 
 

@@ -19,15 +19,16 @@
             <input
                 ref="v_input_field"
                 :required="propIsRequired"
-                type="text"
+                :type="propType"
                 :id="propElementId"
                 :placeholder="propPlaceholder"
-                autocomplete="off"
+                :name="propName"
+                :autocomplete="propAutocomplete"
                 spellcheck="false"
                 :maxlength="propMaxLength"
                 :class="[
                     propHasStatusText ? 'pr-10' : '',
-                    'w-full h-10 p-2 pr-10 bg-theme-light border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black rounded-lg'
+                    'w-full h-10 p-2 bg-theme-light border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black rounded-lg'
                 ]"
             >
             <i v-show="propIsOk" class="w-0 h-0 fas fa-check relative py-2 right-8 text-theme-toast-success"></i>
@@ -62,7 +63,10 @@
             propIsRequired: Boolean,
             propElementId: String,
             propLabel: String,
-            propPlaceholder: String,
+            propPlaceholder: {
+                type: String,
+                default: ''
+            },
             propMaxLength: {
                 type: Number,
                 required: true
@@ -76,6 +80,18 @@
             propAllowWhitespace: {
                 type: Boolean,
                 default: true
+            },
+            propType: {
+                type: String,
+                default: 'text'
+            },
+            propAutocomplete: {
+                type: String,
+                default: 'off'
+            },
+            propName: {     //you need name="email" and autocomplete="on" for drop-down menu of emails
+                type: String,
+                default: ''
             },
         },
         emits: ['hasNewValue'],

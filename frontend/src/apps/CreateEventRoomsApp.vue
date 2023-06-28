@@ -7,7 +7,7 @@
             </div>
         </template>
         <template #titleDescription>
-            <span class="block w-full text-center">Say something nice</span>
+            <span class="block w-full text-center">Be nice</span>
         </template>
     </VTitleXL>
     <VCreateEvents
