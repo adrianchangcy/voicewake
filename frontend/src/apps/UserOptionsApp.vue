@@ -2,7 +2,7 @@
     <div class="text-theme-black">
 
         <!--title-->
-        <VTitleXL class="py-8">
+        <VTitleXL class="pt-8 pb-6">
             <template #title>
                 <span class="block text-center">Voicewake</span>
             </template>
@@ -75,8 +75,8 @@
                         v-show="current_step === 'log-in-step-1'"
                     >
 
-                        <p class="text-xl font-medium block">
-                            Enter your email
+                        <p class="text-xl font-medium text-center block">
+                            Log in and continue the fun!
                         </p>
 
                         <VInput
@@ -248,8 +248,8 @@
                         v-show="current_step === 'sign-up-step-1'"
                     >
 
-                        <p class="text-xl font-medium block">
-                            Enter your email
+                        <p class="text-xl font-medium text-center block">
+                            Sign up to chat with others.
                         </p>
 
                         <VInput
@@ -651,7 +651,7 @@
                         this.otp_request_cooldown_interval = null;
                     }
                     
-                    this.otp_request_status_text = "Oops, could not send code.";
+                    this.otp_request_status_text = "Oops! Could not send code.";
                 });
             },
             validateOTP(new_value:string) : void {
