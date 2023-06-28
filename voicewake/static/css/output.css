@@ -769,10 +769,6 @@ video {
   margin-bottom: auto;
 }
 
-.-mt-2 {
-  margin-top: -0.5rem;
-}
-
 .mb-0 {
   margin-bottom: 0px;
 }
@@ -819,10 +815,6 @@ video {
 
 .mt-\[4\.5rem\] {
   margin-top: 4.5rem;
-}
-
-.-mt-4 {
-  margin-top: -1rem;
 }
 
 .box-content {
@@ -925,10 +917,6 @@ video {
   height: 300%;
 }
 
-.h-\[30rem\] {
-  height: 30rem;
-}
-
 .h-\[4\.5rem\] {
   height: 4.5rem;
 }
@@ -952,6 +940,10 @@ video {
 
 .h-screen {
   height: 100vh;
+}
+
+.min-h-\[32rem\] {
+  min-height: 32rem;
 }
 
 .min-h-screen {
@@ -1017,10 +1009,6 @@ video {
 
 .w-full {
   width: 100%;
-}
-
-.max-w-full {
-  max-width: 100%;
 }
 
 .shrink-0 {
@@ -1279,10 +1267,6 @@ video {
   overflow-wrap: break-word;
 }
 
-.break-all {
-  word-break: break-all;
-}
-
 .rounded-2xl {
   border-radius: 1rem;
 }
@@ -1431,11 +1415,6 @@ video {
   background-color: rgb(245 245 220 / 0.8);
 }
 
-.bg-theme-light-gray {
-  --tw-bg-opacity: 1;
-  background-color: rgb(231 229 228 / var(--tw-bg-opacity));
-}
-
 .bg-gradient-to-b {
   background-image: linear-gradient(to bottom, var(--tw-gradient-stops));
 }
@@ -1576,10 +1555,6 @@ video {
   padding-right: 1rem;
 }
 
-.pt-0 {
-  padding-top: 0px;
-}
-
 .pt-1 {
   padding-top: 0.25rem;
 }
@@ -1631,6 +1606,11 @@ video {
   line-height: 2.5rem;
 }
 
+.text-5xl {
+  font-size: 3rem;
+  line-height: 1;
+}
+
 .text-base {
   font-size: 1rem;
   line-height: 1.5rem;
@@ -1661,10 +1641,6 @@ video {
 
 .font-medium {
   font-weight: 500;
-}
-
-.font-normal {
-  font-weight: 400;
 }
 
 .uppercase {
@@ -1936,8 +1912,8 @@ video {
     everything else, nothing, i.e. z-0 by default
 
     FONT SIZES
-    big page title, text-4xl font-light
-    big page title context, text-2xl font-light
+    big page title, text-5xl
+    big page title context, text-3xl
     main page title, text-2xl
     main page title context, text-base font-light
     main page title when many pages, text-xl

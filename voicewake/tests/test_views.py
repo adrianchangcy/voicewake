@@ -35,7 +35,7 @@ def ensure_otp_is_always_wrong(otp):
 
 
 
-class UserSignIn_TestCase(TestCase):
+class Users_TestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
@@ -43,10 +43,10 @@ class UserSignIn_TestCase(TestCase):
         cls.email = 'user1@gmail.com'
 
 
-    def test_create_account_correctly(self):
+    def test_sign_up_correctly(self):
 
         #create and request OTP at the same time
-        response = self.client.post(reverse('users_create'), data={
+        response = self.client.post(reverse('users_sign_up'), data={
             'email': self.email,
             'is_requesting_new_otp': True
         })
@@ -62,7 +62,7 @@ class UserSignIn_TestCase(TestCase):
         new_otp = UserOTP.objects.get(user=user_instance).otp
 
         #create and sign in
-        response = self.client.post(reverse('users_create'), data={
+        response = self.client.post(reverse('users_sign_up'), data={
             'email': self.email,
             'otp': new_otp
         })
@@ -71,7 +71,7 @@ class UserSignIn_TestCase(TestCase):
         print(response.data)
 
         #expected values
-        self.assertTrue(response.data['is_signed_in'])
+        self.assertTrue(response.data['is_logged_in'])
         user_instance = get_user_model().objects.get(
             email_lowercase=self.email.lower()
         )
@@ -80,12 +80,34 @@ class UserSignIn_TestCase(TestCase):
         self.assertFalse(UserOTP.objects.filter(user=user_instance).exists())
 
 
-    def test_sign_in_correctly(self):
+    def test_log_in_for_account_that_does_not_exist(self):
 
-        self.test_create_account_correctly()
+        #create and request OTP at the same time
+        response = self.client.post(reverse('users_log_in'), data={
+            'email': self.email,
+            'is_requesting_new_otp': True
+        })
+
+        #has email sent
+        self.assertEqual(len(mail.outbox), 0)
+
+        user_exists = get_user_model().objects.filter(
+            email_lowercase=self.email.lower()
+        ).exists()
+
+        #user should not be created
+        self.assertFalse(user_exists)
+
+        print(response.status_code)
+        print(response.data)
+
+
+    def test_log_in_correctly(self):
+
+        self.test_sign_up_correctly()
 
         #generate OTP
-        response = self.client.post(reverse('users_sign_in'), data={
+        response = self.client.post(reverse('users_log_in'), data={
             'email': self.email,
             'is_requesting_new_otp': True
         })
@@ -98,12 +120,12 @@ class UserSignIn_TestCase(TestCase):
         )
 
         #get correct OTP
-        #should exist even after signing in from creating account,
+        #should exist even after logging in from creating account,
         #because HandleUserOTP.verify_otp() deletes UserOTP row on success
         new_otp = UserOTP.objects.get(user=user_instance).otp
 
         #sign in
-        response = self.client.post(reverse('users_sign_in'), data={
+        response = self.client.post(reverse('users_log_in'), data={
             'email': self.email,
             'otp': new_otp
         })
@@ -112,7 +134,7 @@ class UserSignIn_TestCase(TestCase):
         print(response.data)
 
         #expected values
-        self.assertTrue(response.data['is_signed_in'])
+        self.assertTrue(response.data['is_logged_in'])
         user_instance = get_user_model().objects.get(
             email_lowercase=self.email.lower()
         )

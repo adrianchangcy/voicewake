@@ -55,8 +55,8 @@
                 type: Number,
                 required: true
             },
-            propTriggerReset: { //use this to reset the slots
-                type: String
+            propTriggerReset: { //use this to reset the slots, regardless of true/false
+                type: Boolean
             }
         },
         emits: ["hasNewValue"],

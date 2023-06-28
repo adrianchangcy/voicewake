@@ -479,7 +479,7 @@ class HandleUserOTP(TOTPVerification):
         return True
 
 
-    def get_default_verify_otp_response(self):
+    def get_default_verify_otp_response():
 
         #always return this Response when error to give 0 clues on whether user exists or not
         return Response(
@@ -490,7 +490,7 @@ class HandleUserOTP(TOTPVerification):
         )
 
 
-    def get_default_create_otp_response(self, email):
+    def get_default_create_otp_response(email):
 
         #always return this Response when error to give 0 clues on whether user exists or not
         return Response(

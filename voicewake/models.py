@@ -158,9 +158,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         super(User, self).save(*args, **kwargs)
 
 
-
-
-
 #delete on success or on max attempts once max attempt timeout has passed
 class UserOTP(models.Model):
     id = models.BigAutoField(primary_key=True)
