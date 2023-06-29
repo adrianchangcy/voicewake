@@ -1,6 +1,6 @@
 <template>
     <div class="text-theme-black">
-
+        <VSetUsername/>
         <!--title-->
         <VTitleXL class="pt-8 pb-6">
             <template #title>
@@ -76,14 +76,15 @@
                     >
 
                         <p class="text-xl font-medium text-center block">
-                            Log in and continue the fun!
+                            Log in and continue the fun.
                         </p>
 
                         <VInput
                             propElementId="email-address"
                             propLabel="Email address"
                             propPlaceholder=""
-                            propType="email"
+                            propType="text"
+                            propInputmode="email"
                             propName="email"
                             propAutocomplete="on"
                             :propMaxLength="254"
@@ -98,7 +99,7 @@
                         />
 
                         <!--main action-->
-                        <div class="mt-8 w-full h-fit flex">
+                        <div class="mt-8 w-full h-fit">
                             <VActionSpecialM
                                 @click.stop="[
                                     overrideNavigation('log-in-section', 'log-in-step-2'),
@@ -142,7 +143,7 @@
                         </VActionButtonTextOnly>
 
                         <p class="text-xl font-medium block mt-8">
-                            Enter the login code
+                            Enter the login code.
                         </p>
                         <p class="text-base block">
                             Check your email at <span class="break-words">{{ email_string }}</span> for the login code.
@@ -170,17 +171,15 @@
 
                         <!--main action-->
                         <div class="mt-8 h-fit">
-                            <div class="flex flex-row items-center">
-                                <VActionSpecialM
-                                    :propIsEnabled="canSubmitOTP"
-                                    @click.stop="submitOTPForLogIn()"
-                                    propElement="button"
-                                    type="button"
-                                    class="w-full"
-                                >
-                                    <span class="mx-auto">Log in</span>
-                                </VActionSpecialM>
-                            </div>
+                            <VActionSpecialM
+                                :propIsEnabled="canSubmitOTP"
+                                @click.stop="submitOTPForLogIn()"
+                                propElement="button"
+                                type="button"
+                                class="w-full"
+                            >
+                                <span class="mx-auto">Log in</span>
+                            </VActionSpecialM>
                         </div>
 
                         <!--extra options-->
@@ -256,7 +255,8 @@
                             propElementId="email-address"
                             propLabel="Email address"
                             propPlaceholder=""
-                            propType="email"
+                            propType="text"
+                            propInputmode="email"
                             propName="email"
                             propAutocomplete="on"
                             :propMaxLength="254"
@@ -271,7 +271,7 @@
                         />
 
                         <!--main action-->
-                        <div class="mt-8 w-full h-fit flex">
+                        <div class="mt-8 w-full h-fit">
                             <VActionSpecialM
                                 @click.stop="[
                                     overrideNavigation('sign-up-section', 'sign-up-step-2'),
@@ -315,7 +315,7 @@
                         </VActionButtonTextOnly>
 
                         <p class="text-xl font-medium block mt-8">
-                            Enter the sign-up code
+                            Enter the sign-up code.
                         </p>
                         <p class="text-base block">
                             Check your email at <span class="break-words">{{ email_string }}</span> for the sign-up code.
@@ -343,17 +343,15 @@
 
                         <!--main action-->
                         <div class="mt-8 h-fit">
-                            <div class="flex flex-row items-center">
-                                <VActionSpecialM
-                                    :propIsEnabled="canSubmitOTP"
-                                    @click.stop="submitOTPForSignUp()"
-                                    propElement="button"
-                                    type="button"
-                                    class="w-full"
-                                >
-                                    <span class="mx-auto">Sign up</span>
-                                </VActionSpecialM>
-                            </div>
+                            <VActionSpecialM
+                                :propIsEnabled="canSubmitOTP"
+                                @click.stop="submitOTPForSignUp()"
+                                propElement="button"
+                                type="button"
+                                class="w-full"
+                            >
+                                <span class="mx-auto">Sign up</span>
+                            </VActionSpecialM>
                         </div>
 
                         <!--extra options-->
@@ -385,11 +383,11 @@
     import VTitleXL from '@/components/small/VTitleXL.vue';
     import VNumberSlots from '@/components/small/VNumberSlots.vue';
     import VActionSpecialM from '@/components/small/VActionSpecialM.vue';
-    // import VActionButtonSpecialL from '@/components/small/VActionButtonSpecialL.vue';
     import VActionButtonTextOnly from '@/components/small/VActionButtonTextOnly.vue';
     import TransitionGroupSlide from '@/transitions/TransitionGroupSlide.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
     import VActionButtonS from '@/components/small/VActionButtonS.vue';
+    import VSetUsername from '@/components/medium/VSetUsername.vue';
 </script>
 
 
@@ -545,7 +543,7 @@
                     return;
                 }
 
-                //reset step 2 if email has change during step 1
+                //reset step 2 if validateEmail() detects email change
                 this.resetOTPRelatedValues();
 
                 //set cooldown
@@ -562,9 +560,13 @@
                     }
 
                     if(this.otp_request_cooldown_s === 1){
-                        this.otp_request_status_text = "Code should arrive in " + this.otp_request_cooldown_s.toString() + " second...";
+                        this.otp_request_status_text = "Code should arrive in " +
+                            this.otp_request_cooldown_s.toString() +
+                            " second...";
                     }else{
-                        this.otp_request_status_text = "Code should arrive in " + this.otp_request_cooldown_s.toString() + " seconds...";
+                        this.otp_request_status_text = "Code should arrive in " +
+                            this.otp_request_cooldown_s.toString() +
+                            " seconds...";
                     }
 
                     this.otp_request_cooldown_s -= 1;
@@ -604,7 +606,7 @@
                     return;
                 }
 
-                //reset step 2 if email has change during step 1
+                //reset step 2 if validateEmail() detects email change
                 this.resetOTPRelatedValues();
 
                 //set cooldown
@@ -621,9 +623,13 @@
                     }
 
                     if(this.otp_request_cooldown_s === 1){
-                        this.otp_request_status_text = "Code should arrive in " + this.otp_request_cooldown_s.toString() + " second...";
+                        this.otp_request_status_text = "Code should arrive in " +
+                            this.otp_request_cooldown_s.toString() +
+                            " second...";
                     }else{
-                        this.otp_request_status_text = "Code should arrive in " + this.otp_request_cooldown_s.toString() + " seconds...";
+                        this.otp_request_status_text = "Code should arrive in " +
+                            this.otp_request_cooldown_s.toString() +
+                            " seconds...";
                     }
 
                     this.otp_request_cooldown_s -= 1;
@@ -656,6 +662,8 @@
             },
             validateOTP(new_value:string) : void {
 
+                //no need validation here, since we either only get "" or full OTP
+                //we use computed function do validate it for us
                 this.otp = new_value;
             },
             validateEmail(new_value:string) : void {
@@ -688,7 +696,7 @@
                         this.email_string = "";
                         this.email_is_ok = false;
                         this.email_validation_has_error = true;
-                        this.email_validation_status_text = "Please remove the spaces.";
+                        this.email_validation_status_text = "Please remove all spaces.";
 
                     }else{
 

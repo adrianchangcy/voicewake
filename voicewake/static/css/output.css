@@ -2150,6 +2150,10 @@ textarea {
     grid-column: span 2 / span 2;
   }
 
+  .sm\:col-span-3 {
+    grid-column: span 3 / span 3;
+  }
+
   .sm\:col-start-3 {
     grid-column-start: 3;
   }
@@ -2166,6 +2170,14 @@ textarea {
     grid-column-start: 8;
   }
 
+  .sm\:col-start-6 {
+    grid-column-start: 6;
+  }
+
+  .sm\:block {
+    display: block;
+  }
+
   .sm\:inline {
     display: inline;
   }
@@ -2180,6 +2192,11 @@ textarea {
 
   .sm\:border-l {
     border-left-width: 1px;
+  }
+
+  .sm\:px-4 {
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
 }
 

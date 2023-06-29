@@ -211,7 +211,7 @@ class CheckUsernameExistsAPI(generics.GenericAPIView):
         User = get_user_model()
         
         exists = User.objects.filter(
-            username=new_data['username']
+            username_lowercase=new_data['username'].lower()
         ).exists()
 
         return Response(

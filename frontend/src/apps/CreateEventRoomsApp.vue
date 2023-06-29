@@ -2,12 +2,9 @@
     <VTitleXL class="py-10">
         <template #title>
             <div class="flex flex-col">
-                <i class="fas fa-comment block text-xl w-full text-center"></i>
+                <i class="fas fa-comment block text-2xl w-full text-center"></i>
                 <span class="block w-full text-center">Start Event</span>
             </div>
-        </template>
-        <template #titleDescription>
-            <span class="block w-full text-center">Be nice</span>
         </template>
     </VTitleXL>
     <VCreateEvents
