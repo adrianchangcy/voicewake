@@ -20,6 +20,7 @@
                 ref="v_input_field"
                 :required="propIsRequired"
                 :type="propType"
+                :inputmode="propInputmode"
                 :id="propElementId"
                 :placeholder="propPlaceholder"
                 :name="propName"
@@ -36,9 +37,10 @@
             <i v-show="propIsError" class="w-0 h-0 fas fa-exclamation relative py-2 right-6 text-theme-toast-danger"></i>
         </div>
         <div v-show="propHasStatusText" class="h-6 text-base px-2">
-            <span v-show="propIsOk" class="text-theme-toast-success">{{propStatusText}}</span>
-            <span v-show="propIsWarning" class="text-theme-toast-warning-2">{{propStatusText}}</span>
-            <span v-show="propIsError" class="text-theme-toast-danger">{{propStatusText}}</span>
+            <span v-show="propIsOk" class="text-theme-toast-success">{{ propStatusText }}</span>
+            <span v-show="propIsWarning" class="text-theme-toast-warning-2">{{ propStatusText }}</span>
+            <span v-show="propIsError" class="text-theme-toast-danger">{{ propStatusText }}</span>
+            <span v-show="hasPlainStatusText" class="text-theme-black">{{ propStatusText }}</span>
         </div>
     </div>
 </template>
@@ -85,6 +87,10 @@
                 type: String,
                 default: 'text'
             },
+            propInputmode: {
+                type: String,
+                default: 'text'
+            },
             propAutocomplete: {
                 type: String,
                 default: 'off'
@@ -95,13 +101,46 @@
             },
         },
         emits: ['hasNewValue'],
+        computed: {
+
+            hasPlainStatusText() : boolean {
+
+                return this.propIsOk === false &&
+                    this.propIsWarning === false &&
+                    this.propIsError === false &&
+                    this.propStatusText.length > 0
+                ;
+            },
+        },
         methods: {
-            validateInputWithRegex(new_value:string, input_field:HTMLInputElement) : void {
+            validateInputWithRegex(event:InputEvent, input_field:HTMLInputElement) : void {
+
+                //we only run on manual input having whitespace, instead of entire input_field.value
+                //because we don't want to block pasted values
+                //this is to avoid the case of "99% valid paste input but has a space"
+                //you should have another bigger-picture validator at the parent component
+
+                //input event triggers on value change, including paste and voice-to-speech
+                //hence, we can be rest assured that the emit always fires
+
+                //get value
+                const new_value = event.data === null ? '' : event.data!;
 
                 if(this.propAllowWhitespace === false && /\s+/g.test(new_value) === true){
 
+                    //get caret position
+                    //since event.target is only a reference, any value change will change .selectionStart value immediately after
+                    const current_caret_position = event.target.selectionStart - 1;
+
                     //user inserts whitespace, set input_field value to be of last regex success string
                     input_field.value = this.input_value;
+
+                    //set caret position to the one before the value change
+                    input_field.setSelectionRange(
+                        current_caret_position,
+                        current_caret_position
+                    );
+
                     return;
                 }
 
@@ -118,8 +157,7 @@
             //using watcher will not be as capable as this
             input_field.addEventListener("input", (e) => {
                 e.stopPropagation();
-                const new_value = (e as InputEvent).data === null ? '' : (e as InputEvent).data!;
-                this.validateInputWithRegex(new_value, input_field as HTMLInputElement);
+                this.validateInputWithRegex(e as InputEvent, input_field as HTMLInputElement);
             });
         },
         beforeUnmount(){
@@ -128,8 +166,7 @@
 
             input_field.removeEventListener("input", (e) => {
                 e.stopPropagation();
-                const new_value = (e as InputEvent).data === null ? '' : (e as InputEvent).data!;
-                this.validateInputWithRegex(new_value, input_field as HTMLInputElement);
+                this.validateInputWithRegex(e as InputEvent, input_field as HTMLInputElement);
             });
         }
     });

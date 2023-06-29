@@ -169,6 +169,9 @@ class CheckUsernameExistsSerializer(serializers.Serializer):
         min_length=1,
         max_length=30,
     )
+    exists = serializers.BooleanField(
+        required=False
+    )
 
 
     def validate_username(self, value):
@@ -230,6 +233,8 @@ class UsersLogInAPISerializer(serializers.Serializer):
             raise serializers.ValidationError('Cannot request for new OTP while submitting OTP.')
 
         return data
+
+
 
 
 

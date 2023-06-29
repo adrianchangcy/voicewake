@@ -7,7 +7,7 @@
         >
             <template #title>
                 <div class="flex flex-col">
-                    <i class="fas fa-comments block text-xl w-full text-center"></i>
+                    <i class="fas fa-comments block text-2xl w-full text-center"></i>
                     <span class="block w-full text-center">Reply</span>
                 </div>
             </template>
