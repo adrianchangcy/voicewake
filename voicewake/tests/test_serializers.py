@@ -30,7 +30,7 @@ class RegExp_TestCase(TestCase):
 
         pass
 
-    def test_username_regexp(self):
+    def test_username_regex(self):
 
         good_usernames = [
             'a', '1', 'b', '2',
@@ -65,3 +65,20 @@ class RegExp_TestCase(TestCase):
                     'many': False
                 }).is_valid()
             )
+
+        #found in static/json/bad_usernames.en.json
+        usernames_not_allowed = [
+            'admin', 'me', 'you', 'ceo'
+        ]
+
+        for name in bad_usernames:
+
+            self.assertFalse(
+                UsersUsernameAPISerializer(data={
+                    'username': name,
+                    'many': False
+                }).is_valid()
+            )
+
+
+

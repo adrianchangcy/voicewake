@@ -28,13 +28,14 @@ def determine_event_audio_file_path_and_name(instance, filename):
     #will always have only one or the other, not both
 
     #e.g.:
-    #MEDIA_ROOT/recordings/year_2022/month_08/day_01/username
+    #MEDIA_ROOT/recordings/year_2022/month_8/day_1/user_id_1
     #no need to type out MEDIA_ROOT here, as it is determined in settings.py
-    file_path = 'events/year_{0}/month_{1}/day_{2}/{3}'.format(
-        instance.when_created.strftime('%Y'),
-        instance.when_created.strftime('%m'),
-        instance.when_created.strftime('%d'),
-        instance.user.username
+    #.format() converts args into str for us
+    file_path = 'events/year_{0}/month_{1}/day_{2}/user_id_{3}'.format(
+        int(instance.when_created.strftime('%Y')),
+        int(instance.when_created.strftime('%m')),
+        int(instance.when_created.strftime('%d')),
+        instance.user.id    #avoids headache of worrying about '.' in file names, etc.
     )
 
     #e.g.:
