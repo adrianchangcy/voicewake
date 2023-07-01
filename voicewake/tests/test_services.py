@@ -12,6 +12,7 @@ from django.contrib.auth import get_user_model
 #apps
 from voicewake.services import *
 from voicewake.models import *
+from voicewake.serializers import *
 from django.conf import settings
 
 #py packages

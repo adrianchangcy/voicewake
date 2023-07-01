@@ -188,14 +188,15 @@ def home(request):
 
 
 
-class CheckUsernameExistsAPI(generics.GenericAPIView):
+class UsersUsernameAPI(generics.GenericAPIView):
 
     serializer_class = None
     permission_classes = []
 
+    #checks if username exists
     def get(self, request, *args, **kwargs):
 
-        serializer = CheckUsernameExistsSerializer(data=kwargs, many=False)
+        serializer = UsersUsernameAPISerializer(data=kwargs, many=False)
 
         if serializer.is_valid() is False:
 
@@ -223,6 +224,82 @@ class CheckUsernameExistsAPI(generics.GenericAPIView):
                 'message': 'Request successful.',
             },
             status.HTTP_200_OK
+        )
+
+
+    #updates username, but only once, i.e. when username is None
+    def post(self, request, *args, **kwargs):
+
+        User = get_user_model()
+
+        #user must be logged in
+        if request.user.is_authenticated is False:
+
+            return Response(
+                {
+                    'message': 'Request not allowed.',
+                },
+                status.HTTP_403_FORBIDDEN
+            )
+
+        user_instance = User.objects.get(pk=request.user.id)
+
+        #user must not already have a username
+        if user_instance.username is not None:
+
+            return Response(
+                {
+                    'message': 'You already have a username.',
+                },
+                status.HTTP_403_FORBIDDEN
+            )
+
+        #validate
+        serializer = UsersUsernameAPISerializer(data=request.data, many=False)
+
+        if serializer.is_valid() is False:
+
+            return Response(
+                data={
+                    'message': 'Invalid data.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        new_data = serializer.validated_data
+
+        #check again if it exists
+        username_exists = User.objects.filter(
+            username_lowercase=new_data['username'].lower()
+        ).exists()
+
+        if username_exists is True:
+
+            return Response(
+                data={
+                    'data': {
+                        'username': new_data['username'],
+                        'exists': True
+                    },
+                    'message': 'Oops! That username had just been taken. Try another.'
+                },
+                status=status.HTTP_200_OK
+            )
+        
+        #apply new username
+        user_instance.username = new_data['username']
+        user_instance.username_lowercase = new_data['username'].lower()
+        user_instance.save()
+
+        return Response(
+            data={
+                'data': {
+                    'username': new_data['username'],
+                    'exists': False
+                },
+                'message': 'Your username is now %s.' % (new_data['username'])
+            },
+            status=status.HTTP_200_OK
         )
 
 

@@ -163,7 +163,7 @@ class UserActionsSerializer(serializers.Serializer):
             raise serializers.ValidationError('Missing paired data.')
 
 
-class CheckUsernameExistsSerializer(serializers.Serializer):
+class UsersUsernameAPISerializer(serializers.Serializer):
 
     username = serializers.CharField(
         min_length=1,
@@ -181,7 +181,15 @@ class CheckUsernameExistsSerializer(serializers.Serializer):
         if len(value) == 0:
 
             raise serializers.ValidationError('Empty username.')
-        
+
+        #either entirely letters and numbers only,
+        #or start and end with letters and numbers with possible '_' and '.' in between
+        #with the addition of {1,30} for condition 1, constant 120+ steps becomes 6 steps
+        #if '_' or '.', cannot continue with another '_' nor '.'
+        if re.match(r'(^[a-zA-Z0-9]{1,30}$)|(^[a-zA-Z0-9](_(?!(\.|_))|\.(?!(_|\.))|[a-zA-Z0-9]){0,28}[a-zA-Z0-9]$)', value) is None:
+
+            raise serializers.ValidationError('Invalid username format.')
+
         return value
 
 

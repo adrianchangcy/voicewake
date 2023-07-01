@@ -75,8 +75,8 @@
                         v-show="current_step === 'log-in-step-1'"
                     >
 
-                        <p class="text-xl font-medium text-center block">
-                            Log in and continue the fun.
+                        <p class="text-xl font-medium block">
+                            Log in and rejoin the fun.
                         </p>
 
                         <VInput
@@ -142,11 +142,11 @@
                             <span class="font-bold break-words">Back to email</span>
                         </VActionButtonTextOnly>
 
-                        <p class="text-xl font-medium block mt-8">
+                        <p class="text-xl font-medium block">
                             Enter the login code.
                         </p>
                         <p class="text-base block">
-                            Check your email at <span class="break-words">{{ email_string }}</span> for the login code.
+                            <span class="break-words">{{ email_string }}</span> 
                         </p>
 
                         <VNumberSlots
@@ -247,7 +247,7 @@
                         v-show="current_step === 'sign-up-step-1'"
                     >
 
-                        <p class="text-xl font-medium text-center block">
+                        <p class="text-xl font-medium block">
                             Sign up to chat with others.
                         </p>
 
@@ -314,11 +314,11 @@
                             <span class="font-bold break-words">Back to email</span>
                         </VActionButtonTextOnly>
 
-                        <p class="text-xl font-medium block mt-8">
+                        <p class="text-xl font-medium block">
                             Enter the sign-up code.
                         </p>
                         <p class="text-base block">
-                            Check your email at <span class="break-words">{{ email_string }}</span> for the sign-up code.
+                            <span class="break-words">{{ email_string }}</span>
                         </p>
 
                         <VNumberSlots
@@ -419,6 +419,8 @@
                 otp_request_is_first_time: true,
                 email_has_change: false,    //used to determine whether otp resets
 
+                is_loading: false,
+
                 current_section: "",
                 sections: ["log-in-section", "sign-up-section"] as string[],
 
@@ -446,11 +448,11 @@
             canSubmitOTP() : boolean {
 
                 //VNumberSlots only returns full string when successful and valid
-                return this.otp !== "" && this.otp.length === this.otp_length;
+                return this.otp !== "" && this.otp.length === this.otp_length && this.is_loading === false;
             },
             canSubmitEmailAndRequestOTP() : boolean {
 
-                return this.email_is_ok === true && this.otp_request_cooldown_interval === null;
+                return this.email_is_ok === true && this.otp_request_cooldown_interval === null && this.is_loading === false;
             }
         },
         methods: {
@@ -497,6 +499,8 @@
                     return;
                 }
 
+                this.is_loading = true;
+
                 let data = new FormData();
                 data.append("email", this.email_string);
                 data.append("otp", this.otp);
@@ -505,11 +509,15 @@
                 .then((response:any) => {
 
                     console.log(response.data['message']);
+                    this.is_loading = false;
+
+                    window.location.href = window.location.origin;
 
                 })
                 .catch((error: any) => {
 
                     console.log(error);
+                    this.is_loading = false;
                 });
             },
             async submitOTPForSignUp() : Promise<void> {
@@ -519,6 +527,8 @@
                     return;
                 }
 
+                this.is_loading = true;
+
                 let data = new FormData();
                 data.append("email", this.email_string);
                 data.append("otp", this.otp);
@@ -527,11 +537,15 @@
                 .then((response:any) => {
 
                     console.log(response.data['message']);
+                    this.is_loading = false;
+
+                    window.location.href = window.location.origin;
 
                 })
                 .catch((error: any) => {
 
                     console.log(error);
+                    this.is_loading = false;
                 });
             },
             async submitEmailAndRequestOTPForLogIn(is_resubmit=false) : Promise<void> {
@@ -573,6 +587,8 @@
 
                 }, 1000);
 
+                this.is_loading = true;
+
                 let data = new FormData();
                 data.append("email", this.email_string);
                 data.append("is_requesting_new_otp", JSON.stringify(true));
@@ -581,6 +597,7 @@
                 .then((response:any) => {
 
                     console.log(response.data['message']);
+                    this.is_loading = false;
 
                 })
                 .catch((error: any) => {
@@ -594,7 +611,9 @@
                         this.otp_request_cooldown_interval = null;
                     }
                     
-                    this.otp_request_status_text = "Oops, could not send code.";
+                    this.otp_request_status_text = "Oops! Could not send code.";
+
+                    this.is_loading = false;
                 });
             },
             async submitEmailAndRequestOTPForSignUp(is_resubmit=false) : Promise<void> {
@@ -636,6 +655,8 @@
 
                 }, 1000);
 
+                this.is_loading = true;
+
                 let data = new FormData();
                 data.append("email", this.email_string);
                 data.append("is_requesting_new_otp", JSON.stringify(true));
@@ -644,6 +665,7 @@
                 .then((response:any) => {
 
                     console.log(response.data['message']);
+                    this.is_loading = false;
 
                 })
                 .catch((error: any) => {
@@ -658,6 +680,8 @@
                     }
                     
                     this.otp_request_status_text = "Oops! Could not send code.";
+
+                    this.is_loading = false;
                 });
             },
             validateOTP(new_value:string) : void {
@@ -684,7 +708,7 @@
 
                     //must not have any whitespace, must have "@" and ".", must have char before "@"
                     //do not make this too complicated, it is easier to just send email and see if user receives it
-                    if(/^\S+@\S+\.\S+$/.test(new_value) === true) {
+                    if(/^\S+@\S+\.\S+$/.test(new_value) === true){
 
                         this.email_string = new_value;
                         this.email_is_ok = true;
@@ -716,8 +740,6 @@
         beforeMount(){
 
             this.current_section = this.sections[0];
-            // this.current_step = this.steps[0][1];
-
             this.current_step = this.steps[0][1];
         },
 
