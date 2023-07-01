@@ -220,9 +220,9 @@ export function prettyDuration(seconds:number) : string {
     ).toISOString().substring(14, 19);
 }
 
-export function getUsername() : string {
+export function getDataFromTemplate(element_id:string) : string|boolean|null {
 
-    return JSON.parse(document.getElementById('data-username')!.textContent!);
+    return JSON.parse(document.getElementById(element_id)!.textContent!);
 }
 
 

@@ -83,7 +83,6 @@ SITE_ID = 1
 #custom user model
 AUTH_USER_MODEL = 'voicewake.User'
 
-
 #if you have issues with bootstrap, try this:
 # CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
 # CRISPY_TEMPLATE_PACK = 'bootstrap5'

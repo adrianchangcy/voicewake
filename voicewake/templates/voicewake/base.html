@@ -11,16 +11,19 @@
         {% block title %}My Site{% endblock %}
     </title>
 
-    <!--user-->
+    <!--use getDataFromTemplate() to retrieve these data-->
     {{user.username | json_script:"data-username"}}
+    {{user.is_authenticated | json_script:"data-is-authenticated"}}
 </head>
 
 {% load static %}
 
 {% block body %}
 
-    <!--nav-->
-    <div id="nav-bar-app" class="fixed w-full h-[4.5rem] top-0 z-50"></div>
+    {% csrf_token %}
+
+    <!--base-->
+    <div id="base-app" class="fixed w-full h-[4.5rem] top-0 z-50"></div>
 
     <body class="mt-[4.5rem] overflow-x-hidden overflow-y-scroll bg-theme-light">
 

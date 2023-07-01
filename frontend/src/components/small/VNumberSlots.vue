@@ -18,7 +18,7 @@
                 class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black"
             />
         </div>
-        <div class="h-6">
+        <div class="h-6 px-2">
             <TransitionFade>
                 <div v-show="hasStatusText" class="w-full h-fit text-theme-toast-danger text-base whitespace-break-spaces">
                     <p>{{ status_text }}</p>

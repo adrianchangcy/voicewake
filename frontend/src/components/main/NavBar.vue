@@ -24,7 +24,7 @@
                     class="block w-full h-full relative"
                 >
                     <span class="leading-none w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">
-                        <span class="hidden sm:inline"><i class="fas fa-comment pr-1"></i>Start</span>
+                        <span class="hidden sm:inline"><i class="fas fa-comment pr-2"></i>Start</span>
                         <span class="inline sm:hidden">
                             <i class="fas fa-comment"></i>
                             <span class="sr-only">start event</span>
@@ -41,7 +41,7 @@
                     class="block w-full h-full relative"
                 >
                     <span class="leading-none w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">
-                        <span class="hidden sm:inline"><i class="fas fa-comments pr-1"></i>Reply</span>
+                        <span class="hidden sm:inline"><i class="fas fa-comments pr-2"></i>Reply</span>
                         <span class="inline sm:hidden">
                             <i class="fas fa-comments"></i>
                             <span class="sr-only">reply to events</span>
@@ -57,7 +57,7 @@
             >
                 <VActionNavigation
                     @click.stop="toggle_nav_main_more"
-                    :class="is_logged_in === false ? 'lg:hidden' : ''"
+                    :class="propIsLoggedIn === false ? 'lg:hidden' : ''"
                     class="w-full h-full"
                     propElement="button"
                     type="button"
@@ -95,13 +95,13 @@
                 </VActionNavigation>
 
                 <VActionNavigation
-                    v-if="is_logged_in === false"
+                    v-if="propIsLoggedIn === false"
                     propElement="a"
                     href="/"
                     class="hidden lg:block w-full h-full relative"
                 >
                     <span class="leading-none w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">
-                        <span><i class="fas fa-circle-user pr-1"></i>Log in</span>
+                        <span><i class="fas fa-circle-user text-2xl pr-2"></i>Log in</span>
                     </span>
                 </VActionNavigation>
 
@@ -110,9 +110,9 @@
 
         <!--more nav options, same grid layout as main nav grid-->
         <div class="h-0 grid grid-cols-4 sm:grid-cols-8 xl:grid-cols-12 gap-x-2">
-            <!--don't show when lg and is_logged_in, because the button to open will become a URL-->
+            <!--don't show when lg and propIsLoggedIn, because the button to open will become a URL-->
             <div
-                :class="is_logged_in === false ? 'lg:hidden' : ''"
+                :class="propIsLoggedIn === false ? 'lg:hidden' : ''"
                 class="relative col-start-1 col-span-4 sm:col-start-6 sm:col-span-3 xl:col-start-11 right-0"
             >
                 <TransitionFade>
@@ -132,8 +132,8 @@
                             </div>
                             <div class="col-span-3 flex items-center">
                                 <span class="w-full h-fit text-base font-medium text-left break-words">
-                                    <span v-show="is_logged_in === false">Not logged in</span>
-                                    <span v-show="is_logged_in === true">{{ username }}</span>
+                                    <span v-if="propIsLoggedIn">@{{ propUsername }}</span>
+                                    <span v-else>Not logged in</span>
                                 </span>
                             </div>
                         </div>
@@ -143,7 +143,7 @@
 
                             <!--log in-->
                             <VActionNavigation
-                                v-if="is_logged_in === false"
+                                v-if="propIsLoggedIn === false"
                                 :propUseDefaultHeight="true"
                                 propElement="a"
                                 href="/"
@@ -163,7 +163,7 @@
 
                             <!--sign up-->
                             <VActionNavigation
-                                v-if="is_logged_in === false"
+                                v-if="propIsLoggedIn === false"
                                 :propUseDefaultHeight="true"
                                 propElement="a"
                                 href="/"
@@ -183,7 +183,7 @@
 
                             <!--log out-->
                             <VActionNavigation
-                                v-if="is_logged_in === true"
+                                v-if="propIsLoggedIn === true"
                                 :propUseDefaultHeight="true"
                                 propElement="a"
                                 href="/"
@@ -217,25 +217,23 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import { getUsername } from '@/helper_functions';
 
     export default defineComponent({
         name: 'NavBarApp',
         data(){
             return {
                 is_nav_main_more_open: false,
-                is_logged_in: false,
-                username: "",
             };
         },
-        beforeMount(){
-
-            this.username = getUsername();
-
-            if(this.username !== ''){
-
-                this.is_logged_in = true;
-            }
+        props: {
+            propIsLoggedIn: {
+                type: Boolean,
+                default: false
+            },
+            propUsername: {
+                type: String,
+                default: ""
+            },
         },
         methods: {
             toggle_nav_main_more(){

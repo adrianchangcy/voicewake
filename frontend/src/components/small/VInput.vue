@@ -36,7 +36,7 @@
             <i v-show="propIsWarning" class="w-0 h-0 fas fa-triangle-exclamation relative py-2 right-9 text-theme-toast-warning"></i>
             <i v-show="propIsError" class="w-0 h-0 fas fa-exclamation relative py-2 right-6 text-theme-toast-danger"></i>
         </div>
-        <div v-show="propHasStatusText" class="h-6 text-base px-2">
+        <div v-show="propHasStatusText" class="h-6 text-base pl-2">
             <span v-show="propIsOk" class="text-theme-toast-success">{{ propStatusText }}</span>
             <span v-show="propIsWarning" class="text-theme-toast-warning-2">{{ propStatusText }}</span>
             <span v-show="propIsError" class="text-theme-toast-danger">{{ propStatusText }}</span>
@@ -52,7 +52,7 @@
 </script>
 
 <script lang="ts">
-    import { defineComponent } from 'vue';
+    import { defineComponent, HTMLAttributes, InputHTMLAttributes, PropType } from 'vue';
 
     export default defineComponent({
         data(){
@@ -70,7 +70,7 @@
                 default: ''
             },
             propMaxLength: {
-                type: Number,
+                type: Number as PropType<InputHTMLAttributes["maxlength"]>,
                 required: true
             },
             propHasTextCounter: Boolean,
@@ -78,25 +78,28 @@
             propIsOk: Boolean,
             propIsWarning: Boolean,
             propIsError: Boolean,
-            propStatusText: String,
+            propStatusText: {
+                type: String,
+                default: ""
+            },
             propAllowWhitespace: {
                 type: Boolean,
                 default: true
             },
             propType: {
-                type: String,
+                type: String as PropType<InputHTMLAttributes["type"]>,
                 default: 'text'
             },
             propInputmode: {
-                type: String,
+                type: String as PropType<HTMLAttributes["inputmode"]>,
                 default: 'text'
             },
             propAutocomplete: {
-                type: String,
+                type: String as PropType<InputHTMLAttributes["autocomplete"]>,
                 default: 'off'
             },
             propName: {     //you need name="email" and autocomplete="on" for drop-down menu of emails
-                type: String,
+                type: String as PropType<InputHTMLAttributes["name"]>,
                 default: ''
             },
         },
@@ -130,7 +133,7 @@
 
                     //get caret position
                     //since event.target is only a reference, any value change will change .selectionStart value immediately after
-                    const current_caret_position = event.target.selectionStart - 1;
+                    const current_caret_position = input_field.selectionStart as number - 1;
 
                     //user inserts whitespace, set input_field value to be of last regex success string
                     input_field.value = this.input_value;
