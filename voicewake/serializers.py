@@ -5,6 +5,9 @@ from .services import has_numbers_only, remove_all_whitespace
 from .models import *
 from django.conf import settings
 
+import json
+
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -181,6 +184,15 @@ class UsersUsernameAPISerializer(serializers.Serializer):
         if len(value) == 0:
 
             raise serializers.ValidationError('Empty username.')
+        
+        #disallow these usernames
+        with open(os.path.join(settings.BASE_DIR, 'voicewake/static/json/bad_usernames.en.json')) as file:
+
+            bad_usernames = json.load(file)['usernames']
+
+            if value in bad_usernames:
+
+                raise serializers.ValidationError('Username not allowed.')
 
         #either entirely letters and numbers only,
         #or start and end with letters and numbers with possible '_' and '.' in between
