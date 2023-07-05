@@ -9,6 +9,11 @@ module.exports = {
         //https://stackoverflow.com/a/75099477
         "!./node_modules",
     ],
+    // experimental: {
+        //may help with slow Tailwind when item list is huge
+        //https://github.com/tailwindlabs/tailwindcss/discussions/7411
+        // optimizeUniversalDefaults: true
+    // },
     theme: {
         extend: {
             //for transition duration

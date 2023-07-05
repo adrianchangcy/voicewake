@@ -321,7 +321,7 @@ class TOTPVerification:
 
 
 
-#utilise this class in transaction.atomic()
+#always use this class in transaction.atomic()
 class HandleUserOTP(TOTPVerification):
 
     def __init__(

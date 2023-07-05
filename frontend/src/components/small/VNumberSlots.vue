@@ -131,6 +131,12 @@
             },
             handlePaste(event:ClipboardEvent, input_fields:any) : void {
 
+                //thanks to Lighthouse for discovering this when analysing
+                if(event.clipboardData === null){
+
+                    return;
+                }
+
                 //remove spaces
                 //getData() returns "" if there is nothing
                 //we don't want to use deep-clean with regex here, so that user can identify their mistake
@@ -180,7 +186,7 @@
 
                 this.concatenateSlots(input_fields);
             },
-            handleBackspace(event:KeyboardEvent, input_fields:any, current_input_field:HTMLInputElement, current_input_field_index:number) : void {
+            handleBackspace(event:KeyboardEvent, current_input_field:HTMLInputElement, current_input_field_index:number) : void {
 
                 const previous_input_field = current_input_field.previousElementSibling as HTMLInputElement;
 
@@ -256,7 +262,7 @@
 
                 input_field.addEventListener("keydown", (e) => {
                     e.stopPropagation();
-                    this.handleBackspace(e as KeyboardEvent, input_fields, input_field as HTMLInputElement, x);
+                    this.handleBackspace(e as KeyboardEvent, input_field as HTMLInputElement, x);
                     this.status_text = "";
                 });
                 input_field.addEventListener("input", (e) => {
@@ -282,7 +288,7 @@
 
                 input_field.removeEventListener("keydown", (e) => {
                     e.stopPropagation();
-                    this.handleBackspace(e as KeyboardEvent, input_fields, input_field as HTMLInputElement, x);
+                    this.handleBackspace(e as KeyboardEvent, input_field as HTMLInputElement, x);
                     this.status_text = "";
                 });
                 input_field.removeEventListener("input", (e) => {

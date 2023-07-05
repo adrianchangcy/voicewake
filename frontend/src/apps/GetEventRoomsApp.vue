@@ -26,7 +26,7 @@
                     class="flex flex-col gap-2 pt-6"
                 >
                     <VUser
-                        :propUsername="getUsername()"
+                        :propUsername="(getDataFromTemplate('data-username') as string)"
                     />
                     <div class="border border-theme-light-gray rounded-lg px-2 py-6">
                         <div class="grid grid-cols-4 gap-2 pb-6">
@@ -91,7 +91,7 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import { prettyTimePassed, prettyTimeRemaining, getUsername, timeFromNowMS } from '@/helper_functions';
+    import { prettyTimePassed, prettyTimeRemaining, getDataFromTemplate, timeFromNowMS } from '@/helper_functions';
     import EventRoomTypes from '@/types/EventRooms.interface';
     import EventTypes from '@/types/Events.interface';
     const axios = require('axios');

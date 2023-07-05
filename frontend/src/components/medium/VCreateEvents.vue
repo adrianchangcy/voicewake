@@ -91,8 +91,10 @@
             :propIsEnabled="canSubmit"
             @click.stop="submitForm()"
         >
-            <span v-if="propIsOriginator === true">Start</span>
-            <span v-else>Reply</span>
+            <div class="mx-auto">
+                <span v-if="propIsOriginator === true">Start</span>
+                <span v-else>Reply</span>
+            </div>
         </VActionButtonSpecialL>
     </div>
 </template>
@@ -225,6 +227,7 @@
                     this.is_submitting = false;
                     return;
                 }
+
                 await axios.post(window.location.origin + '/api/events/create', data)
                 .then((response:any) => {
 

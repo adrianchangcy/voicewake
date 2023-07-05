@@ -1,9 +1,9 @@
 <template>
     <button
         :class="[
-            (propIsEnabled ? 'text-theme-black hover:shadow-md hover:shadow-theme-lead/75 hover:bg-theme-soft-lead hover:border-theme-light-trim/40' : 'text-theme-black/10 shadow-md cursor-default'),
+            (propIsEnabled ? 'text-theme-black shadow-lg hover:shadow-md hover:shadow-theme-lead/75 hover:bg-theme-soft-lead hover:border-theme-light-trim/40' : 'text-theme-black/10 shadow-md cursor-default'),
             (propIsSmaller ? 'scale-50' : ''),
-            'w-40 h-40 text-2xl flex items-center      rounded-full border-t-2 shadow-lg    bg-theme-soft-lead/80 border-theme-light-trim shadow-theme-lead/75   transition'
+            'w-40 h-40 text-2xl flex items-center      rounded-full border-t-2     bg-theme-soft-lead/80 border-theme-light-trim shadow-theme-lead/75   transition'
         ]"
         type="button"
         :disabled="!propIsEnabled"

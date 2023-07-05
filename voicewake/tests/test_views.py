@@ -41,43 +41,64 @@ class Users_TestCase(TestCase):
     def setUpTestData(cls):
 
         cls.email = 'user1@gmail.com'
+        cls.expected_mail_outbox_count = 0
 
 
-    def test_sign_up_correctly(self):
+    def test_sign_up_correctly(self, another_email=''):
+
+        if len(another_email) > 0:
+
+            email = another_email
+
+        else:
+
+            email = self.email
 
         #create and request OTP at the same time
         response = self.client.post(reverse('users_sign_up'), data={
-            'email': self.email,
+            'email': email,
             'is_requesting_new_otp': True
         })
 
         #has email sent
-        self.assertEqual(len(mail.outbox), 1)
+        self.expected_mail_outbox_count += 1
+        self.assertEqual(len(mail.outbox), self.expected_mail_outbox_count)
 
         user_instance = get_user_model().objects.get(
-            email_lowercase=self.email.lower()
+            email_lowercase=email.lower()
         )
 
         #get OTP
         new_otp = UserOTP.objects.get(user=user_instance).otp
 
-        #create and sign in
+        #create and log in
         response = self.client.post(reverse('users_sign_up'), data={
-            'email': self.email,
+            'email': email,
             'otp': new_otp
         })
 
         print(response.status_code)
         print(response.data)
 
-        #expected values
+        #expect
         self.assertTrue(response.data['is_logged_in'])
+        self.assertTrue(response.wsgi_request.user.is_authenticated)
         user_instance = get_user_model().objects.get(
-            email_lowercase=self.email.lower()
+            email_lowercase=email.lower()
         )
         self.assertTrue(user_instance.is_active)
         self.assertIsNotNone(user_instance.last_login)
         self.assertFalse(UserOTP.objects.filter(user=user_instance).exists())
+
+
+    def test_sign_up_log_out(self):
+
+        self.test_sign_up_correctly()
+
+        response = self.client.post(reverse('users_log_out'))
+
+        #expect
+        self.assertEqual(response.wsgi_request.user.is_authenticated, False)
 
 
     def test_log_in_for_account_that_does_not_exist(self):
@@ -113,7 +134,8 @@ class Users_TestCase(TestCase):
         })
 
         #has email sent
-        self.assertEqual(len(mail.outbox), 2)
+        self.expected_mail_outbox_count += 1
+        self.assertEqual(len(mail.outbox), self.expected_mail_outbox_count)
 
         user_instance = get_user_model().objects.get(
             email_lowercase=self.email.lower()
@@ -124,7 +146,7 @@ class Users_TestCase(TestCase):
         #because HandleUserOTP.verify_otp() deletes UserOTP row on success
         new_otp = UserOTP.objects.get(user=user_instance).otp
 
-        #sign in
+        #log in
         response = self.client.post(reverse('users_log_in'), data={
             'email': self.email,
             'otp': new_otp
@@ -133,7 +155,8 @@ class Users_TestCase(TestCase):
         print(response.status_code)
         print(response.data)
 
-        #expected values
+        #expect
+        self.assertEqual(response.wsgi_request.user.is_authenticated, True)
         self.assertTrue(response.data['is_logged_in'])
         user_instance = get_user_model().objects.get(
             email_lowercase=self.email.lower()
@@ -141,6 +164,133 @@ class Users_TestCase(TestCase):
         self.assertTrue(user_instance.is_active)
         self.assertIsNotNone(user_instance.last_login)
         self.assertFalse(UserOTP.objects.filter(user=user_instance).exists())
+
+
+    def test_log_in_log_out(self):
+
+        #https://stackoverflow.com/a/32330839
+
+        self.test_log_in_correctly()
+
+        #log out
+        response = self.client.post(reverse('users_log_out'))
+
+        #expect
+        self.assertEqual(response.wsgi_request.user.is_authenticated, False)
+
+
+    def test_set_username_not_logged_in(self):
+
+        self.test_log_in_log_out()
+
+        #set username
+        response = self.client.post(reverse('users_set_username'), data={
+            'username': 'user1',
+        })
+
+        #expect
+        self.assertEqual(response.status_code, 403)
+
+
+    def test_set_bad_username_is_logged_in(self):
+
+        self.test_log_in_correctly()
+
+        #set username
+        response = self.client.post(reverse('users_set_username'), data={
+            'username': 'admin',
+        })
+
+        user_instance = get_user_model().objects.get(
+            email_lowercase=self.email.lower()
+        )
+
+        #expect
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(user_instance.username, None)
+        self.assertEqual(user_instance.username_lowercase, None)
+
+        pass
+
+
+    def test_set_username_is_logged_in(self):
+
+        self.test_log_in_correctly()
+
+        #set username
+        response = self.client.post(reverse('users_set_username'), data={
+            'username': 'user1',
+        })
+
+        user_instance = get_user_model().objects.get(
+            email_lowercase=self.email.lower()
+        )
+
+        #expect
+        self.assertEqual(user_instance.username, 'user1')
+        self.assertEqual(user_instance.username_lowercase, 'user1')
+
+
+    def test_set_username_when_username_exists(self):
+
+        self.test_set_username_is_logged_in()
+
+        response = self.client.post(reverse('users_log_out'))
+        self.assertEqual(response.wsgi_request.user.is_authenticated, False)
+
+        #new account
+        another_email = 'user2@gmail.com'
+
+        self.test_sign_up_correctly(another_email)
+
+        #set username identical to user1
+        response = self.client.post(reverse('users_set_username'), data={
+            'username': 'user1',
+        })
+
+        user_instance = get_user_model().objects.get(
+            email_lowercase=another_email.lower()
+        )
+
+        #expect
+        self.assertEqual(user_instance.username, None)
+        self.assertEqual(user_instance.username_lowercase, None)
+
+
+        #set username identical to user1, but check via case insensitive
+        response = self.client.post(reverse('users_set_username'), data={
+            'username': 'uSEr1',
+        })
+
+        user_instance = get_user_model().objects.get(
+            email_lowercase=another_email.lower()
+        )
+
+        #expect
+        self.assertEqual(user_instance.username, None)
+        self.assertEqual(user_instance.username_lowercase, None)
+
+        #set username, but correct
+        response = self.client.post(reverse('users_set_username'), data={
+            'username': 'user2',
+        })
+
+        user_instance = get_user_model().objects.get(
+            email_lowercase=another_email.lower()
+        )
+
+        #expect
+        self.assertEqual(user_instance.username, 'user2')
+        self.assertEqual(user_instance.username_lowercase, 'user2')
+
+
+
+
+
+
+
+
+
 
 
 

@@ -2,68 +2,66 @@
     <div class="h-full text-theme-black text-center">
 
         <!--main nav-->
-        <nav class="h-full grid grid-cols-4 sm:grid-cols-8 xl:grid-cols-12 px-2 py-2 gap-x-2 backdrop-blur bg-theme-light/60 border-b border-theme-light-gray">
+        <nav class="h-full grid grid-cols-4 sm:grid-cols-8 p-2 gap-x-2 backdrop-blur bg-theme-light/60 border-b border-theme-light-gray">
 
             <!--home-->
             <div class="col-start-1 col-span-1">
-                <VActionNavigation
+                <VActionTextOnly
                     propElement="a"
+                    propFontSize="m"
                     href="/"
-                    class="block w-full h-full relative"
+                    class="w-full h-full"
                 >
-                    <i class="fas fa-wave-square absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto"></i>
+                    <i class="fas fa-wave-square mx-auto"></i>
                     <span class="sr-only">home</span>
-                </VActionNavigation>
+                </VActionTextOnly>
             </div>
 
             <!--start-->
-            <div class="col-start-2 col-span-1 sm:col-start-3 sm:col-span-2 xl:col-start-5">
-                <VActionNavigation
+            <div class="col-start-2 col-span-1 sm:col-start-3 sm:col-span-2 lg:col-start-4 lg:col-span-1">
+                <VActionTextOnly
                     propElement="a"
+                    propFontSize="m"
                     href="/say"
-                    class="block w-full h-full relative"
+                    class="w-full h-full justify-center"
                 >
-                    <span class="leading-none w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">
-                        <span class="hidden sm:inline"><i class="fas fa-comment pr-2"></i>Start</span>
-                        <span class="inline sm:hidden">
-                            <i class="fas fa-comment"></i>
-                            <span class="sr-only">start event</span>
-                        </span>
+                    <span class="block">
+                        <i class="fas fa-comment sm:pr-2"></i>
+                        <span class="hidden sm:inline">Start</span>
                     </span>
-                </VActionNavigation>
+                    <span class="sr-only sm:hidden">start event</span>
+                </VActionTextOnly>
             </div>
 
             <!--reply-->
-            <div class="col-start-3 col-span-1 sm:col-start-5 sm:col-span-2 xl:col-start-7">
-                <VActionNavigation
+            <div class="col-start-3 col-span-1 sm:col-start-5 sm:col-span-2 lg:col-start-5 lg:col-span-1">
+                <VActionTextOnly
                     propElement="a"
+                    propFontSize="m"
                     href="/hear"
-                    class="block w-full h-full relative"
+                    class="w-full h-full justify-center"
                 >
-                    <span class="leading-none w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">
-                        <span class="hidden sm:inline"><i class="fas fa-comments pr-2"></i>Reply</span>
-                        <span class="inline sm:hidden">
-                            <i class="fas fa-comments"></i>
-                            <span class="sr-only">reply to events</span>
-                        </span>
+                    <span class="block">
+                        <i class="fas fa-comments sm:pr-2"></i>
+                        <span class="hidden sm:inline">Reply</span>
                     </span>
-                </VActionNavigation>
+                    <span class="sr-only sm:hidden">reply to events</span>
+                </VActionTextOnly>
             </div>
 
-            <!--more options-->
+            <!--mobile, always show-->
             <div
                 ref="nav_main_more_button"
-                class="col-start-4 col-span-1 sm:col-start-8 xl:col-start-12"
+                class="block lg:hidden col-start-4 col-span-1 sm:col-start-8"
             >
-                <VActionNavigation
-                    @click.stop="toggle_nav_main_more"
-                    :class="propIsLoggedIn === false ? 'lg:hidden' : ''"
-                    class="w-full h-full"
+                <VActionTextOnly
+                    @click.stop="toggleNavMainMore()"
                     propElement="button"
                     type="button"
+                    class="w-full h-full"
                 >
-                    <!--mobile burger-->
-                    <div class="sm:hidden w-full h-full grid grid-rows-3 grid-flow-row      justify-items-center place-items-center">
+                    <!--burger-->
+                    <div class="w-full h-full grid grid-rows-3 grid-flow-row      justify-items-center place-items-center">
                         <div
                             :class="[
                                 is_nav_main_more_open ? 'mb-0 rotate-45' : 'mb-4 rotate-0',
@@ -87,86 +85,142 @@
                         </div>
                         <span class="sr-only">more navigation options</span>
                     </div>
+                </VActionTextOnly>
+            </div>
 
-                    <!--user icon-->
-                    <div class="hidden sm:block w-full h-full relative">
-                        <i class="fas fa-user text-xl w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto"></i>
-                    </div>
-                </VActionNavigation>
-
-                <VActionNavigation
-                    v-if="propIsLoggedIn === false"
-                    propElement="a"
-                    href="/"
-                    class="hidden lg:block w-full h-full relative"
+            <!--desktop, if logged in-->
+            <div
+                v-if="propIsLoggedIn === true"
+                ref="nav_main_more_button"
+                class="hidden lg:block lg:col-start-8 lg:col-span-1"
+            >
+                <VActionTextOnly
+                    @click.stop="toggleNavMainMore()"
+                    propElement="button"
+                    type="button"
+                    class="w-full h-full"
                 >
-                    <span class="leading-none w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto">
-                        <span><i class="fas fa-circle-user text-2xl pr-2"></i>Log in</span>
-                    </span>
-                </VActionNavigation>
+                    <i class="fas fa-user mx-auto"></i>
+                    <span class="sr-only">you are signed in, more navigation options</span>
+                </VActionTextOnly>
+            </div>
 
+            <!--desktop, if not logged in, show log in option-->
+            <div
+                v-if="propIsLoggedIn === false"
+                class="hidden lg:block lg:col-start-7 lg:col-span-1"
+            >
+                <VActionTextOnly
+                    @click.stop="emitToOpenUserLogInSignUp('log-in-section')"
+                    propElement="button"
+                    propFontSize="m"
+                    type="button"
+                    class="w-full h-full justify-center"
+                >
+                    <span class="block">
+                        <i class="fas fa-circle-user sm:pr-2"></i>
+                        <span>Log in</span>
+                    </span>
+                </VActionTextOnly>
+            </div>
+
+            <!--desktop, if not logged in, show sign up option-->
+            <div
+                v-if="propIsLoggedIn === false"
+                class="hidden lg:block lg:col-start-8 col-span-1"
+            >
+                <VActionSpecialS
+                    @click.stop="emitToOpenUserLogInSignUp('sign-up-section')"
+                    propElement="button"
+                    type="button"
+                    class="w-full h-full justify-center"
+                >
+                    <span class="block text-xl font-medium">
+                        <i class="fas fa-right-to-bracket sm:pr-2"></i>
+                        <span>Sign up</span>
+                    </span>
+                </VActionSpecialS>
             </div>
         </nav>
 
         <!--more nav options, same grid layout as main nav grid-->
-        <div class="h-0 grid grid-cols-4 sm:grid-cols-8 xl:grid-cols-12 gap-x-2">
+        <div class="h-0 grid grid-cols-4 sm:grid-cols-8">
+
+            <!--darken other areas when nav menu is open-->
+            <div
+                :class="propIsLoggedIn === false ? 'lg:hidden' : ''"
+                class="relative col-start-1 col-span-1 sm:col-span-5"
+            >
+                <TransitionFade>
+                    <div
+                        v-show="is_nav_main_more_open"
+                        class="absolute w-full h-[calc(100vh-4.5rem)] bg-theme-black/40"
+                    >
+                    </div>
+                </TransitionFade>
+            </div>
+
+            <!--nav menu-->
             <!--don't show when lg and propIsLoggedIn, because the button to open will become a URL-->
             <div
                 :class="propIsLoggedIn === false ? 'lg:hidden' : ''"
-                class="relative col-start-1 col-span-4 sm:col-start-6 sm:col-span-3 xl:col-start-11 right-0"
+                class="relative col-start-2 col-span-3 sm:col-start-6 sm:col-span-3 right-0"
             >
-                <TransitionFade>
+                <TransitionFade :propIsForward="true">
+                    <!--uses calc to minus fixed height of navbar at base.html-->
                     <div 
                         v-show="is_nav_main_more_open"
                         v-click-outside="{
                             var_name_for_element_bool_status: 'is_nav_main_more_open',
                             refs_to_exclude: ['nav_main_more_button']
                         }"
-                        class="absolute w-full h-screen flex flex-col overflow-hidden sm:border-l border-theme-light-gray px-2 sm:px-4      backdrop-blur bg-theme-light/60"
+                        class="absolute w-full h-[calc(100vh-4.5rem)] flex flex-col overflow-hidden p-2 border-l border-theme-light-gray      bg-theme-light/60 backdrop-blur"
                     >
 
                         <!--profile area-->
                         <div class="grid grid-cols-4 py-10">
                             <div class="col-span-1 flex items-center">
-                                <i class="fas fa-user text-3xl w-fit h-fit mx-auto"></i>
+                                <i class="fas fa-user text-base w-fit h-fit mx-auto"></i>
                             </div>
                             <div class="col-span-3 flex items-center">
-                                <span class="w-full h-fit text-base font-medium text-left break-words">
-                                    <span v-if="propIsLoggedIn">@{{ propUsername }}</span>
+                                <span class="w-full h-fit text-base font-medium text-left truncate">
+                                    <span v-if="propIsLoggedIn">{{ propUsername }}</span>
                                     <span v-else>Not logged in</span>
                                 </span>
                             </div>
                         </div>
 
                         <!--account options-->
-                        <div class="h-fit grid grid-rows-5 gap-2">
+                        <div class="h-fit grid grid-rows-2 gap-2">
 
                             <!--log in-->
-                            <VActionNavigation
+                            <VActionTextOnly
                                 v-if="propIsLoggedIn === false"
-                                :propUseDefaultHeight="true"
                                 propElement="a"
-                                href="/"
+                                href="/login"
+                                propFontSize="m"
+                                propElementSize="s"
                                 class="row-start-1 row-span-1 w-full"
                             >
                                 <div class="w-full h-full grid grid-cols-4">
                                     <div class="col-span-1 flex items-center">
-                                        <i class="fas fa-circle-user text-2xl w-fit h-fit mx-auto"></i>
+                                        <i class="fas fa-circle-user w-fit h-fit mx-auto"></i>
                                     </div>
                                     <div class="col-span-3 flex items-center">
-                                        <span class="text-left">
+                                        <span class="text-left break-all">
                                             Log in
                                         </span>
                                     </div>
                                 </div>
-                            </VActionNavigation>
+                            </VActionTextOnly>
 
                             <!--sign up-->
-                            <VActionNavigation
+                            <VActionTextOnly
                                 v-if="propIsLoggedIn === false"
-                                :propUseDefaultHeight="true"
                                 propElement="a"
-                                href="/"
+                                href="/signup"
+                                propFontSize="m"
+                                propElementSize="s"
                                 class="row-start-2 row-span-1 w-full"
                             >
                                 <div class="w-full h-full grid grid-cols-4">
@@ -174,19 +228,22 @@
                                         <i class="fas fa-right-to-bracket w-fit h-fit mx-auto"></i>
                                     </div>
                                     <div class="col-span-3 flex items-center">
-                                        <span class="text-left">
+                                        <span class="text-left break-all">
                                             Sign up
                                         </span>
                                     </div>
                                 </div>
-                            </VActionNavigation>
+                            </VActionTextOnly>
 
                             <!--log out-->
-                            <VActionNavigation
+                            <VActionTextOnly
                                 v-if="propIsLoggedIn === true"
-                                :propUseDefaultHeight="true"
-                                propElement="a"
-                                href="/"
+                                :propIsEnabled="!is_processing_log_out"
+                                @click.stop="logOut()"
+                                propElement="button"
+                                propFontSize="m"
+                                propElementSize="s"
+                                type="button"
                                 class="row-start-1 row-span-1 w-full"
                             >
                                 <div class="w-full h-full grid grid-cols-4">
@@ -194,12 +251,12 @@
                                         <i class="fas fa-door-open w-fit h-fit mx-auto"></i>
                                     </div>
                                     <div class="col-span-3 flex items-center">
-                                        <span class="text-left">
+                                        <span class="text-left break-all">
                                             Log out
                                         </span>
                                     </div>
                                 </div>
-                            </VActionNavigation>
+                            </VActionTextOnly>
                         </div>
                     </div>
                 </TransitionFade>
@@ -211,18 +268,21 @@
 <script setup lang="ts">
     // import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
     import TransitionFade from '/src/transitions/TransitionFade.vue';
-    import VActionNavigation from '@/components/small/VActionNavigation.vue';
+    import VActionTextOnly from '@/components/small/VActionTextOnly.vue';
+    import VActionSpecialS from '../small/VActionSpecialS.vue';
 </script>
 
 
 <script lang="ts">
     import { defineComponent } from 'vue';
+    const axios = require('axios');
 
     export default defineComponent({
-        name: 'NavBarApp',
+        name: 'NavBar',
         data(){
             return {
                 is_nav_main_more_open: false,
+                is_processing_log_out: false,
             };
         },
         props: {
@@ -236,14 +296,58 @@
             },
         },
         methods: {
-            toggle_nav_main_more(){
+            emitToOpenUserLogInSignUp(section:"log-in-section"|"sign-up-section") : void {
 
-                this.is_nav_main_more_open = !this.is_nav_main_more_open;
+                this.is_nav_main_more_open = false;
+
+                this.$emit('emitToOpenUserLogInSignUp', section);
+            },
+            toggleNavMainMore(force_close=false) : void {
+
+                if(force_close === false){
+
+                    this.is_nav_main_more_open = !this.is_nav_main_more_open;
+
+                }else{
+
+                    this.is_nav_main_more_open = false;
+                }
+            },
+            async logOut() : Promise<void> {
+
+                this.is_processing_log_out = true;
+
+                await axios.post(window.location.origin + "/api/users/log-out")
+                .then(() => {
+
+                    window.location.href = window.location.origin;
+                })
+                .catch((error: any) => {
+
+                    console.log(error);
+
+                    this.is_processing_log_out = false;
+                });
+            },
+            axiosSetup() : boolean {
+
+                //your template must have {% csrf_token %}
+                let token = document.getElementsByName("csrfmiddlewaretoken")[0];
+
+                if(token === undefined){
+
+                    console.log('CSRF not found.');
+                    return false;
+                }
+
+                axios.defaults.headers.common['X-CSRFToken'] = (token as HTMLFormElement).value;
+                axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
+                return true;
             },
         },
+        mounted(){
+
+            this.axiosSetup();
+        }
     });
-
-
-
-
 </script>
