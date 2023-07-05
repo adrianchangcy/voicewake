@@ -1,5 +1,5 @@
 <template>
-    <div class="pt-8 pb-4">
+    <div class="pt-8 pb-4 px-2">
         <p class="text-xl font-medium block">
             Set your username.
         </p>
@@ -20,14 +20,14 @@
             class="mt-6"
         />
 
-        <div class="mt-6">
+        <div class="mt-6 pl-2">
             <p class="text-base">You can use full stops ('.') and underscores ('_') to separate your letters and numbers.</p>
         </div>
 
         <!--main action-->
         <div class="mt-8 h-fit">
             <VActionSpecialM
-                :propIsEnabled="username_is_ok"
+                :propIsEnabled="canSubmitNewUsername"
                 @click.stop="submitUsernameChange()"
                 propElement="button"
                 type="button"
@@ -197,6 +197,7 @@
                         this.username_validation_has_error = true;
                         this.username_validation_status_text = this.checkRegExpForDetailedErrorMessage(new_value);
                     }
+
                 }, 400);
             },
             async checkUsernameExists() : Promise<void> {
@@ -210,7 +211,7 @@
 
                         this.username_is_ok = true;
                         this.username_validation_has_error = false;
-                        this.username_validation_status_text = "That username is available.";
+                        this.username_validation_status_text = "That username is available!";
 
                     }else{
 
@@ -242,27 +243,29 @@
                 this.is_loading = true;
 
                 let data = new FormData();
-                data.append("new_username", this.username_string);
+                data.append("username", this.username_string);
 
                 await axios.post(window.location.origin + "/api/users/username/set", data)
                 .then((response:any) => {
 
                     if(response.data['data']['exists'] === false){
 
-                        console.log(response.data['data']['message']);
+                        console.log(response.data['message']);
 
                     }else{
 
+                        //username is taken
                         this.username_is_ok = false;
                         this.username_validation_has_error = true;
-                        this.username_validation_status_text = response.data['data']['message'];
+                        this.username_validation_status_text = response.data['message'];
+                        console.log(response.data['message']);
                     }
 
                     this.is_loading = false;
                 })
                 .catch((error: any) => {
 
-                    console.log(error.response.data['data']['message']);
+                    console.log(error.response.data['message']);
 
                     this.is_loading = false;
                 });

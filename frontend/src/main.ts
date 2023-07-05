@@ -1,11 +1,10 @@
 import { createApp } from 'vue';
 
 import BaseApp from '/src/apps/BaseApp.vue';
-import NavBarApp from '/src/apps/NavBarApp.vue';
 import CreateEventRoomsApp from '/src/apps/CreateEventRoomsApp.vue';
 import ListEventRoomsApp from '/src/apps/ListEventRoomsApp.vue';
 import GetEventRoomsApp from '/src/apps/GetEventRoomsApp.vue';
-import UserOptionsApp from '/src/apps/UserOptionsApp.vue';
+import UserLogInSignUp from '/src/components/main/UserLogInSignUp.vue';
 
 const clickOutside = {
 
@@ -100,14 +99,27 @@ if(document.querySelector('#get-event-rooms-app')){
         .mount('#get-event-rooms-app');
 }
 
-if(document.querySelector('#user-options-app')){
+if(document.querySelector('#log-in-page')){
 
-    createApp(UserOptionsApp)
-        .directive('click-outside', clickOutside)
-        .mount('#user-options-app');
+    createApp(
+        UserLogInSignUp,
+        {
+            propIsForStaticPage: true,
+            propRequestedSection: 'log-in-section'
+        }
+    ).mount('#log-in-page');
 }
 
+if(document.querySelector('#sign-up-page')){
 
+    createApp(
+        UserLogInSignUp,
+        {
+            propIsForStaticPage: true,
+            propRequestedSection: 'sign-up-section'
+        }
+    ).mount('#sign-up-page');
+}
 
 
 

@@ -43,11 +43,11 @@ urlpatterns = [
     path('api/events/create', views.EventsAPI.as_view(), name='create_events'),
     path('api/event-likes-dislikes', views.EventLikesDislikesAPI.as_view(), name='event_likes_dislikes'),
     path('api/user-actions', views.UserActionsAPI.as_view(), name='user_actions'),
-    path('api/users/username/get/<str:username>', views.UsersUsernameAPI.as_view(), name='check_username_exists'),
-    path('api/users/username/set', views.UsersUsernameAPI.as_view(), name='set_username'),
+    path('api/users/username/get/<str:username>', views.UsersUsernameAPI.as_view(), name='users_get_username'),
+    path('api/users/username/set', views.UsersUsernameAPI.as_view(), name='users_set_username'),
     path('api/users/sign-up', views.UsersSignUpAPI.as_view(), name='users_sign_up'),
     path('api/users/log-in', views.UsersLogInAPI.as_view(), name='users_log_in'),
-    path('api/users/log-out', views.UsersLogInAPI.as_view(), name='users_log_out'),
+    path('api/users/log-out', views.UsersLogOutAPI.as_view(), name='users_log_out'),
     path('api/test', views.TestAPI.as_view(), name='test'),
     
     #user management
@@ -62,6 +62,8 @@ urlpatterns = [
     #still need to make these pretty, but leave it for last
     #we specify 'name' arg for auto-construction of full URL via reverse()
     path('', views.home, name='home'),
+    path('login', views.log_in, name='log_in'),
+    path('signup', views.sign_up, name='sign_up'),
     path('say', views.CreateEventRooms.as_view(), name='create_event_room'),
     path('hear', views.ListEventRooms.as_view(), name='list_event_rooms'),
     path('hear/<int:event_room_id>', views.GetEventRooms.as_view(), name='get_event_room'),

@@ -179,6 +179,8 @@ def first_time_setup():
             EventRoles(event_role_name='responder')
         ])
 
+
+#===direct web pages===
 # @login_required(login_url='/login')
 def home(request):
 
@@ -187,10 +189,21 @@ def home(request):
     return render(request, template_name='voicewake/home.html')
 
 
+def log_in(request):
+
+    return render(request, template_name='registration/log_in.html')
+
+
+def sign_up(request):
+
+    return render(request, template_name='registration/sign_up.html')
+
+#======================
+
 
 class UsersUsernameAPI(generics.GenericAPIView):
 
-    serializer_class = None
+    serializer_class = UsersUsernameAPISerializer
     permission_classes = []
 
     #checks if username exists
@@ -281,7 +294,7 @@ class UsersUsernameAPI(generics.GenericAPIView):
                         'username': new_data['username'],
                         'exists': True
                     },
-                    'message': 'Oops! That username had just been taken. Try another.'
+                    'message': 'Oops! That username is taken.'
                 },
                 status=status.HTTP_200_OK
             )
@@ -483,7 +496,7 @@ class UsersLogOutAPI(generics.GenericAPIView):
     serializer_class = None
     permission_classes = []
 
-    def get(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
 
         logout(request)
 
