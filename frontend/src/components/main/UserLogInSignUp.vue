@@ -134,18 +134,15 @@
                                 :propIsError="email_validation_has_error"
                                 :propIsOk="email_is_ok === true"
                                 :propAllowWhitespace="false"
-                                @hasNewValue="validateEmail($event)"
+                                @hasNewValue="handleNewEmail($event)"
                                 class="mt-6"
                             />
 
                             <!--main action-->
                             <div class="mt-8 w-full h-fit">
                                 <VActionSpecialM
-                                    @click.stop="[
-                                        doNavigation('log-in-section', 'log-in-step-2'),
-                                        submitEmailAndRequestOTP('log-in')
-                                    ]"
-                                    :propIsEnabled="email_is_ok === true"
+                                    @click.stop="submitStep1('log-in')"
+                                    :propIsEnabled="!is_email_loading"
                                     propElement="button"
                                     type="button"
                                     class="w-full"
@@ -209,11 +206,13 @@
                             </p>
 
                             <VNumberSlots
-                                @hasNewValue="validateOTP($event)"
+                                @hasNewValue="handleNewOTP($event)"
                                 prop-element-id="log-in-otp"
                                 prop-label-text="Login code"
                                 :prop-extra-slots="calcExtraVNumberSlots"
                                 :prop-trigger-reset="email_has_change"
+                                :prop-is-error="otp_validation_has_error"
+                                :prop-status-text="otp_validation_status_text"
                                 class="mt-6"
                             />
 
@@ -235,8 +234,8 @@
                             <!--main action-->
                             <div class="mt-8 h-fit">
                                 <VActionSpecialM
-                                    :propIsEnabled="canSubmitOTP"
-                                    @click.stop="submitOTPToGetNewSession('log-in')"
+                                    @click.stop="submitStep2('log-in')"
+                                    :propIsEnabled="!is_main_action_loading"
                                     propElement="button"
                                     type="button"
                                     class="w-full"
@@ -359,18 +358,15 @@
                                 :propIsError="email_validation_has_error"
                                 :propIsOk="email_is_ok === true"
                                 :propAllowWhitespace="false"
-                                @hasNewValue="validateEmail($event)"
+                                @hasNewValue="handleNewEmail($event)"
                                 class="mt-6"
                             />
 
                             <!--main action-->
                             <div class="mt-8 w-full h-fit">
                                 <VActionSpecialM
-                                    @click.stop="[
-                                        doNavigation('sign-up-section', 'sign-up-step-2'),
-                                        submitEmailAndRequestOTP('sign-up')
-                                    ]"
-                                    :propIsEnabled="email_is_ok"
+                                    @click.stop="submitStep1('sign-up')"
+                                    :propIsEnabled="!is_email_loading"
                                     propElement="button"
                                     type="button"
                                     class="w-full"
@@ -434,11 +430,13 @@
                             </p>
 
                             <VNumberSlots
-                                @hasNewValue="validateOTP($event)"
+                                @hasNewValue="handleNewOTP($event)"
                                 prop-element-id="sign-up-otp"
                                 prop-label-text="Sign-up code"
                                 :prop-extra-slots="calcExtraVNumberSlots"
                                 :prop-trigger-reset="email_has_change"
+                                :prop-is-error="otp_validation_has_error"
+                                :prop-status-text="otp_validation_status_text"
                                 class="mt-6"
                             />
 
@@ -460,8 +458,8 @@
                             <!--main action-->
                             <div class="mt-8 h-fit">
                                 <VActionSpecialM
-                                    :propIsEnabled="canSubmitOTP"
-                                    @click.stop="submitOTPToGetNewSession('sign-up')"
+                                    @click.stop="submitStep2('sign-up')"
+                                    :propIsEnabled="!is_main_action_loading"
                                     propElement="button"
                                     type="button"
                                     class="w-full"
@@ -540,8 +538,11 @@
                 email_validation_has_error: false,
                 email_validation_status_text: "",
 
-                otp: "",
+                otp_string: "",
                 otp_length: 6,
+                otp_is_ok: false,
+                otp_validation_has_error: false,
+                otp_validation_status_text: "",
 
                 otp_request_cooldown_interval: null as number|null,
                 otp_request_cooldown_duration_s: 30,
@@ -550,7 +551,10 @@
                 otp_request_is_first_time: true,
                 email_has_change: false,    //used to determine whether otp resets
 
+                //handle loading
                 is_loading: false,
+                is_main_action_loading: false,
+                is_email_loading: false,
 
                 current_section: "",
                 sections: ["log-in-section", "sign-up-section"] as string[],
@@ -594,22 +598,54 @@
 
                 return this.otp_length - 1;
             },
-            canSubmitOTP() : boolean {
-
-                //VNumberSlots only returns full string when successful and valid
-                return this.otp !== "" && this.otp.length === this.otp_length && this.is_loading === false;
-            },
             canSubmitEmailAndRequestOTP() : boolean {
 
                 return this.email_is_ok === true && this.otp_request_cooldown_interval === null && this.is_loading === false;
             }
         },
         methods: {
+            submitStep2(section_type:'log-in'|'sign-up') : void {
+
+                this.validateOTP(this.otp_string);
+
+                if(this.otp_is_ok === true){
+
+                    this.submitOTPToGetNewSession(section_type);
+                }
+            },
+            submitStep1(section_type:'log-in'|'sign-up') : void {
+
+                //we need this because we no longer disable submit button on invalid
+                //we let users freely click, and when trying to submit an invalid form, say what is wrong
+
+                if(this.email_string.length === 0){
+
+                    //use validateEmail() to raise empty email error
+                    this.validateEmail(this.email_string);
+                    return;
+
+                }else if(this.email_is_ok === false){
+
+                    //already handled by handleNewEmail()
+                    return;
+                }
+
+                this.doNavigation(
+                    section_type+'-section',
+                    section_type+'-step-2'
+                );
+                this.submitEmailAndRequestOTP(section_type);
+            },
             emitManualClose() : void {
 
                 this.$emit('emitManualClose', '');
             },
             resetOTPRelatedValues() : void {
+
+                this.otp_string = "";
+                this.otp_is_ok = false;
+                this.otp_validation_has_error = false;
+                this.otp_validation_status_text = "";
 
                 this.otp_request_cooldown_interval !== null ? window.clearTimeout(this.otp_request_cooldown_interval) : null;
                 this.otp_request_cooldown_interval = null;
@@ -647,28 +683,30 @@
             },
             async submitOTPToGetNewSession(procedure_url:"log-in"|"sign-up") : Promise<void> {
 
-                if(this.canSubmitOTP === false){
+                if(this.otp_is_ok === false){
 
                     return;
                 }
 
-                this.is_loading = true;
+                this.is_main_action_loading = true;
 
                 let data = new FormData();
                 data.append("email", this.email_string);
-                data.append("otp", this.otp);
+                data.append("otp", this.otp_string);
 
                 await axios.post(window.location.origin + "/api/users/" + procedure_url, data)
                 .then((response:any) => {
 
+                    //200 when ok
                     console.log(response.data['message']);
                     window.location.href = window.location.origin;
 
                 })
                 .catch((error: any) => {
 
-                    console.log(error);
-                    this.is_loading = false;
+                    //400 when invalid
+                    console.log(error.response.data['message']);
+                    this.is_main_action_loading = false;
                 });
             },
             async submitEmailAndRequestOTP(procedure_url:"log-in"|"sign-up", is_resubmit=false) : Promise<void> {
@@ -680,7 +718,7 @@
                     return;
                 }
 
-                //reset step 2 if validateEmail() detects email change
+                //reset step 2 if handleNewEmail() detects email change
                 this.resetOTPRelatedValues();
 
                 //set cooldown
@@ -735,51 +773,58 @@
                     }
                     
                     this.otp_request_status_text = "Oops! Could not send code.";
-
                     this.is_loading = false;
                 });
             },
             validateOTP(new_value:string) : void {
 
-                //no need validation here, since we either only get "" or full OTP
-                //we use computed function do validate it for us
-                this.otp = new_value;
+                //VNumberSlots only returns full string when successful and valid
+                if(new_value.length < this.otp_length){
+
+                    this.otp_is_ok = false;
+                    this.otp_validation_has_error = true;
+                    this.otp_validation_status_text = "Please enter the full code.";
+
+                }else if(/^[0-9]+$/.test(new_value) === true && new_value.length === this.otp_length){
+
+                    this.otp_is_ok = true;
+                    this.otp_validation_has_error = false;
+                    this.otp_validation_status_text = "";
+                }
+            },
+            handleNewOTP(new_value:string) : void {
+
+                //no on-the-spot validation needed
+                this.otp_string = new_value;
+
+                //reset so that validateOTP() later can trigger watch
+                this.otp_validation_has_error = false;
+                this.otp_validation_status_text = "";
             },
             validateEmail(new_value:string) : void {
 
-                //reset everything on any change
-                this.resetEmailRelatedValues();
-
-                this.email_has_change = true;
-                
-                //do nothing if there is no text
-                if(new_value.length === 0){
-
-                    return;
-                }
-
-                //has text
-                this.email_check_timeout = window.setTimeout(() => {
-
                     //must not have any whitespace, must have "@" and ".", must have char before "@"
                     //do not make this too complicated, it is easier to just send email and see if user receives it
-                    if(/^\S+@\S+\.\S+$/.test(new_value) === true){
+                    if(new_value.length === 0){
 
-                        this.email_string = new_value;
+                        this.email_is_ok = false;
+                        this.email_validation_has_error = true;
+                        this.email_validation_status_text = "Please enter an email address.";
+
+                    }else if(/^\S+@\S+\.\S+$/.test(new_value) === true){
+
                         this.email_is_ok = true;
                         this.email_validation_has_error = false;
                         this.email_validation_status_text = "All good!";
 
                     }else if(/\s+/g.test(new_value) === true){
 
-                        this.email_string = "";
                         this.email_is_ok = false;
                         this.email_validation_has_error = true;
                         this.email_validation_status_text = "Please remove all spaces.";
 
                     }else{
 
-                        this.email_string = "";
                         this.email_is_ok = false;
                         this.email_validation_has_error = true;
                         this.email_validation_status_text = "Does not look like a proper email.";
@@ -788,7 +833,28 @@
                     //maximum 254 characters for email
                     //since email path has 256 limit and needs to add "<" and ">"
                     //https://stackoverflow.com/questions/386294/what-is-the-maximum-length-of-a-valid-email-address
+            },
+            handleNewEmail(new_value:string) : void {
 
+                //reset everything on any change
+                this.resetEmailRelatedValues();
+
+                this.email_has_change = true;
+                this.email_string = new_value;
+                
+                //do nothing if there is no text
+                if(new_value.length === 0){
+
+                    return;
+                }
+
+                //has text
+                this.is_email_loading = true;
+
+                this.email_check_timeout = window.setTimeout(() => {
+
+                    this.validateEmail(new_value);
+                    this.is_email_loading = false;
                 }, 400);
             },
         },

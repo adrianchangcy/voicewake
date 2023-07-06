@@ -2,9 +2,9 @@
     <component
         :is="propElement"
         :class="[
-            (propIsEnabled ? 'text-theme-black shadow-lg hover:shadow-md hover:shadow-theme-lead/75 hover:bg-theme-soft-lead hover:border-theme-light-trim/40' : 'text-theme-black/10 shadow-md cursor-default'),
+            (propIsEnabled ? '' : 'opacity-30'),
             (propIsRound ? 'w-20 rounded-full' : 'rounded-lg'),
-            'h-20 text-2xl flex items-center      border-t-2    bg-theme-soft-lead/80 border-theme-light-trim shadow-theme-lead/75   transition'
+            'h-20 text-2xl flex items-center      border-t-2    bg-theme-soft-lead/80 border-theme-light-trim shadow-theme-lead/75      text-theme-black shadow-lg hover:shadow-md hover:shadow-theme-lead/75 hover:bg-theme-soft-lead hover:border-theme-light-trim/40   transition'
         ]"
         :disabled="!propIsEnabled"
     >
