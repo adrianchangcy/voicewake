@@ -20,7 +20,7 @@
         </div>
         <div class="h-6 px-2">
             <TransitionFade>
-                <div v-show="hasStatusText" class="w-full h-fit text-theme-toast-danger text-base whitespace-break-spaces">
+                <div v-show="is_error" class="w-full h-fit text-theme-toast-danger text-base whitespace-break-spaces">
                     <p>{{ status_text }}</p>
                 </div>
             </TransitionFade>
@@ -42,8 +42,10 @@
         name: "UserOptionsApp",
         data() {
             return {
+                otp_string: "",
+
+                is_error: false,
                 status_text: "",
-                new_full_string: "",
 
                 input_fields: null as any,  //NodeListOf<Element> from querySelectorAll() is undefined
             };
@@ -57,7 +59,13 @@
             },
             propTriggerReset: { //use this to reset the slots, regardless of true/false
                 type: Boolean
-            }
+            },
+            propIsError: {
+                type: Boolean
+            },
+            propStatusText: {
+                type: String
+            },
         },
         emits: ["hasNewValue"],
         computed: {
@@ -71,19 +79,17 @@
             },
         },
         watch: {
-            new_full_string(new_value) : void {
+            propIsError(new_value){
 
-                //we use watcher for emit so we can reduce redundant emit
-                //since watchers don't fire when new_value is the same as next new_value
-                //e.g. spamming 1 with no change when it is already 111111 will not trigger emit
-                if(new_value.length === this.getTotalSlotsQuantity){
+                this.is_error = new_value;
+            },
+            propStatusText(new_value){
 
-                    this.$emit("hasNewValue", new_value);
+                this.status_text = new_value;
+            },
+            otp_string(new_value){
 
-                }else{
-
-                    this.$emit("hasNewValue", "");
-                }
+                this.$emit("hasNewValue", new_value);
             },
             propTriggerReset() : void {
 
@@ -93,7 +99,8 @@
         methods: {
             resetEverything() : void {
 
-                this.new_full_string = "";
+                this.otp_string = "";
+                this.is_error = false;
                 this.status_text = "";
 
                 if(this.input_fields === null){
@@ -107,10 +114,13 @@
                     (input_field as HTMLInputElement).value = "";
                 });
             },
-            concatenateSlots(input_fields:any) : void {
+            resetErrorMessage() : void {
 
-                //reset
-                this.new_full_string = "";
+                //need this to be separated from concatenateSlots(), as shown in handlePaste() as use case
+                this.is_error = false;
+                this.status_text = "";
+            },
+            concatenateSlots(input_fields:any) : void {
 
                 let concat_string = "";
 
@@ -122,12 +132,7 @@
                     }
                 });
 
-                if(concat_string.length != this.getTotalSlotsQuantity){
-
-                    return;
-                }
-
-                this.new_full_string = concat_string;
+                this.otp_string = concat_string;
             },
             handlePaste(event:ClipboardEvent, input_fields:any) : void {
 
@@ -142,15 +147,16 @@
                 //we don't want to use deep-clean with regex here, so that user can identify their mistake
                 const pasted_value:string = (event.clipboardData as DataTransfer).getData("text/plain").replace(/\s/g, "");
 
-                //check
+                //check and override error message
                 if(/^[0-9]+$/.test(pasted_value) === false){
 
+                    this.is_error = true;
                     this.status_text = "Could not paste '";
 
                     //shorten the problematic text that the user had pasted
                     if(pasted_value.length > (this.getTotalSlotsQuantity + 3)){
 
-                        this.status_text += pasted_value.slice(0, this.getTotalSlotsQuantity) + "...";
+                        this.status_text += pasted_value.slice(0, this.getTotalSlotsQuantity) + "..";
 
                     }else{
 
@@ -159,8 +165,7 @@
 
                     this.status_text += "'.";
 
-                    //reset
-                    this.new_full_string = "";
+                    this.concatenateSlots(input_fields);
                     return;
                 }
 
@@ -184,9 +189,10 @@
                 input_fields[last_filled_input_index].focus();
                 input_fields[last_filled_input_index].setSelectionRange(input_fields[last_filled_input_index].value.length, input_fields[last_filled_input_index].value.length);
 
+                this.resetErrorMessage();
                 this.concatenateSlots(input_fields);
             },
-            handleBackspace(event:KeyboardEvent, current_input_field:HTMLInputElement, current_input_field_index:number) : void {
+            handleBackspace(event:KeyboardEvent, input_fields:any, current_input_field:HTMLInputElement, current_input_field_index:number) : void {
 
                 const previous_input_field = current_input_field.previousElementSibling as HTMLInputElement;
 
@@ -198,7 +204,8 @@
                     previous_input_field.setSelectionRange(0, previous_input_field.value.length);
 
                     //reset
-                    this.new_full_string = "";
+                    this.resetErrorMessage();
+                    this.concatenateSlots(input_fields);
                     return;
                 }
             },
@@ -224,7 +231,9 @@
                     //has valid new manual input
                     current_input_field.value = event.data!;
 
-                    this.concatenateSlots(input_fields);
+                    //put this here to avoid resetting error message of handlePaste()
+                    //since paste event also triggers input event
+                    this.resetErrorMessage();
 
                     //handle input position
                     if(current_input_field_index < (input_fields.length - 1)){
@@ -234,22 +243,15 @@
                         next_input_field.setSelectionRange(0, next_input_field.value.length);
                     }
 
-                }else if(/^[0-9]+$/.test(current_input_field.value) === true){
-
-                    //no valid new manual input, so event.data === null
-                    //but current value is valid, e.g. when pasted and programmatically inserted
-                    this.concatenateSlots(input_fields);
-
                 }else{
 
                     //possibly invalid input
                     //normal Backspace when deleting value is also handled here
                     current_input_field.value = "";
-                    this.new_full_string = "";
                 }
+
+                this.concatenateSlots(input_fields);
             },
-        },
-        beforeMount(){
         },
         mounted(){
 
@@ -262,8 +264,7 @@
 
                 input_field.addEventListener("keydown", (e) => {
                     e.stopPropagation();
-                    this.handleBackspace(e as KeyboardEvent, input_field as HTMLInputElement, x);
-                    this.status_text = "";
+                    this.handleBackspace(e as KeyboardEvent, input_fields, input_field as HTMLInputElement, x);
                 });
                 input_field.addEventListener("input", (e) => {
                     e.stopPropagation();
@@ -288,8 +289,7 @@
 
                 input_field.removeEventListener("keydown", (e) => {
                     e.stopPropagation();
-                    this.handleBackspace(e as KeyboardEvent, input_field as HTMLInputElement, x);
-                    this.status_text = "";
+                    this.handleBackspace(e as KeyboardEvent,input_fields, input_field as HTMLInputElement, x);
                 });
                 input_field.removeEventListener("input", (e) => {
                     e.stopPropagation();

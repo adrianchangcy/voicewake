@@ -51,7 +51,7 @@
 
             <!--mobile, always show-->
             <div
-                ref="nav_main_more_button"
+                ref="nav_main_more_button_1"
                 class="block lg:hidden col-start-4 col-span-1 sm:col-start-8"
             >
                 <VActionTextOnly
@@ -89,10 +89,12 @@
             </div>
 
             <!--desktop, if logged in-->
+            <!--not using v-if because we need the ref-->
             <div
-                v-if="propIsLoggedIn === true"
-                ref="nav_main_more_button"
-                class="hidden lg:block lg:col-start-8 lg:col-span-1"
+                ref="nav_main_more_button_2"
+                :class="[
+                    propIsLoggedIn === true ? 'hidden lg:block lg:col-start-8 lg:col-span-1' : 'hidden'
+                ]"
             >
                 <VActionTextOnly
                     @click.stop="toggleNavMainMore()"
@@ -100,8 +102,18 @@
                     type="button"
                     class="w-full h-full"
                 >
-                    <i class="fas fa-user mx-auto"></i>
-                    <span class="sr-only">you are signed in, more navigation options</span>
+                    <span class="mx-auto">
+                        <i class="fas fa-user text-xl"></i>
+                        <span class="relative w-0">
+                            <i
+                                :class="[
+                                    is_nav_main_more_open ? '' : 'scale-0',
+                                    'fas fa-chevron-down text-base transition-transform h-fit absolute top-0 bottom-0 left-2 m-auto'
+                                ]"
+                            ></i>
+                        </span>
+                    </span>
+                    <span class="sr-only">you are logged in, more navigation options</span>
                 </VActionTextOnly>
             </div>
 
@@ -146,7 +158,7 @@
         <!--more nav options, same grid layout as main nav grid-->
         <div class="h-0 grid grid-cols-4 sm:grid-cols-8">
 
-            <!--darken other areas when nav menu is open-->
+            <!--extra area to click when nav menu is open-->
             <div
                 :class="propIsLoggedIn === false ? 'lg:hidden' : ''"
                 class="relative col-start-1 col-span-1 sm:col-span-5"
@@ -154,7 +166,7 @@
                 <TransitionFade>
                     <div
                         v-show="is_nav_main_more_open"
-                        class="absolute w-full h-[calc(100vh-4.5rem)] bg-theme-black/40"
+                        class="absolute w-full h-[calc(100vh-4.5rem)] bg-theme-light/60 backdrop-blur"
                     >
                     </div>
                 </TransitionFade>
@@ -172,9 +184,9 @@
                         v-show="is_nav_main_more_open"
                         v-click-outside="{
                             var_name_for_element_bool_status: 'is_nav_main_more_open',
-                            refs_to_exclude: ['nav_main_more_button']
+                            refs_to_exclude: ['nav_main_more_button_1', 'nav_main_more_button_2']
                         }"
-                        class="absolute w-full h-[calc(100vh-4.5rem)] flex flex-col overflow-hidden p-2 border-l border-theme-light-gray      bg-theme-light/60 backdrop-blur"
+                        class="absolute w-full h-[calc(100vh-4.5rem)] flex flex-col overflow-hidden p-2 border-l border-theme-light-gray bg-theme-light"
                     >
 
                         <!--profile area-->
@@ -304,13 +316,13 @@
             },
             toggleNavMainMore(force_close=false) : void {
 
-                if(force_close === false){
+                if(force_close === true){
 
-                    this.is_nav_main_more_open = !this.is_nav_main_more_open;
+                    this.is_nav_main_more_open = false;
 
                 }else{
 
-                    this.is_nav_main_more_open = false;
+                    this.is_nav_main_more_open = !this.is_nav_main_more_open;
                 }
             },
             async logOut() : Promise<void> {

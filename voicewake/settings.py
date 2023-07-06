@@ -275,7 +275,7 @@ TOTP_TOLERANCE_SECONDS = 120    #allow early/late by x seconds until truly not a
 
 #UserOTP-related arguments
 OTP_CREATE_TIMEOUT_SECONDS = 30    #for creating new OTP
-OTP_MAX_ATTEMPTS = 4            #times someone can try before being timed out
+OTP_MAX_ATTEMPTS = 6            #times someone can try before being timed out
 OTP_MAX_ATTEMPT_TIMEOUT_SECONDS = 600
 
 

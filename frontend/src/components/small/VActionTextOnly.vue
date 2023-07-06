@@ -5,8 +5,8 @@
             propFontSize === 's' ? 'text-base font-medium' : '',
             propFontSize === 'm' ? 'text-xl font-medium' : '',
             propElementSize === 's' ? 'h-10' : '',
-            propIsEnabled ? 'text-theme-black' : 'text-theme-black/10',
-            'flex items-center shade-text-when-hover rounded-lg transition-colors'
+            propIsEnabled ? '' : 'opacity-30',
+            'flex items-center shade-text-when-hover rounded-lg transition-colors   text-theme-black'
         ]"
         :disabled="!propIsEnabled"
     >

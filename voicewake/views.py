@@ -328,6 +328,9 @@ class UsersLogInAPI(generics.GenericAPIView):
         #reminder that verify_otp() does all the checks for us
         if handle_user_otp_class.verify_otp(otp) is False:
 
+            #do not let users know about max attempts reached
+            #this protects against email probing during login
+
             return HandleUserOTP.get_default_verify_otp_response()
 
         #OTP verified, continue

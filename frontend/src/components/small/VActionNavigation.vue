@@ -2,9 +2,9 @@
     <component
         :is="propElement"
         :class="[
-            propIsEnabled ? 'text-theme-black' : 'text-theme-black/10',
+            propIsEnabled ? '' : 'opacity-30',
             propUseDefaultHeight ? 'h-10' : '',
-            'flex items-center text-xl font-medium shade-text-when-hover rounded-lg transition-colors'
+            'flex items-center text-xl font-medium shade-text-when-hover rounded-lg transition-colors   text-theme-black'
         ]"
         :disabled="!propIsEnabled"
     >

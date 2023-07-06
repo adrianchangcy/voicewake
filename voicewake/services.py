@@ -484,9 +484,10 @@ class HandleUserOTP(TOTPVerification):
         #always return this Response when error to give 0 clues on whether user exists or not
         return Response(
             data={
-                'message': 'Your verification code did not match the latest one that was sent.',
+                'message': 'Your code did not match the latest one that we sent.',
+                'verify_otp_success': False
             },
-            status=status.HTTP_200_OK
+            status=status.HTTP_400_BAD_REQUEST
         )
 
 
