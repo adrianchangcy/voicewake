@@ -79,13 +79,13 @@
                 console.log('yowza');
 
             },
-            async handleNewRecording(new_value:{'blob':Blob, 'blob_duration':number}) : Promise<void> {
+            async handleNewRecording(new_value:{'blob':Blob|null, 'blob_duration':number}) : Promise<void> {
 
                 //get file volumes, then store file
                 //no need to store null on error, we keep existing file
                 const audio_context = new AudioContext();
 
-                await new_value['blob'].arrayBuffer()
+                await (new_value['blob'] as Blob).arrayBuffer()
                     .then((buffer:ArrayBuffer) => audio_context.decodeAudioData(buffer))
                     .then((decoded_audio:AudioBuffer) => decoded_audio.getChannelData(0)) //only 1 channel as expected
                     .then((audio_data:Float32Array) => this.getFileVolumes(audio_data))

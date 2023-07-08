@@ -35,10 +35,13 @@
             </div>
         </TransitionFade>
     </div>
+
+    <Testing/>
 </template>
 
 
 <script setup lang="ts">
+    import Testing from '@/components/main/Testing.vue';
     import NavBar from '@/components/main/NavBar.vue';
     import UserLogInSignUp from '@/components/main/UserLogInSignUp.vue';
     import UserUsername from '@/components/main/UserUsername.vue';

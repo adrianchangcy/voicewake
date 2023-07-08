@@ -33,7 +33,7 @@
 
 /*much prefer this over plain focus, that way focus only appears when necessary*/
 *:focus-visible {
-    outline-width: 2px;
+    outline-width: 1px;
     outline-color: blueviolet;
     outline-offset: 2px;
 }
