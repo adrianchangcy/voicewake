@@ -52,11 +52,11 @@
                 ]"
             >
                 <!--play/pause-->
-                <div class="row-start-1 row-span-2 col-start-1 col-span-1 text-4xl">
+                <div class="row-start-1 row-span-2 col-start-1 col-span-1 text-4xl relative">
                     <button
                         ref="play_pause_button"
                         @click="togglePlaybackPlayPause()"
-                        class="w-full h-full shade-text-when-hover transition-colors duration-200 ease-in-out rounded-md"
+                        class="absolute left-2 right-2 top-2 bottom-2 shade-text-when-hover transition-colors duration-200 ease-in-out rounded-md"
                         :disabled="has_all_data_for_play === false"
                         type="button"
                     >
@@ -162,16 +162,14 @@
                     <!--volume-->
                     <div
                         ref="playback_volume_opener"
-                        :class="[
-                            propIsForRecording === true ? 'opacity-10' : 'opacity-100',
-                            'row-start-1 row-span-1 col-start-2 col-span-1 h-full text-lg relative'
-                        ]"
+                        class="row-start-1 row-span-1 col-start-2 col-span-1 h-full text-lg relative"
                     >
                         <!--open/close volume-->
                         <button
+                            v-if="propIsForRecording === false"
                             @click="togglePlaybackVolumeOptions()"
                             class="w-full h-full shade-text-when-hover transition-colors duration-200 ease-in-out rounded-md"
-                            :disabled="has_all_data_for_play === false || propIsForRecording === true"
+                            :disabled="has_all_data_for_play === false"
                             type="button"
                         >
                             <i
@@ -414,8 +412,9 @@
                 type: Array as PropType<number[]>,
                 default: () => [],  //assigning array of 0s immediately after did not solve unrendered issue
             },
-            propBucketQuantity: {   //with no required value, this is the fix for unrendered this.$refs.volume_ripple
-                type: Number
+            propBucketQuantity: {   //with no default value, this is the fix for unrendered this.$refs.volume_ripple
+                type: Number,
+                required: true
             },
             propEventTone: {
                 type: Object as PropType<EventToneTypes>,

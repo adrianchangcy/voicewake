@@ -7,13 +7,13 @@
 
                     <!--cancel-->
                     <VActionButtonM
-                        @click.prevent="recorderStop(true)"
-                        aria-label="end recording"
+                        @click.prevent="recorderStopByUserOrWebWorker(true)"
                         class="col-start-1 row-span-2 col-span-1"
                         :propIsEnabled="canClickAfterAnimeReady"
                         :propIsDefaultTextSize="false"
                     >
                         <i class="fas fa-xmark text-2xl mx-auto"></i>
+                        <span class="sr-only">cancel recording</span>
                     </VActionButtonM>
 
                     <!--timer-->
@@ -24,7 +24,6 @@
                     <!--pause/resume-->
                     <VActionButtonS
                         @click.prevent="recorderPauseResume()"
-                        :aria-label="pauseResumeAriaLabel"
                         class="row-start-2 row-span-1 col-span-2 h-full"
                         :propIsEnabled="canClickAfterAnimeReady"
                     >
@@ -35,17 +34,18 @@
                                 'text-2xl mx-auto'
                             ]"
                         ></i>
+                        <span class="sr-only">{{ getPlayPauseScreenReader }}</span>
                     </VActionButtonS>
 
                     <!--done-->
                     <VActionButtonM
-                        @click.prevent="recorderStop(false)"
-                        aria-label="end recording"
+                        @click.prevent="recorderStopByUserOrWebWorker(false)"
                         class="col-start-4 row-span-2 col-span-1"
                         :propIsDefaultTextSize="false"
                         :propIsEnabled="canClickAfterAnimeReady"
                     >
                         <i class="fas fa-check text-2xl mx-auto"></i>
+                        <span class="sr-only">stop recording</span>
                     </VActionButtonM>
                 </div>
             </div>
@@ -54,11 +54,11 @@
             <div v-else>
                 <VActionButtonM
                     @click.prevent="recorderStart()"
-                    aria-label="record"
                     :propIsEnabled="is_anime_playback_truly_completed === true && is_recording === false"
                     class="w-full"
                 >
                     <i class="fas fa-microphone-lines text-4xl mx-auto"></i>
+                    <span class="sr-only">start recording</span>
                 </VActionButtonM>
             </div>
         </div>
@@ -142,7 +142,7 @@
             },
         },
         computed: {
-            pauseResumeAriaLabel() : string {
+            getPlayPauseScreenReader() : string {
 
                 if(this.is_recording === true){
 
@@ -203,9 +203,11 @@
                     //can do ===, but feels safer with >=
                     if(event.data >= this.propMaxDuration){
 
-                        this.recorderStop(false);
+                        this.recorderStopByUserOrWebWorker(false);
                     }
 
+                    //we do this here instead of RecordRTC's ondataavailable
+                    //blob duration is more reliable here, in the context of tabbed out while recording
                     this.countdownRecordingTime();
                 }
 
@@ -293,7 +295,7 @@
                 //UPDATE: unreliable for timing, rely on web worker instead
                 //e.g. if max dura. 20s then auto-stopped at -3s, if max dura. 40s then auto-stopped at -6s
                 // if(this.is_recording === false){
-                    
+                
                 //     return false;
                 // }
 
@@ -444,7 +446,7 @@
                 //set hard limit on recording duration for auto-stop
                 //this will still execute after .stopRecording() (not good), but it is already taken care of
                 this.recorder.setRecordingDuration(this.propMaxDuration)
-                    .onRecordingStopped(this.recorderStop);
+                    .onRecordingStopped(this.recorderStopAsCallback);
                 
                 this.recorder.startRecording();
                 this.startRecordingIntervalWorker();
@@ -488,81 +490,81 @@
                 this.current_duration = 0;
                 this.current_duration_pretty = '00:00';
             },
-            recorderStop(is_cancelled:boolean) : void {
-                
+            recorderStopAsCallback(callback_blob_url:string) : void {
+
+                //RecordRTC's .onRecordingStopped() passes URL blob string as first arg to your callback
+                //i.e. auto-stopped
+                //https://github.com/muaz-khan/RecordRTC/issues/167
+                //clear it, because it cannot be used for Blob object processing
+                URL.revokeObjectURL(callback_blob_url);
+
+                this.stopRecordingIntervalWorker();
+
+                if(this.stream !== null){
+                    //MediaStream.stop() deprecated, use getTracks()[0] for MediaStreamTrack.stop()
+                    //https://developer.chrome.com/blog/mediastream-deprecations/
+                    this.stream.getTracks()[0].stop();
+                }
+
+                this.stopVolumeAnalyser();
+
+                //if stopped as callback, this.recorder.state === 'stopped' is true
+                if(this.recorder.state === 'stopped'){
+
+                    this.emitNewRecording();
+
+                }else{
+
+                    //not sure if it'll reach here, but just in case
+                    this.$emit('isCancelled', true);
+                }
+
+                this.resetWhenRecorderStop();
+            },
+            recorderStopByUserOrWebWorker(is_cancelled:boolean) : void {
+
+                //bug fix lore
+                    //recorderStopByUserOrWebWorker() and recorderStopAsCallback() used to be combined
+                    //.onRecordingStopped() passes URL blob string to is_cancelled param above
+                    //since the web worker and .onRecordingStopped() is at a no-risk race condition,
+                    //URL blob string was able to reach the stage where .arrayBuffer is applied, causing the error
+
                 if(this.canClickAfterAnimeReady === false){
 
                     return;
                 }
 
-                //attach recorded audio to file input and playback
-                try{
+                //stopRecording() bug dictates that we must run codes in it to getBlob() properly
+                this.recorder.stopRecording( () => {
 
-                    //if auto-stop, state will be 'stopped'
-                    if(this.recorder.state === 'stopped'){
+                    this.stopRecordingIntervalWorker();
 
-                        this.stopRecordingIntervalWorker();
+                    if(this.stream !== null){
 
-                        if(this.stream !== null){
-                            //MediaStream.stop() deprecated, use getTracks()[0] for MediaStreamTrack.stop()
-                            //https://developer.chrome.com/blog/mediastream-deprecations/
-                            this.stream.getTracks()[0].stop();
-                        }
+                        //MediaStream.stop() deprecated, use getTracks()[0] for MediaStreamTrack.stop()
+                        //https://developer.chrome.com/blog/mediastream-deprecations/
+                        this.stream.getTracks()[0].stop();
+                    }
 
-                        this.stopVolumeAnalyser();
-                        
-                        //emit
-                        if(is_cancelled === false){
+                    this.stopVolumeAnalyser();
 
-                            this.emitNewRecording();
+                    //emit
+                    if(is_cancelled === false){
 
-                        }else{
-
-                            this.$emit('isCancelled', true);
-                        }
-
-                        this.resetWhenRecorderStop();
+                        this.emitNewRecording();
 
                     }else{
 
-                        //stopRecording() bug dictates that we must run codes in it to getBlob() properly
-                        this.recorder.stopRecording( () => {
-
-                            this.stopRecordingIntervalWorker();
-
-                            if(this.stream !== null){
-                                //MediaStream.stop() deprecated, use getTracks()[0] for MediaStreamTrack.stop()
-                                //https://developer.chrome.com/blog/mediastream-deprecations/
-                                this.stream.getTracks()[0].stop();
-                            }
-
-                            this.stopVolumeAnalyser();
-
-                            //emit
-                            if(is_cancelled === false){
-
-                                this.emitNewRecording();
-
-                            }else{
-
-                                this.$emit('isCancelled', true);
-                            }
-
-                            this.resetWhenRecorderStop();
-                        });
+                        this.$emit('isCancelled', true);
                     }
 
-                    return;
-
-                }catch(error:any|unknown){
-
-                    console.log(error);
-                    return;
-                }
+                    this.resetWhenRecorderStop();
+                });
             },
-            emitNewRecording() : void {
+            async emitNewRecording() : Promise<void> {
 
-                //to use getBlob(), you must run it in either onRecordingStopped() or stopRecording()
+                //to use getBlob(), you must run it within the context of a callback
+                //the callback will be passed into either onRecordingStopped() or stopRecording()
                 //else your first blob is unplayable (too small), and user has to click a second time
 
                 try{
@@ -571,8 +573,10 @@
                     //     type: 'audio/webm'
                     // });
 
+                    const new_blob = await this.recorder.getBlob();
+
                     this.$emit('newRecording', {
-                        'blob' : this.recorder.getBlob(),
+                        'blob' : new_blob,
                         'blob_duration' : this.current_duration
                     });
 

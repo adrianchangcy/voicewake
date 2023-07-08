@@ -35,7 +35,7 @@
             <!--open/close VEventToneMenu-->
             <div ref="event_tone_field" class="col-span-2">
                 <VEventToneField
-                    propLabel="Emoji"
+                    propLabel="Tag"
                     :propEventToneChoice="event_tone_choice"
                     :propIsOpen="is_event_tone_menu_open"
                     @isOpen="handleIsEventToneMenuOpen($event)"
@@ -132,7 +132,7 @@
                 blob_volume_peaks: [] as number[],
                 bucket_quantity: 20,
                 // propMaxDuration: (1000 * 60 * 2) + 500,    //2m + 0.5s, as final_blob is always +-0.1s away
-                max_duration: 10000,    //2m + 0.5s, as final_blob is always +-0.1s away
+                max_duration: 120000,    //2m + 0.5s, as final_blob is always +-0.1s away
             };
         },
         props: {

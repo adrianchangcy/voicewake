@@ -4,7 +4,7 @@
         :class="[
             (propIsEnabled ? '' : 'opacity-30'),
             (propIsRound ? 'w-10 rounded-full' : 'rounded-lg'),
-            'h-10 text-base font-medium flex items-center      border-t-2    bg-theme-soft-lead/80 border-theme-light-trim shadow-theme-lead/75   transition    text-theme-black shadow-md hover:shadow-sm hover:shadow-theme-lead/75 hover:bg-theme-soft-lead hover:border-theme-light-trim/40'
+            'h-10 text-base font-medium flex items-center      border-t-2    bg-theme-soft-lead/80 border-theme-light-trim shadow-theme-lead/60   transition    text-theme-black shadow-md hover:shadow-sm hover:shadow-theme-lead/60 hover:bg-theme-soft-lead hover:border-theme-light-trim/40'
         ]"
         :disabled="!propIsEnabled"
     >

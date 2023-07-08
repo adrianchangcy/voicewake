@@ -28,36 +28,16 @@
     <body class="mt-[4.5rem] overflow-x-hidden overflow-y-scroll bg-theme-light">
 
         <!--content-->
-        <div class="min-h-[calc(100vh-4.5rem)] md:w-2/4 lg:w-3/6 xl:w-2/6 mx-auto text-left text-lg px-[5%] pb-10">
+        <div class="min-h-[calc(100vh-4.5rem)] sm:w-3/4 md:w-2/4 lg:w-3/6 xl:w-2/6 mx-auto text-left text-lg px-[5%] pb-10">
             
             {% block content %}
             {% endblock %}
         </div>
 
-        <!--pretty waves at footer, using lighter + darker combo for 3D effect-->
-        <!--prefer implementing this way, because inline svg would otherwise unpleasantly appear while other stuff is loading-->
-        <div class="w-full h-fit relative">
-            <!--mountain 1-->
-            <div class="w-full absolute left-0 right-0 bottom-4 m-auto">
-                <object data="{% static 'svg/footer_mountain_1.svg' %}" type="image/svg+xml"></object>
-            </div>
-            <!--fill gap from mountain 1's bottom-4-->
-            <div class="w-full h-4 absolute left-0 right-0 bottom-0 m-auto bg-theme-green-1">
-            </div>
-            <!--mountain 2-->
-            <div class="w-full absolute left-0 right-0 bottom-0 m-auto">
-                <object data="{% static 'svg/footer_mountain_2.svg' %}" type="image/svg+xml"></object>
-            </div>
-            <!--mountain 3-->
-            <div class="w-full absolute left-0 right-0 bottom-0 m-auto">
-                <object data="{% static 'svg/footer_mountain_3.svg' %}" type="image/svg+xml"></object>
-            </div>
-
-            <!--to define parent size with one mountain (all the same size) and any gap used-->
-            <div class="w-full h-fit opacity-0">
-                <object data="{% static 'svg/footer_mountain_1.svg' %}" type="image/svg+xml"></object>
-            </div>
-            <div class="w-full h-4 opacity-0">
+        <!--breakpoint before footer-->
+        <div class="w-full h-0 mt-[25%] relative">
+            <div class="w-full absolute bottom-0 m-auto -z-10">
+                <object data="{% static 'svg/before_footer_mountain.svg' %}" type="image/svg+xml"></object>
             </div>
         </div>
 
