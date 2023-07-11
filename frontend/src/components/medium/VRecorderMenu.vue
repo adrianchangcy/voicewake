@@ -1,25 +1,36 @@
 <template>
     <div
         v-show="propIsOpen"
-        class="w-full h-fit flex flex-col gap-2 p-4 bg-theme-light"
+        class="flex flex-col gap-2 bg-theme-light p-4"
     >
-        <VPlayback
-            ref="audio_playback"
-            :propAudio="final_blob"
-            :propAudioVolumePeaks="blob_volume_peaks"
-            :propBucketQuantity="propBucketQuantity"
-            :propIsRecording="is_recording"
-            :propRecordingVisualiserVolume="recording_volume"
-            :propRecordingVisualiserTimeInterval="time_interval"
-            :propIsForRecording="true"
-            :propIsOpen="propIsOpen"
-            @isAnimePlaybackCompleted="handleIsAnimePlaybackCompleted($event)"
-            class="z-10"
-        />
+        <!-- h-[5.5rem] = h-20 + p-2 -->
+        <div class="h-20 relative">
+            <TransitionGroupFade>
+                <VPlayback
+                    v-show="!is_recording"
+                    :propAudio="final_blob"
+                    :propAudioVolumePeaks="blob_volume_peaks"
+                    :propBucketQuantity="propBucketQuantity"
+                    :propIsRecording="is_recording"
+                    :propIsForRecording="true"
+                    :propIsOpen="propIsOpen"
+                    @isReadyToPlay="handleIsReadyToPlay($event)"
+                    class="w-full h-full"
+                />
+                <VAudioVisualiser
+                    v-show="is_recording"
+                    :propNewVolume="recording_volume"
+                    :propIntervalMs="interval_ms"
+                    :propIsRecording="is_recording"
+                    class="w-full h-full"
+                />
+            </TransitionGroupFade>
+        </div>
+
         <VRecorder
-            :propIsAnimePlaybackCompleted="is_anime_playback_completed"
-            :propTimeInterval="time_interval"
-            :propMaxDuration="propMaxDuration"
+            :propCanRecord="canRecord"
+            :propIntervalMs="interval_ms"
+            :propMaxDurationMs="propMaxDurationMs"
             :propIsOpen="propIsOpen"
             @newRecording="handleNewRecording($event)"
             @isRecording="handleIsRecording($event)"
@@ -33,6 +44,8 @@
 <script setup lang="ts">
     import VRecorder from '/src/components/medium/VRecorder.vue';
     import VPlayback from '/src/components/medium/VPlayback.vue';
+    import VAudioVisualiser from '../small/VAudioVisualiser.vue';
+    import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
 </script>
 
 
@@ -44,8 +57,9 @@
             return {
                 is_recording: false,
                 recording_volume: 0,
-                time_interval: 200, //milliseconds
-                is_anime_playback_completed: false,
+                interval_ms: 100, //milliseconds
+
+                is_ready_to_play: true,
                 
                 final_blob: null as Blob | null,
                 blob_volume_peaks: [] as Array<number>,
@@ -60,7 +74,7 @@
                 type: Number,
                 required: true
             },
-            propMaxDuration: {
+            propMaxDurationMs: {
                 type: Number,
                 required: true,
             },
@@ -70,14 +84,20 @@
 
         },
         computed: {
+            canRecord() : boolean {
 
+                //preventive measure to enable VRecorder only when it won't interrupt other relevant processes
+                return this.is_ready_to_play;
+            },
         },
         methods: {
+            handleIsReadyToPlay(new_value:boolean) : void {
+
+                this.is_ready_to_play = new_value;
+            },
             handleIsCancelled() : void {
 
-                //basically briefly show "Cancelled"
-                console.log('yowza');
-
+                console.log('Recording cancelled.');
             },
             async handleNewRecording(new_value:{'blob':Blob|null, 'blob_duration':number}) : Promise<void> {
 
@@ -94,7 +114,6 @@
                         this.final_blob = new_value['blob'];
                         this.blob_volume_peaks = volume_peaks;
 
-
                         this.$emit('newRecording', {
                             'blob' : new_value['blob'],
                             'blob_duration' : new_value['blob_duration'],
@@ -110,9 +129,6 @@
             },
             handleNewRecordingVolume(new_value:number) : void {
                 this.recording_volume = new_value;
-            },
-            handleIsAnimePlaybackCompleted(new_value:boolean) : void {
-                this.is_anime_playback_completed = new_value;
             },
             getFileVolumes(audio_data:Float32Array) : number[] {
 

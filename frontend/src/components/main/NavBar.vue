@@ -23,7 +23,7 @@
                     propElement="a"
                     propFontSize="m"
                     href="/say"
-                    class="w-full h-full justify-center"
+                    class="w-full h-full"
                 >
                     <span class="block">
                         <i class="fas fa-comment sm:pr-2"></i>
@@ -39,7 +39,7 @@
                     propElement="a"
                     propFontSize="m"
                     href="/hear"
-                    class="w-full h-full justify-center"
+                    class="w-full h-full"
                 >
                     <span class="block">
                         <i class="fas fa-comments sm:pr-2"></i>
@@ -127,7 +127,7 @@
                     propElement="button"
                     propFontSize="m"
                     type="button"
-                    class="w-full h-full justify-center"
+                    class="w-full h-full"
                 >
                     <span class="block">
                         <i class="fas fa-circle-user sm:pr-2"></i>
@@ -141,17 +141,18 @@
                 v-if="propIsLoggedIn === false"
                 class="hidden lg:block lg:col-start-8 col-span-1"
             >
-                <VActionSpecialS
+                <VActionSpecial
                     @click.stop="emitToOpenUserLogInSignUp('sign-up-section')"
                     propElement="button"
                     type="button"
-                    class="w-full h-full justify-center"
+                    propElementSize="s"
+                    class="w-full h-full"
                 >
                     <span class="block text-xl font-medium">
                         <i class="fas fa-right-to-bracket sm:pr-2"></i>
                         <span>Sign up</span>
                     </span>
-                </VActionSpecialS>
+                </VActionSpecial>
             </div>
         </nav>
 
@@ -281,7 +282,7 @@
     // import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
     import TransitionFade from '/src/transitions/TransitionFade.vue';
     import VActionTextOnly from '@/components/small/VActionTextOnly.vue';
-    import VActionSpecialS from '../small/VActionSpecialS.vue';
+    import VActionSpecial from '../small/VActionSpecial.vue';
 </script>
 
 

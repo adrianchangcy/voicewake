@@ -1,20 +1,46 @@
 <template>
-    <div class="text-theme-black text-center place-items-center">
+    <!-- h-[5.5rem] = h-20 + p-2 -->
+    <div class="h-20 text-theme-black text-center place-items-center relative">
+        <TransitionGroupFade>
+
+            <!--when not recording-->
+            <div
+                v-show="!is_recording"
+                class="w-full h-full"
+            >
+                <VAction
+                    @click.prevent="recorderStart()"
+                    :propIsEnabled="canStartRecording"
+                    propElement="button"
+                    type="button"
+                    propElementSize="m"
+                    propFontSize="m"
+                    class="w-full"
+                >
+                    <i class="fas fa-microphone-lines text-4xl mx-auto"></i>
+                    <span class="sr-only">start recording</span>
+                </VAction>
+            </div>
 
             <!--when recording-->
-            <div v-if="recorder_state !== null && recorder_state !== 'stopped'">
+            <div
+                v-show="is_recording"
+                class="w-full h-full"
+            >
                 <div class="grid grid-rows-2 grid-cols-4 grid-flow-col gap-x-2">
 
                     <!--cancel-->
-                    <VActionButtonM
+                    <VAction
                         @click.prevent="recorderStopByUserOrWebWorker(true)"
+                        propElement="button"
+                        type="button"
+                        propElementSize="m"
+                        propFontSize="m"
                         class="col-start-1 row-span-2 col-span-1"
-                        :propIsEnabled="canClickAfterAnimeReady"
-                        :propIsDefaultTextSize="false"
                     >
                         <i class="fas fa-xmark text-2xl mx-auto"></i>
                         <span class="sr-only">cancel recording</span>
-                    </VActionButtonM>
+                    </VAction>
 
                     <!--timer-->
                     <div class="row-start-1 row-span-1 col-span-2 relative">
@@ -22,10 +48,12 @@
                     </div>
 
                     <!--pause/resume-->
-                    <VActionButtonS
+                    <VAction
                         @click.prevent="recorderPauseResume()"
+                        propElement="button"
+                        type="button"
+                        propElementSize="s"
                         class="row-start-2 row-span-1 col-span-2 h-full"
-                        :propIsEnabled="canClickAfterAnimeReady"
                     >
                         <i
                             :class="[
@@ -35,33 +63,24 @@
                             ]"
                         ></i>
                         <span class="sr-only">{{ getPlayPauseScreenReader }}</span>
-                    </VActionButtonS>
+                    </VAction>
 
                     <!--done-->
-                    <VActionButtonM
+                    <VAction
                         @click.prevent="recorderStopByUserOrWebWorker(false)"
+                        :propIsEnabled="canStopRecording"
+                        propElement="button"
+                        type="button"
+                        propElementSize="m"
                         class="col-start-4 row-span-2 col-span-1"
-                        :propIsDefaultTextSize="false"
-                        :propIsEnabled="canClickAfterAnimeReady"
                     >
                         <i class="fas fa-check text-2xl mx-auto"></i>
                         <span class="sr-only">stop recording</span>
-                    </VActionButtonM>
+                    </VAction>
                 </div>
             </div>
-
-            <!--when not recording-->
-            <div v-else>
-                <VActionButtonM
-                    @click.prevent="recorderStart()"
-                    :propIsEnabled="is_anime_playback_truly_completed === true && is_recording === false"
-                    class="w-full"
-                >
-                    <i class="fas fa-microphone-lines text-4xl mx-auto"></i>
-                    <span class="sr-only">start recording</span>
-                </VActionButtonM>
-            </div>
-        </div>
+        </TransitionGroupFade>
+    </div>
         <!-- currently don't allow file submission, but store file here for final form submit -->
         <!-- for file submission: <form method="POST" enctype="multipart/form-data"></form> -->
         <!-- <input type="file" ref="audio_upload" accept=".mp3, .webm" class="hidden" required> -->
@@ -69,8 +88,8 @@
 
 
 <script setup lang="ts">
-    import VActionButtonS from '/src/components/small/VActionButtonS.vue';
-    import VActionButtonM from '/src/components/small/VActionButtonM.vue';
+    import VAction from '../small/VAction.vue';
+    import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
 </script>
 
 <script lang="ts">
@@ -92,45 +111,25 @@
                 is_recording: false,    //is not affected by pause/resume
                 current_duration: 0,    //milliseconds
                 current_duration_pretty: '00:00',
-                is_anime_playback_truly_completed: false,   //from recording visualiser at VPlayback to prevent actions until ready
             };
         },
-        mounted(){
-
-            //NOTE
-            //no need to be alarmed if it picks up nothing from browser audio
-        },
-        beforeUnmount(){
-
-            //just in case
-            this.stopRecordingIntervalWorker();
-        },
         props: {
-            propTimeInterval: {
+            propIntervalMs: {
                 type: Number,
                 required: true,
-                default: 200,
+                default: 100,
             },
-            propMaxDuration: {
+            propMaxDurationMs: {
                 type: Number,
                 required: true,
             },
             propIsOpen: Boolean,
-            propIsAnimePlaybackCompleted: Boolean,
+            propCanRecord: Boolean,
         },
         watch: {
             is_recording(new_value){
 
-                //reset to false before incoming anime, as there will be anime for both is_recording=true/false
-                this.is_anime_playback_truly_completed = false;
-
                 this.$emit('isRecording', new_value);
-            },
-            propIsAnimePlaybackCompleted(new_value){
-
-                //relying on prop alone isn't enough, because when is_recording is changed, it is still true
-                //here, we get the final true
-                this.is_anime_playback_truly_completed = new_value;
             },
             propIsOpen(new_value){
 
@@ -153,9 +152,9 @@
                     return 'resume recording';
                 }
             },
-            canClickAfterAnimeReady() : boolean {
+            canStartRecording() : boolean {
 
-                if(this.is_anime_playback_truly_completed === true && this.is_recording === true){
+                if(this.propCanRecord === true && this.is_recording === false){
 
                     return true;
 
@@ -163,6 +162,11 @@
 
                     return false;
                 }
+            },
+            canStopRecording() : boolean {
+
+                //minimum 1 second
+                return this.current_duration > 1000;
             },
         },
         emits: ['newRecording', 'isRecording', 'isCancelled', 'newRecordingVolume'],
@@ -194,14 +198,14 @@
 
                 this.recording_interval_worker.postMessage({
                     'action': 'start',
-                    'interval_ms': this.propTimeInterval,
+                    'interval_ms': this.propIntervalMs,
                     'starting_ms': this.current_duration
                 });
 
                 this.recording_interval_worker.onmessage = (event)=>{
 
                     //can do ===, but feels safer with >=
-                    if(event.data >= this.propMaxDuration){
+                    if(event.data >= this.propMaxDurationMs){
 
                         this.recorderStopByUserOrWebWorker(false);
                     }
@@ -278,7 +282,7 @@
             startVolumeAnalyser() : void {
 
                 //using window for number typing
-                this.volume_analyser_interval = window.setInterval(this.handleVolumeAnalyser, this.propTimeInterval);
+                this.volume_analyser_interval = window.setInterval(this.handleVolumeAnalyser, this.propIntervalMs);
             },
             stopVolumeAnalyser() : void {
 
@@ -294,15 +298,11 @@
                 //we need this because ondataavailable runs one more time after stopRecording()
                 //UPDATE: unreliable for timing, rely on web worker instead
                 //e.g. if max dura. 20s then auto-stopped at -3s, if max dura. 40s then auto-stopped at -6s
-                // if(this.is_recording === false){
-                
-                //     return false;
-                // }
 
                 //handle time elapsed
-                this.current_duration += this.propTimeInterval;
+                this.current_duration += this.propIntervalMs;
                 this.current_duration_pretty = new Date(
-                    this.propMaxDuration - this.current_duration
+                    this.propMaxDurationMs - this.current_duration
                 ).toISOString().substring(14, 19);
 
                 //give user instant visual feedback on recording input
@@ -345,7 +345,7 @@
             },
             async recorderStart() : Promise<boolean> {
 
-                if(this.is_anime_playback_truly_completed === false || this.is_recording === true){
+                if(this.canStartRecording === false){
 
                     return false;
                 }
@@ -391,7 +391,7 @@
                 
                     // get intervals based blobs
                     // value in milliseconds
-                    // timeSlice: this.propTimeInterval,
+                    // timeSlice: this.propIntervalMs,
                 
                     // requires timeSlice above
                     // returns blob via callback function
@@ -445,7 +445,7 @@
 
                 //set hard limit on recording duration for auto-stop
                 //this will still execute after .stopRecording() (not good), but it is already taken care of
-                this.recorder.setRecordingDuration(this.propMaxDuration)
+                this.recorder.setRecordingDuration(this.propMaxDurationMs)
                     .onRecordingStopped(this.recorderStopAsCallback);
                 
                 this.recorder.startRecording();
@@ -457,7 +457,7 @@
             },
             recorderPauseResume(force_state:'pause'|'resume'|null=null) : void {
                 
-                if(this.canClickAfterAnimeReady === false){
+                if(this.is_recording === false){
 
                     return;
                 }
@@ -489,6 +489,7 @@
                 this.is_recording = false;
                 this.current_duration = 0;
                 this.current_duration_pretty = '00:00';
+                this.$emit('newRecordingVolume', 0);
             },
             recorderStopAsCallback(callback_blob_url:string) : void {
 
@@ -529,7 +530,7 @@
                     //since the web worker and .onRecordingStopped() is at a no-risk race condition,
                     //URL blob string was able to reach the stage where .arrayBuffer is applied, causing the error
 
-                if(this.canClickAfterAnimeReady === false){
+                if(this.is_recording === false){
 
                     return;
                 }
@@ -589,6 +590,11 @@
                     console.log(error);
                 }
             },
-        }
+        },
+        beforeUnmount(){
+
+            //just in case
+            this.stopRecordingIntervalWorker();
+        },
     });
 </script>

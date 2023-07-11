@@ -9,7 +9,7 @@
             class="h-10 relative"
         >
             <VActionTextOnly
-                @click.stop="emitManualClose()"
+                @click.stop="emitIsClosed()"
                 propElement="button"
                 propElementSize="s"
                 type="button"
@@ -70,13 +70,17 @@
                             <div class="flex flex-col">
 
                                 <div class="flex flex-col gap-4 mt-6">
-                                    <VActionButtonS
+                                    <VAction
                                         @click.stop="doNavigation('log-in-section', 'log-in-step-1')"
+                                        propElement="button"
+                                        type="button"
+                                        propElementSize="s"
+                                        propFontSize="s"
                                         class="w-full px-4 gap-4"
                                     >
                                         <i class="fas fa-hat-wizard text-2xl"></i>
                                         <span>Log in with email</span>
-                                    </VActionButtonS>
+                                    </VAction>
                                 </div>
                             </div>
 
@@ -140,15 +144,17 @@
 
                             <!--main action-->
                             <div class="mt-8 w-full h-fit">
-                                <VActionSpecialM
+                                <VActionSpecial
                                     @click.stop="submitStep1('log-in')"
                                     :propIsEnabled="!is_email_loading"
                                     propElement="button"
                                     type="button"
+                                    propElementSize="m"
+                                    propFontSize="m"
                                     class="w-full"
                                 >
                                     <span class="mx-auto">Next</span>
-                                </VActionSpecialM>
+                                </VActionSpecial>
                             </div>
 
                             <!--extra options-->
@@ -187,15 +193,17 @@
                         >
 
                             <VActionTextOnly
+                                @click.stop="[doNavigation('log-in-section', 'log-in-step-1', false)]"
                                 propElement="button"
                                 propElementSize="s"
                                 propFontSize="s"
                                 type="button"
-                                @click.stop="[doNavigation('log-in-section', 'log-in-step-1', false)]"
-                                class="flex-row"
+                                class="w-fit"
                             >
-                                <i class="fas fa-arrow-left w-fit h-fit text-2xl block pr-2"></i>
-                                <span class="font-bold break-words">Back to email</span>
+                                <div class="flex items-center">
+                                    <i class="fas fa-arrow-left w-fit h-fit text-2xl block pr-2"></i>
+                                    <span class="font-bold break-words">Back to email</span>
+                                </div>
                             </VActionTextOnly>
 
                             <p class="text-xl font-medium block">
@@ -233,15 +241,17 @@
 
                             <!--main action-->
                             <div class="mt-8 h-fit">
-                                <VActionSpecialM
+                                <VActionSpecial
                                     @click.stop="submitStep2('log-in')"
                                     :propIsEnabled="!is_main_action_loading"
                                     propElement="button"
                                     type="button"
+                                    propElementSize="m"
+                                    propFontSize="m"
                                     class="w-full"
                                 >
                                     <span class="mx-auto">Log in</span>
-                                </VActionSpecialM>
+                                </VActionSpecial>
                             </div>
 
                             <!--extra options-->
@@ -294,13 +304,17 @@
                             <div class="flex flex-col">
 
                                 <div class="flex flex-col gap-4 mt-6">
-                                    <VActionButtonS
+                                    <VAction
                                         @click.stop="doNavigation('sign-up-section', 'sign-up-step-1')"
+                                        propElement="button"
+                                        type="button"
+                                        propElementSize="s"
+                                        propFontSize="s"
                                         class="w-full px-4 gap-4"
                                     >
                                         <i class="fas fa-hat-wizard text-2xl"></i>
                                         <span>Sign in with email</span>
-                                    </VActionButtonS>
+                                    </VAction>
                                 </div>
                             </div>
 
@@ -364,15 +378,17 @@
 
                             <!--main action-->
                             <div class="mt-8 w-full h-fit">
-                                <VActionSpecialM
+                                <VActionSpecial
                                     @click.stop="submitStep1('sign-up')"
                                     :propIsEnabled="!is_email_loading"
                                     propElement="button"
                                     type="button"
+                                    propElementSize="m"
+                                    propFontSize="m"
                                     class="w-full"
                                 >
                                     <span class="mx-auto">Next</span>
-                                </VActionSpecialM>
+                                </VActionSpecial>
                             </div>
 
                             <!--extra options-->
@@ -416,10 +432,12 @@
                                 propElementSize="s"
                                 propFontSize="s"
                                 type="button"
-                                class="flex-row"
+                                class="w-fit"
                             >
-                                <i class="fas fa-arrow-left w-fit h-fit text-2xl block pr-2"></i>
-                                <span class="font-bold break-words">Back to email</span>
+                                <div class="flex items-center">
+                                    <i class="fas fa-arrow-left w-fit h-fit text-2xl block pr-2"></i>
+                                    <span class="font-bold break-words">Back to email</span>
+                                </div>
                             </VActionTextOnly>
 
                             <p class="text-xl font-medium block">
@@ -457,15 +475,17 @@
 
                             <!--main action-->
                             <div class="mt-8 h-fit">
-                                <VActionSpecialM
+                                <VActionSpecial
                                     @click.stop="submitStep2('sign-up')"
                                     :propIsEnabled="!is_main_action_loading"
                                     propElement="button"
                                     type="button"
+                                    propElementSize="m"
+                                    propFontSize="m"
                                     class="w-full"
                                 >
                                     <span class="mx-auto">Sign up</span>
-                                </VActionSpecialM>
+                                </VActionSpecial>
                             </div>
 
                             <!--extra options-->
@@ -512,11 +532,11 @@
     import VInput from '@/components/small/VInput.vue';
     import VTitleXL from '@/components/small/VTitleXL.vue';
     import VNumberSlots from '@/components/small/VNumberSlots.vue';
-    import VActionSpecialM from '@/components/small/VActionSpecialM.vue';
     import VActionTextOnly from '@/components/small/VActionTextOnly.vue';
     import TransitionGroupSlide from '@/transitions/TransitionGroupSlide.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
-    import VActionButtonS from '@/components/small/VActionButtonS.vue';
+    import VAction from '@/components/small/VAction.vue';
+    import VActionSpecial from '@/components/small/VActionSpecial.vue';
 </script>
 
 
@@ -603,6 +623,9 @@
                 return this.email_is_ok === true && this.otp_request_cooldown_interval === null && this.is_loading === false;
             }
         },
+        emits: [
+            'isClosed',
+        ],
         methods: {
             submitStep2(section_type:'log-in'|'sign-up') : void {
 
@@ -636,9 +659,10 @@
                 );
                 this.submitEmailAndRequestOTP(section_type);
             },
-            emitManualClose() : void {
+            emitIsClosed() : void {
 
-                this.$emit('emitManualClose', '');
+                //intentional ''
+                this.$emit('isClosed', '');
             },
             resetOTPRelatedValues() : void {
 

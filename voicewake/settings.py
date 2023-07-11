@@ -92,7 +92,7 @@ MIDDLEWARE = []
 #development
 if DEBUG is True:
 
-    REQUEST_TIME_DELAY = 0  #seconds
+    REQUEST_TIME_DELAY = 2  #seconds
 
     MIDDLEWARE += [
         'voicewake.middleware.drf_api_delay_middleware.TimeDelayMiddleware'

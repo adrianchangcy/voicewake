@@ -2,11 +2,17 @@
     <component
         :is="propElement"
         :class="[
+            propFontSize === 'xl' ? 'text-2xl font-medium' : '',
+            propFontSize === 'l' ? 'text-2xl font-medium' : '',
+            propFontSize === 'm' ? 'text-2xl font-medium' : '',
             propFontSize === 's' ? 'text-base font-medium' : '',
-            propFontSize === 'm' ? 'text-xl font-medium' : '',
-            propElementSize === 's' ? 'h-10' : '',
+            propElementSize === 'xl' ? 'h-40 shadow-lg hover:shadow-md' : '',
+            propElementSize === 'l' ? 'h-24 shadow-lg hover:shadow-md' : '',
+            propElementSize === 'm' ? 'h-20 shadow-lg hover:shadow-md' : '',
+            propElementSize === 's' ? 'h-10 shadow-md hover:shadow-sm' : '',
             propIsEnabled ? '' : 'opacity-30',
-            'block shade-text-when-hover rounded-lg transition-colors   text-theme-black'
+            propIsRound ? 'rounded-full' : 'rounded-lg',
+            'block transition   text-theme-black border-t-2    bg-theme-soft-lead/80 hover:bg-theme-soft-lead     shadow-theme-lead/60 hover:shadow-theme-lead/60      border-theme-light-trim hover:border-theme-light-trim/40'
         ]"
         :disabled="!propIsEnabled"
     >
@@ -39,6 +45,10 @@
             propElement: {
                 type: String,
                 required: true
+            },
+            propIsRound: {
+                type: Boolean,
+                default: false
             },
             propIsEnabled: {
                 type: Boolean,

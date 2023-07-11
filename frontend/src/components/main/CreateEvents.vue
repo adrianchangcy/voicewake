@@ -68,7 +68,7 @@
             <VRecorderMenu
                 :propIsOpen="is_recorder_menu_open"
                 :propBucketQuantity="bucket_quantity"
-                :propMaxDuration="max_duration"
+                :propMaxDurationMs="max_duration_ms"
                 @newRecording="handleNewRecording($event)"
                 class="border-2 border-theme-black rounded-lg"
             />
@@ -86,23 +86,27 @@
 
     <!--submit-->
     <div class="mt-8">
-        <VActionButtonSpecialL
-            class="w-full"
-            :propIsEnabled="canSubmit"
+        <VActionSpecial
             @click.stop="submitForm()"
+            :propIsEnabled="canSubmit"
+            propElement="button"
+            type="button"
+            propElementSize="l"
+            propFontSize="l"
+            class="w-full"
         >
             <div class="mx-auto">
                 <span v-if="propIsOriginator === true">Start</span>
                 <span v-else>Reply</span>
             </div>
-        </VActionButtonSpecialL>
+        </VActionSpecial>
     </div>
 </template>
 
 
 <script setup lang="ts">
 
-    import VActionButtonSpecialL from '/src/components/small/VActionButtonSpecialL.vue';
+    import VActionSpecial from '../small/VActionSpecial.vue';
     import VTextArea from '/src/components/small/VTextArea.vue';
     import VEventToneField from '/src/components/medium/VEventToneField.vue';
     import VEventToneMenu from '/src/components/medium/VEventToneMenu.vue';
@@ -132,7 +136,7 @@
                 blob_volume_peaks: [] as number[],
                 bucket_quantity: 20,
                 // propMaxDuration: (1000 * 60 * 2) + 500,    //2m + 0.5s, as final_blob is always +-0.1s away
-                max_duration: 120000,    //2m + 0.5s, as final_blob is always +-0.1s away
+                max_duration_ms: 120000,    //2m + 0.5s, as final_blob is always +-0.1s away
             };
         },
         props: {

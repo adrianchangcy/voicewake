@@ -51,7 +51,7 @@
                             </div>
                         </div>
 
-                        <VCreateEvents
+                        <CreateEvents
                             :propIsOriginator="false"
                             :propEventRoomId="event_room.event_room.id"
                         />
@@ -80,7 +80,7 @@
 <script setup lang="ts">
     import EventRoomCard from '@/components/main/EventRoomCard.vue';
     import VActionButtonDangerS from '@/components/small/VActionButtonDangerS.vue';
-    import VCreateEvents from '@/components/medium/VCreateEvents.vue';
+    import CreateEvents from '@/components/main/CreateEvents.vue';
     import VTitleSection from '@/components/small/VTitleSection.vue';
     import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
     import VPlayback from '@/components/medium/VPlayback.vue';
