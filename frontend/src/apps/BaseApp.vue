@@ -20,31 +20,27 @@
             >
                 <!--10.25rem is precisely the height, as of 2023-07-05-->
                 <div
-                    v-click-outside="{
-                        var_name_for_element_bool_status: 'is_user_log_in_sign_up_open',
-                        refs_to_exclude: []
-                    }"
                     class="lg:w-2/6 xl:w-2/6 h-[90%] m-auto px-4 border border-theme-light-gray bg-theme-light shadow-xl rounded-lg overflow-y-auto"
                 >
                     <UserLogInSignUp
                         :propRequestedSection="requested_section"
                         :propIsForStaticPage="false"
-                        @emitManualClose="handleOpenUserLogInSignUp($event)"
+                        @isClosed="handleOpenUserLogInSignUp($event)"
                     />
                 </div>
             </div>
         </TransitionFade>
     </div>
 
-    <Testing/>
+    <TestingStuff/>
 </template>
 
 
 <script setup lang="ts">
-    import Testing from '@/components/main/Testing.vue';
+    import TestingStuff from '@/components/main/TestingStuff.vue';
     import NavBar from '@/components/main/NavBar.vue';
     import UserLogInSignUp from '@/components/main/UserLogInSignUp.vue';
-    import UserUsername from '@/components/main/UserUsername.vue';
+    import UserUsername from '@/components/medium/UserUsername.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
 </script>
 

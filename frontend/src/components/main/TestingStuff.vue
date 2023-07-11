@@ -16,7 +16,6 @@
     // import anime from 'animejs';
 
     export default defineComponent({
-        name: 'NavBar',
         data(){
             return {
                 is_testing: false,

@@ -1,237 +1,208 @@
 <template>
-    <div>
+    <div
+        class="text-theme-black text-center"
+    >
         <!--add @timeupdate at mounted(), not here, as beforeUnmount() cannot remove it, and it'll still fire after unmount-->
         <audio
             ref="audio_element"
             @loadedmetadata="handleHasMetadata()"
-            @canplay="is_loading=false"
+            @canplay="[emitIsReadyToPlay(true), is_loading=false]"
             @waiting="is_loading=true"
-            @ended="pausePlayback(), was_paused=true"
+            @ended="[pausePlayback(), was_paused=true]"
         ></audio>
 
-        <!--size priority: playback_main, then ripples, then everything else-->
-        <!--if you want to modify aesthetics, consider doing it at playback_main and not this parent div-->
-        <div class="h-20 text-center relative">
-
-            <!--recording visualiser-->
-            <!--need inline CSS to prevent jolting from anime if without it-->
-            <div
-                ref="recording_visualiser"
-                class="absolute w-20 h-20 left-0 right-0 top-0 bottom-0 m-auto"
-            >
-                <div class="relative w-full h-full">
-                    <div
-                        ref="recording_visualiser_circle_0"
-                        class="absolute w-full h-full left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-lead/60"
-                        style="transform: scaleX(0) scaleY(0);"
-                    ></div>
-                    <div
-                        ref="recording_visualiser_circle_1"
-                        class="absolute w-full h-full left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-lead/40"
-                        style="transform: scaleX(0) scaleY(0);"
-                    ></div>
-                    <div
-                        ref="recording_visualiser_circle_2"
-                        class="absolute w-full h-full left-0 right-0 top-0 bottom-0 m-auto rounded-full bg-theme-lead/20"
-                        style="transform: scaleX(0) scaleY(0);"
-                    ></div>
-                </div>
+        <!--
+            ripples, slider, volume, play/pause, rate, timers
+            we want it like this to be able to hide everything when needed
+        -->
+        <div
+            ref="playback_main"
+            :class="[
+                propEventTone === null ? 'grid-cols-3 pr-4' : 'grid-cols-4',
+                propHasHighlight === true ? 'border-2' : 'border',
+                'h-20 grid grid-rows-2 rounded-lg border-theme-light-gray'
+            ]"
+        >
+            <!--play/pause-->
+            <div class="row-start-1 row-span-2 col-start-1 col-span-1 text-4xl relative">
+                <button
+                    ref="play_pause_button"
+                    @click="togglePlaybackPlayPause()"
+                    class="absolute left-2 right-2 top-2 bottom-2 shade-text-when-hover transition-colors duration-200 ease-in-out rounded-md"
+                    :disabled="has_all_data_for_play === false"
+                    type="button"
+                >
+                    <i
+                        :class="[
+                            is_playing? 'fa-pause' : 'fa-play',
+                            'fas mb-0.5'
+                        ]"
+                    ></i>
+                    <span v-if="is_playing" class="sr-only">
+                        pause
+                    </span>
+                    <span v-else class="sr-only">
+                        play
+                    </span>
+                </button>
             </div>
-
-            <!--
-                ACTUAL VAUDIOPLAYBACK
-                ripples, slider, volume, play/pause, rate, timers
-                we want it like this to be able to hide everything when needed
-            -->
+            <!--ripples, slider, do left-2 right-2 m-auto if you want outermost knob to be within bounds-->
             <div
-                ref="playback_main"
                 :class="[
-                    propEventTone === null ? 'grid-cols-3 pr-4' : 'grid-cols-4',
-                    propHasHighlight === true ? 'border-2' : 'border',
-                    'w-full h-full absolute grid grid-rows-2 left-0 right-0 top-0 bottom-0 m-auto text-theme-black rounded-lg border-theme-light-gray opacity-0'
+                    (has_all_data_for_play === true && is_playback_slider_ready === true ? 'cursor-pointer' : 'cursor-default'),
+                    'row-start-1 row-span-1 col-start-2 col-span-2 relative'
                 ]"
             >
-                <!--play/pause-->
-                <div class="row-start-1 row-span-2 col-start-1 col-span-1 text-4xl relative">
+                <!--ripples-->
+                <!--need inline CSS to prevent jolting from anime if without it-->
+                <div
+                    ref="volume_ripples_container"
+                    class="w-full h-4 absolute top-2 flex flex-row justify-evenly"
+                >
+                    <div
+                        v-for="volume_ripple in propBucketQuantity" :key="volume_ripple"
+                        ref="volume_ripple"
+                        class="h-full origin-bottom"
+                        style="transform: scaleY(0);"
+                    >
+                        <div
+                            :class="[
+                                has_all_data_for_play === true ? 'bg-theme-black' : 'outline-1 outline outline-theme-dark-gray',
+                                'left-0 right-0 mx-auto w-0.5 h-full'
+                            ]"
+                        ></div>
+                    </div>
+                </div>
+                <!--slider-->
+                <div
+                    class="w-full h-full absolute bottom-0"
+                >
+                    <div
+                        ref="playback_slider"
+                        :class="[
+                            has_all_data_for_play === true && is_playback_slider_ready === true ? 'touch-none' : '',
+                            'h-full relative'
+                        ]"
+                        @mouseenter.stop="is_playback_slider_hover = true"
+                        @mouseleave.stop="is_playback_slider_hover = false"
+                        @mousedown.stop="[startPlaybackDrag(), doPlaybackDrag($event)]"
+                        @touchstart.stop="[startPlaybackDrag(true), doPlaybackDrag($event)]"
+                    >
+                        <!--for reference, since playback_slider_progress cannot give full width at start-->
+                        <div
+                            ref="playback_slider_dimension"
+                            class="h-0 absolute opacity-0 left-0 right-0 top-0 bottom-0 m-auto"
+                        ></div>
+                        <div
+                            :class="[
+                                is_playback_slider_hover && has_all_data_for_play === true ? 'double-height-when-hover' : 'scale-y-100',
+                                'h-1 absolute bg-theme-medium-gray/50 left-0 right-0 top-5 bottom-0 m-auto transition-transform duration-150 ease-in-out'
+                            ]"
+                        ></div>
+                        <div
+                            ref="playback_slider_progress"
+                            class="h-1 absolute bg-theme-lead left-0 right-0 top-5 bottom-0 m-auto scale-x-0 origin-left"
+                        ></div>
+                        <div
+                            ref="playback_slider_knob"
+                            class="w-4 h-4 absolute rounded-full bg-theme-black top-5 bottom-0 -left-2 m-auto"
+                        >
+                            <div
+                                ref="spinner_container"
+                                class="w-full h-full relative opacity-0"
+                            >
+                                <i
+                                    ref="spinner"
+                                    class="fas fa-spinner text-2xl absolute w-fit h-fit -left-1 top-0 bottom-0 my-auto"
+                                ></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <span class="sr-only">playback navigation</span>
+            </div>
+
+            <!--volume, timers-->
+            <div
+                class="row-start-2 row-span-1 col-start-2 col-span-2 grid grid-rows-1 grid-cols-3"
+            >
+                <!--current duration-->
+                <div class="row-start-1 row-span-1 col-start-1 col-span-1 relative text-sm font-medium">
+                    <span class="sr-only">current duration</span>
+                    <span class="absolute w-fit h-fit left-0 top-0 bottom-0 m-auto">{{pretty_current_playback_time}}</span>
+                </div>
+                <!--volume-->
+                <div
+                    ref="playback_volume_opener"
+                    class="row-start-1 row-span-1 col-start-2 col-span-1 h-full text-lg relative"
+                >
+                    <!--open/close volume-->
                     <button
-                        ref="play_pause_button"
-                        @click="togglePlaybackPlayPause()"
-                        class="absolute left-2 right-2 top-2 bottom-2 shade-text-when-hover transition-colors duration-200 ease-in-out rounded-md"
+                        v-if="propIsForRecording === false"
+                        @click="togglePlaybackVolumeOptions()"
+                        class="w-full h-full shade-text-when-hover transition-colors duration-200 ease-in-out rounded-md"
                         :disabled="has_all_data_for_play === false"
                         type="button"
                     >
                         <i
                             :class="[
-                                is_playing? 'fa-pause' : 'fa-play',
-                                'fas mb-0.5'
+                                (playback_volume === 0 ? 'fa-volume-xmark' : ''),
+                                (playback_volume <= 0.5 ? 'fa-volume-low' : ''),
+                                (playback_volume <= 1 ? 'fa-volume-high' : ''),
+                                (is_playback_volume_open ? '-rotate-90' : 'rotate-0'),
+                                'fas transition-transform duration-200 ease-in-out'
                             ]"
                         ></i>
-                        <span v-if="is_playing" class="sr-only">
-                            pause
+                        <span v-if="propIsForRecording" class="sr-only">
+                            cannot open volume box, as volume is always at maximum when recording
                         </span>
-                        <span v-else class="sr-only">
-                            play
+                        <span v-else>
+                            <span v-if="is_playback_volume_open" class="sr-only">
+                                close volume box
+                            </span>
+                            <span v-else class="sr-only">
+                                open volume box, of which you can use up down keystrokes to adjust
+                            </span>
                         </span>
                     </button>
-                </div>
-                <!--ripples, slider, do left-2 right-2 m-auto if you want outermost knob to be within bounds-->
-                <div
-                    :class="[
-                        (has_all_data_for_play === true && is_playback_slider_ready === true ? 'cursor-pointer' : 'cursor-default'),
-                        'row-start-1 row-span-1 col-start-2 col-span-2 relative'
-                    ]"
-                >
-                    <!--ripples-->
-                    <!--need inline CSS to prevent jolting from anime if without it-->
-                    <div
-                        ref="volume_ripples_container"
-                        class="w-full h-4 absolute top-2 flex flex-row justify-evenly"
-                    >
-                        <div
-                            v-for="volume_ripple in propBucketQuantity" :key="volume_ripple"
-                            ref="volume_ripple"
-                            class="h-full origin-bottom"
-                            style="transform: scaleY(0);"
+                    <!--volume menu-->
+                    <TransitionFade>
+                        <VBox
+                            v-show="is_playback_volume_open"
+                            :propIsOpaque="true"
+                            v-click-outside="{
+                                var_name_for_element_bool_status: 'is_playback_volume_open',
+                                refs_to_exclude: ['playback_volume_opener']
+                            }"
+                            class="w-full h-[300%] absolute left-0 right-0 bottom-[110%] m-auto"
                         >
-                            <div
-                                :class="[
-                                    has_all_data_for_play === true ? 'bg-theme-black' : 'outline-1 outline outline-theme-dark-gray',
-                                    'left-0 right-0 mx-auto w-0.5 h-full'
-                                ]"
-                            ></div>
-                        </div>
-                    </div>
-                    <!--slider-->
-                    <div
-                        class="w-full h-full absolute bottom-0"
-                    >
-                        <div
-                            ref="playback_slider"
-                            :class="[
-                                has_all_data_for_play === true && is_playback_slider_ready === true ? 'touch-none' : '',
-                                'h-full relative'
-                            ]"
-                            @mouseenter.stop="is_playback_slider_hover = true"
-                            @mouseleave.stop="is_playback_slider_hover = false"
-                            @mousedown.stop="[startPlaybackDrag(), doPlaybackDrag($event)]"
-                            @touchstart.stop="[startPlaybackDrag(true), doPlaybackDrag($event)]"
-                        >
-                            <!--for reference, since playback_slider_progress cannot give full width at start-->
-                            <div
-                                ref="playback_slider_dimension"
-                                class="h-0 absolute opacity-0 left-0 right-0 top-0 bottom-0 m-auto"
-                            ></div>
-                            <div
-                                :class="[
-                                    is_playback_slider_hover && has_all_data_for_play === true ? 'double-height-when-hover' : 'scale-y-100',
-                                    'h-1 absolute bg-theme-medium-gray/50 left-0 right-0 top-5 bottom-0 m-auto transition-transform duration-150 ease-in-out'
-                                ]"
-                            ></div>
-                            <div
-                                ref="playback_slider_progress"
-                                class="h-1 absolute bg-theme-lead left-0 right-0 top-5 bottom-0 m-auto scale-x-0 origin-left"
-                            ></div>
-                            <div
-                                ref="playback_slider_knob"
-                                class="w-4 h-4 absolute rounded-full bg-theme-black top-5 bottom-0 -left-2 m-auto"
+                            <VSliderYSmall
+                                ref="volume_slider"
+                                :propInitialSliderValue="playback_volume"
+                                @hasNewSliderValue="changePlaybackVolume($event)"
+                                class="w-full h-full"
                             >
-                                <div
-                                    ref="spinner_container"
-                                    class="w-full h-full relative opacity-0"
-                                >
-                                    <i
-                                        ref="spinner"
-                                        class="fas fa-spinner text-2xl absolute w-fit h-fit -left-1 top-0 bottom-0 my-auto"
-                                    ></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <span class="sr-only">playback navigation</span>
+                                <span class="sr-only">vertical volume box</span>
+                            </VSliderYSmall>
+                        </VBox>
+                    </TransitionFade>
                 </div>
-
-                <!--volume, timers-->
-                <div
-                    class="row-start-2 row-span-1 col-start-2 col-span-2 grid grid-rows-1 grid-cols-3"
-                >
-                    <!--current duration-->
-                    <div class="row-start-1 row-span-1 col-start-1 col-span-1 relative text-sm font-medium">
-                        <span class="sr-only">current duration</span>
-                        <span class="absolute w-fit h-fit left-0 top-0 bottom-0 m-auto">{{pretty_current_playback_time}}</span>
-                    </div>
-                    <!--volume-->
-                    <div
-                        ref="playback_volume_opener"
-                        class="row-start-1 row-span-1 col-start-2 col-span-1 h-full text-lg relative"
-                    >
-                        <!--open/close volume-->
-                        <button
-                            v-if="propIsForRecording === false"
-                            @click="togglePlaybackVolumeOptions()"
-                            class="w-full h-full shade-text-when-hover transition-colors duration-200 ease-in-out rounded-md"
-                            :disabled="has_all_data_for_play === false"
-                            type="button"
-                        >
-                            <i
-                                :class="[
-                                    (playback_volume === 0 ? 'fa-volume-xmark' : ''),
-                                    (playback_volume <= 0.5 ? 'fa-volume-low' : ''),
-                                    (playback_volume <= 1 ? 'fa-volume-high' : ''),
-                                    (is_playback_volume_open ? '-rotate-90' : 'rotate-0'),
-                                    'fas transition-transform duration-200 ease-in-out'
-                                ]"
-                            ></i>
-                            <span v-if="propIsForRecording" class="sr-only">
-                                cannot open volume box, as volume is always at maximum when recording
-                            </span>
-                            <span v-else>
-                                <span v-if="is_playback_volume_open" class="sr-only">
-                                    close volume box
-                                </span>
-                                <span v-else class="sr-only">
-                                    open volume box, of which you can use up down keystrokes to adjust
-                                </span>
-                            </span>
-                        </button>
-                        <!--volume menu-->
-                        <TransitionFade>
-                            <VBox
-                                v-show="is_playback_volume_open"
-                                :propIsOpaque="true"
-                                v-click-outside="{
-                                    var_name_for_element_bool_status: 'is_playback_volume_open',
-                                    refs_to_exclude: ['playback_volume_opener']
-                                }"
-                                class="w-full h-[300%] absolute left-0 right-0 bottom-[110%] m-auto"
-                            >
-                                <VSliderYSmall
-                                    ref="volume_slider"
-                                    :propInitialSliderValue="playback_volume"
-                                    @hasNewSliderValue="changePlaybackVolume($event)"
-                                    class="w-full h-full"
-                                >
-                                    <span class="sr-only">vertical volume box</span>
-                                </VSliderYSmall>
-                            </VBox>
-                        </TransitionFade>
-                    </div>
-                    <!--total duration-->
-                    <div class="row-start-1 row-span-1 col-start-3 col-span-1 relative text-sm font-medium">
-                        <span class="absolute w-fit h-fit right-0 top-0 bottom-0 m-auto">
-                            <span class="sr-only">total duration</span>
-                            {{pretty_playback_duration}}
-                        </span>
-                    </div>
-                </div>
-
-                <div
-                    v-if="propEventTone !== null"
-                    class="row-span-2 col-span-1 relative"
-                >
-                    <span class="text-2xl pb-0.5 absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto">
-                        {{ propEventTone.event_tone_symbol }}
+                <!--total duration-->
+                <div class="row-start-1 row-span-1 col-start-3 col-span-1 relative text-sm font-medium">
+                    <span class="absolute w-fit h-fit right-0 top-0 bottom-0 m-auto">
+                        <span class="sr-only">total duration</span>
+                        {{pretty_playback_duration}}
                     </span>
                 </div>
+            </div>
+
+            <div
+                v-if="propEventTone !== null"
+                class="row-span-2 col-span-1 relative"
+            >
+                <span class="text-2xl pb-0.5 absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto">
+                    {{ propEventTone.event_tone_symbol }}
+                </span>
             </div>
         </div>
     </div>
@@ -262,7 +233,8 @@
 
                 is_loading: false,
                 spinner_anime: null as InstanceType<typeof anime> | null,
-                
+                is_playback_empty_anime: true,  //this is only to anime empty --> non-empty once, and vice versa
+
                 playback_slider_value: 0,
                 is_playback_slider_ready: false,
                 is_playback_slider_drag: false,
@@ -282,12 +254,14 @@
                 is_playback_volume_open: false,
 
                 playback_states: ['initiate', 'recording', 'attaching', 'can_play', 'loading'],
-                current_playback_state: null as string | null,
 
                 fastest_anime_duration_ms: 100, //to change anime durations easily
             };
         },
         mounted(){
+
+            //initial state
+            this.animeIsEmptyPlayback();
 
             //spinner
             this.spinner_anime = anime({
@@ -305,11 +279,6 @@
 
                 //start with data already available, i.e. for existing records
                 this.attachAudioToPlayback(this.propAudioURL);
-
-            }else{
-
-                //start as 'initiate', a.k.a. empty, i.e. for recording
-                this.current_playback_state = this.playback_states[0];
             }
 
             //handle rate and volume differently
@@ -372,8 +341,7 @@
             (this.$refs.audio_element as HTMLAudioElement).removeEventListener('timeupdate', this.updateCurrentPlaybackTime);
         },
         emits: [
-            'isAnimePlaybackCompleted',
-            'newFileVolumes'
+            'newFileVolumes', 'isReadyToPlay'
         ],
         props: {
             propAutoPlayOnSourceChange: {
@@ -394,11 +362,6 @@
             },
             propIsRecording: {
                 type: Boolean
-            },
-            propRecordingVisualiserVolume: Number,    //0-1
-            propRecordingVisualiserTimeInterval: {  //milliseconds, based on VRecorder time_interval
-                type: Number,
-                default: 200
             },
             propIsForRecording: {   //if VPlayback is for recording, hide things like volume, etc.
                 type: Boolean,
@@ -476,10 +439,6 @@
                 //reminder that with v-if and props already supplied, first time will not trigger watchers
                 this.attachAudioToPlayback(new_value);
             },
-            propRecordingVisualiserVolume(new_value){
-
-                this.animeRecordingVisualiser(new_value);
-            },
             propIsRecording(new_value){
 
                 //started recording
@@ -489,26 +448,7 @@
 
                         this.pausePlayback();
                     }
-
-                    this.current_playback_state = this.playback_states[1];
-
-                }else{
-
-                    //cancelled/finished recording
-                    this.current_playback_state = this.playback_states[2];
                 }
-            },
-            current_playback_state(){
-
-                //for those that are one-time, put here, and we can disable/enable elements at parent with this
-                this.$emit('isAnimePlaybackCompleted', false);
-
-                this.animePlaybackStates();
-
-                this.main_anime.finished.then(()=>{
-
-                    this.$emit('isAnimePlaybackCompleted', true);
-                });
             },
             propIsOpen(new_value){
 
@@ -982,56 +922,6 @@
                     this.endPlaybackProperly();
                 }
             },
-            resetRecordingVisualiser() : void {
-
-                const recording_visualiser_circles = [
-                    this.$refs.recording_visualiser_circle_0,
-                    this.$refs.recording_visualiser_circle_1,
-                    this.$refs.recording_visualiser_circle_2,
-                ];
-
-                //scale does not accept % or px, only percentage digit
-                anime({
-                    targets: recording_visualiser_circles,
-                    easing: 'linear',
-                    loop: false,
-                    autoplay: true,
-                    scaleX: '0',
-                    scaleY: '0',
-                    duration: this.fastest_anime_duration_ms,
-                });
-            },
-            animeRecordingVisualiser(new_value:number) : void {
-                
-                const recording_visualiser_circles = [
-                    this.$refs.recording_visualiser_circle_0,
-                    this.$refs.recording_visualiser_circle_1,
-                    this.$refs.recording_visualiser_circle_2,
-                ];
-
-                //scale works with values from 0 to 1
-                const base_target_percentage = 0.1;
-                const percentage_increment = 0.3;
-                
-                anime.remove(recording_visualiser_circles);
-
-                for(let x=0; x < recording_visualiser_circles.length; x++){
-
-                    const extra_target_percentage = (x + 1) * percentage_increment;
-                    const final_target_percentage = (new_value * extra_target_percentage) + base_target_percentage;
-
-                    //scale does not accept % or px, only percentage digit
-                    anime({
-                        targets: recording_visualiser_circles[x],
-                        scaleX: final_target_percentage.toString(),
-                        scaleY: final_target_percentage.toString(),
-                        autoplay: true,
-                        easing: 'linear',
-                        loop: false,
-                        duration: this.propRecordingVisualiserTimeInterval,
-                    });
-                }
-            },
             updateCurrentPlaybackTime() : void {
 
                 const target = (this.$refs.audio_element as HTMLAudioElement);
@@ -1159,137 +1049,6 @@
                     this.was_paused = true;
                 }
             },
-            animePlaybackStates() : void {
-
-                const volume_ripples = (this.$refs.volume_ripple as HTMLElement[]);
-                const recording_visualiser = (this.$refs.recording_visualiser as HTMLElement);
-                const playback_main = (this.$refs.playback_main as HTMLElement);
-
-                //reset
-                this.main_anime !== null ? this.main_anime.seek(this.main_anime.duration) : null;
-
-                switch(this.current_playback_state){
-
-                    case this.playback_states[0]:
-
-                        {
-                            //'initiate', only used once
-                            //wanted to set to 'empty' and allow for hard reset,
-                            //but too lazy to implement checks on recording cancelled + empty
-
-                            this.main_anime = anime.timeline({
-                                easing: 'linear',
-                                loop: false,
-                                autoplay: true,
-                            }).add({
-                                targets: this.$refs.playback_main,
-                                duration: this.fastest_anime_duration_ms,
-                                opacity: '0.1',
-                            }).add({
-                                //set to default volume_ripples
-                                targets: volume_ripples,
-                                scaleY: ['0', '1'],
-                                translateY: ['0%'],
-                                duration: this.fastest_anime_duration_ms,
-                            });
-                        }
-                        break;
-
-                    case this.playback_states[1]:
-
-                        {
-                            //'recording'
-
-                            this.main_anime = anime.timeline({
-                                easing: 'linear',
-                                loop: false,
-                                autoplay: true,
-                            }).add({
-                                //remove volume_ripples
-                                targets: volume_ripples,
-                                scaleY: ['0'],
-                                translateY: ['0%'],
-                                duration: this.fastest_anime_duration_ms,
-                            }).add({
-                                //remove playback_main
-                                targets: playback_main,
-                                opacity: 0,
-                                duration: this.fastest_anime_duration_ms,
-                                complete: ()=>{
-                                    playback_main.style.display = 'none';
-                                },
-                            }).add({
-                                //make sunset available
-                                begin: ()=>{
-                                    recording_visualiser.style.display = 'block';
-                                },
-                                targets: recording_visualiser,
-                                opacity: 1,
-                                duration: this.fastest_anime_duration_ms,
-                            });
-                        }
-                        break;
-
-                    case this.playback_states[2]:
-
-                        {
-                            //'attaching'
-
-                            //remove related anime
-                            anime.remove([
-                                volume_ripples,
-                                recording_visualiser,
-                                playback_main,
-                                this.$refs.recording_visualiser_circle_0,
-                                this.$refs.recording_visualiser_circle_1,
-                                this.$refs.recording_visualiser_circle_2,
-                            ]);
-
-                            this.main_anime = anime.timeline({
-                                easing: 'linear',
-                                loop: false,
-                                autoplay: true,
-                            }).add({
-                                //remove sunset
-                                begin: ()=>{
-                                    this.resetRecordingVisualiser();
-                                },
-                                targets: recording_visualiser,
-                                opacity: 0,
-                                delay: 100,
-                                duration: this.fastest_anime_duration_ms,
-                                complete: ()=>{
-                                    recording_visualiser.style.display = 'none';
-
-                                    //do this so that when cancelled, revert to opacity-10
-                                    //we have to run this part here to be able to get latest instance state, as anime() is async
-                                    anime({
-                                        targets: playback_main,
-                                        begin: ()=>{
-                                            playback_main.style.display = 'grid';
-                                        },
-                                        opacity: this.has_all_data_for_play === true ? 1 : 0.1,
-                                        easing: 'linear',
-                                        duration: this.fastest_anime_duration_ms * 2,
-                                        //we want the entire anime to finish before this condition unlocks other actions
-                                        //to delay this, we don't use setTimeout
-                                        //we multiply duration above instead, so that we can still fully rely on anime's .finished.then()
-                                        complete: ()=>{
-                                            //set volume_ripples
-                                            this.adjustVolumeRipples();
-                                        }
-                                    });
-                                },
-                            });                            
-                        }
-                        break;
-
-                    default:
-                        
-                        console.log('State is currently null or not one of the declared playback_states.');
-                        return;
-                }
-            },
             adjustVolumeRipples() : void {
 
                 //we calculate height relative to most quiet and loudest parts
@@ -1355,6 +1114,10 @@
                     this.pausePlayback();
                 }
 
+                this.emitIsReadyToPlay(false);
+
+                this.animeIsNotEmptyPlayback();
+
                 //destroy URL.createObjectURL() instance to free from memory, then stop loading, no checks needed
                 //https://developer.mozilla.org/en-US/docs/Web/Guide/Audio_and_video_delivery#other_tips_for_audiovideo
                 URL.revokeObjectURL(audio_element.src);
@@ -1378,12 +1141,11 @@
                 //this is the fix
                 audio_element.playbackRate = this.playback_rate;
 
-                //cannot rely on current_playback_state watcher,
-                //as merely changing source (i.e. playback_states[2] below) will not trigger watcher
                 this.adjustVolumeRipples();
+            },
+            emitIsReadyToPlay(new_value:boolean) : void {
 
-                //update state, not always needed but just to be sure
-                this.current_playback_state = this.playback_states[2];
+                this.$emit('isReadyToPlay', new_value);
             },
             handleHasMetadata() : void {
 
@@ -1424,6 +1186,46 @@
                 //you'll get 0, but if you check via watch, the value does change
                 //put your code in handler instead if you need to run something else
             },
+            animeIsNotEmptyPlayback() : void {
+
+                if(this.is_playback_empty_anime === false){
+
+                    return;
+                }
+
+                anime({
+                    easing: 'linear',
+                    loop: false,
+                    autoplay: true,
+                    targets: this.$refs.playback_main,
+                    duration: this.fastest_anime_duration_ms,
+                    opacity: '1',
+                });
+
+                this.is_playback_empty_anime = false;
+            },
+            animeIsEmptyPlayback(): void {
+
+                const volume_ripples = (this.$refs.volume_ripple as HTMLElement[]);
+
+                anime.timeline({
+                    easing: 'linear',
+                    loop: false,
+                    autoplay: true,
+                }).add({
+                    targets: this.$refs.playback_main,
+                    duration: this.fastest_anime_duration_ms,
+                    opacity: '0.1',
+                }).add({
+                    //set to default volume_ripples
+                    targets: volume_ripples,
+                    scaleY: ['0', '1'],
+                    translateY: ['0%'],
+                    duration: this.fastest_anime_duration_ms,
+                });
+
+                this.is_playback_empty_anime = true;
+            }
         }
     });
 </script>

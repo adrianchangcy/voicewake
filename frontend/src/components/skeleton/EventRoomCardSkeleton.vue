@@ -12,11 +12,6 @@
                 <VEventCardSkeleton/>
             </div>
         </div>
-        <!--reply button-->
-        <div
-            v-show="propCanReply === true"
-            class="h-28 mt-8 skeleton"
-        ></div>
     </div>
 </template>
 

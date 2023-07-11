@@ -2,12 +2,15 @@
     <button
         :class="[
             (propIsEnabled ? '' : 'opacity-30'),
-            'h-10 text-base font-medium flex items-center      rounded-lg border-t-2 shadow-md    bg-theme-danger/90 border-theme-light-trim/40 shadow-theme-soft-danger/75     text-theme-light hover:shadow-sm hover:shadow-theme-soft-danger/75 hover:bg-theme-danger hover:border-theme-light-trim/30   transition'
+            'block h-10 text-base font-medium      rounded-lg border-t-2 shadow-md    bg-theme-danger/90 border-theme-light-trim/40 shadow-theme-soft-danger/75     text-theme-light hover:shadow-sm hover:shadow-theme-soft-danger/75 hover:bg-theme-danger hover:border-theme-light-trim/30   transition'
         ]"
         type="button"
         :disabled="!propIsEnabled"
     >
-        <slot></slot>
+        <!--current font sinks too low, hence pb-->
+        <div class="w-full h-full pb-0.5 grid items-center">
+            <slot></slot>
+        </div>
     </button>
 </template>
 

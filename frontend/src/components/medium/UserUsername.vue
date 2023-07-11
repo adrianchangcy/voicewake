@@ -26,15 +26,17 @@
 
         <!--main action-->
         <div class="mt-8 h-fit">
-            <VActionSpecialM
-                :propIsEnabled="canSubmitNewUsername"
+            <VActionSpecial
                 @click.stop="submitUsernameChange()"
+                :propIsEnabled="canSubmitNewUsername"
                 propElement="button"
                 type="button"
+                propElementSize="m"
+                propFontSize="m"
                 class="w-full"
             >
                 <span class="mx-auto">Confirm username</span>
-            </VActionSpecialM>
+            </VActionSpecial>
         </div>
     </div>
 </template>
@@ -42,7 +44,7 @@
 
 <script setup lang="ts">
     import VInput from '@/components/small/VInput.vue';
-    import VActionSpecialM from '@/components/small/VActionSpecialM.vue';
+    import VActionSpecial from '../small/VActionSpecial.vue';
 </script>
 
 <script lang="ts">
