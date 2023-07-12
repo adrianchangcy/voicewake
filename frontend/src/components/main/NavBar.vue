@@ -123,6 +123,19 @@
                 class="hidden lg:block lg:col-start-7 lg:col-span-1"
             >
                 <VActionTextOnly
+                    v-if="is_currently_log_in_sign_up_static_page"
+                    propElement="a"
+                    href="/login"
+                    propFontSize="m"
+                    class="w-full h-full"
+                >
+                    <span class="block">
+                        <i class="fas fa-circle-user sm:pr-2"></i>
+                        <span>Log in</span>
+                    </span>
+                </VActionTextOnly>
+                <VActionTextOnly
+                    v-else
                     @click.stop="emitToOpenUserLogInSignUp('log-in-section')"
                     propElement="button"
                     propFontSize="m"
@@ -142,6 +155,19 @@
                 class="hidden lg:block lg:col-start-8 col-span-1"
             >
                 <VActionSpecial
+                    v-if="is_currently_log_in_sign_up_static_page"
+                    propElement="a"
+                    href="/signup"
+                    propElementSize="s"
+                    class="w-full h-full"
+                >
+                    <span class="block text-xl font-medium">
+                        <i class="fas fa-right-to-bracket sm:pr-2"></i>
+                        <span>Sign up</span>
+                    </span>
+                </VActionSpecial>
+                <VActionSpecial
+                    v-else
                     @click.stop="emitToOpenUserLogInSignUp('sign-up-section')"
                     propElement="button"
                     type="button"
@@ -296,6 +322,7 @@
             return {
                 is_nav_main_more_open: false,
                 is_processing_log_out: false,
+                is_currently_log_in_sign_up_static_page: false,
             };
         },
         props: {
@@ -357,6 +384,24 @@
                 axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
                 return true;
             },
+            handleIsLogInSignUpStaticPage() : void {
+
+                //we want login/signup button to be URL to static page if so, not open/close
+                const current_url = window.location.href;
+
+                if(current_url.includes("login") === true || current_url.includes("signup") === true){
+
+                    this.is_currently_log_in_sign_up_static_page = true;
+
+                }else{
+
+                    this.is_currently_log_in_sign_up_static_page = false;
+                }
+            },
+        },
+        beforeMount(){
+
+            this.handleIsLogInSignUpStaticPage();
         },
         mounted(){
 

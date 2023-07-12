@@ -22,11 +22,8 @@
         <!--title-->
         <VTitleXL
             v-if="propIsForStaticPage === false"
-            class="pt-8 pb-6"
+            class="pb-6"
         >
-            <template #title>
-                <span class="block text-center">Voicewake</span>
-            </template>
             <template #titleDescription>
                 <TransitionFade>
                     <span
