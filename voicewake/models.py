@@ -257,18 +257,17 @@ class EventToneTranslations(models.Model):
 
 
 class EventTones(models.Model):
+    #must use default=None because of unique=True, otherwise default='' is preferred
     id = models.BigAutoField(primary_key=True)
-    event_tone_name = models.TextField(max_length=50, unique=True)
-    event_tone_symbol = models.TextField(max_length=50, unique=True)
+    event_tone_slug = models.TextField(max_length=50, default=None, unique=True)  #with underscore
+    event_tone_name = models.TextField(max_length=50, default=None, unique=True)  #without underscore
+    event_tone_symbol = models.TextField(max_length=50, default=None, unique=True)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         app_label = 'voicewake'
         managed = True
         db_table = 'event_tones'
-
-    def __str__(self):
-        return self.event_tone_name
 
 
 class Events(models.Model):

@@ -500,7 +500,7 @@ class HandleUserOTP(TOTPVerification):
             },
             status=status.HTTP_200_OK
         )
-    
+
 
     def send_otp_email(self, recipient_email, subject, direction, otp):
 
@@ -524,6 +524,7 @@ class HandleUserOTP(TOTPVerification):
         )
 
         return True
+
 
 
 
