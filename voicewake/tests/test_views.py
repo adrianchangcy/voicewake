@@ -285,6 +285,47 @@ class Users_TestCase(TestCase):
 
 
 
+class EventTones_TestCase(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+
+        pass
+
+
+    def test_initial_db_setup(self):
+
+        with open(os.path.join(settings.BASE_DIR, 'voicewake/static/json/data_emojis_shorter.json'), encoding="utf8") as file:
+
+            emojis = json.load(file)
+            emojis = emojis.items()
+
+            #store for bulk_create
+            new_rows = []
+
+            for row in emojis:
+
+                (key, symbol) = row
+
+                new_rows.append(
+                    EventTones(
+                        event_tone_slug=key,
+                        event_tone_name=key.replace("_"," "),
+                        event_tone_symbol=symbol
+                    )
+                )
+
+            #bulk_create
+            EventTones.objects.bulk_create(
+                new_rows
+            )
+
+
+
+
+
+
+
 
 
 

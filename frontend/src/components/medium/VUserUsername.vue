@@ -1,5 +1,5 @@
 <template>
-    <div class="pt-8 pb-4 px-2">
+    <div class="pt-8 pb-8 px-2">
         <p class="text-xl font-medium block">
             Set your username.
         </p>
@@ -74,9 +74,12 @@
         computed: {
             canSubmitNewUsername() : boolean {
 
-                return this.username_is_ok === true && this.is_loading === false;
+                return this.is_loading === false;
             },
         },
+        emits: [
+            'newUsername',
+        ],
         methods: {
             newRegExp() : RegExp {
 
@@ -160,8 +163,11 @@
                 //do nothing if there is no text
                 if(new_value.length === 0){
 
+                    this.is_loading = false;
                     return;
                 }
+
+                this.is_loading = true;
 
                 //has text
                 this.username_check_timeout = window.setTimeout(() => {
@@ -183,6 +189,7 @@
                         this.username_is_ok = false;
                         this.username_validation_has_error = true;
                         this.username_validation_status_text = "That username is not allowed.";
+                        this.is_loading = false;
 
                     }else if(/\s+/g.test(new_value) === true){
 
@@ -190,6 +197,7 @@
                         this.username_is_ok = false;
                         this.username_validation_has_error = true;
                         this.username_validation_status_text = "Please remove all spaces.";
+                        this.is_loading = false;
 
                     }else{
 
@@ -198,18 +206,26 @@
                         this.username_is_ok = false;
                         this.username_validation_has_error = true;
                         this.username_validation_status_text = this.checkRegExpForDetailedErrorMessage(new_value);
+                        this.is_loading = false;
                     }
 
                 }, 400);
             },
             async checkUsernameExists() : Promise<void> {
 
+                this.username_is_ok = false;
                 this.is_loading = true;
 
                 await axios.get(window.location.origin + "/api/users/username/get/" + this.username_string)
                 .then((response:any) => {
 
-                    if(response.data['data']['exists'] === false){
+                    if(response.data['data']['username'] !== this.username_string){
+
+                        //don't do anything with stale requests
+                        //luckily this edge case was caught
+                        return;
+
+                    }else if(response.data['data']['exists'] === false){
 
                         this.username_is_ok = true;
                         this.username_validation_has_error = false;
@@ -239,6 +255,12 @@
                 //no need to proceed if error on validating username
                 if(this.username_is_ok === false){
 
+                    if(this.username_string.length === 0){
+
+                        this.username_validation_has_error = true;
+                        this.username_validation_status_text = "Please enter a username.";
+                    }
+
                     return;
                 }
 
@@ -253,6 +275,7 @@
                     if(response.data['data']['exists'] === false){
 
                         console.log(response.data['message']);
+                        this.$emit('newUsername', response.data['data']['username']);
 
                     }else{
 

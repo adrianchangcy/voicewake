@@ -49,119 +49,34 @@ from voicewake.static.values.values import *
 #if empty db, run this once
 def first_time_setup():
 
-    from django.contrib.auth.models import Group
+    # from django.contrib.auth.models import Group
 
     if EventTones.objects.count() == 0:
 
-        EventTones.objects.bulk_create([
-            EventTones(event_tone_name='blank face', event_tone_symbol='😶'),
-            EventTones(event_tone_name='plain smile', event_tone_symbol='🙂'),
-            EventTones(event_tone_name='smile', event_tone_symbol='😄'),
-            EventTones(event_tone_name='smiley', event_tone_symbol='😃'),
-            EventTones(event_tone_name='grinning', event_tone_symbol='😀'),
-            EventTones(event_tone_name='blush', event_tone_symbol='😊'),
-            EventTones(event_tone_name='halo', event_tone_symbol='😇'),
-            EventTones(event_tone_name='wink', event_tone_symbol='😉'),
-            EventTones(event_tone_name='heart eyes', event_tone_symbol='😍'),
-            EventTones(event_tone_name='kissing heart', event_tone_symbol='😘'),
-            EventTones(event_tone_name='kissing flushed', event_tone_symbol='😚'),
-            EventTones(event_tone_name='kissing', event_tone_symbol='😗'),
-            EventTones(event_tone_name='kissing smiling eyes', event_tone_symbol='😙'),
-            EventTones(event_tone_name='stuck out tongue winking eye', event_tone_symbol='😜'),
-            EventTones(event_tone_name='stuck out tongue closed eyes', event_tone_symbol='😝'),
-            EventTones(event_tone_name='stuck out tongue', event_tone_symbol='😛'),
-            EventTones(event_tone_name='flushed', event_tone_symbol='😳'),
-            EventTones(event_tone_name='grin', event_tone_symbol='😁'),
-            EventTones(event_tone_name='pensive', event_tone_symbol='😔'),
-            EventTones(event_tone_name='relieved', event_tone_symbol='😌'),
-            EventTones(event_tone_name='unamused', event_tone_symbol='😒'),
-            EventTones(event_tone_name='disappointed', event_tone_symbol='😞'),
-            EventTones(event_tone_name='persevere', event_tone_symbol='😣'),
-            EventTones(event_tone_name='cry', event_tone_symbol='😢'),
-            EventTones(event_tone_name='joy', event_tone_symbol='😂'),
-            EventTones(event_tone_name='sob', event_tone_symbol='😭'),
-            EventTones(event_tone_name='sleepy', event_tone_symbol='😪'),
-            EventTones(event_tone_name='disappointed relieved', event_tone_symbol='😥'),
-            EventTones(event_tone_name='cold sweat', event_tone_symbol='😰'),
-            EventTones(event_tone_name='sweat smile', event_tone_symbol='😅'),
-            EventTones(event_tone_name='sweat', event_tone_symbol='😓'),
-            EventTones(event_tone_name='weary', event_tone_symbol='😩'),
-            EventTones(event_tone_name='tired face', event_tone_symbol='😫'),
-            EventTones(event_tone_name='fearful', event_tone_symbol='😨'),
-            EventTones(event_tone_name='scream', event_tone_symbol='😱'),
-            EventTones(event_tone_name='angry', event_tone_symbol='😠'),
-            EventTones(event_tone_name='rage', event_tone_symbol='😡'),
-            EventTones(event_tone_name='triumph', event_tone_symbol='😤'),
-            EventTones(event_tone_name='confounded', event_tone_symbol='😖'),
-            EventTones(event_tone_name='laughing', event_tone_symbol='😆'),
-            EventTones(event_tone_name='yum', event_tone_symbol='😋'),
-            EventTones(event_tone_name='injured', event_tone_symbol='🤕'),
-            EventTones(event_tone_name='mask', event_tone_symbol='😷'),
-            EventTones(event_tone_name='fever', event_tone_symbol='🤒'),
-            EventTones(event_tone_name='nauseating', event_tone_symbol='🤢'),
-            EventTones(event_tone_name='heated', event_tone_symbol='🥵'),
-            EventTones(event_tone_name='chilled', event_tone_symbol='🥶'),
-            EventTones(event_tone_name='sunglasses', event_tone_symbol='😎'),
-            EventTones(event_tone_name='cowboy', event_tone_symbol='🤠'),
-            EventTones(event_tone_name='money face', event_tone_symbol='🤑'),
-            EventTones(event_tone_name='party face', event_tone_symbol='🥳'),
-            EventTones(event_tone_name='sleeping', event_tone_symbol='😴'),
-            EventTones(event_tone_name='dizzy face', event_tone_symbol='😵'),
-            EventTones(event_tone_name='astonished', event_tone_symbol='😲'),
-            EventTones(event_tone_name='worried', event_tone_symbol='😟'),
-            EventTones(event_tone_name='frowning', event_tone_symbol='😦'),
-            EventTones(event_tone_name='anguished', event_tone_symbol='😧'),
-            EventTones(event_tone_name='imp', event_tone_symbol='👿'),
-            EventTones(event_tone_name='open mouth', event_tone_symbol='😮'),
-            EventTones(event_tone_name='grimacing', event_tone_symbol='😬'),
-            EventTones(event_tone_name='neutral face', event_tone_symbol='😐'),
-            EventTones(event_tone_name='confused', event_tone_symbol='😕'),
-            EventTones(event_tone_name='hushed', event_tone_symbol='😯'),
-            EventTones(event_tone_name='smirk', event_tone_symbol='😏'),
-            EventTones(event_tone_name='expressionless', event_tone_symbol='😑'),
-            EventTones(event_tone_name='baby', event_tone_symbol='👶'),
-            EventTones(event_tone_name='older man', event_tone_symbol='👴'),
-            EventTones(event_tone_name='older woman', event_tone_symbol='👵'),
-            EventTones(event_tone_name='angel', event_tone_symbol='👼'),
-            EventTones(event_tone_name='princess', event_tone_symbol='👸'),
-            EventTones(event_tone_name='see no evil', event_tone_symbol='🙈'),
-            EventTones(event_tone_name='hear no evil', event_tone_symbol='🙉'),
-            EventTones(event_tone_name='speak no evil', event_tone_symbol='🙊'),
-            EventTones(event_tone_name='clown', event_tone_symbol='🤡'),
-            EventTones(event_tone_name='moyai', event_tone_symbol='🗿'),
-            EventTones(event_tone_name='skull', event_tone_symbol='💀'),
-            EventTones(event_tone_name='alien', event_tone_symbol='👽'),
-            EventTones(event_tone_name='hankey', event_tone_symbol='💩'),
-            EventTones(event_tone_name='wave', event_tone_symbol='👋'),
-            EventTones(event_tone_name='pray', event_tone_symbol='🙏'),
-            EventTones(event_tone_name='clap', event_tone_symbol='👏'),
-            EventTones(event_tone_name='muscle', event_tone_symbol='💪'),
-            EventTones(event_tone_name='bow', event_tone_symbol='🙇'),
-            EventTones(event_tone_name='broken heart', event_tone_symbol='💔'),
-            EventTones(event_tone_name='two hearts', event_tone_symbol='💕'),
-            EventTones(event_tone_name='sparkling heart', event_tone_symbol='💖'),
-            EventTones(event_tone_name='revolving hearts', event_tone_symbol='💞'),
-            EventTones(event_tone_name='cupid', event_tone_symbol='💘'),
-            EventTones(event_tone_name='turtle', event_tone_symbol='🐢'),
-            EventTones(event_tone_name='snail', event_tone_symbol='🐌'),
-            EventTones(event_tone_name='octopus', event_tone_symbol='🐙'),
-            EventTones(event_tone_name='four leaf clover', event_tone_symbol='🍀'),
-            EventTones(event_tone_name='herb', event_tone_symbol='🌿'),
-            EventTones(event_tone_name='hourglass flowing sand', event_tone_symbol='⏳'),
-            EventTones(event_tone_name='hourglass', event_tone_symbol='⌛'),
-            EventTones(event_tone_name='game die', event_tone_symbol='🎲'),
-            EventTones(event_tone_name='checkered flag', event_tone_symbol='🏁'),
-            EventTones(event_tone_name='trophy', event_tone_symbol='🏆'),
-            EventTones(event_tone_name='roller coaster', event_tone_symbol='🎢'),
-            EventTones(event_tone_name='rocket', event_tone_symbol='🚀'),
-            EventTones(event_tone_name='keep it 100', event_tone_symbol='💯'),
-        ])
+        with open(os.path.join(settings.BASE_DIR, 'voicewake/static/json/data_emojis_shorter.json'), encoding="utf8") as file:
 
-    if Group.objects.count() == 0:
+            emojis = json.load(file)
+            emojis = emojis.items()
 
-        Group.objects.create(
-            name='regular'
-        )
+            #store for bulk_create
+            new_rows = []
+
+            for row in emojis:
+
+                (key, symbol) = row
+
+                new_rows.append(
+                    EventTones(
+                        event_tone_slug=key,
+                        event_tone_name=key.replace("_"," "),
+                        event_tone_symbol=symbol
+                    )
+                )
+
+            #bulk_create
+            EventTones.objects.bulk_create(
+                new_rows
+            )
 
     if GenericStatuses.objects.count() == 0:
 
@@ -180,11 +95,10 @@ def first_time_setup():
         ])
 
 
+
 #===direct web pages===
 # @login_required(login_url='/login')
 def home(request):
-
-
 
     return render(request, template_name='voicewake/home.html')
 
@@ -385,6 +299,9 @@ class UsersLogInAPI(generics.GenericAPIView):
 
             #we do this to obscure clues that a user may or may not exist
             if new_data['is_requesting_new_otp'] is True:
+
+                #no need to notify non-registered emails on login attempts
+                #prevents the attack where our website is used as the source of DDOS (towards Gmail in this case)
 
                 return HandleUserOTP.get_default_create_otp_response(email=new_data['email'])
             
