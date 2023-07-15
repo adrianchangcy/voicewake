@@ -1,10 +1,11 @@
 <template>
     <div
         v-show="is_open"
-        class="p-3 w-full h-fit"
+        class="p-2 w-full h-fit"
     >
         <div class="h-40 p-1 box-content overflow-x-hidden overflow-y-scroll text-2xl">
-            <div class="items-center place-items-center grid grid-flow-row grid-cols-4">
+            <!--relative fixes the problem where the child buttons overall overflow beyond <html>, causing whitespace-->
+            <div class="items-center place-items-center grid grid-flow-row grid-cols-4 relative">
                 <div
                     class="col-span-1"
                     v-for="event_tone in event_tones" :key="event_tone.id"

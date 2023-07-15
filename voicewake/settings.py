@@ -254,6 +254,11 @@ DEBUG_TOOLBAR_CONFIG = {
 }
 
 
+#EVENT
+EVENT_CHOICE_EXPIRY_SECONDS = 1200      #20 mins, when locked but is_replying=False
+EVENT_REPLY_EXPIRY_SECONDS = 3600       #60 mins, when locked and is_replying=True
+
+
 #EMAIL
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 MAILER_EMAIL_BACKEND = EMAIL_BACKEND
@@ -272,6 +277,7 @@ TOTP_KEY_BYTE_SIZE = 20         #to pass into secrets.token_bytes(int) for creat
 TOTP_NUMBER_OF_DIGITS = 6       #digits in OTP
 TOTP_VALIDITY_SECONDS = 300     #seconds until expiry, a.k.a. steps
 TOTP_TOLERANCE_SECONDS = 120    #allow early/late by x seconds until truly not allowed
+
 
 #UserOTP-related arguments
 OTP_CREATE_TIMEOUT_SECONDS = 30    #for creating new OTP

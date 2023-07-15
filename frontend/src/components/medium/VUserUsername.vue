@@ -1,7 +1,7 @@
 <template>
     <div class="pt-8 pb-8 px-2">
         <p class="text-xl font-medium block">
-            Set your username.
+            What's your username?
         </p>
 
         <VInput
@@ -21,11 +21,11 @@
         />
 
         <div class="mt-6 pl-2">
-            <p class="text-base">You can use full stops ('.') and underscores ('_') to separate your letters and numbers.</p>
+            <p class="text-base">You can use full stops ('.') and underscores ('_') among letters and numbers.</p>
         </div>
 
         <!--main action-->
-        <div class="mt-8 h-fit">
+        <div class="mt-6 h-fit">
             <VActionSpecial
                 @click.stop="submitUsernameChange()"
                 :propIsEnabled="canSubmitNewUsername"
@@ -35,7 +35,7 @@
                 propFontSize="m"
                 class="w-full"
             >
-                <span class="mx-auto">Confirm username</span>
+                <span class="mx-auto">Set username</span>
             </VActionSpecial>
         </div>
     </div>

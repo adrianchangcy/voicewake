@@ -11,6 +11,7 @@ interface EventTypes{
     event_tone: {
         id: number,
         event_tone_name: string,
+        event_tone_slug: string,
         event_tone_symbol: string
     },
     event_room: {

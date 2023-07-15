@@ -78,48 +78,48 @@ export function prettyTimeRemaining(current_ms:number, max_ms:number) : string|f
 
     interval = Math.floor(seconds);
     if(interval < 60 && interval > 1){
-        return interval + ' seconds left';
+        return interval + ' seconds';
     }else if(interval === 1){
-        return interval + ' second left';
+        return interval + ' second';
     }else if(interval <= 0){
         return false;
     }
 
     interval = Math.floor(seconds / 60);
     if(interval === 1){
-        return interval.toString() + ' minute left';
+        return interval.toString() + ' minute';
     }else if(interval < 60){
-        return interval.toString() + ' minutes left';
+        return interval.toString() + ' minutes';
     }
 
     interval = Math.floor(seconds / 3600);
     if(interval === 1){
-        return interval.toString() + ' hour left';
+        return interval.toString() + ' hour';
     }else if(interval < 24){
-        return interval.toString() + ' hours left';
+        return interval.toString() + ' hours';
     }
 
     interval = Math.floor(seconds / 86400);
     if(interval === 1){
-        return interval.toString() + ' day left';
-    }else if(interval < 28){    //fastest transition to '1 month left', for aesthetic reasons only
-        return interval.toString() + ' days left';
+        return interval.toString() + ' day';
+    }else if(interval < 28){    //fastest transition to '1 month', for aesthetic reasons only
+        return interval.toString() + ' days';
     }
 
     interval = Math.floor(seconds / 2592000);
     if(interval === 1){
-        return interval.toString() + ' month left';
+        return interval.toString() + ' month';
     }else if(interval < 12){
-        return interval.toString() + ' months left';
+        return interval.toString() + ' months';
     }
 
 
     interval = Math.floor(seconds / 31536000);
     if(interval === 1){
-        return interval.toString() + ' year left';
+        return interval.toString() + ' year';
     }
 
-    return interval.toString() + ' years left';
+    return interval.toString() + ' years';
 }
 
 export function timeFromNowMS(date:Date) : number {

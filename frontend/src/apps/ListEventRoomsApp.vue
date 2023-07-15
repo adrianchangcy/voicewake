@@ -1,152 +1,189 @@
 <template>
     <div>
 
-        <!--big title-->
-        <VTitleXL class="py-10">
-            <template #title>
-                <div class="flex flex-col">
-                    <i class="fas fa-comments block text-2xl w-full text-center"></i>
-                    <span class="block w-full text-center">Reply</span>
-                </div>
-            </template>
-        </VTitleXL>
-
         <div class="relative">
             <TransitionGroupFade>
 
-                <!--search and any dialog-->
+                <!--search and any dialog, or searching skeleton-->
                 <div
-                    v-show="canSearch"
+                    v-show="(canSearch || is_searching || hasUnfinishedReply) && !canChooseReplyChoices"
                     ref="search_button_container"
                     class="w-full h-fit"
                 >
-                    <!--search-->
-                    <VActionSpecial
-                        @click.stop="getEventRooms()"
-                        :propIsEnabled="canSearch"
-                        propElement="button"
-                        type="button"
-                        propElementSize="xl"
-                        propFontSize="xl"
-                        :propIsRound="true"
-                        class="w-40 block mx-auto"
+
+                    <!--title-->
+                    <!--must be here instead of in parent to prevent jolt-->
+                    <VTitle
+                        propFontSize="l"
+                        class="py-8"
                     >
-                        <span class="block mx-auto">
-                            Search
-                        </span>
-                    </VActionSpecial>
+                        <template #title>
+                            <div class="flex flex-col">
+                                <i class="fas fa-comments block text-2xl w-full text-center"></i>
+                                <span class="block w-full text-center">Reply</span>
+                            </div>
+                        </template>
+                    </VTitle>
 
-                    <!--dialog-->
-                    <!--we must pre-write them because the variables are reset before transition, causing warp-->
-                    <div class="mt-10 relative">
-                        <TransitionGroupFade>
+                    <TransitionGroupFade>
 
-                            <!--no new events-->
-                            <VDialogPlain
-                                v-show="current_simple_dialog === simple_dialogs[0]"
-                                class="w-full"
+                        <!--can search-->
+                        <div
+                            v-show="canSearch"
+                            class="w-full h-fit"
+                        >
+                            <!--search-->
+                            <VActionSpecial
+                                @click.stop="getEventRooms()"
+                                :propIsEnabled="canSearch"
+                                propElement="button"
+                                type="button"
+                                propElementSize="2xl"
+                                propFontSize="2xl"
+                                :propIsRound="true"
+                                class="w-40 block mx-auto"
                             >
-                                <template #logo>
-                                    <i class="far fa-face-meh-blank block"></i>
-                                </template>
+                                <span class="block mx-auto">
+                                    Search
+                                </span>
+                            </VActionSpecial>
+
+                            <!--dialog-->
+                            <!--we must pre-write them because the variables are reset before transition, causing warp-->
+                            <div class="mt-10 relative">
+                                <TransitionGroupFade>
+
+                                    <!--no new events-->
+                                    <span
+                                        v-show="current_simple_dialog === simple_dialogs[0]"
+                                        class="w-full h-fit flex flex-col text-xl font-medium text-center text-theme-black"
+                                    >
+                                        <i class="far fa-face-meh-blank block w-full"></i>
+                                        <span class="block w-full">No new events found.</span>
+                                    </span>
+
+                                    <!--reply choice expired-->
+                                    <span
+                                        v-show="current_simple_dialog === simple_dialogs[1]"
+                                        class="w-full h-fit flex flex-col text-xl font-medium text-center text-theme-black"
+                                    >
+                                        <i class="fas fa-hourglass-end block w-full"></i>
+                                        <span class="block w-full">The event choice has expired.</span>
+                                    </span>
+                                </TransitionGroupFade>
+                            </div>
+                        </div>
+
+                        <!--searching-->
+                        <div
+                            v-show="is_searching"
+                            class="w-full h-fit"
+                        >
+                            <!--skeleton-->
+                            <EventRoomCardSkeleton
+                                :prop-event-quantity="1"
+                                :prop-can-reply="true"
+                            />
+                        </div>
+
+                        <!--is_replying dialog-->
+                        <div
+                            v-show="hasUnfinishedReply"
+                            class="w-full h-fit"
+                        >
+
+                            <!--dialog to complete or delete unfinished reply before continuing-->
+                            <VDialogPlain
+                                class="w-full h-fit"
+                            >
                                 <template #title>
-                                    <span class="block">No new events found</span>
+                                    <span class="block">1 unfinished reply found:</span>
                                 </template>
                                 <template #content>
-                                    <span>Try again in a moment!</span>
+                                    <span class="block text-center">
+                                        You can search for new event choices after 
+                                        completing or deleting your unfinished reply.
+                                    </span>
+                                    <div
+                                        class="grid grid-rows-1 grid-cols-2 mt-4 gap-2"
+                                    >
+                                        <VActionSpecial
+                                            propElement="a"
+                                            :href="redirect_url"
+                                            propElementSize="s"
+                                            propFontSize="s"
+                                            class="col-span-1"
+                                        >
+                                            <span class="block mx-auto">Open</span>
+                                        </VActionSpecial>
+                                        <VAction
+                                            @click.stop="deletePreviousReply()"
+                                            :propIsEnabled="!is_loading"
+                                            propElement="button"
+                                            type="button"
+                                            propElementSize="s"
+                                            propFontSize="s"
+                                            class="col-span-1"
+                                        >
+                                            <span class="block mx-auto">Delete</span>
+                                        </VAction>
+                                    </div>
                                 </template>
                             </VDialogPlain>
-
-                            <!--reply choice expired-->
-                            <VDialogPlain
-                                v-show="current_simple_dialog === simple_dialogs[1]"
-                                class="w-full"
-                            >
-                                <template #logo>
-                                    <i class="fas fa-hourglass-end block"></i>
-                                </template>
-                                <template #title>
-                                    <span class="block">Reply choice expired</span>
-                                </template>
-                                <template #content>
-                                    <span>You ran out of time. Feel free to search again!</span>
-                                </template>
-                            </VDialogPlain>
-                        </TransitionGroupFade>
-                    </div>
+                        </div>
+                    </TransitionGroupFade>
                 </div>
-
-                <!--is_replying dialog-->
-                <VDialogPlain
-                    v-show="hasUnfinishedReply"
+    
+                <!--can show reply choices-->
+                <div
+                    v-show="canChooseReplyChoices"
                     class="w-full h-fit"
                 >
-                    <template #logo>
-                        <i class="fas fa-file-audio block"></i>
-                    </template>
-                    <template #title>
-                        <span class="block">Unfinished reply found</span>
-                    </template>
-                    <template #content>
-                        <span class="block text-left">Please complete or delete it before searching for new reply choices.</span>
-                        <span v-show="!is_loading" class="block text-left pt-2">{{ stillReplyingExpiryString }}</span>
-                        <div
-                            class="grid grid-rows-1 grid-cols-4 mt-2 gap-2"
-                        >
+
+                    <i class="fas fa-comments block text-2xl text-theme-black w-full text-center pt-8 pb-4"></i>
+
+                    <!--event_room preview-->
+                    <!--must use v-if since EventRoomCard cannot exist with null-->
+                    <TransitionFade>
+                        <EventRoomCard
+                            v-if="canChooseReplyChoices"
+                            :propEventRoom="getMainEventRoom"
+                            :propShowTitle="true"
+                        />
+                    </TransitionFade>
+
+                    <div class="w-full h-fit sticky mt-8 grid grid-cols-2 gap-4 items-center">
+
+                        <!--reply-->
+                        <div class="col-span-1 justify-self-end">
                             <VActionSpecial
-                                propElement="a"
-                                :href="redirect_url"
-                                propElementSize="s"
-                                propFontSize="s"
-                            >
-                                <span class="block mx-auto">Open</span>
-                            </VActionSpecial>
-                            <VAction
-                                @click.stop="deletePreviousReply()"
+                                @click.stop="confirmReplyChoice(getMainEventRoom)"
                                 :propIsEnabled="!is_loading"
                                 propElement="button"
                                 type="button"
-                                propElementSize="s"
-                                propFontSize="s"
+                                propElementSize="xl"
+                                propFontSize="xl"
+                                :propIsRound="true"
+                                class="w-32"
                             >
-                                <span class="block mx-auto">Delete</span>
-                            </VAction>
+                                <span>Reply</span>
+                            </VActionSpecial>
                         </div>
-                    </template>
-                </VDialogPlain>
 
-                <!--searching-->
-                <EventRoomCardSkeleton
-                    v-show="is_searching"
-                    :prop-event-quantity="1"
-                    :prop-can-reply="true"
-                    class="w-full h-fit"
-                />
-
-                <!--can show reply choices-->
-                <div v-show="canChooseReplyChoices">
-                    <div class="flex flex-col">
-                        <div v-for="event_room in event_rooms" :key="event_room.event_room.id">
-                            <div class="flex flex-col">
-                                <EventRoomCard
-                                    :propEventRoom="event_room"
-                                    :propShowTitle="true"
-                                />
-                                <VActionSpecial
-                                    @click.stop="confirmReplyChoice(event_room)"
-                                    :propIsEnabled="!is_loading"
-                                    propElement="button"
-                                    type="button"
-                                    propElementSize="l"
-                                    propFontSize="l"
-                                    class="mt-8"
-                                >
-                                    <span class="block mx-auto">Reply</span>
-                                </VActionSpecial>
-                                <span v-show="!is_loading" class="w-full h-fit py-2 text-base text-center text-theme-black">
-                                    {{ replyChoiceExpiryString }}
-                                </span>
-                            </div>
+                        <!--skip-->
+                        <div class="col-span-1">
+                            <VAction
+                                @click.stop="getEventRooms()"
+                                :propIsEnabled="canSearch"
+                                propElement="button"
+                                type="button"
+                                propElementSize="xl"
+                                propFontSize="xl"
+                                :propIsRound="true"
+                                class="w-32"
+                            >
+                                <span>Skip</span>
+                            </VAction>
                         </div>
                     </div>
                 </div>
@@ -157,13 +194,14 @@
 
 
 <script setup lang="ts">
-    import VTitleXL from '/src/components/small/VTitleXL.vue';
+    import VTitle from '/src/components/small/VTitle.vue';
     import EventRoomCard from '/src/components/main/EventRoomCard.vue';
     import EventRoomCardSkeleton from '@/components/skeleton/EventRoomCardSkeleton.vue';
-    import VDialogPlain from '@/components/small/VDialogPlain.vue';
     import VActionSpecial from '@/components/small/VActionSpecial.vue';
     import VAction from '@/components/small/VAction.vue';
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
+    import TransitionFade from '@/transitions/TransitionFade.vue';
+    import VDialogPlain from '/src/components/small/VDialogPlain.vue';
 </script>
 
 <script lang="ts">
@@ -184,8 +222,8 @@
 
                 expiry_interval: null as number | null,
                 expiry_string: "",
-                choice_expiry_max_ms: 10 * 60 * 1000,
-                still_replying_expiry_max_ms: 30 * 60 * 1000,
+                choice_expiry_max_ms: 0,   //will be replaced with SSR data on beforeMount()
+                still_replying_expiry_max_ms: 0,   //will be replaced with SSR data on beforeMount()
                 shorten_interval_ceiling_ms: 80000,
                 slowest_interval_ms: 10000,
                 fastest_interval_ms: 1000,
@@ -198,6 +236,20 @@
             };
         },
         computed: {
+            getMainEventRoom() : EventRoomTypes|null {
+
+                //only useful for current 1-event-room-per-instance
+                //use v-for when > 1 in the future
+
+                if(this.event_rooms.length === 0){
+
+                    return null;
+
+                }else{
+
+                    return this.event_rooms[0];
+                }
+            },
             stillReplyingExpiryString() : string {
 
                 if(this.expiry_string === ""){
@@ -205,7 +257,7 @@
                     return "";
                 }
 
-                return this.expiry_string + " to decide:";
+                return this.expiry_string + " to decide";
             },
             replyChoiceExpiryString() : string {
 
@@ -244,7 +296,6 @@
                     return;
                 }
 
-                this.handleStartLoadingAnime();
                 this.is_loading = true;
 
                 let data = new FormData();
@@ -257,16 +308,15 @@
                     this.expiry_string = "";
                     this.current_simple_dialog = this.simple_dialogs[1];
                     this.event_rooms = [];
-                    this.handleEndLoadingAnime();
                     this.is_loading = false;
                 })
                 .catch((error: any) => {
 
-                    this.handleEndLoadingAnime();
                     this.is_loading = false;
                     console.log(error.response.data["message"]);
                 });
             },
+            //you can call this for new reply choices, the API will remove previous reply choices for us
             async getEventRooms(): Promise<void> {
 
                 if(!this.canSearch){
@@ -279,7 +329,6 @@
                 this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                 this.expiry_string = "";
 
-                this.handleStartLoadingAnime();
                 this.is_searching = true;
 
                 await axios.get(window.location.origin + "/api/events/get/event-room/status/incomplete")
@@ -287,27 +336,28 @@
 
                     if(results.data["data"].length === 0){
 
+                        //no events
                         this.current_simple_dialog = this.simple_dialogs[0];
 
                     }else if(results.data["data"].length > 0 && results.data["data"][0]["event_room"]["is_replying"] === true){
 
+                        //user has unfinished reply
                         this.still_replying_event_room = results.data["data"][0];
                         this.redirect_url = "hear/" + this.still_replying_event_room!.event_room.id.toString();
                         this.startExpiryInterval();
 
                     }else{
 
+                        //user has new reply choices
                         this.event_rooms = results.data["data"];
                         this.startExpiryInterval();
                     }
 
                     this.is_searching = false;
-                    this.handleEndLoadingAnime();
                 })
                 .catch((error: any) => {
                     console.log(error.response.data["message"]);
                     this.is_searching = false;
-                    this.handleEndLoadingAnime();
                 });
             },
             async deletePreviousReply(): Promise<void> {
@@ -316,7 +366,6 @@
                     return;
                 }
 
-                this.handleStartLoadingAnime();
                 this.is_loading = true;
                 this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                 this.expiry_string = "";
@@ -331,7 +380,6 @@
 
                     this.still_replying_event_room = null;
 
-                    this.handleEndLoadingAnime();
                     this.is_loading = false;
 
                     window.setTimeout(() => {
@@ -340,12 +388,11 @@
                 })
                 .catch((error: any) => {
 
-                    this.handleEndLoadingAnime();
                     this.is_loading = false;
                     console.log(error.response.data["message"]);
                 });
             },
-            async confirmReplyChoice(event_room: EventRoomTypes): Promise<void> {
+            async confirmReplyChoice(event_room: EventRoomTypes|null): Promise<void> {
 
                 if (event_room === null || this.is_searching === true || this.is_loading === true) {
 
@@ -454,14 +501,6 @@
                 //start interval
                 this.expiry_interval = window.setInterval(interval_function, interval_ms);
             },
-            handleStartLoadingAnime() : void {
-
-                return;
-            },
-            handleEndLoadingAnime() : void {
-
-                return;
-            },
             axiosSetup(): boolean {
                 //your template must have {% csrf_token %}
                 let token = document.getElementsByName("csrfmiddlewaretoken")[0];
@@ -474,8 +513,26 @@
                 return true;
             },
         },
-        mounted() {
+        beforeMount(){
+
             this.axiosSetup();
+
+            const container = (document.getElementById('data-container-list-event-rooms') as HTMLElement);
+
+            //get essential data first, where we don't proceed if they don't exist
+            const event_choice_expiry_seconds = (container.getAttribute('data-event-choice-expiry-seconds') as string);
+            const event_reply_expiry_seconds = (container.getAttribute('data-event-reply-expiry-seconds') as string);
+
+            if(event_choice_expiry_seconds === null || event_reply_expiry_seconds === null){
+
+                //don't proceed because we lack essential data
+                console.log('Essential data was not passed into template.');
+                return;
+            }
+
+            //get data from SSR template
+            this.choice_expiry_max_ms = parseInt(event_choice_expiry_seconds) * 1000;
+            this.still_replying_expiry_max_ms = parseInt(event_reply_expiry_seconds) * 1000;
         },
     });
 </script>

@@ -23,30 +23,34 @@
                 <div
                     v-if="is_this_user_replying"
                     id="is-replying-area"
-                    class="flex flex-col gap-2 pt-6"
+                    class="flex flex-col gap-2 pt-10"
                 >
                     <VUser
                         :propUsername="(getDataFromTemplate('data-username') as string)"
                     />
-                    <div class="border border-theme-light-gray rounded-lg px-2 py-6">
+
+                    <div class="border border-theme-light-gray rounded-lg px-4 py-6 relative">
+
                         <div class="grid grid-cols-4 gap-2 pb-6">
 
-                            <VTitleSection class="col-span-3">
+                            <VTitle
+                                propFontSize="m"
+                                class="col-span-3"
+                            >
                                 <template #title>
-                                    <span>Replying</span>
+                                    <div class="h-10 flex items-center">
+                                        <span>Creating reply...</span>
+                                    </div>
                                 </template>
-                                <template #titleDescription>
-                                    <span>{{ reply_expiry_string }}</span>
-                                </template>
-                            </VTitleSection>
+                            </VTitle>
 
                             <div class="col-span-1">
                                 <VActionButtonDangerS
                                     class="w-full"
-                                    @click.stop="stopReplying()"
-                                    :prop-is-enabled="!is_loading"
+                                    @click.stop="stopReplying('cancelled')"
+                                    :propIsEnabled="!is_loading && !is_submitting"
                                 >
-                                    <span class="mx-auto">Cancel</span>
+                                    <span class="mx-auto">Delete</span>
                                 </VActionButtonDangerS>
                             </div>
                         </div>
@@ -54,9 +58,29 @@
                         <CreateEvents
                             :propIsOriginator="false"
                             :propEventRoomId="event_room.event_room.id"
+                            :propCanSubmit="!is_loading"
+                            @isSubmitting="handleIsSubmitting($event)"
                         />
                     </div>
                 </div>
+
+                <!--just cancelled while replying-->
+                <span
+                    v-else-if="reply_is_cancelled"
+                    class="w-full h-fit mt-10 flex flex-col text-xl font-medium text-center text-theme-black"
+                >
+                    <i class="fas fa-eraser block w-full"></i>
+                    <span class="block w-full">Your reply has been deleted.</span>
+                </span>
+
+                <!--just expired while replying-->
+                <span
+                    v-else-if="reply_is_expired"
+                    class="w-full h-fit mt-10 flex flex-col text-xl font-medium text-center text-theme-black"
+                >
+                    <i class="fas fa-hourglass-end block w-full"></i>
+                    <span class="block w-full">Your reply has expired.</span>
+                </span>
             </TransitionFadeSlow>
 
             <div v-if="selected_event !== null">
@@ -81,7 +105,7 @@
     import EventRoomCard from '@/components/main/EventRoomCard.vue';
     import VActionButtonDangerS from '@/components/small/VActionButtonDangerS.vue';
     import CreateEvents from '@/components/main/CreateEvents.vue';
-    import VTitleSection from '@/components/small/VTitleSection.vue';
+    import VTitle from '@/components/small/VTitle.vue';
     import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
     import VPlayback from '@/components/medium/VPlayback.vue';
     import VUser from '@/components/small/VUser.vue';
@@ -105,6 +129,10 @@
                 is_this_user_replying: false,
                 is_loading: false,
                 is_deleted: false,
+                is_submitting: false,
+
+                reply_is_cancelled: false,    //set True once, only to show message
+                reply_is_expired: false,  //set True once, only to show message
 
                 event_room: null as EventRoomTypes|null,
                 is_searching: false,
@@ -114,14 +142,27 @@
                 reply_expiry_interval: null as number|null,
                 reply_expiry_string: '',
 
-                reply_expiry_max_ms: 30 * 60 * 1000,  //30 minutes
-                shorten_interval_ceiling_ms: 80000, //add double slowest_interval_ms to transition from minute to seconds smoothly
+                choice_expiry_max_ms: 0,   //will be replaced with SSR data on beforeMount()
+                reply_expiry_max_ms: 0, //will be replaced with SSR data on beforeMount()
+                minimum_ms_to_speed_up_interval: 80000, //transitions from minute to seconds smoothly
                 slowest_interval_ms: 10000,
                 fastest_interval_ms: 1000,
             };
         },
+        watch: {
+
+            is_this_user_replying(new_value){
+
+                //reset just in case
+                if(new_value === true){
+
+                    this.reply_is_cancelled = false;
+                    this.reply_is_expired = false;
+                }
+            },
+        },
         methods: {
-            async stopReplying() : Promise<void> {
+            async stopReplying(context:"cancelled"|"expired") : Promise<void> {
 
                 if(this.is_loading === true){
 
@@ -130,6 +171,7 @@
 
                 this.is_loading = true;
 
+                //do API request
                 let data = new FormData();
                 data.append('event_room_id', JSON.stringify(this.event_room_id));
                 data.append('to_reply', JSON.stringify(false));
@@ -140,6 +182,15 @@
                     this.is_this_user_replying = false;
                     this.is_loading = false;
                     this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
+
+                    if(context === "cancelled"){
+
+                        this.reply_is_cancelled = true;
+
+                    }else if(context === "expired"){
+
+                        this.reply_is_expired = true;
+                    }
 
                 })
                 .catch((error:any) => {
@@ -185,6 +236,10 @@
                     this.is_searching = false;
                 });
             },
+            handleIsSubmitting(new_value:boolean) : void {
+
+                this.is_submitting = new_value;
+            },
             scrollToReplyArea() : void {
 
                 const target = document.getElementById('is-replying-area');
@@ -225,7 +280,7 @@
                 //time is up
                 if(time_elapsed_ms >= this.reply_expiry_max_ms){
 
-                    this.stopReplying();
+                    this.stopReplying("expired");
                     return;
                 }
 
@@ -233,7 +288,7 @@
 
                 //run every 1s if <120s remaining, else run every 60s
                 //change this again once sped up
-                let interval_ms:number = this.reply_expiry_max_ms - time_elapsed_ms <= this.shorten_interval_ceiling_ms ? this.fastest_interval_ms : this.slowest_interval_ms;
+                let interval_ms:number = this.reply_expiry_max_ms - time_elapsed_ms <= this.minimum_ms_to_speed_up_interval ? this.fastest_interval_ms : this.slowest_interval_ms;
 
                 //set possible first time expiry string
                 const time_remaining = prettyTimeRemaining(time_elapsed_ms, this.reply_expiry_max_ms);
@@ -248,11 +303,11 @@
                     //time is up
                     if(time_elapsed_ms >= this.reply_expiry_max_ms){
                         
-                        this.stopReplying();
+                        this.stopReplying("expired");
                     }
 
                     //if interval started with >1000, be prepared for reinitialisation for new interval with shorter time
-                    if(interval_ms === this.slowest_interval_ms && this.reply_expiry_max_ms - time_elapsed_ms <= this.shorten_interval_ceiling_ms){
+                    if(interval_ms === this.slowest_interval_ms && this.reply_expiry_max_ms - time_elapsed_ms <= this.minimum_ms_to_speed_up_interval){
 
                         clearInterval(this.reply_expiry_interval!);
 
@@ -291,9 +346,22 @@
             //prepare axios
             this.axiosSetup();
 
-            const container = (document.getElementById('get-event-room') as HTMLElement);
+            const container = (document.getElementById('data-container-get-event-rooms') as HTMLElement);
+
+            //get essential data first, where we don't proceed if they don't exist
+            const event_choice_expiry_seconds = (container.getAttribute('data-event-choice-expiry-seconds') as string);
+            const event_reply_expiry_seconds = (container.getAttribute('data-event-reply-expiry-seconds') as string);
+
+            if(event_choice_expiry_seconds === null || event_reply_expiry_seconds === null){
+
+                //don't proceed because we lack essential data
+                console.log('Essential data was not passed into template.');
+                return;
+            }
 
             //get data from SSR template
+            this.choice_expiry_max_ms = parseInt(event_choice_expiry_seconds) * 1000;
+            this.reply_expiry_max_ms = parseInt(event_reply_expiry_seconds) * 1000;
             this.event_room_id = parseInt(container.getAttribute('data-event-room-id') as string);
             this.is_this_user_replying = JSON.parse(container.getAttribute('data-is-this-user-replying') as string);
             this.is_deleted = JSON.parse(container.getAttribute('data-is-deleted') as string);

@@ -2,11 +2,13 @@
     <component
         :is="propElement"
         :class="[
+            propFontSize === '2xl' ? 'text-2xl font-medium' : '',
             propFontSize === 'xl' ? 'text-2xl font-medium' : '',
-            propFontSize === 'l' ? 'text-xl font-medium' : '',
-            propFontSize === 'm' ? 'text-xl font-medium' : '',
+            propFontSize === 'l' ? 'text-2xl font-medium' : '',
+            propFontSize === 'm' ? 'text-2xl font-medium' : '',
             propFontSize === 's' ? 'text-base font-medium' : '',
-            propElementSize === 'xl' ? 'h-40 shadow-lg hover:shadow-md' : '',
+            propElementSize === '2xl' ? 'h-40 shadow-lg hover:shadow-md' : '',
+            propElementSize === 'xl' ? 'h-32 shadow-lg hover:shadow-md' : '',
             propElementSize === 'l' ? 'h-24 shadow-lg hover:shadow-md' : '',
             propElementSize === 'm' ? 'h-20 shadow-lg hover:shadow-md' : '',
             propElementSize === 's' ? 'h-10 shadow-md hover:shadow-sm' : '',

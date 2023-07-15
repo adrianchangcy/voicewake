@@ -1,6 +1,6 @@
 <template>
     <div>
-        <div class="flex flex-col items-center text-center text-2xl px-2 pb-2 text-theme-black">
+        <div class="flex flex-col items-center text-center text-xl px-2 pb-2 text-theme-black">
             <slot name="logo"></slot>
         </div>
         <div class="w-fit h-fit mx-auto flex flex-col text-theme-black rounded-lg border border-theme-light-gray divide-y divide-theme-light-gray">
@@ -9,7 +9,7 @@
                     <slot name="title"></slot>
                 </div>
             </div>
-            <div class="text-base px-2 py-4 text-center">
+            <div class="text-base p-4 text-center">
                 <slot name="content"></slot>
             </div>
         </div>

@@ -6,14 +6,17 @@
             v-if="propShowTitle === true"
             class="h-fit pb-6"
         >
-            <VTitleM class="w-full">
+            <VTitle
+                propFontSize="s"
+                class="w-full"
+            >
                 <template #title>
                     <span>{{ propEventRoom.event_room.event_room_name }}</span>
                 </template>
                 <template #titleDescription>
                     <span>{{ pretty_when_created }}</span>
                 </template>
-            </VTitleM>
+            </VTitle>
         </div>
 
         <!--more than 1 event total-->
@@ -125,7 +128,7 @@
 </template>
 
 <script setup lang="ts">
-    import VTitleM from '../small/VTitleM.vue';
+    import VTitle from '../small/VTitle.vue';
     import VPlayback from '/src/components/medium/VPlayback.vue';
     import VEventCard from '/src/components/small/VEventCard.vue';
     import VLikeDislike from '/src/components/medium/VLikeDislike.vue';
