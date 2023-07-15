@@ -1,7 +1,8 @@
 <template>
     <div
-        :class="is_testing ? 'w-full h-screen items-center flex gap-10' : 'w-0 h-0'"
+        :class="is_testing ? 'w-full h-screen items-center flex flex-col mt-10' : 'hidden'"
     >
+
     </div>
 </template>
 

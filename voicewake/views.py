@@ -95,7 +95,6 @@ def first_time_setup():
         ])
 
 
-
 #===direct web pages===
 # @login_required(login_url='/login')
 def home(request):
@@ -118,7 +117,7 @@ def sign_up(request):
 class UsersUsernameAPI(generics.GenericAPIView):
 
     serializer_class = UsersUsernameAPISerializer
-    permission_classes = []
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     #checks if username exists
     def get(self, request, *args, **kwargs):
@@ -158,16 +157,6 @@ class UsersUsernameAPI(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
 
         User = get_user_model()
-
-        #user must be logged in
-        if request.user.is_authenticated is False:
-
-            return Response(
-                {
-                    'message': 'Request not allowed.',
-                },
-                status.HTTP_403_FORBIDDEN
-            )
 
         user_instance = User.objects.get(pk=request.user.id)
 
@@ -906,10 +895,14 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
         return sorted_events
 
+    #get event_room.id to simply view
+    #or get by generic_status_name='incomplete' to lock events as reply choices
+        #will give currently replying event_room, or unlock reply choices and lock new ones
     def get(self, request, *args, **kwargs):
 
         if 'event_room_id' in kwargs:
 
+            #user simply wants to check the post for an event_room
             return Response(
                 data={
                     'message': '',
@@ -922,7 +915,8 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         
         elif 'generic_status_name' in kwargs and kwargs['generic_status_name'] == 'incomplete':
 
-            if is_user_logged_in(request) is False:
+            #user wants reply choices, but is not logged in
+            if self.request.user.is_authenticated is False:
 
                 return Response(
                     data={
@@ -990,6 +984,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+    #handle user replies
     def post(self, request, *args, **kwargs):
 
         User = get_user_model()
@@ -1019,7 +1014,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
             return Response(
                 data={
-                    'message': 'Unexpected error. Your selected emoji was not found. Try a different one.',
+                    'message': 'Your selected emoji was not found. Try a different one.',
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
@@ -1146,7 +1141,8 @@ class UserActionsAPI(generics.GenericAPIView):
     serializer_class = UserActionsSerializer
     permission_classes = [IsAuthenticated]
 
-    #currently does not allow renewing of when_locked
+    #if user is already locked for event_room, do is_replying=True and update when_locked
+    #for actual replying to start
     #202 success, 205 reset due to user inactivity
     def start_replying_to_event_room(self, event_room_id):
 
@@ -1182,7 +1178,10 @@ class UserActionsAPI(generics.GenericAPIView):
         
         user = User(self.request.user.id)
         
-        #check if user can reply
+        #check if event_room is already locked for user beforehand
+        #check if event_room is not yet expired as a choice
+        #check if event_room is locked for the correct user
+        #if you want to do "extend when_locked", handle event_room.is_replying=True
         if\
             event_room.generic_status.generic_status_name == 'incomplete' and\
             event_room.when_locked is not None and\
@@ -1235,6 +1234,8 @@ class UserActionsAPI(generics.GenericAPIView):
             status=status.HTTP_202_ACCEPTED
         )
 
+
+    #if user has already selected a reply choice and is now replying, allow to cancel
     #204 nothing to cancel, 205 success
     def cancel_replying_to_event_room(self, event_room_id):
 
@@ -1259,11 +1260,11 @@ class UserActionsAPI(generics.GenericAPIView):
             )
         
         #check if user is already replying
-        #we don't check for time limit, as cancellation may occur beyond it
-        #we don't check for is_replying, as is_replying=False (reply choice) must be cancellable too
+        #we don't check for time limit, as cancellation can occur beyond it
         if\
             event_room.generic_status.generic_status_name == 'incomplete' and\
             event_room.when_locked is not None and\
+            event_room.is_replying is True and\
             event_room.locked_for_user is not None and event_room.locked_for_user.id == self.request.user.id\
         :
         
@@ -1297,8 +1298,10 @@ class UserActionsAPI(generics.GenericAPIView):
             status=status.HTTP_205_RESET_CONTENT
         )
 
+
+    #remove all reply choices
     #204 nothing to cancel, 205 success
-    def cancel_reply_choices(self):
+    def remove_reply_choices(self):
 
         User = get_user_model()
         user = User(pk=self.request.user.id)
@@ -1308,7 +1311,6 @@ class UserActionsAPI(generics.GenericAPIView):
         ).filter(
             generic_status__generic_status_name='incomplete',
             locked_for_user=user,
-            when_locked__lte=datetime.now(timezone.utc) - relativedelta(minutes=REPLY_CHOICE_INACTIVE_MAX_MINUTES),
             is_replying=False
         )
 
@@ -1371,7 +1373,7 @@ class UserActionsAPI(generics.GenericAPIView):
 
             if new_data['to_reply'] is False:
 
-                return self.cancel_reply_choices()
+                return self.remove_reply_choices()
             
             else:
 
@@ -1397,14 +1399,16 @@ class UserActionsAPI(generics.GenericAPIView):
 class EventLikesDislikesAPI(generics.GenericAPIView):
 
     serializer_class = EventLikesDislikesSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticated]
+
+    #no get() needed, since likes/dislikes are tied directly to events
 
     #create
     def post(self, request, *args, **kwargs):
 
         User = get_user_model()
 
-        if is_user_logged_in(request) is False:
+        if self.request.user.is_authenticated is False:
 
             return Response(
                 data={
@@ -1544,7 +1548,6 @@ class CronjobAPI(generics.GenericAPIView):
 class CreateEventRooms(TemplateView):
 
     template_name = 'voicewake/event_rooms/create_event_rooms.html'
-    success_url = '/'
 
 
 
@@ -1552,7 +1555,6 @@ class CreateEventRooms(TemplateView):
 class GetEventRooms(TemplateView):
 
     template_name = 'voicewake/event_rooms/get_event_rooms.html'
-    success_url = '/'
 
     def get(self, request, *args, **kwargs):
 
@@ -1577,9 +1579,10 @@ class GetEventRooms(TemplateView):
         ).count()
 
         #check if this user is already supposed to reply
-        is_this_user_replying = is_user_logged_in(request) and\
+        is_this_user_replying = self.request.user.is_authenticated and\
             event_room.locked_for_user is not None and\
-            request.user.id == event_room.locked_for_user.id
+            request.user.id == event_room.locked_for_user.id and\
+            event_room.is_replying is True
         
         #is event_room deleted
         is_deleted = event_room.generic_status.generic_status_name == 'deleted'
@@ -1588,6 +1591,8 @@ class GetEventRooms(TemplateView):
             request,
             template_name=self.template_name,
             context={
+            'event_choice_expiry_seconds' : settings.EVENT_CHOICE_EXPIRY_SECONDS,
+            'event_reply_expiry_seconds' : settings.EVENT_REPLY_EXPIRY_SECONDS,
             'event_room': event_room,
             'is_deleted': is_deleted,
             'is_deleted_json': json.dumps(is_deleted),
@@ -1602,7 +1607,17 @@ class GetEventRooms(TemplateView):
 class ListEventRooms(TemplateView):
 
     template_name = 'voicewake/event_rooms/list_event_rooms.html'
-    queryset = None
+
+    def get(self, request, *args, **kwargs):
+
+        return render(
+            request,
+            template_name=self.template_name,
+            context={
+            'event_choice_expiry_seconds' : settings.EVENT_CHOICE_EXPIRY_SECONDS,
+            'event_reply_expiry_seconds' : settings.EVENT_REPLY_EXPIRY_SECONDS,
+            }
+        )
 
 
 

@@ -1,3 +1,3 @@
-type ButtonSizes = "s" | "m" | "l" | "xl";
+type ButtonSizes = "s" | "m" | "l" | "xl" | "2xl";
 
 export default ButtonSizes;

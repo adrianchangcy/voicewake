@@ -13,7 +13,7 @@
                 class="absolute flex w-full h-[calc(100vh-4.5rem)] mx-auto bg-theme-light/60 backdrop-blur"
             >
                 <div
-                    class="w-[90%] sm:w-2/4 lg:w-2/6 xl:w-2/6 max-h-[95%] min-h-fit m-auto px-4 border border-theme-light-gray bg-theme-light shadow-xl rounded-lg overflow-y-auto"
+                    class="w-[90%] sm:w-2/4 lg:w-2/6 xl:w-2/6 max-h-[90%] min-h-fit m-auto px-4 border border-theme-light-gray bg-theme-light shadow-xl rounded-lg overflow-y-auto"
                 >
                     <VUserUsername
                         @newUsername="handleNewUsername($event)"

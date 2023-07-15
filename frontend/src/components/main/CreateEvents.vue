@@ -85,7 +85,7 @@
     </div>
 
     <!--submit-->
-    <div class="mt-8">
+    <div class="mt-8 flex flex-col gap-2">
         <VActionSpecial
             @click.stop="submitForm()"
             :propIsEnabled="canSubmit"
@@ -96,8 +96,8 @@
             class="w-full"
         >
             <div class="mx-auto">
-                <span v-if="propIsOriginator === true">Start</span>
-                <span v-else>Reply</span>
+                <span v-if="propIsOriginator === true">Start event</span>
+                <span v-else>Send reply</span>
             </div>
         </VActionSpecial>
     </div>
@@ -150,8 +150,17 @@
                 required: false,
                 default: null
             },
+            propCanSubmit: {    //used to disallow submit, e.g. when parent is deleting and loading
+                type: Boolean,
+                default: true
+            },
         },
+        emits: ['isSubmitting'],
         watch: {
+            is_submitting(new_value){
+
+                this.$emit('isSubmitting', new_value);
+            },
             is_event_tone_menu_open(new_value){
 
                 if(new_value === true && this.is_recorder_menu_open === true){
@@ -175,6 +184,7 @@
             canSubmit() : boolean {
 
                 if(
+                    this.propCanSubmit === true &&
                     this.is_submitting === false &&
                     (
                         (this.propIsOriginator === true && this.event_name.trim() !== '') ||
@@ -189,6 +199,7 @@
                     return true;
                 }
 
+                //don't do show_has_empty_field_error here because it should only show on submit attempt
                 return false;
             },
         },

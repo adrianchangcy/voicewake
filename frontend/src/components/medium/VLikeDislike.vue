@@ -1,11 +1,11 @@
 <template>
     <div class="h-10 text-xl text-theme-black">
-        <div class="w-full h-full grid grid-cols-2 gap-0.5">
+        <div class="w-full h-full grid grid-cols-2">
             <!--like-->
             <button
                 ref="like_button"
                 @click.stop="handleLiked()"
-                class="col-span-1 h-full px-5 flex flex-row bg-theme-light/60    hover:bg-theme-light/80 hover:border-theme-light-trim/40 hover:shadow-sm       border-t-2 border-theme-light-trim rounded-full rounded-r-none shadow-md transition duration-150 ease-in-out"
+                class="col-span-1 h-full px-5 flex flex-row     shade-text-when-hover transition-colors      bg-theme-light       border border-theme-light-gray rounded-full rounded-r-none"
                 type="button"
             >
                 <!--like button-->
@@ -33,7 +33,7 @@
             <button
                 ref="dislike_button"
                 @click.stop="handleDisliked()"
-                class="col-span-1 h-full px-4 flex flex-row bg-theme-light/60    hover:bg-theme-light/80 hover:border-theme-light-trim/40 hover:shadow-sm       border-t-2 border-theme-light-trim rounded-full rounded-l-none shadow-md transition duration-150 ease-in-out"
+                class="col-span-1 h-full px-4 flex flex-row     shade-text-when-hover transition-colors      bg-theme-light       border border-l-0 border-theme-light-gray rounded-full rounded-l-none"
                 type="button"
             >
                 <!--dislike button-->

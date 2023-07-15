@@ -562,7 +562,7 @@
                     this.resetWhenRecorderStop();
                 });
             },
-            async emitNewRecording() : Promise<void> {
+            emitNewRecording() : void {
 
                 //to use getBlob(), you must run it within the context of a callback
                 //the callback will be passed into either onRecordingStopped() or stopRecording()
@@ -574,11 +574,11 @@
                     //     type: 'audio/webm'
                     // });
 
-                    const new_blob = await this.recorder.getBlob();
+                    const new_blob = this.recorder.getBlob();
 
                     this.$emit('newRecording', {
                         'blob' : new_blob,
-                        'blob_duration' : this.current_duration
+                        'blob_duration' : this.current_duration,
                     });
 
                 }catch(error:any|unknown){

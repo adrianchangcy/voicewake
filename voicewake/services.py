@@ -174,15 +174,11 @@ def construct_timed_out_message(seconds:float, text_before_timeout='', text_afte
         return ''
 
 
-#you do not need this if you have appropriate permission_classes=[]
-def is_user_logged_in(request):
-
-    return request.user.is_authenticated
-
 def is_user_banned(request):
 
     #??
     return False
+
 
 def check_user_is_replying(request, exclude_event_room_id=None):
 
@@ -206,6 +202,7 @@ def check_user_is_replying(request, exclude_event_room_id=None):
         ).count()
 
     return the_count > 0
+
 
 def prevent_event_room_from_queuing_twice_for_reply(user, event_room):
 

@@ -1,19 +1,22 @@
 <template>
-    <VTitleXL class="py-10">
+    <VTitle
+        propFontSize="l"
+        class="py-8"
+    >
         <template #title>
             <div class="flex flex-col">
                 <i class="fas fa-comment block text-2xl w-full text-center"></i>
-                <span class="block w-full text-center">Start Event</span>
+                <span class="block w-full text-center">Start</span>
             </div>
         </template>
-    </VTitleXL>
+    </VTitle>
     <CreateEvents
         :propIsOriginator="true"
     />
 </template>
 
 <script setup lang="ts">
-    import VTitleXL from '@/components/small/VTitleXL.vue';
+    import VTitle from '@/components/small/VTitle.vue';
 </script>
 
 <script lang="ts">

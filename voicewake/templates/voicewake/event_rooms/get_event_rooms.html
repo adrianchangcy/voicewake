@@ -16,23 +16,24 @@
         data-when-created="{{event_room.when_created|date:"Y-m-d H:i:s"}}"
         data-event-count="{{event_count}}"
         data-is-this-user-replying="{{is_this_user_replying}}"
-        class="text-theme-black"
-        id="get-event-room"
+        data-event-choice-expiry-seconds="{{event_choice_expiry_seconds}}"
+        data-event-reply-expiry-seconds="{{event_reply_expiry_seconds}}"
+        id="data-container-get-event-rooms"
     >
 
         <!--same as VTitleL-->
-        <div class="h-fit py-8 text-theme-black">
+        <div class="h-fit py-6 text-theme-black">
             {% if is_deleted %}
-                <p class="text-2xl font-light italic">
-                    This post has been deleted
+                <p class="text-lg italic">
+                    This post has been deleted.
                 </p>
             {% else %}
                 <!--title-->
-                <p class="text-2xl font-light break-words">
+                <p class="text-lg break-words">
                     {{event_room.event_room_name}}
                 </p>
                 <!--last updated-->
-                <p class="when-created      text-base font-light">
+                <p class="when-created      text-base">
                     {{when_created|date:"j M Y"}}
                 </p>
             {% endif %}

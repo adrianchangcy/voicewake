@@ -20,8 +20,9 @@
         </div>
 
         <!--title-->
-        <VTitleXL
+        <VTitle
             v-if="propIsForStaticPage === false"
+            propFontSize="l"
             class="pb-6"
         >
             <template #titleDescription>
@@ -40,7 +41,7 @@
                     </span>
                 </TransitionFade>
             </template>
-        </VTitleXL>
+        </VTitle>
 
         <!--adjust height until it covers nicely the largest step-->
         <!--so that when transitioning from largest to smaller, largest's content doesn't get cut off (it will if h-fit)-->
@@ -527,7 +528,7 @@
 
 <script setup lang="ts">
     import VInput from '@/components/small/VInput.vue';
-    import VTitleXL from '@/components/small/VTitleXL.vue';
+    import VTitle from '@/components/small/VTitle.vue';
     import VNumberSlots from '@/components/small/VNumberSlots.vue';
     import VActionTextOnly from '@/components/small/VActionTextOnly.vue';
     import TransitionGroupSlide from '@/transitions/TransitionGroupSlide.vue';
