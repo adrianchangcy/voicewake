@@ -67,7 +67,7 @@ def first_time_setup():
 
                 new_rows.append(
                     EventTones(
-                        event_tone_slug=key,
+                        event_tone_slug=key.replace("_", "-"),
                         event_tone_name=key.replace("_"," "),
                         event_tone_symbol=symbol
                     )
