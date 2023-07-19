@@ -89,7 +89,21 @@
 
             for(let x = 0; x < this.propEvent.audio_volume_peaks.length; x++){
 
-                (this.$refs.volume_ripple as HTMLElement[])[x].style.transform = 'scaleY('+this.propEvent.audio_volume_peaks[x]+')';
+                const target_ripple = (this.$refs.volume_ripple as HTMLElement[])[x];
+
+                //UPDATE: non-zero feels more functional for end user
+                if(this.propEvent.audio_volume_peaks[x] < 0.05){
+
+                    target_ripple.style.transform = 'scaleY('+ 0.05 +')';
+
+                }else if(this.propEvent.audio_volume_peaks[x] > 1){
+
+                    target_ripple.style.transform = 'scaleY('+ 1 +')';                    
+
+                }else{
+
+                    target_ripple.style.transform = 'scaleY('+ this.propEvent.audio_volume_peaks[x] +')';                    
+                }
             }
         },
         props: {

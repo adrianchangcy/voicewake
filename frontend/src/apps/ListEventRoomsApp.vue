@@ -56,19 +56,21 @@
                                     <!--no new events-->
                                     <span
                                         v-show="current_simple_dialog === simple_dialogs[0]"
-                                        class="w-full h-fit flex flex-col text-xl font-medium text-center text-theme-black"
+                                        class="w-full h-fit flex flex-col text-center text-theme-black"
                                     >
-                                        <i class="far fa-face-meh-blank block w-full"></i>
-                                        <span class="block w-full">No new events found.</span>
+                                        <i class="far fa-face-meh-blank block w-full text-xl"></i>
+                                        <span class="block w-full text-xl font-medium">No new events found.</span>
+                                        <span class="block w-full text-base">Search again in a moment!</span>
                                     </span>
 
                                     <!--reply choice expired-->
                                     <span
                                         v-show="current_simple_dialog === simple_dialogs[1]"
-                                        class="w-full h-fit flex flex-col text-xl font-medium text-center text-theme-black"
+                                        class="w-full h-fit flex flex-col text-center text-theme-black"
                                     >
-                                        <i class="fas fa-hourglass-end block w-full"></i>
-                                        <span class="block w-full">The event choice has expired.</span>
+                                        <i class="fas fa-hourglass-end block w-full text-xl"></i>
+                                        <span class="block w-full text-xl font-medium">Event choice has expired.</span>
+                                        <span class="block w-full text-base">Search again for more!</span>
                                     </span>
                                 </TransitionGroupFade>
                             </div>
@@ -140,7 +142,7 @@
                     class="w-full h-fit"
                 >
 
-                    <i class="fas fa-comments block text-2xl text-theme-black w-full text-center pt-8 pb-4"></i>
+                    <i class="fas fa-comments block text-2xl text-theme-black w-full text-center py-8"></i>
 
                     <!--event_room preview-->
                     <!--must use v-if since EventRoomCard cannot exist with null-->
@@ -161,10 +163,10 @@
                                 :propIsEnabled="!is_loading"
                                 propElement="button"
                                 type="button"
-                                propElementSize="xl"
-                                propFontSize="xl"
+                                propElementSize="l"
+                                propFontSize="l"
                                 :propIsRound="true"
-                                class="w-32"
+                                class="w-24"
                             >
                                 <span>Reply</span>
                             </VActionSpecial>
@@ -177,10 +179,10 @@
                                 :propIsEnabled="canSearch"
                                 propElement="button"
                                 type="button"
-                                propElementSize="xl"
-                                propFontSize="xl"
+                                propElementSize="l"
+                                propFontSize="l"
                                 :propIsRound="true"
-                                class="w-32"
+                                class="w-24"
                             >
                                 <span>Skip</span>
                             </VAction>
@@ -208,6 +210,7 @@
     import { defineComponent } from 'vue';
     import { timeFromNowMS, prettyTimeRemaining } from '@/helper_functions';
     import anime from 'animejs';
+    import { notify } from 'notiwind';
     import EventRoomTypes from '@/types/EventRooms.interface';
     const axios = require('axios');
 
@@ -310,10 +313,15 @@
                     this.event_rooms = [];
                     this.is_loading = false;
                 })
-                .catch((error: any) => {
+                .catch(() => {
 
+                    //whether expiring fails or not,
+                    //it is better to reset as usual to prevent any further confusing actions
+                    this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
+                    this.expiry_string = "";
+                    this.current_simple_dialog = this.simple_dialogs[1];
+                    this.event_rooms = [];
                     this.is_loading = false;
-                    console.log(error.response.data["message"]);
                 });
             },
             //you can call this for new reply choices, the API will remove previous reply choices for us
@@ -356,8 +364,13 @@
                     this.is_searching = false;
                 })
                 .catch((error: any) => {
-                    console.log(error.response.data["message"]);
+
                     this.is_searching = false;
+                    notify({
+                        title: "Event search failed",
+                        text: error.response.data['message'],
+                        type: "error"
+                    }, 3000);
                 });
             },
             async deletePreviousReply(): Promise<void> {
@@ -378,9 +391,8 @@
                 await axios.post(window.location.origin + "/api/user-actions", data)
                 .then(() => {
 
-                    this.still_replying_event_room = null;
-
                     this.is_loading = false;
+                    this.still_replying_event_room = null;
 
                     window.setTimeout(() => {
                         this.getEventRooms();
@@ -389,7 +401,11 @@
                 .catch((error: any) => {
 
                     this.is_loading = false;
-                    console.log(error.response.data["message"]);
+                    notify({
+                        title: "Deleting reply failed",
+                        text: error.response.data['message'],
+                        type: "error"
+                    }, 3000);
                 });
             },
             async confirmReplyChoice(event_room: EventRoomTypes|null): Promise<void> {
@@ -417,15 +433,26 @@
                     }else{
 
                         console.log(results);
+                        notify({
+                            title: "Reply confirmation failed",
+                            text: results.data['message'],
+                            type: "error"
+                        }, 3000);
                     }
 
                     //don't do is_loading=true here
                 })
                 .catch((error: any) => {
 
-                    console.log(error.response.data["message"]);
+                    //restart expiry interval
                     this.is_loading = false;
                     this.startExpiryInterval();
+
+                    notify({
+                        title: "Reply confirmation failed",
+                        text: error.response.data['message'],
+                        type: "error"
+                    }, 3000);
                 });
             },
             startExpiryInterval(): void {

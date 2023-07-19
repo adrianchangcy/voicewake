@@ -47,7 +47,7 @@
                             <div class="col-span-1">
                                 <VActionButtonDangerS
                                     class="w-full"
-                                    @click.stop="stopReplying('cancelled')"
+                                    @click.stop="stopReplying('deleted')"
                                     :propIsEnabled="!is_loading && !is_submitting"
                                 >
                                     <span class="mx-auto">Delete</span>
@@ -64,13 +64,25 @@
                     </div>
                 </div>
 
-                <!--just cancelled while replying-->
+                <!--just deleted while replying-->
                 <span
-                    v-else-if="reply_is_cancelled"
+                    v-else-if="reply_is_deleted"
                     class="w-full h-fit mt-10 flex flex-col text-xl font-medium text-center text-theme-black"
                 >
                     <i class="fas fa-eraser block w-full"></i>
                     <span class="block w-full">Your reply has been deleted.</span>
+                    <VActionTextOnly
+                        propElement="a"
+                        href="/hear"
+                        propElementSize="s"
+                        propFontSize="s"
+                        class="w-fit mx-auto"
+                    >
+                        <span class="flex flex-row">
+                            <span class="font-bold block">Search for more event choices</span>
+                            <i class="fas fa-arrow-right block text-2xl pl-2"></i>
+                        </span>
+                    </VActionTextOnly>
                 </span>
 
                 <!--just expired while replying-->
@@ -80,6 +92,18 @@
                 >
                     <i class="fas fa-hourglass-end block w-full"></i>
                     <span class="block w-full">Your reply has expired.</span>
+                    <VActionTextOnly
+                        propElement="a"
+                        href="/hear"
+                        propElementSize="s"
+                        propFontSize="s"
+                        class="w-fit mx-auto"
+                    >
+                        <span class="flex flex-row">
+                            <span class="font-bold block">Search for more event choices</span>
+                            <i class="fas fa-arrow-right block text-2xl pl-2"></i>
+                        </span>
+                    </VActionTextOnly>
                 </span>
             </TransitionFadeSlow>
 
@@ -91,7 +115,6 @@
                         :propAudioURL="selected_event.audio_file"
                         :propBucketQuantity="selected_event.audio_volume_peaks.length"
                         :propEventTone="selected_event.event_tone"
-                        :propHasHighlight="true"
                         :propAutoPlayOnSourceChange="true"
                     />
                 </Teleport>
@@ -104,6 +127,7 @@
 <script setup lang="ts">
     import EventRoomCard from '@/components/main/EventRoomCard.vue';
     import VActionButtonDangerS from '@/components/small/VActionButtonDangerS.vue';
+    import VActionTextOnly from '@/components/small/VActionTextOnly.vue';
     import CreateEvents from '@/components/main/CreateEvents.vue';
     import VTitle from '@/components/small/VTitle.vue';
     import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
@@ -118,6 +142,7 @@
     import { prettyTimePassed, prettyTimeRemaining, getDataFromTemplate, timeFromNowMS } from '@/helper_functions';
     import EventRoomTypes from '@/types/EventRooms.interface';
     import EventTypes from '@/types/Events.interface';
+    import { notify } from 'notiwind';
     const axios = require('axios');
 
     export default defineComponent({
@@ -131,7 +156,7 @@
                 is_deleted: false,
                 is_submitting: false,
 
-                reply_is_cancelled: false,    //set True once, only to show message
+                reply_is_deleted: false,    //set True once, only to show message
                 reply_is_expired: false,  //set True once, only to show message
 
                 event_room: null as EventRoomTypes|null,
@@ -156,13 +181,13 @@
                 //reset just in case
                 if(new_value === true){
 
-                    this.reply_is_cancelled = false;
+                    this.reply_is_deleted = false;
                     this.reply_is_expired = false;
                 }
             },
         },
         methods: {
-            async stopReplying(context:"cancelled"|"expired") : Promise<void> {
+            async stopReplying(context:"deleted"|"expired") : Promise<void> {
 
                 if(this.is_loading === true){
 
@@ -183,9 +208,9 @@
                     this.is_loading = false;
                     this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
 
-                    if(context === "cancelled"){
+                    if(context === "deleted"){
 
-                        this.reply_is_cancelled = true;
+                        this.reply_is_deleted = true;
 
                     }else if(context === "expired"){
 
@@ -196,7 +221,11 @@
                 .catch((error:any) => {
 
                     this.is_loading = false;
-                    console.log(error.response.data['message']);
+                    notify({
+                        title: "Deleting reply failed",
+                        text: error.response.data['message'],
+                        type: "error"
+                    }, 3000);
                 });
             },
             async getEventRoom() : Promise<void> {
@@ -232,7 +261,11 @@
                 })
                 .catch((error:any) => {
 
-                    console.log(error.response.data['message']);
+                    notify({
+                        title: "Event search failed",
+                        text: error.response.data['message'],
+                        type: "error"
+                    }, 3000);
                     this.is_searching = false;
                 });
             },

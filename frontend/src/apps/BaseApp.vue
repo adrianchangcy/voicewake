@@ -2,6 +2,7 @@
     <NavBar
         :propIsLoggedIn="is_logged_in"
         :propUsername="username"
+        @emitIsNavBarOpen="handleIsNavBarOpen($event)"
         @emitToOpenUserLogInSignUp="handleOpenUserLogInSignUp($event)"
     />
 
@@ -37,11 +38,24 @@
         </TransitionFade>
     </div>
 
+    
+    
+    <!--toasts-->
+    <TransitionFade>
+        <div
+            v-show="!is_nav_bar_open"
+            class="w-0 h-0"
+        >
+            <VNotiwind/>
+        </div>
+    </TransitionFade>
+
     <TestingStuff/>
 </template>
 
 
 <script setup lang="ts">
+    import VNotiwind from '@/components/medium/VNotiwind.vue';
     import TestingStuff from '@/components/main/TestingStuff.vue';
     import NavBar from '@/components/main/NavBar.vue';
     import UserLogInSignUp from '@/components/main/UserLogInSignUp.vue';
@@ -57,6 +71,7 @@
         name: 'BaseApp',
         data(){
             return {
+                is_nav_bar_open: false,
                 is_logged_in: false,
                 username: "",
                 must_set_username: false,
@@ -66,6 +81,10 @@
             };
         },
         methods: {
+            handleIsNavBarOpen(new_value:boolean) : void {
+
+                this.is_nav_bar_open = new_value;
+            },
             handleOpenUserLogInSignUp(section:string) : void {
 
                 this.requested_section = section;

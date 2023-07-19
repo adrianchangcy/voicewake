@@ -16,7 +16,7 @@
                 propFontSize === 'xl' ? 'text-4xl' : '',
                 propFontSize === 'l' ? 'text-xl font-medium' : '',
                 propFontSize === 'm' ? 'text-base' : '',
-                propFontSize === 's' ? 'text-base' : '',
+                propFontSize === 's' ? 'text-base font-light' : '',
                 'h-fit break-words'
             ]"
         >

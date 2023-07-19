@@ -11,7 +11,19 @@
         :disabled="!propIsEnabled"
     >
         <!--current font sinks too low, hence pb-->
-        <div class="w-full h-full pb-0.5 grid items-center">
+        <div
+            v-if="propIsIconOnly"
+            class="w-full h-full grid items-center"
+        >
+            <slot></slot>
+        </div>
+        <div
+            v-else
+            :class="[
+                propElementSize === 's' ? 'pb-0.5' : 'pb-1',
+                'w-full h-full grid items-center'
+            ]"
+        >
             <slot></slot>
         </div>
     </component>
@@ -43,6 +55,10 @@
             propIsEnabled: {
                 type: Boolean,
                 default: true
+            },
+            propIsIconOnly: {   //if only fa icon, being absolute lets it not move lower like text would
+                type: Boolean,
+                default: false
             },
         }
     });

@@ -148,7 +148,6 @@ textarea {
     overflow: hidden;
     opacity: 1;
     background-color: #e7e5e4;
-    border-radius: 0.5rem;  /*rounded-lg*/
 }
 @keyframes shimmer {
     100% {
@@ -194,7 +193,7 @@ textarea {
         text-decoration-thickness: 4px;
     }
     .shade-background-when-hover:hover{
-        background-color: rgba(168, 162, 158, 1);
+        background-color: #d6d3d1;
     }
     .shade-border-when-hover:hover{
         border-color: rgba(168, 162, 158, 1);
