@@ -71,6 +71,7 @@
     import { defineComponent } from 'vue';
     import anime from 'animejs';
     import { prettyCount } from '@/helper_functions';
+    import { notify } from 'notiwind';
     const axios = require('axios');
 
     export default defineComponent({
@@ -176,7 +177,7 @@
 
                     axios.post('http://127.0.0.1:8000/api/event-likes-dislikes', data)
                     .then(() => {})
-                    .catch(() => {
+                    .catch((error:any) => {
 
                         //revert
                         //we want to do this with logic instead of simply using previous value
@@ -184,10 +185,20 @@
                         if(this.is_liked === true){
 
                             this.handleLiked();
+                            notify({
+                                title: "Like failed",
+                                text: error.response.data['message'],
+                                type: "error"
+                            }, 3000);
 
                         }else if(this.is_liked === false){
 
                             this.handleDisliked();
+                            notify({
+                                title: "Dislike failed",
+                                text: error.response.data['message'],
+                                type: "error"
+                            }, 3000);
                         }
                     });
                 }, 500);

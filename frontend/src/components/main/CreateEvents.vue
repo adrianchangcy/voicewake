@@ -118,6 +118,7 @@
 <script lang="ts">
     import { defineComponent } from 'vue';
     import EventToneTypes from '@/types/EventTones.interface';
+    import { notify } from 'notiwind';
     const axios = require('axios');
 
     export default defineComponent({
@@ -255,8 +256,12 @@
                 })
                 .catch((error:any) => {
 
-                    console.log(error.response.data['message']);
                     this.is_submitting = false;
+                    notify({
+                        title: this.propIsOriginator === true ? 'Creating event failed' : 'Creating reply failed',
+                        text: error.response.data['message'],
+                        type: "error"
+                    }, 3000);
                 });
             },
             handleNewRecording(new_value:{'blob':Blob, 'blob_duration':number, 'blob_volume_peaks':number[]}) : void {

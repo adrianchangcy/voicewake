@@ -812,7 +812,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
         return True
 
-    def check_user_created_up_to_daily_limit(self, user):
+    def check_user_create_event_room_daily_limit(self, user):
 
         #this is for "X max new posts every __", which in this case is every 24h
         checkpoint_datetime = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
@@ -829,14 +829,14 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
         return True
     
-    def check_user_replied_up_to_daily_limit(self, user):
+    def check_user_create_reply_event_daily_limit(self, user):
 
         #this is for "X max new posts every __", which in this case is every 24h
         checkpoint_datetime = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
         checkpoint_datetime = datetime.strptime(checkpoint_datetime, '%Y-%m-%d %H:%M:%S %z')
 
         the_count = Events.objects.filter(
-            created_by=user,
+            user=user,
             when_created__gte=checkpoint_datetime
         ).count()
 
@@ -1024,7 +1024,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         if new_data['is_originator'] is True:
 
             #check if created event_room limit is not yet reached
-            if self.check_user_created_up_to_daily_limit(user) is True:
+            if self.check_user_create_event_room_daily_limit(user) is True:
 
                 return Response(
                     data={
@@ -1045,7 +1045,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         else:
 
             #check if reply event limit is not yet reached
-            if self.check_user_replied_up_to_daily_limit(user) is True:
+            if self.check_user_create_reply_event_daily_limit(user) is True:
 
                 return Response(
                     data={

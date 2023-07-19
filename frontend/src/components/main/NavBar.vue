@@ -2,7 +2,7 @@
     <div class="h-full text-theme-black text-center">
 
         <!--main nav-->
-        <nav class="h-full grid grid-cols-4 sm:grid-cols-8 p-2 gap-x-2 backdrop-blur bg-theme-light/60 border-b border-theme-light-gray">
+        <nav class="h-full grid grid-cols-4 sm:grid-cols-8 p-2 gap-x-2 backdrop-blur bg-theme-light/60 border-b border-theme-light-gray/50">
 
             <!--home-->
             <div class="col-start-1 col-span-1">
@@ -10,6 +10,7 @@
                     propElement="a"
                     propFontSize="m"
                     href="/"
+                    :propIsIconOnly="true"
                     class="w-full h-full"
                 >
                     <i class="fas fa-wave-square mx-auto"></i>
@@ -23,9 +24,10 @@
                     propElement="a"
                     propFontSize="m"
                     href="/say"
+                    :propIsIconOnly="true"
                     class="w-full h-full"
                 >
-                    <span class="block">
+                    <span class="block sm:pb-1">
                         <i class="fas fa-comment sm:pr-2"></i>
                         <span class="hidden sm:inline">Start</span>
                     </span>
@@ -39,9 +41,10 @@
                     propElement="a"
                     propFontSize="m"
                     href="/hear"
+                    :propIsIconOnly="true"
                     class="w-full h-full"
                 >
-                    <span class="block">
+                    <span class="block sm:pb-1">
                         <i class="fas fa-comments sm:pr-2"></i>
                         <span class="hidden sm:inline">Reply</span>
                     </span>
@@ -58,6 +61,7 @@
                     @click.stop="toggleNavMainMore()"
                     propElement="button"
                     type="button"
+                    :propIsIconOnly="true"
                     class="w-full h-full"
                 >
                     <!--burger-->
@@ -100,6 +104,7 @@
                     @click.stop="toggleNavMainMore()"
                     propElement="button"
                     type="button"
+                    :propIsIconOnly="true"
                     class="w-full h-full"
                 >
                     <span class="mx-auto">
@@ -334,6 +339,15 @@
                 type: String,
                 default: ""
             },
+        },
+        emits: [
+            'emitToOpenUserLogInSignUp', 'emitIsNavBarOpen'
+        ],
+        watch: {
+            is_nav_main_more_open(new_value:boolean){
+
+                this.$emit('emitIsNavBarOpen', new_value);
+            }
         },
         methods: {
             emitToOpenUserLogInSignUp(section:"log-in-section"|"sign-up-section") : void {

@@ -3,8 +3,8 @@
         <span class="sr-only">loading events</span>
         <!--title and datetime-->
         <div class="flex flex-col gap-1 pb-6">
-            <div class="w-[75%] h-6 skeleton"></div>
-            <div class="w-[25%] h-4 skeleton"></div>
+            <div class="w-[75%] h-6 rounded-lg skeleton"></div>
+            <div class="w-[25%] h-4 rounded-lg skeleton"></div>
         </div>
         <div class="flex flex-col gap-6">
             <!--events-->

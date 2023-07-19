@@ -25,7 +25,7 @@
             propFontSize="l"
             class="pb-6"
         >
-            <template #titleDescription>
+            <template #title>
                 <TransitionFade>
                     <span
                         v-if="current_section === 'log-in-section'"
@@ -540,6 +540,7 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
+    import { notify } from 'notiwind';
     const axios = require('axios');
 
     interface StepsType {
@@ -727,8 +728,12 @@
                 .catch((error: any) => {
 
                     //400 when invalid
-                    console.log(error.response.data['message']);
                     this.is_main_action_loading = false;
+                    notify({
+                        title: procedure_url === "log-in" ? 'Login failed' : 'Sign-up failed',
+                        text: error.response.data['message'],
+                        type: "error"
+                    }, 3000);
                 });
             },
             async submitEmailAndRequestOTP(procedure_url:"log-in"|"sign-up", is_resubmit=false) : Promise<void> {
@@ -796,6 +801,11 @@
                     
                     this.otp_request_status_text = "Oops! Could not send code.";
                     this.is_loading = false;
+                    notify({
+                        title: "OTP request failed",
+                        text: error.response.data['message'],
+                        type: "error"
+                    }, 3000);
                 });
             },
             validateOTP(new_value:string) : void {

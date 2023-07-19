@@ -49,6 +49,7 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
+    import { notify } from 'notiwind';
     const bad_usernames = require( '../../../../voicewake/static/json/bad_usernames.en.json')['usernames'];
     const axios = require('axios');
 
@@ -245,9 +246,13 @@
                     this.username_is_ok = false;
                     this.username_validation_has_error = true;
                     this.username_validation_status_text = "An error had occurred. Try again later.";
-                    console.log(error);
 
                     this.is_loading = false;
+                    notify({
+                        title: "Username check failed",
+                        text: error.response.data['message'],
+                        type: "error"
+                    }, 3000);
                 });
             },
             async submitUsernameChange() : Promise<void> {
@@ -274,7 +279,6 @@
 
                     if(response.data['data']['exists'] === false){
 
-                        console.log(response.data['message']);
                         this.$emit('newUsername', response.data['data']['username']);
 
                     }else{
@@ -283,16 +287,18 @@
                         this.username_is_ok = false;
                         this.username_validation_has_error = true;
                         this.username_validation_status_text = response.data['message'];
-                        console.log(response.data['message']);
                     }
 
                     this.is_loading = false;
                 })
                 .catch((error: any) => {
 
-                    console.log(error.response.data['message']);
-
                     this.is_loading = false;
+                    notify({
+                        title: "Setting username failed",
+                        text: error.response.data['message'],
+                        type: "error"
+                    }, 3000);
                 });
             },
             axiosSetup() : boolean {
