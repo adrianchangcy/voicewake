@@ -94,6 +94,7 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
+    import fixWebmDuration from 'fix-webm-duration';
     // import anime from 'animejs';
     const recordRTC = require('/node_modules/recordrtc/RecordRTC.min.js');
 
@@ -574,11 +575,19 @@
                     //     type: 'audio/webm'
                     // });
 
+                    //ensures these data are available before async runs
                     const new_blob = this.recorder.getBlob();
+                    const new_duration = this.current_duration;
 
-                    this.$emit('newRecording', {
-                        'blob' : new_blob,
-                        'blob_duration' : this.current_duration,
+                    //always async, as per docs
+                    //will log "duration section is missing" if so
+                    fixWebmDuration(new_blob, new_duration, (fixed_blob) => {
+                        this.$emit('newRecording', {
+                            'blob' : fixed_blob,
+                            'blob_duration' : new_duration,
+                        });
+                    }, {
+                        logger: false
                     });
 
                 }catch(error:any|unknown){

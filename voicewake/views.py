@@ -213,7 +213,7 @@ class UsersUsernameAPI(generics.GenericAPIView):
                     'username': new_data['username'],
                     'exists': False
                 },
-                'message': 'Your username is now %s.' % (new_data['username'])
+                'message': 'Your username is now %s!' % (new_data['username'])
             },
             status=status.HTTP_200_OK
         )
@@ -823,7 +823,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             when_created__gte=checkpoint_datetime
         ).count()
 
-        if the_count < MAX_DAILY_CREATED_EVENT_ROOMS:
+        if the_count < settings.EVENT_ROOM_CREATE_DAILY_LIMIT:
 
             return False
 
@@ -840,7 +840,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             when_created__gte=checkpoint_datetime
         ).count()
 
-        if the_count < MAX_DAILY_CREATED_REPLY_EVENTS:
+        if the_count < settings.EVENT_ROOM_REPLY_DAILY_LIMIT:
 
             return False
 
@@ -992,7 +992,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         #deserialize
         serializer = CreateEventsSerializer(data=request.data, many=False)
 
-        #validate
+        #validate overall
         if serializer.is_valid() is False:
 
             return Response(
@@ -1002,6 +1002,37 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        #cannot upload multiple files
+        if type(request.FILES['audio_file']) == list:
+
+            return Response(
+                data={
+                    'message': "Invalid data. Please upload only one file."
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        #ensure audio_file does not exceed max file size
+        if request.FILES['audio_file'].size > settings.EVENT_MAX_FILE_SIZE_BYTES:
+
+            #file is too large
+            special_message = "Invalid data, file is too big. Your file is %sMB, while the limit is %sMB." % (
+                round(request.FILES['audio_file'].size / (1024 * 1024), 2),
+                round(settings.EVENT_MAX_FILE_SIZE_BYTES / (1024 * 1024), 2)
+            )
+
+            return Response(
+                data={
+                    'message': special_message
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+
+        #try to get duration of audio file
+        return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        #ok, continue
         new_data = serializer.validated_data
         user = User(pk=request.user.id)
 
@@ -1014,7 +1045,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
             return Response(
                 data={
-                    'message': 'Your selected emoji was not found. Try a different one.',
+                    'message': 'Your selected tag was not found. Try a different one.',
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
@@ -1116,7 +1147,6 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
             event_role=event_role,
             event_tone=event_tone,
             audio_volume_peaks=new_data['audio_volume_peaks'],
-            audio_file_seconds=new_data['audio_file_seconds'],
             event_room=event_room
         )
 
