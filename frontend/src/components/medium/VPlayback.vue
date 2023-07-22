@@ -135,8 +135,8 @@
                 <div
                     ref="playback_volume_opener"
                     class="row-start-1 row-span-1 col-start-2 col-span-1 h-full text-lg relative"
-                    @mouseenter.stop="[is_playback_volume_open = true, is_playback_volume_hover = true]"
-                    @mouseleave.stop="[is_playback_volume_open = false, is_playback_volume_hover = false]"
+                    @mouseenter.stop="[openPlaybackVolumeMenu(), is_playback_volume_hover = true]"
+                    @mouseleave.stop="[closePlaybackVolumeMenu(false), is_playback_volume_hover = false]"
                 >
                     <!--open/close volume-->
                     <button
@@ -173,8 +173,9 @@
                                 ref="volume_slider"
                                 :propSliderValue="playback_volume"
                                 @hasNewSliderValue="changePlaybackVolume($event)"
-                                @startDragSliderValue="[saveBackupPlaybackVolume($event), openPlaybackVolumeMenu()]"
-                                @stopDragSliderValue="[saveBackupPlaybackVolume($event), closePlaybackVolumeMenu()]"
+                                @startDragSliderValue="[saveBackupPlaybackVolume($event), handleVolumeStartDrag()]"
+                                @stopDragSliderValue="[saveBackupPlaybackVolume($event), handleVolumeStopDrag()]"
+                                @isTouch="handlePlaybackVolumeIsTouch($event)"
                                 class="w-full h-full"
                             >
                                 <span class="sr-only">vertical volume box</span>
@@ -249,6 +250,7 @@
                 //everything else will auto-close volume menu
                 //except for manually adjusting with touch
                 is_playback_volume_open: false,
+                is_playback_volume_touch: false,
                 is_playback_volume_hover: false,
                 autoclose_playback_volume_timeout: null as number|null,
 
@@ -410,6 +412,24 @@
             }
         },
         methods: {
+            handlePlaybackVolumeIsTouch(new_value:boolean) : void {
+
+                this.is_playback_volume_touch = new_value;
+            },
+            handleVolumeStartDrag() : void {
+
+                this.openPlaybackVolumeMenu();
+            },
+            handleVolumeStopDrag() : void {
+
+                //do nothing if user is hovering
+                if(this.is_playback_volume_hover === true && this.is_playback_volume_touch === false){
+
+                    return;
+                }
+
+                this.closePlaybackVolumeMenu();
+            },
             saveBackupPlaybackVolume(new_value:number) : void {
 
                 //never 0

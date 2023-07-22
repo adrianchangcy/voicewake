@@ -56,7 +56,7 @@
                 default: 0
             },
         },
-        emits: ['hasNewSliderValue', 'startDragSliderValue', 'stopDragSliderValue'],
+        emits: ['hasNewSliderValue', 'startDragSliderValue', 'stopDragSliderValue', 'isTouch'],
         watch: {
             propSliderValue(new_value){
 
@@ -72,6 +72,7 @@
                 this.is_touch = is_touch;
 
                 this.$emit('startDragSliderValue', this.slider_value);
+                this.$emit('isTouch', this.is_touch);
             },
             doDrag(event:MouseEvent|TouchEvent){
 
