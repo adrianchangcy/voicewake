@@ -248,7 +248,8 @@
                 is_playback_speed_options_open: false,
                 
                 //everything else will auto-close volume menu
-                //except for manually adjusting with touch
+                //except for hover
+                //always use openPlaybackVolumeMenu() and closePlaybackVolumeMenu() to ensure timeout is synced
                 is_playback_volume_open: false,
                 is_playback_volume_touch: false,
                 is_playback_volume_hover: false,
@@ -580,7 +581,6 @@
                             //decrease volume
                             {
                                 event.preventDefault();
-                                this.is_playback_volume_open = true;
                                 let new_playback_volume = this.playback_volume - 0.2;
                                 new_playback_volume = parseFloat(new_playback_volume.toFixed(2));
                                 
@@ -936,7 +936,7 @@
                 this.playback_volume = new_value;
                 window.localStorage.playback_volume = new_value;
 
-                //show volume menu briefly
+                //show volume menu
                 this.openPlaybackVolumeMenu();
             },
             togglePlaybackSpeedOptions() : void {
