@@ -217,9 +217,9 @@
                 let data = new FormData();
                 
                 //prepare data
+                //webm follows VRecorder
                 data.append('event_tone_id', JSON.stringify((this.event_tone_choice as EventToneTypes)['id']));
-                data.append('audio_file', this.final_blob as Blob);
-                data.append('audio_file_seconds', JSON.stringify(parseFloat(((this.blob_duration / 1000).toFixed(2)).toString())));
+                data.append('audio_file', new File([this.final_blob as Blob], 'new_recording.webm', {type:"audio/webm"}));
                 data.append('is_originator', JSON.stringify(this.propIsOriginator));
 
                 //prepare array in this specific way

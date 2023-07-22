@@ -49,32 +49,16 @@
                 is_touch: false,
             };
         },
-        mounted(){
-
-            //attach listeners to window for mouse Y
-            window.addEventListener('mousemove', this.doDrag);  //hovering over :disabled elements causes unresponsiveness
-            window.addEventListener('touchmove', this.doDrag);
-            window.addEventListener('mouseup', this.stopDrag);
-            window.addEventListener('touchend', this.stopDrag);
-        },
-        beforeUnmount(){
-
-            //remove listeners
-            window.removeEventListener('mousemove', this.doDrag);
-            window.removeEventListener('touchmove', this.doDrag);
-            window.removeEventListener('mouseup', this.stopDrag);
-            window.removeEventListener('touchend', this.stopDrag);
-        },
         props: {
-            propInitialSliderValue: {   //only be used at init
+            propSliderValue: {
                 type: Number,
                 required: true,
                 default: 0
             },
         },
-        emits: ['hasNewSliderValue'],
+        emits: ['hasNewSliderValue', 'startDragSliderValue', 'stopDragSliderValue'],
         watch: {
-            propInitialSliderValue(new_value){
+            propSliderValue(new_value){
 
                 this.mainUpdateSlider(new_value);
             },
@@ -86,6 +70,8 @@
 
                 this.is_dragging = true;
                 this.is_touch = is_touch;
+
+                this.$emit('startDragSliderValue', this.slider_value);
             },
             doDrag(event:MouseEvent|TouchEvent){
 
@@ -123,6 +109,7 @@
                         this.slider_value = 0;
                     }
 
+                    //null because this child --> parent --> child via watcher updates this.slider_value here for us
                     this.mainUpdateSlider(null);
                     this.$emit('hasNewSliderValue', this.slider_value);
 
@@ -142,6 +129,8 @@
                 //we reset touch detection on every startDrag() and stopDrag()
                 //so we get latest status of is_touch
                 this.is_touch = false;
+
+                this.$emit('stopDragSliderValue', this.slider_value);
             },
             animeSlider() : void {
 
@@ -171,6 +160,24 @@
 
                 this.animeSlider();
             },
+        },
+        mounted(){
+
+            this.mainUpdateSlider(this.propSliderValue);
+
+            //attach listeners to window for mouse Y
+            window.addEventListener('mousemove', this.doDrag);  //hovering over :disabled elements causes unresponsiveness
+            window.addEventListener('touchmove', this.doDrag);
+            window.addEventListener('mouseup', this.stopDrag);
+            window.addEventListener('touchend', this.stopDrag);
+        },
+        beforeUnmount(){
+
+            //remove listeners
+            window.removeEventListener('mousemove', this.doDrag);
+            window.removeEventListener('touchmove', this.doDrag);
+            window.removeEventListener('mouseup', this.stopDrag);
+            window.removeEventListener('touchend', this.stopDrag);
         },
     });
 </script>

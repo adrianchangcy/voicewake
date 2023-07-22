@@ -21,14 +21,14 @@
 
 /*since we use placeholders for label, make them more visible*/
 ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
-    color: rgb(160, 160, 160) !important;
+    color: rgb(100, 100, 100) !important;
     opacity: 1 !important; /* Firefox */
 }
 :-ms-input-placeholder { /* Internet Explorer 10-11 */
     color: rgb(100, 100, 100) !important;
 }
 ::-ms-input-placeholder { /* Microsoft Edge */
-    color: rgb(24,24,24) !important;
+    color: rgb(100, 100, 100) !important;
 }
 
 /*much prefer this over plain focus, that way focus only appears when necessary*/
@@ -125,7 +125,7 @@
     -style focus
 */
 
-button, a {
+button, a, div {
     -webkit-tap-highlight-color: transparent; /* for removing the highlight */
 }
 
@@ -189,20 +189,15 @@ textarea {
     .shade-text-when-hover:hover{
         color: rgba(168, 162, 158, 1);
     }
-    .handle-action-text-when-hover:hover{
-        text-decoration-thickness: 4px;
-    }
     .shade-background-when-hover:hover{
         background-color: #d6d3d1;
     }
     .shade-border-when-hover:hover{
         border-color: rgba(168, 162, 158, 1);
     }
-
     .border-solid-when-hover:hover{
         border-style: solid;
     }
-
     .double-height-when-hover{
         transform: scaleY(2);
     }

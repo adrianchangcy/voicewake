@@ -606,10 +606,6 @@ video {
   left: -0.25rem;
 }
 
-.-left-2 {
-  left: -0.5rem;
-}
-
 .-right-3 {
   right: -0.75rem;
 }
@@ -684,6 +680,18 @@ video {
 
 .top-5 {
   top: 1.25rem;
+}
+
+.bottom-\[100\%\] {
+  bottom: 100%;
+}
+
+.bottom-10 {
+  bottom: 2.5rem;
+}
+
+.bottom-12 {
+  bottom: 3rem;
 }
 
 .-z-10 {
@@ -819,6 +827,10 @@ video {
 
 .mt-\[4\.5rem\] {
   margin-top: 4.5rem;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem;
 }
 
 .box-content {
@@ -1516,6 +1528,11 @@ video {
   padding-right: 1.5rem;
 }
 
+.px-\[0\.5rem-0\.0625rem\] {
+  padding-left: 0.5rem-0.0625rem;
+  padding-right: 0.5rem-0.0625rem;
+}
+
 .px-\[5\%\] {
   padding-left: 5%;
   padding-right: 5%;
@@ -1549,6 +1566,16 @@ video {
 .py-8 {
   padding-top: 2rem;
   padding-bottom: 2rem;
+}
+
+.px-\[0\.25rem\] {
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+}
+
+.px-\[0\.4375rem\] {
+  padding-left: 0.4375rem;
+  padding-right: 0.4375rem;
 }
 
 .pb-0 {
@@ -1936,14 +1963,14 @@ video {
 
 ::-moz-placeholder {
   /* Chrome, Firefox, Opera, Safari 10.1+ */
-  color: rgb(160, 160, 160) !important;
+  color: rgb(100, 100, 100) !important;
   opacity: 1 !important;
   /* Firefox */
 }
 
 ::placeholder {
   /* Chrome, Firefox, Opera, Safari 10.1+ */
-  color: rgb(160, 160, 160) !important;
+  color: rgb(100, 100, 100) !important;
   opacity: 1 !important;
   /* Firefox */
 }
@@ -1955,7 +1982,7 @@ video {
 
 ::-ms-input-placeholder {
   /* Microsoft Edge */
-  color: rgb(24,24,24) !important;
+  color: rgb(100, 100, 100) !important;
 }
 
 /*much prefer this over plain focus, that way focus only appears when necessary*/
@@ -2053,7 +2080,7 @@ video {
     -style focus
 */
 
-button, a {
+button, a, div {
   -webkit-tap-highlight-color: transparent;
   /* for removing the highlight */
 }
@@ -2117,10 +2144,6 @@ textarea {
 
   .shade-text-when-hover:hover{
     color: rgba(168, 162, 158, 1);
-  }
-
-  .handle-action-text-when-hover:hover{
-    text-decoration-thickness: 4px;
   }
 
   .shade-background-when-hover:hover{

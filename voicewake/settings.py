@@ -92,7 +92,7 @@ MIDDLEWARE = []
 #development
 if DEBUG is True:
 
-    REQUEST_TIME_DELAY = 2  #seconds
+    REQUEST_TIME_DELAY = 0  #seconds
 
     MIDDLEWARE += [
         'voicewake.middleware.drf_api_delay_middleware.TimeDelayMiddleware'
@@ -254,7 +254,15 @@ DEBUG_TOOLBAR_CONFIG = {
 }
 
 
+#MEDIA SIZES
+#in bytes, so when x/(1024*1024), is 3mb
+FILE_UPLOAD_MAX_MEMORY_SIZE = 3072000   #threshold for processing files in memory instead, i.e. much faster
+EVENT_MAX_FILE_SIZE_BYTES = 3072000
+
+
 #EVENT
+EVENT_ROOM_CREATE_DAILY_LIMIT = 10      #compares from 00:00:00 UTC
+EVENT_ROOM_REPLY_DAILY_LIMIT = 10       #compares from 00:00:00 UTC
 EVENT_CHOICE_EXPIRY_SECONDS = 1200      #20 mins, when locked but is_replying=False
 EVENT_REPLY_EXPIRY_SECONDS = 3600       #60 mins, when locked and is_replying=True
 

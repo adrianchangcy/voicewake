@@ -321,6 +321,29 @@ class EventTones_TestCase(TestCase):
             )
 
 
+class Events_TestCase(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+
+        pass
+
+
+    def test_get_file_duration(self):
+
+        full_paths = []
+        full_paths.append('C:\\Users\\User\\Desktop\\voicewake_py\\uploads/events/year_2023/month_7/day_20/user_id_1/e_6.blob')
+        full_paths.append('C:\\Users\\User\\Desktop\\voicewake_py\\uploads/events/year_2023/month_7/day_21/user_id_1/e_7.wav')
+        full_paths.append('C:\\Users\\User\\Desktop\\voicewake_py\\uploads/events/year_2023/month_7/day_21/user_id_1/e_8.webm')
+        full_paths.append('C:\\Users\\User\\Desktop\\voicewake_py\\uploads/events/year_2023/month_7/day_21/user_id_1/test.flac')
+        full_paths.append('C:\\Users\\User\\Desktop\\voicewake_py\\uploads/events/year_2023/month_7/day_21/user_id_1/e_9.webm')
+        full_paths.append('C:\\Users\\User\\Desktop\\voicewake_py\\uploads/events/year_2023/month_7/day_21/user_id_1/e_10.wav')
+        full_paths.append('C:\\Users\\User\\Desktop\\voicewake_py\\uploads/events/year_2023/month_7/day_21/user_id_1/e_12.webm')
+
+        #duration
+        file_stats = os.stat(full_paths[6])
+        print('mb is %s' % (file_stats.st_size / (1024 * 1024)))
+
 
 
 

@@ -61,7 +61,6 @@ class GetEventsSerializer(serializers.ModelSerializer):
     event_tone = EventTonesSerializer()
     event_room = EventRoomsSerializer()
     generic_status = GenericStatusesSerializer()
-    audio_file_seconds = serializers.DecimalField(max_digits=6, decimal_places=2, coerce_to_string=False)
     audio_volume_peaks = serializers.ListField(
         child=serializers.DecimalField(min_value=0, max_value=1, max_digits=3, decimal_places=2, coerce_to_string=False),
         min_length=20,
@@ -73,7 +72,7 @@ class GetEventsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Events
-        fields = ['id', 'user', 'event_role', 'event_tone', 'event_room', 'generic_status', 'audio_file', 'audio_file_seconds', 'audio_volume_peaks', 'like_count', 'dislike_count', 'is_liked_by_user']
+        fields = ['id', 'user', 'event_role', 'event_tone', 'event_room', 'generic_status', 'audio_file', 'audio_volume_peaks', 'like_count', 'dislike_count', 'is_liked_by_user']
 
 
 class GetEventRoomsSerializer(serializers.Serializer):
@@ -109,11 +108,6 @@ class CreateEventsSerializer(serializers.Serializer):
 
     audio_file = serializers.FileField(
         allow_empty_file=False
-    )
-
-    audio_file_seconds = serializers.DecimalField(
-        max_digits=6,
-        decimal_places=2,
     )
 
     audio_volume_peaks = serializers.ListField(

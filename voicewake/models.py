@@ -278,7 +278,6 @@ class Events(models.Model):
     event_room = models.ForeignKey('EventRooms', on_delete=models.CASCADE, null=True, default=None)
     generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)
     audio_file = models.FileField(blank=True, null=True, upload_to=determine_event_audio_file_path_and_name)
-    audio_file_seconds = models.DecimalField(default=0, max_digits=6, decimal_places=2)
     audio_volume_peaks = ArrayField(
         models.DecimalField(default=0, max_digits=3, decimal_places=2), #0 to 0.49 to 1
         size=20,    #if size changes, change at get_default_audio_volume_peaks too
