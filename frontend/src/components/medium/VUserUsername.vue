@@ -280,7 +280,11 @@
                     if(response.data['data']['exists'] === false){
 
                         this.$emit('newUsername', response.data['data']['username']);
-
+                        notify({
+                            title: "Username success",
+                            text: "Welcome, " + response.data['data']['username'] + "!",
+                            type: "ok"
+                        }, 3000);
                     }else{
 
                         //username is taken

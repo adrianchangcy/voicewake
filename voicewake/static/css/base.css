@@ -31,15 +31,16 @@
     color: rgb(100, 100, 100) !important;
 }
 
-/*much prefer this over plain focus, that way focus only appears when necessary*/
-*:focus-visible {
-    outline-width: 1px;
-    outline-color: blueviolet;
-    outline-offset: 2px;
-}
+/*
+FOCUS AND FOCUS-VISIBLE
+    always handle both together
+    for elements with no border, we use outline-offset:2px
+    for elements with border, we change border colour and set outline-0
+*/
+
 
 /*
-    NAMING STANDARDS
+NAMING STANDARDS
     for ref, use "ref_name", so we can do this.$refs.ref_name with no issue
     for functions, use "functionName"
     for props, use "propName"
@@ -51,12 +52,12 @@
     for custom directives, css classes, etc., use "the-name"
 
 
-    Z-INDEX
+Z-INDEX
     nav bar, z-50
     anything on top of everything else, z-10
     everything else, nothing, i.e. z-0 by default
 
-    FONT SIZES
+FONT SIZES
     big page title, text-5xl
     big page title context, text-3xl
     main page title, text-2xl
@@ -77,21 +78,21 @@
     main action, text text-2xl, icon text-4xl
     normal action, text text-base font-medium, icon text-2xl
 
-    FONT TYPES
+FONT TYPES
     if text is not from user, use formal font
     if text is from user, use casual font
 
-    BUTTON SIZES
+BUTTON SIZES
     biggest page button, h-24, text-4xl icons, text-2xl text
     component main button, h-20, text-4xl icons, text-2xl text
     component small buttons, h-10, text-2xl icons, text-xl text
     component smallest buttons, h-10, text-xl
 
-    INPUT SIZES (may change according to font size)
+INPUT SIZES (may change according to font size)
     textarea, h-10 p-2 pt-1
     input, h-10
 
-    GAPS
+GAPS
     big page title, py-10
     page title, pb-8
     page title, when many, pb-6
@@ -101,16 +102,16 @@
     form items, gap-4
     form label, mb-1
 
-    GRAY
+GRAY
     least attention-seeking, e.g. border, light-gray
     obvious attention-seeking, dark-gray
     hover and seek attention, medium-gray/50
     hover and seek attention that is already gray, medium-gray/50 + scale
 
-    OPACITY
+OPACITY
     if want to signify disabled, use opacity-10, i.e. until element is unreadable
 
-    TIPS
+TIPS
     if you want to center passed text in a component, e.g. button, with its own properties, do it like so:
         <MyComponent class="flex items-center">//vertical
             <span class="text-base font-medium mx-auto"></span>//horizontal
@@ -120,7 +121,7 @@
 */
 
 /*
-    TO-DO
+TO-DO
     -style highlight colour
     -style focus
 */

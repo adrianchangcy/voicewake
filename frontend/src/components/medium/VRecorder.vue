@@ -15,6 +15,7 @@
                     type="button"
                     propElementSize="m"
                     propFontSize="m"
+                    :propIsIconOnly="true"
                     class="w-full"
                 >
                     <i class="fas fa-microphone-lines text-4xl mx-auto"></i>
@@ -36,6 +37,7 @@
                         type="button"
                         propElementSize="m"
                         propFontSize="m"
+                        :propIsIconOnly="true"
                         class="col-start-1 row-span-2 col-span-1"
                     >
                         <i class="fas fa-xmark text-2xl mx-auto"></i>
@@ -53,6 +55,7 @@
                         propElement="button"
                         type="button"
                         propElementSize="s"
+                        :propIsIconOnly="true"
                         class="row-start-2 row-span-1 col-span-2 h-full"
                     >
                         <i
@@ -72,6 +75,7 @@
                         propElement="button"
                         type="button"
                         propElementSize="m"
+                        :propIsIconOnly="true"
                         class="col-start-4 row-span-2 col-span-1"
                     >
                         <i class="fas fa-check text-2xl mx-auto"></i>

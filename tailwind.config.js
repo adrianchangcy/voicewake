@@ -30,6 +30,9 @@ module.exports = {
                 'theme-lead': '#facc15', //yellow-400, for highlight
                 'theme-soft-lead': '#f5f5dc',   //for background yellow
 
+                //for small but high attention items, e.g. focus, highlight, etc.
+                'theme-accent': '#444444',
+
                 'theme-green-1': '#90a955',
                 'theme-green-2': '#4f772d',
                 'theme-green-3': '#31572c',

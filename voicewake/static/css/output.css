@@ -626,12 +626,12 @@ video {
   bottom: 0.125rem;
 }
 
-.bottom-2 {
-  bottom: 0.5rem;
+.bottom-10 {
+  bottom: 2.5rem;
 }
 
-.bottom-\[110\%\] {
-  bottom: 110%;
+.bottom-2 {
+  bottom: 0.5rem;
 }
 
 .left-0 {
@@ -680,18 +680,6 @@ video {
 
 .top-5 {
   top: 1.25rem;
-}
-
-.bottom-\[100\%\] {
-  bottom: 100%;
-}
-
-.bottom-10 {
-  bottom: 2.5rem;
-}
-
-.bottom-12 {
-  bottom: 3rem;
 }
 
 .-z-10 {
@@ -827,10 +815,6 @@ video {
 
 .mt-\[4\.5rem\] {
   margin-top: 4.5rem;
-}
-
-.mb-2 {
-  margin-bottom: 0.5rem;
 }
 
 .box-content {
@@ -1155,6 +1139,16 @@ video {
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
 .cursor-default {
   cursor: default;
 }
@@ -1412,6 +1406,11 @@ video {
   border-color: transparent;
 }
 
+.border-theme-dark-gray {
+  --tw-border-opacity: 1;
+  border-color: rgb(168 162 158 / var(--tw-border-opacity));
+}
+
 .bg-green-500 {
   --tw-bg-opacity: 1;
   background-color: rgb(34 197 94 / var(--tw-bg-opacity));
@@ -1528,9 +1527,9 @@ video {
   padding-right: 1.5rem;
 }
 
-.px-\[0\.5rem-0\.0625rem\] {
-  padding-left: 0.5rem-0.0625rem;
-  padding-right: 0.5rem-0.0625rem;
+.px-\[0\.4375rem\] {
+  padding-left: 0.4375rem;
+  padding-right: 0.4375rem;
 }
 
 .px-\[5\%\] {
@@ -1566,16 +1565,6 @@ video {
 .py-8 {
   padding-top: 2rem;
   padding-bottom: 2rem;
-}
-
-.px-\[0\.25rem\] {
-  padding-left: 0.25rem;
-  padding-right: 0.25rem;
-}
-
-.px-\[0\.4375rem\] {
-  padding-left: 0.4375rem;
-  padding-right: 0.4375rem;
 }
 
 .pb-0 {
@@ -1840,6 +1829,18 @@ video {
   outline-width: 1px;
 }
 
+.outline-offset-2 {
+  outline-offset: 2px;
+}
+
+.outline-offset-4 {
+  outline-offset: 4px;
+}
+
+.-outline-offset-4 {
+  outline-offset: -4px;
+}
+
 .outline-theme-dark-gray {
   outline-color: #a8a29e;
 }
@@ -1985,16 +1986,15 @@ video {
   color: rgb(100, 100, 100) !important;
 }
 
-/*much prefer this over plain focus, that way focus only appears when necessary*/
-
-*:focus-visible {
-  outline-width: 1px;
-  outline-color: blueviolet;
-  outline-offset: 2px;
-}
+/*
+FOCUS AND FOCUS-VISIBLE
+    always handle both together
+    for elements with no border, we use outline-offset:2px
+    for elements with border, we change border colour and set outline-0
+*/
 
 /*
-    NAMING STANDARDS
+NAMING STANDARDS
     for ref, use "ref_name", so we can do this.$refs.ref_name with no issue
     for functions, use "functionName"
     for props, use "propName"
@@ -2006,12 +2006,12 @@ video {
     for custom directives, css classes, etc., use "the-name"
 
 
-    Z-INDEX
+Z-INDEX
     nav bar, z-50
     anything on top of everything else, z-10
     everything else, nothing, i.e. z-0 by default
 
-    FONT SIZES
+FONT SIZES
     big page title, text-5xl
     big page title context, text-3xl
     main page title, text-2xl
@@ -2032,21 +2032,21 @@ video {
     main action, text text-2xl, icon text-4xl
     normal action, text text-base font-medium, icon text-2xl
 
-    FONT TYPES
+FONT TYPES
     if text is not from user, use formal font
     if text is from user, use casual font
 
-    BUTTON SIZES
+BUTTON SIZES
     biggest page button, h-24, text-4xl icons, text-2xl text
     component main button, h-20, text-4xl icons, text-2xl text
     component small buttons, h-10, text-2xl icons, text-xl text
     component smallest buttons, h-10, text-xl
 
-    INPUT SIZES (may change according to font size)
+INPUT SIZES (may change according to font size)
     textarea, h-10 p-2 pt-1
     input, h-10
 
-    GAPS
+GAPS
     big page title, py-10
     page title, pb-8
     page title, when many, pb-6
@@ -2056,16 +2056,16 @@ video {
     form items, gap-4
     form label, mb-1
 
-    GRAY
+GRAY
     least attention-seeking, e.g. border, light-gray
     obvious attention-seeking, dark-gray
     hover and seek attention, medium-gray/50
     hover and seek attention that is already gray, medium-gray/50 + scale
 
-    OPACITY
+OPACITY
     if want to signify disabled, use opacity-10, i.e. until element is unreadable
 
-    TIPS
+TIPS
     if you want to center passed text in a component, e.g. button, with its own properties, do it like so:
         <MyComponent class="flex items-center">//vertical
             <span class="text-base font-medium mx-auto"></span>//horizontal
@@ -2075,7 +2075,7 @@ video {
 */
 
 /*
-    TO-DO
+TO-DO
     -style highlight colour
     -style focus
 */
@@ -2227,9 +2227,38 @@ textarea {
   border-color: rgb(68 68 68 / var(--tw-border-opacity));
 }
 
+.focus\:border-theme-dark-gray:focus {
+  --tw-border-opacity: 1;
+  border-color: rgb(168 162 158 / var(--tw-border-opacity));
+}
+
 .focus\:outline-none:focus {
   outline: 2px solid transparent;
   outline-offset: 2px;
+}
+
+.focus\:outline-1:focus {
+  outline-width: 1px;
+}
+
+.focus\:-outline-offset-2:focus {
+  outline-offset: -2px;
+}
+
+.focus\:-outline-offset-8:focus {
+  outline-offset: -8px;
+}
+
+.focus\:-outline-offset-4:focus {
+  outline-offset: -4px;
+}
+
+.focus\:outline-offset-2:focus {
+  outline-offset: 2px;
+}
+
+.focus\:outline-theme-accent:focus {
+  outline-color: #444444;
 }
 
 .focus\:ring-1:focus {
@@ -2241,6 +2270,35 @@ textarea {
 .focus\:ring-theme-black:focus {
   --tw-ring-opacity: 1;
   --tw-ring-color: rgb(68 68 68 / var(--tw-ring-opacity));
+}
+
+.focus-visible\:border-theme-black:focus-visible {
+  --tw-border-opacity: 1;
+  border-color: rgb(68 68 68 / var(--tw-border-opacity));
+}
+
+.focus-visible\:outline-1:focus-visible {
+  outline-width: 1px;
+}
+
+.focus-visible\:-outline-offset-2:focus-visible {
+  outline-offset: -2px;
+}
+
+.focus-visible\:-outline-offset-8:focus-visible {
+  outline-offset: -8px;
+}
+
+.focus-visible\:-outline-offset-4:focus-visible {
+  outline-offset: -4px;
+}
+
+.focus-visible\:outline-offset-2:focus-visible {
+  outline-offset: 2px;
+}
+
+.focus-visible\:outline-theme-accent:focus-visible {
+  outline-color: #444444;
 }
 
 @media (min-width: 640px) {

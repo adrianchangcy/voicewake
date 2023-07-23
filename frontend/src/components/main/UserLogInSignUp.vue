@@ -13,6 +13,7 @@
                 propElement="button"
                 propElementSize="s"
                 type="button"
+                :propIsIconOnly="true"
                 class="w-10 absolute top-1 -right-3 m-auto"
             >
                 <i class="fas fa-xmark mx-auto text-xl"></i>

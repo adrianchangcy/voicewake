@@ -8,7 +8,7 @@
             @click.stop="[toggleMenu(), emitIsOpen()]"
             :class="[
                 is_open ? 'border-theme-black' : 'border-theme-medium-gray shade-border-when-hover',
-                'w-full h-20 relative border-2 rounded-lg text-3xl text-theme-black text-center'
+                'w-full h-20 relative border-2 rounded-lg text-3xl text-theme-black text-center     focus:outline-1 focus-visible:outline-1 focus:outline-offset-2 focus-visible:outline-offset-2 focus:outline-theme-accent focus-visible:outline-theme-accent focus-visible:border-theme-black'
             ]"
             type="button"
         >
