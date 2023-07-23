@@ -163,7 +163,15 @@
         },
         computed: {
             prettyFileDuration(){
-                return prettyDuration(this.propEvent.audio_file_seconds);
+
+                if('audio_file_seconds' in this.propEvent){
+
+                    return prettyDuration(this.propEvent.audio_file_seconds);
+
+                }else{
+
+                    return prettyDuration(1);
+                }
             },
         },
         methods: {

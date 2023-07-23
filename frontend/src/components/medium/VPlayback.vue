@@ -107,13 +107,9 @@
                             ref="playback_slider_knob"
                             class="w-4 h-4 absolute rounded-full bg-theme-black top-5 bottom-0 m-auto"
                         >
-                            <div
-                                ref="spinner_container"
-                                class="w-full h-full relative opacity-0"
-                            >
+                            <div class="w-full h-full relative opacity-0">
                                 <i
-                                    ref="spinner"
-                                    class="fas fa-spinner text-2xl absolute w-fit h-fit -left-1 top-0 bottom-0 my-auto"
+                                    class="fas fa-spinner text-2xl absolute w-fit h-fit -left-1 top-0 bottom-0 my-auto animate-spin"
                                 ></i>
                             </div>
                         </div>
@@ -133,6 +129,7 @@
                 </div>
                 <!--volume-->
                 <div
+                    v-if="propIsForRecording === false"
                     ref="playback_volume_opener"
                     class="row-start-1 row-span-1 col-start-2 col-span-1 h-full text-lg relative"
                     @pointerenter.stop="handlePlaybackVolumeHoverIn($event)"
@@ -140,7 +137,6 @@
                 >
                     <!--open/close volume-->
                     <button
-                        v-if="propIsForRecording === false"
                         @pointerdown.stop="toggleMute($event)"
                         class="w-full h-full shade-text-when-hover transition-colors duration-200 ease-in-out rounded-md"
                         :disabled="has_all_data_for_play === false"
@@ -311,18 +307,6 @@
 
                 if(new_value === true){
 
-                    anime({
-                        targets: this.$refs.spinner_container,
-                        easing: 'linear',
-                        duration: 150,
-                        autoplay: true,
-                        loop: false,
-                        opacity: '1',
-                        begin: ()=>{
-                            this.spinner_anime.play();
-                        }
-                    });
-
                     //'if' statement should help prevent race condition
                     if(this.is_playing === true){
 
@@ -331,18 +315,6 @@
                     }
 
                 }else{
-
-                    anime({
-                        targets: this.$refs.spinner_container,
-                        easing: 'linear',
-                        duration: 150,
-                        autoplay: true,
-                        loop: false,
-                        opacity: '0',
-                        complete: ()=>{
-                            this.spinner_anime.pause();
-                        }
-                    });
 
                     //'if' statement should help prevent race condition
                     if(this.is_playing === true){
@@ -576,16 +548,28 @@
 
                     case 'm':
 
-                        //mute/unmute
-                        //when for recording, no volume option
-                        //we use localStorage for backup value from mute to unmute
-                        this.toggleMute(null);
-                        break;
+                        {
+                            if(this.propIsForRecording === true){
+
+                                return;
+                            }
+
+                            //mute/unmute
+                            //when for recording, no volume option
+                            //we use localStorage for backup value from mute to unmute
+                            this.toggleMute(null);
+                            break;
+                        }
 
                     case 'ArrowUp':
 
                         //increase volume
                         {
+                            if(this.propIsForRecording === true){
+
+                                return;
+                            }
+
                             event.preventDefault();
                             let new_playback_volume = this.playback_volume + 0.2;
                             new_playback_volume = parseFloat(new_playback_volume.toFixed(2));
@@ -609,6 +593,11 @@
 
                             //decrease volume
                             {
+                                if(this.propIsForRecording === true){
+
+                                    return;
+                                }
+
                                 event.preventDefault();
                                 let new_playback_volume = this.playback_volume - 0.2;
                                 new_playback_volume = parseFloat(new_playback_volume.toFixed(2));

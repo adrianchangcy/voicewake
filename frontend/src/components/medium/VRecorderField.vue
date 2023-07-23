@@ -9,7 +9,7 @@
         @click.stop="[toggleMenu(), emitIsOpen()]"
         :class="[
             is_open ? 'border-theme-black' : 'border-theme-medium-gray shade-border-when-hover',
-            'w-full h-20 px-4 py-2 border-2 rounded-lg'
+            'w-full h-20 px-4 py-2 border-2 rounded-lg      focus:outline-1 focus-visible:outline-1 focus:outline-offset-2 focus-visible:outline-offset-2 focus:outline-theme-accent focus-visible:outline-theme-accent focus-visible:border-theme-black'
         ]"
         id="click-to-record"
         type="button"

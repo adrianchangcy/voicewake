@@ -28,7 +28,7 @@
                     (propIsOk ? 'border-theme-ok' : ''),
                     (propIsWarning ? 'border-theme-warning' : ''),
                     (propIsError ? 'border-theme-danger' : ''),
-                    'block w-full h-10 bg-theme-light border-2 border-theme-medium-gray shade-border-when-hover focus:border-theme-black rounded-lg overflow-hidden p-2 pt-1'
+                    'block w-full h-10 bg-theme-light border-2 border-theme-medium-gray shade-border-when-hover rounded-lg overflow-hidden p-2 pt-1     focus:outline-1 focus-visible:outline-1 focus:outline-offset-2 focus-visible:outline-offset-2 focus:outline-theme-accent focus-visible:outline-theme-accent focus:border-theme-black'
                 ]"
                 :placeholder="propPlaceholder"
                 autocomplete="off"

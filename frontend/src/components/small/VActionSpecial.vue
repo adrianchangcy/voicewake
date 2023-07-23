@@ -14,7 +14,7 @@
             propElementSize === 's' ? 'h-10 shadow-md hover:shadow-sm' : '',
             propIsEnabled ? '' : 'opacity-30',
             propIsRound ? 'rounded-full' : 'rounded-lg',
-            'block transition   text-theme-black border-t-2    bg-theme-soft-lead/80 hover:bg-theme-soft-lead     shadow-theme-lead/60 hover:shadow-theme-lead/60      border-theme-light-trim hover:border-theme-light-trim/40'
+            'block transition   text-theme-black border-t-2    bg-theme-soft-lead/80 hover:bg-theme-soft-lead     shadow-theme-lead/60 hover:shadow-theme-lead/60      border-theme-light-trim hover:border-theme-light-trim/40     focus:outline-1 focus-visible:outline-1 focus:-outline-offset-4 focus-visible:-outline-offset-4 focus:outline-theme-accent focus-visible:outline-theme-accent'
         ]"
         :disabled="!propIsEnabled"
     >
