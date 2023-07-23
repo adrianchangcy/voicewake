@@ -5,6 +5,7 @@
     >
         <!--title-->
         <VTextArea
+            v-if="propIsOriginator === true"
             :propIsRequired="true"
             propElementId="event-name"
             propLabel="Title"
@@ -13,7 +14,7 @@
             :propHasTextCounter="true"
             :propHasStatusText="false"
             @newValue="handleNewEventName($event)"
-            v-if="propIsOriginator === true"
+            @wasInteracted="closeAllMenu()"
         />
 
         <!--fields for open/close-->
@@ -205,6 +206,11 @@
             },
         },
         methods: {
+            closeAllMenu() : void {
+
+                this.is_recorder_menu_open = false;
+                this.is_event_tone_menu_open = false;
+            },
             async submitForm() : Promise<void> {
 
                 if(this.canSubmit === false){
