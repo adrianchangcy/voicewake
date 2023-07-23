@@ -19,6 +19,7 @@
         <div class="text-xl">
             <!--default inline-block, changed to block to remove bottom spacing-->
             <textarea
+                @click.stop="emitWasInteracted()"
                 @input="resize()"
                 ref="nice_textarea"
                 :required="propIsRequired"
@@ -74,13 +75,14 @@
             propIsError: Boolean,
             propStatusText: String,
         },
-        emits: ['newValue'],
+        emits: ['newValue', 'wasInteracted'],
         watch: {
             input_value(new_value){
 
                 this.input_value = new_value;
                 this.current_length = new_value.length;
                 this.$emit('newValue', this.input_value);
+                this.emitWasInteracted();
                 //we do trim() validation outside of here instead
             },
         },
@@ -88,6 +90,10 @@
             VInputLabel,
         },
         methods: {
+            emitWasInteracted(){
+
+                this.$emit('wasInteracted', true);
+            },
             resize(){
 
                 const textarea = this.$refs.nice_textarea;
