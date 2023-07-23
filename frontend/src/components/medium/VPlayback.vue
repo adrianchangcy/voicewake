@@ -135,13 +135,13 @@
                 <div
                     ref="playback_volume_opener"
                     class="row-start-1 row-span-1 col-start-2 col-span-1 h-full text-lg relative"
-                    @mouseenter.stop="[openPlaybackVolumeMenu(), is_playback_volume_hover = true]"
-                    @mouseleave.stop="[closePlaybackVolumeMenu(false), is_playback_volume_hover = false]"
+                    @pointerenter.stop="handlePlaybackVolumeHoverIn($event)"
+                    @pointerleave.stop="handlePlaybackVolumeHoverOut($event)"
                 >
                     <!--open/close volume-->
                     <button
                         v-if="propIsForRecording === false"
-                        @click.stop="toggleMute()"
+                        @pointerdown.stop="toggleMute($event)"
                         class="w-full h-full shade-text-when-hover transition-colors duration-200 ease-in-out rounded-md"
                         :disabled="has_all_data_for_play === false"
                         type="button"
@@ -173,9 +173,8 @@
                                 ref="volume_slider"
                                 :propSliderValue="playback_volume"
                                 @hasNewSliderValue="changePlaybackVolume($event)"
-                                @startDragSliderValue="[saveBackupPlaybackVolume($event), handleVolumeStartDrag()]"
-                                @stopDragSliderValue="[saveBackupPlaybackVolume($event), handleVolumeStopDrag()]"
-                                @isTouch="handlePlaybackVolumeIsTouch($event)"
+                                @startDragSliderValue="handleVolumeStartDrag($event)"
+                                @stopDragSliderValue="handleVolumeStopDrag($event)"
                                 class="w-full h-full"
                             >
                                 <span class="sr-only">vertical volume box</span>
@@ -219,6 +218,11 @@
     import anime from 'animejs';
     import EventToneTypes from '@/types/EventTones.interface';
 
+    type EmitDragSliderValueTypes = {
+        slider_value: number,
+        pointer_type: "mouse"|"pen"|"touch"
+    };
+
     export default defineComponent({
         data(){
             return {
@@ -249,10 +253,8 @@
                 
                 //everything else will auto-close volume menu
                 //except for hover
-                //always use openPlaybackVolumeMenu() and closePlaybackVolumeMenu() to ensure timeout is synced
+                //always use openPlaybackVolume() and closePlaybackVolume() to ensure timeout is synced
                 is_playback_volume_open: false,
-                is_playback_volume_touch: false,
-                is_playback_volume_hover: false,
                 autoclose_playback_volume_timeout: null as number|null,
 
                 playback_states: ['initiate', 'recording', 'attaching', 'can_play', 'loading'],
@@ -413,23 +415,44 @@
             }
         },
         methods: {
-            handlePlaybackVolumeIsTouch(new_value:boolean) : void {
+            handlePlaybackVolumeHoverIn(event:PointerEvent) : void {
 
-                this.is_playback_volume_touch = new_value;
-            },
-            handleVolumeStartDrag() : void {
-
-                this.openPlaybackVolumeMenu();
-            },
-            handleVolumeStopDrag() : void {
-
-                //do nothing if user is hovering
-                if(this.is_playback_volume_hover === true && this.is_playback_volume_touch === false){
+                //don't handle hover if not mouse, since hover behaviour is meant for mouse only
+                //otherwise, touch triggers mouseenter and mouseleave undesirably
+                if(event.pointerType !== "mouse"){
 
                     return;
                 }
 
-                this.closePlaybackVolumeMenu();
+                this.openPlaybackVolume();
+            },
+            handlePlaybackVolumeHoverOut(event:PointerEvent) : void {
+
+                //don't handle hover if not mouse, since hover behaviour is meant for mouse only
+                //otherwise, touch triggers mouseenter and mouseleave undesirably
+                if(event.pointerType !== "mouse"){
+
+                    return;
+                }
+
+                this.closePlaybackVolume(false);
+            },
+            handleVolumeStartDrag(new_value:EmitDragSliderValueTypes) : void {
+
+                this.openPlaybackVolume();
+                this.saveBackupPlaybackVolume(new_value.slider_value);
+            },
+            handleVolumeStopDrag(new_value:EmitDragSliderValueTypes) : void {
+
+                this.saveBackupPlaybackVolume(new_value.slider_value);
+
+                //don't close from here if user is hovering
+                if(new_value.pointer_type === "mouse"){
+
+                    return;
+                }
+
+                this.closePlaybackVolume();
             },
             saveBackupPlaybackVolume(new_value:number) : void {
 
@@ -441,13 +464,13 @@
 
                 window.localStorage.backup_playback_volume = new_value;
             },
-            toggleMute() : void {
+            toggleMute(event:PointerEvent|null=null) : void {
 
                 //we don't use audio_element.muted
                 //we simply move volume to 0 when user wants to mute, for better UX, as per YouTube
                 //.muted continues to be used for bug fixes
 
-                this.openPlaybackVolumeMenu();
+                this.openPlaybackVolume();
 
                 //briefly open menu on unmute
                 if(this.playback_volume === 0){
@@ -465,9 +488,15 @@
                     window.localStorage.playback_volume = 0;
                 }
 
-                this.closePlaybackVolumeMenu();
+                //don't close if user is hovering with mouse
+                if(event !== null && event.pointerType === "mouse"){
+
+                    return;
+                }
+
+                this.closePlaybackVolume();
             },
-            openPlaybackVolumeMenu() : void {
+            openPlaybackVolume() : void {
 
                 //remove timeout
                 if(this.autoclose_playback_volume_timeout !== null){
@@ -478,7 +507,7 @@
 
                 this.is_playback_volume_open = true;
             },
-            closePlaybackVolumeMenu(has_delay=true) : void {
+            closePlaybackVolume(has_delay=true) : void {
 
                 //remove timeout
                 if(this.autoclose_playback_volume_timeout !== null){
@@ -550,7 +579,7 @@
                         //mute/unmute
                         //when for recording, no volume option
                         //we use localStorage for backup value from mute to unmute
-                        this.toggleMute();
+                        this.toggleMute(null);
                         break;
 
                     case 'ArrowUp':
@@ -568,7 +597,7 @@
                             }
                             
                             this.changePlaybackVolume(new_playback_volume);
-                            this.closePlaybackVolumeMenu();
+                            this.closePlaybackVolume();
 
                             //save backup volume for unmute scenario
                             this.saveBackupPlaybackVolume(new_playback_volume);
@@ -591,7 +620,7 @@
                                 }
 
                                 this.changePlaybackVolume(new_playback_volume);
-                                this.closePlaybackVolumeMenu();
+                                this.closePlaybackVolume();
 
                                 //save backup volume for unmute scenario
                                 if(new_playback_volume > 0){
@@ -937,7 +966,7 @@
                 window.localStorage.playback_volume = new_value;
 
                 //show volume menu
-                this.openPlaybackVolumeMenu();
+                this.openPlaybackVolume();
             },
             togglePlaybackSpeedOptions() : void {
                 

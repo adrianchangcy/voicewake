@@ -5,8 +5,7 @@
         <div
             ref="slider"
             class="relative w-full h-full left-0 right-0 mx-auto cursor-pointer"
-            @mousedown.stop="[startDrag(), doDrag($event)]"
-            @touchstart.stop="[startDrag(true), doDrag($event)]"
+            @pointerdown.stop="[startDrag($event), doDrag($event)]"
         >
             <!--need 99% to remove dead pixel-->
             <div
@@ -32,12 +31,16 @@
 
 
 <script lang="ts">
+    import { defineComponent } from 'vue';
 
     //there are reasons we do it this way instead of <input type="range">
         //firefox does not support vertical orientation
         //the screen will move before <input> does, in a bad way
 
-    import { defineComponent } from 'vue';
+    type EmitDragSliderValueTypes = {
+        slider_value: number,
+        pointer_type: "mouse"|"pen"|"touch"
+    };
 
     export default defineComponent({
 
@@ -46,7 +49,6 @@
                 slider_dimension: null as DOMRect | null,   //reminder to parseFloat(val.toFixed(2)) to avoid negative exponent bugs
                 slider_value: 0,
                 is_dragging: false,
-                is_touch: false,
             };
         },
         props: {
@@ -56,7 +58,7 @@
                 default: 0
             },
         },
-        emits: ['hasNewSliderValue', 'startDragSliderValue', 'stopDragSliderValue', 'isTouch'],
+        emits: ['hasNewSliderValue', 'startDragSliderValue', 'stopDragSliderValue'],
         watch: {
             propSliderValue(new_value){
 
@@ -64,39 +66,49 @@
             },
         },
         methods: {
-            startDrag(is_touch=false){
+            emitDragSliderValue(event:PointerEvent, start_or_stop:"start"|"stop") : void {
+
+                if(start_or_stop === "start"){
+
+                    this.$emit('startDragSliderValue',
+                        {
+                            slider_value: this.slider_value,
+                            pointer_type: event.pointerType
+                        } as EmitDragSliderValueTypes
+                    );
                 
-                this.slider_dimension = (this.$refs.slider as HTMLElement).getBoundingClientRect();
+                }else if(start_or_stop === "stop"){
 
-                this.is_dragging = true;
-                this.is_touch = is_touch;
-
-                this.$emit('startDragSliderValue', this.slider_value);
-                this.$emit('isTouch', this.is_touch);
+                    this.$emit('stopDragSliderValue',
+                        {
+                            slider_value: this.slider_value,
+                            pointer_type: event.pointerType
+                        } as EmitDragSliderValueTypes
+                    );
+                }
             },
-            doDrag(event:MouseEvent|TouchEvent){
+            startDrag(event:PointerEvent){
+
+                this.slider_dimension = (this.$refs.slider as HTMLElement).getBoundingClientRect();
+                this.is_dragging = true;
+
+                this.emitDragSliderValue(event, "start");
+            },
+            doDrag(event:PointerEvent){
 
                 if(this.is_dragging === true && this.slider_dimension !== null){
 
                     //for mouse, we need these to avoid text highlighting, accidental permanent drag state, etc.
                     //for touch, we need these to avoid mouse firing
                     if(event !== null && event.cancelable === true){
-                        
+
                         event.preventDefault();
                     }
 
-                    //can use clientY, screenY, pageY, but pageY is most accurate in this context
-                    let user_y:number;
+                    //can use clientY, screenY, pageY, but they are calculated slightly differently
+                    //clientY seems to work best
+                    const user_y = event.clientY;
                     
-                    if(this.is_touch === true){
-
-                        user_y = (event as TouchEvent).touches[0].clientY;
-                        
-                    }else{
-
-                        user_y = (event as MouseEvent).clientY;
-                    }
-
                     if(user_y >= this.slider_dimension.top && user_y <= this.slider_dimension.bottom){
                         
                         this.slider_value = parseFloat(((this.slider_dimension.bottom - user_y) / this.slider_dimension.height).toFixed(2));
@@ -123,15 +135,15 @@
                     // console.log("==========================");
                 }
             },
-            stopDrag() : void {
+            stopDrag(event:PointerEvent) : void {
+
+                if(this.is_dragging === false){
+
+                    return;
+                }
 
                 this.is_dragging = false;
-
-                //we reset touch detection on every startDrag() and stopDrag()
-                //so we get latest status of is_touch
-                this.is_touch = false;
-
-                this.$emit('stopDragSliderValue', this.slider_value);
+                this.emitDragSliderValue(event, "stop");
             },
             animeSlider() : void {
 
@@ -166,19 +178,18 @@
 
             this.mainUpdateSlider(this.propSliderValue);
 
-            //attach listeners to window for mouse Y
-            window.addEventListener('mousemove', this.doDrag);  //hovering over :disabled elements causes unresponsiveness
-            window.addEventListener('touchmove', this.doDrag);
-            window.addEventListener('mouseup', this.stopDrag);
-            window.addEventListener('touchend', this.stopDrag);
+            //attach listeners to window for Y coordinate
+            //hovering over :disabled elements causes unresponsiveness for mousedown and touchstart, not sure about pointer
+            window.addEventListener('pointermove', this.doDrag);
+            window.addEventListener('pointerup', this.stopDrag);
+            window.addEventListener('pointercancel', this.stopDrag);
         },
         beforeUnmount(){
 
             //remove listeners
-            window.removeEventListener('mousemove', this.doDrag);
-            window.removeEventListener('touchmove', this.doDrag);
-            window.removeEventListener('mouseup', this.stopDrag);
-            window.removeEventListener('touchend', this.stopDrag);
+            window.removeEventListener('pointermove', this.doDrag);
+            window.removeEventListener('pointerup', this.stopDrag);
+            window.removeEventListener('pointercancel', this.stopDrag);
         },
     });
 </script>
