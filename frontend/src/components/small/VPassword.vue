@@ -15,7 +15,7 @@
                 :type="inputTypeForPassword"
                 :id="propElementId"
                 v-model="input_value"
-                class="w-full h-10 p-2 pr-11 bg-theme-light border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover rounded-lg    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-accent"
+                class="w-full h-10 p-2 pr-11 bg-theme-light border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover rounded-lg    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-black"
                 :placeholder="propPlaceholder"
                 autocomplete="off"
                 spellcheck="false"

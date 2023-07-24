@@ -31,7 +31,7 @@ module.exports = {
                 'theme-soft-lead': '#f5f5dc',   //for background yellow
 
                 //for small but high attention items, e.g. focus, highlight, etc.
-                'theme-accent': '#444444',
+                'theme-accent': '#a8a29e',
 
                 'theme-green-1': '#90a955',
                 'theme-green-2': '#4f772d',

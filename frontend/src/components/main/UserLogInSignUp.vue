@@ -9,11 +9,11 @@
             class="h-10 relative"
         >
             <VActionTextOnly
+                :propIsIconOnly="true"
                 @click.stop="emitIsClosed()"
                 propElement="button"
                 propElementSize="s"
                 type="button"
-                :propIsIconOnly="true"
                 class="w-10 absolute top-1 -right-3 m-auto"
             >
                 <i class="fas fa-xmark mx-auto text-xl"></i>
@@ -89,6 +89,7 @@
                                     <span class="text-base block">Don't have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
                                         <VActionTextOnly
+                                            :propIsIconOnly="true"
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -99,6 +100,7 @@
                                     </div>
                                     <div v-else>
                                         <VActionTextOnly
+                                            :propIsIconOnly="true"
                                             @click.stop="doNavigation('sign-up-section', 'sign-up-step-0', false)"
                                             propElement="button"
                                             propElementSize="s"
@@ -162,6 +164,7 @@
                                     <span class="text-base block">Don't have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
                                         <VActionTextOnly
+                                            :propIsIconOnly="true"
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -172,6 +175,7 @@
                                     </div>
                                     <div v-else>
                                         <VActionTextOnly
+                                            :propIsIconOnly="true"
                                             @click.stop="doNavigation('sign-up-section', 'sign-up-step-1', false)"
                                             propElement="button"
                                             propElementSize="s"
@@ -192,6 +196,7 @@
                         >
 
                             <VActionTextOnly
+                                :propIsIconOnly="true"
                                 @click.stop="[doNavigation('log-in-section', 'log-in-step-1', false)]"
                                 propElement="button"
                                 propElementSize="s"
@@ -227,6 +232,7 @@
                             <div class="h-10 flex flex-row items-center">
                                 <span class="text-base">{{ otp_request_status_text }}&nbsp;</span>
                                 <VActionTextOnly
+                                    :propIsIconOnly="true"
                                     v-show="canSubmitEmailAndRequestOTP"
                                     @click.stop="submitEmailAndRequestOTP('log-in', true)"
                                     propElement="button"
@@ -259,6 +265,7 @@
                                     <span class="text-base block">Don't have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
                                         <VActionTextOnly
+                                            :propIsIconOnly="true"
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -269,6 +276,7 @@
                                     </div>
                                     <div v-else>
                                         <VActionTextOnly
+                                            :propIsIconOnly="true"
                                             @click.stop="doNavigation('sign-up-section', 'sign-up-step-1', false)"
                                             propElement="button"
                                             propElementSize="s"
@@ -323,6 +331,7 @@
                                     <span class="text-base block">Already have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
                                         <VActionTextOnly
+                                            :propIsIconOnly="true"
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -333,6 +342,7 @@
                                     </div>
                                     <div v-else>
                                         <VActionTextOnly
+                                            :propIsIconOnly="true"
                                             @click.stop="doNavigation('log-in-section', 'log-in-step-0', false)"
                                             propElement="button"
                                             propElementSize="s"
@@ -396,6 +406,7 @@
                                     <span class="text-base block">Already have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
                                         <VActionTextOnly
+                                            :propIsIconOnly="true"
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -406,6 +417,7 @@
                                     </div>
                                     <div v-else>
                                         <VActionTextOnly
+                                            :propIsIconOnly="true"
                                             @click.stop="doNavigation('log-in-section', 'log-in-step-1', false)"
                                             propElement="button"
                                             propElementSize="s"
@@ -426,6 +438,7 @@
                         >
 
                             <VActionTextOnly
+                                :propIsIconOnly="true"
                                 @click.stop="[doNavigation('sign-up-section', 'sign-up-step-1', false)]"
                                 propElement="button"
                                 propElementSize="s"
@@ -461,6 +474,7 @@
                             <div class="h-10 flex flex-row items-center">
                                 <span class="text-base">{{ otp_request_status_text }}&nbsp;</span>
                                 <VActionTextOnly
+                                    :propIsIconOnly="true"
                                     v-show="canSubmitEmailAndRequestOTP"
                                     @click.stop="submitEmailAndRequestOTP('sign-up', true)"
                                     propElement="button"
@@ -493,6 +507,7 @@
                                     <span class="text-base block">Already have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
                                         <VActionTextOnly
+                                            :propIsIconOnly="true"
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -503,6 +518,7 @@
                                     </div>
                                     <div v-else>
                                         <VActionTextOnly
+                                            :propIsIconOnly="true"
                                             @click.stop="doNavigation('log-in-section', 'log-in-step-1', false)"
                                             propElement="button"
                                             propElementSize="s"
