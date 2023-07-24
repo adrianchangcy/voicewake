@@ -5,7 +5,7 @@
             <button
                 ref="like_button"
                 @click.stop="handleLiked()"
-                class="col-span-1 h-full px-5 flex flex-row     shade-text-when-hover transition-colors      bg-theme-light       border border-theme-light-gray rounded-full rounded-r-none"
+                class="col-span-1 h-full px-5 flex flex-row     shade-text-when-hover transition-colors      bg-theme-light       border border-theme-light-gray rounded-full rounded-r-none    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-accent"
                 type="button"
             >
                 <!--like button-->
@@ -33,7 +33,7 @@
             <button
                 ref="dislike_button"
                 @click.stop="handleDisliked()"
-                class="col-span-1 h-full px-4 flex flex-row     shade-text-when-hover transition-colors      bg-theme-light       border border-l-0 border-theme-light-gray rounded-full rounded-l-none"
+                class="col-span-1 h-full px-4 flex flex-row     shade-text-when-hover transition-colors      bg-theme-light       border border-l-0 border-theme-light-gray rounded-full rounded-l-none     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-accent"
                 type="button"
             >
                 <!--dislike button-->

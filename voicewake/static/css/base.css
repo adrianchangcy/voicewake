@@ -33,9 +33,7 @@
 
 /*
 FOCUS AND FOCUS-VISIBLE
-    always handle both together
-    for elements with no border, we use outline-offset:2px
-    for elements with border, we change border colour and set outline-0
+    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
 
     for Chrome, or maybe other browsers too, input/textarea always has focus & focus-visible together
         no fix for this, not even !important

@@ -7,8 +7,8 @@
             id="event-tone-picker"
             @click.stop="[toggleMenu(), emitIsOpen()]"
             :class="[
-                is_open ? 'border-theme-black' : 'border-theme-medium-gray shade-border-when-hover',
-                'w-full h-20 relative border-2 rounded-lg text-3xl text-theme-black text-center     focus:outline-1 focus-visible:outline-1 focus:outline-offset-2 focus-visible:outline-offset-2 focus:outline-theme-accent focus-visible:outline-theme-accent focus-visible:border-theme-black'
+                is_open ? 'border-4 border-theme-black      focus-visible:-outline-offset-8' : 'border-2 border-theme-medium-gray shade-border-when-hover   focus-visible:-outline-offset-2',
+                'w-full h-20 relative rounded-lg text-3xl text-theme-black text-center     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-theme-accent'
             ]"
             type="button"
         >

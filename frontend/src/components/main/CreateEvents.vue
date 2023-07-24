@@ -53,14 +53,17 @@
     >
 
         <!--arrows, aesthetics only-->
+        <!--uses padding to represent gap above, because there is always only one element, so gap wouldn't work-->
         <div class="w-full h-0 grid grid-cols-8">
-            <!--arrow for recorder menu-->
-            <div v-show="is_recorder_menu_open" class="col-span-6 col-start-1 relative">
-                <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"></div>
-            </div>
-            <!--arrow for event_tones menu-->
-            <div v-show="is_event_tone_menu_open" class="col-span-2 col-start-7 relative">
-                <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"></div>
+            <div
+                v-show="is_recorder_menu_open || is_event_tone_menu_open"
+                :class="[
+                    is_recorder_menu_open ? 'col-span-6 col-start-1 pr-2' : '',
+                    is_event_tone_menu_open ? 'col-span-2 col-start-7 pl-2' : '',
+                    'relative'
+                ]"
+            >
+                <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-4 border-t-4 border-theme-black rotate-45"></div>
             </div>
         </div>
 
@@ -71,7 +74,7 @@
                 :propBucketQuantity="bucket_quantity"
                 :propMaxDurationMs="max_duration_ms"
                 @newRecording="handleNewRecording($event)"
-                class="border-2 border-theme-black rounded-lg"
+                class="border-4 border-theme-black rounded-lg"
             />
         </div>
 
@@ -80,7 +83,7 @@
             <VEventToneMenu
                 :propIsOpen="is_event_tone_menu_open"
                 @eventToneSelected="handleEventToneSelected($event)"
-                class="border-2 border-theme-black rounded-lg"
+                class="border-4 border-theme-black rounded-lg"
             />
         </div>
     </div>
