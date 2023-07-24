@@ -25,17 +25,18 @@
         >
             <!--play/pause-->
             <div class="row-start-1 row-span-2 col-start-1 col-span-1 text-4xl relative">
-                <button
-                    ref="play_pause_button"
+                <VActionTextOnly
                     @click="togglePlaybackPlayPause()"
-                    class="absolute left-2 right-2 top-2 bottom-2 shade-text-when-hover transition-colors duration-200 ease-in-out rounded-md"
-                    :disabled="has_all_data_for_play === false"
+                    :propIsEnabled="has_all_data_for_play"
+                    propElement="button"
                     type="button"
+                    :propIsIconOnly="true"
+                    class="absolute left-2 right-2 top-2 bottom-2"
                 >
                     <i
                         :class="[
                             is_playing? 'fa-pause' : 'fa-play',
-                            'fas mb-0.5'
+                            'fas'
                         ]"
                     ></i>
                     <span v-if="is_playing" class="sr-only">
@@ -44,7 +45,7 @@
                     <span v-else class="sr-only">
                         play
                     </span>
-                </button>
+                </VActionTextOnly>
             </div>
             <!--ripples, slider, do left-2 right-2 m-auto if you want outermost knob to be within bounds-->
             <div
@@ -136,11 +137,14 @@
                     @pointerleave.stop="handlePlaybackVolumeHoverOut($event)"
                 >
                     <!--open/close volume-->
-                    <button
+                    <VActionTextOnly
                         @pointerdown.stop="toggleMute($event)"
-                        class="w-full h-full shade-text-when-hover transition-colors duration-200 ease-in-out rounded-md"
-                        :disabled="has_all_data_for_play === false"
+                        @keydown.enter.stop="toggleMute($event)"
+                        :propIsEnabled="has_all_data_for_play"
+                        propElement="button"
                         type="button"
+                        :propIsIconOnly="true"
+                        class="w-full h-full"
                     >
                         <i
                             :class="[
@@ -157,7 +161,7 @@
                         <span v-show="!isMuted" class="sr-only">
                             mute
                         </span>
-                    </button>
+                    </VActionTextOnly>
                     <!--volume menu-->
                     <TransitionFade>
                         <VBox
@@ -205,6 +209,7 @@
     import VBox from '/src/components/small/VBox.vue';
     import VSliderYSmall from '/src/components/small/VSliderYSmall.vue';
     import TransitionFade from '/src/transitions/TransitionFade.vue';
+    import VActionTextOnly from '../small/VActionTextOnly.vue';
 </script>
 
 
@@ -436,7 +441,7 @@
 
                 window.localStorage.backup_playback_volume = new_value;
             },
-            toggleMute(event:PointerEvent|null=null) : void {
+            toggleMute(event:KeyboardEvent|PointerEvent|null=null) : void {
 
                 //we don't use audio_element.muted
                 //we simply move volume to 0 when user wants to mute, for better UX, as per YouTube
@@ -461,7 +466,7 @@
                 }
 
                 //don't close if user is hovering with mouse
-                if(event !== null && event.pointerType === "mouse"){
+                if(event !== null && "pointerType" in event && event.pointerType === "mouse"){
 
                     return;
                 }
@@ -1261,10 +1266,6 @@
                 this.playback_rate = parseFloat(window.localStorage.playback_rate);
                 this.playback_volume = parseFloat(window.localStorage.playback_volume);
                 this.backup_playback_volume = parseFloat(window.localStorage.backup_playback_volume);
-
-                console.log(this.playback_rate);
-                console.log(this.playback_volume);
-                console.log(this.backup_playback_volume);
             }
 
             //set <audio> rate and volume

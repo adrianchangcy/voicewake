@@ -682,6 +682,14 @@ video {
   top: 1.25rem;
 }
 
+.-top-4 {
+  top: -1rem;
+}
+
+.-top-6 {
+  top: -1.5rem;
+}
+
 .-z-10 {
   z-index: -10;
 }
@@ -752,6 +760,10 @@ video {
 
 .m-auto {
   margin: auto;
+}
+
+.m-0 {
+  margin: 0px;
 }
 
 .mx-auto {
@@ -1373,6 +1385,22 @@ video {
   border-top-width: 2px;
 }
 
+.border-l-4 {
+  border-left-width: 4px;
+}
+
+.border-t-4 {
+  border-top-width: 4px;
+}
+
+.border-r-4 {
+  border-right-width: 4px;
+}
+
+.border-r-0 {
+  border-right-width: 0px;
+}
+
 .border-theme-black {
   --tw-border-opacity: 1;
   border-color: rgb(68 68 68 / var(--tw-border-opacity));
@@ -1478,6 +1506,10 @@ video {
 
 .bg-white\/60 {
   background-color: rgb(255 255 255 / 0.6);
+}
+
+.bg-transparent {
+  background-color: transparent;
 }
 
 .bg-gradient-to-b {
@@ -1975,9 +2007,7 @@ video {
 
 /*
 FOCUS AND FOCUS-VISIBLE
-    always handle both together
-    for elements with no border, we use outline-offset:2px
-    for elements with border, we change border colour and set outline-0
+    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
 
     for Chrome, or maybe other browsers too, input/textarea always has focus & focus-visible together
         no fix for this, not even !important
@@ -2212,21 +2242,9 @@ textarea {
   --tw-shadow: var(--tw-shadow-colored);
 }
 
-.focus\:h-10:focus {
-  height: 2.5rem;
-}
-
-.focus\:border-0:focus {
-  border-width: 0px;
-}
-
 .focus\:border-theme-black:focus {
   --tw-border-opacity: 1;
   border-color: rgb(68 68 68 / var(--tw-border-opacity));
-}
-
-.focus\:p-0:focus {
-  padding: 0px;
 }
 
 .focus\:outline-none:focus {
@@ -2234,32 +2252,28 @@ textarea {
   outline-offset: 2px;
 }
 
-.focus\:outline-1:focus {
-  outline-width: 1px;
+.focus\:outline:focus {
+  outline-style: solid;
 }
 
-.focus\:outline-0:focus {
-  outline-width: 0px;
+.focus\:outline-1:focus {
+  outline-width: 1px;
 }
 
 .focus\:outline-2:focus {
   outline-width: 2px;
 }
 
-.focus\:-outline-offset-4:focus {
-  outline-offset: -4px;
-}
-
-.focus\:outline-offset-2:focus {
-  outline-offset: 2px;
-}
-
-.focus\:-outline-offset-1:focus {
-  outline-offset: -1px;
+.focus\:outline-4:focus {
+  outline-width: 4px;
 }
 
 .focus\:-outline-offset-2:focus {
   outline-offset: -2px;
+}
+
+.focus\:-outline-offset-4:focus {
+  outline-offset: -4px;
 }
 
 .focus\:outline-theme-accent:focus {
@@ -2277,37 +2291,36 @@ textarea {
   --tw-ring-color: rgb(68 68 68 / var(--tw-ring-opacity));
 }
 
-.focus-visible\:border-theme-black:focus-visible {
-  --tw-border-opacity: 1;
-  border-color: rgb(68 68 68 / var(--tw-border-opacity));
+.focus-visible\:outline:focus-visible {
+  outline-style: solid;
 }
 
 .focus-visible\:outline-1:focus-visible {
   outline-width: 1px;
 }
 
-.focus-visible\:outline-0:focus-visible {
-  outline-width: 0px;
-}
-
 .focus-visible\:outline-2:focus-visible {
   outline-width: 2px;
+}
+
+.focus-visible\:outline-4:focus-visible {
+  outline-width: 4px;
+}
+
+.focus-visible\:-outline-offset-2:focus-visible {
+  outline-offset: -2px;
 }
 
 .focus-visible\:-outline-offset-4:focus-visible {
   outline-offset: -4px;
 }
 
-.focus-visible\:outline-offset-2:focus-visible {
-  outline-offset: 2px;
+.focus-visible\:-outline-offset-8:focus-visible {
+  outline-offset: -8px;
 }
 
-.focus-visible\:-outline-offset-1:focus-visible {
-  outline-offset: -1px;
-}
-
-.focus-visible\:-outline-offset-2:focus-visible {
-  outline-offset: -2px;
+.focus-visible\:outline-offset-0:focus-visible {
+  outline-offset: 0px;
 }
 
 .focus-visible\:outline-theme-accent:focus-visible {

@@ -6,7 +6,7 @@
             propFontSize === 'm' ? 'text-xl font-medium' : '',
             propElementSize === 's' ? 'h-10' : '',
             propIsEnabled ? '' : 'opacity-30',
-            'block shade-text-when-hover px-2 rounded-lg transition-colors   text-theme-black    focus:outline-1 focus-visible:outline-1 focus:outline-theme-accent focus-visible:outline-theme-accent'
+            'block shade-text-when-hover px-2 rounded-lg transition-colors   text-theme-black    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-accent'
         ]"
         :disabled="!propIsEnabled"
     >
