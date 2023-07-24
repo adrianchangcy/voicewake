@@ -30,7 +30,7 @@
                     <button
                         @click.prevent="handleEventToneSelected(event_tone)"
                         :disabled="!is_open"
-                        class="w-10 h-10 pb-0.5 shade-background-when-hover rounded-md transition-colors duration-100 ease-in-out   focus:outline-1 focus-visible:outline-1 focus:outline-theme-accent focus-visible:outline-theme-accent"
+                        class="w-10 h-10 pb-0.5 shade-background-when-hover rounded-md transition-colors duration-100 ease-in-out   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-accent"
                         type="button"
                     >
                         <span class="has-emoji">{{event_tone.event_tone_symbol}}</span>
