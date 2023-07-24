@@ -63,7 +63,7 @@
                     'relative'
                 ]"
             >
-                <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-4 border-t-4 border-theme-black rotate-45"></div>
+                <div class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-dark-gray rotate-45"></div>
             </div>
         </div>
 
@@ -74,7 +74,7 @@
                 :propBucketQuantity="bucket_quantity"
                 :propMaxDurationMs="max_duration_ms"
                 @newRecording="handleNewRecording($event)"
-                class="border-4 border-theme-black rounded-lg"
+                class="border-2 border-theme-dark-gray rounded-lg"
             />
         </div>
 
@@ -83,7 +83,7 @@
             <VEventToneMenu
                 :propIsOpen="is_event_tone_menu_open"
                 @eventToneSelected="handleEventToneSelected($event)"
-                class="border-4 border-theme-black rounded-lg"
+                class="border-2 border-theme-dark-gray rounded-lg"
             />
         </div>
     </div>
