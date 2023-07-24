@@ -2323,6 +2323,10 @@ textarea {
   outline-offset: 0px;
 }
 
+.focus-visible\:outline-offset-2:focus-visible {
+  outline-offset: 2px;
+}
+
 .focus-visible\:outline-theme-accent:focus-visible {
   outline-color: #444444;
 }
