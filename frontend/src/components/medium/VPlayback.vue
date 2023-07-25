@@ -82,7 +82,7 @@
                         ref="playback_slider"
                         :class="[
                             has_all_data_for_play === true && is_playback_slider_ready === true ? 'touch-none' : '',
-                            'h-full relative'
+                            'h-full relative parent-trigger-double-height-when-hover'
                         ]"
                         @mouseenter.stop="is_playback_slider_hover = true"
                         @mouseleave.stop="is_playback_slider_hover = false"
@@ -94,12 +94,28 @@
                             ref="playback_slider_dimension"
                             class="h-0 absolute opacity-0 left-2 right-2 top-0 bottom-0 m-auto"
                         ></div>
+
+                        <!--loading-->
                         <div
+                            v-show="is_loading"
+                            class="h-1 absolute left-0 right-0 top-5 bottom-0 m-auto"
+                        >
+                            <div
+                                :class="[
+                                    is_playback_slider_hover && has_all_data_for_play === true ? 'double-height-when-hover' : 'scale-y-100',
+                                    'w-full h-full skeleton transform'
+                                ]"
+                            ></div>
+                        </div>
+                        <!--not loading-->
+                        <div
+                            v-show="!is_loading"
                             :class="[
                                 is_playback_slider_hover && has_all_data_for_play === true ? 'double-height-when-hover' : 'scale-y-100',
-                                'h-1 absolute bg-theme-medium-gray/50 left-0 right-0 top-5 bottom-0 m-auto transition-transform duration-150 ease-in-out'
+                                'h-1 absolute bg-theme-light-gray left-0 right-0 top-5 bottom-0 m-auto transition-transform'
                             ]"
                         ></div>
+
                         <div
                             ref="playback_slider_progress"
                             class="h-1 absolute bg-theme-lead left-0 right-0 top-5 bottom-0 m-auto scale-x-0 origin-left"
@@ -108,11 +124,6 @@
                             ref="playback_slider_knob"
                             class="w-4 h-4 absolute rounded-full bg-theme-black top-5 bottom-0 m-auto"
                         >
-                            <div class="w-full h-full relative opacity-0">
-                                <i
-                                    class="fas fa-spinner text-2xl absolute w-fit h-fit -left-1 top-0 bottom-0 my-auto animate-spin"
-                                ></i>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -233,7 +244,6 @@
                 main_anime: null as InstanceType<typeof anime> | null,   //to store animePlaybackStates() anime
 
                 is_loading: false,
-                spinner_anime: null as InstanceType<typeof anime> | null,
                 is_playback_empty_anime: true,  //this is only to anime empty --> non-empty once, and vice versa
 
                 playback_slider_value: 0,
@@ -1214,16 +1224,6 @@
 
             //initial state
             this.animeIsEmptyPlayback();
-
-            //spinner
-            this.spinner_anime = anime({
-                targets: this.$refs.spinner,
-                easing: 'linear',
-                rotate: 360,
-                loop: true,
-                autoplay: false,
-                duration: 800,
-            });
 
             //when propAudioVolumePeaks.length > 0 on mounted(), means VPlayback was rendered via v-if with data already
             //we do this here because in this case, watchers do not trigger

@@ -35,15 +35,9 @@
                     @isSelected="handleNewSelectedEvent($event)"
                     :propIsSelected="checkIsSelected(propEventRoom.originator!.id)"
                 />
-                <div class="w-full h-fit grid grid-cols-8">
-                    <VLikeDislike
-                        :propEventId="propEventRoom.originator!.id"
-                        :propLikeCount="propEventRoom.originator!.like_count"
-                        :propDislikeCount="propEventRoom.originator!.dislike_count"
-                        :propIsLiked="propEventRoom.originator!.is_liked_by_user"
-                        class="col-span-6 lg:col-span-4"
-                    />
-                </div>
+                <VEventTools
+                    :propEvent="propEventRoom.originator"
+                />
             </div>
 
             <!--responders-->
@@ -59,15 +53,9 @@
                     @isSelected="handleNewSelectedEvent($event)"
                     :propIsSelected="checkIsSelected(event.id)"
                 />
-                <div class="w-full h-fit grid grid-cols-8">
-                    <VLikeDislike
-                        :propEventId="event.id"
-                        :propLikeCount="event.like_count"
-                        :propDislikeCount="event.dislike_count"
-                        :propIsLiked="event.is_liked_by_user"
-                        class="col-span-6 lg:col-span-4"
-                    />
-                </div>
+                <VEventTools
+                    :propEvent="event"
+                />
             </div>
         </div>
 
@@ -88,15 +76,9 @@
                     :propAudioURL="propEventRoom.originator!.audio_file"
                     :propEventTone="propEventRoom.originator!.event_tone"
                 />
-                <div class="w-full h-fit grid grid-cols-8">
-                    <VLikeDislike
-                        :propEventId="propEventRoom.originator!.id"
-                        :propLikeCount="propEventRoom.originator!.like_count"
-                        :propDislikeCount="propEventRoom.originator!.dislike_count"
-                        :propIsLiked="propEventRoom.originator!.is_liked_by_user"
-                        class="col-span-6 lg:col-span-4"
-                    />
-                </div>
+                <VEventTools
+                    :propEvent="propEventRoom.originator"
+                />
             </div>
 
             <!--responders-->
@@ -113,15 +95,9 @@
                     :propAudioURL="event.audio_file"
                     :propEventTone="event.event_tone"
                 />
-                <div class="w-full h-fit grid grid-cols-8">
-                    <VLikeDislike
-                        :propEventId="event.id"
-                        :propLikeCount="event.like_count"
-                        :propDislikeCount="event.dislike_count"
-                        :propIsLiked="event.is_liked_by_user"
-                        class="col-span-6 lg:col-span-4"
-                    />
-                </div>
+                <VEventTools
+                    :propEvent="event"
+                />
             </div>
         </div>
     </div>
@@ -131,7 +107,7 @@
     import VTitle from '../small/VTitle.vue';
     import VPlayback from '/src/components/medium/VPlayback.vue';
     import VEventCard from '/src/components/small/VEventCard.vue';
-    import VLikeDislike from '/src/components/medium/VLikeDislike.vue';
+    import VEventTools from '/src/components/medium/VEventTools.vue';
     import VUser from '/src/components/small/VUser.vue';
 </script>
 

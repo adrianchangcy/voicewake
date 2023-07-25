@@ -99,12 +99,11 @@
                                 class="w-full h-fit"
                             >
                                 <template #title>
-                                    <span class="block">1 unfinished reply found:</span>
+                                    <span class="block">1 unfinished reply found</span>
                                 </template>
                                 <template #content>
                                     <span class="block text-center">
-                                        You can search for new event choices after 
-                                        completing or deleting your unfinished reply.
+                                        Please open and complete, or delete, before searching.
                                     </span>
                                     <div
                                         class="grid grid-rows-1 grid-cols-2 mt-4 gap-2"
@@ -164,9 +163,8 @@
                                 propElement="button"
                                 type="button"
                                 propElementSize="l"
-                                propFontSize="l"
                                 :propIsRound="true"
-                                class="w-24"
+                                class="w-24 text-xl font-medium"
                             >
                                 <span>Reply</span>
                             </VActionSpecial>
@@ -180,9 +178,8 @@
                                 propElement="button"
                                 type="button"
                                 propElementSize="l"
-                                propFontSize="l"
                                 :propIsRound="true"
-                                class="w-24"
+                                class="w-24 text-xl font-medium"
                             >
                                 <span>Skip</span>
                             </VAction>

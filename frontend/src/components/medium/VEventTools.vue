@@ -1,77 +1,108 @@
 <template>
-    <div class="h-10 text-xl text-theme-black">
-        <div class="w-full h-full grid grid-cols-2">
+    <div class="h-10 grid grid-cols-8 gap-1 text-xl text-theme-black">
+
+        <!--like/dislike-->
+        <div class="col-span-5 lg:col-span-4 grid grid-cols-2 relative parent-trigger-shade-fake-border-when-hover">
+
+            <!--fake border-->
+            <div class="absolute w-[1px] h-[50%] left-0 right-0 top-0 bottom-0 m-auto bg-theme-light-gray shade-fake-border-when-hover transition-colors">
+            </div>
+
             <!--like-->
             <button
                 ref="like_button"
                 @click.stop="handleLiked()"
-                class="col-span-1 h-full px-5 flex flex-row     shade-text-when-hover transition-colors      bg-theme-light       border border-theme-light-gray rounded-full rounded-r-none    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-accent"
+                class="col-span-1 h-full     shade-border-when-hover transition-colors      bg-theme-light       border border-r-0 border-theme-light-gray rounded-full rounded-r-none    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-accent"
                 type="button"
             >
-                <!--like button-->
-                <div
-                    class="w-6 h-full relative"
-                    ref="like_logo"
-                >
-                    <i
-                        :class="[
-                            is_liked === true ? 'text-theme-lead' : 'text-theme-black/0',
-                            'absolute w-fit h-fit fas fa-thumbs-up left-0 right-0 top-0 bottom-0.5 m-auto transition-colors duration-200 ease-in-out'
-                        ]"
-                    ></i>
-                    <i class="absolute w-fit h-fit far fa-thumbs-up left-0 right-0 top-0 bottom-0.5 m-auto"></i>
-                </div>
-                <!--like count-->
-                <div class="w-full h-full relative text-base font-medium">
-                    <span class="absolute w-fit h-fit left-2 top-0 bottom-0 m-auto">
+                <div class="w-fit h-full mx-auto flex flex-row">
+                    <!--like logo-->
+                    <div
+                        class="h-full flex items-center relative pb-1"
+                        ref="like_logo"
+                    >
+                        <i
+                            :class="[
+                                is_liked === true ? 'text-theme-lead' : 'text-theme-black/0',
+                                'w-fit h-fit fas fa-thumbs-up mx-auto transition-colors duration-200 ease-in-out'
+                            ]"
+                        ></i>
+                        <i class="absolute w-fit h-fit far fa-thumbs-up mx-auto"></i>
+                    </div>
+                    <!--like count-->
+                    <div class="w-fit h-full pl-1 flex items-center text-sm">
+                        <span class="w-fit h-fit mx-auto">
+                            <span class="sr-only">current like count is </span>{{ prettyLikeCount }}                        
+                        </span>
                         <span v-show="is_liked === true" class="sr-only">you have liked this</span>
-                        <span class="sr-only">current like count is </span>{{ prettyLikeCount }}
-                    </span>
+                    </div>
                 </div>
             </button>
+
             <!--dislike-->
             <button
                 ref="dislike_button"
                 @click.stop="handleDisliked()"
-                class="col-span-1 h-full px-4 flex flex-row     shade-text-when-hover transition-colors      bg-theme-light       border border-l-0 border-theme-light-gray rounded-full rounded-l-none     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-accent"
+                class="col-span-1 h-full     shade-border-when-hover transition-colors      bg-theme-light       border border-l-0 border-theme-light-gray rounded-full rounded-l-none     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-accent"
                 type="button"
             >
-                <!--dislike button-->
-                <div
-                    class="w-6 h-full relative"
-                    ref="dislike_logo"
-                >
-                    <i
-                        :class="[
-                            is_liked === false ? 'text-theme-lead' : 'text-theme-black/0',
-                            'absolute w-fit h-fit fas fa-thumbs-down left-0 right-0 top-2 bottom-0 m-auto transition-colors duration-200 ease-in-out'
-                        ]"
-                    ></i>
-                    <i class="absolute w-fit h-fit far fa-thumbs-down left-0 right-0 top-2 bottom-0 m-auto"></i>
-                </div>
-                <!--dislike count-->
-                <div class="w-full h-full relative text-base font-medium">
-                    <span class="absolute w-fit h-fit left-2 top-0 bottom-0 m-auto">
+                <div class="w-fit h-full mx-auto flex flex-row">
+                    <!--dislike logo-->
+                    <div
+                        class="h-full flex items-center relative pt-1"
+                        ref="dislike_logo"
+                    >
+                        <i
+                            :class="[
+                                is_liked === false ? 'text-theme-lead' : 'text-theme-black/0',
+                                'w-fit h-fit fas fa-thumbs-down mx-auto transition-colors duration-200 ease-in-out'
+                            ]"
+                        ></i>
+                        <i class="absolute w-fit h-fit far fa-thumbs-down mx-auto"></i>
+                    </div>
+                    <!--dislike count-->
+                    <div class="w-fit h-full pl-1 flex items-center text-sm">
+                        <span class="w-fit h-fit mx-auto">
+                            <span class="sr-only">current dislike count is </span>{{ prettyDislikeCount }}
+                        </span>
                         <span v-show="is_liked === false" class="sr-only">you have disliked this</span>
-                        <span class="sr-only">current dislike count is </span>{{ prettyDislikeCount }}
-                    </span>
+                    </div>
                 </div>
             </button>
         </div>
+
+        <!--share-->
+        <button
+            @click.stop="copyEventURL()"
+            class="col-span-3 lg:col-span-2 relative flex flex-row items-center     shade-border-when-hover transition-colors      bg-theme-light       border border-theme-light-gray rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-accent"
+            type="button"
+        >
+            <TransitionFade>
+                <span v-if="has_shared === false" class="w-fit h-full flex items-center mx-auto pb-0.5">
+                    <i class="fas fa-share text-base"></i>
+                    <span class="pl-1 text-base">Share</span>
+                </span>
+                <span v-else-if="has_shared === true" class="w-fit h-full flex items-center mx-auto pb-0.5">
+                    <i class="fas fa-check text-lg"></i>
+                    <span class="pl-1 text-base">Copied</span>
+                </span>
+            </TransitionFade>
+        </button>
     </div>
 </template>
 
 
 <script setup lang="ts">
-
+    import TransitionFade from '@/transitions/TransitionFade.vue';
 </script>
 
 
 <script lang="ts">
-    import { defineComponent } from 'vue';
+    import { defineComponent, PropType } from 'vue';
     import anime from 'animejs';
     import { prettyCount } from '@/helper_functions';
     import { notify } from 'notiwind';
+    import EventTypes from '@/types/Events.interface';
     const axios = require('axios');
 
     export default defineComponent({
@@ -81,28 +112,15 @@
                 like_count: 0,
                 dislike_count: 0,
                 submit_interval: null as number|null,
+
+                has_shared: false as boolean|null,
+                has_shared_timeout: null as number|null,
             };
         },
         props: {
-            propEventId: {
-                type: Number,
+            propEvent: {
+                type: Object as PropType<EventTypes>,
                 required: true,
-                default: null,
-            },
-            propLikeCount: {
-                type: Number,
-                required: true,
-                default: 0,
-            },
-            propDislikeCount: {
-                type: Number,
-                required: true,
-                default: 0,
-            },
-            propIsLiked: {
-                type: Boolean,
-                required: false,
-                default: null,
             },
         },
         computed: {
@@ -139,28 +157,62 @@
             this.axiosSetup();
 
             //store props into variables
-            this.is_liked = this.propIsLiked;
-            this.like_count = this.propLikeCount;
-            this.dislike_count = this.propDislikeCount;
+            this.is_liked = this.propEvent['is_liked_by_user'];
+            this.like_count = this.propEvent['like_count'];
+            this.dislike_count = this.propEvent['dislike_count'];
 
             //we expect counts from REST API to also include user's own like/dislike
             //if user has like/dislike, we -1 first, so at computed, we can +1 for existing or new like/dislike
-            if(this.propIsLiked === true){
+            if(this.propEvent['is_liked_by_user'] === true){
 
                 this.like_count -= 1;
 
-            }else if(this.propIsLiked === false){
+            }else if(this.propEvent['is_liked_by_user'] === false){
 
                 this.dislike_count -= 1;
             }
+
+            this.like_count = 999999;
+            this.dislike_count = 999999;
         },
         methods: {
-            submitLikeDislike() : void {
+            copyEventURL() : void {
 
-                if(this.propEventId === null){
+                const url = window.origin + "/hear/" + this.propEvent.event_room.id;
+                navigator.clipboard.writeText(url);
 
-                    return;
+                this.has_shared_timeout !== null ? window.clearTimeout(this.has_shared_timeout) : null;
+                this.has_shared_timeout = null;
+
+                //code below is more complex so that it can handle "user copied but kept spamming" aesthetics
+
+                if(this.has_shared === true){
+
+                    this.has_shared = null;
+
+                    this.has_shared_timeout = window.setTimeout(()=>{
+
+                        this.has_shared = true;
+
+                        this.has_shared_timeout !== null ? window.clearTimeout(this.has_shared_timeout) : null;
+                        this.has_shared_timeout = null;
+
+                        this.has_shared_timeout = window.setTimeout(()=>{
+                            this.has_shared = false;
+                        }, 2000);
+
+                    }, 200);
+
+                }else{
+
+                    this.has_shared = true;
+
+                    this.has_shared_timeout = window.setTimeout(()=>{
+                        this.has_shared = false;
+                    }, 2000);
                 }
+            },
+            submitLikeDislike() : void {
 
                 if(this.submit_interval !== null){
 
@@ -172,7 +224,7 @@
 
                     let data = new FormData();
                 
-                    data.append('event_id', JSON.stringify(this.propEventId));
+                    data.append('event_id', JSON.stringify(this.propEvent['id']));
                     data.append('is_liked', JSON.stringify(this.is_liked));
 
                     axios.post('http://127.0.0.1:8000/api/event-likes-dislikes', data)
@@ -205,11 +257,6 @@
             },
             handleLiked() : void {
 
-                if(this.propEventId === null){
-
-                    return;
-                }
-
                 if(this.is_liked === null || this.is_liked === false){
 
                     this.is_liked = true;
@@ -224,11 +271,6 @@
                 this.submitLikeDislike();
             },
             handleDisliked() : void {
-
-                if(this.propEventId === null){
-
-                    return;
-                }
 
                 if(this.is_liked === null || this.is_liked === true){
 
