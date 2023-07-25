@@ -200,11 +200,24 @@ textarea {
     .border-solid-when-hover:hover{
         border-style: solid;
     }
-    .double-height-when-hover{
+    .double-width-when-hover:hover{
+        transform: scaleX(2);
+    }
+    .double-height-when-hover:hover{
         transform: scaleY(2);
     }
-
     .nav-burger-when-hover:hover > .nav-burger-line{
+        background-color: rgba(168, 162, 158, 1);
+    }
+
+    /*triggers from parent to all descendants that have classes above*/
+    .parent-trigger-double-width-when-hover:hover .double-width-when-hover{
+        transform: scaleX(2);
+    }
+    .parent-trigger-double-height-when-hover:hover .double-height-when-hover{
+        transform: scaleY(2);
+    }
+    .parent-trigger-shade-fake-border-when-hover:hover .shade-fake-border-when-hover{
         background-color: rgba(168, 162, 158, 1);
     }
 }

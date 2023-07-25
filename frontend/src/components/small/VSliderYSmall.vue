@@ -4,18 +4,17 @@
     <div class="p-2 py-4 touch-none">
         <div
             ref="slider"
-            class="relative w-full h-full left-0 right-0 mx-auto cursor-pointer"
+            class="relative w-full h-full left-0 right-0 mx-auto cursor-pointer parent-trigger-double-width-when-hover"
             @pointerdown.stop="[startDrag($event), doDrag($event)]"
         >
-            <!--need 99% to remove dead pixel-->
             <div
-                class="w-2 h-[99%] absolute bg-theme-medium-gray left-0 right-0 top-0 bottom-0 m-auto"
+                class="w-2 absolute bg-theme-light-gray left-0 right-0 top-0 bottom-0 m-auto double-width-when-hover transition-transform"
             >
-                <!--this is just to patch up grey spot-->
-                <div
-                    class="w-2 h-2 absolute bg-theme-lead left-0 right-0 mx-auto bottom-0"
-                ></div>
             </div>
+            <!--this is just to patch up grey spot-->
+            <div
+                class="w-2 h-3 absolute bg-theme-lead left-0 right-0 mx-auto bottom-0"
+            ></div>
             <div
                 ref="slider_progress"
                 class="w-2 absolute bg-theme-lead left-0 right-0 mx-auto top-2 bottom-2 origin-bottom"

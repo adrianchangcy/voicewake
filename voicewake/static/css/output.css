@@ -710,6 +710,10 @@ video {
   grid-column: span 3 / span 3;
 }
 
+.col-span-5 {
+  grid-column: span 5 / span 5;
+}
+
 .col-span-6 {
   grid-column: span 6 / span 6;
 }
@@ -877,6 +881,10 @@ video {
   height: 6rem;
 }
 
+.h-3 {
+  height: 0.75rem;
+}
+
 .h-32 {
   height: 8rem;
 }
@@ -925,12 +933,12 @@ video {
   height: 5.5rem;
 }
 
-.h-\[75\%\] {
-  height: 75%;
+.h-\[50\%\] {
+  height: 50%;
 }
 
-.h-\[99\%\] {
-  height: 99%;
+.h-\[75\%\] {
+  height: 75%;
 }
 
 .h-\[calc\(100vh-4\.5rem\)\] {
@@ -1013,6 +1021,10 @@ video {
 
 .w-8 {
   width: 2rem;
+}
+
+.w-\[1px\] {
+  width: 1px;
 }
 
 .w-\[25\%\] {
@@ -1357,6 +1369,10 @@ video {
   border-left-width: 2px;
 }
 
+.border-r-0 {
+  border-right-width: 0px;
+}
+
 .border-t {
   border-top-width: 1px;
 }
@@ -1373,11 +1389,6 @@ video {
 .border-theme-danger {
   --tw-border-opacity: 1;
   border-color: rgb(250 53 21 / var(--tw-border-opacity));
-}
-
-.border-theme-dark-gray {
-  --tw-border-opacity: 1;
-  border-color: rgb(168 162 158 / var(--tw-border-opacity));
 }
 
 .border-theme-light-gray {
@@ -1452,17 +1463,13 @@ video {
   background-color: rgb(242 244 243 / var(--tw-bg-opacity));
 }
 
+.bg-theme-light-gray {
+  --tw-bg-opacity: 1;
+  background-color: rgb(231 229 228 / var(--tw-bg-opacity));
+}
+
 .bg-theme-light\/60 {
   background-color: rgb(242 244 243 / 0.6);
-}
-
-.bg-theme-medium-gray {
-  --tw-bg-opacity: 1;
-  background-color: rgb(214 211 209 / var(--tw-bg-opacity));
-}
-
-.bg-theme-medium-gray\/50 {
-  background-color: rgb(214 211 209 / 0.5);
 }
 
 .bg-theme-medium-gray\/75 {
@@ -1511,11 +1518,6 @@ video {
 .px-4 {
   padding-left: 1rem;
   padding-right: 1rem;
-}
-
-.px-5 {
-  padding-left: 1.25rem;
-  padding-right: 1.25rem;
 }
 
 .px-6 {
@@ -1593,6 +1595,10 @@ video {
 
 .pb-8 {
   padding-bottom: 2rem;
+}
+
+.pl-1 {
+  padding-left: 0.25rem;
 }
 
 .pl-2 {
@@ -2143,11 +2149,29 @@ textarea {
     border-style: solid;
   }
 
-  .double-height-when-hover{
+  .double-width-when-hover:hover{
+    transform: scaleX(2);
+  }
+
+  .double-height-when-hover:hover{
     transform: scaleY(2);
   }
 
   .nav-burger-when-hover:hover > .nav-burger-line{
+    background-color: rgba(168, 162, 158, 1);
+  }
+
+  /*triggers from parent to all descendants that have classes above*/
+
+  .parent-trigger-double-width-when-hover:hover .double-width-when-hover{
+    transform: scaleX(2);
+  }
+
+  .parent-trigger-double-height-when-hover:hover .double-height-when-hover{
+    transform: scaleY(2);
+  }
+
+  .parent-trigger-shade-fake-border-when-hover:hover .shade-fake-border-when-hover{
     background-color: rgba(168, 162, 158, 1);
   }
 }
@@ -2217,18 +2241,6 @@ textarea {
   outline-offset: 2px;
 }
 
-.focus\:outline:focus {
-  outline-style: solid;
-}
-
-.focus\:outline-1:focus {
-  outline-width: 1px;
-}
-
-.focus\:outline-theme-accent:focus {
-  outline-color: #a8a29e;
-}
-
 .focus\:ring-1:focus {
   --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
   --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);
@@ -2244,10 +2256,6 @@ textarea {
   outline-style: solid;
 }
 
-.focus-visible\:outline-1:focus-visible {
-  outline-width: 1px;
-}
-
 .focus-visible\:outline-2:focus-visible {
   outline-width: 2px;
 }
@@ -2258,10 +2266,6 @@ textarea {
 
 .focus-visible\:-outline-offset-4:focus-visible {
   outline-offset: -4px;
-}
-
-.focus-visible\:outline-offset-2:focus-visible {
-  outline-offset: 2px;
 }
 
 .focus-visible\:outline-offset-0:focus-visible {
@@ -2362,6 +2366,10 @@ textarea {
 @media (min-width: 1024px) {
   .lg\:col-span-1 {
     grid-column: span 1 / span 1;
+  }
+
+  .lg\:col-span-2 {
+    grid-column: span 2 / span 2;
   }
 
   .lg\:col-span-4 {
