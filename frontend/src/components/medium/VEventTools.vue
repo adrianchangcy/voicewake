@@ -30,7 +30,7 @@
                         <i class="absolute w-fit h-fit far fa-thumbs-up mx-auto"></i>
                     </div>
                     <!--like count-->
-                    <div class="w-fit h-full pl-1 flex items-center text-sm">
+                    <div class="w-fit h-full pl-2 flex items-center text-sm">
                         <span class="w-fit h-fit mx-auto">
                             <span class="sr-only">current like count is </span>{{ prettyLikeCount }}                        
                         </span>
@@ -61,7 +61,7 @@
                         <i class="absolute w-fit h-fit far fa-thumbs-down mx-auto"></i>
                     </div>
                     <!--dislike count-->
-                    <div class="w-fit h-full pl-1 flex items-center text-sm">
+                    <div class="w-fit h-full pl-2 flex items-center text-sm">
                         <span class="w-fit h-fit mx-auto">
                             <span class="sr-only">current dislike count is </span>{{ prettyDislikeCount }}
                         </span>
@@ -80,11 +80,11 @@
             <TransitionFade>
                 <span v-if="has_shared === false" class="w-fit h-full flex items-center mx-auto pb-0.5">
                     <i class="fas fa-share text-base"></i>
-                    <span class="pl-1 text-base">Share</span>
+                    <span class="pl-2 text-base">Share</span>
                 </span>
                 <span v-else-if="has_shared === true" class="w-fit h-full flex items-center mx-auto pb-0.5">
                     <i class="fas fa-check text-lg"></i>
-                    <span class="pl-1 text-base">Copied</span>
+                    <span class="pl-2 text-base">Copied</span>
                 </span>
             </TransitionFade>
         </button>

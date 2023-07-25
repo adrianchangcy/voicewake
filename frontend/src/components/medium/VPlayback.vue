@@ -49,16 +49,13 @@
             </div>
             <!--ripples, slider, do left-2 right-2 m-auto if you want outermost knob to be within bounds-->
             <div
-                :class="[
-                    (has_all_data_for_play === true && is_playback_slider_ready === true ? 'cursor-pointer' : 'cursor-default'),
-                    'row-start-1 row-span-1 col-start-2 col-span-2 relative'
-                ]"
+                class="h-12 row-start-1 row-span-1 col-start-2 col-span-2 relative"
             >
                 <!--ripples-->
                 <!--need inline CSS to prevent jolting from anime if without it-->
                 <div
                     ref="volume_ripples_container"
-                    class="w-full h-4 absolute top-2 flex flex-row justify-between px-[0.4375rem]"
+                    class="w-full h-6 absolute top-2 flex flex-row justify-between px-[0.4375rem]"
                 >
                     <div
                         v-for="volume_ripple in propBucketQuantity" :key="volume_ripple"
@@ -76,12 +73,12 @@
                 </div>
                 <!--slider-->
                 <div
-                    class="w-full h-full absolute bottom-0"
+                    class="w-full h-10 absolute top-2"
                 >
                     <div
                         ref="playback_slider"
                         :class="[
-                            has_all_data_for_play === true && is_playback_slider_ready === true ? 'touch-none' : '',
+                            has_all_data_for_play === true && is_playback_slider_ready === true ? 'touch-none cursor-pointer' : 'cursor-default',
                             'h-full relative parent-trigger-double-height-when-hover'
                         ]"
                         @mouseenter.stop="is_playback_slider_hover = true"
@@ -98,11 +95,11 @@
                         <!--loading-->
                         <div
                             v-show="is_loading"
-                            class="h-1 absolute left-0 right-0 top-5 bottom-0 m-auto"
+                            class="h-1 absolute left-0 right-0 bottom-[0.4rem] m-auto"
                         >
                             <div
                                 :class="[
-                                    is_playback_slider_hover && has_all_data_for_play === true ? 'double-height-when-hover' : 'scale-y-100',
+                                    is_playback_slider_hover && has_all_data_for_play === true ? 'double-height-when-hover' : '',
                                     'w-full h-full skeleton transform'
                                 ]"
                             ></div>
@@ -111,18 +108,18 @@
                         <div
                             v-show="!is_loading"
                             :class="[
-                                is_playback_slider_hover && has_all_data_for_play === true ? 'double-height-when-hover' : 'scale-y-100',
-                                'h-1 absolute bg-theme-light-gray left-0 right-0 top-5 bottom-0 m-auto transition-transform'
+                                is_playback_slider_hover && has_all_data_for_play === true ? 'double-height-when-hover' : '',
+                                'h-1 absolute bg-theme-light-gray left-0 right-0 bottom-[0.4rem] m-auto transition-transform'
                             ]"
                         ></div>
 
                         <div
                             ref="playback_slider_progress"
-                            class="h-1 absolute bg-theme-lead left-0 right-0 top-5 bottom-0 m-auto scale-x-0 origin-left"
+                            class="h-1 absolute bg-theme-lead left-0 right-0 bottom-[0.4rem] m-auto scale-x-0 origin-left"
                         ></div>
                         <div
                             ref="playback_slider_knob"
-                            class="w-4 h-4 absolute rounded-full bg-theme-black top-5 bottom-0 m-auto"
+                            class="w-4 h-4 absolute rounded-full bg-theme-black bottom-0 m-auto"
                         >
                         </div>
                     </div>
@@ -131,13 +128,15 @@
             </div>
 
             <!--volume, timers-->
+            <!--originally h-10, as per grid, but do pt-2 to let row above be h-12-->
+            <!--use my-auto but do -top-2 bottom-0 for child-most element to align as if it is h-10-->
             <div
-                class="row-start-2 row-span-1 col-start-2 col-span-2 grid grid-rows-1 grid-cols-3"
+                class="pt-2 row-start-2 row-span-1 col-start-2 col-span-2 grid grid-rows-1 grid-cols-3"
             >
                 <!--current duration-->
-                <div class="row-start-1 row-span-1 col-start-1 col-span-1 relative text-sm">
+                <div class="row-start-1 row-span-1 col-start-1 col-span-1 relative text-xs sm:text-sm">
                     <span class="sr-only">current duration</span>
-                    <span class="absolute w-fit h-fit left-0 top-0 bottom-0 m-auto">{{pretty_current_playback_time}}</span>
+                    <span class="absolute w-fit h-fit left-0 -top-2 bottom-0 m-auto">{{pretty_current_playback_time}}</span>
                 </div>
                 <!--volume-->
                 <div
@@ -157,15 +156,17 @@
                         :propIsIconOnly="true"
                         class="w-full h-full"
                     >
-                        <i
-                            :class="[
-                                (isMuted ? 'fa-volume-xmark' : ''),
-                                (playback_volume <= 0.5 ? 'fa-volume-low' : ''),
-                                (playback_volume <= 1 ? 'fa-volume-high' : ''),
-                                (is_playback_volume_open ? '-rotate-90' : 'rotate-0'),
-                                'fas transition-transform duration-200 ease-in-out'
-                            ]"
-                        ></i>
+                        <div class="w-full h-full relative">
+                            <i
+                                :class="[
+                                    (isMuted ? 'fa-volume-xmark' : ''),
+                                    (playback_volume <= 0.5 ? 'fa-volume-low' : ''),
+                                    (playback_volume <= 1 ? 'fa-volume-high' : ''),
+                                    (is_playback_volume_open ? '-rotate-90' : 'rotate-0'),
+                                    'fas transition-transform w-fit h-fit absolute left-0 right-0 -top-2 bottom-0 m-auto'
+                                ]"
+                            ></i>
+                        </div>
                         <span v-show="isMuted" class="sr-only">
                             unmute and open volume menu
                         </span>
@@ -173,12 +174,14 @@
                             mute
                         </span>
                     </VActionTextOnly>
+
                     <!--volume menu-->
+                    <!--has bottom-8 to follow second row's height-->
                     <TransitionFade>
                         <VBox
                             v-show="is_playback_volume_open"
                             :propIsOpaque="true"
-                            class="w-full h-[300%] absolute left-0 right-0 bottom-10 m-auto"
+                            class="w-full h-28 absolute left-0 right-0 bottom-8 m-auto"
                         >
                             <VSliderYSmall
                                 ref="volume_slider"
@@ -194,8 +197,8 @@
                     </TransitionFade>
                 </div>
                 <!--total duration-->
-                <div class="row-start-1 row-span-1 col-start-3 col-span-1 relative text-sm">
-                    <span class="absolute w-fit h-fit right-0 top-0 bottom-0 m-auto">
+                <div class="row-start-1 row-span-1 col-start-3 col-span-1 relative text-xs sm:text-sm">
+                    <span class="absolute w-fit h-fit right-0 -top-2 bottom-0 m-auto">
                         <span class="sr-only">total duration</span>
                         {{pretty_playback_duration}}
                     </span>
