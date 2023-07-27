@@ -1,7 +1,6 @@
 <template>
-    <div
-        :class="is_testing ? 'w-full h-screen items-center flex flex-col mt-10' : 'hidden'"
-    >
+    <div>
+
 
 
 
@@ -25,7 +24,6 @@
     export default defineComponent({
         data(){
             return {
-                is_testing: false,
                 notifications: [] as any[],
             };
         },

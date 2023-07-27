@@ -1,9 +1,9 @@
 <template>
     <div
-        class="text-theme-black"
+        class="text-theme-black pb-10"
     >
 
-        <!--close button-->
+        <!--close button, also functioning as pt-10-->
         <div
             v-if="propIsForStaticPage === false"
             class="h-10 relative"
@@ -151,7 +151,7 @@
                                     propElement="button"
                                     type="button"
                                     propElementSize="m"
-                                    propFontSize="m"
+                                    propFontSize="l"
                                     class="w-full"
                                 >
                                     <span class="mx-auto">Next</span>
@@ -229,8 +229,23 @@
                             />
 
                             <!--resend OTP-->
-                            <div class="h-10 flex flex-row items-center">
-                                <span class="text-base">{{ otp_request_status_text }}&nbsp;</span>
+                            <div class="h-10 flex flex-row items-center text-theme-black">
+
+                                <div
+                                    v-show="is_otp_request_loading"
+                                    class="text-base"
+                                >
+                                    <VLoading propElementSize="s">
+                                        <span class="pl-1">Sending login code...</span>
+                                    </VLoading>
+                                </div>
+
+                                <span
+                                    v-show="!is_otp_request_loading"
+                                    class="text-base"
+                                >
+                                    {{ otp_request_status_text }}&nbsp;
+                                </span>
                                 <VActionTextOnly
                                     :propIsIconOnly="true"
                                     v-show="canSubmitEmailAndRequestOTP"
@@ -252,10 +267,22 @@
                                     propElement="button"
                                     type="button"
                                     propElementSize="m"
-                                    propFontSize="m"
+                                    propFontSize="l"
                                     class="w-full"
                                 >
-                                    <span class="mx-auto">Log in</span>
+                                    <!--putting TransitionFade here seems to break things-->
+                                    <!--i.e. renders v-if and v-else once then disappearing-->
+                                    <VLoading
+                                        v-if="is_main_action_loading"
+                                        propElementSize="m"
+                                        class="mx-auto"
+                                    >
+                                        <span class="pl-2">Logging in...</span>
+                                    </VLoading>
+
+                                    <span v-else class="mx-auto">
+                                        Log in
+                                    </span>
                                 </VActionSpecial>
                             </div>
 
@@ -393,7 +420,7 @@
                                     propElement="button"
                                     type="button"
                                     propElementSize="m"
-                                    propFontSize="m"
+                                    propFontSize="l"
                                     class="w-full"
                                 >
                                     <span class="mx-auto">Next</span>
@@ -471,12 +498,27 @@
                             />
 
                             <!--resend OTP-->
-                            <div class="h-10 flex flex-row items-center">
-                                <span class="text-base">{{ otp_request_status_text }}&nbsp;</span>
+                            <div class="h-10 flex flex-row items-center text-theme-black">
+
+                                <div
+                                    v-show="is_otp_request_loading"
+                                    class="text-base"
+                                >
+                                    <VLoading propElementSize="s">
+                                        <span class="pl-1">Sending sign-up code...</span>
+                                    </VLoading>
+                                </div>
+
+                                <span
+                                    v-show="!is_otp_request_loading"
+                                    class="text-base"
+                                >
+                                    {{ otp_request_status_text }}&nbsp;
+                                </span>
                                 <VActionTextOnly
                                     :propIsIconOnly="true"
                                     v-show="canSubmitEmailAndRequestOTP"
-                                    @click.stop="submitEmailAndRequestOTP('sign-up', true)"
+                                    @click.stop="submitEmailAndRequestOTP('log-in', true)"
                                     propElement="button"
                                     propElementSize="s"
                                     propFontSize="s"
@@ -494,11 +536,21 @@
                                     propElement="button"
                                     type="button"
                                     propElementSize="m"
-                                    propFontSize="m"
+                                    propFontSize="l"
                                     class="w-full"
                                 >
-                                    <span class="mx-auto">Sign up</span>
-                                </VActionSpecial>
+                                    <VLoading
+                                        v-if="is_main_action_loading"
+                                        propElementSize="m"
+                                        class="mx-auto"
+                                    >
+                                        <span class="pl-2">Signing up...</span>
+                                    </VLoading>
+
+                                    <span v-else class="mx-auto">
+                                        Sign up
+                                    </span>
+                            </VActionSpecial>
                             </div>
 
                             <!--extra options-->
@@ -552,6 +604,7 @@
     import TransitionFade from '@/transitions/TransitionFade.vue';
     import VAction from '@/components/small/VAction.vue';
     import VActionSpecial from '@/components/small/VActionSpecial.vue';
+    import VLoading from '../small/VLoading.vue';
 </script>
 
 
@@ -588,7 +641,7 @@
                 email_has_change: false,    //used to determine whether otp resets
 
                 //handle loading
-                is_loading: false,
+                is_otp_request_loading: false,
                 is_main_action_loading: false,
                 is_email_loading: false,
 
@@ -636,7 +689,7 @@
             },
             canSubmitEmailAndRequestOTP() : boolean {
 
-                return this.email_is_ok === true && this.otp_request_cooldown_interval === null && this.is_loading === false;
+                return this.email_is_ok === true && this.otp_request_cooldown_interval === null && this.is_otp_request_loading === false;
             }
         },
         emits: [
@@ -689,7 +742,6 @@
 
                 this.otp_request_cooldown_interval !== null ? window.clearTimeout(this.otp_request_cooldown_interval) : null;
                 this.otp_request_cooldown_interval = null;
-                this.otp_request_cooldown_duration_s = 30;
                 this.otp_request_cooldown_s = 0;
                 this.otp_request_status_text = "";
                 this.email_has_change = false;
@@ -720,6 +772,48 @@
 
                     this.current_step = (this.steps as StepsType)[section_index][steps_value_index];
                 }
+            },
+            startRequestOTPCooldown() : void {
+
+                //reset
+                this.otp_request_cooldown_interval !== null ? window.clearTimeout(this.otp_request_cooldown_interval) : null;
+                this.otp_request_cooldown_interval = null;
+                this.otp_request_cooldown_s = 0;
+                this.otp_request_status_text = "";
+
+                //set cooldown seconds
+                //-1 to account for setInterval() first-time delay
+                this.otp_request_cooldown_s = this.otp_request_cooldown_duration_s - 1;
+
+                //have text already done during setInterval() first-time delay
+                this.otp_request_status_text = "Code should arrive in " +
+                    (this.otp_request_cooldown_s + 1).toString() +
+                    " seconds...";
+
+                //interval itself for cooldown
+                this.otp_request_cooldown_interval = window.setInterval(()=>{
+
+                    if(this.otp_request_cooldown_s === 0 && this.otp_request_cooldown_interval !== null){
+
+                        window.clearInterval(this.otp_request_cooldown_interval);
+                        this.otp_request_cooldown_interval = null;
+                        this.otp_request_status_text = "Didn't receive code?";
+                        return;
+                    }
+
+                    if(this.otp_request_cooldown_s === 1){
+                        this.otp_request_status_text = "Code should arrive in " +
+                            this.otp_request_cooldown_s.toString() +
+                            " second...";
+                    }else{
+                        this.otp_request_status_text = "Code should arrive in " +
+                            this.otp_request_cooldown_s.toString() +
+                            " seconds...";
+                    }
+
+                    this.otp_request_cooldown_s -= 1;
+
+                }, 1000);
             },
             async submitOTPToGetNewSession(procedure_url:"log-in"|"sign-up") : Promise<void> {
 
@@ -765,45 +859,19 @@
                 //reset step 2 if handleNewEmail() detects email change
                 this.resetOTPRelatedValues();
 
-                //set cooldown
-                this.otp_request_cooldown_s = this.otp_request_cooldown_duration_s;
-
-                this.otp_request_cooldown_interval = window.setInterval(()=>{
-
-                    if(this.otp_request_cooldown_s === 0 && this.otp_request_cooldown_interval !== null){
-
-                        window.clearInterval(this.otp_request_cooldown_interval);
-                        this.otp_request_cooldown_interval = null;
-                        this.otp_request_status_text = "Didn't receive code?";
-                        return;
-                    }
-
-                    if(this.otp_request_cooldown_s === 1){
-                        this.otp_request_status_text = "Code should arrive in " +
-                            this.otp_request_cooldown_s.toString() +
-                            " second...";
-                    }else{
-                        this.otp_request_status_text = "Code should arrive in " +
-                            this.otp_request_cooldown_s.toString() +
-                            " seconds...";
-                    }
-
-                    this.otp_request_cooldown_s -= 1;
-
-                }, 1000);
-
-                this.is_loading = true;
+                this.is_otp_request_loading = true;
 
                 let data = new FormData();
                 data.append("email", this.email_string);
                 data.append("is_requesting_new_otp", JSON.stringify(true));
 
                 await axios.post(window.location.origin + "/api/users/" + procedure_url, data)
-                .then((response:any) => {
+                .then(() => {
 
-                    console.log(response.data['message']);
-                    this.is_loading = false;
+                    //no need to toast
 
+                    this.is_otp_request_loading = false;
+                    this.startRequestOTPCooldown();
                 })
                 .catch((error: any) => {
 
@@ -817,7 +885,7 @@
                     }
                     
                     this.otp_request_status_text = "Oops! Could not send code.";
-                    this.is_loading = false;
+                    this.is_otp_request_loading = false;
                     notify({
                         title: "OTP request failed",
                         text: error.response.data['message'],
@@ -915,6 +983,6 @@
                     this.propRequestedSection,
                     this.steps[this.sections.indexOf(this.propRequestedSection)][1]
             );
-        }
+        },
     });
 </script>

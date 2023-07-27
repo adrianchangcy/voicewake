@@ -6,7 +6,8 @@
             propFontSize === 'm' ? 'text-xl font-medium' : '',
             propElementSize === 's' ? 'h-10' : '',
             propIsEnabled ? '' : 'opacity-30',
-            'block shade-text-when-hover rounded-lg transition-colors   text-theme-black    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-accent'
+            propIsDefaultOutlineOffset ? 'focus-visible:outline-offset-0' : '',
+            'block shade-text-when-hover rounded-lg transition-colors   text-theme-black    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-theme-outline'
         ]"
         :disabled="!propIsEnabled"
     >
@@ -59,6 +60,10 @@
             propIsIconOnly: {   //if only fa icon, being absolute lets it not move lower like text would
                 type: Boolean,
                 default: false
+            },
+            propIsDefaultOutlineOffset: {
+                type: Boolean,
+                default: true
             },
         }
     });

@@ -38,8 +38,6 @@
         </TransitionFade>
     </div>
 
-    
-    
     <!--toasts-->
     <TransitionFade>
         <div
@@ -50,6 +48,7 @@
         </div>
     </TransitionFade>
 
+    <!--tests-->
     <TestingStuff/>
 </template>
 

@@ -39,7 +39,7 @@
                             >
                                 <template #title>
                                     <div class="h-10 flex items-center">
-                                        <span>Creating reply...</span>
+                                        <span>You are replying!</span>
                                     </div>
                                 </template>
                             </VTitle>
@@ -48,9 +48,19 @@
                                 <VActionButtonDangerS
                                     class="w-full"
                                     @click.stop="stopReplying('deleted')"
-                                    :propIsEnabled="!is_loading && !is_submitting"
+                                    :propIsEnabled="!is_deleting && !is_submitting"
                                 >
-                                    <span class="mx-auto">Delete</span>
+                                    <VLoading
+                                        v-if="is_deleting"
+                                        propElementSize="s"
+                                        class="mx-auto"
+                                    />
+                                    <span
+                                        v-else
+                                        class="mx-auto"
+                                    >
+                                        Delete
+                                    </span>
                                 </VActionButtonDangerS>
                             </div>
                         </div>
@@ -58,7 +68,7 @@
                         <CreateEvents
                             :propIsOriginator="false"
                             :propEventRoomId="event_room.event_room.id"
-                            :propCanSubmit="!is_loading"
+                            :propCanSubmit="!is_deleting"
                             @isSubmitting="handleIsSubmitting($event)"
                         />
                     </div>
@@ -134,6 +144,7 @@
     import VPlayback from '@/components/medium/VPlayback.vue';
     import VUser from '@/components/small/VUser.vue';
     import VEventCardSkeleton from '@/components/skeleton/VEventCardSkeleton.vue';
+    import VLoading from '@/components/small/VLoading.vue';
 </script>
 
 
@@ -152,8 +163,9 @@
                 event_room_id: null as number|null,
                 event_count: 0, //from DOM
                 is_this_user_replying: false,
-                is_loading: false,
                 is_deleted: false,
+
+                is_deleting: false,
                 is_submitting: false,
 
                 reply_is_deleted: false,    //set True once, only to show message
@@ -175,7 +187,6 @@
             };
         },
         watch: {
-
             is_this_user_replying(new_value){
 
                 //reset just in case
@@ -189,12 +200,12 @@
         methods: {
             async stopReplying(context:"deleted"|"expired") : Promise<void> {
 
-                if(this.is_loading === true){
+                if(this.is_deleting === true){
 
                     return;
                 }
 
-                this.is_loading = true;
+                this.is_deleting = true;
 
                 //do API request
                 let data = new FormData();
@@ -205,7 +216,7 @@
                 .then(() => {
 
                     this.is_this_user_replying = false;
-                    this.is_loading = false;
+                    this.is_deleting = false;
                     this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
 
                     if(context === "deleted"){
@@ -220,7 +231,7 @@
                 })
                 .catch((error:any) => {
 
-                    this.is_loading = false;
+                    this.is_deleting = false;
                     notify({
                         title: "Deleting reply failed",
                         text: error.response.data['message'],

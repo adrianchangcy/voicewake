@@ -100,8 +100,34 @@
             class="w-full"
         >
             <div class="mx-auto">
-                <span v-if="propIsOriginator === true">Start event</span>
-                <span v-else>Send reply</span>
+
+                <div v-if="propIsOriginator === true">
+
+                    <VLoading
+                        v-if="is_submitting"
+                        propElementSize="l"
+                    >
+                        <span class="pl-2">Starting event...</span>
+                    </VLoading>
+
+                    <span v-else>
+                        Start event
+                    </span>
+                </div>
+
+                <div v-else-if="propIsOriginator === false">
+
+                    <VLoading
+                        v-if="is_submitting"
+                        propElementSize="l"
+                    >
+                        <span class="pl-2">Creating reply...</span>
+                    </VLoading>
+
+                    <span v-else>
+                        Create reply
+                    </span>
+                </div>
             </div>
         </VActionSpecial>
     </div>
@@ -116,7 +142,7 @@
     import VEventToneMenu from '/src/components/medium/VEventToneMenu.vue';
     import VRecorderField from '/src/components/medium/VRecorderField.vue';
     import VRecorderMenu from '/src/components/medium/VRecorderMenu.vue';
-
+    import VLoading from '../small/VLoading.vue';
 </script>
 
 <script lang="ts">

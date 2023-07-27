@@ -20,7 +20,7 @@
             :class="[
                 propEventTone === null ? 'grid-cols-3 pr-4' : 'grid-cols-4',
                 propHasHighlight === true ? 'border-2' : 'border',
-                'h-20 grid grid-rows-2 rounded-lg border-theme-light-gray'
+                'h-20 grid grid-rows-2 rounded-lg border-theme-light-gray shade-border-when-hover transition-colors'
             ]"
         >
             <!--play/pause-->
@@ -31,12 +31,13 @@
                     propElement="button"
                     type="button"
                     :propIsIconOnly="true"
-                    class="absolute left-2 right-2 top-2 bottom-2"
+                    :propIsDefaultOutlineOffset="false"
+                    class="absolute left-2 right-2 top-2 bottom-2 focus-visible:-outline-offset-2"
                 >
                     <i
                         :class="[
                             is_playing? 'fa-pause' : 'fa-play',
-                            'fas'
+                            'fas mt-[1px]'
                         ]"
                     ></i>
                     <span v-if="is_playing" class="sr-only">
@@ -55,7 +56,7 @@
                 <!--need inline CSS to prevent jolting from anime if without it-->
                 <div
                     ref="volume_ripples_container"
-                    class="w-full h-6 absolute top-2 flex flex-row justify-between px-[0.4375rem]"
+                    class="w-full h-8 absolute top-2 pb-2 flex flex-row justify-between px-[0.4375rem]"
                 >
                     <div
                         v-for="volume_ripple in propBucketQuantity" :key="volume_ripple"
@@ -75,11 +76,12 @@
                 <div
                     class="w-full h-10 absolute top-2"
                 >
+                    <!--only want z-10 here so that it takes priority over volume button-->
                     <div
                         ref="playback_slider"
                         :class="[
                             has_all_data_for_play === true && is_playback_slider_ready === true ? 'touch-none cursor-pointer' : 'cursor-default',
-                            'h-full relative parent-trigger-double-height-when-hover'
+                            'h-full relative z-10 parent-trigger-double-height-when-hover'
                         ]"
                         @mouseenter.stop="is_playback_slider_hover = true"
                         @mouseleave.stop="is_playback_slider_hover = false"
@@ -95,7 +97,7 @@
                         <!--loading-->
                         <div
                             v-show="is_loading"
-                            class="h-1 absolute left-0 right-0 bottom-[0.4rem] m-auto"
+                            class="h-1 absolute left-0 right-0 bottom-[0.375rem] m-auto"
                         >
                             <div
                                 :class="[
@@ -109,13 +111,13 @@
                             v-show="!is_loading"
                             :class="[
                                 is_playback_slider_hover && has_all_data_for_play === true ? 'double-height-when-hover' : '',
-                                'h-1 absolute bg-theme-light-gray left-0 right-0 bottom-[0.4rem] m-auto transition-transform'
+                                'h-1 absolute bg-theme-light-gray left-0 right-0 bottom-[0.375rem] m-auto transition-transform'
                             ]"
                         ></div>
 
                         <div
                             ref="playback_slider_progress"
-                            class="h-1 absolute bg-theme-lead left-0 right-0 bottom-[0.4rem] m-auto scale-x-0 origin-left"
+                            class="h-1 absolute bg-theme-lead left-0 right-0 bottom-[0.375rem] m-auto scale-x-0 origin-left"
                         ></div>
                         <div
                             ref="playback_slider_knob"
@@ -154,7 +156,8 @@
                         propElement="button"
                         type="button"
                         :propIsIconOnly="true"
-                        class="w-full h-full"
+                        :propIsDefaultOutlineOffset="false"
+                        class="w-full h-10 absolute -top-2 focus-visible:-outline-offset-8"
                     >
                         <div class="w-full h-full relative">
                             <i
@@ -163,7 +166,7 @@
                                     (playback_volume <= 0.5 ? 'fa-volume-low' : ''),
                                     (playback_volume <= 1 ? 'fa-volume-high' : ''),
                                     (is_playback_volume_open ? '-rotate-90' : 'rotate-0'),
-                                    'fas transition-transform w-fit h-fit absolute left-0 right-0 -top-2 bottom-0 m-auto'
+                                    'fas transition-transform w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto'
                                 ]"
                             ></i>
                         </div>
@@ -176,12 +179,11 @@
                     </VActionTextOnly>
 
                     <!--volume menu-->
-                    <!--has bottom-8 to follow second row's height-->
                     <TransitionFade>
                         <VBox
                             v-show="is_playback_volume_open"
                             :propIsOpaque="true"
-                            class="w-full h-28 absolute left-0 right-0 bottom-8 m-auto"
+                            class="w-full h-28 absolute left-0 right-0 bottom-8 m-auto z-10"
                         >
                             <VSliderYSmall
                                 ref="volume_slider"
@@ -520,8 +522,7 @@
             },
             handleKeyboardEvent(event:KeyboardEvent) : void {
 
-                //one function, for both keydown and keyup
-                //some keyup events are too late for .preventDefault(), so they use keydown
+                //FYI, some keyup events are too late for .preventDefault(), so they use keydown
 
                 //these keys affect only playback, so no point if there's no file
                 if(this.propAudio === null && this.propAudioURL === ''){
@@ -1269,6 +1270,14 @@
                 this.playback_rate = parseFloat(window.localStorage.playback_rate);
                 this.playback_volume = parseFloat(window.localStorage.playback_volume);
                 this.backup_playback_volume = parseFloat(window.localStorage.backup_playback_volume);
+
+                //mute decision
+                    //scenario #1:
+                        //when mute, it is volume 0
+                    //scenario #2:
+                        //when mute, it is muted, but volume is original
+                    //scenario #1 is more keyboard-friendly
+                    //scenario #2, when volume at 100%, one accidental arrowup would blast the volume to max
             }
 
             //set <audio> rate and volume
@@ -1281,9 +1290,7 @@
             window.addEventListener('mouseup', this.stopPlaybackDrag);
             window.addEventListener('touchend', this.stopPlaybackDrag);
             window.addEventListener('resize', this.handleWindowResize);
-            window.addEventListener('keydown', (event) => {
-                this.handleKeyboardEvent(event);
-            });
+            window.addEventListener('keydown', this.handleKeyboardEvent);
             document.addEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
             (this.$refs.audio_element as HTMLAudioElement).addEventListener('timeupdate', this.updateCurrentPlaybackTime);
         },
@@ -1295,12 +1302,7 @@
             window.removeEventListener('mouseup', this.stopPlaybackDrag);
             window.removeEventListener('touchend', this.stopPlaybackDrag);
             window.removeEventListener('resize', this.handleWindowResize);
-            window.removeEventListener('keydown', (event) => {
-                this.handleKeyboardEvent(event);
-            });
-            window.removeEventListener('keyup', (event) => {
-                this.handleKeyboardEvent(event);
-            });
+            window.removeEventListener('keydown', this.handleKeyboardEvent);
             document.removeEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
             (this.$refs.audio_element as HTMLAudioElement).removeEventListener('timeupdate', this.updateCurrentPlaybackTime);
         },
