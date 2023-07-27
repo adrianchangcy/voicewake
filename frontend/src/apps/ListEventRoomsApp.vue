@@ -1,30 +1,45 @@
 <template>
-    <div>
+    <div class="text-theme-black">
 
+        <!--title-->
+        <!--logo only here, since "Reply" goes away for certain parts, and putting it here would make things jolt-->
+        <!--you can find "Reply" at areas that need it instead-->
+        <VTitle
+            propFontSize="l"
+            class="pt-8"
+        >
+            <template #title>
+                <div class="flex flex-col">
+                    <i class="fas fa-comments text-2xl w-full text-center"></i>
+                </div>
+            </template>
+        </VTitle>
+
+        <!--content-->
         <div class="relative">
+
             <TransitionGroupFade>
 
-                <!--search and any dialog, or searching skeleton-->
+                <!--search and any dialog-->
                 <div
-                    v-show="(canSearch || is_searching || hasUnfinishedReply) && !canChooseReplyChoices"
-                    ref="search_button_container"
+                    v-show="(canSearch || hasUnfinishedReply) && !canChooseReplyChoices"
                     class="w-full h-fit"
                 >
 
-                    <!--title-->
-                    <!--must be here instead of in parent to prevent jolt-->
                     <VTitle
                         propFontSize="l"
-                        class="py-8"
+                        class="pb-8"
                     >
                         <template #title>
                             <div class="flex flex-col">
-                                <i class="fas fa-comments block text-2xl w-full text-center"></i>
-                                <span class="block w-full text-center">Reply</span>
+                                <span class="block w-full text-center">
+                                    Reply
+                                </span>
                             </div>
                         </template>
                     </VTitle>
 
+                    <!--content-->
                     <TransitionGroupFade>
 
                         <!--can search-->
@@ -51,6 +66,7 @@
                             <!--dialog-->
                             <!--we must pre-write them because the variables are reset before transition, causing warp-->
                             <div class="mt-10 relative">
+
                                 <TransitionGroupFade>
 
                                     <!--no new events-->
@@ -74,18 +90,6 @@
                                     </span>
                                 </TransitionGroupFade>
                             </div>
-                        </div>
-
-                        <!--searching-->
-                        <div
-                            v-show="is_searching"
-                            class="w-full h-fit"
-                        >
-                            <!--skeleton-->
-                            <EventRoomCardSkeleton
-                                :prop-event-quantity="1"
-                                :prop-can-reply="true"
-                            />
                         </div>
 
                         <!--is_replying dialog-->
@@ -119,7 +123,7 @@
                                         </VActionSpecial>
                                         <VAction
                                             @click.stop="deletePreviousReply()"
-                                            :propIsEnabled="!is_loading"
+                                            :propIsEnabled="!is_unfinished_reply_deleting"
                                             propElement="button"
                                             type="button"
                                             propElementSize="s"
@@ -134,37 +138,145 @@
                         </div>
                     </TransitionGroupFade>
                 </div>
-    
+
+                <!--all loading-related stuff-->
+                <div
+                    v-show="isLoading"
+                    class="w-full h-fit"
+                >
+
+                    <TransitionGroupFade>
+
+                        <!--searching-->
+                        <div
+                            v-show="is_searching"
+                            class="w-full h-fit"
+                        >
+                            <!--reply/skip skeleton-->
+                            <div class="w-full h-fit grid grid-cols-2 gap-4">
+                                <div class="col-span-1 justify-self-end">
+                                    <div class="w-24 h-24 rounded-full skeleton"></div>
+                                </div>
+                                <div class="col-span-1">
+                                    <div class="w-24 h-24 rounded-full skeleton"></div>
+                                </div>
+                            </div>
+                            <!--event room skeleton-->
+                            <EventRoomCardSkeleton
+                                :prop-event-quantity="1"
+                                class="pt-8"
+                            />
+                        </div>
+
+                        <!--deleting unfinished reply-->
+                        <div
+                            v-show="is_unfinished_reply_deleting"
+                            class="w-full h-fit"
+                        >
+
+                            <VTitle
+                                propFontSize="l"
+                                class="pb-8"
+                            >
+                                <template #title>
+                                    <div class="flex flex-col">
+                                        <span class="block w-full text-center">
+                                            Reply
+                                        </span>
+                                    </div>
+                                </template>
+                            </VTitle>
+
+                            <div class="w-full h-40 flex items-center text-xl font-medium">
+                                <div class="w-full flex flex-col">
+                                    <i class="fas fa-eraser block mx-auto animate-pulse"></i>
+                                    <span class="block mx-auto">Deleting unfinished reply...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!--confirming new reply choice-->
+                        <div
+                            v-show="is_new_reply_choice_confirming"
+                            class="w-full h-fit"
+                        >
+
+                            <VTitle
+                                propFontSize="l"
+                                class="pb-8"
+                            >
+                                <template #title>
+                                    <div class="flex flex-col">
+                                        <span class="block w-full text-center">
+                                            Reply
+                                        </span>
+                                    </div>
+                                </template>
+                            </VTitle>
+
+                            <div class="w-full h-40 flex items-center text-xl font-medium">
+                                <div class="w-full flex flex-col">
+                                    <VLoading
+                                        propElementSize="m"
+                                        class="mx-auto"
+                                    />
+                                    <span class="mx-auto">Confirming reply choice...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!--expiring new reply choice-->
+                        <div
+                            v-show="is_new_reply_choice_expiring"
+                            class="w-full h-fit"
+                        >
+
+                            <VTitle
+                                propFontSize="l"
+                                class="pb-8"
+                            >
+                                <template #title>
+                                    <div class="flex flex-col">
+                                        <span class="block w-full text-center">
+                                            Reply
+                                        </span>
+                                    </div>
+                                </template>
+                            </VTitle>
+
+                            <div class="w-full h-40 flex items-center text-xl font-medium">
+                                <div class="w-full flex flex-col">
+                                    <VLoading
+                                        propElementSize="m"
+                                        class="mx-auto"
+                                    />
+                                    <span class="mx-auto">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </TransitionGroupFade>
+                </div>
+
                 <!--can show reply choices-->
                 <div
                     v-show="canChooseReplyChoices"
                     class="w-full h-fit"
                 >
 
-                    <i class="fas fa-comments block text-2xl text-theme-black w-full text-center py-8"></i>
-
-                    <!--event_room preview-->
-                    <!--must use v-if since EventRoomCard cannot exist with null-->
-                    <TransitionFade>
-                        <EventRoomCard
-                            v-if="canChooseReplyChoices"
-                            :propEventRoom="getMainEventRoom"
-                            :propShowTitle="true"
-                        />
-                    </TransitionFade>
-
-                    <div class="w-full h-fit sticky mt-8 grid grid-cols-2 gap-4 items-center">
+                    <div class="w-full h-fit pb-8 grid grid-cols-2 gap-4">
 
                         <!--reply-->
                         <div class="col-span-1 justify-self-end">
                             <VActionSpecial
                                 @click.stop="confirmReplyChoice(getMainEventRoom)"
-                                :propIsEnabled="!is_loading"
+                                :propIsEnabled="!is_new_reply_choice_confirming"
                                 propElement="button"
                                 type="button"
                                 propElementSize="l"
+                                propFontSize="m"
                                 :propIsRound="true"
-                                class="w-24 text-xl font-medium"
+                                class="w-24"
                             >
                                 <span>Reply</span>
                             </VActionSpecial>
@@ -178,13 +290,24 @@
                                 propElement="button"
                                 type="button"
                                 propElementSize="l"
+                                propFontSize="m"
                                 :propIsRound="true"
-                                class="w-24 text-xl font-medium"
+                                class="w-24"
                             >
                                 <span>Skip</span>
                             </VAction>
                         </div>
                     </div>
+
+                    <!--event_room preview-->
+                    <!--must use v-if since EventRoomCard cannot exist with null-->
+                    <TransitionFade>
+                        <EventRoomCard
+                            v-if="canChooseReplyChoices"
+                            :propEventRoom="getMainEventRoom"
+                            :propShowTitle="true"
+                        />
+                    </TransitionFade>
                 </div>
             </TransitionGroupFade>
         </div>
@@ -201,12 +324,12 @@
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
     import VDialogPlain from '/src/components/small/VDialogPlain.vue';
+    import VLoading from '/src/components/small/VLoading.vue';
 </script>
 
 <script lang="ts">
     import { defineComponent } from 'vue';
     import { timeFromNowMS, prettyTimeRemaining } from '@/helper_functions';
-    import anime from 'animejs';
     import { notify } from 'notiwind';
     import EventRoomTypes from '@/types/EventRooms.interface';
     const axios = require('axios');
@@ -215,21 +338,22 @@
         name: "ListEventRoomsApp",
         data() {
             return {
-                event_rooms: [] as EventRoomTypes[] | [],
-                still_replying_event_room: null as EventRoomTypes | null,
+                new_reply_choice_event_rooms: [] as EventRoomTypes[] | [],
+                unfinished_reply_event_room: null as EventRoomTypes | null,
                 redirect_url: "",
-                main_anime: null as InstanceType<typeof anime> | null,
 
                 expiry_interval: null as number | null,
                 expiry_string: "",
-                choice_expiry_max_ms: 0,   //will be replaced with SSR data on beforeMount()
-                still_replying_expiry_max_ms: 0,   //will be replaced with SSR data on beforeMount()
-                shorten_interval_ceiling_ms: 80000,
+                new_reply_choice_expiry_max_ms: 0,   //will be replaced with SSR data on beforeMount()
+                unfinished_reply_expiry_max_ms: 0,   //will be replaced with SSR data on beforeMount()
+                shorten_interval_ceiling_ms: 80000, //when to switch from slowest_interval_ms to fastest_interval_ms
                 slowest_interval_ms: 10000,
                 fastest_interval_ms: 1000,
 
                 is_searching: false,
-                is_loading: false,
+                is_unfinished_reply_deleting: false,
+                is_new_reply_choice_expiring: false,
+                is_new_reply_choice_confirming: false,
 
                 simple_dialogs: ["no_new_reply_choice", "reply_choice_expired"],
                 current_simple_dialog: "",
@@ -241,62 +365,42 @@
                 //only useful for current 1-event-room-per-instance
                 //use v-for when > 1 in the future
 
-                if(this.event_rooms.length === 0){
+                if(this.new_reply_choice_event_rooms.length === 0){
 
                     return null;
 
                 }else{
 
-                    return this.event_rooms[0];
+                    return this.new_reply_choice_event_rooms[0];
                 }
             },
-            stillReplyingExpiryString() : string {
-
-                if(this.expiry_string === ""){
-
-                    return "";
-                }
-
-                return this.expiry_string + " to decide";
-            },
-            replyChoiceExpiryString() : string {
-
-                if(this.expiry_string === ""){
-
-                    return "";
-                }
-
-                return this.expiry_string + " to decide";
+            isLoading() : boolean {
+                return this.is_searching === true || this.is_unfinished_reply_deleting === true ||
+                    this.is_new_reply_choice_expiring === true || this.is_new_reply_choice_confirming === true;
             },
             hasUnfinishedReply() : boolean {
 
-                return this.still_replying_event_room !== null &&
-                    this.is_searching === false &&
-                    this.is_loading === false;
+                return this.unfinished_reply_event_room !== null && this.isLoading === false;
             },
             canChooseReplyChoices() : boolean {
 
-                return this.event_rooms.length > 0 &&
-                    this.is_searching === false &&
-                    this.is_loading === false &&
-                    this.hasUnfinishedReply === false;
+                return this.new_reply_choice_event_rooms.length > 0 && this.hasUnfinishedReply === false &&
+                    this.isLoading === false;
             },
-            canSearch(): boolean {
+            canSearch() : boolean {
 
-                return this.still_replying_event_room === null &&
-                    this.is_searching === false &&
-                    this.is_loading === false;
+                return this.unfinished_reply_event_room === null && this.isLoading === false;
             },
         },
         methods: {
             async expireReplyChoices(): Promise<void> {
 
-                if(this.is_loading === true){
+                if(this.is_new_reply_choice_expiring === true){
 
                     return;
                 }
 
-                this.is_loading = true;
+                this.is_new_reply_choice_expiring = true;
 
                 let data = new FormData();
                 data.append("to_reply", JSON.stringify(false));
@@ -307,8 +411,8 @@
                     this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                     this.expiry_string = "";
                     this.current_simple_dialog = this.simple_dialogs[1];
-                    this.event_rooms = [];
-                    this.is_loading = false;
+                    this.new_reply_choice_event_rooms = [];
+                    this.is_new_reply_choice_expiring = false;
                 })
                 .catch(() => {
 
@@ -317,20 +421,21 @@
                     this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                     this.expiry_string = "";
                     this.current_simple_dialog = this.simple_dialogs[1];
-                    this.event_rooms = [];
-                    this.is_loading = false;
+                    this.new_reply_choice_event_rooms = [];
+                    this.is_new_reply_choice_expiring = false;
                 });
             },
             //you can call this for new reply choices, the API will remove previous reply choices for us
             async getEventRooms(): Promise<void> {
 
-                if(!this.canSearch){
+                if(this.canSearch === false){
+
                     return;
                 }
 
                 //reset
                 this.current_simple_dialog = "";
-                this.event_rooms = [];
+                this.new_reply_choice_event_rooms = [];
                 this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                 this.expiry_string = "";
 
@@ -347,14 +452,14 @@
                     }else if(results.data["data"].length > 0 && results.data["data"][0]["event_room"]["is_replying"] === true){
 
                         //user has unfinished reply
-                        this.still_replying_event_room = results.data["data"][0];
-                        this.redirect_url = "hear/" + this.still_replying_event_room!.event_room.id.toString();
+                        this.unfinished_reply_event_room = results.data["data"][0];
+                        this.redirect_url = "hear/" + this.unfinished_reply_event_room!.event_room.id.toString();
                         this.startExpiryInterval();
 
                     }else{
 
                         //user has new reply choices
-                        this.event_rooms = results.data["data"];
+                        this.new_reply_choice_event_rooms = results.data["data"];
                         this.startExpiryInterval();
                     }
 
@@ -363,6 +468,7 @@
                 .catch((error: any) => {
 
                     this.is_searching = false;
+
                     notify({
                         title: "Event search failed",
                         text: error.response.data['message'],
@@ -372,24 +478,24 @@
             },
             async deletePreviousReply(): Promise<void> {
 
-                if(this.still_replying_event_room === null || this.is_loading === true){
+                if(this.unfinished_reply_event_room === null || this.is_unfinished_reply_deleting === true){
                     return;
                 }
 
-                this.is_loading = true;
+                this.is_unfinished_reply_deleting = true;
                 this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                 this.expiry_string = "";
 
                 //cancel previous reply choice
                 let data = new FormData();
-                data.append("event_room_id", JSON.stringify(this.still_replying_event_room.event_room.id));
+                data.append("event_room_id", JSON.stringify(this.unfinished_reply_event_room.event_room.id));
                 data.append("to_reply", JSON.stringify(false));
 
                 await axios.post(window.location.origin + "/api/user-actions", data)
                 .then(() => {
 
-                    this.is_loading = false;
-                    this.still_replying_event_room = null;
+                    this.is_unfinished_reply_deleting = false;
+                    this.unfinished_reply_event_room = null;
 
                     window.setTimeout(() => {
                         this.getEventRooms();
@@ -397,7 +503,8 @@
                 })
                 .catch((error: any) => {
 
-                    this.is_loading = false;
+                    this.is_unfinished_reply_deleting = false;
+
                     notify({
                         title: "Deleting reply failed",
                         text: error.response.data['message'],
@@ -407,12 +514,12 @@
             },
             async confirmReplyChoice(event_room: EventRoomTypes|null): Promise<void> {
 
-                if (event_room === null || this.is_searching === true || this.is_loading === true) {
+                if (event_room === null || this.is_new_reply_choice_confirming === true){
 
                     return;
                 }
                 
-                this.is_loading = true;
+                this.is_new_reply_choice_confirming = true;
                 this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                 this.expiry_string = "";
 
@@ -429,7 +536,8 @@
 
                     }else{
 
-                        console.log(results);
+                        this.is_new_reply_choice_confirming = false;
+
                         notify({
                             title: "Reply confirmation failed",
                             text: results.data['message'],
@@ -437,12 +545,11 @@
                         }, 3000);
                     }
 
-                    //don't do is_loading=true here
                 })
                 .catch((error: any) => {
 
                     //restart expiry interval
-                    this.is_loading = false;
+                    this.is_new_reply_choice_confirming = false;
                     this.startExpiryInterval();
 
                     notify({
@@ -457,15 +564,15 @@
                 let target_event_room: EventRoomTypes | null = null;
                 let target_max_ms = 0;
 
-                if(this.still_replying_event_room !== null){
+                if(this.unfinished_reply_event_room !== null){
 
-                    target_event_room = this.still_replying_event_room;
-                    target_max_ms = this.still_replying_expiry_max_ms;
+                    target_event_room = this.unfinished_reply_event_room;
+                    target_max_ms = this.unfinished_reply_expiry_max_ms;
 
-                }else if(this.event_rooms.length > 0){
+                }else if(this.new_reply_choice_event_rooms.length > 0){
 
-                    target_event_room = this.event_rooms[0];
-                    target_max_ms = this.choice_expiry_max_ms;
+                    target_event_room = this.new_reply_choice_event_rooms[0];
+                    target_max_ms = this.new_reply_choice_expiry_max_ms;
 
                 }else{
 
@@ -480,7 +587,7 @@
                 //time is up
                 if (time_elapsed_ms >= target_max_ms) {
 
-                    this.still_replying_event_room === null ? this.expireReplyChoices() : this.deletePreviousReply();
+                    this.unfinished_reply_event_room === null ? this.expireReplyChoices() : this.deletePreviousReply();
                     return;
                 }
 
@@ -503,7 +610,7 @@
                     //time is up
                     if (time_elapsed_ms >= target_max_ms) {
 
-                        this.still_replying_event_room === null ? this.expireReplyChoices() : this.deletePreviousReply();
+                        this.unfinished_reply_event_room === null ? this.expireReplyChoices() : this.deletePreviousReply();
                     }
 
                     //if interval started with >1000, be prepared for reinitialisation for new interval with shorter time
@@ -555,8 +662,8 @@
             }
 
             //get data from SSR template
-            this.choice_expiry_max_ms = parseInt(event_choice_expiry_seconds) * 1000;
-            this.still_replying_expiry_max_ms = parseInt(event_reply_expiry_seconds) * 1000;
+            this.new_reply_choice_expiry_max_ms = parseInt(event_choice_expiry_seconds) * 1000;
+            this.unfinished_reply_expiry_max_ms = parseInt(event_reply_expiry_seconds) * 1000;
         },
     });
 </script>

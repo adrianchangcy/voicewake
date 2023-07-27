@@ -31,7 +31,7 @@ module.exports = {
                 'theme-soft-lead': '#f5f5dc',   //for background yellow
 
                 //for small but high attention items, e.g. focus, highlight, etc.
-                'theme-accent': '#a8a29e',
+                'theme-outline': '#a8a29e',
 
                 'theme-green-1': '#90a955',
                 'theme-green-2': '#4f772d',
@@ -40,7 +40,7 @@ module.exports = {
                 'theme-danger': '#fa3515',
                 'theme-soft-danger': '#ff4934',
 
-                'theme-light': '#F2F4F3',
+                'theme-light': '#F2F4F5',
                 'theme-light-trim': '#FDFDFD',
                 'theme-dark': '#22333B',
 

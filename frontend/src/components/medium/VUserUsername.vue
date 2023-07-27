@@ -32,10 +32,20 @@
                 propElement="button"
                 type="button"
                 propElementSize="m"
-                propFontSize="m"
+                propFontSize="l"
                 class="w-full"
             >
-                <span class="mx-auto">Set username</span>
+                <VLoading
+                    v-if="is_submitting"
+                    propElementSize="m"
+                    class="mx-auto"
+                >
+                    <span class="pl-2">Saving...</span>
+                </VLoading>
+
+                <span v-else class="mx-auto">
+                    Set username
+                </span>
             </VActionSpecial>
         </div>
     </div>
@@ -45,6 +55,7 @@
 <script setup lang="ts">
     import VInput from '@/components/small/VInput.vue';
     import VActionSpecial from '../small/VActionSpecial.vue';
+    import VLoading from '../small/VLoading.vue';
 </script>
 
 <script lang="ts">
@@ -63,7 +74,8 @@
                 username_is_ok: false,
                 username_check_timeout: null as number|null,
 
-                is_loading: false,
+                is_username_check_loading: false,
+                is_submitting: false,
             };
         },
         props: {
@@ -75,7 +87,7 @@
         computed: {
             canSubmitNewUsername() : boolean {
 
-                return this.is_loading === false;
+                return this.is_username_check_loading === false && this.is_submitting === false;
             },
         },
         emits: [
@@ -164,11 +176,11 @@
                 //do nothing if there is no text
                 if(new_value.length === 0){
 
-                    this.is_loading = false;
+                    this.is_username_check_loading = false;
                     return;
                 }
 
-                this.is_loading = true;
+                this.is_username_check_loading = true;
 
                 //has text
                 this.username_check_timeout = window.setTimeout(() => {
@@ -190,7 +202,7 @@
                         this.username_is_ok = false;
                         this.username_validation_has_error = true;
                         this.username_validation_status_text = "That username is not allowed.";
-                        this.is_loading = false;
+                        this.is_username_check_loading = false;
 
                     }else if(/\s+/g.test(new_value) === true){
 
@@ -198,7 +210,7 @@
                         this.username_is_ok = false;
                         this.username_validation_has_error = true;
                         this.username_validation_status_text = "Please remove all spaces.";
-                        this.is_loading = false;
+                        this.is_username_check_loading = false;
 
                     }else{
 
@@ -207,7 +219,7 @@
                         this.username_is_ok = false;
                         this.username_validation_has_error = true;
                         this.username_validation_status_text = this.checkRegExpForDetailedErrorMessage(new_value);
-                        this.is_loading = false;
+                        this.is_username_check_loading = false;
                     }
 
                 }, 400);
@@ -215,7 +227,7 @@
             async checkUsernameExists() : Promise<void> {
 
                 this.username_is_ok = false;
-                this.is_loading = true;
+                this.is_username_check_loading = true;
 
                 await axios.get(window.location.origin + "/api/users/username/get/" + this.username_string)
                 .then((response:any) => {
@@ -239,7 +251,7 @@
                         this.username_validation_status_text = "That username is already taken.";
                     }
 
-                    this.is_loading = false;
+                    this.is_username_check_loading = false;
                 })
                 .catch((error: any) => {
 
@@ -247,7 +259,8 @@
                     this.username_validation_has_error = true;
                     this.username_validation_status_text = "An error had occurred. Try again later.";
 
-                    this.is_loading = false;
+                    this.is_username_check_loading = false;
+
                     notify({
                         title: "Username check failed",
                         text: error.response.data['message'],
@@ -269,7 +282,7 @@
                     return;
                 }
 
-                this.is_loading = true;
+                this.is_submitting = true;
 
                 let data = new FormData();
                 data.append("username", this.username_string);
@@ -280,24 +293,29 @@
                     if(response.data['data']['exists'] === false){
 
                         this.$emit('newUsername', response.data['data']['username']);
+
                         notify({
                             title: "Username success",
                             text: "Welcome, " + response.data['data']['username'] + "!",
                             type: "ok"
                         }, 3000);
+
+                        this.is_submitting = false;
+
                     }else{
 
                         //username is taken
                         this.username_is_ok = false;
                         this.username_validation_has_error = true;
                         this.username_validation_status_text = response.data['message'];
-                    }
 
-                    this.is_loading = false;
+                        this.is_submitting = false;
+                    }
                 })
                 .catch((error: any) => {
 
-                    this.is_loading = false;
+                    this.is_submitting = false;
+
                     notify({
                         title: "Setting username failed",
                         text: error.response.data['message'],

@@ -282,7 +282,7 @@
                             <!--log out-->
                             <VActionTextOnly
                                 v-if="propIsLoggedIn === true"
-                                :propIsEnabled="!is_processing_log_out"
+                                :propIsEnabled="!is_log_out_loading"
                                 @click.stop="logOut()"
                                 propElement="button"
                                 propFontSize="m"
@@ -292,11 +292,23 @@
                             >
                                 <div class="w-full h-full grid grid-cols-4">
                                     <div class="col-span-1 flex items-center">
-                                        <i class="fas fa-door-open w-fit h-fit mx-auto"></i>
+                                        <VLoading
+                                            v-if="is_log_out_loading"
+                                            propElementSize="s"
+                                            class="mx-auto"
+                                        />
+                                        <span v-else class="mx-auto">
+                                            <i class="fas fa-door-open"></i>
+                                        </span>
                                     </div>
                                     <div class="col-span-3 flex items-center">
                                         <span class="text-left break-all">
-                                            Log out
+                                            <span v-if="is_log_out_loading">
+                                                Logging out...
+                                            </span>
+                                            <span v-else>
+                                                Log out
+                                            </span>
                                         </span>
                                     </div>
                                 </div>
@@ -314,6 +326,7 @@
     import TransitionFade from '/src/transitions/TransitionFade.vue';
     import VActionTextOnly from '@/components/small/VActionTextOnly.vue';
     import VActionSpecial from '../small/VActionSpecial.vue';
+    import VLoading from '../small/VLoading.vue';
 </script>
 
 
@@ -326,7 +339,7 @@
         data(){
             return {
                 is_nav_main_more_open: false,
-                is_processing_log_out: false,
+                is_log_out_loading: false,
                 is_currently_log_in_sign_up_static_page: false,
             };
         },
@@ -369,7 +382,7 @@
             },
             async logOut() : Promise<void> {
 
-                this.is_processing_log_out = true;
+                this.is_log_out_loading = true;
 
                 await axios.post(window.location.origin + "/api/users/log-out")
                 .then(() => {
@@ -380,7 +393,7 @@
 
                     console.log(error);
 
-                    this.is_processing_log_out = false;
+                    this.is_log_out_loading = false;
                 });
             },
             axiosSetup() : boolean {

@@ -2,11 +2,16 @@
     <div>
         <span class="sr-only">loading events</span>
         <!--title and datetime-->
-        <div class="flex flex-col gap-1 pb-6">
-            <div class="w-[75%] h-6 rounded-lg skeleton"></div>
-            <div class="w-[25%] h-4 rounded-lg skeleton"></div>
+        <!--<div> seems to have bigger height than the inner <span>, and doing it all in <span> didn't work-->
+        <div class="flex flex-col pb-6">
+            <div class="w-[75%] h-7 flex items-center">
+                <div class="w-full h-6 rounded-lg skeleton"></div>
+            </div>
+            <div class="w-[25%] h-6 flex items-center">
+                <div class="w-full h-5 rounded-lg skeleton"></div>
+            </div>
         </div>
-        <div class="flex flex-col gap-6">
+        <div class="flex flex-col gap-8">
             <!--events-->
             <div v-for="x in propEventQuantity" :key="x">
                 <VEventCardSkeleton/>
@@ -30,10 +35,6 @@
                 type: Number,
                 default: 2
             },
-            propCanReply: {
-                type: Boolean,
-                default: false
-            }
         }
     });
 </script>

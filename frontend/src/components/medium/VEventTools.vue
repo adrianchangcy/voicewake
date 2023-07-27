@@ -12,7 +12,7 @@
             <button
                 ref="like_button"
                 @click.stop="handleLiked()"
-                class="col-span-1 h-full     shade-border-when-hover transition-colors      bg-theme-light       border border-r-0 border-theme-light-gray rounded-full rounded-r-none    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-accent"
+                class="col-span-1 h-full     shade-border-when-hover transition-colors      bg-theme-light       border border-r-0 border-theme-light-gray rounded-full rounded-r-none    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                 type="button"
             >
                 <div class="w-fit h-full mx-auto flex flex-row">
@@ -43,7 +43,7 @@
             <button
                 ref="dislike_button"
                 @click.stop="handleDisliked()"
-                class="col-span-1 h-full     shade-border-when-hover transition-colors      bg-theme-light       border border-l-0 border-theme-light-gray rounded-full rounded-l-none     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-accent"
+                class="col-span-1 h-full     shade-border-when-hover transition-colors      bg-theme-light       border border-l-0 border-theme-light-gray rounded-full rounded-l-none     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                 type="button"
             >
                 <div class="w-fit h-full mx-auto flex flex-row">
@@ -74,17 +74,17 @@
         <!--share-->
         <button
             @click.stop="copyEventURL()"
-            class="col-span-3 lg:col-span-2 relative flex flex-row items-center     shade-border-when-hover transition-colors      bg-theme-light       border border-theme-light-gray rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-accent"
+            class="col-span-3 lg:col-span-2 relative flex flex-row items-center     shade-border-when-hover transition-colors      bg-theme-light       border border-theme-light-gray rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
             type="button"
         >
             <TransitionFade>
                 <span v-if="has_shared === false" class="w-fit h-full flex items-center mx-auto pb-0.5">
                     <i class="fas fa-share text-base"></i>
-                    <span class="pl-2 text-base">Share</span>
+                    <span class="pl-2 text-sm">Share</span>
                 </span>
                 <span v-else-if="has_shared === true" class="w-fit h-full flex items-center mx-auto pb-0.5">
                     <i class="fas fa-check text-lg"></i>
-                    <span class="pl-2 text-base">Copied</span>
+                    <span class="pl-2 text-sm">Copied</span>
                 </span>
             </TransitionFade>
         </button>

@@ -20,7 +20,7 @@
         </div>
 
         <!--more than 1 event total-->
-        <div v-if="originatorCount > 0 && responderCount > 0" class="flex flex-col gap-6">
+        <div v-if="originatorCount > 0 && responderCount > 0" class="flex flex-col gap-8">
 
             <!--originator-->
             <div
@@ -60,7 +60,7 @@
         </div>
 
         <!--only 1 event total-->
-        <div v-else class="flex flex-col gap-6">
+        <div v-else class="flex flex-col gap-8">
 
             <!--originator-->
             <div

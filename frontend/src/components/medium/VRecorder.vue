@@ -14,7 +14,6 @@
                     propElement="button"
                     type="button"
                     propElementSize="m"
-                    propFontSize="m"
                     :propIsIconOnly="true"
                     class="w-full"
                 >
@@ -36,7 +35,6 @@
                         propElement="button"
                         type="button"
                         propElementSize="m"
-                        propFontSize="m"
                         :propIsIconOnly="true"
                         class="col-start-1 row-span-2 col-span-1"
                     >

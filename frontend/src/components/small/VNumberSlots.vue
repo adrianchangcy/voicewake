@@ -171,7 +171,8 @@
 
                 let last_filled_input_index = 0;
 
-                //can continue, so insert
+                //can continue, so start pasting programmatically
+                //during this, if input_fields[x] is going over pasted_value.length, "" is pasted instead
                 for(let x = 0; x < input_fields.length; x++){
 
                     if(x < pasted_value.length){
@@ -185,7 +186,9 @@
                     }
                 }
                 
-                //focus on last character of pasted input, or last slot
+                //focus on last character of pasted input
+                //input listener only triggers for last slot, with event.data===null and current_input_field.value!=null
+                //input listener will not trigger for every slot before the last one if done in for-loop above
                 input_fields[last_filled_input_index].focus();
                 input_fields[last_filled_input_index].setSelectionRange(input_fields[last_filled_input_index].value.length, input_fields[last_filled_input_index].value.length);
 
@@ -213,10 +216,25 @@
                 event:InputEvent, input_fields:any, current_input_field:HTMLInputElement, current_input_field_index:number
             ) : void {
 
-                // This code gets the current input element and stores it in the currentInput variable
-                // This code gets the next sibling element of the current input element and stores it in the nextInput variable
-                // This code gets the previous sibling element of the current input element and stores it in the prevInput variable
+                //current_input_field behaves as reference
+                    //when manual user input, current_input_field.value!=null, event.data!=null
+                    //when programmatically inserted input, current_input_field.value!=null, event.data===null
+
+                //null if not found
                 const next_input_field = current_input_field.nextElementSibling as HTMLInputElement;
+                
+                //get the value in the context of slot that triggered validateSlot()
+                //irrelevant reminder that typeof null is object, not "null type"
+                let new_slot_value = "";
+
+                if(event.data !== null && event.data.length > 0){
+
+                    new_slot_value = event.data;
+
+                }else if(current_input_field.value !== null && current_input_field.value.length > 0){
+
+                    new_slot_value = current_input_field.value;
+                }
 
                 //prevent > 1 number
                 if(current_input_field.value.length > 1){
@@ -226,17 +244,16 @@
                 }
 
                 //handle validation
-                if(/^[0-9]+$/.test(event.data!) === true){
+                if(/^[0-9]+$/.test(new_slot_value) === true){
 
-                    //has valid new manual input
-                    current_input_field.value = event.data!;
+                    //has valid input
 
                     //put this here to avoid resetting error message of handlePaste()
                     //since paste event also triggers input event
                     this.resetErrorMessage();
 
                     //handle input position
-                    if(current_input_field_index < (input_fields.length - 1)){
+                    if(next_input_field !== null && current_input_field_index < (input_fields.length - 1)){
 
                         //go to next input if not last
                         next_input_field.focus();
