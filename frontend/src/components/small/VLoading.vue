@@ -3,11 +3,12 @@
     <div class="w-fit h-fit flex flex-row items-center">
         <div
             :class="[
-                propElementSize === '2xl' ? 'w-4 h-4 border-2' : '',
-                propElementSize === 'xl' ? 'w-4 h-4 border-2' : '',
+                propElementSize === '2xl' ? 'w-6 h-6 border-2' : '',
+                propElementSize === 'xl' ? 'w-6 h-6 border-2' : '',
                 propElementSize === 'l' ? 'w-6 h-6 border-2' : '',
                 propElementSize === 'm' ? 'w-5 h-5 border-2' : '',
                 propElementSize === 's' ? 'w-4 h-4 border-2' : '',
+                propColourClass === '' ? 'border-theme-black' : propColourClass,
                 'rounded-full border-theme-black border-l-transparent animate-spin'
             ]"
         ></div>
@@ -30,7 +31,11 @@
             propElementSize: {
                 type: String as PropType<ButtonSizes>,
                 required: true
-            }
+            },
+            propColourClass: {
+                type: String,
+                default: ''
+            },
         },
     });
 </script>

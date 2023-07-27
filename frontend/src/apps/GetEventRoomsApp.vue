@@ -48,11 +48,12 @@
                                 <VActionButtonDangerS
                                     class="w-full"
                                     @click.stop="stopReplying('deleted')"
-                                    :propIsEnabled="!is_deleting && !is_submitting"
+                                    :propIsEnabled="canDelete"
                                 >
                                     <VLoading
                                         v-if="is_deleting"
                                         propElementSize="s"
+                                        propColourClass="border-theme-light"
                                         class="mx-auto"
                                     />
                                     <span
@@ -68,7 +69,7 @@
                         <CreateEvents
                             :propIsOriginator="false"
                             :propEventRoomId="event_room.event_room.id"
-                            :propCanSubmit="!is_deleting"
+                            :propCanSubmit="canSubmit"
                             @isSubmitting="handleIsSubmitting($event)"
                         />
                     </div>
@@ -89,7 +90,7 @@
                         class="w-fit mx-auto"
                     >
                         <span class="flex flex-row">
-                            <span class="font-bold block">Search for more event choices</span>
+                            <span class="font-bold block">More event choices</span>
                             <i class="fas fa-arrow-right block text-2xl pl-2"></i>
                         </span>
                     </VActionTextOnly>
@@ -110,7 +111,7 @@
                         class="w-fit mx-auto"
                     >
                         <span class="flex flex-row">
-                            <span class="font-bold block">Search for more event choices</span>
+                            <span class="font-bold block">More event choices</span>
                             <i class="fas fa-arrow-right block text-2xl pl-2"></i>
                         </span>
                     </VActionTextOnly>
@@ -165,14 +166,15 @@
                 is_this_user_replying: false,
                 is_deleted: false,
 
-                is_deleting: false,
-                is_submitting: false,
-
                 reply_is_deleted: false,    //set True once, only to show message
                 reply_is_expired: false,  //set True once, only to show message
 
                 event_room: null as EventRoomTypes|null,
+
                 is_searching: false,
+                is_deleting: false,
+                is_expiring: false,
+                is_submitting: false,
                 
                 selected_event: null as EventTypes|null,
                 playback_teleport_id: '',
@@ -185,6 +187,18 @@
                 slowest_interval_ms: 10000,
                 fastest_interval_ms: 1000,
             };
+        },
+        computed: {
+
+            canSubmit() : boolean {
+
+                return this.is_this_user_replying === true && this.is_searching === false &&
+                    this.is_deleting === false && this.is_expiring === false && this.is_submitting === false;
+            },
+            canDelete() : boolean {
+
+                return this.canSubmit;
+            }
         },
         watch: {
             is_this_user_replying(new_value){
@@ -200,12 +214,18 @@
         methods: {
             async stopReplying(context:"deleted"|"expired") : Promise<void> {
 
-                if(this.is_deleting === true){
-
+                if(context === "deleted" && this.is_deleting === true){
+                    return;
+                }else if(context === "expired" && this.is_expiring === true){
                     return;
                 }
 
-                this.is_deleting = true;
+                if(context === "deleted"){
+                    this.is_deleting = true;
+                }else if(context === "expired"){
+                    this.is_expiring = true;
+                }
+
 
                 //do API request
                 let data = new FormData();
@@ -216,22 +236,28 @@
                 .then(() => {
 
                     this.is_this_user_replying = false;
-                    this.is_deleting = false;
                     this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
 
                     if(context === "deleted"){
 
+                        this.is_deleting = false;
                         this.reply_is_deleted = true;
 
                     }else if(context === "expired"){
 
+                        this.is_expiring = false;
                         this.reply_is_expired = true;
                     }
 
                 })
                 .catch((error:any) => {
 
-                    this.is_deleting = false;
+                    if(context === "deleted"){
+                        this.is_deleting = false;
+                    }else if(context === "expired"){
+                        this.is_expiring = false;
+                    }
+
                     notify({
                         title: "Deleting reply failed",
                         text: error.response.data['message'],

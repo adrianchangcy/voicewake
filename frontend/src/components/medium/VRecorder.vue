@@ -604,8 +604,7 @@
         },
         beforeUnmount(){
 
-            //just in case
-            this.stopRecordingIntervalWorker();
+            this.recorderStopByUserOrWebWorker(true);
         },
     });
 </script>

@@ -4,9 +4,6 @@
 
 
 
-
-
-
     </div>
 </template>
 
@@ -34,6 +31,7 @@
                 text: "You'll finish this project soon. You can do this!",
                 type: "ok"
             }, 3000);
+
         },
     });
 </script>

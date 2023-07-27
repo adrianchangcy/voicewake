@@ -1456,6 +1456,16 @@ video {
   border-color: transparent;
 }
 
+.border-theme-light {
+  --tw-border-opacity: 1;
+  border-color: rgb(242 244 245 / var(--tw-border-opacity));
+}
+
+.border-theme-lead {
+  --tw-border-opacity: 1;
+  border-color: rgb(250 204 21 / var(--tw-border-opacity));
+}
+
 .border-x-transparent {
   border-left-color: transparent;
   border-right-color: transparent;
