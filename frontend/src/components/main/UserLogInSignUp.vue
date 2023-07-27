@@ -271,7 +271,7 @@
                                     class="w-full"
                                 >
                                     <!--putting TransitionFade here seems to break things-->
-                                    <!--i.e. renders v-if and v-else once then disappearing-->
+                                    <!--i.e. renders v-if and v-else once then permanently disappearing-->
                                     <VLoading
                                         v-if="is_main_action_loading"
                                         propElementSize="m"
