@@ -332,12 +332,17 @@
     import { timeFromNowMS, prettyTimeRemaining } from '@/helper_functions';
     import { notify } from 'notiwind';
     import EventRoomTypes from '@/types/EventRooms.interface';
+    import Statuses from '@/types/values/Statuses';
+    import { useUnfinishedReplyStore } from '@/stores/UnfinishedReplyStore';
+
     const axios = require('axios');
 
     export default defineComponent({
         name: "ListEventRoomsApp",
         data() {
             return {
+                unfinished_reply_store: useUnfinishedReplyStore(),
+
                 new_reply_choice_event_rooms: [] as EventRoomTypes[] | [],
                 unfinished_reply_event_room: null as EventRoomTypes | null,
                 redirect_url: "",
@@ -355,7 +360,7 @@
                 is_new_reply_choice_expiring: false,
                 is_new_reply_choice_confirming: false,
 
-                simple_dialogs: ["no_new_reply_choice", "reply_choice_expired"],
+                simple_dialogs: ["no_event_rooms", "expired", "deleted"] as Statuses[],
                 current_simple_dialog: "",
             };
         },
@@ -393,6 +398,56 @@
             },
         },
         methods: {
+            handleUnfinishedReplyStoreChange() : void {
+
+                const store_status = this.unfinished_reply_store.getStatus;
+                const extra_allowed_store_status = ["replying"] as Statuses[];
+
+                //store_status must be "", or
+                if(store_status in this.simple_dialogs === false && store_status in extra_allowed_store_status === false){
+
+                    return;
+                }
+
+                switch(store_status){
+
+                    case 'expired':
+
+                        this.current_simple_dialog = store_status;
+                        this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
+                        this.expiry_interval = null;
+                        this.new_reply_choice_event_rooms = [];
+                        this.unfinished_reply_event_room = null;
+                        break;
+
+                    case 'deleted':
+
+                        this.current_simple_dialog = store_status;
+                        this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
+                        this.expiry_interval = null;
+                        this.new_reply_choice_event_rooms = [];
+                        this.unfinished_reply_event_room = null;
+                        break;
+
+                    case 'replying':
+
+                        //currently useless, but if user replies from event_room page, we end up here
+                        //current_simple_dialog="" for simplicity, as it just bring user to "Search" button
+                        //worse alternative is to call API again and get replying event_room, and show is_replying dialog
+                        this.current_simple_dialog = "";
+                        this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
+                        this.expiry_interval = null;
+                        this.new_reply_choice_event_rooms = [];
+                        break;
+
+                    default:
+
+                        break;
+
+                }
+
+
+            },
             async expireReplyChoices(): Promise<void> {
 
                 if(this.is_new_reply_choice_expiring === true){
@@ -413,6 +468,12 @@
                     this.current_simple_dialog = this.simple_dialogs[1];
                     this.new_reply_choice_event_rooms = [];
                     this.is_new_reply_choice_expiring = false;
+
+                    //patch store
+                    this.unfinished_reply_store.$patch({
+                        event_room: null,
+                        status: "expired"
+                    });
                 })
                 .catch(() => {
 
@@ -423,6 +484,12 @@
                     this.current_simple_dialog = this.simple_dialogs[1];
                     this.new_reply_choice_event_rooms = [];
                     this.is_new_reply_choice_expiring = false;
+
+                    //patch store
+                    this.unfinished_reply_store.$patch({
+                        event_room: null,
+                        status: "expired"
+                    });
                 });
             },
             //you can call this for new reply choices, the API will remove previous reply choices for us
@@ -449,6 +516,12 @@
                         //no events
                         this.current_simple_dialog = this.simple_dialogs[0];
 
+                        //patch store
+                        this.unfinished_reply_store.$patch({
+                            event_room: null,
+                            status: ""
+                        });
+
                     }else if(results.data["data"].length > 0 && results.data["data"][0]["event_room"]["is_replying"] === true){
 
                         //user has unfinished reply
@@ -456,11 +529,23 @@
                         this.redirect_url = "hear/" + this.unfinished_reply_event_room!.event_room.id.toString();
                         this.startExpiryInterval();
 
+                        //patch store
+                        this.unfinished_reply_store.$patch({
+                            event_room: this.unfinished_reply_event_room,
+                            status: "replying"
+                        });
+
                     }else{
 
                         //user has new reply choices
                         this.new_reply_choice_event_rooms = results.data["data"];
                         this.startExpiryInterval();
+
+                        //patch store
+                        this.unfinished_reply_store.$patch({
+                            event_room: null,
+                            status: ""
+                        });
                     }
 
                     this.is_searching = false;
@@ -497,6 +582,13 @@
                     this.is_unfinished_reply_deleting = false;
                     this.unfinished_reply_event_room = null;
 
+                    //patch store
+                    this.unfinished_reply_store.$patch({
+                        event_room: null,
+                        status: "deleted"
+                    });
+
+                    //auto-search
                     window.setTimeout(() => {
                         this.getEventRooms();
                     }, 500);
@@ -532,6 +624,16 @@
 
                     if(results.status === 202){
 
+                        //store unfinished reply
+                        //we have no backend<-->store relation to trigger reset when server deems it expired
+                        //so we just override the store when user confirms reply choice, only possible without unfinished reply
+                        //patch store
+                        this.unfinished_reply_store.$patch({
+                            event_room: this.getMainEventRoom,
+                            status: "replying"
+                        });
+
+                        //redirect
                         window.location.href = window.location.origin + "/hear/" + event_room.event_room.id.toString();
 
                     }else{
@@ -664,6 +766,14 @@
             //get data from SSR template
             this.new_reply_choice_expiry_max_ms = parseInt(event_choice_expiry_seconds) * 1000;
             this.unfinished_reply_expiry_max_ms = parseInt(event_reply_expiry_seconds) * 1000;
+
+            //handle unfinished reply being cancelled/expired from elsewhere
+            this.unfinished_reply_store.$subscribe(()=>{
+
+                this.handleUnfinishedReplyStoreChange();
+                console.log(this.unfinished_reply_store.$state);
+            });
+            console.log(this.unfinished_reply_store.$state);
         },
     });
 </script>

@@ -598,10 +598,6 @@ video {
   position: relative;
 }
 
-.inset-0 {
-  inset: 0px;
-}
-
 .-left-1 {
   left: -0.25rem;
 }
@@ -821,10 +817,6 @@ video {
   margin-top: 4.5rem;
 }
 
-.ml-2 {
-  margin-left: 0.5rem;
-}
-
 .box-content {
   box-sizing: content-box;
 }
@@ -964,10 +956,6 @@ video {
 
 .h-full {
   height: 100%;
-}
-
-.h-screen {
-  height: 100vh;
 }
 
 .max-h-\[90\%\] {
@@ -1298,14 +1286,6 @@ video {
   border-color: rgb(231 229 228 / var(--tw-divide-opacity));
 }
 
-.place-self-center {
-  place-self: center;
-}
-
-.self-center {
-  align-self: center;
-}
-
 .justify-self-end {
   justify-self: end;
 }
@@ -1382,10 +1362,6 @@ video {
   border-width: 2px;
 }
 
-.border-4 {
-  border-width: 4px;
-}
-
 .border-b {
   border-bottom-width: 1px;
 }
@@ -1429,6 +1405,11 @@ video {
   border-color: rgb(168 162 158 / var(--tw-border-opacity));
 }
 
+.border-theme-light {
+  --tw-border-opacity: 1;
+  border-color: rgb(242 244 245 / var(--tw-border-opacity));
+}
+
 .border-theme-light-gray {
   --tw-border-opacity: 1;
   border-color: rgb(231 229 228 / var(--tw-border-opacity));
@@ -1454,48 +1435,6 @@ video {
 
 .border-transparent {
   border-color: transparent;
-}
-
-.border-theme-light {
-  --tw-border-opacity: 1;
-  border-color: rgb(242 244 245 / var(--tw-border-opacity));
-}
-
-.border-theme-lead {
-  --tw-border-opacity: 1;
-  border-color: rgb(250 204 21 / var(--tw-border-opacity));
-}
-
-.border-x-transparent {
-  border-left-color: transparent;
-  border-right-color: transparent;
-}
-
-.border-y-transparent {
-  border-top-color: transparent;
-  border-bottom-color: transparent;
-}
-
-.border-b-theme-lead {
-  --tw-border-opacity: 1;
-  border-bottom-color: rgb(250 204 21 / var(--tw-border-opacity));
-}
-
-.border-t-theme-black {
-  --tw-border-opacity: 1;
-  border-top-color: rgb(68 68 68 / var(--tw-border-opacity));
-}
-
-.border-b-transparent {
-  border-bottom-color: transparent;
-}
-
-.border-t-transparent {
-  border-top-color: transparent;
-}
-
-.border-r-transparent {
-  border-right-color: transparent;
 }
 
 .border-l-transparent {
@@ -1796,6 +1735,10 @@ video {
 
 .font-semibold {
   font-weight: 600;
+}
+
+.font-normal {
+  font-weight: 400;
 }
 
 .uppercase {

@@ -1,7 +1,7 @@
 <template>
     <div v-if="!is_deleted" class="flex flex-col">
 
-        <div v-if="is_searching" class="flex flex-col gap-6">
+        <div v-if="is_searching" class="flex flex-col gap-8">
 
             <!--events-->
             <div v-for="x in event_count" :key="x">
@@ -39,7 +39,7 @@
                             >
                                 <template #title>
                                     <div class="h-10 flex items-center">
-                                        <span>You are replying!</span>
+                                        <span>Replying...</span>
                                     </div>
                                 </template>
                             </VTitle>
@@ -71,6 +71,7 @@
                             :propEventRoomId="event_room.event_room.id"
                             :propCanSubmit="canSubmit"
                             @isSubmitting="handleIsSubmitting($event)"
+                            @isSubmitSuccessful="handleIsSubmitSuccessful($event)"
                         />
                     </div>
                 </div>
@@ -154,13 +155,17 @@
     import { prettyTimePassed, prettyTimeRemaining, getDataFromTemplate, timeFromNowMS } from '@/helper_functions';
     import EventRoomTypes from '@/types/EventRooms.interface';
     import EventTypes from '@/types/Events.interface';
+    import Statuses from '@/types/values/Statuses';
     import { notify } from 'notiwind';
+    import { useUnfinishedReplyStore } from '@/stores/UnfinishedReplyStore';
     const axios = require('axios');
 
     export default defineComponent({
         name: 'GetEventRoomsApp',
         data() {
             return {
+                unfinished_reply_store: useUnfinishedReplyStore(),
+
                 event_room_id: null as number|null,
                 event_count: 0, //from DOM
                 is_this_user_replying: false,
@@ -212,6 +217,57 @@
             },
         },
         methods: {
+            handleUnfinishedReplyStoreChange() : void {
+
+                const store_status = this.unfinished_reply_store.getStatus;
+                const relevant_statuses = ["", "replying", "deleted", "expired"] as Statuses[];
+
+                //we want to proceed even with ""
+                if(store_status in relevant_statuses === false){
+
+                    return;
+                }
+
+                switch(store_status){
+
+                    case '':
+
+                        this.is_this_user_replying = false;
+                        this.reply_is_expired = false;
+                        this.reply_is_deleted = false;
+                        this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
+                        this.reply_expiry_interval = null;
+                        break;
+
+                    case 'replying':
+
+                        //this scenario is when user already has this page open
+                        //but has successfully confirmed this as reply choice
+                        this.is_this_user_replying = true;
+                        this.startReplyExpiryInterval();
+                        break;
+
+                    case 'deleted':
+
+                        this.is_this_user_replying = false;
+                        this.reply_is_deleted = true;
+                        this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
+                        this.reply_expiry_interval = null;
+                        break;
+
+                    case 'expired':
+
+                        this.is_this_user_replying = false;
+                        this.reply_is_expired = true;
+                        this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
+                        this.reply_expiry_interval = null;
+                        break;
+
+                    default:
+
+                        break;
+                }
+            },
             async stopReplying(context:"deleted"|"expired") : Promise<void> {
 
                 if(context === "deleted" && this.is_deleting === true){
@@ -243,10 +299,22 @@
                         this.is_deleting = false;
                         this.reply_is_deleted = true;
 
+                        //patch store
+                        this.unfinished_reply_store.$patch({
+                            event_room: null,
+                            status: "deleted"
+                        });
+
                     }else if(context === "expired"){
 
                         this.is_expiring = false;
                         this.reply_is_expired = true;
+
+                        //patch store
+                        this.unfinished_reply_store.$patch({
+                            event_room: null,
+                            status: "expired"
+                        });
                     }
 
                 })
@@ -294,6 +362,12 @@
 
                         this.startReplyExpiryInterval();
                         this.scrollToReplyArea();
+
+                        //patch store
+                        this.unfinished_reply_store.$patch({
+                            event_room: this.event_room,
+                            status: "replying"
+                        });
                     }
                 })
                 .catch((error:any) => {
@@ -305,6 +379,17 @@
                     }, 3000);
                     this.is_searching = false;
                 });
+            },
+            handleIsSubmitSuccessful(new_value:boolean) : void {
+
+                if(new_value === true){
+
+                    //patch store
+                    this.unfinished_reply_store.$patch({
+                        event_room: null,
+                        status: ""
+                    });
+                }
             },
             handleIsSubmitting(new_value:boolean) : void {
 
@@ -452,6 +537,14 @@
                 const when_created = (container.getAttribute('data-when-created') as string).replace(/ /g, 'T') + 'Z';
                 when_created_element.textContent = prettyTimePassed(new Date(when_created));
             }
+
+            //handle deletion/expiry from elsewhere
+            this.unfinished_reply_store.$subscribe(()=>{
+
+                this.handleUnfinishedReplyStoreChange();
+                console.log(this.unfinished_reply_store.$state);
+            });
+            console.log(this.unfinished_reply_store.$state);
         },
     });
 </script>

@@ -29,7 +29,7 @@
                 >
                     <span class="block sm:pb-1">
                         <i class="fas fa-comment sm:pr-2"></i>
-                        <span class="hidden sm:inline">Start</span>
+                        <span class="hidden font-normal sm:inline">Start</span>
                     </span>
                     <span class="sr-only sm:hidden">start event</span>
                 </VActionTextOnly>
@@ -46,7 +46,7 @@
                 >
                     <span class="block sm:pb-1">
                         <i class="fas fa-comments sm:pr-2"></i>
-                        <span class="hidden sm:inline">Reply</span>
+                        <span class="hidden font-normal sm:inline">Reply</span>
                     </span>
                     <span class="sr-only sm:hidden">reply to events</span>
                 </VActionTextOnly>
