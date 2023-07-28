@@ -15,6 +15,8 @@
     "core-js": "^3.8.3",
     "fix-webm-duration": "^1.0.5",
     "notiwind": "^2.0.2",
+    "pinia": "^2.1.6",
+    "pinia-plugin-persistedstate": "^3.2.0",
     "prettier": "^2.8.4",
     "recordrtc": "^5.6.2",
     "tailwindcss": "^3.1.8",

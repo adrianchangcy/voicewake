@@ -186,7 +186,7 @@
                 default: true
             },
         },
-        emits: ['isSubmitting'],
+        emits: ['isSubmitting', 'isSubmitSuccessful'],
         watch: {
             is_submitting(new_value){
 
@@ -284,14 +284,22 @@
 
                     if(response.status === 201 && 'event_room_id' in response.data['data']){
 
+                        this.$emit('isSubmitSuccessful', true);
+
                         window.location.href = window.location.origin + "/hear/" + response.data['data']['event_room_id'].toString();
                         //no need to do is_submitting=true on success
+
+                    }else{
+
+                        this.$emit('isSubmitSuccessful', false);
                     }
 
                 })
                 .catch((error:any) => {
 
+                    this.$emit('isSubmitSuccessful', false);
                     this.is_submitting = false;
+
                     notify({
                         title: this.propIsOriginator === true ? 'Creating event failed' : 'Creating reply failed',
                         text: error.response.data['message'],

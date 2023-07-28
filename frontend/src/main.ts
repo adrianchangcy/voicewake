@@ -1,10 +1,16 @@
 import { createApp } from 'vue';
+import { createPinia } from 'pinia';
+import piniaPluginPersistedState from 'pinia-plugin-persistedstate';
 
 import BaseApp from '/src/apps/BaseApp.vue';
 import CreateEventRoomsApp from '/src/apps/CreateEventRoomsApp.vue';
 import ListEventRoomsApp from '/src/apps/ListEventRoomsApp.vue';
 import GetEventRoomsApp from '/src/apps/GetEventRoomsApp.vue';
 import UserLogInSignUp from '/src/components/main/UserLogInSignUp.vue';
+
+
+const pinia = createPinia();
+pinia.use(piniaPluginPersistedState);
 
 const clickOutside = {
 
@@ -88,6 +94,7 @@ if(document.querySelector('#create-event-rooms-app')){
 if(document.querySelector('#list-event-rooms-app')){
 
     createApp(ListEventRoomsApp)
+        .use(pinia)
         .directive('click-outside', clickOutside)
         .mount('#list-event-rooms-app');
 }
@@ -95,6 +102,7 @@ if(document.querySelector('#list-event-rooms-app')){
 if(document.querySelector('#get-event-rooms-app')){
 
     createApp(GetEventRoomsApp)
+        .use(pinia)
         .directive('click-outside', clickOutside)
         .mount('#get-event-rooms-app');
 }

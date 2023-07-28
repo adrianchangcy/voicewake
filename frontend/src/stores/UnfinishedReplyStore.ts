@@ -1,0 +1,36 @@
+import { defineStore } from 'pinia';
+import EventRoomTypes from '@/types/EventRooms.interface';
+import Statuses from '@/types/values/Statuses';
+
+
+export const useUnfinishedReplyStore = defineStore('unfinished_reply', {
+    state: ()=>({
+        event_room: null as EventRoomTypes|null,
+        status: "" as Statuses,
+    }),
+    persist: true,
+    getters: {
+        getUnfinishedReply: (state)=>{
+
+            return state.event_room;
+        },
+        getStatus: (state)=>{
+
+            return state.status;
+        },
+    },
+    actions: {
+        updateStatus(status:Statuses){
+
+            this.status = status;
+        },
+        addUnfinishedReply(event_room:EventRoomTypes){
+
+            this.event_room = event_room;
+        },
+        removeUnfinishedReply(){
+
+            this.event_room = null;
+        },
+    }
+});
