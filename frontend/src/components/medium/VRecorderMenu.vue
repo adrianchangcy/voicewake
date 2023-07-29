@@ -14,7 +14,7 @@
                     :propIsRecording="is_recording"
                     :propIsForRecording="true"
                     :propIsOpen="propIsOpen"
-                    @isReadyToPlay="handleIsReadyToPlay($event)"
+                    @isProcessing="handleIsPlaybackProcessing($event)"
                     class="w-full h-full"
                 />
                 <VAudioVisualiser
@@ -59,7 +59,7 @@
                 recording_volume: 0,
                 interval_ms: 100, //milliseconds
 
-                is_ready_to_play: true,
+                is_playback_processing: true,
                 
                 final_blob: null as Blob | null,
                 blob_volume_peaks: [] as Array<number>,
@@ -87,13 +87,13 @@
             canRecord() : boolean {
 
                 //preventive measure to enable VRecorder only when it won't interrupt other relevant processes
-                return this.is_ready_to_play;
+                return !this.is_playback_processing;
             },
         },
         methods: {
-            handleIsReadyToPlay(new_value:boolean) : void {
+            handleIsPlaybackProcessing(new_value:boolean) : void {
 
-                this.is_ready_to_play = new_value;
+                this.is_playback_processing = new_value;
             },
             handleIsCancelled() : void {
 
