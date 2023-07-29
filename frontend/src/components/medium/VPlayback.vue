@@ -6,8 +6,8 @@
         <audio
             ref="audio_element"
             @loadedmetadata="handleHasMetadata()"
-            @canplay="[emitIsReadyToPlay(true), is_loading=false]"
-            @waiting="is_loading=true"
+            @canplay="is_playback_buffering=false"
+            @waiting="is_playback_buffering=true"
             @ended="[pausePlayback(), was_paused=true]"
         ></audio>
 
@@ -25,7 +25,7 @@
             <div class="row-start-1 row-span-2 col-start-1 col-span-1 text-4xl relative">
                 <VActionTextOnly
                     @click="togglePlaybackPlayPause()"
-                    :propIsEnabled="hasAllDataForPlay"
+                    :propIsEnabled="isPlaybackReady"
                     propElement="button"
                     type="button"
                     :propIsIconOnly="true"
@@ -64,7 +64,7 @@
                     >
                         <div
                             :class="[
-                                hasAllDataForPlay === true ? 'bg-theme-black' : 'outline-1 outline outline-theme-dark-gray',
+                                isPlaybackReady === true ? 'bg-theme-black' : 'outline-1 outline outline-theme-dark-gray',
                                 'left-0 right-0 mx-auto w-0.5 h-full'
                             ]"
                         ></div>
@@ -78,11 +78,10 @@
                     <div
                         ref="playback_slider"
                         :class="[
-                            hasAllDataForPlay === true && is_playback_slider_ready === true ? 'touch-none cursor-pointer' : 'cursor-default',
+                            isPlaybackReady === true ? 'touch-none cursor-pointer' : 'cursor-default',
                             'h-full relative z-10 parent-trigger-double-height-when-hover'
                         ]"
-                        @mousedown.stop="[startPlaybackDrag(), doPlaybackDrag($event)]"
-                        @touchstart.stop="[startPlaybackDrag(true), doPlaybackDrag($event)]"
+                        @pointerdown.stop="[startPlaybackDrag(), doPlaybackDrag($event)]"
                     >
                         <!--for reference, since playback_slider_progress cannot give full width at start-->
                         <div
@@ -92,21 +91,21 @@
 
                         <!--loading-->
                         <div
-                            v-show="is_loading"
+                            v-show="is_playback_buffering"
                             class="h-1 absolute left-0 right-0 bottom-[0.375rem] m-auto"
                         >
                             <div
                                 :class="[
-                                    hasAllDataForPlay === true ? 'double-height-when-hover' : '',
+                                    isPlaybackReady === true ? 'double-height-when-hover' : '',
                                     'w-full h-full skeleton transform'
                                 ]"
                             ></div>
                         </div>
                         <!--not loading-->
                         <div
-                            v-show="!is_loading"
+                            v-show="!is_playback_buffering"
                             :class="[
-                                hasAllDataForPlay === true ? 'double-height-when-hover' : '',
+                                isPlaybackReady === true ? 'double-height-when-hover' : '',
                                 'h-1 absolute bg-theme-light-gray left-0 right-0 bottom-[0.375rem] m-auto transition-transform'
                             ]"
                         ></div>
@@ -159,7 +158,7 @@
                         <VActionTextOnly
                             @pointerdown.stop="toggleMute($event)"
                             @keydown.enter.stop="toggleMute($event)"
-                            :propIsEnabled="hasAllDataForPlay"
+                            :propIsEnabled="isPlaybackReady"
                             propElement="button"
                             type="button"
                             :propIsIconOnly="true"
@@ -249,13 +248,17 @@
                 is_playing: false,
                 main_anime: null as InstanceType<typeof anime> | null,   //to store animePlaybackStates() anime
 
-                is_loading: false,
                 is_playback_empty_anime: true,  //this is only to anime empty --> non-empty once, and vice versa
+                    
+                is_playback_slider_ready: false,
+                is_playback_attached: false,
+
+                is_playback_buffering: false,
+                is_playback_slider_processing: false,
+                is_playback_attaching: false,
 
                 playback_slider_value: 0,
-                is_playback_slider_ready: false,
                 is_playback_slider_drag: false,
-                is_playback_slider_touch: false,
                 playback_slider_dimension: null as DOMRect | null,
                 playback_slider_knob_anime: null as InstanceType<typeof anime> | null, //we play/pause instead of new anime() for best results
                 playback_slider_progress_anime: null as InstanceType<typeof anime> | null, //we play/pause instead of new anime() for best results
@@ -270,7 +273,7 @@
                 //everything else will auto-close volume menu
                 //except for hover
                 //always use openPlaybackVolume() and closePlaybackVolume() to ensure timeout is synced
-                is_playback_volume_open: true,
+                is_playback_volume_open: false,
                 autoclose_playback_volume_timeout: null as number|null,
 
                 playback_states: ['initiate', 'recording', 'attaching', 'can_play', 'loading'],
@@ -279,7 +282,7 @@
             };
         },
         emits: [
-            'newFileVolumes', 'isReadyToPlay'
+            'newFileVolumes', 'isReadyToPlay', 'isProcessing'
         ],
         props: {
             propAutoPlayOnSourceChange: {
@@ -319,7 +322,7 @@
             },
         },
         watch: {
-            is_loading(new_value){
+            is_playback_buffering(new_value){
 
                 if(new_value === true){
 
@@ -367,7 +370,7 @@
 
                     //ok to run this often, since it does nothing if dimension is the same
                     this.$nextTick(()=>{
-                        if(this.adjustPlaybackSliderDimension() === true && this.hasAllDataForPlay === true){
+                        if(this.adjustPlaybackSliderDimension() === true && this.isPlaybackReady === true){
                             this.createPlaybackSliderAnime();
                             this.syncSliderAnimeAfterSuspend();
                         }
@@ -390,21 +393,27 @@
 
                 return this.playback_volume === 0;
             },
-            hasAllDataForPlay() : boolean {
+            isPlaybackReady() : boolean {
 
-                if(
+                const is_playback_ready = (
                     this.propAudioVolumePeaks.length > 0 &&
                     this.propAudioVolumePeaks.length === this.propBucketQuantity &&
-                    (this.propAudio !== null || this.propAudioURL !== '')
-                ){
+                    (this.propAudio !== null || this.propAudioURL !== '') &&
+                    this.is_playback_slider_ready === true &&
+                    this.is_playback_attached === true &&
+                    this.isProcessing === false
+                );
 
-                    return true;
+                this.$emit('isReadyToPlay', is_playback_ready);
+                return is_playback_ready;
+            },
+            isProcessing() : boolean {
 
-                }else{
+                const is_processing = this.is_playback_attaching || this.is_playback_slider_processing;
 
-                    return false;
-                }
-            }
+                this.$emit('isProcessing', is_processing);
+                return is_processing;
+            },
         },
         methods: {
             test() : void {
@@ -528,7 +537,7 @@
                 //FYI, some keyup events are too late for .preventDefault(), so they use keydown
 
                 //these keys affect only playback, so no point if there's no file
-                if(this.propAudio === null && this.propAudioURL === ''){
+                if(this.isPlaybackReady === false){
 
                     return;
                 }
@@ -655,7 +664,8 @@
 
                 //for event listener 'resize', this recreates slider anime and syncs it
                 this.adjustPlaybackSliderDimension();
-                if(this.hasAllDataForPlay === true && isNaN((this.$refs.audio_element as HTMLAudioElement).duration) === false){
+
+                if(this.isPlaybackReady === true && isNaN((this.$refs.audio_element as HTMLAudioElement).duration) === false){
                     this.createPlaybackSliderAnime();
                     this.syncSliderAnimeAfterSuspend();
                 }
@@ -699,7 +709,9 @@
                 //we can then use .play/.pause/.seek
                 //expects to already have accurate this.playback_slider_value
 
+                //states
                 this.is_playback_slider_ready = false;
+                this.is_playback_slider_processing = true;
 
                 //remove
                 anime.remove([
@@ -736,7 +748,9 @@
                     scaleX: ['0', '1'],
                 });
 
+                //states
                 this.is_playback_slider_ready = true;
+                this.is_playback_slider_processing = false;
             },
             adjustPlaybackSliderDimension() : boolean {
 
@@ -778,22 +792,21 @@
                 target.muted = true;
                 target.play();
             },
-            startPlaybackDrag(is_playback_slider_touch=false) : void {
+            startPlaybackDrag() : void {
 
-                if(this.hasAllDataForPlay === false || this.is_playback_slider_ready === false){
+                if(this.isPlaybackReady === false){
 
                     return;
                 }
 
                 this.is_playback_slider_drag = true;
-                this.is_playback_slider_touch = is_playback_slider_touch;
 
                 if(this.is_playing === true){
 
                     this.pausePlayback();
                 }
             },
-            doPlaybackDrag(event:MouseEvent|TouchEvent) : void {
+            doPlaybackDrag(event:PointerEvent) : void {
 
                 if(this.is_playback_slider_drag === true && this.playback_slider_dimension !== null){
 
@@ -805,17 +818,8 @@
                         event.preventDefault();
                     }
 
-                    //can use clientX, screenX, pageX, but pageX is most accurate in this context
-                    let user_x = undefined;
-
-                    if(this.is_playback_slider_touch === true){
-
-                        user_x = (event as TouchEvent).touches[0].clientX;
-
-                    }else{
-
-                        user_x = (event as MouseEvent).clientX;
-                    }
+                    //can use clientX, screenX, pageX
+                    const user_x = event.clientX;
 
                     if(user_x >= this.playback_slider_dimension.left && user_x <= this.playback_slider_dimension.right){
 
@@ -844,11 +848,6 @@
             stopPlaybackDrag() : void {
 
                 if(this.is_playback_slider_drag === true){
-
-                    //we reset touch detection on every startPlaybackDrag() and stopPlaybackDrag()
-                    //so we get latest status of is_playback_slider_touch
-                    //some browsers also trigger both touch + mouse events together
-                    this.is_playback_slider_touch = false;
 
                     if(this.playback_slider_value < 1 && this.was_paused === false){
 
@@ -891,7 +890,7 @@
                 //+x for forward, -x for backward
 
                 //do this instead of relying on :disabled, as :disabled makes sliders bug out
-                if(seconds === 0 || this.hasAllDataForPlay === false || this.is_playback_slider_ready === false){
+                if(seconds === 0 || this.isPlaybackReady === false){
 
                     return;
                 }
@@ -1032,7 +1031,7 @@
                 //reset is only triggered on next play
 
                 //do this instead of relying on :disabled, as :disabled makes sliders bug out
-                if(this.hasAllDataForPlay === false || this.is_playback_slider_ready === false){
+                if(this.isPlaybackReady === false){
 
                     return;
                 }
@@ -1115,7 +1114,9 @@
                     this.pausePlayback();
                 }
 
-                this.emitIsReadyToPlay(false);
+                //states
+                this.is_playback_attached = false;
+                this.is_playback_attaching = true;
 
                 this.animeIsNotEmptyPlayback();
 
@@ -1142,11 +1143,11 @@
                 //this is the fix
                 audio_element.playbackRate = this.playback_rate;
 
-                this.adjustVolumeRipples();
-            },
-            emitIsReadyToPlay(new_value:boolean) : void {
+                //states
+                this.is_playback_attached = true;
+                this.is_playback_attaching = false;
 
-                this.$emit('isReadyToPlay', new_value);
+                this.adjustVolumeRipples();
             },
             handleHasMetadata() : void {
 
@@ -1231,10 +1232,11 @@
 
             //initial state
             this.animeIsEmptyPlayback();
+            this.$emit('isProcessing', false);
 
             //when propAudioVolumePeaks.length > 0 on mounted(), means VPlayback was rendered via v-if with data already
             //we do this here because in this case, watchers do not trigger
-            if(this.hasAllDataForPlay === true){
+            if(this.propAudioURL.length > 0){
 
                 //start with data already available, i.e. for existing records
                 this.attachAudioToPlayback(this.propAudioURL);
@@ -1288,10 +1290,8 @@
             (this.$refs.audio_element as HTMLAudioElement).volume = this.playback_volume;
 
             //attach listeners
-            window.addEventListener('mousemove', this.doPlaybackDrag);
-            window.addEventListener('touchmove', this.doPlaybackDrag);
-            window.addEventListener('mouseup', this.stopPlaybackDrag);
-            window.addEventListener('touchend', this.stopPlaybackDrag);
+            window.addEventListener('pointermove', this.doPlaybackDrag);
+            window.addEventListener('pointerup', this.stopPlaybackDrag);
             window.addEventListener('resize', this.handleWindowResize);
             window.addEventListener('keydown', this.handleKeyboardEvent);
             document.addEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
@@ -1300,10 +1300,8 @@
         beforeUnmount(){
 
             //remove listeners
-            window.removeEventListener('mousemove', this.doPlaybackDrag);
-            window.removeEventListener('touchmove', this.doPlaybackDrag);
-            window.removeEventListener('mouseup', this.stopPlaybackDrag);
-            window.removeEventListener('touchend', this.stopPlaybackDrag);
+            window.removeEventListener('pointermove', this.doPlaybackDrag);
+            window.removeEventListener('pointerup', this.stopPlaybackDrag);
             window.removeEventListener('resize', this.handleWindowResize);
             window.removeEventListener('keydown', this.handleKeyboardEvent);
             document.removeEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
