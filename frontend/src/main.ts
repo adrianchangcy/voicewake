@@ -1,6 +1,7 @@
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import piniaPluginPersistedState from 'pinia-plugin-persistedstate';
+import { PiniaSharedState } from 'pinia-shared-state';
 
 import BaseApp from '/src/apps/BaseApp.vue';
 import CreateEventRoomsApp from '/src/apps/CreateEventRoomsApp.vue';
@@ -10,7 +11,23 @@ import UserLogInSignUp from '/src/components/main/UserLogInSignUp.vue';
 
 
 const pinia = createPinia();
+
+//persists store even after browser close/refresh
+//you can pass persist:true, or persist:{} at store files
 pinia.use(piniaPluginPersistedState);
+
+//sync store across multiple tabs
+//at store file level, you can override the settings below
+pinia.use(
+    PiniaSharedState({
+        // Enables the plugin for all stores. Defaults to true.
+        enable: true,
+        // If set to true this tab tries to immediately recover the shared state from another tab. Defaults to true.
+        initialize: false,
+        // Enforce a type. One of native, idb, localstorage or node. Defaults to native.
+        type: 'localstorage',
+    }),
+);
 
 const clickOutside = {
 

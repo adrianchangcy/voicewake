@@ -7,8 +7,7 @@ export const useUnfinishedReplyStore = defineStore('unfinished_reply', {
     state: ()=>({
         event_room: null as EventRoomTypes|null,
         status: "" as Statuses,
-    }),
-    persist: true,
+    }),    
     getters: {
         getUnfinishedReply: (state)=>{
 
@@ -24,7 +23,7 @@ export const useUnfinishedReplyStore = defineStore('unfinished_reply', {
 
             this.status = status;
         },
-        addUnfinishedReply(event_room:EventRoomTypes){
+        updateUnfinishedReply(event_room:EventRoomTypes){
 
             this.event_room = event_room;
         },
@@ -32,5 +31,13 @@ export const useUnfinishedReplyStore = defineStore('unfinished_reply', {
 
             this.event_room = null;
         },
-    }
+    },
+    persist: true,
+    share: {
+        //array of fields that the plugin will ignore
+        omit: [],
+        //override global config for this store
+        enable: true,
+        initialize: true,
+    },
 });

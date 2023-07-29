@@ -401,10 +401,13 @@
             handleUnfinishedReplyStoreChange() : void {
 
                 const store_status = this.unfinished_reply_store.getStatus;
-                const extra_allowed_store_status = ["replying"] as Statuses[];
+                const extra_allowed_store_status = ["replying", "replying_successful"] as Statuses[];
 
                 //store_status must be "", or
-                if(store_status in this.simple_dialogs === false && store_status in extra_allowed_store_status === false){
+                if(
+                    this.simple_dialogs.includes(store_status) === false &&
+                    extra_allowed_store_status.includes(store_status) === false
+                ){
 
                     return;
                 }
@@ -431,19 +434,22 @@
 
                     case 'replying':
 
-                        //currently useless, but if user replies from event_room page, we end up here
-                        //current_simple_dialog="" for simplicity, as it just bring user to "Search" button
-                        //worse alternative is to call API again and get replying event_room, and show is_replying dialog
+                        this.current_simple_dialog = "";
+                        this.new_reply_choice_event_rooms = [];
+                        break;
+
+                    case 'replying_successful':
+
                         this.current_simple_dialog = "";
                         this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                         this.expiry_interval = null;
                         this.new_reply_choice_event_rooms = [];
+                        this.unfinished_reply_event_room = null;
                         break;
 
                     default:
 
                         break;
-
                 }
 
 
@@ -589,9 +595,7 @@
                     });
 
                     //auto-search
-                    window.setTimeout(() => {
-                        this.getEventRooms();
-                    }, 500);
+                    this.getEventRooms();
                 })
                 .catch((error: any) => {
 
@@ -682,6 +686,7 @@
                 }
 
                 this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
+                this.expiry_interval = null;
 
                 const when_locked_ms = new Date(target_event_room.event_room.when_locked);
                 const time_elapsed_ms = timeFromNowMS(when_locked_ms);
@@ -697,7 +702,10 @@
 
                 //run every 1s if <120s remaining, else run every 60s
                 //change this again once sped up
-                let interval_ms: number = target_max_ms - time_elapsed_ms <= this.shorten_interval_ceiling_ms ? this.fastest_interval_ms : this.slowest_interval_ms;
+                let interval_ms:number = (
+                    (target_max_ms - time_elapsed_ms) <= this.shorten_interval_ceiling_ms ?
+                    this.fastest_interval_ms : this.slowest_interval_ms
+                );
 
                 //set possible first time expiry string
                 const time_remaining = prettyTimeRemaining(time_elapsed_ms, target_max_ms);
@@ -715,8 +723,11 @@
                         this.unfinished_reply_event_room === null ? this.expireReplyChoices() : this.deletePreviousReply();
                     }
 
-                    //if interval started with >1000, be prepared for reinitialisation for new interval with shorter time
-                    if (interval_ms === this.slowest_interval_ms && target_max_ms - time_elapsed_ms <= this.shorten_interval_ceiling_ms) {
+                    //if interval started with >1000, reinitialise itself for new interval with shorter time
+                    if (
+                        interval_ms === this.slowest_interval_ms &&
+                        (target_max_ms - time_elapsed_ms) <= this.shorten_interval_ceiling_ms
+                    ){
 
                         clearInterval(this.expiry_interval!);
 
