@@ -13,21 +13,19 @@
 
         <!--
             ripples, slider, volume, play/pause, rate, timers
-            we want it like this to be able to hide everything when needed
         -->
         <div
             ref="playback_main"
             :class="[
                 propEventTone === null ? 'grid-cols-3 pr-4' : 'grid-cols-4',
-                propHasHighlight === true ? 'border-2' : 'border',
-                'h-20 grid grid-rows-2 rounded-lg border-theme-light-gray shade-border-when-hover transition-colors'
+                'h-20 grid grid-rows-2 rounded-lg border border-theme-light-gray shade-border-when-hover transition-colors'
             ]"
         >
             <!--play/pause-->
             <div class="row-start-1 row-span-2 col-start-1 col-span-1 text-4xl relative">
                 <VActionTextOnly
                     @click="togglePlaybackPlayPause()"
-                    :propIsEnabled="has_all_data_for_play"
+                    :propIsEnabled="hasAllDataForPlay"
                     propElement="button"
                     type="button"
                     :propIsIconOnly="true"
@@ -66,7 +64,7 @@
                     >
                         <div
                             :class="[
-                                has_all_data_for_play === true ? 'bg-theme-black' : 'outline-1 outline outline-theme-dark-gray',
+                                hasAllDataForPlay === true ? 'bg-theme-black' : 'outline-1 outline outline-theme-dark-gray',
                                 'left-0 right-0 mx-auto w-0.5 h-full'
                             ]"
                         ></div>
@@ -80,11 +78,9 @@
                     <div
                         ref="playback_slider"
                         :class="[
-                            has_all_data_for_play === true && is_playback_slider_ready === true ? 'touch-none cursor-pointer' : 'cursor-default',
+                            hasAllDataForPlay === true && is_playback_slider_ready === true ? 'touch-none cursor-pointer' : 'cursor-default',
                             'h-full relative z-10 parent-trigger-double-height-when-hover'
                         ]"
-                        @mouseenter.stop="is_playback_slider_hover = true"
-                        @mouseleave.stop="is_playback_slider_hover = false"
                         @mousedown.stop="[startPlaybackDrag(), doPlaybackDrag($event)]"
                         @touchstart.stop="[startPlaybackDrag(true), doPlaybackDrag($event)]"
                     >
@@ -101,7 +97,7 @@
                         >
                             <div
                                 :class="[
-                                    is_playback_slider_hover && has_all_data_for_play === true ? 'double-height-when-hover' : '',
+                                    hasAllDataForPlay === true ? 'double-height-when-hover' : '',
                                     'w-full h-full skeleton transform'
                                 ]"
                             ></div>
@@ -110,7 +106,7 @@
                         <div
                             v-show="!is_loading"
                             :class="[
-                                is_playback_slider_hover && has_all_data_for_play === true ? 'double-height-when-hover' : '',
+                                hasAllDataForPlay === true ? 'double-height-when-hover' : '',
                                 'h-1 absolute bg-theme-light-gray left-0 right-0 bottom-[0.375rem] m-auto transition-transform'
                             ]"
                         ></div>
@@ -135,69 +131,76 @@
             <div
                 class="pt-2 row-start-2 row-span-1 col-start-2 col-span-2 grid grid-rows-1 grid-cols-3"
             >
+
                 <!--current duration-->
                 <div class="row-start-1 row-span-1 col-start-1 col-span-1 relative text-xs sm:text-sm">
                     <span class="sr-only">current duration</span>
                     <span class="absolute w-fit h-fit left-0 -top-2 bottom-0 m-auto">{{pretty_current_playback_time}}</span>
                 </div>
+
                 <!--volume-->
                 <div
                     v-if="propIsForRecording === false"
                     ref="playback_volume_opener"
-                    class="row-start-1 row-span-1 col-start-2 col-span-1 h-full text-lg relative"
-                    @pointerenter.stop="handlePlaybackVolumeHoverIn($event)"
-                    @pointerleave.stop="handlePlaybackVolumeHoverOut($event)"
+                    class="row-start-1 row-span-1 col-start-2 col-span-1 h-full relative text-lg"
                 >
-                    <!--open/close volume-->
-                    <VActionTextOnly
-                        @pointerdown.stop="toggleMute($event)"
-                        @keydown.enter.stop="toggleMute($event)"
-                        :propIsEnabled="has_all_data_for_play"
-                        propElement="button"
-                        type="button"
-                        :propIsIconOnly="true"
-                        :propIsDefaultOutlineOffset="false"
-                        class="w-full h-10 absolute -top-2 focus-visible:-outline-offset-8"
-                    >
-                        <div class="w-full h-full relative">
-                            <i
-                                :class="[
-                                    (isMuted ? 'fa-volume-xmark' : ''),
-                                    (playback_volume <= 0.5 ? 'fa-volume-low' : ''),
-                                    (playback_volume <= 1 ? 'fa-volume-high' : ''),
-                                    (is_playback_volume_open ? '-rotate-90' : 'rotate-0'),
-                                    'fas transition-transform w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto'
-                                ]"
-                            ></i>
-                        </div>
-                        <span v-show="isMuted" class="sr-only">
-                            unmute and open volume menu
-                        </span>
-                        <span v-show="!isMuted" class="sr-only">
-                            mute
-                        </span>
-                    </VActionTextOnly>
 
-                    <!--volume menu-->
-                    <TransitionFade>
-                        <VBox
-                            v-show="is_playback_volume_open"
-                            :propIsOpaque="true"
-                            class="w-full h-28 absolute left-0 right-0 bottom-8 m-auto z-10"
+                    <!--volume content-->
+                    <div
+                        :class="[
+                            is_playback_volume_open ? 'h-32 z-10 backdrop-blur border-theme-dark-gray' : 'h-full border-transparent',
+                            'absolute w-full bottom-0 m-auto border rounded-lg'
+                        ]"
+                        @pointerenter.stop="handlePlaybackVolumeHoverIn($event)"
+                        @pointerleave.stop="handlePlaybackVolumeHoverOut($event)"
+                    >
+
+                        <!--volume button-->
+                        <VActionTextOnly
+                            @pointerdown.stop="toggleMute($event)"
+                            @keydown.enter.stop="toggleMute($event)"
+                            :propIsEnabled="hasAllDataForPlay"
+                            propElement="button"
+                            type="button"
+                            :propIsIconOnly="true"
+                            :propIsDefaultOutlineOffset="false"
+                            class="w-full h-10 absolute -bottom-0.5 focus-visible:-outline-offset-8"
                         >
-                            <VSliderYSmall
-                                ref="volume_slider"
-                                :propSliderValue="playback_volume"
-                                @hasNewSliderValue="changePlaybackVolume($event)"
-                                @startDragSliderValue="handleVolumeStartDrag($event)"
-                                @stopDragSliderValue="handleVolumeStopDrag($event)"
-                                class="w-full h-full"
-                            >
-                                <span class="sr-only">vertical volume box</span>
-                            </VSliderYSmall>
-                        </VBox>
-                    </TransitionFade>
+                            <div class="w-full h-full relative">
+                                <i
+                                    :class="[
+                                        (isMuted ? 'fa-volume-xmark' : ''),
+                                        (playback_volume <= 0.5 ? 'fa-volume-low' : ''),
+                                        (playback_volume <= 1 ? 'fa-volume-high' : ''),
+                                        (is_playback_volume_open ? '-rotate-90' : 'rotate-0'),
+                                        'fas transition-transform w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto'
+                                    ]"
+                                ></i>
+                            </div>
+                            <span v-show="isMuted" class="sr-only">
+                                unmute to {{ getPrettyVolume }} and open volume menu
+                            </span>
+                            <span v-show="!isMuted" class="sr-only">
+                                mute
+                            </span>
+                        </VActionTextOnly>
+
+                        <!--volume menu-->
+                        <!--h-22, so +h-10 of button, we can set content size at h-32-->
+                        <VSliderYSmall
+                            v-show="is_playback_volume_open"
+                            ref="volume_slider"
+                            :propSliderValue="playback_volume"
+                            @hasNewSliderValue="changePlaybackVolume($event)"
+                            @startDragSliderValue="handleVolumeStartDrag($event)"
+                            @stopDragSliderValue="handleVolumeStopDrag($event)"
+                            class="w-full h-[5.5rem] absolute left-0 right-0 bottom-10 m-auto px-2 pt-4 pb-1"
+                        >
+                            <span class="sr-only">vertical volume box</span>
+                        </VSliderYSmall>
+                    </div>
                 </div>
+
                 <!--total duration-->
                 <div class="row-start-1 row-span-1 col-start-3 col-span-1 relative text-xs sm:text-sm">
                     <span class="absolute w-fit h-fit right-0 -top-2 bottom-0 m-auto">
@@ -222,9 +225,7 @@
 
 
 <script setup lang="ts">
-    import VBox from '/src/components/small/VBox.vue';
     import VSliderYSmall from '/src/components/small/VSliderYSmall.vue';
-    import TransitionFade from '/src/transitions/TransitionFade.vue';
     import VActionTextOnly from '../small/VActionTextOnly.vue';
 </script>
 
@@ -255,7 +256,6 @@
                 is_playback_slider_ready: false,
                 is_playback_slider_drag: false,
                 is_playback_slider_touch: false,
-                is_playback_slider_hover: false,
                 playback_slider_dimension: null as DOMRect | null,
                 playback_slider_knob_anime: null as InstanceType<typeof anime> | null, //we play/pause instead of new anime() for best results
                 playback_slider_progress_anime: null as InstanceType<typeof anime> | null, //we play/pause instead of new anime() for best results
@@ -270,7 +270,7 @@
                 //everything else will auto-close volume menu
                 //except for hover
                 //always use openPlaybackVolume() and closePlaybackVolume() to ensure timeout is synced
-                is_playback_volume_open: false,
+                is_playback_volume_open: true,
                 autoclose_playback_volume_timeout: null as number|null,
 
                 playback_states: ['initiate', 'recording', 'attaching', 'can_play', 'loading'],
@@ -285,10 +285,6 @@
             propAutoPlayOnSourceChange: {
                 type: Boolean,
                 default: false
-            },
-            propHasHighlight: {
-                type: Boolean,
-                default: false,
             },
             propAudio: {    //option 1
                 type: Object as PropType<Blob> | PropType<File> | null,
@@ -371,7 +367,7 @@
 
                     //ok to run this often, since it does nothing if dimension is the same
                     this.$nextTick(()=>{
-                        if(this.adjustPlaybackSliderDimension() === true && this.has_all_data_for_play === true){
+                        if(this.adjustPlaybackSliderDimension() === true && this.hasAllDataForPlay === true){
                             this.createPlaybackSliderAnime();
                             this.syncSliderAnimeAfterSuspend();
                         }
@@ -386,11 +382,15 @@
             },
         },
         computed: {
+            getPrettyVolume() : string {
+                
+                return (this.playback_volume * 100).toString() + "%";
+            },
             isMuted() : boolean {
 
                 return this.playback_volume === 0;
             },
-            has_all_data_for_play() : boolean {
+            hasAllDataForPlay() : boolean {
 
                 if(
                     this.propAudioVolumePeaks.length > 0 &&
@@ -407,6 +407,9 @@
             }
         },
         methods: {
+            test() : void {
+                console.log('hi');
+            },
             handlePlaybackVolumeHoverIn(event:PointerEvent) : void {
 
                 //don't handle hover if not mouse, since hover behaviour is meant for mouse only
@@ -652,7 +655,7 @@
 
                 //for event listener 'resize', this recreates slider anime and syncs it
                 this.adjustPlaybackSliderDimension();
-                if(this.has_all_data_for_play === true && isNaN((this.$refs.audio_element as HTMLAudioElement).duration) === false){
+                if(this.hasAllDataForPlay === true && isNaN((this.$refs.audio_element as HTMLAudioElement).duration) === false){
                     this.createPlaybackSliderAnime();
                     this.syncSliderAnimeAfterSuspend();
                 }
@@ -777,7 +780,7 @@
             },
             startPlaybackDrag(is_playback_slider_touch=false) : void {
 
-                if(this.has_all_data_for_play === false || this.is_playback_slider_ready === false){
+                if(this.hasAllDataForPlay === false || this.is_playback_slider_ready === false){
 
                     return;
                 }
@@ -888,7 +891,7 @@
                 //+x for forward, -x for backward
 
                 //do this instead of relying on :disabled, as :disabled makes sliders bug out
-                if(seconds === 0 || this.has_all_data_for_play === false || this.is_playback_slider_ready === false){
+                if(seconds === 0 || this.hasAllDataForPlay === false || this.is_playback_slider_ready === false){
 
                     return;
                 }
@@ -1029,7 +1032,7 @@
                 //reset is only triggered on next play
 
                 //do this instead of relying on :disabled, as :disabled makes sliders bug out
-                if(this.has_all_data_for_play === false || this.is_playback_slider_ready === false){
+                if(this.hasAllDataForPlay === false || this.is_playback_slider_ready === false){
 
                     return;
                 }
@@ -1231,7 +1234,7 @@
 
             //when propAudioVolumePeaks.length > 0 on mounted(), means VPlayback was rendered via v-if with data already
             //we do this here because in this case, watchers do not trigger
-            if(this.has_all_data_for_play === true){
+            if(this.hasAllDataForPlay === true){
 
                 //start with data already available, i.e. for existing records
                 this.attachAudioToPlayback(this.propAudioURL);

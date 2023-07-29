@@ -1,7 +1,7 @@
 <template>
     <!-- your specified width will be entirely clickable -->
     <!-- if your parent container causes slider to fire twice at edge, put touch-none to fix it -->
-    <div class="p-2 py-4 touch-none">
+    <div class="touch-none">
         <div
             ref="slider"
             class="relative w-full h-full left-0 right-0 mx-auto cursor-pointer parent-trigger-double-width-when-hover"

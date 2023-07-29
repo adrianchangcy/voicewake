@@ -151,7 +151,7 @@
 
 
 <script lang="ts">
-    import { defineComponent } from 'vue';
+    import { defineComponent, } from 'vue';
     import { prettyTimePassed, prettyTimeRemaining, getDataFromTemplate, timeFromNowMS } from '@/helper_functions';
     import EventRoomTypes from '@/types/EventRooms.interface';
     import EventTypes from '@/types/Events.interface';
@@ -206,51 +206,40 @@
             }
         },
         watch: {
-            is_this_user_replying(new_value){
-
-                //reset just in case
-                if(new_value === true){
-
-                    this.reply_is_deleted = false;
-                    this.reply_is_expired = false;
-                }
-            },
         },
         methods: {
             handleUnfinishedReplyStoreChange() : void {
 
                 const store_status = this.unfinished_reply_store.getStatus;
-                const relevant_statuses = ["", "replying", "deleted", "expired"] as Statuses[];
+                const relevant_statuses = ["replying", "deleted", "expired"] as Statuses[];
 
-                //we want to proceed even with ""
-                if(store_status in relevant_statuses === false){
+                if(relevant_statuses.includes(store_status) === false){
 
                     return;
                 }
 
                 switch(store_status){
 
-                    case '':
-
-                        this.is_this_user_replying = false;
-                        this.reply_is_expired = false;
-                        this.reply_is_deleted = false;
-                        this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
-                        this.reply_expiry_interval = null;
-                        break;
+                    //no need to handle replying_successful here
 
                     case 'replying':
 
                         //this scenario is when user already has this page open
                         //but has successfully confirmed this as reply choice
-                        this.is_this_user_replying = true;
-                        this.startReplyExpiryInterval();
+                        if(this.is_this_user_replying === false){
+
+                            this.is_this_user_replying = true;
+                            this.reply_is_deleted = false;
+                            this.reply_is_expired = false;
+                            this.startReplyExpiryInterval();
+                        }
                         break;
 
                     case 'deleted':
 
                         this.is_this_user_replying = false;
                         this.reply_is_deleted = true;
+                        this.reply_is_expired = false;
                         this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
                         this.reply_expiry_interval = null;
                         break;
@@ -258,6 +247,7 @@
                     case 'expired':
 
                         this.is_this_user_replying = false;
+                        this.reply_is_deleted = false;
                         this.reply_is_expired = true;
                         this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
                         this.reply_expiry_interval = null;
@@ -384,10 +374,16 @@
 
                 if(new_value === true){
 
+                    this.is_this_user_replying = false;
+                    this.reply_is_deleted = false;
+                    this.reply_is_expired = false;
+                    this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
+                    this.reply_expiry_interval = null;
+
                     //patch store
                     this.unfinished_reply_store.$patch({
                         event_room: null,
-                        status: ""
+                        status: "replying_successful"
                     });
                 }
             },
@@ -428,6 +424,7 @@
                 }
 
                 this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
+                this.reply_expiry_interval = null;
 
                 const when_locked_ms = new Date(this.event_room!.event_room.when_locked);
                 const time_elapsed_ms = timeFromNowMS(when_locked_ms);
@@ -443,7 +440,10 @@
 
                 //run every 1s if <120s remaining, else run every 60s
                 //change this again once sped up
-                let interval_ms:number = this.reply_expiry_max_ms - time_elapsed_ms <= this.minimum_ms_to_speed_up_interval ? this.fastest_interval_ms : this.slowest_interval_ms;
+                let interval_ms:number = (
+                    (this.reply_expiry_max_ms - time_elapsed_ms) <= this.minimum_ms_to_speed_up_interval ?
+                    this.fastest_interval_ms : this.slowest_interval_ms
+                );
 
                 //set possible first time expiry string
                 const time_remaining = prettyTimeRemaining(time_elapsed_ms, this.reply_expiry_max_ms);
@@ -462,7 +462,10 @@
                     }
 
                     //if interval started with >1000, be prepared for reinitialisation for new interval with shorter time
-                    if(interval_ms === this.slowest_interval_ms && this.reply_expiry_max_ms - time_elapsed_ms <= this.minimum_ms_to_speed_up_interval){
+                    if(
+                        interval_ms === this.slowest_interval_ms &&
+                        (this.reply_expiry_max_ms - time_elapsed_ms) <= this.minimum_ms_to_speed_up_interval
+                    ){
 
                         clearInterval(this.reply_expiry_interval!);
 
@@ -542,9 +545,7 @@
             this.unfinished_reply_store.$subscribe(()=>{
 
                 this.handleUnfinishedReplyStoreChange();
-                console.log(this.unfinished_reply_store.$state);
             });
-            console.log(this.unfinished_reply_store.$state);
         },
     });
 </script>
