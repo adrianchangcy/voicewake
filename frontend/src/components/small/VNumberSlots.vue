@@ -9,13 +9,13 @@
                 :id="propElementId"
                 type="text" inputmode="numeric" maxlength="1" autocomplete="off"
                 name="number-slot-field"
-                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-black"
+                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover transition-colors     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-black"
             />
             <input
                 v-for="x in propExtraSlots" :key="x"
                 type="text" inputmode="numeric" maxlength="1" autocomplete="off"
                 name="number-slot-field"
-                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-black"
+                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover transition-colors     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-black"
             />
         </div>
         <div class="h-6 px-2">

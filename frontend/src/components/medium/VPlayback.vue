@@ -194,7 +194,7 @@
                             @hasNewSliderValue="changePlaybackVolume($event)"
                             @startDragSliderValue="handleVolumeStartDrag($event)"
                             @stopDragSliderValue="handleVolumeStopDrag($event)"
-                            class="w-full h-[5.5rem] absolute left-0 right-0 bottom-10 m-auto px-2 pt-4 pb-1"
+                            class="w-full h-[5.5rem] absolute left-0 right-0 bottom-10 m-auto px-2 pt-5 pb-1"
                         >
                             <span class="sr-only">vertical volume box</span>
                         </VSliderYSmall>
@@ -1271,6 +1271,11 @@
             //initial state
             this.animeIsEmptyPlayback();
             this.$emit('isProcessing', false);
+
+            //track VPlaybackStore
+            this.vplayback_store.$subscribe(()=>{
+                console.log(this.vplayback_store.$state);
+            });
 
             //when propAudioVolumePeaks.length > 0 on mounted(), means VPlayback was rendered via v-if with data already
             //we do this here because in this case, watchers do not trigger

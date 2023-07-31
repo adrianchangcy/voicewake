@@ -1655,6 +1655,10 @@ video {
   padding-top: 1rem;
 }
 
+.pt-5 {
+  padding-top: 1.25rem;
+}
+
 .pt-8 {
   padding-top: 2rem;
 }
@@ -2237,15 +2241,6 @@ textarea {
 .hover\:bg-theme-soft-lead:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(245 245 220 / var(--tw-bg-opacity));
-}
-
-.hover\:bg-theme-light-gray:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgb(231 229 228 / var(--tw-bg-opacity));
-}
-
-.hover\:bg-theme-light-gray\/50:hover {
-  background-color: rgb(231 229 228 / 0.5);
 }
 
 .hover\:shadow-md:hover {

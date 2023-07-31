@@ -1,20 +1,6 @@
 <template>
     <div class="flex flex-col">
 
-        <!--TEST-->
-        <!-- <VPlayback
-            :propAudioVolumePeaks="propEventRoom.originator!.audio_volume_peaks"
-            :propBucketQuantity="propEventRoom.originator!.audio_volume_peaks.length"
-            :propAudioURL="propEventRoom.originator!.audio_file"
-            :propEventTone="propEventRoom.originator!.event_tone"
-        />
-        <VPlayback
-            :propAudioVolumePeaks="propEventRoom.originator!.audio_volume_peaks"
-            :propBucketQuantity="propEventRoom.originator!.audio_volume_peaks.length"
-            :propAudioURL="propEventRoom.originator!.audio_file"
-            :propEventTone="propEventRoom.originator!.event_tone"
-        /> -->
-
         <!--title and datetime-->
         <div
             v-if="propShowTitle === true"

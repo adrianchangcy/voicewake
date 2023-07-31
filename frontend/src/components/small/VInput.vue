@@ -29,7 +29,7 @@
                 :maxlength="propMaxLength"
                 :class="[
                     propHasStatusText ? 'pr-10' : '',
-                    'w-full h-10 p-2 bg-theme-light border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover rounded-lg    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-black'
+                    'w-full h-10 p-2 bg-theme-light border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover rounded-lg transition-colors    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-black'
                 ]"
             >
             <i v-show="propIsOk" class="w-0 h-0 fas fa-check relative py-2 right-8 text-theme-toast-success"></i>
