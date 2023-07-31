@@ -5,6 +5,7 @@ from django.shortcuts import render, redirect
 from django.db import connection, transaction
 from django.core.mail import send_mail
 from django.template.loader import get_template
+from django.utils.cache import patch_cache_control
 
 #auth
 from django.contrib.auth import get_user_model
@@ -903,7 +904,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         if 'event_room_id' in kwargs:
 
             #user simply wants to check the post for an event_room
-            return Response(
+            response = Response(
                 data={
                     'message': '',
                     'data': GetEventRoomsSerializer(
@@ -912,6 +913,17 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                     ).data,
                 },
             )
+
+            #if user is replying, we don't cache the request
+            #in regards to replying UI not disappearing when user revisits
+            if check_user_is_replying(request) is True:
+
+                patch_cache_control(
+                    response,
+                    no_cache=True, no_store=True, must_revalidate=True, max_age=0
+                )
+
+            return response
         
         elif 'generic_status_name' in kwargs and kwargs['generic_status_name'] == 'incomplete':
 
@@ -1103,7 +1115,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
                 return Response(
                     data={
-                        'message': 'You cannot reply to this event.',
+                        'message': 'Replying to this event is not allowed.',
                     },
                     status=status.HTTP_412_PRECONDITION_FAILED
                 )
@@ -1302,6 +1314,8 @@ class UserActionsAPI(generics.GenericAPIView):
 
         else:
 
+            #under these conditions, we want to allow cancellation without error
+            #UI being removed is of higher priority than status_code
             return Response(
                 data={
                     'message': 'Cannot cancel this replying process.',

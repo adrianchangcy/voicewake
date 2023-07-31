@@ -559,7 +559,6 @@
             this.choice_expiry_max_ms = parseInt(event_choice_expiry_seconds) * 1000;
             this.reply_expiry_max_ms = parseInt(event_reply_expiry_seconds) * 1000;
             this.event_room_id = parseInt(container.getAttribute('data-event-room-id') as string);
-            this.is_this_user_replying = JSON.parse(container.getAttribute('data-is-this-user-replying') as string);
             this.is_deleted = JSON.parse(container.getAttribute('data-is-deleted') as string);
             this.event_count = JSON.parse(container.getAttribute('data-event-count') as string);
 
@@ -583,7 +582,6 @@
             this.unfinished_reply_store.$subscribe(()=>{
 
                 this.handleUnfinishedReplyStoreChange();
-                console.log(this.unfinished_reply_store.$state);
             });
         },
     });

@@ -809,7 +809,6 @@
             this.unfinished_reply_store.$subscribe(()=>{
 
                 this.handleUnfinishedReplyStoreChange();
-                console.log(this.unfinished_reply_store.$state);
             });
         },
     });
