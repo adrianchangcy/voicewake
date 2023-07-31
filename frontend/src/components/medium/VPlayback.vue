@@ -20,6 +20,7 @@
                 propEventTone === null ? 'grid-cols-3 pr-4' : 'grid-cols-4',
                 'h-20 grid grid-rows-2 rounded-lg border border-theme-light-gray shade-border-when-hover transition-colors'
             ]"
+            @pointerdown.stop=""
         >
             <!--play/pause-->
             <div class="row-start-1 row-span-2 col-start-1 col-span-1 text-4xl relative">
@@ -81,7 +82,7 @@
                             isPlaybackReady === true ? 'touch-none cursor-pointer' : 'cursor-default',
                             'h-full relative z-10 parent-trigger-double-height-when-hover'
                         ]"
-                        @pointerdown.stop="[startPlaybackDrag(), doPlaybackDrag($event)]"
+                        @pointerdown="[startPlaybackDrag(), doPlaybackDrag($event)]"
                     >
                         <!--for reference, since playback_slider_progress cannot give full width at start-->
                         <div
@@ -147,7 +148,7 @@
                     <!--volume content-->
                     <div
                         :class="[
-                            is_playback_volume_open ? 'h-32 z-10 backdrop-blur border-theme-dark-gray' : 'h-full border-transparent',
+                            is_playback_volume_open ? 'h-32 z-10 bg-theme-light border-theme-dark-gray' : 'h-full border-transparent',
                             'absolute w-full bottom-0 m-auto border rounded-lg'
                         ]"
                         @pointerenter.stop="handlePlaybackVolumeHoverIn($event)"
@@ -156,7 +157,7 @@
 
                         <!--volume button-->
                         <VActionTextOnly
-                            @pointerdown.stop="toggleMute($event)"
+                            @pointerdown="toggleMute($event)"
                             @keydown.enter.stop="toggleMute($event)"
                             :propIsEnabled="isPlaybackReady"
                             propElement="button"
@@ -231,25 +232,25 @@
 
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
-    import { prettyDuration } from '@/helper_functions';
+    import { prettyDuration, getRandomUUID } from '@/helper_functions';
     import anime from 'animejs';
     import EventToneTypes from '@/types/EventTones.interface';
-
-    type EmitDragSliderValueTypes = {
-        slider_value: number,
-        pointer_type: "mouse"|"pen"|"touch"
-    };
+    import VSliderTypes from '@/types/values/VSlider';
+    import { useVPlaybackStore } from '@/stores/VPlaybackStore';
 
     export default defineComponent({
         data(){
             return {
+                instance_id: "",    //uuid, to identify between multiple VPlayback instances
+                vplayback_store: useVPlaybackStore(),
+
                 pretty_current_playback_time: '00:00',
                 pretty_playback_duration: '00:00',
                 is_playing: false,
                 main_anime: null as InstanceType<typeof anime> | null,   //to store animePlaybackStates() anime
 
                 is_playback_empty_anime: true,  //this is only to anime empty --> non-empty once, and vice versa
-                    
+
                 is_playback_slider_ready: false,
                 is_playback_attached: false,
 
@@ -285,11 +286,19 @@
             'newFileVolumes', 'isReadyToPlay', 'isProcessing'
         ],
         props: {
+            propRecordToStoreOnSourceChange: {
+                type: Boolean,
+                default: false
+            },
             propAutoPlayOnSourceChange: {
                 type: Boolean,
                 default: false
             },
-            propAudio: {    //option 1
+            propEventId: {
+                type: Number,
+                default: null
+            },
+            propAudio: {    //used when receiving from VRecorder
                 type: Object as PropType<Blob> | PropType<File> | null,
                 default: null
             },
@@ -297,7 +306,7 @@
                 type: String,
                 default: ''
             },
-            propIsRecording: {
+            propIsRecording: {  //when changed, pause VPlayback
                 type: Boolean
             },
             propIsForRecording: {   //if VPlayback is for recording, hide things like volume, etc.
@@ -416,8 +425,26 @@
             },
         },
         methods: {
-            test() : void {
-                console.log('hi');
+            handleRecordToStoreOnSourceChange() : void {
+
+                //call this after pause on source change, but before source change happens
+
+                if(this.propRecordToStoreOnSourceChange === false || this.propEventId === null){
+
+                    return;
+                }
+
+                //get seconds
+                const current_time_s = (this.$refs.audio_element as HTMLAudioElement).currentTime;
+
+                //store
+                this.vplayback_store.addEventPlaybackLastStopped(this.propEventId, current_time_s);
+            },
+            handleWasLastInteracted() : void {
+
+                //any actions taken to any VPlayback instance will update store
+                //so that handleKeyboardEvent() goes through for "last interacted VPlayback" only
+                this.vplayback_store.updateLastInteractedUUID(this.instance_id);
             },
             handlePlaybackVolumeHoverIn(event:PointerEvent) : void {
 
@@ -441,12 +468,12 @@
 
                 this.closePlaybackVolume(false);
             },
-            handleVolumeStartDrag(new_value:EmitDragSliderValueTypes) : void {
+            handleVolumeStartDrag(new_value:VSliderTypes) : void {
 
                 this.openPlaybackVolume();
                 this.saveBackupPlaybackVolume(new_value.slider_value);
             },
-            handleVolumeStopDrag(new_value:EmitDragSliderValueTypes) : void {
+            handleVolumeStopDrag(new_value:VSliderTypes) : void {
 
                 this.saveBackupPlaybackVolume(new_value.slider_value);
 
@@ -993,10 +1020,14 @@
                 //as there has been a rare instance where playback had no audio unintentionally until the next replay
                 target.muted = false;
                 target.play();
-                this.playback_slider_knob_anime.play();
-                this.playback_slider_progress_anime.play();
                 this.is_playing = true;
                 this.was_paused = false;
+
+                if(this.is_playback_buffering === false){
+
+                    this.playback_slider_knob_anime.play();
+                    this.playback_slider_progress_anime.play();
+                }
             },
             pausePlayback() : void {
                 
@@ -1007,10 +1038,14 @@
 
                 //also recalculate slider value
                 target.pause();
-                this.playback_slider_knob_anime.pause();
-                this.playback_slider_progress_anime.pause();
                 this.playback_slider_value = target.currentTime / target.duration;
                 this.is_playing = false;
+
+                if(this.is_playback_buffering === false){
+
+                    this.playback_slider_knob_anime.pause();
+                    this.playback_slider_progress_anime.pause();
+                }
 
                 //for HTMLAudioElement, when you pause right at the end, you can play one more time to reach true end
                 //but for anime, it has already completed
@@ -1229,6 +1264,9 @@
             }
         },
         mounted(){
+
+            //generate uuid for this component instance
+            this.instance_id = getRandomUUID();
 
             //initial state
             this.animeIsEmptyPlayback();

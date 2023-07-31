@@ -1,4 +1,3 @@
-import EventTypes from '@/types/Events.interface';
 
 
 export function arrayMin(your_array:number[]) : number {
@@ -220,9 +219,21 @@ export function prettyDuration(seconds:number) : string {
     ).toISOString().substring(14, 19);
 }
 
-export function getDataFromTemplate(element_id:string) : string|boolean|null {
+export function getDataFromTemplateJSONScript(element_id:string) : number|string|boolean|null {
 
-    return JSON.parse(document.getElementById(element_id)!.textContent!);
+    const target = document.getElementById(element_id);
+
+    if(target === null || target.textContent === null){
+
+        return null;
+    }
+
+    return JSON.parse(target.textContent);
 }
 
+export function getRandomUUID() : any {
+
+    const { v4: uuidv4 } = require('uuid');
+    return uuidv4();
+}
 

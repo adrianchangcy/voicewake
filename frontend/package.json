@@ -21,6 +21,7 @@
     "prettier": "^2.8.4",
     "recordrtc": "^5.6.2",
     "tailwindcss": "^3.1.8",
+    "uuid": "^9.0.0",
     "vue": "^3.2.47",
     "vue-loader": "^17.1.0"
   },

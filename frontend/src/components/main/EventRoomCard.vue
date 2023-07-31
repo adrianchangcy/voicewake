@@ -2,13 +2,13 @@
     <div class="flex flex-col">
 
         <!--TEST-->
-        <VPlayback
+        <!-- <VPlayback
             :propAudioVolumePeaks="propEventRoom.originator!.audio_volume_peaks"
             :propBucketQuantity="propEventRoom.originator!.audio_volume_peaks.length"
             :propAudioURL="propEventRoom.originator!.audio_file"
             :propEventTone="propEventRoom.originator!.event_tone"
         />
-        <!-- <VPlayback
+        <VPlayback
             :propAudioVolumePeaks="propEventRoom.originator!.audio_volume_peaks"
             :propBucketQuantity="propEventRoom.originator!.audio_volume_peaks.length"
             :propAudioURL="propEventRoom.originator!.audio_file"

@@ -108,7 +108,6 @@
                 volume_analyser_interval: null as number | null,
                 recorder: null as any | null,   //recordRTC object, but lazy to find a solution
                 recorder_state: null as 'recording' | 'paused' | 'stopped' | null,
-                recording_volume: 0,    //0-1, only changes when recording
                 recording_interval_worker: null as Worker | null,
 
                 is_recording: false,    //is not affected by pause/resume
@@ -172,7 +171,7 @@
                 return this.current_duration > 1000;
             },
         },
-        emits: ['newRecording', 'isRecording', 'isCancelled', 'newRecordingVolume'],
+        emits: ['newRecording', 'isRecording', 'isCancelled', 'newVolumeAnalyserPulse'],
         methods: {
             stopRecordingIntervalWorker(){
 
@@ -246,10 +245,8 @@
                     true_volume = 1;
                 }
 
-                this.recording_volume = true_volume;
-
                 //emit to VPlayback for recording visualiser
-                this.$emit('newRecordingVolume', this.recording_volume);
+                this.$emit('newVolumeAnalyserPulse', true_volume);
 
                 return true;
             },
@@ -293,7 +290,6 @@
 
                     clearInterval(this.volume_analyser_interval);
                     this.volume_analyser_interval = null;
-                    this.recording_volume = 0;
                 }
             },
             countdownRecordingTime() : void {
@@ -470,7 +466,7 @@
                     this.recorder.pauseRecording();
                     this.stopRecordingIntervalWorker();
                     this.stopVolumeAnalyser();
-                    this.$emit('newRecordingVolume', 0);
+                    this.$emit('newVolumeAnalyserPulse', 0);
 
                 }else if(this.recorder.state == 'paused'){
 
@@ -492,7 +488,7 @@
                 this.is_recording = false;
                 this.current_duration = 0;
                 this.current_duration_pretty = '00:00';
-                this.$emit('newRecordingVolume', 0);
+                this.$emit('newVolumeAnalyserPulse', 0);
             },
             recorderStopAsCallback(callback_blob_url:string) : void {
 

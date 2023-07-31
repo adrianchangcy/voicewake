@@ -42,7 +42,7 @@
                 type: Number,
                 default: 200
             },
-            propNewVolume: {    //0 to 1
+            propNewPulse: {    //0 to 1
                 type: Number,
                 default: 0
             },
@@ -51,7 +51,7 @@
             },
         },
         watch: {
-            propNewVolume(new_value){
+            propNewPulse(new_value){
 
                 this.animeRecordingVisualiser(new_value);
             },

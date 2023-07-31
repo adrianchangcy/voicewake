@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import EventRoomTypes from '@/types/EventRooms.interface';
 import Statuses from '@/types/values/Statuses';
+import { watch } from 'vue';
 
 
 export const useUnfinishedReplyStore = defineStore('unfinished_reply', {
@@ -19,15 +20,15 @@ export const useUnfinishedReplyStore = defineStore('unfinished_reply', {
         },
     },
     actions: {
-        updateStatus(status:Statuses){
+        updateStatus(status:Statuses) : void {
 
             this.status = status;
         },
-        updateUnfinishedReply(event_room:EventRoomTypes){
+        updateUnfinishedReply(event_room:EventRoomTypes) : void {
 
             this.event_room = event_room;
         },
-        removeUnfinishedReply(){
+        removeUnfinishedReply() : void {
 
             this.event_room = null;
         },
@@ -38,6 +39,6 @@ export const useUnfinishedReplyStore = defineStore('unfinished_reply', {
         omit: [],
         //override global config for this store
         enable: true,
-        initialize: true,
+        initialize: false,
     },
 });
