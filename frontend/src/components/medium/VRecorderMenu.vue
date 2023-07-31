@@ -19,7 +19,7 @@
                 />
                 <VAudioVisualiser
                     v-show="is_recording"
-                    :propNewVolume="recording_volume"
+                    :propNewPulse="recording_pulse"
                     :propIntervalMs="interval_ms"
                     :propIsRecording="is_recording"
                     class="w-full h-full"
@@ -35,7 +35,7 @@
             @newRecording="handleNewRecording($event)"
             @isRecording="handleIsRecording($event)"
             @isCancelled="handleIsCancelled()"
-            @newRecordingVolume="handleNewRecordingVolume($event)"
+            @newVolumeAnalyserPulse="handleNewVolumeAnalyserPulse($event)"
         />
     </div>
 </template>
@@ -56,7 +56,7 @@
         data() {
             return {
                 is_recording: false,
-                recording_volume: 0,
+                recording_pulse: 0,
                 interval_ms: 100, //milliseconds
 
                 is_playback_processing: true,
@@ -127,8 +127,8 @@
             handleIsRecording(new_value:boolean) : void {
                 this.is_recording = new_value;
             },
-            handleNewRecordingVolume(new_value:number) : void {
-                this.recording_volume = new_value;
+            handleNewVolumeAnalyserPulse(new_value:number) : void {
+                this.recording_pulse = new_value;
             },
             getFileVolumes(audio_data:Float32Array) : number[] {
 

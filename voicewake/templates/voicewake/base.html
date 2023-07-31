@@ -12,8 +12,9 @@
     </title>
 
     <!--use getDataFromTemplate() to retrieve these data-->
-    {{user.username | json_script:"data-username"}}
-    {{user.is_authenticated | json_script:"data-is-authenticated"}}
+    {{user.username | json_script:"data-user-username"}}
+    {{user.is_authenticated | json_script:"data-user-is-authenticated"}}
+    {{user.id | json_script:"data-user-id"}}
 </head>
 
 {% load static %}

@@ -64,7 +64,7 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import { getDataFromTemplate } from '@/helper_functions';
+    import { getDataFromTemplateJSONScript } from '@/helper_functions';
 
     export default defineComponent({
         name: 'BaseApp',
@@ -100,10 +100,10 @@
         beforeMount(){
 
             //is logged in
-            this.is_logged_in = getDataFromTemplate("data-is-authenticated") as boolean;
+            this.is_logged_in = getDataFromTemplateJSONScript("data-user-is-authenticated") as boolean;
 
             //username
-            const username = getDataFromTemplate("data-username") as string|null;
+            const username = getDataFromTemplateJSONScript("data-user-username") as string|null;
 
             if(username !== null){
 

@@ -5,7 +5,7 @@
         <div
             ref="slider"
             class="relative w-full h-full left-0 right-0 mx-auto cursor-pointer parent-trigger-double-width-when-hover"
-            @pointerdown.stop="[startDrag($event), doDrag($event)]"
+            @pointerdown="[startDrag($event), doDrag($event)]"
         >
             <div
                 class="w-2 absolute bg-theme-light-gray left-0 right-0 top-0 bottom-0 m-auto double-width-when-hover transition-transform"
@@ -31,15 +31,11 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
+    import VSliderTypes from '@/types/values/VSlider';
 
     //there are reasons we do it this way instead of <input type="range">
         //firefox does not support vertical orientation
         //the screen will move before <input> does, in a bad way
-
-    type EmitDragSliderValueTypes = {
-        slider_value: number,
-        pointer_type: "mouse"|"pen"|"touch"
-    };
 
     export default defineComponent({
 
@@ -73,7 +69,7 @@
                         {
                             slider_value: this.slider_value,
                             pointer_type: event.pointerType
-                        } as EmitDragSliderValueTypes
+                        } as VSliderTypes
                     );
                 
                 }else if(start_or_stop === "stop"){
@@ -82,7 +78,7 @@
                         {
                             slider_value: this.slider_value,
                             pointer_type: event.pointerType
-                        } as EmitDragSliderValueTypes
+                        } as VSliderTypes
                     );
                 }
             },

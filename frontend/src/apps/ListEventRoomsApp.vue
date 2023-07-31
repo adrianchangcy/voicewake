@@ -122,7 +122,7 @@
                                             <span class="block mx-auto">Open</span>
                                         </VActionSpecial>
                                         <VAction
-                                            @click.stop="deletePreviousReply()"
+                                            @click.stop="deleteUnfinishedReply()"
                                             :propIsEnabled="!is_unfinished_reply_deleting"
                                             propElement="button"
                                             type="button"
@@ -227,7 +227,7 @@
 
                         <!--expiring new reply choice-->
                         <div
-                            v-show="is_new_reply_choice_expiring"
+                            v-show="is_expiry_loading"
                             class="w-full h-fit"
                         >
 
@@ -357,10 +357,10 @@
 
                 is_searching: false,
                 is_unfinished_reply_deleting: false,
-                is_new_reply_choice_expiring: false,
+                is_expiry_loading: false,
                 is_new_reply_choice_confirming: false,
 
-                simple_dialogs: ["no_event_rooms", "expired", "deleted"] as Statuses[],
+                simple_dialogs: ["no_reply_choices", "choosing_event_choice_expired", "reply_deleted"] as Statuses[],
                 current_simple_dialog: "",
             };
         },
@@ -381,7 +381,7 @@
             },
             isLoading() : boolean {
                 return this.is_searching === true || this.is_unfinished_reply_deleting === true ||
-                    this.is_new_reply_choice_expiring === true || this.is_new_reply_choice_confirming === true;
+                    this.is_expiry_loading === true || this.is_new_reply_choice_confirming === true;
             },
             hasUnfinishedReply() : boolean {
 
@@ -401,7 +401,9 @@
             handleUnfinishedReplyStoreChange() : void {
 
                 const store_status = this.unfinished_reply_store.getStatus;
-                const extra_allowed_store_status = ["replying", "replying_successful"] as Statuses[];
+                const extra_allowed_store_status:Statuses[] = [
+                    "replying", "replying_deleted", "replying_expired", "replying_successful"
+                ];
 
                 //store_status must be "", or
                 if(
@@ -414,7 +416,7 @@
 
                 switch(store_status){
 
-                    case 'expired':
+                    case 'choosing_event_choice_expired':
 
                         this.current_simple_dialog = store_status;
                         this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
@@ -423,9 +425,18 @@
                         this.unfinished_reply_event_room = null;
                         break;
 
-                    case 'deleted':
+                    case 'replying_deleted':
 
                         this.current_simple_dialog = store_status;
+                        this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
+                        this.expiry_interval = null;
+                        this.new_reply_choice_event_rooms = [];
+                        this.unfinished_reply_event_room = null;
+                        break;
+
+                    case 'replying_expired':
+
+                        this.current_simple_dialog = "";
                         this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                         this.expiry_interval = null;
                         this.new_reply_choice_event_rooms = [];
@@ -451,17 +462,15 @@
 
                         break;
                 }
-
-
             },
-            async expireReplyChoices(): Promise<void> {
+            async expireReplyChoices(context:"unfinished_reply"|"new_reply_choices"): Promise<void> {
 
-                if(this.is_new_reply_choice_expiring === true){
+                if(this.is_expiry_loading === true){
 
                     return;
                 }
 
-                this.is_new_reply_choice_expiring = true;
+                this.is_expiry_loading = true;
 
                 let data = new FormData();
                 data.append("to_reply", JSON.stringify(false));
@@ -473,13 +482,22 @@
                     this.expiry_string = "";
                     this.current_simple_dialog = this.simple_dialogs[1];
                     this.new_reply_choice_event_rooms = [];
-                    this.is_new_reply_choice_expiring = false;
+                    this.is_expiry_loading = false;
 
                     //patch store
-                    this.unfinished_reply_store.$patch({
-                        event_room: null,
-                        status: "expired"
-                    });
+                    if(context === "unfinished_reply"){
+
+                        this.unfinished_reply_store.$patch({
+                            status: "replying_expired"
+                        });
+                    
+                    }else{
+
+                        this.unfinished_reply_store.$patch({
+                            event_room: null,
+                            status: "choosing_event_choice_expired"
+                        });
+                    }
                 })
                 .catch(() => {
 
@@ -489,13 +507,22 @@
                     this.expiry_string = "";
                     this.current_simple_dialog = this.simple_dialogs[1];
                     this.new_reply_choice_event_rooms = [];
-                    this.is_new_reply_choice_expiring = false;
+                    this.is_expiry_loading = false;
 
                     //patch store
-                    this.unfinished_reply_store.$patch({
-                        event_room: null,
-                        status: "expired"
-                    });
+                    if(context === "unfinished_reply"){
+
+                        this.unfinished_reply_store.$patch({
+                            status: "replying_expired"
+                        });
+                    
+                    }else{
+
+                        this.unfinished_reply_store.$patch({
+                            event_room: null,
+                            status: "choosing_event_choice_expired"
+                        });
+                    }
                 });
             },
             //you can call this for new reply choices, the API will remove previous reply choices for us
@@ -522,10 +549,11 @@
                         //no events
                         this.current_simple_dialog = this.simple_dialogs[0];
 
+                        //reset
                         //patch store
                         this.unfinished_reply_store.$patch({
                             event_room: null,
-                            status: ""
+                            status: "no_reply_choices"
                         });
 
                     }else if(results.data["data"].length > 0 && results.data["data"][0]["event_room"]["is_replying"] === true){
@@ -533,11 +561,11 @@
                         //user has unfinished reply
                         this.unfinished_reply_event_room = results.data["data"][0];
                         this.redirect_url = "hear/" + this.unfinished_reply_event_room!.event_room.id.toString();
-                        this.startExpiryInterval();
+                        this.startExpiryInterval("unfinished_reply");
 
                         //patch store
                         this.unfinished_reply_store.$patch({
-                            event_room: this.unfinished_reply_event_room,
+                            event_room: results.data["data"][0],
                             status: "replying"
                         });
 
@@ -545,12 +573,12 @@
 
                         //user has new reply choices
                         this.new_reply_choice_event_rooms = results.data["data"];
-                        this.startExpiryInterval();
+                        this.startExpiryInterval("new_reply_choices");
 
                         //patch store
                         this.unfinished_reply_store.$patch({
                             event_room: null,
-                            status: ""
+                            status: "choosing_event_choice"
                         });
                     }
 
@@ -567,7 +595,7 @@
                     }, 3000);
                 });
             },
-            async deletePreviousReply(): Promise<void> {
+            async deleteUnfinishedReply(): Promise<void> {
 
                 if(this.unfinished_reply_event_room === null || this.is_unfinished_reply_deleting === true){
                     return;
@@ -590,8 +618,7 @@
 
                     //patch store
                     this.unfinished_reply_store.$patch({
-                        event_room: null,
-                        status: "deleted"
+                        status: "replying_deleted"
                     });
 
                     //auto-search
@@ -656,7 +683,7 @@
 
                     //restart expiry interval
                     this.is_new_reply_choice_confirming = false;
-                    this.startExpiryInterval();
+                    this.startExpiryInterval("new_reply_choices");
 
                     notify({
                         title: "Reply confirmation failed",
@@ -665,17 +692,17 @@
                     }, 3000);
                 });
             },
-            startExpiryInterval(): void {
+            startExpiryInterval(context:"new_reply_choices"|"unfinished_reply"): void {
 
                 let target_event_room: EventRoomTypes | null = null;
                 let target_max_ms = 0;
 
-                if(this.unfinished_reply_event_room !== null){
+                if(context === "unfinished_reply" && this.unfinished_reply_event_room !== null){
 
                     target_event_room = this.unfinished_reply_event_room;
                     target_max_ms = this.unfinished_reply_expiry_max_ms;
 
-                }else if(this.new_reply_choice_event_rooms.length > 0){
+                }else if(context === "new_reply_choices" && this.new_reply_choice_event_rooms.length > 0){
 
                     target_event_room = this.new_reply_choice_event_rooms[0];
                     target_max_ms = this.new_reply_choice_expiry_max_ms;
@@ -694,7 +721,7 @@
                 //time is up
                 if (time_elapsed_ms >= target_max_ms) {
 
-                    this.unfinished_reply_event_room === null ? this.expireReplyChoices() : this.deletePreviousReply();
+                    this.unfinished_reply_event_room === null ? this.expireReplyChoices(context) : this.deleteUnfinishedReply();
                     return;
                 }
 
@@ -720,7 +747,7 @@
                     //time is up
                     if (time_elapsed_ms >= target_max_ms) {
 
-                        this.unfinished_reply_event_room === null ? this.expireReplyChoices() : this.deletePreviousReply();
+                        this.unfinished_reply_event_room === null ? this.expireReplyChoices(context) : this.deleteUnfinishedReply();
                     }
 
                     //if interval started with >1000, reinitialise itself for new interval with shorter time
@@ -784,7 +811,6 @@
                 this.handleUnfinishedReplyStoreChange();
                 console.log(this.unfinished_reply_store.$state);
             });
-            console.log(this.unfinished_reply_store.$state);
         },
     });
 </script>

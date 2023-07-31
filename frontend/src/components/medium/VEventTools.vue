@@ -171,9 +171,6 @@
 
                 this.dislike_count -= 1;
             }
-
-            this.like_count = 999999;
-            this.dislike_count = 999999;
         },
         methods: {
             copyEventURL() : void {

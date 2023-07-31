@@ -1,5 +1,7 @@
 //best way to use this is to store the values you need in component
 //then, with an arg with the same type as this, check via "" in this.statuses
-type Statuses = "" | "no_event_rooms" | "replying" | "replying_successful" | "expired" | "deleted";
+type Statuses = "" |
+    "no_reply_choices" | "choosing_event_choice" | "choosing_event_choice_expired" |
+    "replying" | "replying_successful" | "replying_expired" | "replying_deleted";
 
 export default Statuses;

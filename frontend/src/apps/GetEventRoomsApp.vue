@@ -26,7 +26,7 @@
                     class="flex flex-col gap-2 pt-10"
                 >
                     <VUser
-                        :propUsername="(getDataFromTemplate('data-username') as string)"
+                        :propUsername="(getDataFromTemplateJSONScript('data-user-username') as string)"
                     />
 
                     <div class="border border-theme-light-gray rounded-lg px-4 py-6 relative">
@@ -152,7 +152,7 @@
 
 <script lang="ts">
     import { defineComponent, } from 'vue';
-    import { prettyTimePassed, prettyTimeRemaining, getDataFromTemplate, timeFromNowMS } from '@/helper_functions';
+    import { prettyTimePassed, prettyTimeRemaining, getDataFromTemplateJSONScript, timeFromNowMS } from '@/helper_functions';
     import EventRoomTypes from '@/types/EventRooms.interface';
     import EventTypes from '@/types/Events.interface';
     import Statuses from '@/types/values/Statuses';
@@ -166,6 +166,7 @@
             return {
                 unfinished_reply_store: useUnfinishedReplyStore(),
 
+                user_id: null as number|null,
                 event_room_id: null as number|null,
                 event_count: 0, //from DOM
                 is_this_user_replying: false,
@@ -211,9 +212,15 @@
             handleUnfinishedReplyStoreChange() : void {
 
                 const store_status = this.unfinished_reply_store.getStatus;
-                const relevant_statuses = ["replying", "deleted", "expired"] as Statuses[];
+                const relevant_statuses:Statuses[] = [
+                    "replying", "replying_deleted", "replying_expired"
+                ];
 
-                if(relevant_statuses.includes(store_status) === false){
+                if(
+                    relevant_statuses.includes(store_status) === false ||
+                    this.unfinished_reply_store.event_room === null ||
+                    this.unfinished_reply_store.event_room.event_room.id !== this.event_room_id
+                ){
 
                     return;
                 }
@@ -224,18 +231,20 @@
 
                     case 'replying':
 
-                        //this scenario is when user already has this page open
-                        //but has successfully confirmed this as reply choice
-                        if(this.is_this_user_replying === false){
+                        if(this.is_this_user_replying === true){
 
-                            this.is_this_user_replying = true;
-                            this.reply_is_deleted = false;
-                            this.reply_is_expired = false;
-                            this.startReplyExpiryInterval();
+                            //if user opens page when already replying, i.e. normal journey
+                            //no need to do anything here
+                            break;
                         }
+
+                        //user originally isn't replying, but may now be
+                        //i.e. not replying --> tab left open --> triggers replying
+                        //we refresh our stale data, and it will evaluate if user is replying
+                        this.getEventRoom();
                         break;
 
-                    case 'deleted':
+                    case 'replying_deleted':
 
                         this.is_this_user_replying = false;
                         this.reply_is_deleted = true;
@@ -244,7 +253,7 @@
                         this.reply_expiry_interval = null;
                         break;
 
-                    case 'expired':
+                    case 'replying_expired':
 
                         this.is_this_user_replying = false;
                         this.reply_is_deleted = false;
@@ -256,6 +265,44 @@
                     default:
 
                         break;
+                }
+            },
+            checkUserIsReplying(event_room:EventRoomTypes){
+
+                //check if user is supposed to reply to this
+                //might not seem important to do this much if journey is standard reply --> open
+                //but doing this helps us guarantee, and also handle is_this_user_replying's false --> true
+
+                //basic validation
+                if(
+                    event_room.event_room.id !== this.event_room_id ||
+                    this.user_id === null
+                ){
+
+                    return;
+                }
+
+                //validate whether user is replying
+                if(
+                    event_room.event_room.is_replying === true &&
+                    event_room.event_room.locked_for_user.id === this.user_id
+                ){
+
+                    //is replying
+                    this.is_this_user_replying = true;
+                    this.startReplyExpiryInterval();
+                    this.scrollToReplyArea();
+
+                    //patch store
+                    this.unfinished_reply_store.$patch({
+                        event_room: event_room,
+                        status: "replying"
+                    });
+
+                }else{
+
+                    //is not replying
+                    this.is_this_user_replying = false;
                 }
             },
             async stopReplying(context:"deleted"|"expired") : Promise<void> {
@@ -271,7 +318,6 @@
                 }else if(context === "expired"){
                     this.is_expiring = true;
                 }
-
 
                 //do API request
                 let data = new FormData();
@@ -291,8 +337,7 @@
 
                         //patch store
                         this.unfinished_reply_store.$patch({
-                            event_room: null,
-                            status: "deleted"
+                            status: "replying_deleted"
                         });
 
                     }else if(context === "expired"){
@@ -302,8 +347,7 @@
 
                         //patch store
                         this.unfinished_reply_store.$patch({
-                            event_room: null,
-                            status: "expired"
+                            status: "replying_expired"
                         });
                     }
 
@@ -336,29 +380,18 @@
                 await axios.get(window.location.origin + '/api/events/get/event-room/' + this.event_room_id.toString())
                 .then((results:any) => {
 
-                    if(results.data['data'].length > 0){
+                    if(results.data['data'].length === 0){
 
-                        //API always returns list, even if there is only one event_room
-                        this.event_room = results.data['data'][0];
+                        this.is_searching = false;
+                        return;
                     }
 
+                    //API always returns list, even if there is only one event_room
+                    this.event_room = results.data['data'][0];
+
+                    //if user is replying, auto-handles everything else
+                    this.checkUserIsReplying(results.data['data'][0]);
                     this.is_searching = false;
-                })
-                .then(() => {
-
-                    //handle reply-related code
-                    //scroll must be here to find the corresponding rendered DOM
-                    if(this.event_room !== null && this.is_this_user_replying === true){
-
-                        this.startReplyExpiryInterval();
-                        this.scrollToReplyArea();
-
-                        //patch store
-                        this.unfinished_reply_store.$patch({
-                            event_room: this.event_room,
-                            status: "replying"
-                        });
-                    }
                 })
                 .catch((error:any) => {
 
@@ -382,9 +415,10 @@
 
                     //patch store
                     this.unfinished_reply_store.$patch({
-                        event_room: null,
                         status: "replying_successful"
                     });
+
+                    //redirect is taken care of by CreateEvents
                 }
             },
             handleIsSubmitting(new_value:boolean) : void {
@@ -423,6 +457,7 @@
                     return;
                 }
 
+                //reset interval, just in case
                 this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
                 this.reply_expiry_interval = null;
 
@@ -504,6 +539,9 @@
             //prepare axios
             this.axiosSetup();
 
+            //get user_id
+            this.user_id = getDataFromTemplateJSONScript('data-user-id') as number|null;
+
             const container = (document.getElementById('data-container-get-event-rooms') as HTMLElement);
 
             //get essential data first, where we don't proceed if they don't exist
@@ -545,6 +583,7 @@
             this.unfinished_reply_store.$subscribe(()=>{
 
                 this.handleUnfinishedReplyStoreChange();
+                console.log(this.unfinished_reply_store.$state);
             });
         },
     });

@@ -220,4 +220,7 @@ textarea {
     .parent-trigger-shade-fake-border-when-hover:hover .shade-fake-border-when-hover{
         background-color: rgba(168, 162, 158, 1);
     }
+    .parent-trigger-shade-background-when-hover:hover .shade-background-when-hover{
+        background-color: #d6d3d1;
+    }
 }
