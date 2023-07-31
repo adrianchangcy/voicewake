@@ -93,13 +93,6 @@
 
                 if(this.is_dragging === true && this.slider_dimension !== null){
 
-                    //for mouse, we need these to avoid text highlighting, accidental permanent drag state, etc.
-                    //for touch, we need these to avoid mouse firing
-                    if(event !== null && event.cancelable === true){
-
-                        event.preventDefault();
-                    }
-
                     //can use clientY, screenY, pageY, but they are calculated slightly differently
                     //clientY seems to work best
                     const user_y = event.clientY;

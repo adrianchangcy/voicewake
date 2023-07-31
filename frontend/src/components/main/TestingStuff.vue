@@ -87,7 +87,7 @@
         mounted(){
 
             this.axiosSetup();
-            // this.getEventRoom(2);
+            this.getEventRoom(2);
 
 
 
