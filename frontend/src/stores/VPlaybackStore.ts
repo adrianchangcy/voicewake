@@ -5,6 +5,8 @@ import { defineStore } from 'pinia';
 //and, at a page where VPlayback always has propEvent, to track where it had stopped when it switched to another event
     //useful for play #0 --> play #1 --> continue from last stopped when play #0
 
+//if bugs occur, check if event_id and stopped_at_s are not in sync
+
 const event_limit = 10;
 
 //make sure to sync the order of event_id with stopped_at_s
@@ -30,22 +32,36 @@ export const useVPlaybackStore = defineStore('vplayback', {
 
             const target_index = this.event_id.indexOf(event_id);
 
-            if(target_index !== -1){
+            if(target_index === -1){
 
-                //event already exists, remove old
+                //does not exist
+
+                //if limit has been reached, remove oldest via shift() until are 1 item away from limit
+                while(this.event_id.length >= event_limit){
+
+                    this.event_id.shift();
+                    this.stopped_at_s.shift();
+                }
+
+                //push() as newest
+                this.event_id.push(event_id);
+                this.stopped_at_s.push(stopped_at_s);
+
+            }else if(target_index === (this.event_id.length - 1)){
+
+                //exists and is already newest
+                return;
+
+            }else{
+
+                //remove older record of itself and add to newest
+
                 this.event_id.splice(target_index, 1);
                 this.stopped_at_s.splice(target_index, 1);
+
+                this.event_id.push(event_id);
+                this.stopped_at_s.push(stopped_at_s);
             }
-
-            //if arrays have reached limit, remove oldest
-            if(this.event_id.length === event_limit && this.stopped_at_s.length === event_limit){
-
-                this.event_id.shift();
-                this.stopped_at_s.shift();
-            }
-
-            this.event_id.push(event_id);
-            this.stopped_at_s.push(stopped_at_s);
         },
         getEventPlaybackLastStoppedS(event_id:number) : number|null {
 
@@ -60,7 +76,13 @@ export const useVPlaybackStore = defineStore('vplayback', {
         }
     },
     //all things considered, we get overall better usability with persistence than without
-    persist: true,
+    persist: {
+        //persist these states
+        paths: [
+            'event_id', 'stopped_at_s',
+        ],
+        debug: true
+    },
 
     //no need to share store across tabs, hence false values below
     share: {

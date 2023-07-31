@@ -96,31 +96,27 @@ const clickOutside = {
 };
 
 createApp(BaseApp)
+    .use(pinia)
     .directive('click-outside', clickOutside)
     .mount('#base-app');
 
-//this might not be the most efficient fix
+//this might or might not be the most efficient fix
 //https://vuejs.org/guide/essentials/application.html#the-root-component
 if(document.querySelector('#create-event-rooms-app')){
 
     createApp(CreateEventRoomsApp)
-        .directive('click-outside', clickOutside)
         .mount('#create-event-rooms-app');
 }
 
 if(document.querySelector('#list-event-rooms-app')){
 
     createApp(ListEventRoomsApp)
-        .use(pinia)
-        .directive('click-outside', clickOutside)
         .mount('#list-event-rooms-app');
 }
 
 if(document.querySelector('#get-event-rooms-app')){
 
     createApp(GetEventRoomsApp)
-        .use(pinia)
-        .directive('click-outside', clickOutside)
         .mount('#get-event-rooms-app');
 }
 

@@ -686,6 +686,14 @@ video {
   top: 0.5rem;
 }
 
+.-bottom-\[1px\] {
+  bottom: -1px;
+}
+
+.-bottom-\[3px\] {
+  bottom: -3px;
+}
+
 .-z-10 {
   z-index: -10;
 }
@@ -960,6 +968,10 @@ video {
 
 .h-full {
   height: 100%;
+}
+
+.h-\[calc\(2\.5rem-1px\)\] {
+  height: calc(2.5rem - 1px);
 }
 
 .max-h-\[90\%\] {
@@ -2289,6 +2301,11 @@ textarea {
 .focus\:ring-theme-black:focus {
   --tw-ring-opacity: 1;
   --tw-ring-color: rgb(68 68 68 / var(--tw-ring-opacity));
+}
+
+.focus-visible\:outline-none:focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
 }
 
 .focus-visible\:outline:focus-visible {

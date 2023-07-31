@@ -20,12 +20,14 @@
                 propEventTone === null ? 'grid-cols-3 pr-4' : 'grid-cols-4',
                 'h-20 grid grid-rows-2 rounded-lg border border-theme-light-gray shade-border-when-hover transition-colors'
             ]"
-            @pointerdown.stop=""
+            @pointerdown.stop="updateLastInteracted()"
+            @focusin.stop="updateLastInteracted()"
         >
+
             <!--play/pause-->
             <div class="row-start-1 row-span-2 col-start-1 col-span-1 text-4xl relative">
                 <VActionTextOnly
-                    @click="togglePlaybackPlayPause()"
+                    @pointerdown="togglePlaybackPlayPause()"
                     :propIsEnabled="isPlaybackReady"
                     propElement="button"
                     type="button"
@@ -47,10 +49,12 @@
                     </span>
                 </VActionTextOnly>
             </div>
+
             <!--ripples, slider, do left-2 right-2 m-auto if you want outermost knob to be within bounds-->
             <div
                 class="h-12 row-start-1 row-span-1 col-start-2 col-span-2 relative"
             >
+
                 <!--ripples-->
                 <!--need inline CSS to prevent jolting from anime if without it-->
                 <div
@@ -71,20 +75,25 @@
                         ></div>
                     </div>
                 </div>
+
                 <!--slider-->
                 <div
                     class="w-full h-10 absolute top-2"
                 >
                     <!--only want z-10 here so that it takes priority over volume button-->
-                    <div
+                    <!--we want to use button instead of div to allow for pointerdown bubbling-->
+                    <button
                         ref="playback_slider"
                         :class="[
                             isPlaybackReady === true ? 'touch-none cursor-pointer' : 'cursor-default',
-                            'h-full relative z-10 parent-trigger-double-height-when-hover'
+                            'w-full h-full relative z-10 rounded-lg parent-trigger-double-height-when-hover    focus:outline-none focus-visible:outline-none'
                         ]"
                         @pointerdown="[startPlaybackDrag(), doPlaybackDrag($event)]"
+                        type="button"
+                        tabindex="-1"
                     >
-                        <!--for reference, since playback_slider_progress cannot give full width at start-->
+
+                        <!--for dimension reference, since playback_slider_progress cannot give full width at start-->
                         <div
                             ref="playback_slider_dimension"
                             class="h-0 absolute opacity-0 left-2 right-2 top-0 bottom-0 m-auto"
@@ -120,9 +129,10 @@
                             class="w-4 h-4 absolute rounded-full bg-theme-black bottom-0 m-auto"
                         >
                         </div>
-                    </div>
+
+                        <span class="sr-only">playback navigation</span>
+                    </button>
                 </div>
-                <span class="sr-only">playback navigation</span>
             </div>
 
             <!--volume, timers-->
@@ -164,7 +174,7 @@
                             type="button"
                             :propIsIconOnly="true"
                             :propIsDefaultOutlineOffset="false"
-                            class="w-full h-10 absolute -bottom-0.5 focus-visible:-outline-offset-8"
+                            class="w-full h-10 absolute -bottom-[3px] focus-visible:-outline-offset-8"
                         >
                             <div class="w-full h-full relative">
                                 <i
@@ -440,7 +450,11 @@
                 //store
                 this.vplayback_store.addEventPlaybackLastStopped(this.propEventId, current_time_s);
             },
-            handleWasLastInteracted() : void {
+            checkInstanceIsLastInteracted() : boolean {
+
+                return this.instance_id === this.vplayback_store.getLastInteractedUUID;
+            },
+            updateLastInteracted() : void {
 
                 //any actions taken to any VPlayback instance will update store
                 //so that handleKeyboardEvent() goes through for "last interacted VPlayback" only
@@ -564,7 +578,7 @@
                 //FYI, some keyup events are too late for .preventDefault(), so they use keydown
 
                 //these keys affect only playback, so no point if there's no file
-                if(this.isPlaybackReady === false){
+                if(this.isPlaybackReady === false || this.checkInstanceIsLastInteracted() === false){
 
                     return;
                 }
@@ -837,15 +851,8 @@
 
                 if(this.is_playback_slider_drag === true && this.playback_slider_dimension !== null){
 
-                    //for mouse, we need these to avoid text highlighting, accidental permanent drag state, etc.
-                    //for touch, we need these to avoid mouse firing
-                    //best solution now is to let it raise Intervention on console when .cancelable is true on passive events
-                    if(event !== null && event.cancelable === true){
-                        
-                        event.preventDefault();
-                    }
-
                     //can use clientX, screenX, pageX
+                    //clientY seems to work best
                     const user_x = event.clientX;
 
                     if(user_x >= this.playback_slider_dimension.left && user_x <= this.playback_slider_dimension.right){
@@ -1271,6 +1278,12 @@
             //initial state
             this.animeIsEmptyPlayback();
             this.$emit('isProcessing', false);
+
+            //if store has no instance recorded yet, use current instance as default, whichever mounts first
+            if(this.vplayback_store.getLastInteractedUUID === ""){
+
+                this.vplayback_store.updateLastInteractedUUID(this.instance_id);
+            }
 
             //track VPlaybackStore
             this.vplayback_store.$subscribe(()=>{
