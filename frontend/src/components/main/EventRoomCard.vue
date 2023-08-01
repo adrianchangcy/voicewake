@@ -71,6 +71,7 @@
                     :propUsername="propEventRoom.originator!.user.username"
                 />
                 <VPlayback
+                    :propEventId="propEventRoom.originator!.id"
                     :propAudioVolumePeaks="propEventRoom.originator!.audio_volume_peaks"
                     :propBucketQuantity="propEventRoom.originator!.audio_volume_peaks.length"
                     :propAudioURL="propEventRoom.originator!.audio_file"
@@ -90,6 +91,7 @@
                     :propUsername="event.user.username"
                 />
                 <VPlayback
+                    :propEventId="event.id"
                     :propAudioVolumePeaks="event.audio_volume_peaks"
                     :propBucketQuantity="event.audio_volume_peaks.length"
                     :propAudioURL="event.audio_file"

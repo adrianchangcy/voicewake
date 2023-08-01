@@ -1,23 +1,8 @@
 <template>
     <div>
 
-        <!--testing multiple VPlayback tracking-->
-        <div v-if="event_room !== null">
-            <VPlayback
-                :propAudioVolumePeaks="event_room.originator!.audio_volume_peaks"
-                :propBucketQuantity="event_room.originator!.audio_volume_peaks.length"
-                :propAudioURL="event_room.originator!.audio_file"
-                :propEventTone="event_room.originator!.event_tone"
-                :propRecordToStoreOnSourceChange="true"
-            />
-            <VPlayback
-                :propAudioVolumePeaks="event_room.originator!.audio_volume_peaks"
-                :propBucketQuantity="event_room.originator!.audio_volume_peaks.length"
-                :propAudioURL="event_room.originator!.audio_file"
-                :propEventTone="event_room.originator!.event_tone"
-                :propRecordToStoreOnSourceChange="true"
-            />
-        </div>
+
+
 
     </div>
 </template>
@@ -32,7 +17,7 @@
     import { defineComponent } from 'vue';
     import { notify } from 'notiwind';
     // import anime from 'animejs';
-    import VPlayback from '../medium/VPlayback.vue';
+    // import VPlayback from '../medium/VPlayback.vue';
     import EventRoomTypes from '@/types/EventRooms.interface';
     const axios = require('axios');
 
@@ -86,8 +71,7 @@
 
         mounted(){
 
-            this.axiosSetup();
-            this.getEventRoom(2);
+
 
 
 
