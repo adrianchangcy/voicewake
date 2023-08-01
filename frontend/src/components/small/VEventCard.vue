@@ -5,7 +5,7 @@
 
         <!--for playback teleport-->
         <div
-            :id="playback_teleport_id"
+            :id="playback_teleport_event_id"
             ref="playback_container"
             style="opacity: 0;"
         ></div>
@@ -79,13 +79,13 @@
     export default defineComponent({
         data(){
             return {
-                playback_teleport_id: '',
+                playback_teleport_event_id: '',
                 main_anime: null as InstanceType<typeof anime> | null,
             };
         },
         mounted(){
 
-            this.playback_teleport_id = 'playback-teleport-' + this.propEvent.id.toString();
+            this.playback_teleport_event_id = 'playback-teleport-event-id-' + this.propEvent.id.toString();
 
             for(let x = 0; x < this.propEvent.audio_volume_peaks.length; x++){
 

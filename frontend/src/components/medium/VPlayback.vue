@@ -3,12 +3,13 @@
         class="text-theme-black text-center"
     >
         <!--add @timeupdate at mounted(), not here, as beforeUnmount() cannot remove it, and it'll still fire after unmount-->
+        <!--must add all calls in handleHasMetadata(), not here, since the Infinity duration is not fixed until then-->
         <audio
             ref="audio_element"
-            @loadedmetadata="handleHasMetadata()"
+            @loadedmetadata="[handleHasMetadata()]"
             @canplay="is_playback_buffering=false"
             @waiting="is_playback_buffering=true"
-            @ended="[pausePlayback(), was_paused=true]"
+            @ended="[pausePlaybackAndUpdateSliderValue(), user_paused=true]"
         ></audio>
 
         <!--
@@ -20,14 +21,14 @@
                 propEventTone === null ? 'grid-cols-3 pr-4' : 'grid-cols-4',
                 'h-20 grid grid-rows-2 rounded-lg border border-theme-light-gray shade-border-when-hover transition-colors'
             ]"
-            @pointerdown.stop="updateLastInteracted()"
-            @focusin.stop="updateLastInteracted()"
+            @pointerdown.stop="updateInstanceLastInteracted()"
+            @focusin.stop="updateInstanceLastInteracted()"
         >
 
             <!--play/pause-->
             <div class="row-start-1 row-span-2 col-start-1 col-span-1 text-4xl relative">
                 <VActionTextOnly
-                    @pointerdown="togglePlaybackPlayPause()"
+                    @pointerdown="userTogglePlaybackPlayPause()"
                     :propIsEnabled="isPlaybackReady"
                     propElement="button"
                     type="button"
@@ -273,7 +274,7 @@
                 playback_slider_dimension: null as DOMRect | null,
                 playback_slider_knob_anime: null as InstanceType<typeof anime> | null, //we play/pause instead of new anime() for best results
                 playback_slider_progress_anime: null as InstanceType<typeof anime> | null, //we play/pause instead of new anime() for best results
-                was_paused: true,  //if user pauses, then navigating will not auto-play
+                user_paused: true,  //if user pauses, then navigating will not auto-play
 
                 playback_rate: 1,   //allows 0 to 2, but we handle 0.5, 1, 1.5
                 playback_volume: 0, //accepts 0 to 1
@@ -296,10 +297,6 @@
             'newFileVolumes', 'isReadyToPlay', 'isProcessing'
         ],
         props: {
-            propRecordToStoreOnSourceChange: {
-                type: Boolean,
-                default: false
-            },
             propAutoPlayOnSourceChange: {
                 type: Boolean,
                 default: false
@@ -369,6 +366,11 @@
             propAudioURL(new_value){
 
                 //reminder that with v-if and props already supplied, first time will not trigger watchers
+
+                //do store before new audio is attached
+                this.storeCurrentEventLastStopped();
+
+                //attach new audio
                 this.attachAudioToPlayback(new_value);
             },
             propIsRecording(new_value){
@@ -378,7 +380,7 @@
 
                     if(this.is_playing === true){
 
-                        this.pausePlayback();
+                        this.pausePlaybackAndUpdateSliderValue();
                     }
                 }
             },
@@ -399,7 +401,7 @@
                 //if is playing when close, pause playback
                 if(new_value === false && this.is_playing === true){
 
-                    this.pausePlayback();
+                    this.pausePlaybackAndUpdateSliderValue();
                 }
             },
         },
@@ -433,32 +435,115 @@
                 this.$emit('isProcessing', is_processing);
                 return is_processing;
             },
+            isInstanceLastInteracted() : boolean {
+
+                return this.instance_id === this.vplayback_store.getLastInteractedUUID;
+            },
         },
         methods: {
-            handleRecordToStoreOnSourceChange() : void {
+            syncToNewPlaybackSliderValue() : void {
+
+                const audio_element = (this.$refs.audio_element as HTMLAudioElement);
+
+                if(
+                    audio_element.src === '' ||
+                    this.playback_slider_knob_anime === null || this.playback_slider_progress_anime === null
+                ){
+
+                    return;
+                }
+                
+                //duration is the same regardless of playbackRate
+                const jumped_anime_duration = this.playback_slider_value * this.playback_slider_knob_anime.duration;
+                //duration changes when playbackRate changes
+                const jumped_playback_duration = this.playback_slider_value * audio_element.duration;
+
+                this.playback_slider_knob_anime.seek(jumped_anime_duration);
+                this.playback_slider_progress_anime.seek(jumped_anime_duration);
+
+                //never assume 
+                audio_element.currentTime = jumped_playback_duration;
+
+                if(this.playback_slider_value === 1 && audio_element.ended === false){
+
+                    this.endPlaybackProperly();
+                }
+            },
+            setInitialPlaybackSliderValue() : void {
+                
+                //initial
+                this.playback_slider_value = 0;
+
+                if(this.propEventId === null){
+
+                    return;
+                }
+
+                const last_stopped_s = this.vplayback_store.getEventPlaybackLastStoppedS(this.propEventId);
+
+                //not stored
+                if(last_stopped_s === null){
+
+                    return;
+                }
+
+                const total_duration_s = (this.$refs.audio_element as HTMLAudioElement).duration;
+
+                //restore slider value
+                let new_value = Number((last_stopped_s / total_duration_s).toFixed(3));
+
+                //once we fix storage, we confirm again if new_value can give >1 if audio is parked at end
+                
+                //temporary fix
+                if(new_value > 1){
+                    new_value = 1;
+                }
+
+                this.playback_slider_value = new_value;
+            },
+            storeCurrentEventLastStopped() : void {
 
                 //call this after pause on source change, but before source change happens
 
-                if(this.propRecordToStoreOnSourceChange === false || this.propEventId === null){
+                const audio_element = (this.$refs.audio_element as HTMLAudioElement);
+
+                if(this.propAudioURL.length === 0 || this.propEventId === null || audio_element.src === ''){
 
                     return;
                 }
 
                 //get seconds
-                const current_time_s = (this.$refs.audio_element as HTMLAudioElement).currentTime;
+                //0 if no audio
+                const current_time_s = audio_element.currentTime;
+
+                //no need to store if 0
+                if(current_time_s === 0){
+
+                    return;
+                }
 
                 //store
                 this.vplayback_store.addEventPlaybackLastStopped(this.propEventId, current_time_s);
             },
-            checkInstanceIsLastInteracted() : boolean {
-
-                return this.instance_id === this.vplayback_store.getLastInteractedUUID;
-            },
-            updateLastInteracted() : void {
+            updateInstanceLastInteracted() : void {
 
                 //any actions taken to any VPlayback instance will update store
                 //so that handleKeyboardEvent() goes through for "last interacted VPlayback" only
                 this.vplayback_store.updateLastInteractedUUID(this.instance_id);
+            },
+            handleInitialAutoplay() : void {
+
+                //auto-play if desired, condition checking is also already handled at this stage
+
+                if(this.propAutoPlayOnSourceChange === false){
+
+                    return;
+                }
+
+                if(this.playback_slider_value < 1){
+
+                    this.userTogglePlaybackPlayPause();
+                }
             },
             handlePlaybackVolumeHoverIn(event:PointerEvent) : void {
 
@@ -578,7 +663,7 @@
                 //FYI, some keyup events are too late for .preventDefault(), so they use keydown
 
                 //these keys affect only playback, so no point if there's no file
-                if(this.isPlaybackReady === false || this.checkInstanceIsLastInteracted() === false){
+                if(this.isPlaybackReady === false || this.isInstanceLastInteracted === false){
 
                     return;
                 }
@@ -615,7 +700,7 @@
                         event.preventDefault();
 
                         //play/pause
-                        this.togglePlaybackPlayPause();
+                        this.userTogglePlaybackPlayPause();
                         break;
 
                     case 'm':
@@ -725,8 +810,8 @@
 
                     if(this.is_playing === true){
 
-                        //reminder that pausePlayback() also updates this.playback_slider_value
-                        this.pausePlayback();
+                        //reminder that pausePlaybackAndUpdateSliderValue() also updates this.playback_slider_value
+                        this.pausePlaybackAndUpdateSliderValue();
                         resume_later = true;
                     }
 
@@ -827,9 +912,15 @@
             },
             endPlaybackProperly() : void {
 
+                const target = (this.$refs.audio_element as HTMLAudioElement);
+
+                if(target.ended === true){
+
+                    return;
+                }
+
                 //when paused and dragged to end, html media seems to still want you to play once to truly end
                 //handle only the media here, the rest are already settled
-                const target = (this.$refs.audio_element as HTMLAudioElement);
                 target.muted = true;
                 target.play();
             },
@@ -844,7 +935,7 @@
 
                 if(this.is_playing === true){
 
-                    this.pausePlayback();
+                    this.pausePlaybackAndUpdateSliderValue();
                 }
             },
             doPlaybackDrag(event:PointerEvent) : void {
@@ -857,6 +948,7 @@
 
                     if(user_x >= this.playback_slider_dimension.left && user_x <= this.playback_slider_dimension.right){
 
+                        //will always be 0 to 1
                         this.playback_slider_value = (user_x - this.playback_slider_dimension.left) / this.playback_slider_dimension.width;
 
                     }else if(user_x < this.playback_slider_dimension.left){
@@ -883,7 +975,7 @@
 
                 if(this.is_playback_slider_drag === true){
 
-                    if(this.playback_slider_value < 1 && this.was_paused === false){
+                    if(this.playback_slider_value < 1 && this.user_paused === false){
 
                         this.playPlayback();
 
@@ -900,16 +992,17 @@
 
                 //expects playback_slider_value to be float 0 to 1
 
+                const audio_element = (this.$refs.audio_element as HTMLAudioElement);
+
                 //duration is the same regardless of playbackRate
                 const jumped_anime_duration = this.playback_slider_value * this.playback_slider_knob_anime.duration;
                 //duration changes when playbackRate changes
-                const jumped_playback_duration = this.playback_slider_value * (this.$refs.audio_element as HTMLAudioElement).duration;
+                const jumped_playback_duration = this.playback_slider_value * audio_element.duration;
 
                 //handle slider aesthetics
                 //need to set .completed to false, else .play() starts from 0 if it has finished before
                 //must be in ms
-                this.playback_slider_knob_anime.completed = false;
-                this.playback_slider_progress_anime.completed = false;
+
                 this.playback_slider_knob_anime.seek(jumped_anime_duration);
                 this.playback_slider_progress_anime.seek(jumped_anime_duration);
 
@@ -931,7 +1024,7 @@
 
                 if(this.is_playing === true){
 
-                    this.pausePlayback();
+                    this.pausePlaybackAndUpdateSliderValue();
                 }
 
                 const target = (this.$refs.audio_element as HTMLAudioElement);
@@ -955,7 +1048,7 @@
                 this.handlePlaybackDrag();
 
                 //resume if originally playing
-                if(this.was_paused === false && this.playback_slider_value < 1){
+                if(this.user_paused === false && this.playback_slider_value < 1){
 
                     this.playPlayback();
 
@@ -978,29 +1071,35 @@
             },
             changePlaybackRate(new_value:number) : void {
 
-                if(new_value === this.playback_rate){
+                const audio_element = (this.$refs.audio_element as HTMLAudioElement);
+
+                if(new_value === this.playback_rate || audio_element.src === ''){
 
                     return;
                 }
 
+                //consider is_playing when this rate change happened
+                const resume_later = this.is_playing;
+
+                //pause to make changes, and to update playback_slider_value
+                this.pausePlaybackAndUpdateSliderValue();
+
+                //update values
                 //note that on every new file loaded into <audio>, playbackRate is reset
                 //attachAudioToPlayback() will handle this inconvenience
-                (this.$refs.audio_element as HTMLAudioElement).playbackRate = new_value;
+                audio_element.playbackRate = new_value;
                 this.playback_rate = new_value;
                 window.localStorage.playback_rate = new_value;
 
-                if((this.$refs.audio_element as HTMLAudioElement).src !== ''){
+                //adjust anime
+                this.createPlaybackSliderAnime();
+                this.playback_slider_knob_anime.seek(this.playback_slider_value * this.playback_slider_knob_anime.duration);
+                this.playback_slider_progress_anime.seek(this.playback_slider_value * this.playback_slider_progress_anime.duration);
 
-                    //adjust anime
-                    const resume_later = this.is_playing;
-                    this.pausePlayback();
-                    this.createPlaybackSliderAnime();
-                    this.playback_slider_knob_anime.seek(this.playback_slider_value * this.playback_slider_knob_anime.duration);
-                    this.playback_slider_progress_anime.seek(this.playback_slider_value * this.playback_slider_progress_anime.duration);
-                    if(resume_later === true){
+                //play if was playing
+                if(resume_later === true){
 
-                        this.playPlayback();
-                    }
+                    this.playPlayback();
                 }
             },
             changePlaybackVolume(new_value:number) : void {
@@ -1028,7 +1127,7 @@
                 target.muted = false;
                 target.play();
                 this.is_playing = true;
-                this.was_paused = false;
+                this.user_paused = false;
 
                 if(this.is_playback_buffering === false){
 
@@ -1036,7 +1135,7 @@
                     this.playback_slider_progress_anime.play();
                 }
             },
-            pausePlayback() : void {
+            pausePlaybackAndUpdateSliderValue() : void {
                 
                 //if playing, call this before drag, then do playPlayback() once done
                 //done at startPlaybackDrag() and stopPlaybackDrag()
@@ -1067,7 +1166,7 @@
                     this.endPlaybackProperly();
                 }
             },
-            togglePlaybackPlayPause() : void {
+            userTogglePlaybackPlayPause() : void {
 
                 //we let everything stay at the end if playback truly ended
                 //reset is only triggered on next play
@@ -1079,16 +1178,16 @@
                 }
 
                 //check if playback is not playing
-                //was_paused must be here to record user's manual pausing
+                //user_paused must be here to record user's manual pausing
                 if(this.is_playing === false){
 
                     this.playPlayback();
-                    this.was_paused = false;
+                    this.user_paused = false;
 
                 }else{
 
-                    this.pausePlayback();
-                    this.was_paused = true;
+                    this.pausePlaybackAndUpdateSliderValue();
+                    this.user_paused = true;
                 }
             },
             adjustVolumeRipples() : void {
@@ -1153,7 +1252,7 @@
                 //we don't create new slider here, but at <audio>'s @loadedmetadata, as its .duration is only available then
                 if(this.is_playing === true){
 
-                    this.pausePlayback();
+                    this.pausePlaybackAndUpdateSliderValue();
                 }
 
                 //states
@@ -1193,6 +1292,8 @@
             },
             handleHasMetadata() : void {
 
+                //@loadedmetadata is when <audio>.duration is finally available
+
                 const audio_element = (this.$refs.audio_element as HTMLAudioElement);
 
                 //there's a bug that gives us 'Infinity', had we not used fixWebmDuration
@@ -1210,16 +1311,12 @@
                     this.pretty_playback_duration = prettyDuration(
                         (this.$refs.audio_element as HTMLAudioElement).duration
                     );
-                    
-                    //here is the first time <audio> duration is finally available
+
                     this.adjustPlaybackSliderDimension();
                     this.createPlaybackSliderAnime();
-
-                    //auto-play if desired, condition checking is also already handled
-                    if(this.propAutoPlayOnSourceChange === true){
-
-                        this.togglePlaybackPlayPause();
-                    }
+                    this.setInitialPlaybackSliderValue();
+                    this.syncToNewPlaybackSliderValue();
+                    this.handleInitialAutoplay();
                 };
 
                 audio_element.currentTime = 1e101;
@@ -1287,6 +1384,9 @@
 
             //track VPlaybackStore
             this.vplayback_store.$subscribe(()=>{
+                console.log(this.vplayback_store.$state);
+            });
+            this.vplayback_store.$onAction(()=>{
                 console.log(this.vplayback_store.$state);
             });
 

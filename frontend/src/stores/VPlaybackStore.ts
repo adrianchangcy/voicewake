@@ -6,6 +6,8 @@ import { defineStore } from 'pinia';
     //useful for play #0 --> play #1 --> continue from last stopped when play #0
 
 //if bugs occur, check if event_id and stopped_at_s are not in sync
+    //also, <audio>.duration changes according to rate
+    //currently always 1, so if we implement rate, remember to update the code here
 
 const event_limit = 10;
 
@@ -55,12 +57,16 @@ export const useVPlaybackStore = defineStore('vplayback', {
             }else{
 
                 //remove older record of itself and add to newest
-
                 this.event_id.splice(target_index, 1);
                 this.stopped_at_s.splice(target_index, 1);
 
                 this.event_id.push(event_id);
                 this.stopped_at_s.push(stopped_at_s);
+
+                //longer event is id 2
+                console.log('storing for' + event_id);
+                console.log(this.event_id);
+                console.log(this.stopped_at_s);
             }
         },
         getEventPlaybackLastStoppedS(event_id:number) : number|null {

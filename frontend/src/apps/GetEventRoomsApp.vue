@@ -119,9 +119,12 @@
                 </span>
             </TransitionFadeSlow>
 
+            <!--VEventCard emits selection, which triggers :to, thus teleporting-->
+            <!--presence of VEventCard depends on VEventRoomCard-->
             <div v-if="selected_event !== null">
-                <Teleport :to="playback_teleport_id">
+                <Teleport :to="playback_teleport_event_id">
                     <VPlayback
+                        :propEventId="selected_event.id"
                         :propIsOpen="true"
                         :propAudioVolumePeaks="selected_event.audio_volume_peaks"
                         :propAudioURL="selected_event.audio_file"
@@ -183,7 +186,7 @@
                 is_submitting: false,
                 
                 selected_event: null as EventTypes|null,
-                playback_teleport_id: '',
+                playback_teleport_event_id: '',
                 reply_expiry_interval: null as number|null,
                 reply_expiry_string: '',
 
@@ -447,7 +450,7 @@
                 if(event !== null){
 
                     //must be the same as in VEventCard
-                    this.playback_teleport_id = '#playback-teleport-' + event.id.toString();
+                    this.playback_teleport_event_id = '#playback-teleport-event-id-' + event.id.toString();
                 }
             },
             startReplyExpiryInterval() : void {
