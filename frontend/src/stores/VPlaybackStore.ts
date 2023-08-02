@@ -62,11 +62,6 @@ export const useVPlaybackStore = defineStore('vplayback', {
 
                 this.event_id.push(event_id);
                 this.stopped_at_s.push(stopped_at_s);
-
-                //longer event is id 2
-                console.log('storing for' + event_id);
-                console.log(this.event_id);
-                console.log(this.stopped_at_s);
             }
         },
         getEventPlaybackLastStoppedS(event_id:number) : number|null {
