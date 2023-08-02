@@ -124,12 +124,10 @@
             <div v-if="selected_event !== null">
                 <Teleport :to="playback_teleport_event_id">
                     <VPlayback
-                        :propEventId="selected_event.id"
+                        :propEvent="selected_event"
                         :propIsOpen="true"
                         :propAudioVolumePeaks="selected_event.audio_volume_peaks"
-                        :propAudioURL="selected_event.audio_file"
                         :propBucketQuantity="selected_event.audio_volume_peaks.length"
-                        :propEventTone="selected_event.event_tone"
                         :propAutoPlayOnSourceChange="true"
                     />
                 </Teleport>

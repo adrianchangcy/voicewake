@@ -3,20 +3,13 @@
     <!--h-20 as all relevant components will be h-20, which prevents content shifting-->
     <div class="text-theme-black h-20">
 
-        <!--for playback teleport-->
-        <div
-            :id="playback_teleport_event_id"
-            ref="playback_container"
-            style="opacity: 0;"
-        ></div>
-
         <!--label, ripples, total duration-->
         <div
             ref="card_button"
             style="opacity: 1;"
         >
             <button
-                class="w-full grid grid-cols-4     h-20 text-4xl bg-theme-light/60 hover:bg-theme-light/80 hover:border-theme-light-trim/40 hover:shadow-sm      border-t-2 border-theme-light-trim rounded-lg shadow-md transition duration-150 ease-in-out"
+                class="w-full grid grid-cols-4     h-20 text-4xl bg-theme-light/60 hover:bg-theme-light/80 hover:border-theme-light-trim/40 hover:shadow-sm      border-t-2 border-theme-light-trim rounded-lg shadow-md transition     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline"
                 type="button"
                 @click.stop="handleIsSelected()"
             >
@@ -48,8 +41,6 @@
                     </div>
                 </div>
 
-
-
                 <div class="col-span-1 h-full relative">
                     <!--label-->
                     <span
@@ -61,6 +52,14 @@
                 </div>
             </button>
         </div>
+
+        <!--for playback teleport-->
+        <!--must be here to ensure it's in the correct order of focus after card_button disappears-->
+        <div
+            :id="playback_teleport_event_id"
+            ref="playback_container"
+            style="opacity: 0;"
+        ></div>
     </div>
 </template>
 

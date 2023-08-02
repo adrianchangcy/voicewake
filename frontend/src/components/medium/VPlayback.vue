@@ -18,17 +18,19 @@
         <div
             ref="playback_main"
             :class="[
-                propEventTone === null ? 'grid-cols-3 pr-4' : 'grid-cols-4',
+                propEvent === null ? 'grid-cols-3 pr-4' : 'grid-cols-4',
                 'h-20 grid grid-rows-2 rounded-lg border border-theme-light-gray shade-border-when-hover transition-colors'
             ]"
-            @pointerdown.stop="updateInstanceLastInteracted()"
-            @focusin.stop="updateInstanceLastInteracted()"
+            @pointerdown="[updateInstanceLastInteracted(), instance_has_focus=true]"
+            @focusin="[updateInstanceLastInteracted(), instance_has_focus=true]"
+            @focusout="instance_has_focus=false"
         >
 
             <!--play/pause-->
             <div class="row-start-1 row-span-2 col-start-1 col-span-1 text-4xl relative">
                 <VActionTextOnly
                     @pointerdown="userTogglePlaybackPlayPause()"
+                    @keydown.enter="userTogglePlaybackPlayPause()"
                     :propIsEnabled="isPlaybackReady"
                     propElement="button"
                     type="button"
@@ -60,7 +62,7 @@
                 <!--need inline CSS to prevent jolting from anime if without it-->
                 <div
                     ref="volume_ripples_container"
-                    class="w-full h-8 absolute top-2 pb-2 flex flex-row justify-between px-[0.4375rem]"
+                    class="w-full h-8 absolute top-2 pb-2 flex flex-row justify-between px-2"
                 >
                     <div
                         v-for="volume_ripple in propBucketQuantity" :key="volume_ripple"
@@ -103,7 +105,7 @@
                         <!--loading-->
                         <div
                             v-show="is_playback_buffering"
-                            class="h-1 absolute left-0 right-0 bottom-[0.375rem] m-auto"
+                            class="h-1 absolute left-0 right-0 bottom-2 m-auto"
                         >
                             <div
                                 :class="[
@@ -117,17 +119,17 @@
                             v-show="!is_playback_buffering"
                             :class="[
                                 isPlaybackReady === true ? 'double-height-when-hover' : '',
-                                'h-1 absolute bg-theme-light-gray left-0 right-0 bottom-[0.375rem] m-auto transition-transform'
+                                'h-1 absolute bg-theme-light-gray left-0 right-0 bottom-2 m-auto transition-transform'
                             ]"
                         ></div>
 
                         <div
                             ref="playback_slider_progress"
-                            class="h-1 absolute bg-theme-lead left-0 right-0 bottom-[0.375rem] m-auto scale-x-0 origin-left"
+                            class="h-1 absolute bg-theme-lead left-0 right-0 bottom-2 m-auto scale-x-0 origin-left"
                         ></div>
                         <div
                             ref="playback_slider_knob"
-                            class="w-4 h-4 absolute rounded-full bg-theme-black bottom-0 m-auto"
+                            class="w-4 h-4 absolute rounded-full bg-theme-black bottom-0.5 m-auto"
                         >
                         </div>
 
@@ -146,7 +148,7 @@
                 <!--current duration-->
                 <div class="row-start-1 row-span-1 col-start-1 col-span-1 relative text-xs sm:text-sm">
                     <span class="sr-only">current duration</span>
-                    <span class="absolute w-fit h-fit left-0 -top-2 bottom-0 m-auto">{{pretty_current_playback_time}}</span>
+                    <span class="absolute w-fit h-fit left-0 -top-[0.625rem] bottom-0 m-auto">{{pretty_current_playback_time}}</span>
                 </div>
 
                 <!--volume-->
@@ -169,13 +171,13 @@
                         <!--volume button-->
                         <VActionTextOnly
                             @pointerdown="toggleMute($event)"
-                            @keydown.enter.stop="toggleMute($event)"
+                            @keydown.enter="toggleMute($event)"
                             :propIsEnabled="isPlaybackReady"
                             propElement="button"
                             type="button"
                             :propIsIconOnly="true"
                             :propIsDefaultOutlineOffset="false"
-                            class="w-full h-10 absolute -bottom-[3px] focus-visible:-outline-offset-8"
+                            class="w-full h-10 absolute -bottom-0.5 focus-visible:-outline-offset-8"
                         >
                             <div class="w-full h-full relative">
                                 <i
@@ -214,7 +216,7 @@
 
                 <!--total duration-->
                 <div class="row-start-1 row-span-1 col-start-3 col-span-1 relative text-xs sm:text-sm">
-                    <span class="absolute w-fit h-fit right-0 -top-2 bottom-0 m-auto">
+                    <span class="absolute w-fit h-fit right-0 -top-[0.625rem] bottom-0 m-auto">
                         <span class="sr-only">total duration</span>
                         {{pretty_playback_duration}}
                     </span>
@@ -222,11 +224,11 @@
             </div>
 
             <div
-                v-if="propEventTone !== null"
+                v-if="propEvent !== null"
                 class="row-span-2 col-span-1 relative"
             >
                 <span class="text-2xl pb-0.5 absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto">
-                    {{ propEventTone.event_tone_symbol }}
+                    {{ propEvent.event_tone.event_tone_symbol }}
                 </span>
             </div>
         </div>
@@ -245,7 +247,7 @@
     import { defineComponent, PropType } from 'vue';
     import { prettyDuration, getRandomUUID } from '@/helper_functions';
     import anime from 'animejs';
-    import EventToneTypes from '@/types/EventTones.interface';
+    import EventTypes from '@/types/Events.interface';
     import VSliderTypes from '@/types/values/VSlider';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
 
@@ -254,6 +256,8 @@
             return {
                 instance_id: "",    //uuid, to identify between multiple VPlayback instances
                 vplayback_store: useVPlaybackStore(),
+                instance_has_focus: false,  //enables keyboard events inside VPlayback that need e.preventDefault()
+                previous_event: null as EventTypes | null,  //store triggers on new event, but needs previous event
 
                 pretty_current_playback_time: '00:00',
                 pretty_playback_duration: '00:00',
@@ -301,17 +305,13 @@
                 type: Boolean,
                 default: false
             },
-            propEventId: {
-                type: Number,
+            propEvent: {
+                type: Object as PropType<EventTypes>,
                 default: null
             },
             propAudio: {    //used when receiving from VRecorder
                 type: Object as PropType<Blob> | PropType<File> | null,
                 default: null
-            },
-            propAudioURL: {     //option 2
-                type: String,
-                default: ''
             },
             propIsRecording: {  //when changed, pause VPlayback
                 type: Boolean
@@ -331,10 +331,6 @@
             propBucketQuantity: {   //with no default value, this is the fix for unrendered this.$refs.volume_ripple
                 type: Number,
                 required: true
-            },
-            propEventTone: {
-                type: Object as PropType<EventToneTypes>,
-                default: null
             },
         },
         watch: {
@@ -363,15 +359,24 @@
 
                 this.attachAudioToPlayback(new_value);
             },
-            propAudioURL(new_value){
+            propEvent(new_value:EventTypes|null){
 
                 //reminder that with v-if and props already supplied, first time will not trigger watchers
 
-                //do store before new audio is attached
-                this.storeCurrentEventLastStopped();
+                if(new_value !== null){
 
-                //attach new audio
-                this.attachAudioToPlayback(new_value);
+                    //do store before new audio is attached
+                    if(this.previous_event !== null){
+
+                        this.storeCurrentEventLastStopped(this.previous_event);
+                    }
+
+                    //store previous event for situations where store needs it
+                    this.previous_event = new_value;
+
+                    //attach new audio
+                    this.attachAudioToPlayback(new_value.audio_file);
+                }
             },
             propIsRecording(new_value){
 
@@ -419,7 +424,7 @@
                 const is_playback_ready = (
                     this.propAudioVolumePeaks.length > 0 &&
                     this.propAudioVolumePeaks.length === this.propBucketQuantity &&
-                    (this.propAudio !== null || this.propAudioURL !== '') &&
+                    (this.propAudio !== null || this.propEvent !== null) &&
                     this.is_playback_slider_ready === true &&
                     this.is_playback_attached === true &&
                     this.isProcessing === false
@@ -441,7 +446,11 @@
             },
         },
         methods: {
-            syncToNewPlaybackSliderValue() : void {
+            determineInstanceHasFocus(event:PointerEvent) : void {
+
+                this.instance_has_focus = (this.$refs.playback_main as HTMLElement).contains(event.target as Node);
+            },
+            syncToPlaybackSliderValue() : void {
 
                 const audio_element = (this.$refs.audio_element as HTMLAudioElement);
 
@@ -460,11 +469,12 @@
 
                 this.playback_slider_knob_anime.seek(jumped_anime_duration);
                 this.playback_slider_progress_anime.seek(jumped_anime_duration);
+                this.playback_slider_knob_anime.completed = false;
+                this.playback_slider_progress_anime.completed = false;
 
-                //never assume 
                 audio_element.currentTime = jumped_playback_duration;
 
-                if(this.playback_slider_value === 1 && audio_element.ended === false){
+                if(this.playback_slider_value === 1){
 
                     this.endPlaybackProperly();
                 }
@@ -474,12 +484,12 @@
                 //initial
                 this.playback_slider_value = 0;
 
-                if(this.propEventId === null){
+                if(this.propEvent === null){
 
                     return;
                 }
 
-                const last_stopped_s = this.vplayback_store.getEventPlaybackLastStoppedS(this.propEventId);
+                const last_stopped_s = this.vplayback_store.getEventPlaybackLastStoppedS(this.propEvent.id);
 
                 //not stored
                 if(last_stopped_s === null){
@@ -490,24 +500,24 @@
                 const total_duration_s = (this.$refs.audio_element as HTMLAudioElement).duration;
 
                 //restore slider value
+                //as long as both this function and StoreCurrentEventLastStopped() use <audio>.currentTime,
+                //value should always be <= 1
                 let new_value = Number((last_stopped_s / total_duration_s).toFixed(3));
-
-                //once we fix storage, we confirm again if new_value can give >1 if audio is parked at end
-                
-                //temporary fix
-                if(new_value > 1){
-                    new_value = 1;
-                }
 
                 this.playback_slider_value = new_value;
             },
-            storeCurrentEventLastStopped() : void {
+            storeCurrentEventLastStopped(specific_event:EventTypes) : void {
 
                 //call this after pause on source change, but before source change happens
 
                 const audio_element = (this.$refs.audio_element as HTMLAudioElement);
+                const specific_event_full_url = window.location.origin + specific_event.audio_file;
 
-                if(this.propAudioURL.length === 0 || this.propEventId === null || audio_element.src === ''){
+                if(
+                    specific_event.audio_file.length === 0 ||
+                    specific_event === null || audio_element.src === '' ||
+                    audio_element.src !== specific_event_full_url
+                ){
 
                     return;
                 }
@@ -523,13 +533,21 @@
                 }
 
                 //store
-                this.vplayback_store.addEventPlaybackLastStopped(this.propEventId, current_time_s);
+                this.vplayback_store.addEventPlaybackLastStopped(specific_event.id, current_time_s);
             },
-            updateInstanceLastInteracted() : void {
+            updateInstanceLastInteracted(to_remove:boolean=false) : void {
 
                 //any actions taken to any VPlayback instance will update store
                 //so that handleKeyboardEvent() goes through for "last interacted VPlayback" only
-                this.vplayback_store.updateLastInteractedUUID(this.instance_id);
+
+                if(to_remove === false){
+
+                    this.vplayback_store.updateLastInteractedUUID(this.instance_id);
+
+                }else{
+
+                    this.vplayback_store.updateLastInteractedUUID("");
+                }
             },
             handleInitialAutoplay() : void {
 
@@ -600,6 +618,11 @@
                 //we simply move volume to 0 when user wants to mute, for better UX, as per YouTube
                 //.muted continues to be used for bug fixes
 
+                if(this.propIsForRecording === true){
+                    
+                    return;
+                }
+
                 this.openPlaybackVolume();
 
                 //briefly open menu on unmute
@@ -658,6 +681,39 @@
                     this.is_playback_volume_open = false;
                 }
             },
+            userAdjustVolume(add_or_sub_value:number) : void {
+
+                //pass values like 0.2 to add, -0.2 to sub
+
+                if(
+                    this.propIsForRecording === true || add_or_sub_value < -1 || add_or_sub_value > 1
+                ){
+
+                    return;
+                }
+
+                let new_playback_volume = this.playback_volume + add_or_sub_value;
+                new_playback_volume = parseFloat(new_playback_volume.toFixed(2));
+
+                //ensure it is never > 1
+                if(new_playback_volume > 1){
+
+                    new_playback_volume = 1;
+
+                }else if(new_playback_volume < 0){
+
+                    new_playback_volume = 0;
+                }
+                
+                this.changePlaybackVolume(new_playback_volume);
+                this.closePlaybackVolume();
+
+                //save backup volume for unmute scenario
+                if(new_playback_volume > 0){
+
+                    this.saveBackupPlaybackVolume(new_playback_volume);
+                }
+            },
             handleKeyboardEvent(event:KeyboardEvent) : void {
 
                 //FYI, some keyup events are too late for .preventDefault(), so they use keydown
@@ -668,11 +724,10 @@
                     return;
                 }
 
-                //don't let this function affect text input
-                if(
-                    event.target !== document.body &&
-                    !(this.$refs.playback_main as HTMLElement).contains(event.target as Node)
-                ){
+                //ensure this won't be used during user input
+                const event_target = (event.target as Node);
+
+                if(event_target.nodeName === "INPUT" || event_target.nodeName === "TEXTAREA"){
 
                     return;
                 }
@@ -706,11 +761,6 @@
                     case 'm':
 
                         {
-                            if(this.propIsForRecording === true){
-
-                                return;
-                            }
-
                             //mute/unmute
                             //when for recording, no volume option
                             //we use localStorage for backup value from mute to unmute
@@ -720,62 +770,23 @@
 
                     case 'ArrowUp':
 
-                        //increase volume
-                        {
-                            if(this.propIsForRecording === true){
-
-                                return;
-                            }
+                        if(this.instance_has_focus === true){
 
                             event.preventDefault();
-                            let new_playback_volume = this.playback_volume + 0.2;
-                            new_playback_volume = parseFloat(new_playback_volume.toFixed(2));
-
-                            //ensure it is never > 1
-                            if(new_playback_volume > 1){
-
-                                new_playback_volume = 1;
-                            }
-                            
-                            this.changePlaybackVolume(new_playback_volume);
-                            this.closePlaybackVolume();
-
-                            //save backup volume for unmute scenario
-                            this.saveBackupPlaybackVolume(new_playback_volume);
-                        
-                            break;
+                            this.userAdjustVolume(0.2);
                         }
 
-                        case 'ArrowDown':
+                        break;
 
-                            //decrease volume
-                            {
-                                if(this.propIsForRecording === true){
+                    case 'ArrowDown':
 
-                                    return;
-                                }
+                        if(this.instance_has_focus === true){
 
-                                event.preventDefault();
-                                let new_playback_volume = this.playback_volume - 0.2;
-                                new_playback_volume = parseFloat(new_playback_volume.toFixed(2));
-                                
-                                //ensure it is never < 0
-                                if(new_playback_volume < 0){
+                            event.preventDefault();
+                            this.userAdjustVolume(-0.2);
+                        }
 
-                                    new_playback_volume = 0;
-                                }
-
-                                this.changePlaybackVolume(new_playback_volume);
-                                this.closePlaybackVolume();
-
-                                //save backup volume for unmute scenario
-                                if(new_playback_volume > 0){
-
-                                    this.saveBackupPlaybackVolume(new_playback_volume);
-                                }
-
-                                break;
-                            }
+                        break;
 
                     default:
 
@@ -914,15 +925,21 @@
 
                 const target = (this.$refs.audio_element as HTMLAudioElement);
 
-                if(target.ended === true){
+                if(target.ended === false && target.paused === true){
 
-                    return;
+                    //when paused and dragged to end, html media seems to still want you to play once to truly end
+                    //handle only the media here, the rest are already settled
+                    target.muted = true;
+                    target.currentTime = target.duration;
+                    target.play();
+
+                    //must do this, otherwise during edge case where endPlaybackProperly() is still running
+                    //and user plays, anime will restart from 0
+                    this.playback_slider_knob_anime.seek(this.playback_slider_knob_anime.duration);
+                    this.playback_slider_progress_anime.seek(this.playback_slider_progress_anime.duration);
+                    this.playback_slider_knob_anime.completed = true;
+                    this.playback_slider_progress_anime.completed = true;
                 }
-
-                //when paused and dragged to end, html media seems to still want you to play once to truly end
-                //handle only the media here, the rest are already settled
-                target.muted = true;
-                target.play();
             },
             startPlaybackDrag() : void {
 
@@ -937,6 +954,10 @@
 
                     this.pausePlaybackAndUpdateSliderValue();
                 }
+
+                //fixed: drag to end --> .completed=true --> .seek() --> .play() starts from 0
+                this.playback_slider_knob_anime.completed = false;
+                this.playback_slider_progress_anime.completed = false;
             },
             doPlaybackDrag(event:PointerEvent) : void {
 
@@ -1005,6 +1026,10 @@
 
                 this.playback_slider_knob_anime.seek(jumped_anime_duration);
                 this.playback_slider_progress_anime.seek(jumped_anime_duration);
+
+                //fixed: anytime .seek(end), .completed=true automatically, causing unintentional start from 0
+                this.playback_slider_knob_anime.completed = false;
+                this.playback_slider_progress_anime.completed = false;
 
                 //handle <audio>
                 (this.$refs.audio_element as HTMLAudioElement).currentTime = jumped_playback_duration;
@@ -1122,6 +1147,12 @@
 
                 const target = (this.$refs.audio_element as HTMLAudioElement);
 
+                //this is important to let endPlaybackProperly() do its thing
+                if(target.paused === false){
+
+                    return;
+                }
+
                 //although redundant, we put target.muted=false here to guarantee it
                 //as there has been a rare instance where playback had no audio unintentionally until the next replay
                 target.muted = false;
@@ -1174,6 +1205,16 @@
                 //do this instead of relying on :disabled, as :disabled makes sliders bug out
                 if(this.isPlaybackReady === false){
 
+                    return;
+                }
+
+                //edge case of dragging + space
+                //cancel drag if so, while stopPlaybackDrag() auto-plays for us
+                if(this.is_playback_slider_drag === true){
+                    
+                    this.stopPlaybackDrag();
+
+                    //if we don't return here, we get "play() interrupted by pause()"
                     return;
                 }
 
@@ -1315,7 +1356,7 @@
                     this.adjustPlaybackSliderDimension();
                     this.createPlaybackSliderAnime();
                     this.setInitialPlaybackSliderValue();
-                    this.syncToNewPlaybackSliderValue();
+                    this.syncToPlaybackSliderValue();
                     this.handleInitialAutoplay();
                 };
 
@@ -1382,20 +1423,11 @@
                 this.vplayback_store.updateLastInteractedUUID(this.instance_id);
             }
 
-            //track VPlaybackStore
-            this.vplayback_store.$subscribe(()=>{
-                console.log(this.vplayback_store.$state);
-            });
-            this.vplayback_store.$onAction(()=>{
-                console.log(this.vplayback_store.$state);
-            });
+            //handle when propEvent already exists on mounted, which means it's from API
+            if(this.propEvent !== null && this.propEvent.audio_file.length > 0){
 
-            //when propAudioVolumePeaks.length > 0 on mounted(), means VPlayback was rendered via v-if with data already
-            //we do this here because in this case, watchers do not trigger
-            if(this.propAudioURL.length > 0){
-
-                //start with data already available, i.e. for existing records
-                this.attachAudioToPlayback(this.propAudioURL);
+                this.previous_event = this.propEvent;
+                this.attachAudioToPlayback(this.propEvent.audio_file);
             }
 
             //handle rate and volume differently
@@ -1446,6 +1478,7 @@
             (this.$refs.audio_element as HTMLAudioElement).volume = this.playback_volume;
 
             //attach listeners
+            window.addEventListener('pointerdown', this.determineInstanceHasFocus);
             window.addEventListener('pointermove', this.doPlaybackDrag);
             window.addEventListener('pointerup', this.stopPlaybackDrag);
             window.addEventListener('resize', this.handleWindowResize);
@@ -1456,6 +1489,7 @@
         beforeUnmount(){
 
             //remove listeners
+            window.removeEventListener('pointerdown', this.determineInstanceHasFocus);
             window.removeEventListener('pointermove', this.doPlaybackDrag);
             window.removeEventListener('pointerup', this.stopPlaybackDrag);
             window.removeEventListener('resize', this.handleWindowResize);
