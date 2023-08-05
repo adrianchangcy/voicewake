@@ -331,18 +331,114 @@ class Events_TestCase(TestCase):
 
     def test_get_file_duration(self):
 
-        full_paths = []
-        full_paths.append('C:\\Users\\User\\Desktop\\voicewake_py\\uploads/events/year_2023/month_7/day_20/user_id_1/e_6.blob')
-        full_paths.append('C:\\Users\\User\\Desktop\\voicewake_py\\uploads/events/year_2023/month_7/day_21/user_id_1/e_7.wav')
-        full_paths.append('C:\\Users\\User\\Desktop\\voicewake_py\\uploads/events/year_2023/month_7/day_21/user_id_1/e_8.webm')
-        full_paths.append('C:\\Users\\User\\Desktop\\voicewake_py\\uploads/events/year_2023/month_7/day_21/user_id_1/test.flac')
-        full_paths.append('C:\\Users\\User\\Desktop\\voicewake_py\\uploads/events/year_2023/month_7/day_21/user_id_1/e_9.webm')
-        full_paths.append('C:\\Users\\User\\Desktop\\voicewake_py\\uploads/events/year_2023/month_7/day_21/user_id_1/e_10.wav')
-        full_paths.append('C:\\Users\\User\\Desktop\\voicewake_py\\uploads/events/year_2023/month_7/day_21/user_id_1/e_12.webm')
+        the_blob = 'C:\\Users\\User\\Desktop\\voicewake_py\\uploads/events/year_2023/month_7/day_21/user_id_1/e_13.webm'
+
+        import subprocess
+        import shlex
 
         #duration
-        file_stats = os.stat(full_paths[6])
-        print('mb is %s' % (file_stats.st_size / (1024 * 1024)))
+        def get_length(input_video):
+            result = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', input_video], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            return float(result.stdout)
+        
+        #volumes
+        #this works
+        def get_peaks():
+
+            the_blob = 'C\\\\\\:/Users/User/Desktop/voicewake_py/uploads/events/year_2023/month_7/day_21/user_id_1/e_13.webm'
+
+            #to get highest peak per x, add "asetnsamples=x" after amovie, like "amovie=...,asetnsamples=x,..."
+            #will divide x samples (48000Hz is 48000 samples/sec) to 1 bucket, of which you'll get the highest peak per bucket
+            #e.g. if file is 48000Hz frequency, i.e. 48000 samples/sec, asetnsamples=48000 gives you 1 sec/bucket
+            cmd = shlex.split('ffprobe -v error -f lavfi -i "amovie='+the_blob+',asetnsamples=48000,astats=metadata=1:reset=1" -show_entries frame_tags=lavfi.astats.Overall.Peak_level -of csv=p=0')
+
+            #timeout by seconds, just in case
+            return subprocess.run(cmd, timeout=20)
+        
+        def test_formatting():
+
+            the_blob = os.path.join(settings.MEDIA_ROOT, 'events/year_2023/month_7/day_21/user_id_1/e_13.webm')
+
+            #target actual backslash (\) via double backslash to escape it, and replace with forward slash
+            the_blob = the_blob.replace('\\', '/')
+
+            #colon (:) must be escaped, as it's a valid operator
+            #we need extra escaping, since shlex.split() seems to remove one layer of our escaping
+            the_blob = the_blob.replace(':', '\\\\\\:')
+
+            #split every command into array elements
+            #there's a warning that shlex is only designed for Unix shells
+            #it doesn't matter, as long as it works, since there are no better solutions
+            cmd = shlex.split('ffprobe -v error -f lavfi -i "amovie='+the_blob+',asetnsamples=48000,astats=metadata=1:reset=1" -show_entries frame_tags=lavfi.astats.Overall.Peak_level -of csv=p=0')
+
+            #run
+            return subprocess.run(cmd, timeout=20)
+        
+        class ProcessAudioFile:
+
+            def __init__(self, audio_file:str):
+
+                #from audio_file field, e.g.: events/year_2023/...
+                self.subprocess_timeout_s = 10
+                self.audio_file = audio_file
+                self.audio_file_full_path = os.path.join(settings.MEDIA_ROOT, audio_file)
+
+            
+            def prepare_extra_info(self):
+
+                result = subprocess.run(
+                    [
+                        'ffprobe',
+                        '-v', 'error',
+                        '-show_entries', 'format=duration',
+                        '-show_streams',
+                        '-of', 'default=noprint_wrappers=1:nokey=1',
+                        self.audio_file_full_path
+                    ],
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                    timeout=self.subprocess_timeout_s
+                )
+                return (result.stdout)
+            
+
+            def get_peaks_by_buckets(self, bucket_quantity:int=20) -> list[float]:
+
+                #get duration
+                #get sample rate
+                #asetnsamples = (duration / x buckets) * sample rate
+                #you should have x + 1 buckets, so compare second last and last bucket and select the one with higher peak
+
+                #target actual backslash (\) via double backslash to escape it, and replace with forward slash
+                audio_file = self.audio_file_full_path.replace('\\', '/')
+
+                #colon (:) must be escaped, as it's a valid operator
+                #we need extra escaping, since shlex.split() seems to remove one layer of our escaping
+                audio_file = audio_file.replace(':', '\\\\\\:')
+
+                #to get highest peak per x, add "asetnsamples=x" after amovie, like "amovie=...,asetnsamples=x,..."
+                #will divide x samples (48000Hz is 48000 samples/sec) to 1 bucket, of which you'll get the highest peak per bucket
+                #e.g. if file is 48000Hz frequency, i.e. 48000 samples/sec, asetnsamples=48000 gives you 1 sec/bucket
+                cmd = shlex.split('ffprobe -v error -f lavfi -i "amovie='+audio_file+',asetnsamples=48000,astats=metadata=1:reset=1" -show_entries frame_tags=lavfi.astats.Overall.Peak_level -of csv=p=0')
+
+                result = subprocess.run(cmd,
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                    timeout=self.subprocess_timeout_s
+                )
+
+                return result.stdout
+
+
+        #format absolute path correctly
+        #get duration
+        #get sample rate
+        #normalise (do later)
+        #asetnsamples = (duration / x buckets) * sample rate
+        #you should have x + 1 buckets, so compare second last and last bucket and select the one with higher peak
+
+        audio_file = 'events/year_2023/month_7/day_21/user_id_1/e_13.webm'
+
+        process_audio_file_class = ProcessAudioFile(audio_file)
+        print(process_audio_file_class.prepare_extra_info())
 
 
 

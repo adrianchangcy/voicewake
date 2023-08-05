@@ -254,7 +254,7 @@
                 //prepare data
                 //webm follows VRecorder
                 data.append('event_tone_id', JSON.stringify((this.event_tone_choice as EventToneTypes)['id']));
-                data.append('audio_file', new File([this.final_blob as Blob], 'new_recording.webm', {type:"audio/webm"}));
+                data.append('audio_file', new File([this.final_blob as Blob], 'new_recording.mp3', {type:"audio/mp3"}));
                 data.append('is_originator', JSON.stringify(this.propIsOriginator));
 
                 //prepare array in this specific way

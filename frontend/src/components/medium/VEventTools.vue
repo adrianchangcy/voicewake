@@ -30,11 +30,15 @@
                         <i class="absolute w-fit h-fit far fa-thumbs-up mx-auto"></i>
                     </div>
                     <!--like count-->
-                    <div class="w-fit h-full pl-2 flex items-center text-sm">
+                    <span v-show="is_liked === true" class="sr-only">you have liked this</span>
+                    <div
+                        v-show="prettyLikeCount !== ''"
+                        class="w-fit h-full pl-2 flex items-center text-sm"
+                    >
                         <span class="w-fit h-fit mx-auto">
-                            <span class="sr-only">current like count is </span>{{ prettyLikeCount }}                        
+                            <span class="sr-only">current like count is </span>
+                            {{ prettyLikeCount }}
                         </span>
-                        <span v-show="is_liked === true" class="sr-only">you have liked this</span>
                     </div>
                 </div>
             </button>
@@ -61,11 +65,15 @@
                         <i class="absolute w-fit h-fit far fa-thumbs-down mx-auto"></i>
                     </div>
                     <!--dislike count-->
-                    <div class="w-fit h-full pl-2 flex items-center text-sm">
+                    <span v-show="is_liked === false" class="sr-only">you have disliked this</span>
+                    <div
+                        v-show="prettyDislikeCount !== ''"
+                        class="w-fit h-full pl-2 flex items-center text-sm"
+                    >
                         <span class="w-fit h-fit mx-auto">
-                            <span class="sr-only">current dislike count is </span>{{ prettyDislikeCount }}
+                            <span class="sr-only">current dislike count is </span>
+                            {{ prettyDislikeCount }}
                         </span>
-                        <span v-show="is_liked === false" class="sr-only">you have disliked this</span>
                     </div>
                 </div>
             </button>
@@ -78,11 +86,11 @@
             type="button"
         >
             <TransitionFade>
-                <span v-if="has_shared === false" class="w-fit h-full flex items-center mx-auto pb-0.5">
+                <span v-if="has_shared === false" class="w-fit h-full flex items-center mx-auto">
                     <i class="fas fa-share text-base"></i>
-                    <span class="pl-2 text-sm">Share</span>
+                    <span class="sr-only">Copy URL to share</span>
                 </span>
-                <span v-else-if="has_shared === true" class="w-fit h-full flex items-center mx-auto pb-0.5">
+                <span v-else-if="has_shared === true" class="w-fit h-full flex items-center mx-auto">
                     <i class="fas fa-check text-lg"></i>
                     <span class="pl-2 text-sm">Copied</span>
                 </span>
@@ -111,6 +119,8 @@
                 is_liked: null as boolean|null,
                 like_count: 0,
                 dislike_count: 0,
+                minimum_dislike_count_for_display: 10,
+                minimum_dislike_percentage_for_display: 0.2,
                 submit_interval: null as number|null,
 
                 has_shared: false as boolean|null,
@@ -130,26 +140,46 @@
 
                     return prettyCount(this.like_count + 1);
 
-                }else if(this.is_liked === null){
+                }else{
 
-                    return prettyCount(this.like_count);
-                    
+                    if(this.like_count > 0){
+
+                        return prettyCount(this.like_count);
+                    }
+
+                    return "";
                 }
-
-                return prettyCount(this.like_count);
             },
             prettyDislikeCount() : string {
 
                 if(this.is_liked === false){
 
-                    return prettyCount(this.dislike_count + 1);
+                    const final_dislike_count = this.dislike_count + 1;
 
-                }else if(this.is_liked === null){
+                    //only show dislikes if it passes percentage
+                    if(
+                        final_dislike_count >= this.minimum_dislike_count_for_display &&
+                        (final_dislike_count / (this.like_count + final_dislike_count) > this.minimum_dislike_percentage_for_display)
+                    ){
 
-                    return prettyCount(this.dislike_count);
+                        return prettyCount(final_dislike_count);
+                    }
+
+                    return "";
+
+                }else{
+
+                    //only show dislikes if it passes percentage
+                    if(
+                        this.dislike_count >= this.minimum_dislike_count_for_display &&
+                        this.dislike_count / (this.like_count + this.dislike_count) > this.minimum_dislike_percentage_for_display
+                    ){
+
+                        return prettyCount(this.dislike_count);
+                    }
+
+                    return "";
                 }
-
-                return prettyCount(this.dislike_count);
             },
         },
         mounted(){

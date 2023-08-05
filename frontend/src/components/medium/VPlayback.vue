@@ -191,10 +191,13 @@
                                 ></i>
                             </div>
                             <span v-show="isMuted" class="sr-only">
-                                unmute to {{ getPrettyVolume }} and open volume menu
+                                unmute to bring volume back to {{ getBackupVolume }}
                             </span>
                             <span v-show="!isMuted" class="sr-only">
-                                mute
+                                current volume is {{ getCurrentVolume }}, click to mute
+                            </span>
+                            <span class="sr-only">
+                                after clicking, you can use keyboard arrow up and down keys to adjust volume
                             </span>
                         </VActionTextOnly>
 
@@ -207,7 +210,7 @@
                             @hasNewSliderValue="changePlaybackVolume($event)"
                             @startDragSliderValue="handleVolumeStartDrag($event)"
                             @stopDragSliderValue="handleVolumeStopDrag($event)"
-                            class="w-full h-[5.5rem] absolute left-0 right-0 bottom-10 m-auto px-2 pt-5 pb-1"
+                            class="w-full h-[5.5rem] absolute left-0 right-0 bottom-10 m-auto pt-5 pb-1"
                         >
                             <span class="sr-only">vertical volume box</span>
                         </VSliderYSmall>
@@ -411,9 +414,13 @@
             },
         },
         computed: {
-            getPrettyVolume() : string {
-                
+            getCurrentVolume() : string {
+
                 return (this.playback_volume * 100).toString() + "%";
+            },
+            getBackupVolume() : string {
+
+                return (this.backup_playback_volume * 100).toString() + "%";
             },
             isMuted() : boolean {
 
@@ -611,6 +618,7 @@
                 }
 
                 window.localStorage.backup_playback_volume = new_value;
+                this.backup_playback_volume = new_value;
             },
             toggleMute(event:KeyboardEvent|PointerEvent|null=null) : void {
 
