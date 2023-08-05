@@ -326,7 +326,7 @@
 
                         case 'NotAllowedError':
                             alert(
-                                'Please allow permissions for your recording device on your browser.'
+                                'To record, please allow browser permissions for your recording device.'
                             );
                             break;
 
