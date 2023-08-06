@@ -590,10 +590,7 @@
 
                 }catch(error:any|unknown){
 
-                    alert(
-                        'Unexpectedly unable to retrieve recorded audio.'
-                        +' Please refresh the page.'
-                    );
+                    alert('Unexpectedly unable to retrieve recorded audio.');
                     console.log(error);
                 }
             },

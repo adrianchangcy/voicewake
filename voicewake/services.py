@@ -21,6 +21,8 @@ import secrets
 import time
 import re
 import math
+import subprocess
+import json
 
 #app files
 from .models import *
@@ -318,6 +320,7 @@ class TOTPVerification:
 
 
 
+#inherits TOTPVerification class
 #always use this class in transaction.atomic()
 class HandleUserOTP(TOTPVerification):
 
@@ -521,6 +524,172 @@ class HandleUserOTP(TOTPVerification):
         )
 
         return True
+
+
+
+class HandleAudioFile:
+
+    def __init__(self, audio_file:str):
+
+        #from audio_file field, e.g.: events/year_2023/...
+        self.audio_file = audio_file
+        self.audio_file_full_path = os.path.join(settings.MEDIA_ROOT, audio_file)
+        self.audio_file_info = None
+
+        #max timeout seconds for subprocess
+        self.subprocess_timeout_s = 10
+
+        #dBFS has max 0dB (loudest), min of approx. 6dB per bit, e.g. 16-bit will have 96dB floor
+        # >0 will cause clipping
+        #since we need 0 to 1 to draw peaks at frontend, but we don't know our floor (lack of bit depth info),
+        #we assume via ffmpeg's silencedetect of default -60dB
+        self.dbfs_floor = -60
+
+
+    def prepare_audio_file_info(self):
+
+        result = subprocess.run(
+            [
+                'ffprobe',
+                '-v', 'error',
+                '-show_entries', 'format=duration',
+                '-show_streams',
+                '-of', 'json',
+                self.audio_file_full_path
+            ],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            timeout=self.subprocess_timeout_s
+        )
+
+        self.audio_file_info = json.loads(result.stdout)
+
+        return self.audio_file_info
+
+
+    def get_peaks_by_buckets(self, bucket_quantity:int=20) -> list[float]:
+
+        #get duration
+        #get sample rate
+        #asetnsamples = (duration / x buckets) * sample rate
+        #expect x + 1 buckets output, so compare second last and last bucket and select the one with higher peak
+
+        #target actual backslash (\) via double backslash to escape it, and replace with forward slash
+        audio_file = self.audio_file_full_path.replace('\\', '/')
+
+        #colon (:) must be escaped, as it's a valid operator
+        #we need extra escaping, since shlex.split() seems to remove one layer of our escaping
+        audio_file = audio_file.replace(':', '\\\\\\:')
+
+        #get necessary info
+        sample_rate = int(self.audio_file_info['streams'][0]['sample_rate'])
+        duration = float(self.audio_file_info['format']['duration'])
+
+        #calculate appropriate sample rate to get bucket_quantity + 1
+        asetnsamples = math.floor(duration / bucket_quantity * sample_rate)
+
+        #to get highest peak per x, add "asetnsamples=x" after amovie, i.e. chunk size, e.g. "amovie=...,asetnsamples=x,..."
+        #e.g. if file is 48000Hz frequency, i.e. 48000 samples/sec, asetnsamples=48000 gives you 1 sec/bucket
+        final_input = 'amovie=%s,asetnsamples=%s,astats=metadata=1:reset=1' % (audio_file, str(asetnsamples))
+
+        result = subprocess.run(
+            [
+                'ffprobe',
+                '-v', 'error',
+                '-f', 'lavfi',
+                '-i', final_input,
+                '-show_entries', 'frame_tags=lavfi.astats.Overall.Peak_level',
+                '-of', 'json'
+            ],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            timeout=self.subprocess_timeout_s
+        )
+
+        result = json.loads(result.stdout)
+
+        #extract peaks
+        bucket_peaks = []
+
+        for count in range(bucket_quantity):
+
+            peak = 0
+
+            if count < bucket_quantity - 1:
+
+                #proceed as usual
+
+                #value is in dBFS, max 0, min is approx. 6dB per bit depth
+                #so bigger negative value means more quiet
+                peak = float(result['frames'][count]['tags']['lavfi.astats.Overall.Peak_level'])
+
+            elif (count == bucket_quantity - 1) and (len(result['frames']) == bucket_quantity + 1):
+
+                #we sometimes get bucket_quantity + 1
+                #if so, select the higher peak between second last and last peak
+
+                second_last_peak = float(result['frames'][count]['tags']['lavfi.astats.Overall.Peak_level'])
+                last_peak = float(result['frames'][count+1]['tags']['lavfi.astats.Overall.Peak_level'])
+
+                if second_last_peak > last_peak:
+                    
+                    peak = second_last_peak
+
+                else:
+
+                    peak = last_peak
+
+            #prevent exceeding floor
+            if peak < self.dbfs_floor:
+
+                peak = self.dbfs_floor
+
+            #should never have > 0dB, mainly because we'll normalise to prevent it
+            #on the rare chance that there is, we should at least record it correctly
+            if peak > 0:
+                
+                peak = 0
+
+            #get percentage
+            # -x / -y will always be positive
+            peak = peak / self.dbfs_floor
+
+            #invert percentage
+            peak = 1 - peak
+
+            #get 0 to 1 value
+            peak = peak * 1
+
+            #truncate
+            peak = float(round(peak, 2))
+
+            #store
+            bucket_peaks.append(peak)
+
+        return bucket_peaks
+
+
+    def normalise_audio_file(self):
+
+        #ffmpeg-normalize is used to normalise audio to EBU R 128 loudness standard
+        #default "-c:a pcm" (pcm codec) and ".mkv" container/extension, but the file size is too big
+        #-o will auto-infer the preferred file extension based on the specified file path + name
+        #two options:
+            #"-c:a aac", "...mp4"
+            #"-c:a mp3", "...mp3"
+        result = subprocess.run(
+            [
+                'ffmpeg-normalize',
+                self.audio_file_full_path,
+                '-f',   #overwrite
+                '-c:a', 'mp3',
+                '-o', self.audio_file_full_path
+            ],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            timeout=self.subprocess_timeout_s
+        )
+
+        return result.stdout
+
+
 
 
 
