@@ -88,6 +88,7 @@ class CreateEventLikesDislikesSerializer(serializers.Serializer):
     is_liked = serializers.BooleanField(allow_null=True)
 
 
+
 class CreateEventsSerializer(serializers.Serializer):
 
     #pass only when is_originator=False
@@ -122,6 +123,22 @@ class CreateEventsSerializer(serializers.Serializer):
     )
 
 
+    def validate_audio_file(self, value):
+
+        #ensure audio_file does not exceed max file size
+        if value.size > settings.EVENT_MAX_FILE_SIZE_BYTES:
+
+            #file is too large
+            custom_error_message = "Invalid data, file is too big. Your file is %sMB, while the limit is %sMB." % (
+                round(value.size / (1024 * 1024), 2),
+                round(settings.EVENT_MAX_FILE_SIZE_BYTES / (1024 * 1024), 2)
+            )
+
+            raise serializers.ValidationError(custom_error_message)
+        
+        return value
+
+
     def validate(self, data):
 
         #if originator, must have event_room_name
@@ -138,6 +155,7 @@ class CreateEventsSerializer(serializers.Serializer):
         else:
 
             raise serializers.ValidationError('Missing paired data on is_originator.')
+
 
 
 class UserActionsSerializer(serializers.Serializer):

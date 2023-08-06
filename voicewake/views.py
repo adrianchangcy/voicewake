@@ -463,8 +463,8 @@ class EventTonesAPI(viewsets.ReadOnlyModelViewSet):
             #part of search optimisation is "... field_name LIKE 'string%' OR field_name LIKE '%string%'"
             #Q is used to encapsulate a collection of keyword arguments
             return EventTones.objects.filter(
-                        Q(event_tone_name__istartswith=search)|Q(event_tone_name__icontains=search)
-                        )[:10]
+                Q(event_tone_name__istartswith=search)|Q(event_tone_name__icontains=search)
+            )[:10]
             
         else:
         
@@ -1005,48 +1005,51 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         serializer = CreateEventsSerializer(data=request.data, many=False)
 
         #validate overall
-        if serializer.is_valid() is False:
+        if serializer.is_valid() is False and len(serializer.errors) > 0:
 
-            return Response(
-                data={
-                    'message': 'Invalid data.',
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        #cannot upload multiple files
-        if type(request.FILES['audio_file']) == list:
-
-            return Response(
-                data={
-                    'message': "Invalid data. Please upload only one file."
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        #ensure audio_file does not exceed max file size
-        if request.FILES['audio_file'].size > settings.EVENT_MAX_FILE_SIZE_BYTES:
-
-            #file is too large
-            special_message = "Invalid data, file is too big. Your file is %sMB, while the limit is %sMB." % (
-                round(request.FILES['audio_file'].size / (1024 * 1024), 2),
-                round(settings.EVENT_MAX_FILE_SIZE_BYTES / (1024 * 1024), 2)
-            )
-
-            return Response(
-                data={
-                    'message': special_message
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-
-        #try to get duration of audio file
-        return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            #return any first error message
+            for key in serializer.errors:
+                for first_error in serializer.errors[key]:
+                    return Response(
+                        data={
+                            'message': first_error,
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
 
         #ok, continue
         new_data = serializer.validated_data
         user = User(pk=request.user.id)
+
+        result = subprocess.run(
+            [
+                'ffprobe',
+                '-v', 'error',
+                '-show_entries', 'format=duration',
+                '-show_streams',
+                '-of', 'json',
+                new_data['audio_file'].path
+            ],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            timeout=20
+        )
+
+        print(result.stdout)
+
+        #try to get duration of audio file
+        return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+
+
+
+
+
+
+
 
         #event_tone
         try:
