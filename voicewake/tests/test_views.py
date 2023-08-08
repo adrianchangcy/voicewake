@@ -406,9 +406,9 @@ class Events_TestCase(TestCase):
                 "ffmpeg",
                 "-i", "pipe:0",
                 "-af", ffmpeg_cmd_af,
-                "-ar", "48k",
-                "-c:a", "mp3",
-                "-f", "mp3", "pipe:1"
+                "-ar", "48k",           #sampling rate
+                "-c:a", "mp3",          #codec, a is audio, v is video
+                "-f", "mp3", "pipe:1"   #f is format; for disk files, can just write "my_folder/file.mp3"
             ],
             stdin=audio_file,
             stdout=subprocess.PIPE,
