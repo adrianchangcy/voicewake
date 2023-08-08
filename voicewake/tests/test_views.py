@@ -9,6 +9,7 @@ from django.core.files import File
 from django.http import StreamingHttpResponse
 from django.contrib.auth import get_user_model
 from django.core import mail
+from django.core.files.uploadedfile import InMemoryUploadedFile
 
 #apps
 from voicewake.services import *
@@ -16,6 +17,7 @@ from voicewake.models import *
 from django.conf import settings
 
 #py packages
+import io
 import json
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -338,24 +340,126 @@ class Events_TestCase(TestCase):
         #example file
         audio_file_full_path = os.path.join(settings.MEDIA_ROOT, 'events/year_2023/month_7/day_21/user_id_1/e_13.webm')
 
-        #construct InMemoryUploadedFile, TemporaryUploadedFile
-
-        import io
-        import sys
-        from django.core.files.uploadedfile import InMemoryUploadedFile
-
-
-        aud_io = io.BytesIO()
-        aud_ext = list(os.path.splitext(audio_file_full_path))[-1]
-            
-        new_aud = InMemoryUploadedFile(
-            aud_io, 
-            'FileField',
-            'new_recording' + aud_ext,
-            'audio/webm',
-            sys.getsizeof(aud_io),
+        #simulate InMemoryUploadedFile
+        audio_file = InMemoryUploadedFile(
+            io.FileIO(audio_file_full_path),
+            'FileField',                            #to-be field if it were in form/serializer
+            'new_recording.webm',                   #doesn't have to match actual file name
+            'audio/webm',                           #Content-Type
+            os.path.getsize(audio_file_full_path),  #use os.path.getsize(path) for file size, not sys.getsizeof()
             None
         )
+
+
+        #first pass, get measurement
+        ffmpeg_cmd = subprocess.run(
+            [
+                "ffmpeg",
+                "-i", "pipe:0",
+                "-af", "loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json",
+                '-f', "null", "/dev/null"
+            ],
+            stdin=audio_file,
+            check=True,
+            capture_output=True,
+            timeout=10
+        )
+
+        audio_file.seek(0)
+
+        #get print string from stderr
+        first_pass_data = ffmpeg_cmd.stderr.decode()
+
+        #construct our json string
+        #this will work as long as entire print string only has one {}
+        first_pass_dict = re.search(r"(\{[\s\S]*\})", first_pass_data)[0]
+
+        if first_pass_dict is None:
+
+            raise ValueError("Regex could not find first pass dict.")
+        
+        #transform into proper dict
+        first_pass_dict = json.loads(first_pass_dict)
+        first_pass_dict = dict(first_pass_dict)
+
+        #prepare -af values for second pass
+        #can't directly .format(), must call the variable again
+        ffmpeg_cmd_af = "loudnorm=I=-16:TP=-1.5:LRA=11" +\
+            ":measured_I={0}" +\
+            ":measured_LRA={1}" +\
+            ":measured_TP={2}" +\
+            ":measured_thresh={3}" +\
+            ":offset={4}" +\
+            ":linear=true:print_format=summary"
+        
+        ffmpeg_cmd_af = ffmpeg_cmd_af.format(
+            first_pass_dict["input_i"],
+            first_pass_dict["input_lra"],
+            first_pass_dict["input_tp"],
+            first_pass_dict["input_thresh"],
+            first_pass_dict["target_offset"]
+        )
+        
+        #do second pass, get file
+        ffmpeg_cmd = subprocess.run(
+            [
+                "ffmpeg",
+                "-i", "pipe:0",
+                "-af", ffmpeg_cmd_af,
+                "-ar", "48k",
+                "-c:a", "mp3",
+                "-f", "mp3", "pipe:1"
+            ],
+            stdin=audio_file,
+            stdout=subprocess.PIPE,
+            timeout=10
+        )
+
+        print(type(ffmpeg_cmd.stdout))
+
+        return
+
+        #validate audio size, info, extension
+        #once basic validation is done, save file to disk
+        from tempfile import NamedTemporaryFile
+
+        #simulate TemporaryUploadedFile
+        temp_audio_file = NamedTemporaryFile(
+            dir=settings.MEDIA_ROOT,
+            suffix=".webm",
+            delete=False
+        )
+
+        #simulate transferring InMemoryUploadedFile to TemporaryUploadedFile
+        #must do it this way to overcome Window's permission denied issue
+        with temp_audio_file as my_file:
+
+            #write from memory to tmp file on disk
+            my_file.write(audio_file.read())
+            my_file.seek(0)
+
+            print(my_file.name)
+
+            result = subprocess.run(
+                [
+                    'ffprobe',
+                    '-v', 'error',
+                    '-i', my_file.name,
+                    '-show_entries', 'format=duration',
+                    '-show_streams',
+                    '-of', 'json',
+                ],
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                timeout=10
+            )
+
+            print(result.stdout)
+
+            #close before deleting
+            my_file.close()
+
+            #manually delete
+            os.unlink(my_file.name)
 
 
 

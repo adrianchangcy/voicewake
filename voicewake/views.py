@@ -1021,20 +1021,8 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         new_data = serializer.validated_data
         user = User(pk=request.user.id)
 
-        result = subprocess.run(
-            [
-                'ffprobe',
-                '-v', 'error',
-                '-show_entries', 'format=duration',
-                '-show_streams',
-                '-of', 'json',
-                new_data['audio_file'].path
-            ],
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            timeout=20
-        )
+        print(new_data['audio_file'].size)
 
-        print(result.stdout)
 
         #try to get duration of audio file
         return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
