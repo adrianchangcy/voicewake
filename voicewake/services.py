@@ -11,6 +11,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.template.loader import get_template
 from django.core.mail import send_mail
+from django.core.files.uploadedfile import InMemoryUploadedFile
 
 #Python libraries
 from datetime import datetime, timezone, timedelta, tzinfo
@@ -23,6 +24,7 @@ import re
 import math
 import subprocess
 import json
+from typing import Union
 
 #app files
 from .models import *
@@ -529,15 +531,12 @@ class HandleUserOTP(TOTPVerification):
 
 class HandleAudioFile:
 
-    def __init__(self, audio_file:str):
-
-        #from audio_file field, e.g.: events/year_2023/...
-        self.audio_file = audio_file
-        self.audio_file_full_path = os.path.join(settings.MEDIA_ROOT, audio_file)
-        self.audio_file_info = None
+    def __init__(self):
 
         #max timeout seconds for subprocess
         self.subprocess_timeout_s = 10
+
+        self.audio_file_info = None
 
         #dBFS has max 0dB (loudest), min of approx. 6dB per bit, e.g. 16-bit will have 96dB floor
         # >0 will cause clipping
@@ -546,39 +545,55 @@ class HandleAudioFile:
         self.dbfs_floor = -60
 
 
-    def prepare_audio_file_info(self):
+    def get_audio_file_info(self, audio_file:Union[InMemoryUploadedFile, str])->dict:
 
-        result = subprocess.run(
-            [
-                'ffprobe',
-                '-v', 'error',
-                '-show_entries', 'format=duration',
-                '-show_streams',
-                '-of', 'json',
-                self.audio_file_full_path
-            ],
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            timeout=self.subprocess_timeout_s
-        )
+        if type(audio_file) == InMemoryUploadedFile:
+
+            audio_file.seek(0)
+
+            result = subprocess.run(
+                [
+                    'ffprobe',
+                    '-v', 'error',
+                    '-show_entries', 'format=duration',
+                    '-show_streams',
+                    '-of', 'json',
+                    '-i', 'pipe:0'
+                ],
+                stdin=audio_file,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                timeout=self.subprocess_timeout_s
+            )
+
+            audio_file.seek(0)
+
+        else:
+
+            result = subprocess.run(
+                [
+                    'ffprobe',
+                    '-v', 'error',
+                    '-show_entries', 'format=duration',
+                    '-show_streams',
+                    '-of', 'json',
+                    '-i', audio_file
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                timeout=self.subprocess_timeout_s
+            )
 
         self.audio_file_info = json.loads(result.stdout)
-
         return self.audio_file_info
 
 
-    def get_peaks_by_buckets(self, bucket_quantity:int=20) -> list[float]:
+    def get_peaks_by_buckets(self, audio_file:Union[InMemoryUploadedFile, str], bucket_quantity:int=20) -> list[float]:
 
         #get duration
         #get sample rate
         #asetnsamples = (duration / x buckets) * sample rate
         #expect x + 1 buckets output, so compare second last and last bucket and select the one with higher peak
-
-        #target actual backslash (\) via double backslash to escape it, and replace with forward slash
-        audio_file = self.audio_file_full_path.replace('\\', '/')
-
-        #colon (:) must be escaped, as it's a valid operator
-        #we need extra escaping, since shlex.split() seems to remove one layer of our escaping
-        audio_file = audio_file.replace(':', '\\\\\\:')
 
         #get necessary info
         sample_rate = int(self.audio_file_info['streams'][0]['sample_rate'])
@@ -591,18 +606,48 @@ class HandleAudioFile:
         #e.g. if file is 48000Hz frequency, i.e. 48000 samples/sec, asetnsamples=48000 gives you 1 sec/bucket
         final_input = 'amovie=%s,asetnsamples=%s,astats=metadata=1:reset=1' % (audio_file, str(asetnsamples))
 
-        result = subprocess.run(
-            [
-                'ffprobe',
-                '-v', 'error',
-                '-f', 'lavfi',
-                '-i', final_input,
-                '-show_entries', 'frame_tags=lavfi.astats.Overall.Peak_level',
-                '-of', 'json'
-            ],
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            timeout=self.subprocess_timeout_s
-        )
+        #if full path, format properly
+        if type(audio_file) == InMemoryUploadedFile:
+
+            audio_file.seek(0)
+
+            result = subprocess.run(
+                [
+                    'ffprobe',
+                    '-v', 'error',
+                    '-f', 'lavfi',
+                    '-i', 'pipe:0',
+                    '-show_entries', 'frame_tags=lavfi.astats.Overall.Peak_level',
+                    '-of', 'json'
+                ],
+                stdin=audio_file,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                timeout=self.subprocess_timeout_s
+            )
+
+            audio_file.seek(0)
+
+        else:
+
+            #target actual backslash (\) via double backslash to escape it, and replace with forward slash
+            audio_file = audio_file.replace('\\', '/')
+    
+            #colon (:) must be escaped, as it's a valid operator
+            #we need extra escaping, since shlex.split() seems to remove one layer of our escaping
+            audio_file = audio_file.replace(':', '\\\\\\:')
+
+            result = subprocess.run(
+                [
+                    'ffprobe',
+                    '-v', 'error',
+                    '-f', 'lavfi',
+                    '-i', final_input,
+                    '-show_entries', 'frame_tags=lavfi.astats.Overall.Peak_level',
+                    '-of', 'json'
+                ],
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                timeout=self.subprocess_timeout_s
+            )
 
         result = json.loads(result.stdout)
 
@@ -667,7 +712,7 @@ class HandleAudioFile:
         return bucket_peaks
 
 
-    def normalise_audio_file(self):
+    def normalise_audio_file(self, audio_file:InMemoryUploadedFile) -> bytes:
 
         #ffmpeg-normalize is used to normalise audio to EBU R 128 loudness standard
         #default "-c:a pcm" (pcm codec) and ".mkv" container/extension, but the file size is too big
@@ -675,19 +720,70 @@ class HandleAudioFile:
         #two options:
             #"-c:a aac", "...mp4"
             #"-c:a mp3", "...mp3"
-        result = subprocess.run(
+
+        normalization_type = "ebu" #ebu/rms/peak
+        target_level = -23
+
+        #first pass, to get required data
+        output = subprocess.check_output(
             [
-                'ffmpeg-normalize',
-                self.audio_file_full_path,
-                '-f',   #overwrite
-                '-c:a', 'mp3',
-                '-o', self.audio_file_full_path
+                "ffmpeg", "-nostdin", "-y",
+                "-i", "pipe:0",
+                "-af", "astats=measure_overall=Peak_level+RMS_level:measure_perchannel=0",
+                "-vn", "-sn",
+                "-f", "null", "/dev/null"
             ],
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            stdin=audio_file,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
             timeout=self.subprocess_timeout_s
         )
 
-        return result.stdout
+        #whether file is passed into subprocess or you do file.read(), you must reset via .seek(0)
+        #else, second reference has zero bytes
+        audio_file.seek(0)
+
+        mean_volume_matches = re.findall(r"RMS level dB: ([\-\d\.]+)", output)
+        if mean_volume_matches:
+            detected_mean = float(mean_volume_matches[0])
+        else:
+            raise RuntimeError("Could not detect mean volume")
+
+        max_volume_matches = re.findall(r"Peak level dB: ([\-\d\.]+)", output)
+        if max_volume_matches:
+            detected_max = float(max_volume_matches[0])
+        else:
+            raise RuntimeError("Could not detect max volume")
+
+        if normalization_type == "ebu":
+            adjustment = 0
+        elif normalization_type == "peak":
+            adjustment = 0 + target_level - detected_max
+        elif normalization_type == "rms":
+            adjustment = target_level - detected_mean
+
+        #second pass, with required data ready
+        output = subprocess.run(
+            [
+                "ffmpeg", "-y",
+                "-i", "pipe:0",
+                "-af", f"volume={adjustment}dB",
+                "-vn", "-sn",
+                "-f", "mp3", "pipe:1"
+            ],
+            stdin=audio_file,
+            stderr=subprocess.STDOUT,
+            stdout=subprocess.PIPE,
+            timeout=self.subprocess_timeout_s
+        )
+
+        audio_file.seek(0)
+
+        #ebu: range is -70 to -5.0
+        #others: range is -99 to 0
+        return output
+
+
 
 
 
