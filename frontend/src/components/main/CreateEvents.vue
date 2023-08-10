@@ -28,7 +28,6 @@
                     :propBucketQuantity="bucket_quantity"
                     :propHasRecording="final_blob !== null"
                     :propFileVolumes="blob_volume_peaks"
-                    :propFileDuration="blob_duration"
                     @isOpen="handleIsRecorderMenuOpen($event)"
                 />
             </div>
@@ -254,7 +253,7 @@
                 //prepare data
                 //webm follows VRecorder
                 data.append('event_tone_id', JSON.stringify((this.event_tone_choice as EventToneTypes)['id']));
-                data.append('audio_file', new File([this.final_blob as Blob], 'new_recording.mp3', {type:"audio/mp3"}));
+                data.append('audio_file', this.getPreparedFileForSubmit());
                 data.append('is_originator', JSON.stringify(this.propIsOriginator));
 
                 //prepare array in this specific way
@@ -306,6 +305,15 @@
                         type: "error"
                     }, 3000);
                 });
+            },
+            getPreparedFileForSubmit() : File {
+
+                if(this.final_blob === null){
+
+                    throw new Error("Cannot prepare final_blob for submit when it is null.");
+                }
+
+                return new File([this.final_blob as Blob], 'new_recording.mp3', {type:"audio/mp3"});
             },
             handleNewRecording(new_value:{'blob':Blob, 'blob_duration':number, 'blob_volume_peaks':number[]}) : void {
 

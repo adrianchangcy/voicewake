@@ -11,7 +11,8 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.template.loader import get_template
 from django.core.mail import send_mail
-from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
+from django.core.files.base import ContentFile
 
 #Python libraries
 from datetime import datetime, timezone, timedelta, tzinfo
@@ -25,6 +26,7 @@ import math
 import subprocess
 import json
 from typing import Union
+from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 
 #app files
 from .models import *
@@ -531,12 +533,28 @@ class HandleUserOTP(TOTPVerification):
 
 class HandleAudioFile:
 
-    def __init__(self):
+    def __init__(self, audio_file:Union[InMemoryUploadedFile, TemporaryUploadedFile], overwrite_source:bool):
+
+        #we do not accept abs path, because our code overrides the passed file to save memory
+        #i.e. InMemoryUploadedFile/TemporaryUploadedFile makes .save() go smoothly
+        #preventing override would mean duplicating memory/disk space, and ensuring disk copy is deleted
+        if overwrite_source is False:
+
+            raise ValueError("Current code will always overwrite original source's bytes to save memory.")
+
+        #precaution:
+            #size is checked via .size at serializer/form, not here
+            #if you pass absolute path, remember to call .close_audio_file()
+
+        #in the case of mp3, both codec and format/container are the same
+        #mp3 can only choose 32000/44100/48000 sample rate
+        #mp3 sample rate of 44100 and 48000 has big difference in quality with minimal size difference, as long as small
+        self.desired_codec = "mp3"
+        self.desired_format = "mp3"
+        self.desired_sample_rate = "48k"
 
         #max timeout seconds for subprocess
         self.subprocess_timeout_s = 10
-
-        self.audio_file_info = None
 
         #dBFS has max 0dB (loudest), min of approx. 6dB per bit, e.g. 16-bit will have 96dB floor
         # >0 will cause clipping
@@ -544,244 +562,283 @@ class HandleAudioFile:
         #we assume via ffmpeg's silencedetect of default -60dB
         self.dbfs_floor = -60
 
+        self.bucket_quantity = 20
 
-    def get_audio_file_info(self, audio_file:Union[InMemoryUploadedFile, str])->dict:
+        #check type
+        if type(audio_file) not in [str, InMemoryUploadedFile, TemporaryUploadedFile]:
 
-        if type(audio_file) == InMemoryUploadedFile:
+            raise TypeError('audio_file must be of type [str, InMemoryUploadedFile, TemporaryUploadedFile].')
+        
+        # if type(audio_file) == str:
+            # self.audio_file = open(audio_file, "rb+")
 
-            audio_file.seek(0)
+        self.audio_file = audio_file
 
-            result = subprocess.run(
-                [
-                    'ffprobe',
-                    '-v', 'error',
-                    '-show_entries', 'format=duration',
-                    '-show_streams',
-                    '-of', 'json',
-                    '-i', 'pipe:0'
-                ],
-                stdin=audio_file,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                timeout=self.subprocess_timeout_s
-            )
+        #other data
+        self.audio_file_duration_s = None
+        self.peak_buckets = None
 
-            audio_file.seek(0)
 
-        else:
+    def get_audio_file_info(self)->dict:
 
-            result = subprocess.run(
-                [
-                    'ffprobe',
-                    '-v', 'error',
-                    '-show_entries', 'format=duration',
-                    '-show_streams',
-                    '-of', 'json',
-                    '-i', audio_file
-                ],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                timeout=self.subprocess_timeout_s
-            )
+        self.audio_file.seek(0)
+
+        result = subprocess.run(
+            [
+                'ffprobe',
+                '-v', 'error',
+                '-show_entries', 'format',  #if you want only some keys, do format=duration, no difference though
+                '-show_streams',
+                '-of', 'json',
+                '-i', 'pipe:0'
+            ],
+            input=self.audio_file.read(),
+            check=True,
+            capture_output=True,
+            timeout=self.subprocess_timeout_s
+        )
+
+        self.audio_file.seek(0)
+
+        print(json.loads(result.stdout))
 
         self.audio_file_info = json.loads(result.stdout)
+        self.audio_file_duration_s = round(float(self.audio_file_info['format']['duration']), 2)
+
+        self._validate_audio_file_info()
+
         return self.audio_file_info
+    
+
+    def _validate_audio_file_info(self)->bool:
+
+        if self.audio_file_info is None:
+
+            raise TypeError("Cannot validate audio_file_info when it is None.")
+        
+        #audio_file_info['streams'] can have multiple dicts if there's not only audio in it
+        #e.g. a flac file from an album for test has a jpeg in it with ['index'] == 1
+        #don't know whether the index order is always fixed, hence the loop
+
+        for count, stream in enumerate(self.audio_file_info['streams']):
+
+            if stream['codec_name'] == "opus":
+
+                break
+
+            elif count == len(self.audio_file_info['streams']) - 1:
+
+                raise RuntimeError("Could not find 'opus' in any ['streams'][x]['codec_name'].")
+        
+        if self.audio_file_duration_s < 0.2:
+
+            raise ValueError("Duration must be >= 0.2s. File was %ss." % (self.audio_file_info['format']['duration']))
+        
+        return True
 
 
-    def get_peaks_by_buckets(self, audio_file:Union[InMemoryUploadedFile, str], bucket_quantity:int=20) -> list[float]:
+    def _replace_original_audio_file_bytes_with_normalised_version(self, normalised_bytes:bytes):
+
+        #delete existing bytes
+        self.audio_file.truncate(0)
+
+        #write in
+        self.audio_file.seek(0)
+        
+        for chunk in ContentFile(normalised_bytes).chunks():
+
+            self.audio_file.write(chunk)
+
+        self.audio_file.seek(0)
+
+
+    def get_peaks_by_buckets(self) -> list[float]:
 
         #get duration
         #get sample rate
         #asetnsamples = (duration / x buckets) * sample rate
         #expect x + 1 buckets output, so compare second last and last bucket and select the one with higher peak
 
+        #to get highest peak per x, add "asetnsamples=x" after amovie, i.e. chunk size, e.g. "amovie=...,asetnsamples=x,..."
+        #e.g. if file is 48000Hz frequency, i.e. 48000 samples/sec, asetnsamples=48000 gives you 1 sec/bucket
+
         #get necessary info
         sample_rate = int(self.audio_file_info['streams'][0]['sample_rate'])
         duration = float(self.audio_file_info['format']['duration'])
 
         #calculate appropriate sample rate to get bucket_quantity + 1
-        asetnsamples = math.floor(duration / bucket_quantity * sample_rate)
+        #math.floor() is important to guarantee we always get surplus buckets, i.e. just compare last buckets
+        #compared to math.ceil(), which may give us less buckets than we need, i.e. must maybe create last fake bucket
+        asetnsamples = math.floor(duration / self.bucket_quantity * sample_rate)
+        
+        #must escape ":"
+        ffprobe_i = 'amovie=pipe\\\\:0,asetnsamples=%s,astats=metadata=1:reset=1' % (str(asetnsamples))
 
-        #to get highest peak per x, add "asetnsamples=x" after amovie, i.e. chunk size, e.g. "amovie=...,asetnsamples=x,..."
-        #e.g. if file is 48000Hz frequency, i.e. 48000 samples/sec, asetnsamples=48000 gives you 1 sec/bucket
-        final_input = 'amovie=%s,asetnsamples=%s,astats=metadata=1:reset=1' % (audio_file, str(asetnsamples))
+        self.audio_file.seek(0)
 
-        #if full path, format properly
-        if type(audio_file) == InMemoryUploadedFile:
+        #get peaks
+        result = subprocess.run(
+            [
+                'ffprobe',
+                '-v', 'error',
+                '-f', 'lavfi',
+                '-i', ffprobe_i,
+                '-show_entries', 'frame_tags=lavfi.astats.Overall.Peak_level',
+                '-of', 'json'
+            ],
+            input=self.audio_file.read(),
+            check=True,
+            capture_output=True,
+            timeout=self.subprocess_timeout_s
+        )
 
-            audio_file.seek(0)
-
-            result = subprocess.run(
-                [
-                    'ffprobe',
-                    '-v', 'error',
-                    '-f', 'lavfi',
-                    '-i', 'pipe:0',
-                    '-show_entries', 'frame_tags=lavfi.astats.Overall.Peak_level',
-                    '-of', 'json'
-                ],
-                stdin=audio_file,
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                timeout=self.subprocess_timeout_s
-            )
-
-            audio_file.seek(0)
-
-        else:
-
-            #target actual backslash (\) via double backslash to escape it, and replace with forward slash
-            audio_file = audio_file.replace('\\', '/')
-    
-            #colon (:) must be escaped, as it's a valid operator
-            #we need extra escaping, since shlex.split() seems to remove one layer of our escaping
-            audio_file = audio_file.replace(':', '\\\\\\:')
-
-            result = subprocess.run(
-                [
-                    'ffprobe',
-                    '-v', 'error',
-                    '-f', 'lavfi',
-                    '-i', final_input,
-                    '-show_entries', 'frame_tags=lavfi.astats.Overall.Peak_level',
-                    '-of', 'json'
-                ],
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                timeout=self.subprocess_timeout_s
-            )
+        self.audio_file.seek(0)
 
         result = json.loads(result.stdout)
 
         #extract peaks
-        bucket_peaks = []
+        peak_buckets = []
 
-        for count in range(bucket_quantity):
+        for count in range(self.bucket_quantity):
 
-            peak = 0
+            #we fill the bucket to full first, then use last stored bucket to evaluate extra buckets
+            peak_to_store = 0
 
-            if count < bucket_quantity - 1:
-
-                #proceed as usual
-
-                #value is in dBFS, max 0, min is approx. 6dB per bit depth
-                #so bigger negative value means more quiet
-                peak = float(result['frames'][count]['tags']['lavfi.astats.Overall.Peak_level'])
-
-            elif (count == bucket_quantity - 1) and (len(result['frames']) == bucket_quantity + 1):
-
-                #we sometimes get bucket_quantity + 1
-                #if so, select the higher peak between second last and last peak
-
-                second_last_peak = float(result['frames'][count]['tags']['lavfi.astats.Overall.Peak_level'])
-                last_peak = float(result['frames'][count+1]['tags']['lavfi.astats.Overall.Peak_level'])
-
-                if second_last_peak > last_peak:
-                    
-                    peak = second_last_peak
-
-                else:
-
-                    peak = last_peak
+            #value is in dBFS, max 0, min is approx. 6dB per bit depth
+            #so bigger negative value means more quiet
+            peak_to_store = float(result['frames'][count]['tags']['lavfi.astats.Overall.Peak_level'])
 
             #prevent exceeding floor
-            if peak < self.dbfs_floor:
+            if peak_to_store < self.dbfs_floor:
 
-                peak = self.dbfs_floor
+                peak_to_store = self.dbfs_floor
 
-            #should never have > 0dB, mainly because we'll normalise to prevent it
-            #on the rare chance that there is, we should at least record it correctly
-            if peak > 0:
+            #should never have > 0dB (will produce audio clipping), mainly because we'll normalise to prevent it
+            if peak_to_store > 0:
                 
-                peak = 0
+                raise ValueError('Peak is over 0dBFS, which will clip. Calculating peaks process has been halted.')
 
             #get percentage
             # -x / -y will always be positive
-            peak = peak / self.dbfs_floor
+            peak_to_store = peak_to_store / self.dbfs_floor
 
             #invert percentage
-            peak = 1 - peak
+            peak_to_store = 1 - peak_to_store
 
             #get 0 to 1 value
-            peak = peak * 1
+            peak_to_store = peak_to_store * 1
 
             #truncate
-            peak = float(round(peak, 2))
+            peak_to_store = float(round(peak_to_store, 2))
 
-            #store
-            bucket_peaks.append(peak)
+            #while peak_buckets is not yet full, fill until full
+            if count < self.bucket_quantity:
 
-        return bucket_peaks
+                peak_buckets.append(peak_to_store)
+                continue
+
+            #handle extra buckets
+            #store the higher peak between last stored peak and current peak
+            if peak_buckets[self.bucket_quantity] < peak_to_store:
+
+                peak_buckets[self.bucket_quantity] = peak_to_store
+
+        self.peak_buckets = peak_buckets
+        return peak_buckets
 
 
-    def normalise_audio_file(self, audio_file:InMemoryUploadedFile) -> bytes:
+    def do_normalisation(self) -> bytes:
 
-        #ffmpeg-normalize is used to normalise audio to EBU R 128 loudness standard
-        #default "-c:a pcm" (pcm codec) and ".mkv" container/extension, but the file size is too big
-        #-o will auto-infer the preferred file extension based on the specified file path + name
-        #two options:
-            #"-c:a aac", "...mp4"
-            #"-c:a mp3", "...mp3"
+        #"loudnorm=I=-16:TP=-1.5:LRA=11" is from loudnorm docs on EBU R 128
+        #we do TP=-2 instead, to feel better about supposedly "more than enough headroom"
+        #Spotify does -2 too
 
-        normalization_type = "ebu" #ebu/rms/peak
-        target_level = -23
+        self.audio_file.seek(0)
 
-        #first pass, to get required data
-        output = subprocess.check_output(
+        #first pass, get measurement
+        ffmpeg_cmd = subprocess.run(
             [
-                "ffmpeg", "-nostdin", "-y",
+                "ffmpeg",
                 "-i", "pipe:0",
-                "-af", "astats=measure_overall=Peak_level+RMS_level:measure_perchannel=0",
-                "-vn", "-sn",
-                "-f", "null", "/dev/null"
+                "-af", "loudnorm=I=-16:TP=-2:LRA=11:print_format=json",
+                '-f', "null", "/dev/null"
             ],
-            stdin=audio_file,
-            stderr=subprocess.STDOUT,
-            universal_newlines=True,
+            input=self.audio_file.read(),
+            check=True,
+            capture_output=True,
             timeout=self.subprocess_timeout_s
         )
 
-        #whether file is passed into subprocess or you do file.read(), you must reset via .seek(0)
-        #else, second reference has zero bytes
-        audio_file.seek(0)
+        self.audio_file.seek(0)
 
-        mean_volume_matches = re.findall(r"RMS level dB: ([\-\d\.]+)", output)
-        if mean_volume_matches:
-            detected_mean = float(mean_volume_matches[0])
-        else:
-            raise RuntimeError("Could not detect mean volume")
+        #get print string from stderr
+        first_pass_data = ffmpeg_cmd.stderr.decode()
 
-        max_volume_matches = re.findall(r"Peak level dB: ([\-\d\.]+)", output)
-        if max_volume_matches:
-            detected_max = float(max_volume_matches[0])
-        else:
-            raise RuntimeError("Could not detect max volume")
+        #construct our json string
+        #this will work as long as entire print string only has one {}
+        first_pass_dict = re.search(r"(\{[\s\S]*\})", first_pass_data)[0]
 
-        if normalization_type == "ebu":
-            adjustment = 0
-        elif normalization_type == "peak":
-            adjustment = 0 + target_level - detected_max
-        elif normalization_type == "rms":
-            adjustment = target_level - detected_mean
+        if first_pass_dict is None:
 
-        #second pass, with required data ready
-        output = subprocess.run(
+            raise ValueError("Regex could not find first pass dict.")
+        
+        #transform into proper dict
+        first_pass_dict = json.loads(first_pass_dict)
+        first_pass_dict = dict(first_pass_dict)
+
+        #prepare -af values for second pass
+        #can't directly .format() here, must call the variable again
+        ffmpeg_cmd_af = "loudnorm=I=-16:TP=-2:LRA=11" +\
+            ":measured_I={0}" +\
+            ":measured_LRA={1}" +\
+            ":measured_TP={2}" +\
+            ":measured_thresh={3}" +\
+            ":offset={4}" +\
+            ":linear=true:print_format=summary"
+        
+        ffmpeg_cmd_af = ffmpeg_cmd_af.format(
+            first_pass_dict["input_i"],
+            first_pass_dict["input_lra"],
+            first_pass_dict["input_tp"],
+            first_pass_dict["input_thresh"],
+            first_pass_dict["target_offset"]
+        )
+        
+        #do second pass, get file
+        ffmpeg_cmd = subprocess.run(
             [
-                "ffmpeg", "-y",
+                "ffmpeg",
                 "-i", "pipe:0",
-                "-af", f"volume={adjustment}dB",
-                "-vn", "-sn",
-                "-f", "mp3", "pipe:1"
+                "-af", ffmpeg_cmd_af,
+                "-ar", self.desired_sample_rate,           #sample rate; mp3 can only choose 32000/44100/48000
+                # "-b:a", "124k",         #bit rate, not sure if safe/redundant/necessary
+                "-c:a", self.desired_codec,          #codec; a is audio, v is video
+                "-f", self.desired_format, "pipe:1"   #f is format; for disk files, can just write "my_folder/file.mp3"
             ],
-            stdin=audio_file,
-            stderr=subprocess.STDOUT,
-            stdout=subprocess.PIPE,
+            input=self.audio_file.read(),
+            check=True,
+            capture_output=True,
             timeout=self.subprocess_timeout_s
         )
 
-        audio_file.seek(0)
+        self.audio_file.seek(0)
 
-        #ebu: range is -70 to -5.0
-        #others: range is -99 to 0
+        output = ffmpeg_cmd.stdout
+
+        if len(output) == 0:
+
+            raise MemoryError("Empty bytes returned when normalising. Maybe you've forgotten to do .seek(0)?")
+
+        self._replace_original_audio_file_bytes_with_normalised_version(output)
+
         return output
+
+
+    def close_audio_file(self):
+
+        #must call this when you're done with .open()
+        #other types will be auto-closed by Django at end of request
+        self.audio_file.close()
 
 
 

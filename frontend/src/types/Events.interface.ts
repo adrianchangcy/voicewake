@@ -39,7 +39,7 @@ interface EventTypes{
         generic_status_name: string
     },
     audio_file: string,
-    audio_file_seconds: number,
+    audio_duration_s: number,
     audio_volume_peaks: number[],
     like_count: number,
     dislike_count: number,

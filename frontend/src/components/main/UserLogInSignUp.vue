@@ -205,7 +205,7 @@
                                 class="w-fit"
                             >
                                 <div class="flex items-center">
-                                    <i class="fas fa-arrow-left w-fit h-fit text-2xl block pr-2"></i>
+                                    <i class="fas fa-arrow-left w-fit h-fit text-lg block pr-2"></i>
                                     <span class="font-bold break-words">Back to email</span>
                                 </div>
                             </VActionTextOnly>
@@ -474,7 +474,7 @@
                                 class="w-fit"
                             >
                                 <div class="flex items-center">
-                                    <i class="fas fa-arrow-left w-fit h-fit text-2xl block pr-2"></i>
+                                    <i class="fas fa-arrow-left w-fit h-fit text-lg block pr-2"></i>
                                     <span class="font-bold break-words">Back to email</span>
                                 </div>
                             </VActionTextOnly>
