@@ -18,6 +18,7 @@ import re
 #'any' means randomise later
 #pass others to set it as default
 def get_current_datetime_with_tz():
+
     return datetime.now().astimezone(tz=ZoneInfo('UTC'))
 
 
@@ -50,6 +51,10 @@ def determine_event_audio_file_path_and_name(instance, filename):
 
 
 def get_default_generic_status():
+
+    #tuple of (row, is_created)
+    #must use get_or_create to enforce strict non-null FK default value
+    #else you get "does not exist" on migrate
     return GenericStatuses.objects.get_or_create(generic_status_name='ok')[0].id
 
 
@@ -147,7 +152,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ['username']
 
     objects = UserManager()
-
 
     def save(self, *args, **kwargs):
 
@@ -257,7 +261,8 @@ class EventToneTranslations(models.Model):
 
 
 class EventTones(models.Model):
-    #must use default=None because of unique=True, otherwise default='' is preferred
+    #must use default=None because of unique=True, so that you can still have multiple None rows
+    #normal scenario is to do default='' for strings, but it is considered unique
     id = models.BigAutoField(primary_key=True)
     event_tone_slug = models.TextField(max_length=50, default=None, unique=True)  #with underscore
     event_tone_name = models.TextField(max_length=50, default=None, unique=True)  #without underscore
@@ -278,6 +283,7 @@ class Events(models.Model):
     event_room = models.ForeignKey('EventRooms', on_delete=models.CASCADE, null=True, default=None)
     generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)
     audio_file = models.FileField(blank=True, null=True, upload_to=determine_event_audio_file_path_and_name)
+    audio_duration_s = models.FloatField()  #seconds, is not used for VPlayback functionality
     audio_volume_peaks = ArrayField(
         models.DecimalField(default=0, max_digits=3, decimal_places=2), #0 to 0.49 to 1
         size=20,    #if size changes, change at get_default_audio_volume_peaks too

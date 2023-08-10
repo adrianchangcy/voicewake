@@ -72,7 +72,7 @@ class GetEventsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Events
-        fields = ['id', 'user', 'event_role', 'event_tone', 'event_room', 'generic_status', 'audio_file', 'audio_volume_peaks', 'like_count', 'dislike_count', 'is_liked_by_user']
+        fields = ['id', 'user', 'event_role', 'event_tone', 'event_room', 'generic_status', 'audio_file', 'audio_volume_peaks', 'audio_duration_s', 'like_count', 'dislike_count', 'is_liked_by_user']
 
 
 class GetEventRoomsSerializer(serializers.Serializer):
@@ -111,17 +111,6 @@ class CreateEventsSerializer(serializers.Serializer):
         allow_empty_file=False
     )
 
-    audio_volume_peaks = serializers.ListField(
-        child=serializers.DecimalField(
-            min_value=0,
-            max_value=1,
-            max_digits=3,
-            decimal_places=2
-        ),
-        min_length=20,
-        max_length=20
-    )
-
 
     def validate_audio_file(self, value):
 
@@ -135,6 +124,8 @@ class CreateEventsSerializer(serializers.Serializer):
             )
 
             raise serializers.ValidationError(custom_error_message)
+
+        #don't do processing here, we leave it as final step at views.py
         
         return value
 

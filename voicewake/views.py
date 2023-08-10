@@ -1,8 +1,7 @@
-from django import views
 from django.http import JsonResponse, QueryDict
 from django.db.models import Case, Value, When, Sum, Q, F, Count
 from django.shortcuts import render, redirect
-from django.db import connection, transaction
+from django.db import transaction
 from django.core.mail import send_mail
 from django.template.loader import get_template
 from django.utils.cache import patch_cache_control
@@ -12,28 +11,32 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required, permission_required
 
+#DRF, class-based views
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
-
-#class-based views
 from rest_framework import viewsets, generics
     #ModelViewSet has: list, create, retrieve, update, partial_update, destroy
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, IsAuthenticatedOrReadOnly
+
+#Django views
 from django.views.generic.list import ListView
 from django.views.generic import TemplateView
 
 #mixins
 from django.contrib.auth.mixins import PermissionRequiredMixin
 
-#Python libraries
+#Python
 from datetime import datetime, timezone, timedelta
 from dateutil.relativedelta import relativedelta
 import zoneinfo
 import json
 import time
 import math
+import random
+import traceback
+import io
 
 #app files
 from voicewake.forms import *
@@ -42,19 +45,21 @@ from voicewake.serializers import *
 from voicewake.services import *
 from django.conf import settings
 
-#static values for configuring throughout the app
-from voicewake.static.values.values import *
-
 
 
 #if empty db, run this once
+#do not run this during makemigrations and migrate, else error is raised
 def first_time_setup():
 
-    # from django.contrib.auth.models import Group
+    from django.contrib.auth.models import Group
 
-    if EventTones.objects.count() == 0:
+    with transaction.atomic():
 
-        with open(os.path.join(settings.BASE_DIR, 'voicewake/static/json/data_emojis_shorter.json'), encoding="utf8") as file:
+        #Group
+        Group.objects.get_or_create(name="regular")
+
+        #EventTones
+        with open(os.path.join(settings.BASE_DIR, 'voicewake/static/json/data_emojis_final.json'), encoding="utf8") as file:
 
             emojis = json.load(file)
             emojis = emojis.items()
@@ -76,24 +81,35 @@ def first_time_setup():
 
             #bulk_create
             EventTones.objects.bulk_create(
-                new_rows
+                new_rows,
+                ignore_conflicts=True
             )
 
-    if GenericStatuses.objects.count() == 0:
+            file.close()
 
-        GenericStatuses.objects.bulk_create([
-            GenericStatuses(generic_status_name='ok'),
-            GenericStatuses(generic_status_name='deleted'),
-            GenericStatuses(generic_status_name='incomplete'),
-            GenericStatuses(generic_status_name='completed'),
-        ])
+        #GenericStatuses
+        GenericStatuses.objects.bulk_create(
+            [
+                GenericStatuses(generic_status_name='ok'),
+                GenericStatuses(generic_status_name='deleted'),
+                GenericStatuses(generic_status_name='incomplete'),
+                GenericStatuses(generic_status_name='completed'),
+            ],
+            ignore_conflicts=True
+        )
 
-    if EventRoles.objects.count() == 0:
+        EventRoles.objects.bulk_create(
+            [
+                EventRoles(event_role_name='originator'),
+                EventRoles(event_role_name='responder')
+            ],
+            ignore_conflicts=True
+        )
 
-        EventRoles.objects.bulk_create([
-            EventRoles(event_role_name='originator'),
-            EventRoles(event_role_name='responder')
-        ])
+        print("Finished populating db with necessary data.")
+
+# first_time_setup()
+
 
 
 #===direct web pages===
@@ -292,6 +308,10 @@ class UsersLogInAPI(generics.GenericAPIView):
 
                 #no need to notify non-registered emails on login attempts
                 #prevents the attack where our website is used as the source of DDOS (towards Gmail in this case)
+
+                #fake delay
+                #during testing, send_mail() takes quite long, around 2+ secs
+                time.sleep(random.uniform(0.8, 2))
 
                 return HandleUserOTP.get_default_create_otp_response(email=new_data['email'])
             
@@ -815,7 +835,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
     def check_user_create_event_room_daily_limit(self, user):
 
-        #this is for "X max new posts every __", which in this case is every 24h
+        #this is for "X max new event rooms every __", which in this case is every 24h
         checkpoint_datetime = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
         checkpoint_datetime = datetime.strptime(checkpoint_datetime, '%Y-%m-%d %H:%M:%S %z')
 
@@ -1021,29 +1041,115 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         new_data = serializer.validated_data
         user = User(pk=request.user.id)
 
-        print(new_data['audio_file'].size)
-
-
-        #try to get duration of audio file
-        return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-
-
-
-
-
-
-
-
-
-
-
-        #event_tone
         try:
 
-            event_tone = EventTones.objects.get(pk=new_data['event_tone_id'])
+            with transaction.atomic():
 
+                #event_tone
+                event_tone = EventTones.objects.get(pk=new_data['event_tone_id'])
+
+                #determine if originator/responder, then create/get event_room
+                #generic_status is handled by default, so it is skipped here
+                if new_data['is_originator'] is True:
+
+                    #check if created event_room limit is not yet reached
+                    if self.check_user_create_event_room_daily_limit(user) is True:
+
+                        raise TimeoutError("You have reached your daily limit for creating events.")
+
+                    #proceed
+                    event_role = EventRoles.objects.get(event_role_name='originator')
+
+                    event_room = EventRooms.objects.create(
+                        event_room_name=new_data['event_room_name'],
+                        generic_status=GenericStatuses.objects.get(generic_status_name='incomplete'),
+                        created_by=user
+                    )
+
+                else:
+
+                    #check if reply event limit is not yet reached
+                    if self.check_user_create_reply_event_daily_limit(user) is True:
+
+                        raise ValueError("You have reached your daily limit of replies.")
+
+                    #get event_room
+                    event_room = EventRooms.objects.select_for_update().get(pk=new_data['event_room_id'])
+
+                    #check if this user is already attached beforehand
+                    if self.check_user_can_reply_event_room(event_room) is False:
+
+                        raise ValueError("Replying to this event is not allowed.")
+                    
+                    #check if user exceeded reply time window but automated script has not detected yet
+                    if self.check_user_exceeded_reply_time_window(event_room) is True:
+
+                        #reset
+                        event_room.locked_for_user = None
+                        event_room.when_locked = None
+                        event_room.is_replying = None
+                        event_room.save()
+
+                        #prevent from being queued twice
+                        prevent_event_room_from_queuing_twice_for_reply(user, event_room)
+
+                        raise TimeoutError("Your reply was unsuccessful, as you had reached the time limit.")
+
+                    #mark event_room as completed, remove lock
+                    event_room.generic_status = GenericStatuses.objects.get(generic_status_name='completed')
+                    event_room.when_locked = None
+                    event_room.locked_for_user = None
+                    event_room.is_replying = None
+                    event_room.save()
+
+                    #prevent from being queued twice
+                    prevent_event_room_from_queuing_twice_for_reply(user, event_room)
+
+                    #proceed
+                    event_role = EventRoles.objects.get(event_role_name='responder')
+
+                #audio_file, further validation
+                #on error, will raise by themselves
+                handle_audio_file_class = HandleAudioFile(new_data['audio_file'])
+
+                #prepare audio file info, which also self-validates
+                #reminder that .size check should be done at form/serializer
+                handle_audio_file_class.get_audio_file_info()
+                
+                #normalize
+                handle_audio_file_class.do_normalisation()
+                
+                #get peaks
+                handle_audio_file_class.get_peaks_by_buckets()
+
+                #create event, excluding audio_file and event_room
+                #generic_status is handled by default, so it is skipped here
+                new_event = Events.objects.create(
+                    user=user,
+                    event_role=event_role,
+                    event_tone=event_tone,
+                    event_room=event_room,
+                    audio_volume_peaks=handle_audio_file_class.peak_buckets,
+                    audio_duration_s=handle_audio_file_class.audio_file_duration_s
+                )
+
+                #we delay saving audio_file, as we want when_created for audio_file's path
+                new_event.audio_file = handle_audio_file_class.audio_file
+                new_event.save()
+
+                #close just in case it's no longer a reference, i.e. Django won't auto-close
+                handle_audio_file_class.close_audio_file()
+
+                return Response(
+                    {
+                        'data': {
+                            'event_room_id': event_room.id
+                        },
+                        'message': 'Success!',
+                    },
+                    status.HTTP_201_CREATED
+                )
+        
         except EventTones.DoesNotExist:
 
             return Response(
@@ -1052,120 +1158,44 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
+        
+        except EventRooms.DoesNotExist:
 
-        #determine if originator/responder, then create/get event_room
-        #generic_status is handled by default, so it is skipped here
-        if new_data['is_originator'] is True:
-
-            #check if created event_room limit is not yet reached
-            if self.check_user_create_event_room_daily_limit(user) is True:
-
-                return Response(
-                    data={
-                        'message': 'You have reached your daily limit.',
-                    },
-                    status=status.HTTP_412_PRECONDITION_FAILED
-                )
-
-            #proceed
-            event_role = EventRoles.objects.get(event_role_name='originator')
-
-            event_room = EventRooms.objects.create(
-                event_room_name=new_data['event_room_name'],
-                generic_status=GenericStatuses.objects.get(generic_status_name='incomplete'),
-                created_by=user
-            )
-
-        else:
-
-            #check if reply event limit is not yet reached
-            if self.check_user_create_reply_event_daily_limit(user) is True:
-
-                return Response(
-                    data={
-                        'message': 'You have reached your daily limit of replies.',
-                    },
-                    status=status.HTTP_412_PRECONDITION_FAILED
-                )
-            
-            try:
-
-                event_room = EventRooms.objects.get(pk=new_data['event_room_id'])
-
-            except EventRooms.DoesNotExist:
-
-                return Response(
-                    data={
-                        'message': 'This event no longer exists.',
-                    },
-                    status=status.HTTP_404_NOT_FOUND
-                )
-
-            #check if this user is already attached beforehand
-            if self.check_user_can_reply_event_room(event_room) is False:
-
-                return Response(
-                    data={
-                        'message': 'Replying to this event is not allowed.',
-                    },
-                    status=status.HTTP_412_PRECONDITION_FAILED
-                )
-            
-            #check if user exceeded reply time window but automated script has not detected yet
-            if self.check_user_exceeded_reply_time_window(event_room) is True:
-
-                #reset
-                event_room.locked_for_user = None
-                event_room.when_locked = None
-                event_room.is_replying = None
-                event_room.save()
-
-                #prevent from being queued twice
-                prevent_event_room_from_queuing_twice_for_reply(user, event_room)
-
-                return Response(
-                    data={
-                        'message': 'Your reply was unsuccessful, as you had reached the time limit.',
-                    },
-                    status=status.HTTP_412_PRECONDITION_FAILED
-                )
-
-            #mark event_room as completed, remove lock
-            event_room.generic_status = GenericStatuses.objects.get(generic_status_name='completed')
-            event_room.when_locked = None
-            event_room.locked_for_user = None
-            event_room.is_replying = None
-            event_room.save()
-
-            #prevent from being queued twice
-            prevent_event_room_from_queuing_twice_for_reply(user, event_room)
-
-            #proceed
-            event_role = EventRoles.objects.get(event_role_name='responder')
-
-        #create event, excluding audio_file and event_room
-        #generic_status is handled by default, so it is skipped here
-        new_event = Events.objects.create(
-            user=user,
-            event_role=event_role,
-            event_tone=event_tone,
-            audio_volume_peaks=new_data['audio_volume_peaks'],
-            event_room=event_room
-        )
-
-        #we delay saving audio_file, as we want when_created for audio_file's path
-        new_event.audio_file = new_data['audio_file']
-        new_event.save()
-
-        return Response(
-            {
-                'data': {
-                    'event_room_id': event_room.id
+            return Response(
+                data={
+                    'message': 'This event no longer exists.',
                 },
-                'message': 'Success!',
-            },
-            status.HTTP_201_CREATED
-        )
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        except TimeoutError as e:
+
+            traceback.print_exc()
+
+            #str(e) gets message directly, or "" if no message
+            return Response(
+                data={
+                    'message': str(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        except ValueError as e:
+
+            traceback.print_exc()
+
+            #str(e) gets message directly, or "" if no message
+            return Response(
+                data={
+                    'message': str(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        except:
+
+            traceback.print_exc()
+
 
 
 #to handle specific actions related to user

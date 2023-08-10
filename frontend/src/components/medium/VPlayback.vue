@@ -257,6 +257,8 @@
     export default defineComponent({
         data(){
             return {
+                is_debug: false,
+
                 instance_id: "",    //uuid, to identify between multiple VPlayback instances
                 vplayback_store: useVPlaybackStore(),
                 instance_has_focus: false,  //enables keyboard events inside VPlayback that need e.preventDefault()
@@ -989,6 +991,11 @@
                         this.playback_slider_value = 1;
                     }
 
+                    if(this.is_debug === true){
+
+                        console.log("playback_slider_value: " + this.playback_slider_value.toString());
+                    }
+
                     this.handlePlaybackDrag();
 
                     //troubleshoot if needed
@@ -1360,6 +1367,11 @@
                     this.pretty_playback_duration = prettyDuration(
                         (this.$refs.audio_element as HTMLAudioElement).duration
                     );
+
+                    if(this.is_debug === true){
+
+                        console.log("audio metadata duration: " + this.pretty_playback_duration);
+                    }
 
                     this.adjustPlaybackSliderDimension();
                     this.createPlaybackSliderAnime();

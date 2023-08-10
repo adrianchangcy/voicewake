@@ -1,6 +1,5 @@
 from django.apps import AppConfig
 from django.conf import settings
-from django.contrib.auth import get_user_model
 
 class VoicewakeConfig(AppConfig):
     
@@ -20,7 +19,7 @@ class VoicewakeConfig(AppConfig):
             #expects User
             def add_to_default_group(user):
 
-                group, created = Group.objects.get_or_create(name='regular')
+                group = Group.objects.get(name='regular')
 
                 #expects User instance
                 group.user_set.add(user)

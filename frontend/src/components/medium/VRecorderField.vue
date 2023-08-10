@@ -86,29 +86,13 @@
                 type: Boolean,
                 default: false
             },
-            propFileDuration: { //milliseconds
-                type: Number,
-                default: 0
-            },
             propIsOpen: {
                 type: Boolean,
                 default: false
             },
         },
         computed: {
-            getPrettyPropFileDuration() : string {
 
-                if(this.propHasRecording === true){
-
-                    return new Date(
-                        this.propFileDuration
-                        ).toISOString().substring(14, 19);
-
-                }else{
-
-                    return 'empty';
-                }
-            },
         },
         watch: {
             propIsOpen(new_value:boolean){
