@@ -1110,7 +1110,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
                 #audio_file, further validation
                 #on error, will raise by themselves
-                handle_audio_file_class = HandleAudioFile(new_data['audio_file'])
+                handle_audio_file_class = HandleAudioFile(new_data['audio_file'], True)
 
                 #prepare audio file info, which also self-validates
                 #reminder that .size check should be done at form/serializer
