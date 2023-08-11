@@ -338,8 +338,7 @@ class Events_TestCase(TestCase):
         # process_audio_file_class = HandleAudioFile(audio_file)
 
         #example file
-        # audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/audio_can_overwrite.mp3')
-        audio_file_full_path = os.path.join(settings.BASE_DIR, 'uploads/events/year_2023/month_8/day_10/user_id_1/e_6.mp3')
+        audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/audio_can_overwrite.mp3')
 
         #automate args
         file_extension = audio_file_full_path.split(".", -1)[-1]
@@ -351,7 +350,7 @@ class Events_TestCase(TestCase):
         #since both are the same, with only 1 extra method as difference
         #can't seem to create TemporaryUploadedFile() when testing, as .read() returns b''
         audio_file_in_memory = InMemoryUploadedFile(
-            io.FileIO(audio_file_full_path),
+            io.FileIO(audio_file_full_path, mode="rb+"),
             'FileField',                            #to-be field if it were in form/serializer
             temporary_audio_file_name,              #doesn't have to match actual file name
             content_type,                           #Content-Type
@@ -366,16 +365,14 @@ class Events_TestCase(TestCase):
         handle_audio_file_class = HandleAudioFile(audio_file_in_memory, True)
 
         #process info, will raise error during validation
-        self.assertEqual(type(handle_audio_file_class.get_audio_file_info()), dict)
-
-        print(handle_audio_file_class.audio_file_info)
-        return
+        self.assertEqual(handle_audio_file_class.prepare_audio_file_info(), True)
 
         #process peaks
         self.assertEqual(type(handle_audio_file_class.get_peaks_by_buckets()), list)
 
         #check
         self.assertEqual(type(handle_audio_file_class.peak_buckets), list)
+        self.assertEqual(len(handle_audio_file_class.peak_buckets), handle_audio_file_class.bucket_quantity)
 
         for row in handle_audio_file_class.peak_buckets:
             self.assertEqual(type(row), float)

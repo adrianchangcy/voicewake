@@ -115,6 +115,8 @@ class CreateEventsSerializer(serializers.Serializer):
     def validate_audio_file(self, value):
 
         #ensure audio_file does not exceed max file size
+        #web serve should be first line of defense at production (e.g. LimitRequestBody setting at Apache)
+        #https://stackoverflow.com/questions/6195478/max-image-size-on-file-upload
         if value.size > settings.EVENT_MAX_FILE_SIZE_BYTES:
 
             #file is too large
