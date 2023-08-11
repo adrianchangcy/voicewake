@@ -565,7 +565,7 @@ class HandleAudioFile:
         self.bucket_quantity = 20
 
         #check type
-        if type(audio_file) not in [str, InMemoryUploadedFile, TemporaryUploadedFile]:
+        if type(audio_file) not in [InMemoryUploadedFile, TemporaryUploadedFile]:
 
             raise TypeError('audio_file must be of type [str, InMemoryUploadedFile, TemporaryUploadedFile].')
         
@@ -579,7 +579,7 @@ class HandleAudioFile:
         self.peak_buckets = None
 
 
-    def get_audio_file_info(self)->dict:
+    def prepare_audio_file_info(self)->bool:
 
         self.audio_file.seek(0)
 
@@ -600,15 +600,61 @@ class HandleAudioFile:
 
         self.audio_file.seek(0)
 
-        print(json.loads(result.stdout))
-
         self.audio_file_info = json.loads(result.stdout)
-        self.audio_file_duration_s = round(float(self.audio_file_info['format']['duration']), 2)
 
+        if 'duration' in self.audio_file_info['format']:
+
+            #has duration metadata
+            #round off duration to int, floor is preferred in terms of presentation
+            self.audio_file_duration_s = math.floor(
+                float(self.audio_file_info['format']['duration'])
+            )
+
+        else:
+
+            #no duration metadata, get it from packets instead
+            self._get_duration_from_last_packet()
+
+        #validate everything
         self._validate_audio_file_info()
 
-        return self.audio_file_info
-    
+        return True
+
+
+    def _get_duration_from_last_packet(self):
+
+        #dts_time: DTS time, decides when a frame has to be decoded
+        #pts_time: PTS time, describes when a frame has to be presented
+        #difference only becomes important in video B-frames, i.e. frames containing references past + future frames
+
+        self.audio_file.seek(0)
+
+        #expect packets to have dts_time/pts_time
+        #we get last packet and use pts_time as seemingly accurate total duration in seconds
+        result = subprocess.run(
+            [
+                'ffprobe',
+                '-v', 'error',
+                '-show_packets',
+                '-of', 'json',
+                '-read_intervals', '999999',    #seconds, make sure is longer than file duration, 999999 is safe
+                '-i', 'pipe:0',
+            ],
+            input=self.audio_file.read(),
+            check=True,
+            capture_output=True,
+            timeout=self.subprocess_timeout_s
+        )
+
+        self.audio_file.seek(0)
+
+        result = json.loads(result.stdout)
+
+        #round off duration to int, floor is preferred in terms of presentation
+        self.audio_file_duration_s = math.floor(
+            float(result['packets'][0]['pts_time'])
+        )
+
 
     def _validate_audio_file_info(self)->bool:
 
@@ -622,29 +668,33 @@ class HandleAudioFile:
 
         for count, stream in enumerate(self.audio_file_info['streams']):
 
-            if stream['codec_name'] == "opus":
+            if stream['codec_name'] in ["opus", "mp3"]:
 
                 break
 
             elif count == len(self.audio_file_info['streams']) - 1:
 
-                raise RuntimeError("Could not find 'opus' in any ['streams'][x]['codec_name'].")
+                raise RuntimeError("Codec is not opus/mp3.")
         
-        if self.audio_file_duration_s < 0.2:
+        if self.audio_file_duration_s < 1:
 
-            raise ValueError("Duration must be >= 0.2s. File was %ss." % (self.audio_file_info['format']['duration']))
+            raise ValueError("Duration must be more than 1s.")
         
         return True
 
 
     def _replace_original_audio_file_bytes_with_normalised_version(self, normalised_bytes:bytes):
 
+        #in views.py, InMemoryUploadedFile and TemporaryUploadedFile can be written into
+        #if you have issues with writing, e.g. during tests, check your mode arg in io.BytesIO(path, mode="rb+")
+
         #delete existing bytes
         self.audio_file.truncate(0)
 
-        #write in
         self.audio_file.seek(0)
-        
+
+        #write in
+        #good practice to use chunks(), even when unnecessary for memory, as per docs
         for chunk in ContentFile(normalised_bytes).chunks():
 
             self.audio_file.write(chunk)
@@ -664,12 +714,11 @@ class HandleAudioFile:
 
         #get necessary info
         sample_rate = int(self.audio_file_info['streams'][0]['sample_rate'])
-        duration = float(self.audio_file_info['format']['duration'])
 
         #calculate appropriate sample rate to get bucket_quantity + 1
         #math.floor() is important to guarantee we always get surplus buckets, i.e. just compare last buckets
         #compared to math.ceil(), which may give us less buckets than we need, i.e. must maybe create last fake bucket
-        asetnsamples = math.floor(duration / self.bucket_quantity * sample_rate)
+        asetnsamples = math.floor(self.audio_file_duration_s / self.bucket_quantity * sample_rate)
         
         #must escape ":"
         ffprobe_i = 'amovie=pipe\\\\:0,asetnsamples=%s,astats=metadata=1:reset=1' % (str(asetnsamples))

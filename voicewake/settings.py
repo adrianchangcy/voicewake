@@ -95,12 +95,12 @@ if DEBUG is True:
     REQUEST_TIME_DELAY = 0  #seconds
 
     MIDDLEWARE += [
-        'voicewake.middleware.drf_api_delay_middleware.TimeDelayMiddleware'
+        'voicewake.middleware.drf_api_delay_middleware.TimeDelayMiddleware',
+        'debug_toolbar.middleware.DebugToolbarMiddleware',
     ]
 
 #standard
 MIDDLEWARE += [
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',

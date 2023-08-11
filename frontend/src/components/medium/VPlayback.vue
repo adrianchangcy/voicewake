@@ -21,15 +21,18 @@
                 propEvent === null ? 'grid-cols-3 pr-4' : 'grid-cols-4',
                 'h-20 grid grid-rows-2 rounded-lg border border-theme-light-gray shade-border-when-hover transition-colors'
             ]"
+            @click="[updateInstanceLastInteracted(), instance_has_focus=true]"
             @pointerdown="[updateInstanceLastInteracted(), instance_has_focus=true]"
             @focusin="[updateInstanceLastInteracted(), instance_has_focus=true]"
             @focusout="instance_has_focus=false"
         >
 
             <!--play/pause-->
+            <!--must use click-->
+            <!--because pointerdown doesn't tell browser that user has interacted with document for media.play()-->
             <div class="row-start-1 row-span-2 col-start-1 col-span-1 text-4xl relative">
                 <VActionTextOnly
-                    @pointerdown="userTogglePlaybackPlayPause()"
+                    @click="userTogglePlaybackPlayPause()"
                     @keydown.enter="userTogglePlaybackPlayPause()"
                     :propIsEnabled="isPlaybackReady"
                     propElement="button"
@@ -257,7 +260,7 @@
     export default defineComponent({
         data(){
             return {
-                is_debug: false,
+                is_debug: true,
 
                 instance_id: "",    //uuid, to identify between multiple VPlayback instances
                 vplayback_store: useVPlaybackStore(),
@@ -300,6 +303,9 @@
                 playback_states: ['initiate', 'recording', 'attaching', 'can_play', 'loading'],
 
                 fastest_anime_duration_ms: 100, //to change anime durations easily
+
+                //fix for resize firing adjustment too quickly, leaving us with inaccurate dimension
+                window_resize_timeout: null as number|null,
             };
         },
         emits: [
@@ -809,13 +815,27 @@
                 //e.g. all playback skips just lead to seek(0)
                 //simply do a manual refresh
 
-                //for event listener 'resize', this recreates slider anime and syncs it
-                this.adjustPlaybackSliderDimension();
+                //we need to use timeout because resize event randomly fires before actual dimension is fixed
 
-                if(this.isPlaybackReady === true && isNaN((this.$refs.audio_element as HTMLAudioElement).duration) === false){
-                    this.createPlaybackSliderAnime();
-                    this.syncSliderAnimeAfterSuspend();
-                }
+                this.window_resize_timeout !== null ? clearTimeout(this.window_resize_timeout) : null;
+
+                this.window_resize_timeout = window.setTimeout(()=>{
+
+                    //for event listener 'resize', this recreates slider anime and syncs it
+                    this.adjustPlaybackSliderDimension();
+
+                    if(this.isPlaybackReady === true && isNaN((this.$refs.audio_element as HTMLAudioElement).duration) === false){
+                        
+                        this.createPlaybackSliderAnime();
+                        this.syncSliderAnimeAfterSuspend();
+
+                        if(this.is_debug === true){
+
+                            console.log("Triggered handleWindowResize()");
+                            console.log("Navigation dimensions: " + JSON.stringify(this.playback_slider_dimension));
+                        }
+                    }
+                }, 200);
             },
             syncSliderAnimeAfterSuspend() : void {
 
@@ -935,7 +955,7 @@
 
                 const target = (this.$refs.audio_element as HTMLAudioElement);
 
-                if(target.ended === false && target.paused === true){
+                if(target.ended === false && target.paused === true && this.playback_slider_value === 1){
 
                     //when paused and dragged to end, html media seems to still want you to play once to truly end
                     //handle only the media here, the rest are already settled
@@ -991,12 +1011,7 @@
                         this.playback_slider_value = 1;
                     }
 
-                    if(this.is_debug === true){
-
-                        console.log("playback_slider_value: " + this.playback_slider_value.toString());
-                    }
-
-                    this.handlePlaybackDrag();
+                    this.seekPlayback();
 
                     //troubleshoot if needed
                     // console.log("==========================");
@@ -1024,7 +1039,7 @@
                 }
 
             },
-            handlePlaybackDrag() : void {
+            seekPlayback() : void {
 
                 //expects playback_slider_value to be float 0 to 1
 
@@ -1047,7 +1062,18 @@
                 this.playback_slider_progress_anime.completed = false;
 
                 //handle <audio>
-                (this.$refs.audio_element as HTMLAudioElement).currentTime = jumped_playback_duration;
+                audio_element.currentTime = jumped_playback_duration;
+
+                if(this.is_debug === true){
+
+                    console.log('=====seekPlayback()=====');
+                    console.log("playback_slider_value: " + this.playback_slider_value.toString());
+                    console.log('audio seeking jumped_playback_duration: ' + jumped_playback_duration.toString());
+                    console.log('audio currentTime: ' + audio_element.currentTime.toString());
+                    console.log('audio ended: ' + audio_element.ended.toString());
+                    console.log('audio readyState: ' + audio_element.readyState.toString());
+                    console.log('==========');
+                }
 
                 //handle timer
                 this.updateCurrentPlaybackTime();
@@ -1085,7 +1111,7 @@
 
                 //update playback_slider_value and visuals
                 this.playback_slider_value = target.currentTime / target.duration;
-                this.handlePlaybackDrag();
+                this.seekPlayback();
 
                 //resume if originally playing
                 if(this.user_paused === false && this.playback_slider_value < 1){
@@ -1158,7 +1184,7 @@
             playPlayback() : void {
 
                 //using play/pause instead of remove+create prevents slight off-position on second play
-                //our new anime position is already settled by handlePlaybackDrag()
+                //our new anime position is already settled by seekPlayback()
 
                 const target = (this.$refs.audio_element as HTMLAudioElement);
 
@@ -1429,6 +1455,27 @@
             }
         },
         mounted(){
+
+            if(this.is_debug === true){
+
+                console.log(
+                    "\n\nNote on expected playback issue:\n" +
+                    "At localhost, on first-time media serve (i.e. not from cache), Django is missing a few headers." +
+                    "\n\nSome or all of these headers are required to do .currentTime properly:\n" +
+                    "Content-Range, Accept-Ranges, Content-Length, Content-Type" +
+                    "\nRequest status is also 200, when it should be 206." +
+                    "\n\nWhat the issue looks like:\n" +
+                    "First time load --> missing headers --> play until end -->" +
+                    "trying to do <audio>.currentTime=x always becomes <audio>.currentTime=0." +
+                    "\n\nSolutions:\n" +
+                    "To fix at localhost, just refresh page and let browser serve from cache. Everything is correct if from cache." +
+                    "\nTo fix at production, specify some settings at web server. It's supposedly easy." +
+                    "\n\nLinks that will/might help:\n" +
+                    "https://stackoverflow.com/q/39051206\n" +
+                    "https://stackoverflow.com/q/157318\n" +
+                    "https://stackoverflow.com/q/52137963\n"
+                );
+            }
 
             //generate uuid for this component instance
             this.instance_id = getRandomUUID();
