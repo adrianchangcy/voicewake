@@ -234,17 +234,6 @@
 
                         <!--divider-->
                         <div class="w-[75%] h-[1px] my-10 bg-theme-light-gray mx-auto"></div>
-                        <!-- <div class="grid grid-cols-4 py-10">
-                            <div class="col-span-1 flex items-center">
-                                <i class="fas fa-user text-xl w-fit h-fit mx-auto"></i>
-                            </div>
-                            <div class="col-span-3 flex items-center">
-                                <span class="w-full h-fit text-xl font-light text-left truncate">
-                                    <span v-if="propIsLoggedIn">{{ propUsername }}</span>
-                                    <span v-else>Not logged in</span>
-                                </span>
-                            </div>
-                        </div> -->
 
                         <!--account options-->
                         <div class="h-fit grid grid-rows-2 gap-2">
