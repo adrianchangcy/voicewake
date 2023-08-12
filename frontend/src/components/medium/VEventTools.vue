@@ -30,7 +30,6 @@
                         <i class="absolute w-fit h-fit far fa-thumbs-up mx-auto"></i>
                     </div>
                     <!--like count-->
-                    <span v-show="is_liked === true" class="sr-only">you have liked this</span>
                     <div
                         v-show="prettyLikeCount !== ''"
                         class="w-fit h-full pl-2 flex items-center text-sm"
@@ -40,6 +39,8 @@
                             {{ prettyLikeCount }}
                         </span>
                     </div>
+                    <span class="sr-only">like button</span>
+                    <span v-show="is_liked === true" class="sr-only">you have liked this</span>
                 </div>
             </button>
 
@@ -65,7 +66,6 @@
                         <i class="absolute w-fit h-fit far fa-thumbs-down mx-auto"></i>
                     </div>
                     <!--dislike count-->
-                    <span v-show="is_liked === false" class="sr-only">you have disliked this</span>
                     <div
                         v-show="prettyDislikeCount !== ''"
                         class="w-fit h-full pl-2 flex items-center text-sm"
@@ -75,6 +75,8 @@
                             {{ prettyDislikeCount }}
                         </span>
                     </div>
+                    <span class="sr-only">dislike button</span>
+                    <span v-show="is_liked === false" class="sr-only">you have disliked this</span>
                 </div>
             </button>
         </div>

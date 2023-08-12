@@ -109,6 +109,7 @@
                 recorder: null as any | null,   //recordRTC object, but lazy to find a solution
                 recorder_state: null as 'recording' | 'paused' | 'stopped' | null,
                 recording_interval_worker: null as Worker | null,
+                mime_type: "",
 
                 is_recording: false,    //is not affected by pause/resume
                 current_duration: 0,    //milliseconds
@@ -379,7 +380,7 @@
                     // audio/wav
                     // audio/ogg  -- ONLY Firefox
                     // demo: simple-demos/isTypeSupported.html
-                    mimeType: 'audio/webm',
+                    mimeType: this.mime_type,
                 
                     // MediaStreamRecorder, StereoAudioRecorder, WebAssemblyRecorder
                     // CanvasRecorder, GifRecorder, WhammyRecorder
@@ -594,6 +595,29 @@
                     console.log(error);
                 }
             },
+            chooseMimeType() : void {
+
+                if(MediaRecorder.isTypeSupported("audio/mp4") === true){
+
+                    //Safari
+                    this.mime_type = "audio/mp4";
+
+                }else if(MediaRecorder.isTypeSupported("audio/webm") === true){
+
+                    //others, also default for RecordRTC
+                    this.mime_type = "audio/webm";
+
+                }else{
+
+                    alert("Your browser does not support mp4/webm. Playback may be unavailable.");
+                    throw new Error("Your browser does not support mp4/webm. Playback may be unavailable.");
+                }
+            },
+        },
+        mounted(){
+
+            //choose proper mime type
+            this.chooseMimeType();
         },
         beforeUnmount(){
 

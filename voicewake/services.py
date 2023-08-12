@@ -589,6 +589,7 @@ class HandleAudioFile:
                 '-v', 'error',
                 '-show_entries', 'format',  #if you want only some keys, do format=duration, no difference though
                 '-show_streams',
+                '-select_streams', 'a',
                 '-of', 'json',
                 '-i', 'pipe:0'
             ],

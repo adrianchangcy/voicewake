@@ -1540,9 +1540,17 @@
                     //scenario #2, when volume at 100%, one accidental arrowup would blast the volume to max
             }
 
+            const audio_element = (this.$refs.audio_element as HTMLAudioElement);
+
             //set <audio> rate and volume
-            (this.$refs.audio_element as HTMLAudioElement).playbackRate = this.playback_rate;
-            (this.$refs.audio_element as HTMLAudioElement).volume = this.playback_volume;
+            audio_element.playbackRate = this.playback_rate;
+            audio_element.volume = this.playback_volume;
+            
+            //tell user that their browser cannot play mp3
+            if(audio_element.canPlayType("audio/mp3").toLowerCase().length === 0){
+
+                alert("Your browser does not support mp3 files.");
+            }
 
             //attach listeners
             window.addEventListener('pointerdown', this.determineInstanceHasFocus);
@@ -1551,9 +1559,11 @@
             window.addEventListener('resize', this.handleWindowResize);
             window.addEventListener('keydown', this.handleKeyboardEvent);
             document.addEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
-            (this.$refs.audio_element as HTMLAudioElement).addEventListener('timeupdate', this.updateCurrentPlaybackTime);
+            audio_element.addEventListener('timeupdate', this.updateCurrentPlaybackTime);
         },
         beforeUnmount(){
+
+            const audio_element = (this.$refs.audio_element as HTMLAudioElement);
 
             //remove listeners
             window.removeEventListener('pointerdown', this.determineInstanceHasFocus);
@@ -1562,7 +1572,7 @@
             window.removeEventListener('resize', this.handleWindowResize);
             window.removeEventListener('keydown', this.handleKeyboardEvent);
             document.removeEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
-            (this.$refs.audio_element as HTMLAudioElement).removeEventListener('timeupdate', this.updateCurrentPlaybackTime);
+            audio_element.removeEventListener('timeupdate', this.updateCurrentPlaybackTime);
         },
     });
 </script>
