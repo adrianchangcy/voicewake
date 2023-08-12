@@ -222,17 +222,29 @@
                     >
 
                         <!--profile area-->
-                        <div class="grid grid-cols-4 py-10">
-                            <div class="col-span-1 flex items-center">
-                                <i class="fas fa-user text-base w-fit h-fit mx-auto"></i>
-                            </div>
-                            <div class="col-span-3 flex items-center">
-                                <span class="w-full h-fit text-base font-medium text-left truncate">
+                        <div class="pt-10 flex flex-col">
+                            <i class="fas fa-user text-base w-fit h-fit mx-auto"></i>
+                            <div class="w-full flex items-center h-10">
+                                <span class="max-w-full h-fit mx-auto text-xl font-light break-words">
                                     <span v-if="propIsLoggedIn">{{ propUsername }}</span>
                                     <span v-else>Not logged in</span>
                                 </span>
                             </div>
                         </div>
+
+                        <!--divider-->
+                        <div class="w-[75%] h-[1px] my-10 bg-theme-light-gray mx-auto"></div>
+                        <!-- <div class="grid grid-cols-4 py-10">
+                            <div class="col-span-1 flex items-center">
+                                <i class="fas fa-user text-xl w-fit h-fit mx-auto"></i>
+                            </div>
+                            <div class="col-span-3 flex items-center">
+                                <span class="w-full h-fit text-xl font-light text-left truncate">
+                                    <span v-if="propIsLoggedIn">{{ propUsername }}</span>
+                                    <span v-else>Not logged in</span>
+                                </span>
+                            </div>
+                        </div> -->
 
                         <!--account options-->
                         <div class="h-fit grid grid-rows-2 gap-2">
@@ -251,7 +263,7 @@
                                         <i class="fas fa-circle-user w-fit h-fit mx-auto"></i>
                                     </div>
                                     <div class="col-span-3 flex items-center">
-                                        <span class="text-left break-all">
+                                        <span class="text-left font-normal break-all">
                                             Log in
                                         </span>
                                     </div>
@@ -272,7 +284,7 @@
                                         <i class="fas fa-right-to-bracket w-fit h-fit mx-auto"></i>
                                     </div>
                                     <div class="col-span-3 flex items-center">
-                                        <span class="text-left break-all">
+                                        <span class="text-left font-normal break-all">
                                             Sign up
                                         </span>
                                     </div>
@@ -302,7 +314,7 @@
                                         </span>
                                     </div>
                                     <div class="col-span-3 flex items-center">
-                                        <span class="text-left break-all">
+                                        <span class="text-left font-normal break-all">
                                             <span v-if="is_log_out_loading">
                                                 Logging out...
                                             </span>
