@@ -41,9 +41,8 @@
                 <object
                     data="{% static 'svg/before_footer_mountain.svg' %}"
                     type="image/svg+xml"
-                >
-                    entering footer area
-                </object>
+                    role="none"
+                ></object>
             </div>
         </div>
 
@@ -63,15 +62,3 @@
     </body>
 {% endblock %}
 </html>
-
-
-<script>
-
-    //prevent scrolling on spacebar without disabling input space
-    window.addEventListener('keydown', (event) => {
-        if(event.keyCode === 32 && event.target === document.body){
-            event.preventDefault();
-        }
-    });
-
-</script>
