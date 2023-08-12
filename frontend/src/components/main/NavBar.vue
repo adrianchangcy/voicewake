@@ -222,18 +222,16 @@
                     >
 
                         <!--profile area-->
-                        <div class="pt-10 flex flex-col">
+                        <div class="pt-12 flex flex-col">
                             <i class="fas fa-user text-base w-fit h-fit mx-auto"></i>
-                            <div class="w-full flex items-center h-10">
-                                <span class="max-w-full h-fit mx-auto text-xl font-light break-words">
-                                    <span v-if="propIsLoggedIn">{{ propUsername }}</span>
-                                    <span v-else>Not logged in</span>
-                                </span>
-                            </div>
+                            <span class="max-w-full h-fit mx-auto text-xl font-light break-words">
+                                <span v-if="propIsLoggedIn">{{ propUsername }}</span>
+                                <span v-else>Not logged in</span>
+                            </span>
                         </div>
 
                         <!--divider-->
-                        <div class="w-[75%] h-[1px] my-10 bg-theme-light-gray mx-auto"></div>
+                        <div class="w-[75%] h-[1px] mt-14 mb-12 bg-theme-light-gray mx-auto"></div>
 
                         <!--account options-->
                         <div class="h-fit grid grid-rows-2 gap-2">
