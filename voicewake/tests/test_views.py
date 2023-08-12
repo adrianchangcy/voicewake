@@ -334,6 +334,10 @@ class Events_TestCase(TestCase):
 
     def test_file_handling_from_request(self):
 
+        #should have webm/opus and mp4/__ files for test, but too lazy for now
+        #webm/opus works
+        #https://dirask.com/posts/JavaScript-supported-Audio-Video-MIME-Types-by-MediaRecorder-Chrome-and-Firefox-jERn81
+
         # audio_file = 'events/year_2023/month_7/day_21/user_id_1/e_13.webm'
         # process_audio_file_class = HandleAudioFile(audio_file)
 
