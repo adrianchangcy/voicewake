@@ -132,10 +132,6 @@ TIPS
 }
 ::-webkit-scrollbar-thumb{
 	background-color: #444444;      /*theme-black*/
-	outline: 2px solid #e7e5e4;
-	outline-offset: -2px;
-	border: .1px solid #e7e5e4;
-    border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover{
 	background-color: rgba(168, 162, 158, 1);  /*same as shade-text-when-hover*/
