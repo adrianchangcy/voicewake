@@ -323,9 +323,8 @@
                 //do API request
                 let data = new FormData();
                 data.append('event_room_id', JSON.stringify(this.event_room_id));
-                data.append('to_reply', JSON.stringify(false));
 
-                await axios.post(window.location.origin + '/api/user-actions', data)
+                await axios.post(window.location.origin + '/api/event-rooms/reply/cancel', data)
                 .then(() => {
 
                     this.is_this_user_replying = false;
@@ -378,7 +377,7 @@
                 this.is_searching = true;
 
                 //prepare events, then separate
-                await axios.get(window.location.origin + '/api/events/get/event-room/' + this.event_room_id.toString())
+                await axios.get(window.location.origin + '/api/event-rooms/get/' + this.event_room_id.toString())
                 .then((results:any) => {
 
                     if(results.data['data'].length === 0){

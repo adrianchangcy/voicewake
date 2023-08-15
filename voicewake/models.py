@@ -139,7 +139,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     #email_lowercase and username_lowercase are for matching against db
     #email and username are for displaying and general usage
 
-    #FYI, do not need unique_together for email and username, else two unique emails can have the same username, and vice versa
+    #FYI, do not need email and username to be unique together, else two unique emails can have the same username, and vice versa
     #for username, string should always use '', but due to unique constraint, we must use null
 
     #main field for account's identifier, must also be unique
@@ -323,7 +323,9 @@ class UserEventRooms(models.Model):
         app_label = 'voicewake'
         managed = True
         db_table = 'user_event_rooms'
-        unique_together = ('user', 'event_room')
+        constraints = [
+            models.UniqueConstraint(fields=["user", "event_room"], name="unique_user_event_room")
+        ]
 
 
 class UserFavourites(models.Model):

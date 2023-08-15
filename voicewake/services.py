@@ -35,6 +35,101 @@ from .models import *
 from .static.values.values import *
 
 
+#uses class just to show context for devs
+#use the methods independently, without class context
+class HandleError:
+
+    def new_error(error_class:Exception, dev_message="", user_message="")->Exception:
+
+        #demo
+        # try:
+        #     raise HandleError.new_error(ValueError, "yo fix this", "hehe oops")
+        # except ValueError as e:
+        #     print(e.args[0]['dev_message'])
+
+        return error_class({
+            "dev_message": dev_message,
+            "user_message": user_message
+        })
+
+
+    def get_user_message(new_error:Exception)->str:
+
+        try:
+            return new_error.args[0]['user_message']
+        except:
+            return ""
+        
+
+    def get_dev_message(new_error:object)->str:
+
+        try:
+            return new_error.args[0]['dev_message']
+        except:
+            return ""
+
+
+#if empty db, run this once
+#do not run this during makemigrations and migrate, else error is raised
+def first_time_setup():
+
+    from django.contrib.auth.models import Group
+
+    with transaction.atomic():
+
+        #Group
+        Group.objects.get_or_create(name="regular")
+
+        #EventTones
+        with open(os.path.join(settings.BASE_DIR, 'voicewake/static/json/data_emojis_final.json'), encoding="utf8") as file:
+
+            emojis = json.load(file)
+            emojis = emojis.items()
+
+            #store for bulk_create
+            new_rows = []
+
+            for row in emojis:
+
+                (key, symbol) = row
+
+                new_rows.append(
+                    EventTones(
+                        event_tone_slug=key.replace("_", "-"),
+                        event_tone_name=key.replace("_"," "),
+                        event_tone_symbol=symbol
+                    )
+                )
+
+            #bulk_create
+            EventTones.objects.bulk_create(
+                new_rows,
+                ignore_conflicts=True
+            )
+
+            file.close()
+
+        #GenericStatuses
+        GenericStatuses.objects.bulk_create(
+            [
+                GenericStatuses(generic_status_name='ok'),
+                GenericStatuses(generic_status_name='deleted'),
+                GenericStatuses(generic_status_name='incomplete'),
+                GenericStatuses(generic_status_name='completed'),
+            ],
+            ignore_conflicts=True
+        )
+
+        EventRoles.objects.bulk_create(
+            [
+                EventRoles(event_role_name='originator'),
+                EventRoles(event_role_name='responder')
+            ],
+            ignore_conflicts=True
+        )
+
+        print("Finished populating db with necessary data.")
+
 
 #call this function as REST API via a standalone script, then run that script via cronjob
 #we currently rely on ffmpeg conversion to check for file integrity
@@ -208,6 +303,34 @@ def check_user_is_replying(request, exclude_event_room_id=None):
         ).count()
 
     return the_count > 0
+
+
+def sort_events_into_event_rooms(events:Events):
+
+    sorted_events = []
+    event_room_id = []  #simpler way to check and get element position in sorted_events
+
+    for row in events:
+
+        if row.event_room.id not in event_room_id:
+
+            sorted_events.append({
+                'event_room': row.event_room,
+                'originator': None,
+                'responder': []
+            })
+
+            event_room_id.append(row.event_room.id)
+
+        if row.event_role.event_role_name == 'originator':
+
+            sorted_events[event_room_id.index(row.event_room.id)]['originator'] = row
+
+        else:
+
+            sorted_events[event_room_id.index(row.event_room.id)]['responder'].append(row)
+
+    return sorted_events
 
 
 def prevent_event_room_from_queuing_twice_for_reply(user, event_room):
@@ -540,7 +663,10 @@ class HandleAudioFile:
         #preventing override would mean duplicating memory/disk space, and ensuring disk copy is deleted
         if overwrite_source is False:
 
-            raise ValueError("Current code will always overwrite original source's bytes to save memory.")
+            raise HandleError.new_error(
+                ValueError,
+                dev_message="Current code will always overwrite original source's bytes to save memory."
+            )
 
         #precaution:
             #size is checked via .size at serializer/form, not here
@@ -567,7 +693,10 @@ class HandleAudioFile:
         #check type
         if type(audio_file) not in [InMemoryUploadedFile, TemporaryUploadedFile]:
 
-            raise TypeError('audio_file must be of type [str, InMemoryUploadedFile, TemporaryUploadedFile].')
+            raise HandleError.new_error(
+                ValueError,
+                dev_message="audio_file must be of type [InMemoryUploadedFile, TemporaryUploadedFile]."
+            )
         
         # if type(audio_file) == str:
             # self.audio_file = open(audio_file, "rb+")
@@ -661,26 +790,33 @@ class HandleAudioFile:
 
         if self.audio_file_info is None:
 
-            raise TypeError("Cannot validate audio_file_info when it is None.")
+            raise HandleError.new_error(
+                ValueError,
+                dev_message="Cannot validate audio_file_info when it is None."
+            )
         
         #audio_file_info['streams'] can have multiple dicts if there's not only audio in it
         #e.g. a flac file from an album for test has a jpeg in it with ['index'] == 1
         #don't know whether the index order is always fixed, hence the loop
 
-        for count, stream in enumerate(self.audio_file_info['streams']):
+        #we don't care about codec
+        #we have "-select_streams a" to tell us that no audio stream exists
+        if len(self.audio_file_info['streams']) == 0:
 
-            if stream['codec_name'] in ["opus", "mp3"]:
+            raise HandleError.new_error(
+                ValueError,
+                dev_message="File does not contain audio.",
+                user_message="File does not contain audio."
+            )
 
-                break
-
-            elif count == len(self.audio_file_info['streams']) - 1:
-
-                raise RuntimeError("Codec is not opus/mp3.")
-        
         if self.audio_file_duration_s < 1:
 
-            raise ValueError("Duration must be more than 1s.")
-        
+            raise HandleError.new_error(
+                ValueError,
+                dev_message="Duration must be more than 1s.",
+                user_message="Duration must be more than 1s."
+            )
+
         return True
 
 
@@ -766,7 +902,11 @@ class HandleAudioFile:
             #should never have > 0dB (will produce audio clipping), mainly because we'll normalise to prevent it
             if peak_to_store > 0:
                 
-                raise ValueError('Peak is over 0dBFS, which will clip. Calculating peaks process has been halted.')
+                raise HandleError.new_error(
+                    ValueError,
+                    dev_message="Peak is over 0dBFS, which will clip. Calculating peaks process has been halted.",
+                    user_message="Audio normalisation had failed."
+                )
 
             #get percentage
             # -x / -y will always be positive
@@ -830,8 +970,12 @@ class HandleAudioFile:
 
         if first_pass_dict is None:
 
-            raise ValueError("Regex could not find first pass dict.")
-        
+            raise HandleError.new_error(
+                ValueError,
+                dev_message="Regex could not find the data needed for first_pass_dict via regex.",
+                user_message=""
+            )
+
         #transform into proper dict
         first_pass_dict = json.loads(first_pass_dict)
         first_pass_dict = dict(first_pass_dict)
@@ -877,7 +1021,10 @@ class HandleAudioFile:
 
         if len(output) == 0:
 
-            raise MemoryError("Empty bytes returned when normalising. Maybe you've forgotten to do .seek(0)?")
+            raise HandleError.new_error(
+                ValueError,
+                dev_message="Empty bytes returned when normalising. Maybe you've forgotten to do .seek(0)?"
+            )
 
         self._replace_original_audio_file_bytes_with_normalised_version(output)
 

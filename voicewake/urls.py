@@ -38,16 +38,24 @@ urlpatterns = [
     # path('user_verification_options/', views.user_verification_options_list),
     # path('user_verification_options/<int:id>/', views.user_verification_options_details),
     path('', include(router.urls)),
-    path('api/events/get/event-room/<int:event_room_id>', views.EventsAPI.as_view(), name='get_events_by_event_room_id'),
-    path('api/events/get/event-room/status/<str:generic_status_name>', views.EventsAPI.as_view(), name='get_events_by_generic_status_name'),
-    path('api/events/create', views.EventsAPI.as_view(), name='create_events'),
+
+    path('api/event-rooms/get/<int:event_room_id>', views.EventsAPI.as_view(), name='get_events_by_event_room_id'),
+    path('api/event-rooms/status/get/<str:generic_status_name>', views.EventRoomsAPI.as_view(), name='get_events_by_generic_status_name'),
+    path('api/event-rooms/reply-choices/list', views.HandleEventRoomReplyChoicesAPI.as_view(user_context="list"), name="list_event_room_reply_choices"),
+    path('api/event-rooms/reply-choices/expire', views.HandleEventRoomReplyChoicesAPI.as_view(user_context="expire"), name="list_event_room_reply_choices"),
+
+    path('api/event-rooms/create-new', views.EventsAPI.as_view(user_action="create_new"), name='create_new_event_rooms'),
+    path('api/event-rooms/reply/start', views.HandleReplyingEventRoomsAPI.as_view(user_action="start"), name="start_reply_event_rooms"),
+    path('api/event-rooms/reply', views.EventsAPI.as_view(user_action="reply"), name="reply_event_rooms"),
+    path('api/event-rooms/reply/cancel', views.HandleReplyingEventRoomsAPI.as_view(user_action="cancel"), name="cancel_reply_event_rooms"),
+
     path('api/event-likes-dislikes', views.EventLikesDislikesAPI.as_view(), name='event_likes_dislikes'),
-    path('api/user-actions', views.UserActionsAPI.as_view(), name='user_actions'),
     path('api/users/username/get/<str:username>', views.UsersUsernameAPI.as_view(), name='users_get_username'),
     path('api/users/username/set', views.UsersUsernameAPI.as_view(), name='users_set_username'),
     path('api/users/sign-up', views.UsersSignUpAPI.as_view(), name='users_sign_up'),
     path('api/users/log-in', views.UsersLogInAPI.as_view(), name='users_log_in'),
     path('api/users/log-out', views.UsersLogOutAPI.as_view(), name='users_log_out'),
+
     path('api/test', views.TestAPI.as_view(), name='test'),
     
     #user management

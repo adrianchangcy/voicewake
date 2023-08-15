@@ -249,18 +249,12 @@
                 this.is_submitting = true;
 
                 let data = new FormData();
+                const specific_url = this.propIsOriginator === true ? 'create-new' : 'reply';
                 
                 //prepare data
                 //webm follows VRecorder
                 data.append('event_tone_id', JSON.stringify((this.event_tone_choice as EventToneTypes)['id']));
                 data.append('audio_file', this.getPreparedFileForSubmit());
-                data.append('is_originator', JSON.stringify(this.propIsOriginator));
-
-                //prepare array in this specific way
-                for(let x=0; x < this.blob_volume_peaks.length; x++){
-
-                    data.append('audio_volume_peaks', JSON.stringify(this.blob_volume_peaks[x]));
-                }
 
                 if(this.propIsOriginator === true && this.event_name.trim() !== ''){
 
@@ -278,7 +272,7 @@
                     return;
                 }
 
-                await axios.post(window.location.origin + '/api/events/create', data)
+                await axios.post(window.location.origin + '/api/event-rooms/' + specific_url, data)
                 .then((response:any) => {
 
                     if(response.status === 201 && 'event_room_id' in response.data['data']){
