@@ -55,7 +55,7 @@ class EventRoomsSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class GetEventsSerializer(serializers.ModelSerializer):
+class EventsSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     event_role = EventRolesSerializer()
     event_tone = EventTonesSerializer()
@@ -75,11 +75,11 @@ class GetEventsSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'event_role', 'event_tone', 'event_room', 'generic_status', 'audio_file', 'audio_volume_peaks', 'audio_duration_s', 'like_count', 'dislike_count', 'is_liked_by_user']
 
 
-class GetEventRoomsSerializer(serializers.Serializer):
+class EventRoomsSerializer(serializers.Serializer):
     event_room = EventRoomsSerializer()
-    originator = GetEventsSerializer()
+    originator = EventsSerializer()
     responder = serializers.ListField(
-        child=GetEventsSerializer()
+        child=EventsSerializer()
     )
 
 
@@ -103,8 +103,6 @@ class CreateEventsSerializer(serializers.Serializer):
         max_length=200, #follow EventRooms.event_room_name
     )
 
-    is_originator = serializers.BooleanField()
-    
     event_tone_id = serializers.IntegerField()
 
     audio_file = serializers.FileField(
@@ -132,43 +130,40 @@ class CreateEventsSerializer(serializers.Serializer):
         return value
 
 
-    def validate(self, data):
-
-        #if originator, must have event_room_name
-        #if responder, must have event_tone_id
-
-        if data['is_originator'] is True and 'event_room_name' in data:
-
-            return data
-        
-        elif data['is_originator'] is False and 'event_room_id' in data:
-
-            return data
-        
-        else:
-
-            raise serializers.ValidationError('Missing paired data on is_originator.')
 
 
 
-class UserActionsSerializer(serializers.Serializer):
-    event_room_id = serializers.IntegerField(required=False)
-    to_reply = serializers.BooleanField(required=False)
 
 
-    def validate(self, data):
 
-        if 'event_room_id' in data and 'to_reply' in data:
 
-            return data
-        
-        elif 'to_reply' in data:
 
-            return data
-        
-        else:
 
-            raise serializers.ValidationError('Missing paired data.')
+
+
+
+
+
+
+
+class HandleReplyingEventRoomsSerializer(serializers.Serializer):
+
+    event_room_id = serializers.IntegerField()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class UsersUsernameAPISerializer(serializers.Serializer):

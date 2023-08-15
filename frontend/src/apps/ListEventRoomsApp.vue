@@ -463,7 +463,7 @@
                         break;
                 }
             },
-            async expireReplyChoices(context:"unfinished_reply"|"new_reply_choices"): Promise<void> {
+            async doExpire(context:"unfinished_reply"|"new_reply_choices"): Promise<void> {
 
                 if(this.is_expiry_loading === true){
 
@@ -473,9 +473,15 @@
                 this.is_expiry_loading = true;
 
                 let data = new FormData();
-                data.append("to_reply", JSON.stringify(false));
+                const specific_url = context === "unfinished_reply" ? "reply/cancel" : "reply-choices/expire";
 
-                await axios.post(window.location.origin + "/api/user-actions", data)
+                if(context === "unfinished_reply" && this.unfinished_reply_event_room !== null){
+
+                    data.append("event_room_id", JSON.stringify(this.unfinished_reply_event_room.event_room.id));
+                }
+
+
+                await axios.post(window.location.origin + "/api/event-rooms/" + specific_url, data)
                 .then(() => {
 
                     this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
@@ -541,7 +547,7 @@
 
                 this.is_searching = true;
 
-                await axios.get(window.location.origin + "/api/events/get/event-room/status/incomplete")
+                await axios.get(window.location.origin + "/api/event-rooms/reply-choices/list")
                 .then((results: any) => {
 
                     if(results.data["data"].length === 0){
@@ -608,9 +614,8 @@
                 //cancel previous reply choice
                 let data = new FormData();
                 data.append("event_room_id", JSON.stringify(this.unfinished_reply_event_room.event_room.id));
-                data.append("to_reply", JSON.stringify(false));
 
-                await axios.post(window.location.origin + "/api/user-actions", data)
+                await axios.post(window.location.origin + "/api/event-rooms/reply/cancel", data)
                 .then(() => {
 
                     this.is_unfinished_reply_deleting = false;
@@ -648,9 +653,8 @@
 
                 let data = new FormData();
                 data.append("event_room_id", JSON.stringify(event_room.event_room.id));
-                data.append("to_reply", JSON.stringify(true));
 
-                await axios.post(window.location.origin + "/api/user-actions", data)
+                await axios.post(window.location.origin + "/api/event-rooms/reply/start", data)
                 .then((results: any) => {
 
                     if(results.status === 202){
@@ -721,7 +725,7 @@
                 //time is up
                 if (time_elapsed_ms >= target_max_ms) {
 
-                    this.unfinished_reply_event_room === null ? this.expireReplyChoices(context) : this.deleteUnfinishedReply();
+                    this.unfinished_reply_event_room === null ? this.doExpire(context) : this.deleteUnfinishedReply();
                     return;
                 }
 
@@ -747,7 +751,7 @@
                     //time is up
                     if (time_elapsed_ms >= target_max_ms) {
 
-                        this.unfinished_reply_event_room === null ? this.expireReplyChoices(context) : this.deleteUnfinishedReply();
+                        this.unfinished_reply_event_room === null ? this.doExpire(context) : this.deleteUnfinishedReply();
                     }
 
                     //if interval started with >1000, reinitialise itself for new interval with shorter time
