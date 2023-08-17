@@ -113,7 +113,7 @@
                     >
                         <span class="flex items-center">
                             <span class="font-bold block">More event choices</span>
-                            <i class="fas fa-arrow-right block text-2xl pl-2"></i>
+                            <i class="fas fa-arrow-right block text-lg pl-2"></i>
                         </span>
                     </VActionTextOnly>
                 </span>
