@@ -373,6 +373,16 @@ class Events_TestCase(TestCase):
 
 
 
+class QS_TestCase(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        pass
+
+
+    def test_delete_qs(self):
+
+        Events.objects.all().delete()
 
 
 

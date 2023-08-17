@@ -757,9 +757,9 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
     def check_user_exceeded_reply_time_window(self, event_room):
 
-        minutes_passed = (get_datetime_now() - event_room.when_locked).total_seconds() / 60
+        minutes_passed = (get_datetime_now() - event_room.when_locked).total_seconds()
 
-        if minutes_passed > REPLY_INACTIVE_MAX_MINUTES:
+        if minutes_passed > settings.EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS:
 
             return True
         
@@ -1029,7 +1029,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
     #excludes event_room started by user
     def get_queryset_by_random_incomplete(self):
 
-        events = Events.objects.select_for_update(of=("event_rooms")).raw(
+        events = Events.objects.select_for_update(of=("event_rooms",)).raw(
             '''
             SELECT
                 events.*,
@@ -1106,7 +1106,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
 
         User = get_user_model()
 
-        event_rooms = EventRooms.objects.select_for_update(of=("self")).filter(
+        event_rooms = EventRooms.objects.select_for_update().filter(
             locked_for_user=User(pk=self.request.user.id)
         )
         
@@ -1200,63 +1200,73 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                         ).data,
                     },
                 )
-
-            #user is not replying, continue
+        
+        try:
 
             with transaction.atomic():
 
-                #not replying, can unlock previous choices if any
-                self.unlock_event_rooms_from_past_reply_choices()
+                #user is not replying, continue
+                if self.user_context == "list":
 
-                #get events
-                events = self.get_queryset_by_random_incomplete()
+                    #not replying, can unlock previous choices if any
+                    self.unlock_event_rooms_from_past_reply_choices()
 
-                if len(events) == 0:
+                    #get events
+                    events = self.get_queryset_by_random_incomplete()
 
+                    if len(events) == 0:
+
+                        return Response(
+                            data={
+                                'message': '',
+                                'data': EventRoomsSerializer(
+                                    [],
+                                    many=True
+                                ).data,
+                            },
+                        )
+
+                    #lock events
+                    #also calls prevent_event_room_from_queuing_twice_for_reply()
+                    self.lock_event_rooms_for_reply_choices(events)
+
+                    #return events sorted by event_rooms
                     return Response(
                         data={
                             'message': '',
                             'data': EventRoomsSerializer(
-                                [],
+                                sort_events_into_event_rooms(events),
                                 many=True
                             ).data,
                         },
                     )
-
-                #lock events
-                #also calls prevent_event_room_from_queuing_twice_for_reply()
-                self.lock_event_rooms_for_reply_choices(events)
-
-                #return events sorted by event_rooms
-                return Response(
-                    data={
-                        'message': '',
-                        'data': EventRoomsSerializer(
-                            sort_events_into_event_rooms(events),
-                            many=True
-                        ).data,
-                    },
-                )
         
-        elif self.user_context == "expire":
+                elif self.user_context == "expire":
 
-            with transaction.atomic():
+                    #has expired, so unlock
+                    self.unlock_event_rooms_from_past_reply_choices()
 
-                #has expired, so unlock
-                self.unlock_event_rooms_from_past_reply_choices()
+                    return Response(
+                        data={
+                            'message': 'The event choice has expired for being unselected for too long. Feel free to search again!'
+                        },
+                        status=status.HTTP_205_RESET_CONTENT
+                    )
 
-                return Response(
-                    data={
-                        'message': 'The event choice has expired for being unselected for too long. Feel free to search again!'
-                    },
-                    status=status.HTTP_205_RESET_CONTENT
-                )
-        
-        else:
+                else:
 
-            raise HandleError.new_error(
-                AttributeError,
-                dev_message="Invalid user_context arg from urls.py."
+                    raise HandleError.new_error(
+                        AttributeError,
+                        dev_message="Invalid user_context arg from urls.py."
+                    )
+                
+        except Exception as e:
+
+            return Response(
+                data={
+                    'message': HandleError.get_user_message(e)
+                },
+                status=status.HTTP_400_BAD_REQUEST
             )
 
 
@@ -1276,7 +1286,7 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
         User = get_user_model()
 
         #check if user is replying to any other event_room
-        if check_user_is_replying(request=self.request, exclude_event_room_id=event_room_id) is True:
+        if check_user_is_replying(request=self.request, excluded_event_room_id=event_room_id) is True:
 
             return Response(
                 data={
@@ -1290,10 +1300,14 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
             with transaction.atomic():
 
                 #get event_room
+                #we want to do select_for_update(), but it's not allowed for nullable joins, so we do exclude()
+                #also, you must add coma (,) to of=("self",), else it gets unpacked into "s","e","l","f"
                 event_room = EventRooms.objects.select_related(
                     'generic_status', 'locked_for_user'
                 ).select_for_update(
-                    of=('self')
+                    of=("self",)
+                ).exclude(
+                    locked_for_user=None
                 ).get(
                     pk=event_room_id
                 )
@@ -1307,7 +1321,7 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
                 if\
                     event_room.generic_status.generic_status_name == 'incomplete' and\
                     event_room.when_locked is not None and\
-                    ((get_datetime_now() - event_room.when_locked).total_seconds() / 60) <= REPLY_CHOICE_INACTIVE_MAX_MINUTES and\
+                    (get_datetime_now() - event_room.when_locked).total_seconds() <= settings.EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS and\
                     event_room.locked_for_user is not None and event_room.locked_for_user.id == self.request.user.id and\
                     event_room.is_replying is False\
                 :
@@ -1315,6 +1329,14 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
                     pass
 
                 else:
+
+                    if settings.DEBUG is True:
+
+                        print(event_room.generic_status.generic_status_name == 'incomplete')
+                        print(event_room.when_locked is not None)
+                        print((get_datetime_now() - event_room.when_locked).total_seconds() <= settings.EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS)
+                        print(event_room.locked_for_user is not None and event_room.locked_for_user.id == self.request.user.id)
+                        print(event_room.is_replying)
 
                     raise HandleError.new_error(
                         ValueError,
@@ -1328,7 +1350,7 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
                 event_rooms = EventRooms.objects.filter(
                     locked_for_user=user
                 ).select_for_update(
-                    of=("self")
+                    of=("self",)
                 ).exclude(
                     pk=event_room_id
                 )
@@ -1367,6 +1389,8 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
         
         except Exception as e:
 
+            traceback.print_exc()
+
             return Response(
                 data={
                     'message': HandleError.get_user_message(e),
@@ -1387,7 +1411,7 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
                 event_room = EventRooms.objects.select_related(
                     'generic_status', 'locked_for_user'
                 ).select_for_update(
-                    of=("self")
+                    of=("self",)
                 ).get(
                     pk=event_room_id
                 )
@@ -1551,38 +1575,35 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
-
-        #handle is_liked
+        
         try:
 
-            event_like_dislike = EventLikesDislikes.objects.get(
-                event=event,
-                user=User(pk=request.user.id)
-            )
+            if new_data['is_liked'] is None:
 
-            if new_data['is_liked'] is not None:
-
-                event_like_dislike.is_liked = new_data['is_liked']
-                event_like_dislike.save()
+                #remove like/dislike
+                EventLikesDislikes.objects.get(
+                    event=event,
+                    user=User(pk=request.user.id)
+                ).delete()
 
             else:
 
-                event_like_dislike.delete()
-
-        except EventLikesDislikes.DoesNotExist:
-
-            if new_data['is_liked'] is not None:
-
-                EventLikesDislikes.objects.create(
+                #add like/dislike
+                EventLikesDislikes.objects.update_or_create(
                     event=event,
                     user=User(pk=request.user.id),
                     is_liked=new_data['is_liked']
                 )
 
-            else:
+        except:
 
-                #do nothing if is_liked=None and row does not exist
-                pass
+            return Response(
+                data={
+                    'message': '',
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
 
         return Response(
             data={
@@ -1591,58 +1612,6 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
             status=status.HTTP_200_OK
         )
 
-
-#put these as standalone files for cronjob, not as API
-#already tested
-#https://stackoverflow.com/questions/39723310/django-standalone-script
-class CronjobAPI(generics.GenericAPIView):
-
-    serializer_class = None
-    permission_classes = None
-
-    def unlock_inactive_reply_choice(self):
-
-        event_rooms = EventRooms.objects.select_related(
-            'locked_for_user'
-        ).select_for_update(skip_locked=True).filter(
-            when_locked__lte=datetime.now(timezone.utc) - relativedelta(minutes=REPLY_CHOICE_INACTIVE_MAX_MINUTES),
-            is_replying=False
-        ).exclude(
-            locked_for_user=None
-        )[:CRONJOB_ROW_LIMIT]
-
-        with transaction.atomic():
-
-            for event_room in event_rooms:
-
-                prevent_event_room_from_queuing_twice_for_reply(event_room.locked_for_user, event_room)
-
-                event_room.when_locked = None
-                event_room.locked_for_user = None
-                event_room.is_replying = None
-                event_room.save()
-
-    def unlock_inactive_reply(self):
-
-        event_rooms = EventRooms.objects.select_related(
-            'locked_for_user'
-        ).select_for_update(skip_locked=True).filter(
-            when_locked__lte=datetime.now(timezone.utc) - relativedelta(minutes=REPLY_INACTIVE_MAX_MINUTES),
-            is_replying=True
-        ).exclude(
-            locked_for_user=None
-        )[:CRONJOB_ROW_LIMIT]
-
-        with transaction.atomic():
-
-            for event_room in event_rooms:
-
-                prevent_event_room_from_queuing_twice_for_reply(event_room.locked_for_user, event_room)
-
-                event_room.when_locked = None
-                event_room.locked_for_user = None
-                event_room.is_replying = None
-                event_room.save()
 
 
 
@@ -1699,8 +1668,8 @@ class GetEventRooms(TemplateView):
             request,
             template_name=self.template_name,
             context={
-            'event_choice_expiry_seconds' : settings.EVENT_CHOICE_EXPIRY_SECONDS,
-            'event_reply_expiry_seconds' : settings.EVENT_REPLY_EXPIRY_SECONDS,
+            'event_room_reply_choice_expiry_seconds': settings.EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS,
+            'event_room_reply_expiry_seconds': settings.EVENT_ROOM_REPLY_EXPIRY_SECONDS,
             'event_room': event_room,
             'is_deleted': is_deleted,
             'is_deleted_json': json.dumps(is_deleted),
@@ -1722,8 +1691,8 @@ class ListEventRooms(TemplateView):
             request,
             template_name=self.template_name,
             context={
-            'event_choice_expiry_seconds' : settings.EVENT_CHOICE_EXPIRY_SECONDS,
-            'event_reply_expiry_seconds' : settings.EVENT_REPLY_EXPIRY_SECONDS,
+            'event_room_reply_choice_expiry_seconds': settings.EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS,
+            'event_room_reply_expiry_seconds': settings.EVENT_ROOM_REPLY_EXPIRY_SECONDS,
             }
         )
 
