@@ -237,7 +237,7 @@ ASGI_APPLICATION = 'voicewake.asgi.application'
 #on deploy, use Redis, not the current one below
 CHANNEL_LAYERS = {
     'default': {
-                'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
     },
 }
 
@@ -263,8 +263,8 @@ EVENT_MAX_FILE_SIZE_BYTES = 3072000
 #EVENT
 EVENT_ROOM_CREATE_DAILY_LIMIT = 10      #compares from 00:00:00 UTC
 EVENT_ROOM_REPLY_DAILY_LIMIT = 10       #compares from 00:00:00 UTC
-EVENT_CHOICE_EXPIRY_SECONDS = 1200      #20 mins, when locked but is_replying=False
-EVENT_REPLY_EXPIRY_SECONDS = 3600       #60 mins, when locked and is_replying=True
+EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS = 1200      #20 mins, when locked but is_replying=False
+EVENT_ROOM_REPLY_EXPIRY_SECONDS = 3600       #60 mins, when locked and is_replying=True
 
 
 #EMAIL

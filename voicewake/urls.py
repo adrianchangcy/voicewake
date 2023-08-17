@@ -39,7 +39,7 @@ urlpatterns = [
     # path('user_verification_options/<int:id>/', views.user_verification_options_details),
     path('', include(router.urls)),
 
-    path('api/event-rooms/get/<int:event_room_id>', views.EventsAPI.as_view(), name='get_events_by_event_room_id'),
+    path('api/event-rooms/get/<int:event_room_id>', views.EventRoomsAPI.as_view(), name='get_events_by_event_room_id'),
     path('api/event-rooms/status/get/<str:generic_status_name>', views.EventRoomsAPI.as_view(), name='get_events_by_generic_status_name'),
     path('api/event-rooms/reply-choices/list', views.HandleEventRoomReplyChoicesAPI.as_view(user_context="list"), name="list_event_room_reply_choices"),
     path('api/event-rooms/reply-choices/expire', views.HandleEventRoomReplyChoicesAPI.as_view(user_context="expire"), name="list_event_room_reply_choices"),

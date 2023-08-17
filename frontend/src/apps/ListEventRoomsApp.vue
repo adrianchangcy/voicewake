@@ -547,7 +547,7 @@
 
                 this.is_searching = true;
 
-                await axios.get(window.location.origin + "/api/event-rooms/reply-choices/list")
+                await axios.post(window.location.origin + "/api/event-rooms/reply-choices/list")
                 .then((results: any) => {
 
                     if(results.data["data"].length === 0){
@@ -795,8 +795,8 @@
             const container = (document.getElementById('data-container-list-event-rooms') as HTMLElement);
 
             //get essential data first, where we don't proceed if they don't exist
-            const event_choice_expiry_seconds = (container.getAttribute('data-event-choice-expiry-seconds') as string);
-            const event_reply_expiry_seconds = (container.getAttribute('data-event-reply-expiry-seconds') as string);
+            const event_choice_expiry_seconds = (container.getAttribute('data-event-room-reply-choice-expiry-seconds') as string);
+            const event_reply_expiry_seconds = (container.getAttribute('data-event-room-reply-expiry-seconds') as string);
 
             if(event_choice_expiry_seconds === null || event_reply_expiry_seconds === null){
 

@@ -90,7 +90,7 @@
                         propFontSize="s"
                         class="w-fit mx-auto"
                     >
-                        <span class="flex flex-row">
+                        <span class="flex items-center">
                             <span class="font-bold block">More event choices</span>
                             <i class="fas fa-arrow-right block text-lg pl-2"></i>
                         </span>
@@ -111,7 +111,7 @@
                         propFontSize="s"
                         class="w-fit mx-auto"
                     >
-                        <span class="flex flex-row">
+                        <span class="flex items-center">
                             <span class="font-bold block">More event choices</span>
                             <i class="fas fa-arrow-right block text-2xl pl-2"></i>
                         </span>
@@ -545,8 +545,8 @@
             const container = (document.getElementById('data-container-get-event-rooms') as HTMLElement);
 
             //get essential data first, where we don't proceed if they don't exist
-            const event_choice_expiry_seconds = (container.getAttribute('data-event-choice-expiry-seconds') as string);
-            const event_reply_expiry_seconds = (container.getAttribute('data-event-reply-expiry-seconds') as string);
+            const event_choice_expiry_seconds = (container.getAttribute('data-event-room-reply-choice-expiry-seconds') as string);
+            const event_reply_expiry_seconds = (container.getAttribute('data-event-room-reply-expiry-seconds') as string);
 
             if(event_choice_expiry_seconds === null || event_reply_expiry_seconds === null){
 

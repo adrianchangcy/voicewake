@@ -281,12 +281,12 @@ def is_user_banned(request):
     return False
 
 
-def check_user_is_replying(request, exclude_event_room_id=None):
+def check_user_is_replying(request, excluded_event_room_id=None):
 
     User = get_user_model()
 
     #check if user is replying to anything
-    if exclude_event_room_id is None:
+    if excluded_event_room_id is None:
 
         the_count = EventRooms.objects.filter(
             locked_for_user=User(pk=request.user.id),
@@ -299,7 +299,7 @@ def check_user_is_replying(request, exclude_event_room_id=None):
             locked_for_user=User(pk=request.user.id),
             is_replying=True
         ).exclude(
-            pk=exclude_event_room_id
+            pk=excluded_event_room_id
         ).count()
 
     return the_count > 0
@@ -335,13 +335,11 @@ def sort_events_into_event_rooms(events:Events):
 
 def prevent_event_room_from_queuing_twice_for_reply(user, event_room):
 
-    user_event_room, ok = UserEventRooms.objects.get_or_create(
+    UserEventRooms.objects.update_or_create(
         user=user,
         event_room=event_room,
+        is_excluded_for_reply=True
     )
-
-    user_event_room.is_excluded_for_reply = True
-    user_event_room.save()
 
 
 
