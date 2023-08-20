@@ -24,7 +24,7 @@
         <VTitle
             v-if="propIsForStaticPage === false"
             propFontSize="l"
-            class="pb-6"
+            class="pb-4"
         >
             <template #title>
                 <TransitionFade>
@@ -61,7 +61,7 @@
                     >
                         <!--step 0-->
                         <div
-                            class="w-full h-full flex flex-col p-2"
+                            class="w-full h-full flex flex-col p-2 pt-4"
                             v-show="current_step === 'log-in-step-0'"
                         >
 
@@ -116,7 +116,7 @@
 
                         <!--step 1-->
                         <div
-                            class="w-full h-full flex flex-col p-2"
+                            class="w-full h-full flex flex-col p-2 pt-4"
                             v-show="current_step === 'log-in-step-1'"
                         >
 
@@ -191,24 +191,26 @@
 
                         <!--step 2-->
                         <div
-                            class="w-full h-full flex flex-col p-2"
+                            class="w-full h-full flex flex-col p-2 pt-4"
                             v-show="current_step === 'log-in-step-2'"
                         >
 
-                            <VActionTextOnly
-                                :propIsIconOnly="true"
-                                @click.stop="[doNavigation('log-in-section', 'log-in-step-1', false)]"
-                                propElement="button"
-                                propElementSize="s"
-                                propFontSize="s"
-                                type="button"
-                                class="w-fit"
-                            >
-                                <div class="flex items-center">
-                                    <i class="fas fa-arrow-left w-fit h-fit text-lg block pr-2"></i>
-                                    <span class="font-bold break-words">Back to email</span>
-                                </div>
-                            </VActionTextOnly>
+                            <div class="h-10 relative">
+                                <VActionTextOnly
+                                    :propIsIconOnly="true"
+                                    @click.stop="[doNavigation('log-in-section', 'log-in-step-1', false)]"
+                                    propElement="button"
+                                    propElementSize="s"
+                                    propFontSize="s"
+                                    type="button"
+                                    class="w-fit absolute -top-4"
+                                >
+                                    <div class="flex items-center">
+                                        <i class="fas fa-arrow-left w-fit h-fit text-lg block pr-2"></i>
+                                        <span class="font-bold break-words">Back</span>
+                                    </div>
+                                </VActionTextOnly>
+                            </div>
 
                             <p class="text-xl font-medium block">
                                 Enter the login code.
@@ -229,7 +231,7 @@
                             />
 
                             <!--resend OTP-->
-                            <div class="h-10 flex flex-row items-center text-theme-black">
+                            <div class="h-10 flex flex-row items-center shrink-0 text-theme-black">
 
                                 <div
                                     v-show="is_otp_request_loading"
@@ -330,7 +332,7 @@
                     >
                         <!--step 0-->
                         <div
-                            class="w-full h-full flex flex-col p-2"
+                            class="w-full h-full flex flex-col p-2 pt-4"
                             v-show="current_step === 'sign-up-step-0'"
                         >
 
@@ -385,7 +387,7 @@
 
                         <!--step 1-->
                         <div
-                            class="w-full h-full flex flex-col p-2"
+                            class="w-full h-full flex flex-col p-2 pt-4"
                             v-show="current_step === 'sign-up-step-1'"
                         >
 
@@ -460,24 +462,25 @@
 
                         <!--step 2-->
                         <div
-                            class="w-full h-full flex flex-col p-2"
+                            class="w-full h-full flex flex-col p-2 pt-4"
                             v-show="current_step === 'sign-up-step-2'"
                         >
-
-                            <VActionTextOnly
-                                :propIsIconOnly="true"
-                                @click.stop="[doNavigation('sign-up-section', 'sign-up-step-1', false)]"
-                                propElement="button"
-                                propElementSize="s"
-                                propFontSize="s"
-                                type="button"
-                                class="w-fit"
-                            >
-                                <div class="flex items-center">
-                                    <i class="fas fa-arrow-left w-fit h-fit text-lg block pr-2"></i>
-                                    <span class="font-bold break-words">Back to email</span>
-                                </div>
-                            </VActionTextOnly>
+                            <div class="h-10 relative">
+                                <VActionTextOnly
+                                    :propIsIconOnly="true"
+                                    @click.stop="[doNavigation('sign-up-section', 'sign-up-step-1', false)]"
+                                    propElement="button"
+                                    propElementSize="s"
+                                    propFontSize="s"
+                                    type="button"
+                                    class="w-fit absolute -top-4"
+                                >
+                                    <div class="flex items-center">
+                                        <i class="fas fa-arrow-left w-fit h-fit text-lg block pr-2"></i>
+                                        <span class="font-bold break-words">Back</span>
+                                    </div>
+                                </VActionTextOnly>
+                            </div>
 
                             <p class="text-xl font-medium block">
                                 Enter the sign-up code.
@@ -498,7 +501,7 @@
                             />
 
                             <!--resend OTP-->
-                            <div class="h-10 flex flex-row items-center text-theme-black">
+                            <div class="h-10 flex flex-row items-center shrink-0 text-theme-black">
 
                                 <div
                                     v-show="is_otp_request_loading"
@@ -611,6 +614,7 @@
 <script lang="ts">
     import { defineComponent } from 'vue';
     import { notify } from 'notiwind';
+    import { emailValidatorDjango } from '@/helper_functions';
     const axios = require('axios');
 
     interface StepsType {
@@ -632,6 +636,7 @@
                 otp_is_ok: false,
                 otp_validation_has_error: false,
                 otp_validation_status_text: "",
+                otp_can_auto_submit: true,  //auto-submit when OTP is fully entered, is false on error, true on code resend
 
                 otp_request_cooldown_interval: null as number|null,
                 otp_request_cooldown_duration_s: 30,
@@ -739,6 +744,7 @@
                 this.otp_is_ok = false;
                 this.otp_validation_has_error = false;
                 this.otp_validation_status_text = "";
+                this.otp_can_auto_submit = true;
 
                 this.otp_request_cooldown_interval !== null ? window.clearTimeout(this.otp_request_cooldown_interval) : null;
                 this.otp_request_cooldown_interval = null;
@@ -780,6 +786,7 @@
                 this.otp_request_cooldown_interval = null;
                 this.otp_request_cooldown_s = 0;
                 this.otp_request_status_text = "";
+                this.otp_can_auto_submit = true;
 
                 //set cooldown seconds
                 //-1 to account for setInterval() first-time delay
@@ -845,6 +852,9 @@
                         text: error.response.data['message'],
                         type: "error"
                     }, 3000);
+
+                    //prevent auto-submit
+                    this.otp_can_auto_submit = false;
                 });
             },
             async submitEmailAndRequestOTP(procedure_url:"log-in"|"sign-up", is_resubmit=false) : Promise<void> {
@@ -914,9 +924,20 @@
                 //no on-the-spot validation needed
                 this.otp_string = new_value;
 
-                //reset so that validateOTP() later can trigger watch
+                //reset so that validateOTP() later can trigger watcher
                 this.otp_validation_has_error = false;
                 this.otp_validation_status_text = "";
+
+                //handle auto-submit
+                if(this.otp_can_auto_submit === true && new_value.length === this.otp_length){
+
+                    const section_type = this.current_section.split("-section", 2)[0];
+
+                    if(section_type === "log-in" || section_type === "sign-up"){
+
+                        this.submitStep2(section_type);
+                    }
+                }
             },
             validateEmail(new_value:string) : void {
 
@@ -928,7 +949,7 @@
                         this.email_validation_has_error = true;
                         this.email_validation_status_text = "Please enter an email address.";
 
-                    }else if(/^\S+@\S+\.\S+$/.test(new_value) === true){
+                    }else if(emailValidatorDjango(new_value) === true){
 
                         this.email_is_ok = true;
                         this.email_validation_has_error = false;
@@ -966,7 +987,9 @@
                 }
 
                 //has text
+
                 this.is_email_loading = true;
+                this.email_check_timeout !== null ? clearTimeout(this.email_check_timeout) : null;
 
                 this.email_check_timeout = window.setTimeout(() => {
 

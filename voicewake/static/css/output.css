@@ -686,6 +686,10 @@ video {
   top: 0.5rem;
 }
 
+.-top-4 {
+  top: -1rem;
+}
+
 .-z-10 {
   z-index: -10;
 }
@@ -1649,6 +1653,10 @@ video {
   padding-top: 2rem;
 }
 
+.pb-4 {
+  padding-bottom: 1rem;
+}
+
 .text-left {
   text-align: left;
 }
@@ -2466,6 +2474,14 @@ textarea {
 }
 
 @media (min-width: 1280px) {
+  .xl\:col-span-2 {
+    grid-column: span 2 / span 2;
+  }
+
+  .xl\:col-start-7 {
+    grid-column-start: 7;
+  }
+
   .xl\:w-2\/6 {
     width: 33.333333%;
   }

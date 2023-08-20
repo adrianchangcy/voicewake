@@ -23,7 +23,7 @@
                 <VActionTextOnly
                     propElement="a"
                     propFontSize="m"
-                    href="/say"
+                    href="/start"
                     :propIsIconOnly="true"
                     class="w-full h-full"
                 >
@@ -40,7 +40,7 @@
                 <VActionTextOnly
                     propElement="a"
                     propFontSize="m"
-                    href="/hear"
+                    href="/reply"
                     :propIsIconOnly="true"
                     class="w-full h-full"
                 >
@@ -208,7 +208,7 @@
             <!--don't show when lg and propIsLoggedIn, because the button to open will become a URL-->
             <div
                 :class="propIsLoggedIn === false ? 'lg:hidden' : ''"
-                class="relative col-start-2 col-span-3 sm:col-start-6 sm:col-span-3 right-0"
+                class="relative col-start-2 col-span-3 sm:col-start-6 sm:col-span-3 xl:col-start-7 xl:col-span-2"
             >
                 <TransitionFade :propIsForward="true">
                     <!--uses calc to minus fixed height of navbar at base.html-->

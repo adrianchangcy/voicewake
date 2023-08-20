@@ -1,13 +1,12 @@
 import { defineStore } from 'pinia';
 import EventRoomTypes from '@/types/EventRooms.interface';
-import Statuses from '@/types/values/Statuses';
-import { watch } from 'vue';
+import StatusValues from '@/types/values/StatusValues';
 
 
 export const useUnfinishedReplyStore = defineStore('unfinished_reply', {
     state: ()=>({
         event_room: null as EventRoomTypes|null,
-        status: "" as Statuses,
+        status: "" as StatusValues,
     }),    
     getters: {
         getUnfinishedReply: (state)=>{
@@ -20,7 +19,7 @@ export const useUnfinishedReplyStore = defineStore('unfinished_reply', {
         },
     },
     actions: {
-        updateStatus(status:Statuses) : void {
+        updateStatus(status:StatusValues) : void {
 
             this.status = status;
         },

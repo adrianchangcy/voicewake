@@ -332,13 +332,13 @@
     import { timeFromNowMS, prettyTimeRemaining } from '@/helper_functions';
     import { notify } from 'notiwind';
     import EventRoomTypes from '@/types/EventRooms.interface';
-    import Statuses from '@/types/values/Statuses';
+    import StatusValues from '@/types/values/StatusValues';
     import { useUnfinishedReplyStore } from '@/stores/UnfinishedReplyStore';
 
     const axios = require('axios');
 
     export default defineComponent({
-        name: "ListEventRoomsApp",
+        name: "ListEventRoomChoicesApp",
         data() {
             return {
                 unfinished_reply_store: useUnfinishedReplyStore(),
@@ -360,7 +360,7 @@
                 is_expiry_loading: false,
                 is_new_reply_choice_confirming: false,
 
-                simple_dialogs: ["no_reply_choices", "choosing_event_choice_expired", "reply_deleted"] as Statuses[],
+                simple_dialogs: ["no_reply_choices", "choosing_event_choice_expired", "reply_deleted"] as StatusValues[],
                 current_simple_dialog: "",
             };
         },
@@ -401,7 +401,7 @@
             handleUnfinishedReplyStoreChange() : void {
 
                 const store_status = this.unfinished_reply_store.getStatus;
-                const extra_allowed_store_status:Statuses[] = [
+                const extra_allowed_store_status:StatusValues[] = [
                     "replying", "replying_deleted", "replying_expired", "replying_successful"
                 ];
 
@@ -792,7 +792,7 @@
 
             this.axiosSetup();
 
-            const container = (document.getElementById('data-container-list-event-rooms') as HTMLElement);
+            const container = (document.getElementById('data-container-list-event-room-choices') as HTMLElement);
 
             //get essential data first, where we don't proceed if they don't exist
             const event_choice_expiry_seconds = (container.getAttribute('data-event-room-reply-choice-expiry-seconds') as string);

@@ -77,17 +77,27 @@ class UsersUsernameAPI(generics.GenericAPIView):
 
         serializer = UsersUsernameAPISerializer(data=kwargs, many=False)
 
+        #validate
         if serializer.is_valid() is False:
+
+            #return any first error message
+            error_message = "Invalid data."
+
+            for key in serializer.errors:
+                for first_error in serializer.errors[key]:
+                    error_message = first_error
+                    break
 
             return Response(
                 data={
-                    'message': 'Invalid data.'
+                    'message': error_message,
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        new_data = serializer.validated_data
+        #proceed
 
+        new_data = serializer.validated_data
         User = get_user_model()
         
         exists = User.objects.filter(
@@ -126,11 +136,20 @@ class UsersUsernameAPI(generics.GenericAPIView):
         #validate
         serializer = UsersUsernameAPISerializer(data=request.data, many=False)
 
+        #validate
         if serializer.is_valid() is False:
+
+            #return any first error message
+            error_message = "Invalid data."
+
+            for key in serializer.errors:
+                for first_error in serializer.errors[key]:
+                    error_message = first_error
+                    break
 
             return Response(
                 data={
-                    'message': 'Invalid data.'
+                    'message': error_message,
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -186,7 +205,6 @@ class UsersLogInAPI(generics.GenericAPIView):
 
             #do not let users know about max attempts reached
             #this protects against email probing during login
-
             return HandleUserOTP.get_default_verify_otp_response()
 
         #OTP verified, continue
@@ -218,11 +236,20 @@ class UsersLogInAPI(generics.GenericAPIView):
 
         serializer = UsersLogInAPISerializer(data=request.data, many=False)
 
+        #validate
         if serializer.is_valid() is False:
+
+            #return any first error message
+            error_message = "Invalid data."
+
+            for key in serializer.errors:
+                for first_error in serializer.errors[key]:
+                    error_message = first_error
+                    break
 
             return Response(
                 data={
-                    'message': 'Invalid data.'
+                    'message': error_message,
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -297,11 +324,20 @@ class UsersSignUpAPI(UsersLogInAPI):
         #same data as signing in
         serializer = UsersLogInAPISerializer(data=request.data, many=False)
 
+        #validate
         if serializer.is_valid() is False:
+
+            #return any first error message
+            error_message = "Invalid data."
+
+            for key in serializer.errors:
+                for first_error in serializer.errors[key]:
+                    error_message = first_error
+                    break
 
             return Response(
                 data={
-                    'message': 'Invalid data.'
+                    'message': error_message,
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -473,7 +509,7 @@ class EventRoomsAPI(generics.GenericAPIView):
             FROM events
             LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-            LEFT JOIN event_likes_dislikes ON  events.id = event_likes_dislikes.event_id
+            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
             GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
             ''',
@@ -484,7 +520,7 @@ class EventRoomsAPI(generics.GenericAPIView):
         return events
 
 
-    def get_queryset_by_is_replying(self):
+    def get_event_rooms_by_is_replying(self):
 
         events = Events.objects.raw(
             '''
@@ -520,7 +556,7 @@ class EventRoomsAPI(generics.GenericAPIView):
             FROM events
             LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-            LEFT JOIN event_likes_dislikes ON  events.id = event_likes_dislikes.event_id
+            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
             WHERE events.event_room_id IN (
                 SELECT id FROM event_rooms
@@ -541,11 +577,11 @@ class EventRoomsAPI(generics.GenericAPIView):
         return events
 
 
-    def get_queryset_by_best_completed(self):
+    def get_event_rooms_by_best_completed(self):
 
         #this is for "10 max new posts every >= __", which in this case is every hour
-        checkpoint_datetime = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d %H:00:00 %z')
-        checkpoint_datetime = datetime.strptime(checkpoint_datetime, '%Y-%m-%d %H:%M:%S %z')
+        datetime_checkpoint = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d %H:00:00 %z')
+        datetime_checkpoint = datetime.strptime(datetime_checkpoint, '%Y-%m-%d %H:%M:%S %z')
 
         events = Events.objects.raw(
             '''
@@ -581,7 +617,7 @@ class EventRoomsAPI(generics.GenericAPIView):
             FROM events
             LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-            LEFT JOIN event_likes_dislikes ON  events.id = event_likes_dislikes.event_id
+            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
             WHERE events.event_room_id IN (
                 SELECT event_rooms.id FROM event_rooms
@@ -592,13 +628,13 @@ class EventRoomsAPI(generics.GenericAPIView):
             )
             AND generic_statuses.generic_status_name = %s
             GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
-            ORDER BY like_count DESC
+            ORDER BY like_count DESC, dislike_count ASC
             ''',
             params=(
                 self.request.user.id,
                 'completed',
-                checkpoint_datetime,
-                SPECIAL_EVENT_ROOMS_QUANTITY,
+                datetime_checkpoint,
+                settings.EVENT_ROOM_QUANTITY_PER_PAGE,
                 'ok'
             )
         )
@@ -606,7 +642,7 @@ class EventRoomsAPI(generics.GenericAPIView):
         return events
 
 
-    def get_queryset_by_event_room(self):
+    def get_event_rooms_by_id(self, event_room_id):
 
         events = Events.objects.raw(
             '''
@@ -642,7 +678,7 @@ class EventRoomsAPI(generics.GenericAPIView):
             FROM events
             LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-            LEFT JOIN event_likes_dislikes ON  events.id = event_likes_dislikes.event_id
+            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
             WHERE events.event_room_id = %s
             AND generic_statuses.generic_status_name = %s
@@ -650,8 +686,82 @@ class EventRoomsAPI(generics.GenericAPIView):
             ''',
             params=(
                 self.request.user.id,
-                self.kwargs['event_room_id'],
+                event_room_id,
                 'ok'
+            )
+        )
+
+        return events
+
+
+    def get_event_rooms_by_new_completed(self):
+
+        #use BETWEEN operator
+        #gets event_rooms via responder events that were made between now and x minutes ago
+        datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
+        datetime_checkpoint = (datetime_now - timedelta(hours=100000)).strftime('%Y-%m-%d %H:%M:%S %z')
+        datetime_now = datetime_now.strftime('%Y-%m-%d %H:%M:%S %z')
+
+        events = Events.objects.raw(
+            '''
+            SELECT
+                events.*,
+                event_rooms.*,
+                event_tones.*,
+                generic_statuses.*,
+                SUM(
+                    CASE 
+                    WHEN event_likes_dislikes.is_liked='true' AND event_likes_dislikes.event_id IN (events.id) THEN 1
+                    ELSE 0
+                    END
+                ) AS like_count,
+                SUM(
+                    CASE
+                    WHEN event_likes_dislikes.is_liked='false' AND event_likes_dislikes.event_id IN (events.id) THEN 1
+                    ELSE 0
+                    END
+                ) AS dislike_count,
+                (CASE
+                    (
+                        SELECT event_likes_dislikes.is_liked
+                        FROM event_likes_dislikes
+                        WHERE user_id=%s
+                        AND event_id=events.id
+                    )
+                    WHEN 'true' THEN 'true'
+                    WHEN 'false' THEN 'false'
+                    ELSE NULL
+                    END
+                ) as is_liked_by_user
+            FROM events
+            LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
+            LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
+            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id
+            LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
+            WHERE events.event_room_id IN (
+                SELECT event_room_id FROM events AS events2
+                INNER JOIN generic_statuses ON events2.generic_status_id = generic_statuses.id
+                WHERE generic_statuses.generic_status_name = %s
+                AND events2.event_role_id = (
+                    SELECT id FROM event_roles
+                    WHERE event_role_name = %s
+                )
+                AND events2.event_room_id IN (
+                    SELECT event_rooms.id FROM event_rooms
+                    INNER JOIN generic_statuses ON event_rooms.generic_status_id = generic_statuses.id
+                    WHERE generic_statuses.generic_status_name = %s
+                )
+                AND events2.when_created BETWEEN %s AND %s
+            )
+            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
+            ''',
+            params=(
+                self.request.user.id,
+                'ok',
+                'responder',
+                'completed',
+                datetime_checkpoint,
+                datetime_now,
             )
         )
 
@@ -671,7 +781,7 @@ class EventRoomsAPI(generics.GenericAPIView):
                 data={
                     'message': '',
                     'data': EventRoomsSerializer(
-                        sort_events_into_event_rooms(self.get_queryset_by_event_room()),
+                        sort_events_into_event_rooms(self.get_event_rooms_by_id(self.kwargs['event_room_id'])),
                         many=True
                     ).data,
                 },
@@ -687,10 +797,23 @@ class EventRoomsAPI(generics.GenericAPIView):
                 )
 
             return response
-        
-        #not singular event_room, so return many
-        #TODO: pagination?
 
+        return Response(
+            data={
+                'message': '',
+                'data': EventRoomsSerializer(
+                    sort_events_into_event_rooms(self.get_event_rooms_by_new_completed()),
+                    many=True
+                ).data,
+            },
+        )
+        
+        #pagination
+        if 'page' in kwargs:
+
+            pass
+            #we decide on event rooms per page, e.g. 10
+            #then for our queries, we do OFFSET (page * 10) LIMIT 10
 
 
 #does not have own get(), since viewing events always involves parent event_rooms
@@ -708,12 +831,12 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
     def check_user_create_event_room_daily_limit(self, user):
 
         #this is for "X max new event rooms every __", which in this case is every 24h
-        checkpoint_datetime = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
-        checkpoint_datetime = datetime.strptime(checkpoint_datetime, '%Y-%m-%d %H:%M:%S %z')
+        datetime_checkpoint = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
+        datetime_checkpoint = datetime.strptime(datetime_checkpoint, '%Y-%m-%d %H:%M:%S %z')
 
         the_count = EventRooms.objects.filter(
             created_by=user,
-            when_created__gte=checkpoint_datetime
+            when_created__gte=datetime_checkpoint
         ).count()
 
         if the_count < settings.EVENT_ROOM_CREATE_DAILY_LIMIT:
@@ -726,12 +849,12 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
     def check_user_create_reply_event_daily_limit(self, user):
 
         #this is for "X max new posts every __", which in this case is every 24h
-        checkpoint_datetime = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
-        checkpoint_datetime = datetime.strptime(checkpoint_datetime, '%Y-%m-%d %H:%M:%S %z')
+        datetime_checkpoint = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
+        datetime_checkpoint = datetime.strptime(datetime_checkpoint, '%Y-%m-%d %H:%M:%S %z')
 
         the_count = Events.objects.filter(
             user=user,
-            when_created__gte=checkpoint_datetime
+            when_created__gte=datetime_checkpoint
         ).count()
 
         if the_count < settings.EVENT_ROOM_REPLY_DAILY_LIMIT:
@@ -773,18 +896,23 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
         #deserialize
         serializer = CreateEventsSerializer(data=request.data, many=False)
 
-        #validate overall
-        if serializer.is_valid() is False and len(serializer.errors) > 0:
+        #validate
+        if serializer.is_valid() is False:
 
             #return any first error message
+            error_message = "Invalid data."
+
             for key in serializer.errors:
                 for first_error in serializer.errors[key]:
-                    return Response(
-                        data={
-                            'message': first_error,
-                        },
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
+                    error_message = first_error
+                    break
+
+            return Response(
+                data={
+                    'message': error_message,
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         #ok, continue
         new_data = serializer.validated_data
@@ -986,9 +1114,6 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
 
 
-#TODO: wrap in transaction.atomic() and clarify try-except for everything
-#TODO: implement try-except MySerializer.ValidationError for everything
-#TODO: do prevent_event_room_from_queuing_twice_for_reply() better
 #user can generate new event_room reply choice
     #will unlock previous is_replying=False event_room
     #will add to UserEventRooms when locking for is_replying=False
@@ -1027,7 +1152,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
 
 
     #excludes event_room started by user
-    def get_queryset_by_random_incomplete(self):
+    def get_event_rooms_by_random_incomplete(self):
 
         events = Events.objects.select_for_update(of=("event_rooms",)).raw(
             '''
@@ -1063,7 +1188,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
             FROM events
             LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-            LEFT JOIN event_likes_dislikes ON  events.id = event_likes_dislikes.event_id
+            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
             WHERE
             events.event_room_id IN (
@@ -1122,7 +1247,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
             event_room.save()
 
 
-    def get_queryset_by_is_replying(self):
+    def get_event_rooms_by_is_replying(self):
 
         events = Events.objects.raw(
             '''
@@ -1158,11 +1283,13 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
             FROM events
             LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-            LEFT JOIN event_likes_dislikes ON  events.id = event_likes_dislikes.event_id
+            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
             WHERE events.event_room_id IN (
                 SELECT id FROM event_rooms
+                INNER JOIN generic_statuses ON event_rooms.generic_status_id = generic_statuses.id
                 WHERE locked_for_user_id=%s
+                AND generic_statuses.generic_status_name=%s
                 AND is_replying=%s
             )
             AND generic_statuses.generic_status_name = %s
@@ -1171,6 +1298,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
             params=(
                 self.request.user.id,
                 self.request.user.id,
+                'incomplete',
                 True,
                 'ok'
             )
@@ -1185,7 +1313,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
         if self.user_context == "list":
 
             #get possible is_replying
-            is_replying_events = self.get_queryset_by_is_replying()
+            is_replying_events = self.get_event_rooms_by_is_replying()
 
             #check if user is replying to anything
             #we want event_room.id if there is any
@@ -1212,7 +1340,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                     self.unlock_event_rooms_from_past_reply_choices()
 
                     #get events
-                    events = self.get_queryset_by_random_incomplete()
+                    events = self.get_event_rooms_by_random_incomplete()
 
                     if len(events) == 0:
 
@@ -1442,6 +1570,12 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
                 event_room.locked_for_user = None
                 event_room.is_replying = None
                 event_room.when_locked = None
+
+                #careful not to change 'deleted' to 'incomplete'
+                if event_room.generic_status.generic_status_name != 'deleted':
+
+                    event_room.generic_status = GenericStatuses.objects.get(generic_status_name='incomplete')
+
                 event_room.save()
 
                 return Response(
@@ -1475,11 +1609,20 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
         serializer = HandleReplyingEventRoomsSerializer(data=request.data, many=False)
 
+        #validate
         if serializer.is_valid() is False:
+
+            #return any first error message
+            error_message = "Invalid data."
+
+            for key in serializer.errors:
+                for first_error in serializer.errors[key]:
+                    error_message = first_error
+                    break
 
             return Response(
                 data={
-                    'message': 'Invalid data.'
+                    'message': error_message,
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -1551,11 +1694,20 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
 
         serializer = CreateEventLikesDislikesSerializer(data=request.data, many=False)
 
+        #validate
         if serializer.is_valid() is False:
+
+            #return any first error message
+            error_message = "Invalid data."
+
+            for key in serializer.errors:
+                for first_error in serializer.errors[key]:
+                    error_message = first_error
+                    break
 
             return Response(
                 data={
-                    'message': 'Invalid data.',
+                    'message': error_message,
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -1578,32 +1730,33 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
         
         try:
 
-            if new_data['is_liked'] is None:
+            with transaction.atomic():
 
-                #remove like/dislike
-                EventLikesDislikes.objects.get(
-                    event=event,
-                    user=User(pk=request.user.id)
-                ).delete()
+                if new_data['is_liked'] is None:
 
-            else:
+                    #remove like/dislike
+                    EventLikesDislikes.objects.get(
+                        event=event,
+                        user=User(pk=request.user.id)
+                    ).delete()
 
-                #add like/dislike
-                EventLikesDislikes.objects.update_or_create(
-                    event=event,
-                    user=User(pk=request.user.id),
-                    is_liked=new_data['is_liked']
-                )
+                else:
+
+                    #add like/dislike
+                    EventLikesDislikes.objects.update_or_create(
+                        event=event,
+                        user=User(pk=request.user.id),
+                        is_liked=new_data['is_liked']
+                    )
 
         except:
 
             return Response(
                 data={
-                    'message': '',
+                    'message': 'Unable to like/dislike this event.',
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
-
 
         return Response(
             data={
@@ -1680,10 +1833,10 @@ class GetEventRooms(TemplateView):
 
 
 
-#list event_rooms, for general browsing
-class ListEventRooms(TemplateView):
+#for finding reply choices
+class ListEventRoomChoices(TemplateView):
 
-    template_name = 'voicewake/event_rooms/list_event_rooms.html'
+    template_name = 'voicewake/event_rooms/list_event_room_choices.html'
 
     def get(self, request, *args, **kwargs):
 
