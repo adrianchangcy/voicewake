@@ -27,7 +27,7 @@
 
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
-    import ElementSizes from '@/types/values/ElementSizes';
+    import LetterSizeValues from '@/types/values/LetterSizeValues';
 
     export default defineComponent({
         data(){
@@ -37,9 +37,9 @@
         },
         props: {
             propFontSize: {
-                type: String as PropType<ElementSizes>,
+                type: String as PropType<LetterSizeValues>,
                 default: "",
             },
-        }
+        },
     });
 </script>

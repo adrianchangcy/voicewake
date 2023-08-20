@@ -16,7 +16,7 @@
                 </span>
             </div>
         </div>
-        <div class="text-xl">
+        <div class="text-lg">
             <!--default inline-block, changed to block to remove bottom spacing-->
             <textarea
                 @click.stop="emitWasInteracted()"
@@ -29,7 +29,7 @@
                     (propIsOk ? 'border-theme-ok' : ''),
                     (propIsWarning ? 'border-theme-warning' : ''),
                     (propIsError ? 'border-theme-danger' : ''),
-                    'block w-full h-10 bg-theme-light border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover rounded-lg overflow-hidden p-2 pt-1 transition-colors     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-black'
+                    'block w-full h-10 bg-theme-light border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover rounded-lg overflow-hidden p-2 pt-1 transition-colors'
                 ]"
                 :placeholder="propPlaceholder"
                 autocomplete="off"

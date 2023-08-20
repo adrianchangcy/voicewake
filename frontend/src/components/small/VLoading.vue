@@ -20,7 +20,7 @@
 <script lang="ts">
     //we don't keep VEventToneMenu in this component due to the inflexibility of button size =/= menu size
     import { defineComponent, PropType } from 'vue';
-    import ButtonSizes from '@/types/values/ElementSizes';
+    import LetterSizeValues from '@/types/values/LetterSizeValues';
 
     export default defineComponent({
         data(){
@@ -29,7 +29,7 @@
         },
         props: {
             propElementSize: {
-                type: String as PropType<ButtonSizes>,
+                type: String as PropType<LetterSizeValues>,
                 required: true
             },
             propColourClass: {

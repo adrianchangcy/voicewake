@@ -15,7 +15,7 @@
                 :type="inputTypeForPassword"
                 :id="propElementId"
                 v-model="input_value"
-                class="w-full h-10 p-2 pr-11 bg-theme-light border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover rounded-lg transition-colors    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-black"
+                class="w-full h-10 p-2 pr-11 bg-theme-light border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover rounded-lg transition-colors"
                 :placeholder="propPlaceholder"
                 autocomplete="off"
                 spellcheck="false"
@@ -27,7 +27,7 @@
                 type="button"
             >
                 <i
-                    class="fas text-xl mx-auto"
+                    class="fas text-lg mx-auto"
                     :class="show_password ? 'fa-eye' : 'fa-eye-slash'"
                 ></i>
                 <span v-show="show_password" class="sr-only">hide password</span>

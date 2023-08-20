@@ -5,8 +5,9 @@ import { PiniaSharedState } from 'pinia-shared-state';
 
 import BaseApp from '/src/apps/BaseApp.vue';
 import CreateEventRoomsApp from '/src/apps/CreateEventRoomsApp.vue';
-import ListEventRoomsApp from '/src/apps/ListEventRoomsApp.vue';
+import ListEventRoomChoicesApp from '/src/apps/ListEventRoomChoicesApp.vue';
 import GetEventRoomsApp from '/src/apps/GetEventRoomsApp.vue';
+import BrowseEventRoomsApp from '/src/apps/BrowseEventRoomsApp.vue';
 import UserLogInSignUp from '/src/components/main/UserLogInSignUp.vue';
 
 
@@ -108,16 +109,22 @@ if(document.querySelector('#create-event-rooms-app')){
         .mount('#create-event-rooms-app');
 }
 
-if(document.querySelector('#list-event-rooms-app')){
+if(document.querySelector('#list-event-room-choices-app')){
 
-    createApp(ListEventRoomsApp)
-        .mount('#list-event-rooms-app');
+    createApp(ListEventRoomChoicesApp)
+        .mount('#list-event-room-choices-app');
 }
 
 if(document.querySelector('#get-event-rooms-app')){
 
     createApp(GetEventRoomsApp)
         .mount('#get-event-rooms-app');
+}
+
+if(document.querySelector('#browse-event-rooms-app')){
+
+    createApp(BrowseEventRoomsApp)
+        .mount('#browse-event-rooms-app');
 }
 
 if(document.querySelector('#log-in-page')){

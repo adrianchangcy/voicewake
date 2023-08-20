@@ -39,10 +39,12 @@ urlpatterns = [
     # path('user_verification_options/<int:id>/', views.user_verification_options_details),
     path('', include(router.urls)),
 
-    path('api/event-rooms/get/<int:event_room_id>', views.EventRoomsAPI.as_view(), name='get_events_by_event_room_id'),
-    path('api/event-rooms/status/get/<str:generic_status_name>', views.EventRoomsAPI.as_view(), name='get_events_by_generic_status_name'),
-    path('api/event-rooms/reply-choices/list', views.HandleEventRoomReplyChoicesAPI.as_view(user_context="list"), name="list_event_room_reply_choices"),
-    path('api/event-rooms/reply-choices/expire', views.HandleEventRoomReplyChoicesAPI.as_view(user_context="expire"), name="list_event_room_reply_choices"),
+    path('api/event-rooms/get', views.EventRoomsAPI.as_view(), name='testo'),
+    path('api/event-rooms/get/<int:event_room_id>', views.EventRoomsAPI.as_view(), name='get_event_rooms_by_id'),
+    path('api/event-rooms/list/<int:page>', views.EventRoomsAPI.as_view(), name='get_event_rooms_by_id_paged'),
+    path('api/event-rooms/list/<int:page>/<str:event_tone_slug>', views.EventRoomsAPI.as_view(), name='get_event_rooms_by_id_and_event_tone_slug_paged'),
+    path('api/event-rooms/reply-choices/list', views.HandleEventRoomReplyChoicesAPI.as_view(user_context="list"), name="list_event_room_choices"),
+    path('api/event-rooms/reply-choices/expire', views.HandleEventRoomReplyChoicesAPI.as_view(user_context="expire"), name="expire_event_room_choices"),
 
     path('api/event-rooms/create-new', views.EventsAPI.as_view(user_action="create_new"), name='create_new_event_rooms'),
     path('api/event-rooms/reply/start', views.HandleReplyingEventRoomsAPI.as_view(user_action="start"), name="start_reply_event_rooms"),
@@ -72,11 +74,10 @@ urlpatterns = [
     path('', views.home, name='home'),
     path('login', views.log_in, name='log_in'),
     path('signup', views.sign_up, name='sign_up'),
-    path('say', views.CreateEventRooms.as_view(), name='create_event_room'),
-    path('hear', views.ListEventRooms.as_view(), name='list_event_rooms'),
-    path('hear/<int:event_room_id>', views.GetEventRooms.as_view(), name='get_event_room'),
-    # path('reply', views.ReplyMainEventsFormView.as_view(), name='reply_new_events'),
-    # path('seek-event', views.SeekEventsFormView.as_view(), name='seek_events'),
+
+    path('start', views.CreateEventRooms.as_view(), name='create_event_rooms'),
+    path('reply', views.ListEventRoomChoices.as_view(), name='list_event_room_choices'),
+    path('hear/<int:event_room_id>', views.GetEventRooms.as_view(), name='get_event_rooms'),
 
     #favicon
     #only for tab icon, not to be used as actual svg

@@ -1,9 +1,9 @@
 {% extends 'voicewake/base.html' %}
-{% block title %}Home Page{% endblock %}
+{% block title %}voicewake.com{% endblock %}
 
 {% block content %}
 
+    {% csrf_token %}
 
-
-
+    <div id="browse-event-rooms-app"></div>
 {% endblock %}

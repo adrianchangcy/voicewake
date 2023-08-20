@@ -1,5 +1,5 @@
 {% extends 'voicewake/base.html'%}
-{% block title %}Browse Events{% endblock %}
+{% block title %}Reply{% endblock %}
 
 {% block content %}
 
@@ -8,9 +8,9 @@
     <div
         data-event-room-reply-choice-expiry-seconds="{{event_room_reply_choice_expiry_seconds}}"
         data-event-room-reply-expiry-seconds="{{event_room_reply_expiry_seconds}}"
-        id="data-container-list-event-rooms"
+        id="data-container-list-event-room-choices"
     >
 
-        <div id="list-event-rooms-app"></div>
+        <div id="list-event-room-choices-app"></div>
     </div>
 {% endblock %}

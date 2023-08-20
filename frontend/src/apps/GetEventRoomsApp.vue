@@ -85,7 +85,7 @@
                     <span class="block w-full">Your reply has been deleted.</span>
                     <VActionTextOnly
                         propElement="a"
-                        href="/hear"
+                        href="/reply"
                         propElementSize="s"
                         propFontSize="s"
                         class="w-fit mx-auto"
@@ -106,7 +106,7 @@
                     <span class="block w-full">Your reply has expired.</span>
                     <VActionTextOnly
                         propElement="a"
-                        href="/hear"
+                        href="/reply"
                         propElementSize="s"
                         propFontSize="s"
                         class="w-fit mx-auto"
@@ -156,7 +156,7 @@
     import { prettyTimePassed, prettyTimeRemaining, getDataFromTemplateJSONScript, timeFromNowMS } from '@/helper_functions';
     import EventRoomTypes from '@/types/EventRooms.interface';
     import EventTypes from '@/types/Events.interface';
-    import Statuses from '@/types/values/Statuses';
+    import StatusValues from '@/types/values/StatusValues';
     import { notify } from 'notiwind';
     import { useUnfinishedReplyStore } from '@/stores/UnfinishedReplyStore';
     const axios = require('axios');
@@ -213,7 +213,7 @@
             handleUnfinishedReplyStoreChange() : void {
 
                 const store_status = this.unfinished_reply_store.getStatus;
-                const relevant_statuses:Statuses[] = [
+                const relevant_statuses:StatusValues[] = [
                     "replying", "replying_deleted", "replying_expired"
                 ];
 
