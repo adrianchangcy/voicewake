@@ -470,7 +470,7 @@ class EventTonesAPI(viewsets.ReadOnlyModelViewSet):
 
 class EventRoomsAPI(generics.GenericAPIView):
 
-    serializer_class = SortedEventsIntoEventRoomsSerializer
+    serializer_class = GroupedEventsSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
 
@@ -841,8 +841,8 @@ class EventRoomsAPI(generics.GenericAPIView):
             response = Response(
                 data={
                     'message': '',
-                    'data': EventRoomsSerializer(
-                        sort_events_into_event_rooms(self.get_event_rooms_by_id(self.kwargs['event_room_id'])),
+                    'data': GroupedEventsSerializer(
+                        group_events_into_event_rooms(self.get_event_rooms_by_id(self.kwargs['event_room_id'])),
                         many=True
                     ).data,
                 },
@@ -881,8 +881,8 @@ class EventRoomsAPI(generics.GenericAPIView):
         return Response(
             data={
                 'message': '',
-                'data': SortedEventsIntoEventRoomsSerializer(
-                    sort_events_into_event_rooms(self.get_event_rooms_by_best_completed()),
+                'data': GroupedEventsSerializer(
+                    group_events_into_event_rooms(self.get_event_rooms_by_best_completed()),
                     many=True
                 ).data,
             },
@@ -1402,8 +1402,8 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                 return Response(
                     data={
                         'message': '',
-                        'data': SortedEventsIntoEventRoomsSerializer(
-                            sort_events_into_event_rooms(is_replying_events),
+                        'data': GroupedEventsSerializer(
+                            group_events_into_event_rooms(is_replying_events),
                             many=True
                         ).data,
                     },
@@ -1427,7 +1427,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                         return Response(
                             data={
                                 'message': '',
-                                'data': SortedEventsIntoEventRoomsSerializer(
+                                'data': GroupedEventsSerializer(
                                     [],
                                     many=True
                                 ).data,
@@ -1442,8 +1442,8 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                     return Response(
                         data={
                             'message': '',
-                            'data': SortedEventsIntoEventRoomsSerializer(
-                                sort_events_into_event_rooms(events),
+                            'data': GroupedEventsSerializer(
+                                group_events_into_event_rooms(events),
                                 many=True
                             ).data,
                         },

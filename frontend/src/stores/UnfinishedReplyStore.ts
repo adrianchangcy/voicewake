@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia';
-import EventRoomTypes from '@/types/EventRooms.interface';
+import GroupedEventsTypes from '@/types/GroupedEvents.interface';
 import StatusValues from '@/types/values/StatusValues';
 
 
 export const useUnfinishedReplyStore = defineStore('unfinished_reply', {
     state: ()=>({
-        event_room: null as EventRoomTypes|null,
+        event_room: null as GroupedEventsTypes|null,
         status: "" as StatusValues,
     }),    
     getters: {
@@ -23,7 +23,7 @@ export const useUnfinishedReplyStore = defineStore('unfinished_reply', {
 
             this.status = status;
         },
-        updateUnfinishedReply(event_room:EventRoomTypes) : void {
+        updateUnfinishedReply(event_room:GroupedEventsTypes) : void {
 
             this.event_room = event_room;
         },

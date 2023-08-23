@@ -73,12 +73,13 @@ class EventsSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-
-class EventsWithLikeDetailsSerializer(serializers.ModelSerializer):
+#no need event_room=EventRoomsSerializer
+#because we will use store into SortedEventsIntoEventRoomsSerializer.event_room, once for all related events
+class EventAndLikeDetailsSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     event_role = EventRolesSerializer()
     event_tone = EventTonesSerializer()
-    event_room = EventRoomsSerializer()
+    event_room_id = serializers.IntegerField()
     generic_status = GenericStatusesSerializer()
     audio_volume_peaks = serializers.ListField(
         child=serializers.DecimalField(min_value=0, max_value=1, max_digits=3, decimal_places=2, coerce_to_string=False),
@@ -91,15 +92,15 @@ class EventsWithLikeDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Events
-        fields = ['id', 'user', 'event_role', 'event_tone', 'event_room', 'generic_status', 'audio_file', 'audio_volume_peaks', 'audio_duration_s', 'like_count', 'dislike_count', 'is_liked_by_user']
+        fields = ['id', 'user', 'event_role', 'event_tone', 'event_room_id', 'generic_status', 'audio_file', 'audio_volume_peaks', 'audio_duration_s', 'like_count', 'dislike_count', 'is_liked_by_user']
 
 
 
-class SortedEventsIntoEventRoomsSerializer(serializers.Serializer):
+class GroupedEventsSerializer(serializers.Serializer):
     event_room = EventRoomsSerializer()
-    originator = EventsWithLikeDetailsSerializer()
+    originator = EventAndLikeDetailsSerializer()
     responder = serializers.ListField(
-        child=EventsWithLikeDetailsSerializer()
+        child=EventAndLikeDetailsSerializer()
     )
 
 
