@@ -55,7 +55,26 @@ class EventRoomsSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+
 class EventsSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+    event_role = EventRolesSerializer()
+    event_tone = EventTonesSerializer()
+    event_room = EventRoomsSerializer()
+    generic_status = GenericStatusesSerializer()
+    audio_volume_peaks = serializers.ListField(
+        child=serializers.DecimalField(min_value=0, max_value=1, max_digits=3, decimal_places=2, coerce_to_string=False),
+        min_length=20,
+        max_length=20
+    )
+
+    class Meta:
+        model = Events
+        fields = '__all__'
+
+
+
+class EventsWithLikeDetailsSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     event_role = EventRolesSerializer()
     event_tone = EventTonesSerializer()
@@ -75,11 +94,12 @@ class EventsSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'event_role', 'event_tone', 'event_room', 'generic_status', 'audio_file', 'audio_volume_peaks', 'audio_duration_s', 'like_count', 'dislike_count', 'is_liked_by_user']
 
 
-class EventRoomsSerializer(serializers.Serializer):
+
+class SortedEventsIntoEventRoomsSerializer(serializers.Serializer):
     event_room = EventRoomsSerializer()
-    originator = EventsSerializer()
+    originator = EventsWithLikeDetailsSerializer()
     responder = serializers.ListField(
-        child=EventsSerializer()
+        child=EventsWithLikeDetailsSerializer()
     )
 
 
@@ -131,38 +151,9 @@ class CreateEventsSerializer(serializers.Serializer):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class HandleReplyingEventRoomsSerializer(serializers.Serializer):
 
     event_room_id = serializers.IntegerField()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
