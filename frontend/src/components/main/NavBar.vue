@@ -193,7 +193,7 @@
             <!--extra area to click when nav menu is open-->
             <div
                 :class="propIsLoggedIn === false ? 'lg:hidden' : ''"
-                class="relative col-start-1 col-span-1 sm:col-span-5"
+                class="relative col-start-1 col-span-1 sm:col-span-5 xl:col-span-6"
             >
                 <TransitionFade>
                     <div

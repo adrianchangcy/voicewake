@@ -66,6 +66,8 @@ def remove_all_whitespace(string_value):
 
 
 #custom user model
+#username should be default None instead of typical '' to comply with unique string field constraint
+#since '' is considered unique
 class UserManager(BaseUserManager):
 
     def _create_user(self, email, username, password, is_active, is_staff, is_superuser, **extra_fields):
@@ -115,8 +117,8 @@ class UserManager(BaseUserManager):
     #for normal users, if manual, call get_user_model().objects.create_user()
     #py manage.py createsuperuser and UserCreationForm will auto-call these methods
 
-    def create_user(self, email, **extra_fields):
-        return self._create_user(email, None, None, False, False, False, **extra_fields)
+    def create_user(self, email, username=None, **extra_fields):
+        return self._create_user(email, username, None, False, False, False, **extra_fields)
 
     def create_superuser(self, email, username, password, **extra_fields):
         return self._create_user(email, username, password, True, True, True, **extra_fields)

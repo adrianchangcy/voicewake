@@ -69,6 +69,206 @@ class HandleError:
             return ""
 
 
+
+class PrepareTestData:
+
+    def prepare_users(user_quantity:int):
+
+        for x in range(0, user_quantity):
+
+            get_user_model().objects.create_user(email="user"+str(x)+"@gmail.com", username="user"+str(x))
+
+
+    def prepare_test_data_event_rooms(
+        self,
+        originator_username, responder_username,
+        incomplete_count, completed_count,
+        hours_ago
+    ):
+
+        #prepare fake audio column values
+        audio_file = "/audio_test.mp3"
+        audio_volume_peaks = [
+            0.32, 0.47, 0.76, 0.75, 0.79, 0.59, 0.78, 0.83, 0.85, 0.77,
+            0.62, 0.69, 0.97, 0.96, 0.97, 0.96, 0.96, 0.63, 0.47, 0.0
+        ]
+        audio_duration_s = 26
+
+        #prepare relevant values
+        datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
+        datetime_checkpoint = (datetime_now - timedelta(hours=hours_ago)).strftime('%Y-%m-%d %H:%M:%S %z')
+        event_role_originator = EventRoles.objects.get(event_role_name='originator')
+        event_role_responder = EventRoles.objects.get(event_role_name='responder')
+        originator_user = get_user_model().objects.get(username_lowercase=originator_username)
+        responder_user = get_user_model().objects.get(username_lowercase=responder_username)
+        generic_status_ok = GenericStatuses.objects.get(generic_status_name='ok')
+        generic_status_incomplete = GenericStatuses.objects.get(generic_status_name='incomplete')
+        generic_status_completed = GenericStatuses.objects.get(generic_status_name='completed')
+        event_tone = EventTones.objects.first()
+
+        #create incomplete event rooms
+        bulk_event_rooms = []
+
+        for x in range(0, incomplete_count):
+
+            bulk_event_rooms.append(EventRooms(
+                event_room_name="should be incomplete",
+                created_by=originator_user,
+                generic_status=generic_status_incomplete,
+                when_created=datetime_checkpoint
+            ))
+
+        bulk_event_rooms = EventRooms.objects.bulk_create(bulk_event_rooms)
+
+        #create incomplete events
+        bulk_events = []
+
+        for x in range(0, incomplete_count):
+
+            bulk_events.append(Events(
+                user=originator_user,
+                event_role=event_role_originator,
+                audio_file=audio_file,
+                audio_volume_peaks=audio_volume_peaks,
+                audio_duration_s=audio_duration_s,
+                generic_status=generic_status_ok,
+                event_room=bulk_event_rooms[x],
+                event_tone=event_tone
+            ))
+
+        Events.objects.bulk_create(bulk_events)
+
+        #create completed event rooms
+        bulk_event_rooms = []
+
+        for x in range(0, completed_count):
+
+            bulk_event_rooms.append(EventRooms(
+                event_room_name="should be completed",
+                created_by=originator_user,
+                generic_status=generic_status_completed,
+                when_created=datetime_checkpoint
+            ))
+
+        bulk_event_rooms = EventRooms.objects.bulk_create(bulk_event_rooms)
+
+        #create completed events
+        bulk_events = []
+
+        for x in range(0, completed_count):
+
+            bulk_events.append(Events(
+                user=originator_user,
+                event_role=event_role_originator,
+                audio_file=audio_file,
+                audio_volume_peaks=audio_volume_peaks,
+                audio_duration_s=audio_duration_s,
+                generic_status=generic_status_ok,
+                event_room=bulk_event_rooms[x],
+                event_tone=event_tone
+            ))
+
+            bulk_events.append(Events(
+                user=responder_user,
+                event_role=event_role_responder,
+                audio_file=audio_file,
+                audio_volume_peaks=audio_volume_peaks,
+                audio_duration_s=audio_duration_s,
+                generic_status=generic_status_ok,
+                event_room=bulk_event_rooms[x],
+                event_tone=event_tone
+            ))
+
+        Events.objects.bulk_create(bulk_events)
+
+
+    def prepare_test_data_likes_dislikes(
+        self, action_username, username_of_events, like_percentage, dislike_percentage, hours_ago
+    ):
+        
+        if (like_percentage + dislike_percentage) > 1:
+
+            raise ValueError('like_percentage and dislike_percentage can only total from 0 to 1')
+        
+        action_user = get_user_model().objects.get(username_lowercase=action_username)
+        user_of_events = get_user_model().objects.get(username_lowercase=username_of_events)
+        datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
+        datetime_checkpoint = (datetime_now - timedelta(hours=hours_ago)).strftime('%Y-%m-%d %H:%M:%S %z')
+
+        #get events
+        events = Events.objects.filter(user=user_of_events)
+
+        if len(events) == 0:
+
+            raise Events.DoesNotExist
+
+        #create likes
+        bulk_likes = []
+        likes_floor = math.floor(like_percentage * len(events))
+
+        for x in range(0, likes_floor):
+
+            bulk_likes.append(
+                EventLikesDislikes(
+                    event=events[x],
+                    user=action_user,
+                    is_liked=True,
+                    when_created=datetime_checkpoint
+                )
+            )
+
+        EventLikesDislikes.objects.bulk_create(bulk_likes)
+
+        #create dislikes
+        bulk_dislikes = []
+
+        for x in range(likes_floor, len(events)):
+
+            bulk_likes.append(
+                EventLikesDislikes(
+                    event=events[x],
+                    user=action_user,
+                    is_liked=False,
+                    when_created=datetime_checkpoint
+                )
+            )
+
+        EventLikesDislikes.objects.bulk_create(bulk_dislikes)
+
+
+    def do_quick_start(self):
+
+        self.prepare_test_data_event_rooms(
+            originator_username="user12",
+            responder_username="user13",
+            incomplete_count=10000,
+            completed_count=5000,
+            hours_ago=5
+        )
+
+        self.prepare_test_data_likes_dislikes(
+            action_username="user10",
+            username_of_events="user12",
+            like_percentage=0.5,
+            dislike_percentage=0.4,
+            hours_ago=5
+        )
+        self.prepare_test_data_likes_dislikes(
+            action_username="user11",
+            username_of_events="user12",
+            like_percentage=0.7,
+            dislike_percentage=0.3,
+            hours_ago=5
+        )
+        self.prepare_test_data_likes_dislikes(
+            action_username="user12",
+            username_of_events="user12",
+            like_percentage=0.8,
+            dislike_percentage=0.2,
+            hours_ago=5
+        )
+
+
 #if empty db, run this once
 #do not run this during makemigrations and migrate, else error is raised
 def first_time_setup():
@@ -684,7 +884,8 @@ class HandleAudioFile:
         # >0 will cause clipping
         #since we need 0 to 1 to draw peaks at frontend, but we don't know our floor (lack of bit depth info),
         #we assume via ffmpeg's silencedetect of default -60dB
-        self.dbfs_floor = -60
+        #update 2023-08-22: -60 is too high, with peaks near 1, so trying -99
+        self.dbfs_floor = -99
 
         self.bucket_quantity = 20
 

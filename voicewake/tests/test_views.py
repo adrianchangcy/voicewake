@@ -309,7 +309,42 @@ class Events_TestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
+        #prepare necessary data
         first_time_setup()
+
+        #next, we simulate live data
+
+        #100 users
+
+
+
+
+
+
+    
+    def test_prepare_test_data(self):
+
+        #prepare 100 users, user0 ... user99
+        PrepareTestData.prepare_users(100)
+
+        #create 100 incomplete event rooms, and 50 completed ones replied by user10
+        PrepareTestData.prepare_test_data_event_rooms(
+            originator_username="user9",
+            responder_username="user10",
+            incomplete_count=100,
+            completed_count=50,
+            hours_ago=5
+        )
+
+        #have user11 give likes to 0.6 of user9's events, dislikes to 0.4 of user9's events
+        PrepareTestData.prepare_test_data_likes_dislikes(
+            action_username="user11",
+            username_of_events="user9",
+            like_percentage=0.6,
+            dislike_percentage=0.4,
+            hours_ago=5
+        )
+
 
 
     def test_file_handling_from_request(self):
@@ -371,18 +406,11 @@ class Events_TestCase(TestCase):
         handle_audio_file_class.close_audio_file()
 
 
+    def test_row_fetches(self):
+
+        print('ok')
 
 
-class QS_TestCase(TestCase):
-
-    @classmethod
-    def setUpTestData(cls):
-        pass
-
-
-    def test_delete_qs(self):
-
-        Events.objects.all().delete()
 
 
 
