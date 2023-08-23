@@ -1,6 +1,6 @@
-import EventTypes from "./Events.interface";
+import EventAndLikeDetailsTypes from "./EventAndLikeDetails.interface";
 
-interface EventRoomTypes{
+interface GroupedEventsTypes{
     event_room: {
         id: number,
         event_room_name: string,
@@ -16,8 +16,8 @@ interface EventRoomTypes{
         },
         is_replying: boolean,
     },
-    originator: EventTypes|null,
-    responder: EventTypes[]|[]
+    originator: EventAndLikeDetailsTypes|null,
+    responder: EventAndLikeDetailsTypes[]|[]
 };
 
-export default EventRoomTypes;
+export default GroupedEventsTypes;

@@ -505,7 +505,7 @@ def check_user_is_replying(request, excluded_event_room_id=None):
     return the_count > 0
 
 
-def sort_events_into_event_rooms(events:Events):
+def group_events_into_event_rooms(events:Events):
 
     sorted_events = []
     event_room_id = []  #simpler way to check and get element position in sorted_events
