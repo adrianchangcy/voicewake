@@ -18,7 +18,7 @@
                 <div class="w-fit h-full mx-auto flex flex-row">
                     <!--like logo-->
                     <div
-                        class="h-full flex items-center relative pb-1"
+                        class="h-full flex items-center relative pb-0.5"
                         ref="like_logo"
                     >
                         <i
@@ -112,7 +112,7 @@
     import anime from 'animejs';
     import { prettyCount } from '@/helper_functions';
     import { notify } from 'notiwind';
-    import EventTypes from '@/types/Events.interface';
+    import EventsAndLikeDetailsTypes from '@/types/EventsAndLikeDetails.interface';
     const axios = require('axios');
 
     export default defineComponent({
@@ -131,7 +131,11 @@
         },
         props: {
             propEvent: {
-                type: Object as PropType<EventTypes>,
+                type: Object as PropType<EventsAndLikeDetailsTypes>,
+                required: true,
+            },
+            propEventRoomId: {
+                type: Number,
                 required: true,
             },
         },
@@ -184,30 +188,10 @@
                 }
             },
         },
-        mounted(){
-
-            this.axiosSetup();
-
-            //store props into variables
-            this.is_liked = this.propEvent['is_liked_by_user'];
-            this.like_count = this.propEvent['like_count'];
-            this.dislike_count = this.propEvent['dislike_count'];
-
-            //we expect counts from REST API to also include user's own like/dislike
-            //if user has like/dislike, we -1 first, so at computed, we can +1 for existing or new like/dislike
-            if(this.propEvent['is_liked_by_user'] === true){
-
-                this.like_count -= 1;
-
-            }else if(this.propEvent['is_liked_by_user'] === false){
-
-                this.dislike_count -= 1;
-            }
-        },
         methods: {
             copyEventURL() : void {
 
-                const url = window.origin + "/hear/" + this.propEvent.event_room.id;
+                const url = window.origin + "/hear/" + this.propEventRoomId;
                 navigator.clipboard.writeText(url);
 
                 this.has_shared_timeout !== null ? window.clearTimeout(this.has_shared_timeout) : null;
@@ -241,7 +225,7 @@
                     }, 2000);
                 }
             },
-            submitLikeDislike() : void {
+            async submitLikeDislike() : Promise<void> {
 
                 if(this.submit_interval !== null){
 
@@ -258,29 +242,16 @@
 
                     axios.post('http://127.0.0.1:8000/api/event-likes-dislikes', data)
                     .then(() => {})
-                    .catch((error:any) => {
+                    .catch(() => {
 
                         //revert
-                        //we want to do this with logic instead of simply using previous value
-                        //because on fail, previous value is inaccurate when spam-clicked
-                        if(this.is_liked === true){
+                        this.is_liked = this.propEvent['is_liked_by_user'];
 
-                            this.handleLiked();
-                            notify({
-                                title: "Like failed",
-                                text: error.response.data['message'],
-                                type: "error"
-                            }, 3000);
-
-                        }else if(this.is_liked === false){
-
-                            this.handleDisliked();
-                            notify({
-                                title: "Dislike failed",
-                                text: error.response.data['message'],
-                                type: "error"
-                            }, 3000);
-                        }
+                        notify({
+                            title: "Error",
+                            text: "Could not like or dislike this event.",
+                            type: "error"
+                        }, 3000);
                     });
                 }, 500);
             },
@@ -386,6 +357,26 @@
                 axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
                 return true;
             },
+        },
+        mounted(){
+
+            this.axiosSetup();
+
+            //store props into variables
+            this.is_liked = this.propEvent['is_liked_by_user'];
+            this.like_count = this.propEvent['like_count'];
+            this.dislike_count = this.propEvent['dislike_count'];
+
+            //we expect counts from REST API to also include user's own like/dislike
+            //if user has like/dislike, we -1 first, so at computed, we can +1 for existing or new like/dislike
+            if(this.propEvent['is_liked_by_user'] === true){
+
+                this.like_count -= 1;
+
+            }else if(this.propEvent['is_liked_by_user'] === false){
+
+                this.dislike_count -= 1;
+            }
         },
     });
 </script>

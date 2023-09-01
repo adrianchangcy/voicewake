@@ -331,7 +331,7 @@
     import { defineComponent } from 'vue';
     import { timeFromNowMS, prettyTimeRemaining } from '@/helper_functions';
     import { notify } from 'notiwind';
-    import EventRoomTypes from '@/types/EventRooms.interface';
+    import GroupedEventsTypes from '@/types/GroupedEvents.interface';
     import StatusValues from '@/types/values/StatusValues';
     import { useUnfinishedReplyStore } from '@/stores/UnfinishedReplyStore';
 
@@ -343,8 +343,8 @@
             return {
                 unfinished_reply_store: useUnfinishedReplyStore(),
 
-                new_reply_choice_event_rooms: [] as EventRoomTypes[] | [],
-                unfinished_reply_event_room: null as EventRoomTypes | null,
+                new_reply_choice_event_rooms: [] as GroupedEventsTypes[] | [],
+                unfinished_reply_event_room: null as GroupedEventsTypes | null,
                 redirect_url: "",
 
                 expiry_interval: null as number | null,
@@ -365,7 +365,7 @@
             };
         },
         computed: {
-            getMainEventRoom() : EventRoomTypes|null {
+            getMainEventRoom() : GroupedEventsTypes|null {
 
                 //only useful for current 1-event-room-per-instance
                 //use v-for when > 1 in the future
@@ -640,7 +640,7 @@
                     }, 3000);
                 });
             },
-            async confirmReplyChoice(event_room: EventRoomTypes|null): Promise<void> {
+            async confirmReplyChoice(event_room: GroupedEventsTypes|null): Promise<void> {
 
                 if (event_room === null || this.is_new_reply_choice_confirming === true){
 
@@ -698,7 +698,7 @@
             },
             startExpiryInterval(context:"new_reply_choices"|"unfinished_reply"): void {
 
-                let target_event_room: EventRoomTypes | null = null;
+                let target_event_room: GroupedEventsTypes | null = null;
                 let target_max_ms = 0;
 
                 if(context === "unfinished_reply" && this.unfinished_reply_event_room !== null){

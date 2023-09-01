@@ -15,7 +15,6 @@
             <EventRoomCard
                 :propEventRoom="event_room"
                 :propShowTitle="false"
-                @newSelectedEvent=handleNewSelectedEvent($event)
             />
 
             <!--reply area-->
@@ -154,11 +153,12 @@
 <script lang="ts">
     import { defineComponent, } from 'vue';
     import { prettyTimePassed, prettyTimeRemaining, getDataFromTemplateJSONScript, timeFromNowMS } from '@/helper_functions';
-    import EventRoomTypes from '@/types/EventRooms.interface';
-    import EventTypes from '@/types/Events.interface';
+    import GroupedEventsTypes from '@/types/GroupedEvents.interface';
+    import EventsAndLikeDetailsTypes from '@/types/EventsAndLikeDetails.interface';
     import StatusValues from '@/types/values/StatusValues';
     import { notify } from 'notiwind';
     import { useUnfinishedReplyStore } from '@/stores/UnfinishedReplyStore';
+    import { useCurrentlyPlayingEventStore } from '@/stores/CurrentlyPlayingEventStore';
     const axios = require('axios');
 
     export default defineComponent({
@@ -166,6 +166,7 @@
         data() {
             return {
                 unfinished_reply_store: useUnfinishedReplyStore(),
+                currently_playing_event_store: useCurrentlyPlayingEventStore(),
 
                 user_id: null as number|null,
                 event_room_id: null as number|null,
@@ -176,14 +177,14 @@
                 reply_is_deleted: false,    //set True once, only to show message
                 reply_is_expired: false,  //set True once, only to show message
 
-                event_room: null as EventRoomTypes|null,
+                event_room: null as GroupedEventsTypes|null,
 
                 is_searching: false,
                 is_deleting: false,
                 is_expiring: false,
                 is_submitting: false,
                 
-                selected_event: null as EventTypes|null,
+                selected_event: null as EventsAndLikeDetailsTypes|null,
                 playback_teleport_event_id: '',
                 reply_expiry_interval: null as number|null,
                 reply_expiry_string: '',
@@ -268,7 +269,7 @@
                         break;
                 }
             },
-            checkUserIsReplying(event_room:EventRoomTypes){
+            checkUserIsReplying(event_room:GroupedEventsTypes){
 
                 //check if user is supposed to reply to this
                 //might not seem important to do this much if journey is standard reply --> open
@@ -440,7 +441,7 @@
                     left: target.offsetLeft,
                 });
             },
-            handleNewSelectedEvent(event:EventTypes|null) : void {
+            handleNewSelectedEvent(event:EventsAndLikeDetailsTypes|null) : void {
 
                 this.selected_event = event;
 
@@ -582,6 +583,12 @@
             this.unfinished_reply_store.$subscribe(()=>{
 
                 this.handleUnfinishedReplyStoreChange();
+            });
+
+            //listen to store
+            this.currently_playing_event_store.$subscribe((mutation, state)=>{
+
+                this.handleNewSelectedEvent(state.playing_event);
             });
         },
     });

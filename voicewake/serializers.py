@@ -75,7 +75,7 @@ class EventsSerializer(serializers.ModelSerializer):
 
 #no need event_room=EventRoomsSerializer
 #because we will use store into SortedEventsIntoEventRoomsSerializer.event_room, once for all related events
-class EventAndLikeDetailsSerializer(serializers.ModelSerializer):
+class EventsAndLikeDetailsSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     event_role = EventRolesSerializer()
     event_tone = EventTonesSerializer()
@@ -98,9 +98,9 @@ class EventAndLikeDetailsSerializer(serializers.ModelSerializer):
 
 class GroupedEventsSerializer(serializers.Serializer):
     event_room = EventRoomsSerializer()
-    originator = EventAndLikeDetailsSerializer()
+    originator = EventsAndLikeDetailsSerializer()
     responder = serializers.ListField(
-        child=EventAndLikeDetailsSerializer()
+        child=EventsAndLikeDetailsSerializer()
     )
 
 

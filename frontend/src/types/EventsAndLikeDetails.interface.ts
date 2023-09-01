@@ -1,4 +1,4 @@
-interface EventTypes{
+interface EventsAndLikeDetailsTypes{
     id: number,
     user: {
         id: number,
@@ -14,26 +14,7 @@ interface EventTypes{
         event_tone_slug: string,
         event_tone_symbol: string
     },
-    event_room: {
-        id: number,
-        generic_status: {
-            id: number,
-            generic_status_name: string
-        },
-        locked_for_user: {
-            id: number,
-            username: string
-        }|null,
-        created_by: {
-            id: number,
-            username: string
-        },
-        event_room_name: string,
-        when_locked: string|null,
-        is_replying: boolean|null,
-        when_created: string,
-        last_modified: string
-    },
+    event_room_id: number,
     generic_status: {
         id: number,
         generic_status_name: string
@@ -46,4 +27,4 @@ interface EventTypes{
     is_liked_by_user: boolean|null
 };
 
-export default EventTypes;
+export default EventsAndLikeDetailsTypes;

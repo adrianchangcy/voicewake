@@ -37,6 +37,7 @@
                 />
                 <VEventTools
                     :propEvent="propEventRoom.originator"
+                    :propEventRoomId="propEventRoom.event_room.id"
                 />
             </div>
 
@@ -55,6 +56,7 @@
                 />
                 <VEventTools
                     :propEvent="event"
+                    :propEventRoomId="propEventRoom.event_room.id"
                 />
             </div>
         </div>
@@ -77,6 +79,7 @@
                 />
                 <VEventTools
                     :propEvent="propEventRoom.originator"
+                    :propEventRoomId="propEventRoom.event_room.id"
                 />
             </div>
 
@@ -95,6 +98,7 @@
                 />
                 <VEventTools
                     :propEvent="event"
+                    :propEventRoomId="propEventRoom.event_room.id"
                 />
             </div>
         </div>
@@ -113,20 +117,22 @@
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
     import { prettyTimePassed } from '@/helper_functions';
-    import EventRoomTypes from '@/types/EventRooms.interface';
-    import EventTypes from '@/types/Events.interface';
+    import GroupedEventsTypes from '@/types/GroupedEvents.interface';
+    import EventsAndLikeDetailsTypes from '@/types/EventsAndLikeDetails.interface';
+    import { useCurrentlyPlayingEventStore } from '@/stores/CurrentlyPlayingEventStore';
     const axios = require('axios');
 
     export default defineComponent({
         data() {
             return {
-                selected_event: null as EventTypes|null,
+                currently_playing_event_store: useCurrentlyPlayingEventStore(),
+                selected_event: null as EventsAndLikeDetailsTypes|null,
                 pretty_when_created: '',
             };
         },
         props: {
             propEventRoom: {
-                type: Object as PropType<EventRoomTypes>,
+                type: Object as PropType<GroupedEventsTypes>,
                 required: true,
             },
             propShowTitle: {
@@ -174,13 +180,11 @@
 
                 return this.selected_event !== null && this.selected_event.id === event_id;
             },
-            handleNewSelectedEvent(event:EventTypes) : void {
+            handleNewSelectedEvent(event:EventsAndLikeDetailsTypes) : void {
 
-                this.selected_event = event;
-
-                //since a page can have many EventRoomCard, VPlayback is placed as child to this component's parent
-                //to only have one VPlayback instance across the entire page, we emit from here
-                this.$emit('newSelectedEvent', event);
+                this.currently_playing_event_store.$patch({
+                    playing_event: event
+                });
             }
         },
         mounted(){
@@ -189,10 +193,12 @@
             this.axiosSetup();
 
             this.pretty_when_created = prettyTimePassed(new Date(this.propEventRoom.event_room.when_created));
-        },
-        beforeUnmount(){
-            
-            this.$emit('newSelectedEvent', null);
+
+            //listen to store
+            this.currently_playing_event_store.$subscribe((mutation, state)=>{
+
+                this.selected_event = state.playing_event;
+            });
         },
     });
 </script>

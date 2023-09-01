@@ -18,14 +18,14 @@
     import { notify } from 'notiwind';
     // import anime from 'animejs';
     // import VPlayback from '../medium/VPlayback.vue';
-    import EventRoomTypes from '@/types/EventRooms.interface';
+    import GroupedEventsTypes from '@/types/GroupedEvents.interface';
     const axios = require('axios');
 
     export default defineComponent({
         data(){
             return {
                 notifications: [] as any[],
-                event_room: null as EventRoomTypes|null,
+                event_room: null as GroupedEventsTypes|null,
             };
         },
         methods: {

@@ -72,7 +72,7 @@
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
     import anime from 'animejs';
-    import EventTypes from '@/types/Events.interface';
+    import EventsAndLikeDetailsTypes from '@/types/EventsAndLikeDetails.interface';
     import { prettyDuration } from '@/helper_functions';
 
     export default defineComponent({
@@ -107,7 +107,7 @@
         },
         props: {
             propEvent: {
-                type: Object as PropType<EventTypes>,
+                type: Object as PropType<EventsAndLikeDetailsTypes>,
                 required: true,
             },
             propIsSelected: {
