@@ -106,7 +106,6 @@ MIDDLEWARE += [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    # 'django_otp.middleware.OTPMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
@@ -143,7 +142,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'voicewake',
         'USER': 'postgres',
-        'PASSWORD': 'postgresqllocalhost',
+        'PASSWORD': 'localhost',
         'HOST': 'localhost',
         'PORT': '5432',
     }
@@ -234,12 +233,10 @@ REST_FRAMEWORK = {
 ASGI_APPLICATION = 'voicewake.asgi.application'
 
 
-#on deploy, use Redis, not the current one below
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
-    },
-}
+#channel layers are optional, for app-to-app communication, e.g. real-time
+#when testing, InMemoryChannelLayer is sufficient
+#on deploy, must use Redis, as InMemoryChannelLayer is sub-optimal
+CHANNEL_LAYERS = {}
 
 
 #folder name, only for storage

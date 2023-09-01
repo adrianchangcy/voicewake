@@ -135,6 +135,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    is_banned = models.BooleanField(default=False)
     last_login = models.DateTimeField(null=True, blank=True)
     date_joined = models.DateTimeField(auto_now_add=True)
     
@@ -180,6 +181,42 @@ class UserOTP(models.Model):
         db_table = 'user_otp'
 
 
+class UserBlocks(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_blocks_user_1")
+    blocked_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_blocks_user_2")
+    when_created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = 'voicewake'
+        managed = True
+        db_table = 'user_blocks'
+        constraints = [
+            models.UniqueConstraint(fields=["user", "blocked_user"], name="unique_user_blocked_user")
+        ]
+
+
+#on ban_decision becoming from None to True/False, delete all other rows with the same reported_event
+#a user can only be banned once per event
+class UserEventReports(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    reported_event = models.ForeignKey('Events', on_delete=models.CASCADE)
+    ban_decision = models.BooleanField(blank=True, null=True, default=None)    #True for ban, False to skip
+    banned_from = models.DateTimeField()
+    banned_to = models.DateTimeField()
+    when_created = models.DateTimeField(auto_now_add=True)
+    last_modified = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = 'voicewake'
+        managed = True
+        db_table = 'user_event_reports'
+        constraints = [
+            models.UniqueConstraint(fields=["user", "reported_event"], name="unique_user_reported_event")
+        ]
+
+
 class EventLikesDislikes(models.Model):
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -192,7 +229,9 @@ class EventLikesDislikes(models.Model):
         app_label = 'voicewake'
         managed = True
         db_table = 'event_likes_dislikes'
-
+        constraints = [
+            models.UniqueConstraint(fields=["user", "event"], name="unique_event_likes_dislikes_1")
+        ]
 
 class EventRequestStatuses(models.Model):
     id = models.BigAutoField(primary_key=True)
@@ -208,8 +247,8 @@ class EventRequestStatuses(models.Model):
 
 class EventRequests(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, default=None, related_name='event_requests_auth_user_1')
-    requested_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, default=None, related_name='event_requests_auth_user_2')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, default=None, related_name='event_requests_user_1')
+    requested_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, default=None, related_name='event_requests_user_2')
     event_room = models.ForeignKey('EventRooms', on_delete=models.PROTECT, blank=True, null=True, default=None)
     event_request_status = models.ForeignKey('EventRequestStatuses', on_delete=models.PROTECT, blank=True, null=True, default=None)
     when_created = models.DateTimeField(auto_now_add=True)
@@ -237,9 +276,9 @@ class EventRooms(models.Model):
     event_room_name = models.TextField(max_length=200, default='-') #ensure default is never used
     generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)
     when_locked = models.DateTimeField(blank=True, null=True, default=None)
-    locked_for_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, blank=True, null=True, default=None, related_name='event_rooms_auth_user_1')
+    locked_for_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, blank=True, null=True, default=None, related_name='event_rooms_user_1')
     is_replying = models.BooleanField(blank=True, null=True, default=None)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, blank=True, null=True, default=None, related_name='event_rooms_auth_user_2')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, blank=True, null=True, default=None, related_name='event_rooms_user_2')
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
@@ -278,6 +317,8 @@ class EventTones(models.Model):
 
 
 class Events(models.Model):
+    #we need to denormalise via like_count and dislike_count
+    #because otherwise, read operation scales horribly (260ms to 700ms vs. 40ms)
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, default=None)
     event_role = models.ForeignKey('EventRoles', on_delete=models.PROTECT, blank=True, null=True, default=None)
@@ -292,6 +333,8 @@ class Events(models.Model):
         null=True,
         default=None
     )
+    like_count = models.IntegerField(default=0)
+    dislike_count = models.IntegerField(default=0)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
@@ -332,8 +375,8 @@ class UserEventRooms(models.Model):
 
 class UserFavourites(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='user_favourites_auth_user_1', blank=True, null=True, default=None)
-    favourited_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='user_favourites_auth_user_2', blank=True, null=True, default=None)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='user_favourites_user_1', blank=True, null=True, default=None)
+    favourited_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='user_favourites_user_2', blank=True, null=True, default=None)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -41,11 +41,14 @@ import io
 from typing import Literal
 
 #app files
-from voicewake.forms import *
 from voicewake.models import *
 from voicewake.serializers import *
 from voicewake.services import *
 from django.conf import settings
+
+#specifically just for error handling
+from psycopg.errors import UniqueViolation
+from django.db.utils import IntegrityError
 
 
 
@@ -206,7 +209,7 @@ class UsersLogInAPI(generics.GenericAPIView):
 
             #do not let users know about max attempts reached
             #this protects against email probing during login
-            return HandleUserOTP.get_default_verify_otp_response()
+            return get_default_verify_otp_response()
 
         #OTP verified, continue
 
@@ -277,9 +280,9 @@ class UsersLogInAPI(generics.GenericAPIView):
                 #during testing, send_mail() takes quite long, around 2+ secs
                 time.sleep(random.uniform(0.8, 2))
 
-                return HandleUserOTP.get_default_create_otp_response(email=new_data['email'])
+                return get_default_create_otp_response(email=new_data['email'])
             
-            return HandleUserOTP.get_default_verify_otp_response()
+            return get_default_verify_otp_response()
         
         with transaction.atomic():
 
@@ -306,7 +309,7 @@ class UsersLogInAPI(generics.GenericAPIView):
                         new_otp
                     )
 
-                return HandleUserOTP.get_default_create_otp_response(new_data['email'])
+                return get_default_create_otp_response(new_data['email'])
 
             #continue to verifying OTP and logging in
             #will always return Response()
@@ -386,7 +389,7 @@ class UsersSignUpAPI(UsersLogInAPI):
                         new_otp
                     )
     
-                return HandleUserOTP.get_default_create_otp_response(new_data['email'])
+                return get_default_create_otp_response(new_data['email'])
     
             #continue to verifying OTP and logging in
             #will always return Response()
@@ -422,17 +425,36 @@ class TestAPI(generics.GenericAPIView):
     permission_classes = []
 
 
+
     def get(self, request, *args, **kwargs):
 
         return Response(
             data={
+                'message': '',
+                'data': GroupedEventsSerializer(
+                    group_events_into_event_rooms(
+                        self.get_event_rooms_by_completed(
+                            'best',
+                            '',
+                            'all',
+                            1,
+                        )
+                    ),
+                    many=True
+                ).data,
+            },
+            status=status.HTTP_200_OK
+        )
+
+        return Response(
+            data={
                 'data': {
+
                 },
                 'message': ''
             },
             status=status.HTTP_200_OK
         )
-
 
 
 
@@ -523,62 +545,58 @@ class EventRoomsAPI(generics.GenericAPIView):
 
     def get_event_rooms_by_is_replying(self):
 
-        events = Events.objects.raw(
+        events = Events.objects.prefetch_related(
+            'event_role',
+            'event_room__generic_status',
+            'event_room__created_by',
+            'event_room',
+            'event_tone',
+            'generic_status',
+            'user',
+        ).raw(
             '''
             SELECT
                 events.*,
                 event_rooms.*,
                 event_tones.*,
                 generic_statuses.*,
-                SUM(
-                    CASE 
-                    WHEN event_likes_dislikes.is_liked='true' THEN 1
-                    ELSE 0
-                    END
-                ) AS like_count,
-                SUM(
-                    CASE
-                    WHEN event_likes_dislikes.is_liked='false' THEN 1
-                    ELSE 0
-                    END
-                ) AS dislike_count,
-                (CASE
-                    (
-                        SELECT event_likes_dislikes.is_liked
-                        FROM event_likes_dislikes
-                        WHERE user_id=%s
-                        AND event_id=events.id
-                    )
-                    WHEN 'true' THEN 'true'
-                    WHEN 'false' THEN 'false'
-                    ELSE NULL
-                    END
-                ) AS is_liked_by_user
+                event_likes_dislikes.is_liked AS is_liked_by_user
             FROM events
             LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id
+            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
             WHERE events.event_room_id IN (
                 SELECT id FROM event_rooms
                 WHERE locked_for_user_id=%s
                 AND is_replying=%s
             )
-            AND generic_statuses.generic_status_name = %s
             GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
             ''',
             params=(
                 self.request.user.id,
                 self.request.user.id,
                 True,
-                'ok'
             )
         )
 
         return events
 
 
-    def get_event_rooms_by_best_completed(self, page=0, timeframe:Literal['day', 'week', 'month']='day'):
+    def get_event_rooms_by_completed(
+        self, best_or_new:Literal['best', 'new']='best',
+        event_tone_slug:str='',
+        timeframe:Literal['day', 'week', 'month', 'all']='all',
+        page=1
+    ):
+
+        #when event_tone_slug is '', will just get entire event_tones
+        #when timeframe is 'all_time', leaving datetime_from as '' is sufficient
+        #page starts from 1
+
+        if page < 1:
+
+            raise ValueError("'page' parameter must be >= 1.")
 
         #different checkpoints for different time range
         datetime_checkpoint_timedelta = {
@@ -588,12 +606,226 @@ class EventRoomsAPI(generics.GenericAPIView):
         }
 
         #calculate time range
-        datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
-        datetime_checkpoint = (datetime_now - datetime_checkpoint_timedelta[timeframe]).strftime('%Y-%m-%d %H:%M:%S %z')
-        datetime_now = datetime_now.strftime('%Y-%m-%d %H:%M:%S %z')
+        #leave datetime_from as '' if you want "of all time"
+        datetime_from = ''
+        datetime_to = get_datetime_now(True)
+
+        #determine earliest possible datetime
+        if timeframe in datetime_checkpoint_timedelta:
+
+            datetime_from = (get_datetime_now() - datetime_checkpoint_timedelta[timeframe]).strftime('%Y-%m-%d %H:%M:%S %z')
+
+        else:
+
+            #getting earliest events.when_created adds 5-10ms
+            #using custom function get_id_of_event_rooms_by_when_created() adds 40ms+
+
+            #random datetime that is guaranteed beyond earliest events row is the best so far
+            #here are the risks where this may/would break things:
+                #new events.when_created can start using past datetime
+                #events.when_created is no longer secured by auto_now_add
+                #suddenly no longer uses time zone
+            datetime_from = '2020-01-01 01:01:01 +00'
 
         #calculate offset for pagination
-        pagination_offset = page * settings.EVENT_ROOM_QUANTITY_PER_PAGE
+        pagination_offset = (page - 1) * settings.EVENT_ROOM_QUANTITY_PER_PAGE
+
+        #determine order
+        order_sql = ''
+
+        if best_or_new == 'best':
+            order_sql = 'ORDER BY events.like_count DESC, events.dislike_count ASC'
+        else:
+            order_sql = 'ORDER BY events.when_created DESC'
+
+        #start
+        events = Events.objects.prefetch_related(
+            'event_role',
+            'event_room__generic_status',
+            'event_room__created_by',
+            'event_room',
+            'event_tone',
+            'generic_status',
+            'user',
+        ).raw(
+            '''		
+            WITH
+                selected_event_tones AS (
+                    SELECT id FROM get_id_of_one_or_all_event_tones_via_slug(%s)
+                ),
+                event_room_id_of_best_events AS (
+                    SELECT DISTINCT event_room_id AS id FROM (
+                        SELECT
+                            events.event_room_id,
+                            events.like_count,
+                            events.dislike_count
+                        FROM events
+                        RIGHT JOIN selected_event_tones ON events.event_tone_id = selected_event_tones.id
+                        LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
+                        LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
+                        LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
+                        LEFT JOIN generic_statuses AS event_rooms_generic_statuses ON event_rooms.generic_status_id = event_rooms_generic_statuses.id
+                        WHERE
+                        event_rooms_generic_statuses.generic_status_name = %s
+                        AND events.when_created BETWEEN %s AND %s
+                        GROUP BY events.id
+                        ''' + order_sql + '''
+                    )
+                    AS events_with_count
+                    OFFSET %s LIMIT %s
+                )
+            SELECT
+                events.*,
+                event_rooms.*,
+                event_tones.*,
+                generic_statuses.*,
+                event_likes_dislikes.is_liked AS is_liked_by_user
+            FROM events
+            RIGHT JOIN event_room_id_of_best_events ON events.event_room_id = event_room_id_of_best_events.id
+            LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
+            LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
+            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
+            LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
+            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id, event_likes_dislikes.is_liked
+            ''',
+            params=(
+                event_tone_slug,
+                'completed',
+                datetime_from,
+                datetime_to,
+                pagination_offset,
+                settings.EVENT_ROOM_QUANTITY_PER_PAGE,
+                self.request.user.id,
+            )
+        )
+
+        return events
+
+
+    def get_event_rooms_by_user_and_event_role(
+        self, username:str, event_role_name:str,
+        best_or_new:Literal['best', 'new']='best',
+        event_tone_slug:str='',
+        timeframe:Literal['day', 'week', 'month', 'all']='all',
+        page=1
+    ):
+
+        #when event_tone_slug is '', will just get entire event_tones
+        #when timeframe is 'all_time', leaving datetime_from as '' is sufficient
+        #page starts from 1
+
+        if page < 1 or len(username) == 0 or len(event_role_name) == 0:
+
+            raise ValueError("One or more required parameters are missing.")
+
+        #different checkpoints for different time range
+        datetime_checkpoint_timedelta = {
+            'day': timedelta(days=1),
+            'week': timedelta(days=7),
+            'month': timedelta(days=31)
+        }
+
+        #calculate time range
+        #leave datetime_from as '' if you want "of all time"
+        datetime_from = ''
+        datetime_to = get_datetime_now(True)
+
+        #determine earliest possible datetime
+        if timeframe in datetime_checkpoint_timedelta:
+
+            datetime_from = (get_datetime_now() - datetime_checkpoint_timedelta[timeframe]).strftime('%Y-%m-%d %H:%M:%S %z')
+
+        else:
+
+            #getting earliest events.when_created adds 5-10ms
+            #using custom function get_id_of_event_rooms_by_when_created() adds 40ms+
+
+            #random datetime that is guaranteed beyond earliest events row is the best so far
+            #here are the risks where this may/would break things:
+                #new events.when_created can start using past datetime
+                #events.when_created is no longer secured by auto_now_add
+                #suddenly no longer uses time zone
+            datetime_from = '2020-01-01 01:01:01 +00'
+
+        #calculate offset for pagination
+        pagination_offset = (page - 1) * settings.EVENT_ROOM_QUANTITY_PER_PAGE
+
+        #determine order
+        order_sql = ''
+
+        if best_or_new == 'best':
+            order_sql = 'ORDER BY events.like_count DESC, events.dislike_count ASC'
+        else:
+            order_sql = 'ORDER BY events.when_created DESC'
+
+        #start
+        events = Events.objects.prefetch_related(
+            'event_role',
+            'event_room__generic_status',
+            'event_room__created_by',
+            'event_room',
+            'event_tone',
+            'generic_status',
+            'user',
+        ).raw(
+            '''		
+            WITH
+                selected_event_tones AS (
+                    SELECT id FROM get_id_of_one_or_all_event_tones_via_slug(%s)
+                ),
+                event_room_id_of_best_events AS (
+                    SELECT DISTINCT event_room_id AS id FROM (
+                        SELECT
+                            events.event_room_id,
+                            events.like_count,
+                            events.dislike_count
+                        FROM events
+                        RIGHT JOIN selected_event_tones ON events.event_tone_id = selected_event_tones.id
+                        LEFT JOIN voicewake_user ON events.user_id = voicewake_user.id
+                        LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
+                        LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
+                        LEFT JOIN event_roles ON events.event_role_id = event_roles.id
+                        LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
+                        LEFT JOIN generic_statuses AS event_rooms_generic_statuses ON event_rooms.generic_status_id = event_rooms_generic_statuses.id
+                        WHERE voicewake_user.username_lowercase = %s
+                        AND event_roles.event_role_name = %s
+                        AND events.when_created BETWEEN %s AND %s
+                        GROUP BY events.id
+                        ''' + order_sql + '''
+                    )
+                    AS events_with_count
+                    OFFSET %s LIMIT %s
+                )
+            SELECT
+                events.*,
+                event_rooms.*,
+                event_tones.*,
+                generic_statuses.*,
+                event_likes_dislikes.is_liked AS is_liked_by_user
+            FROM events
+            RIGHT JOIN event_room_id_of_best_events ON events.event_room_id = event_room_id_of_best_events.id
+            LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
+            LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
+            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
+            LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
+            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
+            ''',
+            params=(
+                event_tone_slug,
+                username.lower(),
+                event_role_name,
+                datetime_from,
+                datetime_to,
+                pagination_offset,
+                settings.EVENT_ROOM_QUANTITY_PER_PAGE,
+                self.request.user.id,
+            )
+        )
+
+        return events
+
+
+    def get_event_rooms_by_id(self, event_room_id):
 
         events = Events.objects.prefetch_related(
             'event_role',
@@ -610,219 +842,18 @@ class EventRoomsAPI(generics.GenericAPIView):
                 event_rooms.*,
                 event_tones.*,
                 generic_statuses.*,
-                SUM(
-                    CASE 
-                    WHEN event_likes_dislikes.is_liked='true' THEN 1
-                    ELSE 0
-                    END
-                ) AS like_count,
-                SUM(
-                    CASE
-                    WHEN event_likes_dislikes.is_liked='false' THEN 1
-                    ELSE 0
-                    END
-                ) AS dislike_count,
-                (CASE
-                    (
-                        SELECT event_likes_dislikes.is_liked
-                        FROM event_likes_dislikes
-                        WHERE user_id = %s
-                        AND event_id=events.id
-                    )
-                    WHEN 'true' THEN 'true'
-                    WHEN 'false' THEN 'false'
-                    ELSE NULL
-                    END
-                ) AS is_liked_by_user
+                event_likes_dislikes.is_liked AS is_liked_by_user
             FROM events
             LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id
-            LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
-            WHERE events.event_room_id IN (
-	            SELECT DISTINCT event_room_id FROM (
-        			SELECT
-                        events.event_room_id,
-                        SUM(
-                            CASE 
-                            WHEN event_likes_dislikes.is_liked='true' THEN 1
-                            ELSE 0
-                            END
-                        ) AS like_count,
-                        SUM(
-                            CASE
-                            WHEN event_likes_dislikes.is_liked='false' THEN 1
-                            ELSE 0
-                            END
-                        ) AS dislike_count
-                    FROM events
-                    LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id
-                    LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
-                    WHERE event_rooms.generic_status_id = (
-                        SELECT id FROM generic_statuses
-                        WHERE generic_status_name = %s
-                    )
-                    AND events.event_room_id IN (
-                        SELECT events2.event_room_id FROM events AS events2
-                        INNER JOIN event_roles ON events2.event_role_id = event_roles.id
-                        WHERE event_roles.event_role_name = %s
-                    )
-        			GROUP BY events.id
-        			ORDER BY like_count DESC, dislike_count ASC
-		        )
-        		AS events_with_count
-        		OFFSET %s LIMIT %s
-            )
-            AND generic_statuses.generic_status_name = %s
-            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
-            ''',
-            params=(
-                self.request.user.id,
-                'completed',
-                'responder',
-                pagination_offset,
-                settings.EVENT_ROOM_QUANTITY_PER_PAGE,
-                'ok'
-            )
-        )
-
-        return events
-
-
-    def get_event_rooms_by_id(self, event_room_id):
-
-        events = Events.objects.raw(
-            '''
-            SELECT
-                events.*,
-                event_rooms.*,
-                event_tones.*,
-                generic_statuses.*,
-                SUM(
-                    CASE 
-                    WHEN event_likes_dislikes.is_liked='true' THEN 1
-                    ELSE 0
-                    END
-                ) AS like_count,
-                SUM(
-                    CASE
-                    WHEN event_likes_dislikes.is_liked='false' THEN 1
-                    ELSE 0
-                    END
-                ) AS dislike_count,
-                (CASE
-                    (
-                        SELECT event_likes_dislikes.is_liked
-                        FROM event_likes_dislikes
-                        WHERE user_id=%s
-                        AND event_id=events.id
-                    )
-                    WHEN 'true' THEN 'true'
-                    WHEN 'false' THEN 'false'
-                    ELSE NULL
-                    END
-                ) AS is_liked_by_user
-            FROM events
-            LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
-            LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id
+            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
             WHERE events.event_room_id = %s
-            AND generic_statuses.generic_status_name = %s
             GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
             ''',
             params=(
                 self.request.user.id,
                 event_room_id,
-                'ok'
-            )
-        )
-
-        return events
-
-
-    def get_event_rooms_by_new_completed(self, page=0, timeframe:Literal['day', 'week', 'month']='day'):
-
-        #different checkpoints for different time range
-        datetime_checkpoint_timedelta = {
-            'day': timedelta(days=1),
-            'week': timedelta(days=7),
-            'month': timedelta(days=31)
-        }
-
-        #calculate time range
-        datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
-        datetime_checkpoint = (datetime_now - datetime_checkpoint_timedelta[timeframe]).strftime('%Y-%m-%d %H:%M:%S %z')
-        datetime_now = datetime_now.strftime('%Y-%m-%d %H:%M:%S %z')
-
-        #calculate offset for pagination
-        pagination_offset = page * settings.EVENT_ROOM_QUANTITY_PER_PAGE
-
-        #we get event_room_id from events with event_role_name='responder'
-        #to allow us to accurately sort when it was completed
-        events = Events.objects.raw(
-            '''
-            SELECT
-                events.*,
-                event_rooms.*,
-                event_tones.*,
-                generic_statuses.*,
-                SUM(
-                    CASE 
-                    WHEN event_likes_dislikes.is_liked='true' THEN 1
-                    ELSE 0
-                    END
-                ) AS like_count,
-                SUM(
-                    CASE
-                    WHEN event_likes_dislikes.is_liked='false' THEN 1
-                    ELSE 0
-                    END
-                ) AS dislike_count,
-                (CASE
-                    (
-                        SELECT event_likes_dislikes.is_liked
-                        FROM event_likes_dislikes
-                        WHERE user_id=%s
-                        AND event_id=events.id
-                    )
-                    WHEN 'true' THEN 'true'
-                    WHEN 'false' THEN 'false'
-                    ELSE NULL
-                    END
-                ) AS is_liked_by_user
-            FROM events
-            LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
-            LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id
-            LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
-            WHERE events.event_room_id IN (
-                SELECT event_room_id FROM events AS events2
-                INNER JOIN generic_statuses ON events2.generic_status_id = generic_statuses.id
-                WHERE generic_statuses.generic_status_name = %s
-                AND events2.event_role_id = (
-                    SELECT id FROM event_roles
-                    WHERE event_role_name = %s
-                )
-                AND events2.event_room_id IN (
-                    SELECT event_rooms.id FROM event_rooms
-                    INNER JOIN generic_statuses ON event_rooms.generic_status_id = generic_statuses.id
-                    WHERE generic_statuses.generic_status_name = %s
-                )
-                AND events2.when_created BETWEEN %s AND %s
-                OFFSET %s LIMIT %s
-            )
-            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
-            ''',
-            params=(
-                self.request.user.id,
-                'ok',
-                'responder',
-                'completed',
-                datetime_checkpoint,
-                datetime_now,
-                pagination_offset,
-                settings.EVENT_ROOM_QUANTITY_PER_PAGE
             )
         )
 
@@ -830,11 +861,9 @@ class EventRoomsAPI(generics.GenericAPIView):
 
 
     #get event_room.id to simply view
-    #or get by generic_status_name='incomplete' to lock events as reply choices
-        #will give currently replying event_room, or unlock reply choices and lock new ones
     def get(self, request, *args, **kwargs):
 
-        #handle singular event_room view
+        #handle singular event_rooms view
         if 'event_room_id' in kwargs:
 
             #user simply wants to check the post for an event_room
@@ -848,44 +877,97 @@ class EventRoomsAPI(generics.GenericAPIView):
                 },
             )
 
-            #if user is replying, we don't cache the request
+            #previously, if user is replying, we don't cache the request
             #in regards to replying UI not disappearing when user revisits
-            if check_user_is_replying(request) is True:
-
-                patch_cache_control(
-                    response,
-                    no_cache=True, no_store=True, must_revalidate=True, max_age=0
-                )
+            #we just disable cache all the time to ensure likes/dislikes consistency
+            patch_cache_control(
+                response,
+                no_cache=True, no_store=True, must_revalidate=True, max_age=0
+            )
 
             return response
         
+        #proceed to handling multiple event_rooms
+        
         #pagination
-        get_by_page = 0
+        url_page = 1
+        if 'page' in kwargs and kwargs['page'] > 1:
+            #URL page starts from 1
+            #>1 above allows us to ensure 0 is not used
+            url_page = kwargs['page']
 
-        if 'page' in kwargs:
+        #determine the appropriate results
+        response = None
 
-            #URL page starts from 1, while page arg starts from 0
-            get_by_page = kwargs['page'] - 1
+        if(
+            'username' in kwargs and 'best_or_new' in kwargs and
+            'timeframe' in kwargs and 'event_role_name' in kwargs and 'page' in kwargs
+        ):
 
+            response = Response(
+                data={
+                    'message': '',
+                    'data': GroupedEventsSerializer(
+                        group_events_into_event_rooms(
+                            self.get_event_rooms_by_user_and_event_role(
+                                kwargs['username'],
+                                kwargs['event_role_name'],
+                                kwargs['best_or_new'],
+                                kwargs['event_tone_slug'],
+                                kwargs['timeframe'],
+                                url_page,
+                            )
+                        ),
+                        many=True
+                    ).data,
+                },
+                status=status.HTTP_200_OK
+            )
+        
+        elif 'best_or_new' in kwargs and 'timeframe' in kwargs and 'page' in kwargs:
 
+            url_event_tone_slug = ''
+            if 'event_tone_slug' in kwargs:
+                url_event_tone_slug = kwargs['event_tone_slug']
 
+            response = Response(
+                data={
+                    'message': '',
+                    'data': GroupedEventsSerializer(
+                        group_events_into_event_rooms(
+                            self.get_event_rooms_by_completed(
+                                kwargs['best_or_new'],
+                                url_event_tone_slug,
+                                kwargs['timeframe'],
+                                url_page,
+                            )
+                        ),
+                        many=True
+                    ).data,
+                },
+                status=status.HTTP_200_OK
+            )
 
+        #ok
+        if response is not None:
 
+            #we would preferrably cache the response
+            #but because likes/dislikes are fetched together with it, caching interferes with likes/dislikes
+            #we just disable cache all the time to ensure likes/dislikes consistency
+            patch_cache_control(
+                response,
+                no_cache=True, no_store=True, must_revalidate=True, max_age=0
+            )
 
+            return response
 
-
-
-
-
-
+        #invalid URL
         return Response(
             data={
-                'message': '',
-                'data': GroupedEventsSerializer(
-                    group_events_into_event_rooms(self.get_event_rooms_by_best_completed()),
-                    many=True
-                ).data,
+                'message': 'Invalid URL.',
+                'data': []
             },
+            status=status.HTTP_400_BAD_REQUEST
         )
 
 
@@ -1050,9 +1132,6 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                         event_room.is_replying = None
                         event_room.save()
 
-                        #prevent from being queued twice
-                        prevent_event_room_from_queuing_twice_for_reply(user, event_room)
-
                         raise HandleError.new_error(
                             TimeoutError,
                             user_message="Reply was not successful. You had reached the time limit."
@@ -1170,24 +1249,6 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #user can generate new event_room reply choice
     #will unlock previous is_replying=False event_room
     #will add to UserEventRooms when locking for is_replying=False
@@ -1202,6 +1263,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
 
         User = get_user_model()
         event_room_ids = []
+        event_rooms = []
         datetime_now = get_datetime_now()
 
         for event in events:
@@ -1214,13 +1276,18 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                 event.event_room.when_locked = datetime_now
                 event.event_room.locked_for_user = User(pk=self.request.user.id)
                 event.event_room.is_replying = False
-                event.event_room.save()
+                event.event_room.last_modified = datetime_now
 
-                #prevent repeated queue
-                prevent_event_room_from_queuing_twice_for_reply(
-                    User(pk=self.request.user.id),
-                    event.event_room
-                )
+                event_rooms.append(event.event_room)
+
+        EventRooms.objects.bulk_update(event_rooms, ['when_locked', 'locked_for_user', 'is_replying', 'last_modified'])
+
+        #prevent repeated queue
+        #we do this here to encourage choosing the best event room, while leaving the other good ones for other users
+        prevent_event_room_from_queuing_twice_for_reply(
+            User(pk=self.request.user.id),
+            event_rooms
+        )
 
         return True
 
@@ -1231,76 +1298,55 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
         datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
         datetime_now = datetime_now.strftime('%Y-%m-%d %H:%M:%S %z')
 
-        events = Events.objects.select_for_update(of=("event_rooms",)).raw(
+        #we select only event_rooms.id in selected_event_rooms, followed by event_rooms JOIN
+        #because if we do event_rooms.* in selected_event_rooms, we'll have to write all columns in GROUP BY clause
+        events = Events.objects.select_for_update(of=("event_room",)).prefetch_related(
+            'event_role',
+            'event_room__generic_status',
+            'event_room__created_by',
+            'event_room',
+            'event_tone',
+            'generic_status',
+            'user',
+        ).raw(
             '''
-            SELECT
-                events.*,
-                event_rooms.*,
-                event_tones.*,
-                generic_statuses.*,
-                SUM(
-                    CASE 
-                    WHEN event_likes_dislikes.is_liked='true' THEN 1
-                    ELSE 0
-                    END
-                ) AS like_count,
-                SUM(
-                    CASE
-                    WHEN event_likes_dislikes.is_liked='false' THEN 1
-                    ELSE 0
-                    END
-                ) AS dislike_count,
-                (CASE
-                    (
-                        SELECT event_likes_dislikes.is_liked
-                        FROM event_likes_dislikes
-                        WHERE user_id = %s
-                        AND event_id=events.id
-                    )
-                    WHEN 'true' THEN 'true'
-                    WHEN 'false' THEN 'false'
-                    ELSE NULL
-                    END
-                ) AS is_liked_by_user
-            FROM events
-            LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
-            LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id
-            LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
-            WHERE
-            events.event_room_id IN (
-                SELECT event_rooms.id FROM event_rooms
+            WITH selected_event_rooms AS (
+                SELECT event_rooms.id AS id FROM event_rooms
                 INNER JOIN generic_statuses ON event_rooms.generic_status_id = generic_statuses.id
+                LEFT JOIN user_event_rooms ON event_rooms.id = user_event_rooms.event_room_id
+                    AND user_event_rooms.user_id = %s
                 WHERE generic_statuses.generic_status_name = %s
                 AND locked_for_user_id IS NULL
                 AND created_by_id != %s
-                AND event_rooms.id NOT IN (
-                    SELECT user_event_rooms.event_room_id FROM user_event_rooms
-                    INNER JOIN event_rooms ON user_event_rooms.event_room_id = event_rooms.id
-                    WHERE user_id = %s
-                    AND user_event_rooms.is_excluded_for_reply IS TRUE                
-                )
-                AND event_rooms.id NOT IN (
-                    SELECT events2.event_room_id FROM events AS events2
-                    INNER JOIN event_roles ON events2.event_role_id = event_roles.id
-                    WHERE user_id = %s
-                    AND event_roles.event_role_name = %s
-                )
+                AND user_event_rooms.is_excluded_for_reply IS NOT TRUE
                 ORDER BY event_rooms.when_created DESC
                 LIMIT %s
             )
-            AND generic_statuses.generic_status_name = %s
-            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
+            SELECT
+                events.*,
+                selected_event_rooms.*,
+                event_tones.*,
+                generic_statuses.*,
+                event_likes_dislikes.is_liked AS is_liked_by_user
+            FROM events
+            RIGHT JOIN selected_event_rooms ON events.event_room_id = selected_event_rooms.id
+            LEFT JOIN event_roles ON events.event_role_id = event_roles.id
+            LEFT JOIN event_rooms ON selected_event_rooms.id = event_rooms.id
+            LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
+            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
+            LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
+            WHERE generic_statuses.generic_status_name = %s
+            AND event_roles.event_role_name = %s
+            GROUP BY events.id, event_tones.id, generic_statuses.id, selected_event_rooms.id
             ''',
             params=(
                 self.request.user.id,
                 'incomplete',
                 self.request.user.id,
-                self.request.user.id,
-                self.request.user.id,
-                'originator',
                 settings.EVENT_ROOM_INCOMPLETE_ROLL_QUANTITY,
+                self.request.user.id,
                 'ok',
+                'originator'
             )
         )
 
@@ -1310,68 +1356,50 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
     def unlock_event_rooms_from_past_reply_choices(self):
 
         User = get_user_model()
+        datetime_now = get_datetime_now()
 
         event_rooms = EventRooms.objects.select_for_update().filter(
             locked_for_user=User(pk=self.request.user.id)
         )
         
-        user = User(pk=self.request.user.id)
-
         for event_room in event_rooms:
 
             #unlock
             event_room.when_locked = None
             event_room.locked_for_user = None
             event_room.is_replying = None
+            event_room.last_modified = datetime_now
 
-            event_room.save()
+        EventRooms.objects.bulk_update(event_rooms, ['when_locked', 'locked_for_user', 'is_replying', 'last_modified'])
 
 
     def get_event_rooms_by_is_replying(self):
 
-        events = Events.objects.raw(
+        events = Events.objects.prefetch_related(
+            'event_role',
+            'event_room__generic_status',
+            'event_room__created_by',
+            'event_room',
+            'event_tone',
+            'generic_status',
+            'user',
+        ).raw(
             '''
             SELECT
                 events.*,
                 event_rooms.*,
                 event_tones.*,
                 generic_statuses.*,
-                SUM(
-                    CASE 
-                    WHEN event_likes_dislikes.is_liked='true' THEN 1
-                    ELSE 0
-                    END
-                ) AS like_count,
-                SUM(
-                    CASE
-                    WHEN event_likes_dislikes.is_liked='false' THEN 1
-                    ELSE 0
-                    END
-                ) AS dislike_count,
-                (CASE
-                    (
-                        SELECT event_likes_dislikes.is_liked
-                        FROM event_likes_dislikes
-                        WHERE user_id=%s
-                        AND event_id=events.id
-                    )
-                    WHEN 'true' THEN 'true'
-                    WHEN 'false' THEN 'false'
-                    ELSE NULL
-                    END
-                ) AS is_liked_by_user
+                event_likes_dislikes.is_liked AS is_liked_by_user
             FROM events
             LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id
+            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
-            WHERE events.event_room_id IN (
-                SELECT event_rooms.id FROM event_rooms
-                INNER JOIN generic_statuses ON event_rooms.generic_status_id = generic_statuses.id
-                WHERE locked_for_user_id=%s
-                AND generic_statuses.generic_status_name=%s
-                AND is_replying=%s
-            )
+            LEFT JOIN generic_statuses AS event_rooms_generic_statuses ON event_rooms.generic_status_id = event_rooms_generic_statuses.id
+            WHERE event_rooms.locked_for_user_id = %s
+            AND event_rooms_generic_statuses.generic_status_name = %s
+            AND event_rooms.is_replying = %s
             AND generic_statuses.generic_status_name = %s
             GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
             ''',
@@ -1419,6 +1447,9 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                     #not replying, can unlock previous choices if any
                     self.unlock_event_rooms_from_past_reply_choices()
 
+                    #maybe don't unlock on every search
+                    #only unlock on skip
+
                     #get events
                     events = self.get_event_rooms_by_random_incomplete()
 
@@ -1432,10 +1463,10 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                                     many=True
                                 ).data,
                             },
+                            status=status.HTTP_200_OK
                         )
 
                     #lock events
-                    #also calls prevent_event_room_from_queuing_twice_for_reply()
                     self.lock_event_rooms_for_reply_choices(events)
 
                     #return events sorted by event_rooms
@@ -1447,6 +1478,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                                 many=True
                             ).data,
                         },
+                        status=status.HTTP_200_OK
                     )
         
                 elif self.user_context == "expire":
@@ -1494,6 +1526,7 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
     def start_replying_to_event_room(self, event_room_id):
 
         User = get_user_model()
+        datetime_now = get_datetime_now()
 
         #check if user is replying to any other event_room
         if check_user_is_replying(request=self.request, excluded_event_room_id=event_room_id) is True:
@@ -1512,7 +1545,7 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
                 #get event_room
                 #we want to do select_for_update(), but it's not allowed for nullable joins, so we do exclude()
                 #also, you must add coma (,) to of=("self",), else it gets unpacked into "s","e","l","f"
-                event_room = EventRooms.objects.select_related(
+                target_event_room = EventRooms.objects.select_related(
                     'generic_status', 'locked_for_user'
                 ).select_for_update(
                     of=("self",)
@@ -1524,16 +1557,16 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
                 user = User(self.request.user.id)
 
-                #check if event_room is already locked for user beforehand
-                #check if event_room is not yet expired as a choice
-                #check if event_room is locked for the correct user
-                #if you want to do "extend when_locked", handle event_room.is_replying=True
+                #check if target_event_room is already locked for user beforehand
+                #check if target_event_room is not yet expired as a choice
+                #check if target_event_room is locked for the correct user
+                #if you want to do "extend when_locked", handle target_event_room.is_replying=True
                 if\
-                    event_room.generic_status.generic_status_name == 'incomplete' and\
-                    event_room.when_locked is not None and\
-                    (get_datetime_now() - event_room.when_locked).total_seconds() <= settings.EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS and\
-                    event_room.locked_for_user is not None and event_room.locked_for_user.id == self.request.user.id and\
-                    event_room.is_replying is False\
+                    target_event_room.generic_status.generic_status_name == 'incomplete' and\
+                    target_event_room.when_locked is not None and\
+                    (get_datetime_now() - target_event_room.when_locked).total_seconds() <= settings.EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS and\
+                    target_event_room.locked_for_user is not None and target_event_room.locked_for_user.id == self.request.user.id and\
+                    target_event_room.is_replying is False\
                 :
 
                     pass
@@ -1542,11 +1575,11 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
                     if settings.DEBUG is True:
 
-                        print(event_room.generic_status.generic_status_name == 'incomplete')
-                        print(event_room.when_locked is not None)
-                        print((get_datetime_now() - event_room.when_locked).total_seconds() <= settings.EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS)
-                        print(event_room.locked_for_user is not None and event_room.locked_for_user.id == self.request.user.id)
-                        print(event_room.is_replying)
+                        print(target_event_room.generic_status.generic_status_name == 'incomplete')
+                        print(target_event_room.when_locked is not None)
+                        print((datetime_now - target_event_room.when_locked).total_seconds() <= settings.EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS)
+                        print(target_event_room.locked_for_user is not None and target_event_room.locked_for_user.id == self.request.user.id)
+                        print(target_event_room.is_replying)
 
                     raise HandleError.new_error(
                         ValueError,
@@ -1555,7 +1588,7 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
                 #can reply, proceed
 
-                #unlock any other event_room that were locked for reply choices
+                #unlock any other event rooms that were locked for reply choices
                 #also save to user_event_rooms to prevent unlocked event_rooms from being queued twice
                 event_rooms = EventRooms.objects.filter(
                     locked_for_user=user
@@ -1565,21 +1598,20 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
                     pk=event_room_id
                 )
 
-                for event_room_row in event_rooms:
+                for event_room in event_rooms:
 
-                    #prevent these event_rooms from being queued again
-                    prevent_event_room_from_queuing_twice_for_reply(user, event_room_row)
+                    event_room.when_locked = None
+                    event_room.locked_for_user = None
+                    event_room.is_replying = None
+                    event_room.last_modified = datetime_now
 
-                    event_room_row.when_locked = None
-                    event_room_row.locked_for_user = None
-                    event_room_row.is_replying = None
-
-                    event_room_row.save()
+                #unlock
+                EventRooms.objects.bulk_update(event_rooms, ['when_locked', 'locked_for_user', 'is_replying', 'last_modified'])
 
                 #confirm reply, start over when_locked
-                event_room.when_locked = get_datetime_now()
-                event_room.is_replying = True
-                event_room.save()
+                target_event_room.when_locked = get_datetime_now()
+                target_event_room.is_replying = True
+                target_event_room.save()
 
                 return Response(
                     data={
@@ -1629,7 +1661,6 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
                 #check if user is already replying
                 #we don't check for time limit, as cancellation can occur beyond it
                 if\
-                    event_room.generic_status.generic_status_name == 'incomplete' and\
                     event_room.when_locked is not None and\
                     event_room.is_replying is True and\
                     event_room.locked_for_user is not None and event_room.locked_for_user.id == self.request.user.id\
@@ -1730,27 +1761,6 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #to submit likes/dislikes
 #is_liked=True/False, or destroy when undone
 class EventLikesDislikesAPI(generics.GenericAPIView):
@@ -1764,15 +1774,6 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
 
         User = get_user_model()
-
-        if self.request.user.is_authenticated is False:
-
-            return Response(
-                data={
-                    'message': 'Please log in to like and dislike events.',
-                },
-                status=status.HTTP_401_UNAUTHORIZED
-            )
 
         serializer = CreateEventLikesDislikesSerializer(data=request.data, many=False)
 
@@ -1796,42 +1797,65 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
 
         new_data = serializer.validated_data
 
-        #get event
-        try:
-
-            event = Events.objects.get(pk=new_data['event_id'])
-
-        except Events.DoesNotExist:
+        #check if event exists
+        if Events.objects.filter(pk=new_data['event_id']).exists() is False:
 
             return Response(
                 data={
-                    'message': 'This event does not exist.',
+                    'message': 'Event no longer exists.',
                 },
-                status=status.HTTP_404_NOT_FOUND
+                status=status.HTTP_400_BAD_REQUEST
             )
-        
+
+        #these solutions didn't help prevent race condition
+            #direct .filter().update(like_count=F('like_count') + 1)
+            #like_count = F('like_count) + 1; .save()
+        #what worked:
+            #using trigger that also checks for OLD.is_liked != NEW.is_liked during INSERT prevents race condition
+        #peculiar:
+            #with/without trigger, both yield the same response times (avg. 17000ms)
+
+        #start
+
         try:
 
-            with transaction.atomic():
+            if new_data['is_liked'] is None:
 
-                if new_data['is_liked'] is None:
+                EventLikesDislikes.objects.filter(
+                    user_id=request.user.id,
+                    event_id=new_data['event_id']
+                ).delete()
 
-                    #remove like/dislike
-                    EventLikesDislikes.objects.get(
-                        event=event,
-                        user=User(pk=request.user.id)
-                    ).delete()
+            else:
 
-                else:
+                #for value changes, use defaults arg
+                EventLikesDislikes.objects.update_or_create(
+                    user_id=request.user.id,
+                    event_id=new_data['event_id'],
+                    defaults={'is_liked': new_data['is_liked']}
+                )
 
-                    #add like/dislike
-                    EventLikesDislikes.objects.update_or_create(
-                        event=event,
-                        user=User(pk=request.user.id),
-                        is_liked=new_data['is_liked']
-                    )
+        except IntegrityError as e:
+
+            if type(e.__context__) == UniqueViolation:
+
+                #this is no big deal, as unique constraint has just done its job of protecting us from duplicates
+                pass
+
+            else:
+
+                traceback.print_exc()
+
+                return Response(
+                    data={
+                        'message': 'Unable to like/dislike this event.',
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         except:
+
+            traceback.print_exc()
 
             return Response(
                 data={
@@ -1842,11 +1866,10 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
 
         return Response(
             data={
-                'message': 'Success!',
+                'message': '',
             },
             status=status.HTTP_200_OK
         )
-
 
 
 

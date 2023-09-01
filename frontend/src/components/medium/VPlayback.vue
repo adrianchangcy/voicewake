@@ -66,7 +66,7 @@
                 <!--need inline CSS to prevent jolting from anime if without it-->
                 <div
                     ref="volume_ripples_container"
-                    class="w-full h-8 absolute top-2 pb-2 flex flex-row justify-between px-2"
+                    class="w-full h-6 absolute top-4 pb-2 flex flex-row justify-between px-2"
                 >
                     <div
                         v-for="volume_ripple in propBucketQuantity" :key="volume_ripple"
@@ -133,7 +133,7 @@
                         ></div>
                         <div
                             ref="playback_slider_knob"
-                            class="w-4 h-4 absolute rounded-full bg-theme-black bottom-0.5 m-auto"
+                            class="w-4 h-4 absolute bottom-0.5 m-auto rounded-full   bg-theme-black shade-background-when-hover transition-colors"
                         >
                         </div>
 
@@ -254,7 +254,7 @@
     import { defineComponent, PropType } from 'vue';
     import { prettyDuration, getRandomUUID } from '@/helper_functions';
     import anime from 'animejs';
-    import EventTypes from '@/types/Events.interface';
+    import EventsAndLikeDetailsTypes from '@/types/EventsAndLikeDetails.interface';
     import VSliderTypes from '@/types/values/VSlider';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
 
@@ -266,7 +266,7 @@
                 instance_id: "",    //uuid, to identify between multiple VPlayback instances
                 vplayback_store: useVPlaybackStore(),
                 instance_has_focus: false,  //enables keyboard events inside VPlayback that need e.preventDefault()
-                previous_event: null as EventTypes | null,  //store triggers on new event, but needs previous event
+                previous_event: null as EventsAndLikeDetailsTypes | null,  //store triggers on new event, but needs previous event
 
                 pretty_current_playback_time: '00:00',
                 pretty_playback_duration: '00:00',
@@ -319,7 +319,7 @@
                 default: false
             },
             propEvent: {
-                type: Object as PropType<EventTypes>,
+                type: Object as PropType<EventsAndLikeDetailsTypes>,
                 default: null
             },
             propAudio: {    //used when receiving from VRecorder
@@ -372,7 +372,7 @@
 
                 this.attachAudioToPlayback(new_value);
             },
-            propEvent(new_value:EventTypes|null){
+            propEvent(new_value:EventsAndLikeDetailsTypes|null){
 
                 //reminder that with v-if and props already supplied, first time will not trigger watchers
 
@@ -496,7 +496,7 @@
 
                 this.playback_slider_value = new_value;
             },
-            storeCurrentEventLastStopped(specific_event:EventTypes) : void {
+            storeCurrentEventLastStopped(specific_event:EventsAndLikeDetailsTypes) : void {
 
                 //call this after pause on source change, but before source change happens
 

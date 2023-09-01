@@ -21,7 +21,7 @@
             >
                 <div
                     ref="slider_knob"
-                    class="w-4 h-4 bg-theme-black absolute -top-2 -left-1"
+                    class="w-4 h-4 absolute -top-2 -left-1  bg-theme-black shade-background-when-hover transition-colors"
                 ></div>
             </div>
         </div>

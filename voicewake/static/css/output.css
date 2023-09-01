@@ -622,6 +622,10 @@ video {
   top: -0.5rem;
 }
 
+.-top-4 {
+  top: -1rem;
+}
+
 .-top-\[0\.625rem\] {
   top: -0.625rem;
 }
@@ -686,8 +690,12 @@ video {
   top: 0.5rem;
 }
 
-.-top-4 {
-  top: -1rem;
+.top-6 {
+  top: 1.5rem;
+}
+
+.top-4 {
+  top: 1rem;
 }
 
 .-z-10 {
@@ -781,6 +789,16 @@ video {
   margin-bottom: auto;
 }
 
+.my-10 {
+  margin-top: 2.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.my-16 {
+  margin-top: 4rem;
+  margin-bottom: 4rem;
+}
+
 .mb-0 {
   margin-bottom: 0px;
 }
@@ -835,6 +853,18 @@ video {
 
 .mt-\[4\.5rem\] {
   margin-top: 4.5rem;
+}
+
+.mb-14 {
+  margin-bottom: 3.5rem;
+}
+
+.mt-16 {
+  margin-top: 4rem;
+}
+
+.mb-8 {
+  margin-bottom: 2rem;
 }
 
 .box-content {
@@ -1291,6 +1321,10 @@ video {
        column-gap: 0.5rem;
 }
 
+.gap-y-2 {
+  row-gap: 0.5rem;
+}
+
 .divide-y > :not([hidden]) ~ :not([hidden]) {
   --tw-divide-y-reverse: 0;
   border-top-width: calc(1px * calc(1 - var(--tw-divide-y-reverse)));
@@ -1517,6 +1551,16 @@ video {
   background-color: rgb(255 255 255 / 0.6);
 }
 
+.bg-theme-dark-gray {
+  --tw-bg-opacity: 1;
+  background-color: rgb(168 162 158 / var(--tw-bg-opacity));
+}
+
+.bg-theme-medium-gray {
+  --tw-bg-opacity: 1;
+  background-color: rgb(214 211 209 / var(--tw-bg-opacity));
+}
+
 .p-1 {
   padding: 0.25rem;
 }
@@ -1569,6 +1613,21 @@ video {
   padding-bottom: 2rem;
 }
 
+.py-10 {
+  padding-top: 2.5rem;
+  padding-bottom: 2.5rem;
+}
+
+.py-14 {
+  padding-top: 3.5rem;
+  padding-bottom: 3.5rem;
+}
+
+.py-16 {
+  padding-top: 4rem;
+  padding-bottom: 4rem;
+}
+
 .pb-0 {
   padding-bottom: 0px;
 }
@@ -1589,8 +1648,16 @@ video {
   padding-bottom: 0.5rem;
 }
 
+.pb-20 {
+  padding-bottom: 5rem;
+}
+
 .pb-3 {
   padding-bottom: 0.75rem;
+}
+
+.pb-4 {
+  padding-bottom: 1rem;
 }
 
 .pb-6 {
@@ -1653,8 +1720,20 @@ video {
   padding-top: 2rem;
 }
 
-.pb-4 {
-  padding-bottom: 1rem;
+.pb-16 {
+  padding-bottom: 4rem;
+}
+
+.pt-14 {
+  padding-top: 3.5rem;
+}
+
+.pb-14 {
+  padding-bottom: 3.5rem;
+}
+
+.pt-16 {
+  padding-top: 4rem;
 }
 
 .text-left {
@@ -2184,7 +2263,7 @@ textarea {
   }
 
   .shade-background-when-hover:hover{
-    background-color: #d6d3d1;
+    background-color: rgba(168, 162, 158, 1);
   }
 
   .shade-border-when-hover:hover{
@@ -2222,7 +2301,7 @@ textarea {
   }
 
   .parent-trigger-shade-background-when-hover:hover .shade-background-when-hover{
-    background-color: #d6d3d1;
+    background-color: rgba(168, 162, 158, 1);
   }
 }
 
@@ -2329,10 +2408,6 @@ textarea {
 
 .focus-visible\:outline-offset-0:focus-visible {
   outline-offset: 0px;
-}
-
-.focus-visible\:outline-theme-black:focus-visible {
-  outline-color: #444444;
 }
 
 .focus-visible\:outline-theme-dark-gray:focus-visible {

@@ -25,6 +25,7 @@ import os
 import shutil
 import math
 import subprocess
+import traceback
 
 
 def ensure_otp_is_always_wrong(otp):
@@ -38,20 +39,6 @@ def ensure_otp_is_always_wrong(otp):
 
 
 
-class InitialSetUp_TestCase(TestCase):
-
-    @classmethod
-    def setUpTestData(cls):
-
-        pass
-
-
-    def test_initial_db_setup(self):
-
-        first_time_setup()
-
-
-
 class Users_TestCase(TestCase):
 
     @classmethod
@@ -59,8 +46,6 @@ class Users_TestCase(TestCase):
 
         cls.email = 'user1@gmail.com'
         cls.expected_mail_outbox_count = 0
-
-        first_time_setup()
 
 
     def test_sign_up_correctly(self, another_email=''):
@@ -309,42 +294,14 @@ class Events_TestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
-        #prepare necessary data
-        first_time_setup()
-
-        #next, we simulate live data
-
-        #100 users
-
-
-
-
-
+        pass
 
     
     def test_prepare_test_data(self):
 
-        #prepare 100 users, user0 ... user99
-        PrepareTestData.prepare_users(100)
+        prepare_test_data_class = PrepareTestData(for_test=True)
 
-        #create 100 incomplete event rooms, and 50 completed ones replied by user10
-        PrepareTestData.prepare_test_data_event_rooms(
-            originator_username="user9",
-            responder_username="user10",
-            incomplete_count=100,
-            completed_count=50,
-            hours_ago=5
-        )
-
-        #have user11 give likes to 0.6 of user9's events, dislikes to 0.4 of user9's events
-        PrepareTestData.prepare_test_data_likes_dislikes(
-            action_username="user11",
-            username_of_events="user9",
-            like_percentage=0.6,
-            dislike_percentage=0.4,
-            hours_ago=5
-        )
-
+        prepare_test_data_class.do_quick_start(1)
 
 
     def test_file_handling_from_request(self):
@@ -406,9 +363,22 @@ class Events_TestCase(TestCase):
         handle_audio_file_class.close_audio_file()
 
 
-    def test_row_fetches(self):
+    def test_custom_functions(self):
 
-        print('ok')
+        #pass in event_tone_slug
+        #fetches the row if exists, else fetches all rows
+        yolo = Events.objects.raw("SELECT * FROM get_id_of_one_or_all_event_tones_via_slug(%s)", params=('',))
+
+        #check
+        print(len(yolo))
+        self.assertGreater(len(yolo), 0)
+
+
+
+
+
+
+
 
 
 

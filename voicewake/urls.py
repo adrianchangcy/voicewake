@@ -35,14 +35,14 @@ urlpatterns = [
 
     
     #APIs
-    # path('user_verification_options/', views.user_verification_options_list),
-    # path('user_verification_options/<int:id>/', views.user_verification_options_details),
     path('', include(router.urls)),
 
-    path('api/event-rooms/get', views.EventRoomsAPI.as_view(), name='testo'),
-    path('api/event-rooms/get/<int:event_room_id>', views.EventRoomsAPI.as_view(), name='get_event_rooms_by_id'),
-    path('api/event-rooms/list/<int:page>', views.EventRoomsAPI.as_view(), name='get_event_rooms_by_id_paged'),
-    path('api/event-rooms/list/<int:page>/<str:event_tone_slug>', views.EventRoomsAPI.as_view(), name='get_event_rooms_by_id_and_event_tone_slug_paged'),
+    path('api/event-rooms/get/<int:event_room_id>', views.EventRoomsAPI.as_view(), name='get_event_rooms_by_event_room_id'),
+
+    path('api/event-rooms/list/completed/<str:best_or_new>/<str:timeframe>/<int:page>', views.EventRoomsAPI.as_view(), name='get_event_rooms_by_best_or_new_paged'),
+    path('api/event-rooms/list/completed/<str:best_or_new>/<str:timeframe>/<str:event_tone_slug>/<int:page>', views.EventRoomsAPI.as_view(), name='get_event_rooms_by_best_or_new_and_event_tone_slug_paged'),
+    path('api/event-rooms/list/<str:username>/<str:best_or_new>/<str:timeframe>/<str:event_role_name>/<int:page>', views.EventRoomsAPI.as_view(), name='get_event_rooms_by_username_best_or_new_event_role_name_paged'),
+
     path('api/event-rooms/reply-choices/list', views.HandleEventRoomReplyChoicesAPI.as_view(user_context="list"), name="list_event_room_choices"),
     path('api/event-rooms/reply-choices/expire', views.HandleEventRoomReplyChoicesAPI.as_view(user_context="expire"), name="expire_event_room_choices"),
 

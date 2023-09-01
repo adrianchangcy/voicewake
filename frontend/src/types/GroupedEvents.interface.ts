@@ -1,4 +1,4 @@
-import EventAndLikeDetailsTypes from "./EventAndLikeDetails.interface";
+import EventsAndLikeDetailsTypes from "./EventsAndLikeDetails.interface";
 
 interface GroupedEventsTypes{
     event_room: {
@@ -9,15 +9,15 @@ interface GroupedEventsTypes{
             id: number,
             generic_status_name: string,
         },
-        when_locked: string,
+        when_locked: string|null,
         locked_for_user: {
             id: number,
             username: string
-        },
-        is_replying: boolean,
+        }|null,
+        is_replying: boolean|null,
     },
-    originator: EventAndLikeDetailsTypes|null,
-    responder: EventAndLikeDetailsTypes[]|[]
+    originator: EventsAndLikeDetailsTypes|null,
+    responder: EventsAndLikeDetailsTypes[]|[]
 };
 
 export default GroupedEventsTypes;

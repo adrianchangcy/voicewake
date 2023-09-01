@@ -204,7 +204,7 @@ textarea {
         color: rgba(168, 162, 158, 1);
     }
     .shade-background-when-hover:hover{
-        background-color: #d6d3d1;
+        background-color: rgba(168, 162, 158, 1);
     }
     .shade-border-when-hover:hover{
         border-color: rgba(168, 162, 158, 1);
@@ -233,6 +233,6 @@ textarea {
         background-color: rgba(168, 162, 158, 1);
     }
     .parent-trigger-shade-background-when-hover:hover .shade-background-when-hover{
-        background-color: #d6d3d1;
+        background-color: rgba(168, 162, 158, 1);
     }
 }
