@@ -15,6 +15,8 @@
                 class="col-span-1 h-full     shade-border-when-hover transition-colors      bg-theme-light       border border-r-0 border-theme-light-gray rounded-full rounded-r-none    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                 type="button"
             >
+                <span class="sr-only">like button</span>
+                <span v-show="is_liked === true" class="sr-only">you have liked this</span>
                 <div class="w-fit h-full mx-auto flex flex-row">
                     <!--like logo-->
                     <div
@@ -35,12 +37,9 @@
                         class="w-fit h-full pl-1 lg:pl-2 flex items-center text-sm lg:text-base font-medium"
                     >
                         <span class="w-fit h-fit mx-auto">
-                            <span class="sr-only">current like count is </span>
                             {{ prettyLikeCount }}
                         </span>
                     </div>
-                    <span class="sr-only">like button</span>
-                    <span v-show="is_liked === true" class="sr-only">you have liked this</span>
                 </div>
             </button>
 
@@ -51,6 +50,8 @@
                 class="col-span-1 h-full     shade-border-when-hover transition-colors      bg-theme-light       border border-l-0 border-theme-light-gray rounded-full rounded-l-none     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                 type="button"
             >
+                <span class="sr-only">dislike button</span>
+                <span v-show="is_liked === false" class="sr-only">you have disliked this</span>
                 <div class="w-fit h-full mx-auto flex flex-row">
                     <!--dislike logo-->
                     <div
@@ -71,12 +72,9 @@
                         class="w-fit h-full pl-1 lg:pl-2 flex items-center text-sm lg:text-base font-medium"
                     >
                         <span class="w-fit h-fit mx-auto">
-                            <span class="sr-only">current dislike count is </span>
                             {{ prettyDislikeCount }}
                         </span>
                     </div>
-                    <span class="sr-only">dislike button</span>
-                    <span v-show="is_liked === false" class="sr-only">you have disliked this</span>
                 </div>
             </button>
         </div>
