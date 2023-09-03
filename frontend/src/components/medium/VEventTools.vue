@@ -32,7 +32,7 @@
                     <!--like count-->
                     <div
                         v-show="prettyLikeCount !== ''"
-                        class="w-fit h-full pl-1 lg:pl-2 flex items-center text-sm"
+                        class="w-fit h-full pl-1 lg:pl-2 flex items-center text-sm font-medium"
                     >
                         <span class="w-fit h-fit mx-auto">
                             <span class="sr-only">current like count is </span>
@@ -68,7 +68,7 @@
                     <!--dislike count-->
                     <div
                         v-show="prettyDislikeCount !== ''"
-                        class="w-fit h-full pl-1 lg:pl-2 flex items-center text-sm"
+                        class="w-fit h-full pl-1 lg:pl-2 flex items-center text-sm font-medium"
                     >
                         <span class="w-fit h-fit mx-auto">
                             <span class="sr-only">current dislike count is </span>
@@ -87,16 +87,16 @@
             class="h-full col-span-1 relative flex flex-row items-center     shade-border-when-hover transition-colors      bg-theme-light       border border-theme-light-gray rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
             type="button"
         >
-            <!-- <TransitionFade> -->
+            <TransitionFade>
                 <span v-if="has_shared === false" class="w-fit h-full flex items-center mx-auto">
                     <i class="fas fa-share text-base"></i>
                     <span class="sr-only">Copy URL to share</span>
                 </span>
                 <span v-else-if="has_shared === true" class="w-fit h-full flex items-center mx-auto">
                     <i class="fas fa-check text-base"></i>
-                    <span class="hidden sm:inline pl-1 lg:pl-2 text-sm">Copied</span>
+                    <span class="hidden sm:inline pl-1 lg:pl-2 text-sm font-medium">Copied</span>
                 </span>
-            <!-- </TransitionFade> -->
+            </TransitionFade>
         </button>
 
         <!--report-->
@@ -104,30 +104,30 @@
             class="h-full col-span-1 relative flex flex-row items-center     shade-border-when-hover transition-colors      bg-theme-light       border border-theme-light-gray rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
             type="button"
         >
-            <!-- <TransitionFade> -->
+            <TransitionFade>
                 <span v-if="has_shared === false" class="w-fit h-full flex items-center mx-auto">
                     <i class="fas fa-ellipsis-vertical text-base"></i>
                     <span class="sr-only">Copy URL to share</span>
                 </span>
                 <span v-else-if="has_shared === true" class="w-fit h-full flex items-center mx-auto">
                     <i class="fas fa-check text-base"></i>
-                    <span class="hidden sm:inline pl-1 lg:pl-2 text-sm">Copied</span>
+                    <span class="hidden sm:inline pl-1 lg:pl-2 text-sm font-medium">Copied</span>
                 </span>
-            <!-- </TransitionFade> -->
+            </TransitionFade>
         </button>
     </div>
 </template>
 
 
 <script setup lang="ts">
-    // import TransitionFade from '@/transitions/TransitionFade.vue';
+    import TransitionFade from '@/transitions/TransitionFade.vue';
 </script>
 
 
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
     import anime from 'animejs';
-    // import { prettyCount } from '@/helper_functions';
+    import { prettyCount } from '@/helper_functions';
     import { notify } from 'notiwind';
     import EventsAndLikeDetailsTypes from '@/types/EventsAndLikeDetails.interface';
     const axios = require('axios');
@@ -159,54 +159,50 @@
         computed: {
             prettyLikeCount() : string {
                 
-                return '200M';
+                if(this.is_liked === true){
 
-                // if(this.is_liked === true){
+                    return prettyCount(this.like_count + 1);
 
-                //     return prettyCount(this.like_count + 1);
+                }else{
 
-                // }else{
+                    if(this.like_count > 0){
 
-                //     if(this.like_count > 0){
+                        return prettyCount(this.like_count);
+                    }
 
-                //         return prettyCount(this.like_count);
-                //     }
-
-                //     return "";
-                // }
+                    return "";
+                }
             },
             prettyDislikeCount() : string {
 
-                return '200M';
+                if(this.is_liked === false){
 
-                // if(this.is_liked === false){
+                    const final_dislike_count = this.dislike_count + 1;
 
-                //     const final_dislike_count = this.dislike_count + 1;
+                    //only show dislikes if it passes percentage
+                    if(
+                        final_dislike_count >= this.minimum_dislike_count_for_display &&
+                        (final_dislike_count / (this.like_count + final_dislike_count) > this.minimum_dislike_percentage_for_display)
+                    ){
 
-                //     //only show dislikes if it passes percentage
-                //     if(
-                //         final_dislike_count >= this.minimum_dislike_count_for_display &&
-                //         (final_dislike_count / (this.like_count + final_dislike_count) > this.minimum_dislike_percentage_for_display)
-                //     ){
+                        return prettyCount(final_dislike_count);
+                    }
 
-                //         return prettyCount(final_dislike_count);
-                //     }
+                    return "";
 
-                //     return "";
+                }else{
 
-                // }else{
+                    //only show dislikes if it passes percentage
+                    if(
+                        this.dislike_count >= this.minimum_dislike_count_for_display &&
+                        this.dislike_count / (this.like_count + this.dislike_count) > this.minimum_dislike_percentage_for_display
+                    ){
 
-                //     //only show dislikes if it passes percentage
-                //     if(
-                //         this.dislike_count >= this.minimum_dislike_count_for_display &&
-                //         this.dislike_count / (this.like_count + this.dislike_count) > this.minimum_dislike_percentage_for_display
-                //     ){
+                        return prettyCount(this.dislike_count);
+                    }
 
-                //         return prettyCount(this.dislike_count);
-                //     }
-
-                //     return "";
-                // }
+                    return "";
+                }
             },
         },
         methods: {

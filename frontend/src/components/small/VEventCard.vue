@@ -17,7 +17,7 @@
                 <div class="col-span-1 h-full relative">
                     <!--total duration, width is to match emoji-->
                     <span
-                        class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto text-sm font-medium"
+                        class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto text-sm"
                     >
                         {{ prettyFileDuration }}
                     </span>
