@@ -3,10 +3,17 @@
         v-show="is_open"
         class="p-4 w-full h-fit"
     >
-        <div class="h-40 p-1 box-content overflow-x-hidden overflow-y-scroll text-2xl">
+        <div
+            :class="[
+                hasEventTones === true ? 'overflow-y-scroll' : 'overflow-y-hidden',
+                'h-40 p-1 box-content overflow-x-hidden text-2xl'
+            ]"
+        >
+
+            <!--loading-->
             <!--relative fixes the problem where the child buttons overall overflow beyond <html>, causing whitespace-->
             <div
-                v-if="event_tones === null"
+                v-if="is_loading === true"
                 class="items-center place-items-center grid grid-flow-row grid-cols-4 relative"
             >
                 <span class="sr-only">tags are loading</span>
@@ -18,9 +25,28 @@
                     </div>
                 </div>
             </div>
-            
+
+            <!--could not get tags-->
             <div
-                v-else
+                v-else-if="hasEventTones === false || has_error === true"
+                class="h-full flex items-center"
+            >
+                <VDialogPlain
+                    :propHasBorder="false"
+                    class="mx-auto"
+                >
+                    <template #title>
+                        Oops, unable to load the tags!
+                    </template>
+                    <template #content>
+                        Try refreshing this page.
+                    </template>
+                </VDialogPlain>
+            </div>
+
+            <!--has tags-->
+            <div
+                v-else-if="hasEventTones === true"
                 class="items-center place-items-center grid grid-flow-row grid-cols-4 relative"
             >
                 <div
@@ -30,7 +56,7 @@
                     <button
                         @click.prevent="handleEventToneSelected(event_tone)"
                         :disabled="!is_open"
-                        class="w-10 h-10 pb-0.5 shade-background-when-hover rounded-md transition-colors duration-100 ease-in-out   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline"
+                        class="w-10 h-10 pb-0.5 border border-transparent shade-border-when-hover rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline"
                         type="button"
                     >
                         <span class="has-emoji">{{event_tone.event_tone_symbol}}</span>
@@ -43,6 +69,7 @@
 </template>
 
 <script setup lang="ts">
+    import VDialogPlain from '../small/VDialogPlain.vue';
 </script>
 
 <script lang="ts">
@@ -57,9 +84,15 @@
             return{
                 event_tones: null as EventToneTypes[] | null,
                 is_open: false,
+                is_loading: false,
+                has_error: false,
             };
         },
         computed: {
+            hasEventTones() : boolean {
+
+                return this.event_tones !== null && this.event_tones.length > 0;
+            },
         },
         props: {
             propIsOpen: {
@@ -76,15 +109,24 @@
         methods: {
             async getEventTonesData(){
 
+                this.is_loading = true;
+
                 await axios.get(window.location.origin + '/api/event-tones')
                 .then((results) => {
-                    this.event_tones = results.data;
-                }).catch((error:any) => {
+
+                    this.event_tones = results.data['data'];
+                    this.is_loading = false;
+
+                }).catch(() => {
+
+                    this.is_loading = false;
+                    this.has_error = true;
+
                     notify({
-                        title: "Listing tags failed",
-                        text: error.response.data['message'],
+                        title: "Error",
+                        text: 'Could not get the tags. Try refreshing the page.',
                         type: "error"
-                    }, 3000);
+                    }, 5000);
                 });
             },
             handleEventToneSelected(event_tone_choice:EventToneTypes) : void {
@@ -93,9 +135,9 @@
                 this.$emit('eventToneSelected', event_tone_choice);
             },
         },
-        async mounted(){
+        beforeMount(){
 
-            await this.getEventTonesData();
+            this.getEventTonesData();
         },
     });
 </script>

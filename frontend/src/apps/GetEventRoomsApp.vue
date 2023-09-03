@@ -1,7 +1,7 @@
 <template>
     <div v-if="!is_deleted" class="flex flex-col">
 
-        <div v-if="is_searching" class="flex flex-col gap-8">
+        <div v-if="is_searching" class="flex flex-col gap-10">
 
             <!--events-->
             <div v-for="x in event_count" :key="x">
@@ -287,6 +287,7 @@
                 //validate whether user is replying
                 if(
                     event_room.event_room.is_replying === true &&
+                    event_room.event_room.locked_for_user !== null &&
                     event_room.event_room.locked_for_user.id === this.user_id
                 ){
 
@@ -376,6 +377,7 @@
                 }
 
                 this.is_searching = true;
+                this.event_room = null;
 
                 //prepare events, then separate
                 await axios.get(window.location.origin + '/api/event-rooms/get/' + this.event_room_id.toString())
@@ -453,7 +455,11 @@
             },
             startReplyExpiryInterval() : void {
 
-                if(this.is_this_user_replying === false){
+                if(
+                    this.is_this_user_replying === false ||
+                    this.event_room === null ||
+                    this.event_room.event_room.when_locked === null
+                ){
 
                     return;
                 }
@@ -462,7 +468,7 @@
                 this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
                 this.reply_expiry_interval = null;
 
-                const when_locked_ms = new Date(this.event_room!.event_room.when_locked);
+                const when_locked_ms = new Date(this.event_room.event_room.when_locked);
                 const time_elapsed_ms = timeFromNowMS(when_locked_ms);
 
                 //time is up

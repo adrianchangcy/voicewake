@@ -1,8 +1,8 @@
 <template>
-    <div class="h-10 grid grid-cols-8 gap-1 text-xl text-theme-black">
+    <div class="h-10 grid grid-cols-6 gap-0.5 sm:gap-1 text-xl text-theme-black">
 
         <!--like/dislike-->
-        <div class="col-span-5 lg:col-span-4 grid grid-cols-2 relative parent-trigger-shade-fake-border-when-hover">
+        <div class="h-full col-span-4 grid grid-cols-2 relative parent-trigger-shade-fake-border-when-hover">
 
             <!--fake border-->
             <div class="absolute w-[1px] h-[50%] left-0 right-0 top-0 bottom-0 m-auto bg-theme-light-gray shade-fake-border-when-hover transition-colors">
@@ -18,13 +18,13 @@
                 <div class="w-fit h-full mx-auto flex flex-row">
                     <!--like logo-->
                     <div
-                        class="h-full flex items-center relative pb-0.5"
+                        class="h-full flex items-center relative pb-1"
                         ref="like_logo"
                     >
                         <i
                             :class="[
                                 is_liked === true ? 'text-theme-lead' : 'text-theme-black/0',
-                                'w-fit h-fit fas fa-thumbs-up mx-auto transition-colors duration-200 ease-in-out'
+                                'w-fit h-fit fas fa-thumbs-up mx-auto transition-colors'
                             ]"
                         ></i>
                         <i class="absolute w-fit h-fit far fa-thumbs-up mx-auto"></i>
@@ -32,7 +32,7 @@
                     <!--like count-->
                     <div
                         v-show="prettyLikeCount !== ''"
-                        class="w-fit h-full pl-2 flex items-center text-sm"
+                        class="w-fit h-full pl-1 lg:pl-2 flex items-center text-sm"
                     >
                         <span class="w-fit h-fit mx-auto">
                             <span class="sr-only">current like count is </span>
@@ -60,7 +60,7 @@
                         <i
                             :class="[
                                 is_liked === false ? 'text-theme-lead' : 'text-theme-black/0',
-                                'w-fit h-fit fas fa-thumbs-down mx-auto transition-colors duration-200 ease-in-out'
+                                'w-fit h-fit fas fa-thumbs-down mx-auto transition-colors'
                             ]"
                         ></i>
                         <i class="absolute w-fit h-fit far fa-thumbs-down mx-auto"></i>
@@ -68,7 +68,7 @@
                     <!--dislike count-->
                     <div
                         v-show="prettyDislikeCount !== ''"
-                        class="w-fit h-full pl-2 flex items-center text-sm"
+                        class="w-fit h-full pl-1 lg:pl-2 flex items-center text-sm"
                     >
                         <span class="w-fit h-fit mx-auto">
                             <span class="sr-only">current dislike count is </span>
@@ -84,33 +84,50 @@
         <!--share-->
         <button
             @click.stop="copyEventURL()"
-            class="col-span-3 lg:col-span-2 relative flex flex-row items-center     shade-border-when-hover transition-colors      bg-theme-light       border border-theme-light-gray rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+            class="h-full col-span-1 relative flex flex-row items-center     shade-border-when-hover transition-colors      bg-theme-light       border border-theme-light-gray rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
             type="button"
         >
-            <TransitionFade>
+            <!-- <TransitionFade> -->
                 <span v-if="has_shared === false" class="w-fit h-full flex items-center mx-auto">
                     <i class="fas fa-share text-base"></i>
                     <span class="sr-only">Copy URL to share</span>
                 </span>
                 <span v-else-if="has_shared === true" class="w-fit h-full flex items-center mx-auto">
-                    <i class="fas fa-check text-lg"></i>
-                    <span class="pl-2 text-sm">Copied</span>
+                    <i class="fas fa-check text-base"></i>
+                    <span class="hidden sm:inline pl-1 lg:pl-2 text-sm">Copied</span>
                 </span>
-            </TransitionFade>
+            <!-- </TransitionFade> -->
+        </button>
+
+        <!--report-->
+        <button
+            class="h-full col-span-1 relative flex flex-row items-center     shade-border-when-hover transition-colors      bg-theme-light       border border-theme-light-gray rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+            type="button"
+        >
+            <!-- <TransitionFade> -->
+                <span v-if="has_shared === false" class="w-fit h-full flex items-center mx-auto">
+                    <i class="fas fa-ellipsis-vertical text-base"></i>
+                    <span class="sr-only">Copy URL to share</span>
+                </span>
+                <span v-else-if="has_shared === true" class="w-fit h-full flex items-center mx-auto">
+                    <i class="fas fa-check text-base"></i>
+                    <span class="hidden sm:inline pl-1 lg:pl-2 text-sm">Copied</span>
+                </span>
+            <!-- </TransitionFade> -->
         </button>
     </div>
 </template>
 
 
 <script setup lang="ts">
-    import TransitionFade from '@/transitions/TransitionFade.vue';
+    // import TransitionFade from '@/transitions/TransitionFade.vue';
 </script>
 
 
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
     import anime from 'animejs';
-    import { prettyCount } from '@/helper_functions';
+    // import { prettyCount } from '@/helper_functions';
     import { notify } from 'notiwind';
     import EventsAndLikeDetailsTypes from '@/types/EventsAndLikeDetails.interface';
     const axios = require('axios');
@@ -141,51 +158,55 @@
         },
         computed: {
             prettyLikeCount() : string {
+                
+                return '200M';
 
-                if(this.is_liked === true){
+                // if(this.is_liked === true){
 
-                    return prettyCount(this.like_count + 1);
+                //     return prettyCount(this.like_count + 1);
 
-                }else{
+                // }else{
 
-                    if(this.like_count > 0){
+                //     if(this.like_count > 0){
 
-                        return prettyCount(this.like_count);
-                    }
+                //         return prettyCount(this.like_count);
+                //     }
 
-                    return "";
-                }
+                //     return "";
+                // }
             },
             prettyDislikeCount() : string {
 
-                if(this.is_liked === false){
+                return '200M';
 
-                    const final_dislike_count = this.dislike_count + 1;
+                // if(this.is_liked === false){
 
-                    //only show dislikes if it passes percentage
-                    if(
-                        final_dislike_count >= this.minimum_dislike_count_for_display &&
-                        (final_dislike_count / (this.like_count + final_dislike_count) > this.minimum_dislike_percentage_for_display)
-                    ){
+                //     const final_dislike_count = this.dislike_count + 1;
 
-                        return prettyCount(final_dislike_count);
-                    }
+                //     //only show dislikes if it passes percentage
+                //     if(
+                //         final_dislike_count >= this.minimum_dislike_count_for_display &&
+                //         (final_dislike_count / (this.like_count + final_dislike_count) > this.minimum_dislike_percentage_for_display)
+                //     ){
 
-                    return "";
+                //         return prettyCount(final_dislike_count);
+                //     }
 
-                }else{
+                //     return "";
 
-                    //only show dislikes if it passes percentage
-                    if(
-                        this.dislike_count >= this.minimum_dislike_count_for_display &&
-                        this.dislike_count / (this.like_count + this.dislike_count) > this.minimum_dislike_percentage_for_display
-                    ){
+                // }else{
 
-                        return prettyCount(this.dislike_count);
-                    }
+                //     //only show dislikes if it passes percentage
+                //     if(
+                //         this.dislike_count >= this.minimum_dislike_count_for_display &&
+                //         this.dislike_count / (this.like_count + this.dislike_count) > this.minimum_dislike_percentage_for_display
+                //     ){
 
-                    return "";
-                }
+                //         return prettyCount(this.dislike_count);
+                //     }
+
+                //     return "";
+                // }
             },
         },
         methods: {

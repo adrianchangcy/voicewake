@@ -154,6 +154,8 @@ custom_trigger_event_likes_dislikes = '''
     EXECUTE FUNCTION handle_event_likes_dislikes_count();
 '''
 
+
+
 class Migration(migrations.Migration):
 
     dependencies = [

@@ -40,11 +40,11 @@
     <div>
         <div
             v-for="event_room in event_rooms" :key="event_room.event_room.id"
-            class="border rounded-lg px-2 pt-14 pb-16 mb-8   border-theme-light-gray"
         >
             <EventRoomCard
                 :prop-show-title="true"
                 :prop-event-room="event_room"
+                :prop-has-border="true"
                 @newSelectedEvent=handleNewSelectedEvent($event)
             />
         </div>
