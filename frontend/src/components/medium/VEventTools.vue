@@ -32,7 +32,7 @@
                     <!--like count-->
                     <div
                         v-show="prettyLikeCount !== ''"
-                        class="w-fit h-full pl-1 lg:pl-2 flex items-center text-sm font-medium"
+                        class="w-fit h-full pl-1 lg:pl-2 flex items-center text-sm lg:text-base font-medium"
                     >
                         <span class="w-fit h-fit mx-auto">
                             <span class="sr-only">current like count is </span>
@@ -68,7 +68,7 @@
                     <!--dislike count-->
                     <div
                         v-show="prettyDislikeCount !== ''"
-                        class="w-fit h-full pl-1 lg:pl-2 flex items-center text-sm font-medium"
+                        class="w-fit h-full pl-1 lg:pl-2 flex items-center text-sm lg:text-base font-medium"
                     >
                         <span class="w-fit h-fit mx-auto">
                             <span class="sr-only">current dislike count is </span>
@@ -94,7 +94,7 @@
                 </span>
                 <span v-else-if="has_shared === true" class="w-fit h-full flex items-center mx-auto">
                     <i class="fas fa-check text-base"></i>
-                    <span class="hidden sm:inline pl-1 lg:pl-2 text-sm font-medium">Copied</span>
+                    <span class="hidden sm:inline pl-1 lg:pl-2 text-sm lg:text-base font-medium">Copied</span>
                 </span>
             </TransitionFade>
         </button>
@@ -111,7 +111,7 @@
                 </span>
                 <span v-else-if="has_shared === true" class="w-fit h-full flex items-center mx-auto">
                     <i class="fas fa-check text-base"></i>
-                    <span class="hidden sm:inline pl-1 lg:pl-2 text-sm font-medium">Copied</span>
+                    <span class="hidden sm:inline pl-1 lg:pl-2 text-sm lg:text-base font-medium">Copied</span>
                 </span>
             </TransitionFade>
         </button>
