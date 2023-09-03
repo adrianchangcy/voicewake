@@ -22,6 +22,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+#must use fixed SECRET_KEY for Django to sign session cookies
+#else if always using new SECRET_KEY, it would kill all existing sessions
 SECRET_KEY = 'django-insecure-hdgs8@4nxkx0du^2n-gdss(!eo6i0kj6vk=gx1mddc@g=6h_^1'
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -82,6 +84,17 @@ SITE_ID = 1
 
 #custom user model
 AUTH_USER_MODEL = 'voicewake.User'
+
+
+#session in seconds, default 2 weeks
+#used when not calling set_expiry(x) explicitly
+#will be referred to for creating new and renewing sessions
+SESSION_COOKIE_AGE = 1209600    #2 weeks
+
+#when False (default), session is only renewed when any of its dict values are added/updated/deleted
+#when True, session is renewed when user opens/reopens pages
+SESSION_SAVE_EVERY_REQUEST = True
+
 
 #if you have issues with bootstrap, try this:
 # CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'

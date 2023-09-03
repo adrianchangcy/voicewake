@@ -21,8 +21,8 @@
         id="data-container-get-event-rooms"
     >
 
-        <!--same as VTitleL-->
-        <div class="h-fit py-6 text-theme-black">
+        <!--follows VTitle-->
+        <div class="h-fit py-10 text-theme-black">
             {% if is_deleted %}
                 <p class="text-lg italic">
                     This post has been deleted.
@@ -40,7 +40,9 @@
         </div>
 
         <!--the rest of the content-->
-        <div id="get-event-rooms-app"></div>
+        {% if is_deleted is False %}
+            <div id="get-event-rooms-app"></div>
+        {% endif %}
     </div>
 
 {% endblock %}

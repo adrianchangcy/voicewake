@@ -3,7 +3,7 @@
         <span class="sr-only">loading events</span>
         <!--title and datetime-->
         <!--<div> seems to have bigger height than the inner <span>, and doing it all in <span> didn't work-->
-        <div class="flex flex-col pb-6">
+        <div class="flex flex-col pb-10">
             <div class="w-[75%] h-7 flex items-center">
                 <div class="w-full h-6 rounded-lg skeleton"></div>
             </div>
@@ -11,7 +11,7 @@
                 <div class="w-full h-5 rounded-lg skeleton"></div>
             </div>
         </div>
-        <div class="flex flex-col gap-8">
+        <div class="flex flex-col gap-10">
             <!--events-->
             <div v-for="x in propEventQuantity" :key="x">
                 <VEventCardSkeleton/>

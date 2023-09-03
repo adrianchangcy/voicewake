@@ -158,6 +158,7 @@ class Users_TestCase(TestCase):
 
         print(response.status_code)
         print(response.data)
+        print(response.cookies)
 
         #expect
         self.assertEqual(response.wsgi_request.user.is_authenticated, True)
@@ -372,6 +373,15 @@ class Events_TestCase(TestCase):
         #check
         print(len(yolo))
         self.assertGreater(len(yolo), 0)
+
+
+
+class RandomTests_TestCase(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+
+        pass
 
 
 

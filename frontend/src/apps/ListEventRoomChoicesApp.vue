@@ -306,6 +306,7 @@
                             v-if="canChooseReplyChoices"
                             :propEventRoom="getMainEventRoom"
                             :propShowTitle="true"
+                            :propHasBorder="true"
                         />
                     </TransitionFade>
                 </div>
@@ -701,7 +702,10 @@
                 let target_event_room: GroupedEventsTypes | null = null;
                 let target_max_ms = 0;
 
-                if(context === "unfinished_reply" && this.unfinished_reply_event_room !== null){
+                if(
+                    context === "unfinished_reply" &&
+                    this.unfinished_reply_event_room !== null
+                ){
 
                     target_event_room = this.unfinished_reply_event_room;
                     target_max_ms = this.unfinished_reply_expiry_max_ms;
@@ -718,6 +722,12 @@
 
                 this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                 this.expiry_interval = null;
+
+                //check when_locked
+                if(target_event_room.event_room.when_locked === null){
+
+                    return;
+                }
 
                 const when_locked_ms = new Date(target_event_room.event_room.when_locked);
                 const time_elapsed_ms = timeFromNowMS(when_locked_ms);

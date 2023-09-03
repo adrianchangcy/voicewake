@@ -50,7 +50,8 @@ module.exports = {
                 'theme-toast-danger': '#d81a1a',    //as text, or bg and use text-theme-light
                 'theme-toast': '#e6e6e6',           //as text, or bg and use text-theme-black
 
-                //for disabled feature, advised to use opacity until unreadable, and not gray
+                //for disabled feature, advised to use opacity on entire element until unreadable, not gray background
+                'theme-lightest-gray': '#eeeeee',
                 'theme-light-gray': '#e7e5e4',
                 'theme-medium-gray': '#d6d3d1',
                 'theme-dark-gray': '#a8a29e',

@@ -11,7 +11,7 @@
         {% block title %}My Site{% endblock %}
     </title>
 
-    <!--use getDataFromTemplate() to retrieve these data-->
+    <!--use getDataFromTemplate() helper function at Vue to retrieve these data-->
     {{user.username | json_script:"data-user-username"}}
     {{user.is_authenticated | json_script:"data-user-is-authenticated"}}
     {{user.id | json_script:"data-user-id"}}
@@ -29,7 +29,7 @@
     <body class="mt-[4.5rem] overflow-x-hidden overflow-y-scroll bg-theme-light">
 
         <!--content-->
-        <div class="min-h-[calc(100vh-4.5rem)] sm:w-3/4 md:w-2/4 xl:w-5/12 mx-auto text-left text-lg px-[5%] pb-10">
+        <div class="min-h-[calc(100vh-4.5rem)] sm:w-3/4 md:w-2/4 xl:w-5/12 mx-auto text-left text-lg px-4 sm:px-[5%] pb-10">
             
             {% block content %}
             {% endblock %}

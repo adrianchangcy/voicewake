@@ -29,6 +29,12 @@
             };
         },
         methods: {
+            async callTest() : Promise<void> {
+                await axios.get(window.location.origin + '/api/test')
+                .then((results:any) => {
+                    console.log(results.data);
+                });
+            },
             async getEventRoom(event_room_id:number) : Promise<void> {
 
                 //prepare events, then separate
@@ -74,7 +80,7 @@
 
 
 
-
+            this.callTest();
 
             notify({
                 title: "Keep it up!",

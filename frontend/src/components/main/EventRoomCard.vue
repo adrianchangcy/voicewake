@@ -1,10 +1,15 @@
 <template>
-    <div class="flex flex-col">
+    <div
+        :class="[
+            propHasBorder === true ? 'px-4 pt-10 pb-12 mb-8      border border-theme-light-gray rounded-lg' : '',
+            'flex flex-col'
+        ]"
+    >
 
         <!--title and datetime-->
         <div
             v-if="propShowTitle === true"
-            class="h-fit pb-6"
+            class="h-fit pb-10"
         >
             <VTitle
                 propFontSize="s"
@@ -20,7 +25,7 @@
         </div>
 
         <!--more than 1 event total-->
-        <div v-if="originatorCount > 0 && responderCount > 0" class="flex flex-col gap-8">
+        <div v-if="originatorCount > 0 && responderCount > 0" class="flex flex-col gap-10">
 
             <!--originator-->
             <div
@@ -62,7 +67,7 @@
         </div>
 
         <!--only 1 event total-->
-        <div v-else class="flex flex-col gap-8">
+        <div v-else class="flex flex-col gap-10">
 
             <!--originator-->
             <div
@@ -138,6 +143,10 @@
             propShowTitle: {
                 type: Boolean,
                 default: true
+            },
+            propHasBorder: {
+                type: Boolean,
+                default: false
             },
         },
         computed: {

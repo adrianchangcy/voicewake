@@ -419,37 +419,39 @@ class UsersLogOutAPI(generics.GenericAPIView):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class TestAPI(generics.GenericAPIView):
 
     serializer_class = None
     permission_classes = []
 
 
-
     def get(self, request, *args, **kwargs):
 
-        return Response(
-            data={
-                'message': '',
-                'data': GroupedEventsSerializer(
-                    group_events_into_event_rooms(
-                        self.get_event_rooms_by_completed(
-                            'best',
-                            '',
-                            'all',
-                            1,
-                        )
-                    ),
-                    many=True
-                ).data,
-            },
-            status=status.HTTP_200_OK
-        )
+        print(request.user)
+        print(request.session.get_expiry_age())
+
 
         return Response(
             data={
                 'data': {
-
+                
                 },
                 'message': ''
             },
@@ -463,84 +465,45 @@ class TestAPI(generics.GenericAPIView):
 
 
 
+
+
+
+
+
 #=====REST APIs=====
 
-class EventTonesAPI(viewsets.ReadOnlyModelViewSet):
+class EventTonesAPI(generics.GenericAPIView):
 
     serializer_class = EventTonesSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = []
     queryset = EventTones.objects.all()
 
 
-    def get_queryset(self):
+    def get(self, request, *args, **kwargs):
 
-        search = self.request.query_params.get('search')
+        response = Response(
+            data={
+                'message': '',
+                'data': EventTonesSerializer(
+                    EventTones.objects.all(),
+                    many=True
+                ).data
+            }
+        )
 
-        if search is not None:
+        #cache for 2 weeks
+        patch_cache_control(
+            response,
+            no_cache=False, no_store=False, must_revalidate=True, max_age=1209600
+        )
 
-            #part of search optimisation is "... field_name LIKE 'string%' OR field_name LIKE '%string%'"
-            #Q is used to encapsulate a collection of keyword arguments
-            return EventTones.objects.filter(
-                Q(event_tone_name__istartswith=search)|Q(event_tone_name__icontains=search)
-            )[:10]
-            
-        else:
-        
-            return EventTones.objects.all()
-
+        return response
 
 
 class EventRoomsAPI(generics.GenericAPIView):
 
     serializer_class = GroupedEventsSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
-
-
-    def get_queryset_all_test(self):
-
-        events = Events.objects.raw(
-            '''
-            SELECT
-                events.*,
-                event_rooms.*,
-                event_tones.*,
-                generic_statuses.*,
-                SUM(
-                    CASE 
-                    WHEN event_likes_dislikes.is_liked='true' THEN 1
-                    ELSE 0
-                    END
-                ) AS like_count,
-                SUM(
-                    CASE
-                    WHEN event_likes_dislikes.is_liked='false' THEN 1
-                    ELSE 0
-                    END
-                ) AS dislike_count,
-                (CASE
-                    (
-                        SELECT event_likes_dislikes.is_liked
-                        FROM event_likes_dislikes
-                        WHERE user_id=%s
-                        AND event_id=events.id
-                    )
-                    WHEN 'true' THEN 'true'
-                    WHEN 'false' THEN 'false'
-                    ELSE NULL
-                    END
-                ) AS is_liked_by_user
-            FROM events
-            LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
-            LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id
-            LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
-            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
-            ''',
-            params=(
-                self.request.user.id,
-            )
-        )
-        return events
 
 
     def get_event_rooms_by_is_replying(self):
@@ -571,7 +534,7 @@ class EventRoomsAPI(generics.GenericAPIView):
                 WHERE locked_for_user_id=%s
                 AND is_replying=%s
             )
-            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
+            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id, is_liked_by_user
             ''',
             params=(
                 self.request.user.id,
@@ -686,7 +649,7 @@ class EventRoomsAPI(generics.GenericAPIView):
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
             LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
-            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id, event_likes_dislikes.is_liked
+            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id, is_liked_by_user
             ''',
             params=(
                 event_tone_slug,
@@ -808,7 +771,7 @@ class EventRoomsAPI(generics.GenericAPIView):
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
             LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
-            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
+            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id, is_liked_by_user
             ''',
             params=(
                 event_tone_slug,
@@ -849,7 +812,7 @@ class EventRoomsAPI(generics.GenericAPIView):
             LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
             WHERE events.event_room_id = %s
-            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
+            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id, is_liked_by_user
             ''',
             params=(
                 self.request.user.id,
@@ -972,283 +935,6 @@ class EventRoomsAPI(generics.GenericAPIView):
 
 
 
-#does not have own get(), since viewing events always involves parent event_rooms
-#handle creating events
-    #if event_role_name='originator', create event_room
-    #if event_role_name='responder', link to event_room and reset lock
-class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
-
-    serializer_class = CreateEventsSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
-    queryset = None
-    user_action:Literal["create_new", "reply"] = ""
-
-
-    def check_user_create_event_room_daily_limit(self, user):
-
-        #this is for "X max new event rooms every __", which in this case is every 24h
-        datetime_checkpoint = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
-        datetime_checkpoint = datetime.strptime(datetime_checkpoint, '%Y-%m-%d %H:%M:%S %z')
-
-        the_count = EventRooms.objects.filter(
-            created_by=user,
-            when_created__gte=datetime_checkpoint
-        ).count()
-
-        if the_count < settings.EVENT_ROOM_CREATE_DAILY_LIMIT:
-
-            return False
-
-        return True
-
-
-    def check_user_create_reply_event_daily_limit(self, user):
-
-        #this is for "X max new posts every __", which in this case is every 24h
-        datetime_checkpoint = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
-        datetime_checkpoint = datetime.strptime(datetime_checkpoint, '%Y-%m-%d %H:%M:%S %z')
-
-        the_count = Events.objects.filter(
-            user=user,
-            when_created__gte=datetime_checkpoint
-        ).count()
-
-        if the_count < settings.EVENT_ROOM_REPLY_DAILY_LIMIT:
-
-            return False
-
-        return True
-
-
-    def check_user_can_reply_event_room(self, event_room):
-
-        #check if user is replying
-        if\
-            event_room.locked_for_user is not None and\
-            event_room.locked_for_user.id == self.request.user.id and\
-            event_room.is_replying is True\
-        :
-
-            return True
-
-        return False
-
-
-    def check_user_exceeded_reply_time_window(self, event_room):
-
-        minutes_passed = (get_datetime_now() - event_room.when_locked).total_seconds()
-
-        if minutes_passed > settings.EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS:
-
-            return True
-        
-        return False
-
-
-    def post(self, request, *args, **kwargs):
-
-        User = get_user_model()
-
-        #deserialize
-        serializer = CreateEventsSerializer(data=request.data, many=False)
-
-        #validate
-        if serializer.is_valid() is False:
-
-            #return any first error message
-            error_message = "Invalid data."
-
-            for key in serializer.errors:
-                for first_error in serializer.errors[key]:
-                    error_message = first_error
-                    break
-
-            return Response(
-                data={
-                    'message': error_message,
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        #ok, continue
-        new_data = serializer.validated_data
-        user = User(pk=request.user.id)
-
-        try:
-
-            with transaction.atomic():
-
-                #event_tone
-                event_tone = EventTones.objects.get(pk=new_data['event_tone_id'])
-
-                #determine if originator/responder, then create/get event_room
-                #generic_status is handled by default, so it is skipped here
-                if self.user_action == "create_new":
-
-                    #check if created event_room limit is not yet reached
-                    if self.check_user_create_event_room_daily_limit(user) is True:
-
-                        raise HandleError.new_error(
-                            TimeoutError,
-                            user_message="You have reached your daily limit for creating events."
-                        )
-
-                    #proceed
-                    event_role = EventRoles.objects.get(event_role_name='originator')
-
-                    event_room = EventRooms.objects.create(
-                        event_room_name=new_data['event_room_name'],
-                        generic_status=GenericStatuses.objects.get(generic_status_name='incomplete'),
-                        created_by=user
-                    )
-
-                elif self.user_action == "reply":
-
-                    #check if reply event limit is not yet reached
-                    if self.check_user_create_reply_event_daily_limit(user) is True:
-
-                        raise HandleError.new_error(
-                            ValueError,
-                            user_message="You have reached your daily limit of replies."
-                        )
-
-                    #get event_room
-                    event_room = EventRooms.objects.select_for_update().get(pk=new_data['event_room_id'])
-
-                    #check if this user is already attached beforehand
-                    if self.check_user_can_reply_event_room(event_room) is False:
-
-                        raise HandleError.new_error(
-                            ValueError,
-                            user_message="Replying to this event is not allowed."
-                        )
-                    
-                    #check if user exceeded reply time window but automated script has not detected yet
-                    if self.check_user_exceeded_reply_time_window(event_room) is True:
-
-                        #reset
-                        event_room.locked_for_user = None
-                        event_room.when_locked = None
-                        event_room.is_replying = None
-                        event_room.save()
-
-                        raise HandleError.new_error(
-                            TimeoutError,
-                            user_message="Reply was not successful. You had reached the time limit."
-                        )
-
-                    #mark event_room as completed, remove lock
-                    event_room.generic_status = GenericStatuses.objects.get(generic_status_name='completed')
-                    event_room.when_locked = None
-                    event_room.locked_for_user = None
-                    event_room.is_replying = None
-                    event_room.save()
-
-                    #proceed
-                    event_role = EventRoles.objects.get(event_role_name='responder')
-
-                else:
-
-                    raise HandleError.new_error(
-                        AttributeError,
-                        dev_message="Unrecognised user_action arg from urls.py."
-                    )
-                
-                #proceed
-
-                #audio_file, further validation
-                #on error, will raise by themselves
-                handle_audio_file_class = HandleAudioFile(new_data['audio_file'], True)
-
-                #prepare audio file info, which also self-validates
-                #reminder that .size check should be done at form/serializer
-                handle_audio_file_class.prepare_audio_file_info()
-                
-                #normalize
-                handle_audio_file_class.do_normalisation()
-                
-                #get peaks
-                handle_audio_file_class.get_peaks_by_buckets()
-
-                #create event, excluding audio_file and event_room
-                #generic_status is handled by default, so it is skipped here
-                new_event = Events.objects.create(
-                    user=user,
-                    event_role=event_role,
-                    event_tone=event_tone,
-                    event_room=event_room,
-                    audio_volume_peaks=handle_audio_file_class.peak_buckets,
-                    audio_duration_s=handle_audio_file_class.audio_file_duration_s
-                )
-
-                #we delay saving audio_file, as we want when_created for audio_file's path
-                new_event.audio_file = handle_audio_file_class.audio_file
-                new_event.save()
-
-                #close just in case it's no longer a reference, i.e. Django won't auto-close
-                handle_audio_file_class.close_audio_file()
-
-                return Response(
-                    {
-                        'data': {
-                            'event_room_id': event_room.id
-                        },
-                        'message': 'Success!',
-                    },
-                    status.HTTP_201_CREATED
-                )
-        
-        except EventTones.DoesNotExist:
-
-            return Response(
-                data={
-                    'message': 'Your selected tag was not found. Try a different one.',
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        except EventRooms.DoesNotExist:
-
-            return Response(
-                data={
-                    'message': 'This event no longer exists.',
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        except TimeoutError as e:
-
-            return Response(
-                data={
-                    'message': HandleError.get_user_message(e),
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        except ValueError as e:
-
-            return Response(
-                data={
-                    'message': HandleError.get_user_message(e),
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        except Exception as e:
-
-            traceback.print_exc()
-
-            print(HandleError.get_dev_message(e))
-
-            return Response(
-                data={
-                    'message': HandleError.get_user_message(e),
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-
-
 #user can generate new event_room reply choice
     #will unlock previous is_replying=False event_room
     #will add to UserEventRooms when locking for is_replying=False
@@ -1313,8 +999,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
             WITH selected_event_rooms AS (
                 SELECT event_rooms.id AS id FROM event_rooms
                 INNER JOIN generic_statuses ON event_rooms.generic_status_id = generic_statuses.id
-                LEFT JOIN user_event_rooms ON event_rooms.id = user_event_rooms.event_room_id
-                    AND user_event_rooms.user_id = %s
+                LEFT JOIN user_event_rooms ON event_rooms.id = user_event_rooms.event_room_id AND user_event_rooms.user_id = %s
                 WHERE generic_statuses.generic_status_name = %s
                 AND locked_for_user_id IS NULL
                 AND created_by_id != %s
@@ -1337,7 +1022,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
             WHERE generic_statuses.generic_status_name = %s
             AND event_roles.event_role_name = %s
-            GROUP BY events.id, event_tones.id, generic_statuses.id, selected_event_rooms.id
+            GROUP BY events.id, event_tones.id, generic_statuses.id, selected_event_rooms.id, is_liked_by_user
             ''',
             params=(
                 self.request.user.id,
@@ -1401,7 +1086,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
             AND event_rooms_generic_statuses.generic_status_name = %s
             AND event_rooms.is_replying = %s
             AND generic_statuses.generic_status_name = %s
-            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id
+            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id, is_liked_by_user
             ''',
             params=(
                 self.request.user.id,
@@ -1761,6 +1446,283 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
 
 
+#does not have own get(), since viewing events always involves parent event_rooms
+#handle creating events
+    #if event_role_name='originator', create event_room
+    #if event_role_name='responder', link to event_room and reset lock
+class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
+
+    serializer_class = CreateEventsSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    queryset = None
+    user_action:Literal["create_new", "reply"] = ""
+
+
+    def check_user_create_event_room_daily_limit(self, user):
+
+        #this is for "X max new event rooms every __", which in this case is every 24h
+        datetime_checkpoint = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
+        datetime_checkpoint = datetime.strptime(datetime_checkpoint, '%Y-%m-%d %H:%M:%S %z')
+
+        the_count = EventRooms.objects.filter(
+            created_by=user,
+            when_created__gte=datetime_checkpoint
+        ).count()
+
+        if the_count < settings.EVENT_ROOM_CREATE_DAILY_LIMIT:
+
+            return False
+
+        return True
+
+
+    def check_user_create_reply_event_daily_limit(self, user):
+
+        #this is for "X max new posts every __", which in this case is every 24h
+        datetime_checkpoint = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
+        datetime_checkpoint = datetime.strptime(datetime_checkpoint, '%Y-%m-%d %H:%M:%S %z')
+
+        the_count = Events.objects.filter(
+            user=user,
+            when_created__gte=datetime_checkpoint
+        ).count()
+
+        if the_count < settings.EVENT_ROOM_REPLY_DAILY_LIMIT:
+
+            return False
+
+        return True
+
+
+    def check_user_can_reply_event_room(self, event_room):
+
+        #check if user is replying
+        if\
+            event_room.locked_for_user is not None and\
+            event_room.locked_for_user.id == self.request.user.id and\
+            event_room.is_replying is True\
+        :
+
+            return True
+
+        return False
+
+
+    def check_user_exceeded_reply_time_window(self, event_room):
+
+        minutes_passed = (get_datetime_now() - event_room.when_locked).total_seconds()
+
+        if minutes_passed > settings.EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS:
+
+            return True
+        
+        return False
+
+
+    def post(self, request, *args, **kwargs):
+
+        User = get_user_model()
+
+        #deserialize
+        serializer = CreateEventsSerializer(data=request.data, many=False)
+
+        #validate
+        if serializer.is_valid() is False:
+
+            #return any first error message
+            error_message = "Invalid data."
+
+            for key in serializer.errors:
+                for first_error in serializer.errors[key]:
+                    error_message = first_error
+                    break
+
+            return Response(
+                data={
+                    'message': error_message,
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        #ok, continue
+        new_data = serializer.validated_data
+        user = User(pk=request.user.id)
+
+        try:
+
+            with transaction.atomic():
+
+                #event_tone
+                event_tone = EventTones.objects.get(pk=new_data['event_tone_id'])
+
+                #determine if originator/responder, then create/get event_room
+                #generic_status is handled by default, so it is skipped here
+                if self.user_action == "create_new":
+
+                    #check if created event_room limit is not yet reached
+                    if self.check_user_create_event_room_daily_limit(user) is True:
+
+                        raise HandleError.new_error(
+                            TimeoutError,
+                            user_message="You have reached your daily limit for creating events."
+                        )
+
+                    #proceed
+                    event_role = EventRoles.objects.get(event_role_name='originator')
+
+                    event_room = EventRooms.objects.create(
+                        event_room_name=new_data['event_room_name'],
+                        generic_status=GenericStatuses.objects.get(generic_status_name='incomplete'),
+                        created_by=user
+                    )
+
+                elif self.user_action == "reply":
+
+                    #check if reply event limit is not yet reached
+                    if self.check_user_create_reply_event_daily_limit(user) is True:
+
+                        raise HandleError.new_error(
+                            ValueError,
+                            user_message="You have reached your daily limit of replies."
+                        )
+
+                    #get event_room
+                    event_room = EventRooms.objects.select_for_update().get(pk=new_data['event_room_id'])
+
+                    #check if this user is already attached beforehand
+                    if self.check_user_can_reply_event_room(event_room) is False:
+
+                        raise HandleError.new_error(
+                            ValueError,
+                            user_message="Replying to this event is not allowed."
+                        )
+                    
+                    #check if user exceeded reply time window but automated script has not detected yet
+                    if self.check_user_exceeded_reply_time_window(event_room) is True:
+
+                        #reset
+                        event_room.locked_for_user = None
+                        event_room.when_locked = None
+                        event_room.is_replying = None
+                        event_room.save()
+
+                        raise HandleError.new_error(
+                            TimeoutError,
+                            user_message="Reply was not successful. You had reached the time limit."
+                        )
+
+                    #mark event_room as completed, remove lock
+                    event_room.generic_status = GenericStatuses.objects.get(generic_status_name='completed')
+                    event_room.when_locked = None
+                    event_room.locked_for_user = None
+                    event_room.is_replying = None
+                    event_room.save()
+
+                    #proceed
+                    event_role = EventRoles.objects.get(event_role_name='responder')
+
+                else:
+
+                    raise HandleError.new_error(
+                        AttributeError,
+                        dev_message="Unrecognised user_action arg from urls.py."
+                    )
+                
+                #proceed
+
+                #audio_file, further validation
+                #on error, will raise by themselves
+                handle_audio_file_class = HandleAudioFile(new_data['audio_file'], True)
+
+                #prepare audio file info, which also self-validates
+                #reminder that .size check should be done at form/serializer
+                handle_audio_file_class.prepare_audio_file_info()
+                
+                #normalize
+                handle_audio_file_class.do_normalisation()
+                
+                #get peaks
+                handle_audio_file_class.get_peaks_by_buckets()
+
+                #create event, excluding audio_file and event_room
+                #generic_status is handled by default, so it is skipped here
+                new_event = Events.objects.create(
+                    user=user,
+                    event_role=event_role,
+                    event_tone=event_tone,
+                    event_room=event_room,
+                    audio_volume_peaks=handle_audio_file_class.peak_buckets,
+                    audio_duration_s=handle_audio_file_class.audio_file_duration_s
+                )
+
+                #we delay saving audio_file, as we want when_created for audio_file's path
+                new_event.audio_file = handle_audio_file_class.audio_file
+                new_event.save()
+
+                #close just in case it's no longer a reference, i.e. Django won't auto-close
+                handle_audio_file_class.close_audio_file()
+
+                return Response(
+                    {
+                        'data': {
+                            'event_room_id': event_room.id
+                        },
+                        'message': 'Success!',
+                    },
+                    status.HTTP_201_CREATED
+                )
+        
+        except EventTones.DoesNotExist:
+
+            return Response(
+                data={
+                    'message': 'Your selected tag was not found. Try a different one.',
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        except EventRooms.DoesNotExist:
+
+            return Response(
+                data={
+                    'message': 'This event no longer exists.',
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        except TimeoutError as e:
+
+            return Response(
+                data={
+                    'message': HandleError.get_user_message(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        except ValueError as e:
+
+            return Response(
+                data={
+                    'message': HandleError.get_user_message(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        except Exception as e:
+
+            traceback.print_exc()
+
+            print(HandleError.get_dev_message(e))
+
+            return Response(
+                data={
+                    'message': HandleError.get_user_message(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+
 #to submit likes/dislikes
 #is_liked=True/False, or destroy when undone
 class EventLikesDislikesAPI(generics.GenericAPIView):
@@ -1821,6 +1783,7 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
 
             if new_data['is_liked'] is None:
 
+                #this is safe from "performing deletion but no rows found"
                 EventLikesDislikes.objects.filter(
                     user_id=request.user.id,
                     event_id=new_data['event_id']

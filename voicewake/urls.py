@@ -35,7 +35,11 @@ urlpatterns = [
 
     
     #APIs
-    path('', include(router.urls)),
+
+    #we don't need default urls
+    # path('', include(router.urls)),
+
+    path('api/test', views.TestAPI.as_view(), name='test'),
 
     path('api/event-rooms/get/<int:event_room_id>', views.EventRoomsAPI.as_view(), name='get_event_rooms_by_event_room_id'),
 
@@ -51,14 +55,13 @@ urlpatterns = [
     path('api/event-rooms/reply', views.EventsAPI.as_view(user_action="reply"), name="reply_event_rooms"),
     path('api/event-rooms/reply/cancel', views.HandleReplyingEventRoomsAPI.as_view(user_action="cancel"), name="cancel_reply_event_rooms"),
 
+    path('api/event-tones', views.EventTonesAPI.as_view(), name='event_tones'),
     path('api/event-likes-dislikes', views.EventLikesDislikesAPI.as_view(), name='event_likes_dislikes'),
     path('api/users/username/get/<str:username>', views.UsersUsernameAPI.as_view(), name='users_get_username'),
     path('api/users/username/set', views.UsersUsernameAPI.as_view(), name='users_set_username'),
     path('api/users/sign-up', views.UsersSignUpAPI.as_view(), name='users_sign_up'),
     path('api/users/log-in', views.UsersLogInAPI.as_view(), name='users_log_in'),
     path('api/users/log-out', views.UsersLogOutAPI.as_view(), name='users_log_out'),
-
-    path('api/test', views.TestAPI.as_view(), name='test'),
     
     #user management
     #refer to link below for all URLs/APIs already provided

@@ -40,6 +40,8 @@
 
     <!--toasts-->
     <TransitionFade>
+
+        <!--ensure pop-ups don't clash with toasts-->
         <div
             v-show="!is_nav_bar_open"
             class="w-0 h-0"
