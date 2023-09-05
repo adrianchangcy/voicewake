@@ -40,8 +40,6 @@ class UserOTP_TestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
-        first_time_setup()
-
         User = get_user_model()
         cls.email = 'user1@gmail.com'
         User.objects.create_user(

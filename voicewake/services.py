@@ -243,38 +243,34 @@ def get_default_create_otp_response(email):
 
 
 
-#uses class just to show context for devs
-#use the methods independently, without class context
-class HandleError:
+#not advisable to group functions via class,
+#it's better to create modules (files) to group functions together
+def custom_error(error_class:Exception, dev_message="", user_message="")->Exception:
 
-    def new_error(error_class:Exception, dev_message="", user_message="")->Exception:
+    #demo
+    # try:
+    #     raise custom_error(ValueError, "yo fix this", "hehe oops")
+    # except ValueError as e:
+    #     print(e.args[0]['dev_message'])
 
-        #demo
-        # try:
-        #     raise HandleError.new_error(ValueError, "yo fix this", "hehe oops")
-        # except ValueError as e:
-        #     print(e.args[0]['dev_message'])
+    return error_class({
+        "dev_message": dev_message,
+        "user_message": user_message
+    })
 
-        return error_class({
-            "dev_message": dev_message,
-            "user_message": user_message
-        })
+def get_user_message_from_custom_error(new_error:Exception)->str:
 
+    try:
+        return new_error.args[0]['user_message']
+    except:
+        return ""
 
-    def get_user_message(new_error:Exception)->str:
+def get_dev_message_from_custom_error(new_error:Exception)->str:
 
-        try:
-            return new_error.args[0]['user_message']
-        except:
-            return ""
-        
-
-    def get_dev_message(new_error:object)->str:
-
-        try:
-            return new_error.args[0]['dev_message']
-        except:
-            return ""
+    try:
+        return new_error.args[0]['dev_message']
+    except:
+        return ""
 
 
 
@@ -543,11 +539,6 @@ class PrepareTestData:
                 like_percentage=0.9,
                 dislike_percentage=0.1,
             )
-
-
-
-
-
 
 
 
@@ -846,7 +837,7 @@ class HandleAudioFile:
         #preventing override would mean duplicating memory/disk space, and ensuring disk copy is deleted
         if overwrite_source is False:
 
-            raise HandleError.new_error(
+            raise custom_error(
                 ValueError,
                 dev_message="Current code will always overwrite original source's bytes to save memory."
             )
@@ -877,7 +868,7 @@ class HandleAudioFile:
         #check type
         if type(audio_file) not in [InMemoryUploadedFile, TemporaryUploadedFile]:
 
-            raise HandleError.new_error(
+            raise custom_error(
                 ValueError,
                 dev_message="audio_file must be of type [InMemoryUploadedFile, TemporaryUploadedFile]."
             )
@@ -974,7 +965,7 @@ class HandleAudioFile:
 
         if self.audio_file_info is None:
 
-            raise HandleError.new_error(
+            raise custom_error(
                 ValueError,
                 dev_message="Cannot validate audio_file_info when it is None."
             )
@@ -987,7 +978,7 @@ class HandleAudioFile:
         #we have "-select_streams a" to tell us that no audio stream exists
         if len(self.audio_file_info['streams']) == 0:
 
-            raise HandleError.new_error(
+            raise custom_error(
                 ValueError,
                 dev_message="File does not contain audio.",
                 user_message="File does not contain audio."
@@ -995,7 +986,7 @@ class HandleAudioFile:
 
         if self.audio_file_duration_s < 1:
 
-            raise HandleError.new_error(
+            raise custom_error(
                 ValueError,
                 dev_message="Duration must be more than 1s.",
                 user_message="Duration must be more than 1s."
@@ -1086,10 +1077,10 @@ class HandleAudioFile:
             #should never have > 0dB (will produce audio clipping), mainly because we'll normalise to prevent it
             if peak_to_store > 0:
                 
-                raise HandleError.new_error(
+                raise custom_error(
                     ValueError,
                     dev_message="Peak is over 0dBFS, which will clip. Calculating peaks process has been halted.",
-                    user_message="Audio normalisation had failed."
+                    user_message="Audio normalisation had failed, as there were above 0dBFS peaks detected."
                 )
 
             #get percentage
@@ -1124,8 +1115,12 @@ class HandleAudioFile:
     def do_normalisation(self) -> bytes:
 
         #"loudnorm=I=-16:TP=-1.5:LRA=11" is from loudnorm docs on EBU R 128
-        #we do TP=-2 instead, to feel better about supposedly "more than enough headroom"
-        #Spotify does -2 too
+        #"loudnorm=I=-23:LRA=7:TP=-2" is from ffmpeg-normalize on EU's LUFS -23 regulation
+        loudnorm_args = "loudnorm=I=-23:TP=-2:LRA=7"
+
+        #I is LUFS
+        #LRA is loudness range, i.e. range between softest and loudest parts
+        #TP is true peak, -2 seems common, just be sure to give enough headroom towards 0, and never over 0
 
         self.audio_file.seek(0)
 
@@ -1134,7 +1129,7 @@ class HandleAudioFile:
             [
                 "ffmpeg",
                 "-i", "pipe:0",
-                "-af", "loudnorm=I=-16:TP=-2:LRA=11:print_format=json",
+                "-af", loudnorm_args + ":print_format=json",
                 '-f', "null", "/dev/null"
             ],
             input=self.audio_file.read(),
@@ -1154,7 +1149,7 @@ class HandleAudioFile:
 
         if first_pass_dict is None:
 
-            raise HandleError.new_error(
+            raise custom_error(
                 ValueError,
                 dev_message="Regex could not find the data needed for first_pass_dict via regex.",
                 user_message=""
@@ -1166,7 +1161,7 @@ class HandleAudioFile:
 
         #prepare -af values for second pass
         #can't directly .format() here, must call the variable again
-        ffmpeg_cmd_af = "loudnorm=I=-16:TP=-2:LRA=11" +\
+        ffmpeg_cmd_af = loudnorm_args +\
             ":measured_I={0}" +\
             ":measured_LRA={1}" +\
             ":measured_TP={2}" +\
@@ -1202,13 +1197,6 @@ class HandleAudioFile:
         self.audio_file.seek(0)
 
         output = ffmpeg_cmd.stdout
-
-        if len(output) == 0:
-
-            raise HandleError.new_error(
-                ValueError,
-                dev_message="Empty bytes returned when normalising. Maybe you've forgotten to do .seek(0)?"
-            )
 
         self._replace_original_audio_file_bytes_with_normalised_version(output)
 

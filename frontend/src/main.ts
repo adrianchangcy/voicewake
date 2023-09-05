@@ -9,6 +9,7 @@ import ListEventRoomChoicesApp from '/src/apps/ListEventRoomChoicesApp.vue';
 import GetEventRoomsApp from '/src/apps/GetEventRoomsApp.vue';
 import BrowseEventRoomsApp from '/src/apps/BrowseEventRoomsApp.vue';
 import UserLogInSignUp from '/src/components/main/UserLogInSignUp.vue';
+import VUserUsername from '/src/components/medium/VUserUsername.vue';
 
 
 const pinia = createPinia();
@@ -96,12 +97,13 @@ const clickOutside = {
     },
 };
 
+//as long as base-app has pinia, and since base-app is loaded everywhere, pinia can thus be used everywhere
 createApp(BaseApp)
     .use(pinia)
     .directive('click-outside', clickOutside)
     .mount('#base-app');
 
-//this might or might not be the most efficient fix
+//if-else for all # might or might not be the most efficient fix
 //https://vuejs.org/guide/essentials/application.html#the-root-component
 if(document.querySelector('#create-event-rooms-app')){
 
@@ -147,6 +149,12 @@ if(document.querySelector('#sign-up-page')){
             propRequestedSection: 'sign-up-section'
         }
     ).mount('#sign-up-page');
+}
+
+if(document.querySelector('#set-username-page')){
+
+    createApp(VUserUsername)
+        .mount('#set-username-page');
 }
 
 

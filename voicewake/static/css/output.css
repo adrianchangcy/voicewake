@@ -793,6 +793,11 @@ video {
   margin-bottom: auto;
 }
 
+.my-8 {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
 .mb-0 {
   margin-bottom: 0px;
 }
@@ -1720,6 +1725,10 @@ video {
 
 .pt-\[0\.375rem\] {
   padding-top: 0.375rem;
+}
+
+.pt-6 {
+  padding-top: 1.5rem;
 }
 
 .text-left {

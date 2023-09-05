@@ -123,7 +123,7 @@ MIDDLEWARE += [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
     #own middleware
-    # 'voicewake.middleware.set_user_timezone_middleware.SetUserTimezoneMiddleware',
+    # 'voicewake.middleware.redirect_middleware.RedirectMiddleware',
 ]
 
 ROOT_URLCONF = 'voicewake.urls'

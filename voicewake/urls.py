@@ -26,7 +26,7 @@ from voicewake import views
 
 #register API URLs for auto-create
 router = routers.SimpleRouter(trailing_slash=False)
-router.register(r'api/event-tones', views.EventTonesAPI)
+# router.register(r'api/event-tones', views.EventTonesAPI)
 
 #original URL
 urlpatterns = [
@@ -47,20 +47,20 @@ urlpatterns = [
     path('api/event-rooms/list/completed/<str:best_or_new>/<str:timeframe>/<str:event_tone_slug>/<int:page>', views.EventRoomsAPI.as_view(), name='get_event_rooms_by_best_or_new_and_event_tone_slug_paged'),
     path('api/event-rooms/list/<str:username>/<str:best_or_new>/<str:timeframe>/<str:event_role_name>/<int:page>', views.EventRoomsAPI.as_view(), name='get_event_rooms_by_username_best_or_new_event_role_name_paged'),
 
-    path('api/event-rooms/reply-choices/list', views.HandleEventRoomReplyChoicesAPI.as_view(user_context="list"), name="list_event_room_choices"),
-    path('api/event-rooms/reply-choices/expire', views.HandleEventRoomReplyChoicesAPI.as_view(user_context="expire"), name="expire_event_room_choices"),
+    path('api/event-rooms/reply-choices/list', views.HandleEventRoomReplyChoicesAPI.as_view(current_context="list"), name="list_event_room_choices"),
+    path('api/event-rooms/reply-choices/expire', views.HandleEventRoomReplyChoicesAPI.as_view(current_context="expire"), name="expire_event_room_choices"),
 
-    path('api/event-rooms/create-new', views.EventsAPI.as_view(user_action="create_new"), name='create_new_event_rooms'),
-    path('api/event-rooms/reply/start', views.HandleReplyingEventRoomsAPI.as_view(user_action="start"), name="start_reply_event_rooms"),
-    path('api/event-rooms/reply', views.EventsAPI.as_view(user_action="reply"), name="reply_event_rooms"),
-    path('api/event-rooms/reply/cancel', views.HandleReplyingEventRoomsAPI.as_view(user_action="cancel"), name="cancel_reply_event_rooms"),
+    path('api/event-rooms/create-new', views.EventsAPI.as_view(current_context="create_new"), name='create_new_event_rooms'),
+    path('api/event-rooms/reply/start', views.HandleReplyingEventRoomsAPI.as_view(current_context="start"), name="start_reply_event_rooms"),
+    path('api/event-rooms/reply', views.EventsAPI.as_view(current_context="reply"), name="reply_event_rooms"),
+    path('api/event-rooms/reply/cancel', views.HandleReplyingEventRoomsAPI.as_view(current_context="cancel"), name="cancel_reply_event_rooms"),
 
     path('api/event-tones', views.EventTonesAPI.as_view(), name='event_tones'),
     path('api/event-likes-dislikes', views.EventLikesDislikesAPI.as_view(), name='event_likes_dislikes'),
     path('api/users/username/get/<str:username>', views.UsersUsernameAPI.as_view(), name='users_get_username'),
     path('api/users/username/set', views.UsersUsernameAPI.as_view(), name='users_set_username'),
-    path('api/users/sign-up', views.UsersSignUpAPI.as_view(), name='users_sign_up'),
-    path('api/users/log-in', views.UsersLogInAPI.as_view(), name='users_log_in'),
+    path('api/users/sign-up', views.UsersLogInSignUpAPI.as_view(current_context='sign_up'), name='users_sign_up'),
+    path('api/users/log-in', views.UsersLogInSignUpAPI.as_view(current_context='login'), name='users_log_in'),
     path('api/users/log-out', views.UsersLogOutAPI.as_view(), name='users_log_out'),
     
     #user management
@@ -77,7 +77,9 @@ urlpatterns = [
     path('', views.home, name='home'),
     path('login', views.log_in, name='log_in'),
     path('signup', views.sign_up, name='sign_up'),
+    path('banned', views.user_banned, name='user_banned'),
 
+    path('username/new', views.SetUsername.as_view(), name='set_username'),
     path('start', views.CreateEventRooms.as_view(), name='create_event_rooms'),
     path('reply', views.ListEventRoomChoices.as_view(), name='list_event_room_choices'),
     path('hear/<int:event_room_id>', views.GetEventRooms.as_view(), name='get_event_rooms'),

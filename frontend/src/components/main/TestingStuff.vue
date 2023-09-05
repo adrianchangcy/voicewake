@@ -80,7 +80,7 @@
 
 
 
-            this.callTest();
+            // this.callTest();
 
             notify({
                 title: "Keep it up!",
