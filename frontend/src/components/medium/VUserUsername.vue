@@ -229,6 +229,11 @@
             },
             async checkUsernameExists() : Promise<void> {
 
+                if(this.is_submitting === true){
+
+                    return;
+                }
+
                 this.username_is_ok = false;
                 this.is_username_check_loading = true;
 
@@ -273,6 +278,11 @@
             },
             async submitUsernameChange() : Promise<void> {
 
+                if(this.is_submitting === true){
+
+                    return;
+                }
+
                 //no need to proceed if error on validating username
                 if(this.username_is_ok === false){
 
@@ -297,11 +307,8 @@
 
                         this.$emit('newUsername', response.data['data']['username']);
 
-                        notify({
-                            title: "Username saved",
-                            text: "Welcome, " + response.data['data']['username'] + "!",
-                            type: "ok"
-                        }, 5000);
+                        //redirect to home page without storing current URL
+                        window.location.replace(window.location.origin);
 
                     }else{
 
