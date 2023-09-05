@@ -116,7 +116,7 @@
             },
         },
         methods: {
-            validateInputWithRegex(event:InputEvent, input_field:HTMLInputElement) : void {
+            handleNewInput(event:InputEvent|null, input_field:HTMLInputElement) : void {
 
                 //we only run on manual input having whitespace, instead of entire input_field.value
                 //because we don't want to block pasted values
@@ -126,9 +126,19 @@
                 //input event triggers on value change, including paste and voice-to-speech
                 //hence, we can be rest assured that the emit always fires
 
-                //get value
-                const new_value = event.data === null ? '' : event.data!;
+                if(event === null){
 
+                    this.current_length = input_field.value.length;
+                    this.$emit('hasNewValue', input_field.value);
+                    this.input_value = input_field.value;
+
+                    return;
+                }
+
+                //event.data gives undefined on auto-complete
+                const new_value = event.data === null || event.data === undefined ? '' : event.data!;
+
+                //fine-tune caret behaviour
                 if(this.propAllowWhitespace === false && /\s+/g.test(new_value) === true){
 
                     //get caret position
@@ -144,6 +154,7 @@
                         current_caret_position
                     );
 
+                    //stop here
                     return;
                 }
 
@@ -160,8 +171,19 @@
             //using watcher will not be as capable as this
             input_field.addEventListener("input", (e) => {
                 e.stopPropagation();
-                this.validateInputWithRegex(e as InputEvent, input_field as HTMLInputElement);
+                this.handleNewInput(e as InputEvent, input_field as HTMLInputElement);
             });
+
+            //since browser saves copy of page on close, it will autocomplete on page reopen
+            //we can reliably get autocompleted values via window.onload = (event)=>{}
+            window.onload = ()=>{
+
+                //update Vue from autocompleted value
+                if(typeof input_field.value === 'string' && input_field.value.length > 0){
+
+                    this.handleNewInput(null, input_field);
+                }
+            };
         },
         beforeUnmount(){
 
@@ -169,7 +191,7 @@
 
             input_field.removeEventListener("input", (e) => {
                 e.stopPropagation();
-                this.validateInputWithRegex(e as InputEvent, input_field as HTMLInputElement);
+                this.handleNewInput(e as InputEvent, input_field as HTMLInputElement);
             });
         }
     });

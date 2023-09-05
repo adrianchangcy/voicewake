@@ -7,8 +7,14 @@
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
     {% endblock %}
 
+    <!--for extra headers, e.g. noindex nofollow-->
+    {% block extra_head %}
+    {% endblock %}
+
     <title>
-        {% block title %}My Site{% endblock %}
+        {% block title %}
+            Voicewake
+        {% endblock %}
     </title>
 
     <!--use getDataFromTemplate() helper function at Vue to retrieve these data-->

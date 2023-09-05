@@ -1,8 +1,11 @@
 <template>
     <div class="pt-8 pb-8 px-2">
-        <p class="text-xl font-medium block">
-            What's your username?
-        </p>
+
+        <VTitle propFontSize="l" class="pb-6">
+            <template #titleDescription>
+                <span>What's your username?</span>
+            </template>
+        </VTitle>
 
         <VInput
             propElementId="set-username"
@@ -17,7 +20,6 @@
             :propIsOk="username_is_ok === true"
             :propAllowWhitespace="false"
             @hasNewValue="validateUsername($event)"
-            class="mt-6"
         />
 
         <div class="mt-6 pl-2">
@@ -56,6 +58,7 @@
     import VInput from '@/components/small/VInput.vue';
     import VActionSpecial from '../small/VActionSpecial.vue';
     import VLoading from '../small/VLoading.vue';
+    import VTitle from '../small/VTitle.vue';
 </script>
 
 <script lang="ts">
@@ -295,12 +298,10 @@
                         this.$emit('newUsername', response.data['data']['username']);
 
                         notify({
-                            title: "Username success",
+                            title: "Username saved",
                             text: "Welcome, " + response.data['data']['username'] + "!",
                             type: "ok"
-                        }, 3000);
-
-                        this.is_submitting = false;
+                        }, 5000);
 
                     }else{
 

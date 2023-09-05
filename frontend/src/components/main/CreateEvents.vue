@@ -280,11 +280,11 @@
                         this.$emit('isSubmitSuccessful', true);
 
                         window.location.href = window.location.origin + "/hear/" + response.data['data']['event_room_id'].toString();
-                        //no need to do is_submitting=true on success
 
                     }else{
 
                         this.$emit('isSubmitSuccessful', false);
+                        this.is_submitting = false;
                     }
 
                 })

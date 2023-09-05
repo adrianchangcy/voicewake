@@ -6,6 +6,9 @@ from django.core.mail import send_mail
 from django.template.loader import get_template
 from django.utils.cache import patch_cache_control
 from django.db.models import Prefetch
+from django.views.decorators.cache import never_cache
+from django.utils.decorators import method_decorator
+from django.http import Http404
 
 #auth
 from django.contrib.auth import get_user_model
@@ -14,7 +17,6 @@ from django.contrib.auth.decorators import login_required, permission_required
 
 #DRF, class-based views
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
 from rest_framework import status
 from rest_framework import viewsets, generics
     #ModelViewSet has: list, create, retrieve, update, partial_update, destroy
@@ -44,6 +46,7 @@ from typing import Literal
 from voicewake.models import *
 from voicewake.serializers import *
 from voicewake.services import *
+import voicewake.decorators as app_decorators
 from django.conf import settings
 
 #specifically just for error handling
@@ -54,23 +57,39 @@ from django.db.utils import IntegrityError
 
 #===direct web pages===
 # @login_required(login_url='/login')
+@app_decorators.redirect_if_banned
+@app_decorators.redirect_if_no_username
 def home(request):
 
     return render(request, template_name='voicewake/home.html')
 
 
+@app_decorators.redirect_if_already_logged_in
 def log_in(request):
 
     return render(request, template_name='registration/log_in.html')
 
 
+@app_decorators.redirect_if_already_logged_in
 def sign_up(request):
 
     return render(request, template_name='registration/sign_up.html')
 
+
+def user_banned(request):
+
+    if request.user.is_authenticated is True and request.user.is_banned is True:
+
+        return render(request, template_name='voicewake/user_banned.html')
+
+    #do 404 for others
+    raise Http404()
+
+
 #======================
 
 
+@method_decorator(app_decorators.disable_api_if_banned, name='dispatch')
 class UsersUsernameAPI(generics.GenericAPIView):
 
     serializer_class = UsersUsernameAPISerializer
@@ -196,10 +215,21 @@ class UsersUsernameAPI(generics.GenericAPIView):
 
 
 
-class UsersLogInAPI(generics.GenericAPIView):
+@method_decorator(app_decorators.disable_api_if_already_logged_in, 'dispatch')
+class UsersLogInSignUpAPI(generics.GenericAPIView):
 
     serializer_class = None
     permission_classes = []
+    current_context = ""
+
+
+    def __init__(self, *args, **kwargs):
+
+        if 'current_context' not in kwargs or kwargs['current_context'] not in ['login', 'sign_up']:
+
+            raise custom_error(ValueError, dev_message="Incorrect current_context passed. Check .as_view() at urls.py.")
+    
+        super().__init__(*args, **kwargs)
 
 
     def verify_and_log_in(self, request, user_instance, handle_user_otp_class:HandleUserOTP, otp):
@@ -236,6 +266,7 @@ class UsersLogInAPI(generics.GenericAPIView):
         )
 
 
+    #we let users log in even if banned
     def post(self, request, *args, **kwargs):
 
         serializer = UsersLogInAPISerializer(data=request.data, many=False)
@@ -278,7 +309,7 @@ class UsersLogInAPI(generics.GenericAPIView):
 
                 #fake delay
                 #during testing, send_mail() takes quite long, around 2+ secs
-                time.sleep(random.uniform(0.8, 2))
+                time.sleep(random.uniform(0.7, 3.5))
 
                 return get_default_create_otp_response(email=new_data['email'])
             
@@ -302,12 +333,27 @@ class UsersLogInAPI(generics.GenericAPIView):
                 #only send email if has legitimate new OTP
                 if len(new_otp) == settings.TOTP_NUMBER_OF_DIGITS:
 
+                    template_title = ""
+                    template_title_description = ""
+
+                    if self.current_context == 'login':
+                        template_title = "Code for login"
+                        template_title_description = "Log in with this code:"
+                    else:
+                        template_title = "Code for sign-up"
+                        template_title_description = "Sign up with this code:"
+
                     handle_user_otp_class.send_otp_email(
                         new_data['email'],
-                        'Code for login',
-                        'Log in with this code:',
+                        template_title,
+                        template_title_description,
                         new_otp
                     )
+
+                else:
+
+                    #fake delay
+                    time.sleep(random.uniform(0.7, 3.5))
 
                 return get_default_create_otp_response(new_data['email'])
 
@@ -315,92 +361,13 @@ class UsersLogInAPI(generics.GenericAPIView):
             #will always return Response()
             return self.verify_and_log_in(request, user_instance, handle_user_otp_class, new_data['otp'])
 
-
-
-class UsersSignUpAPI(UsersLogInAPI):
-
-    serializer_class = None
-    permission_classes = []
-
-
-    def post(self, request, *args, **kwargs):
-
-        #same data as signing in
-        serializer = UsersLogInAPISerializer(data=request.data, many=False)
-
-        #validate
-        if serializer.is_valid() is False:
-
-            #return any first error message
-            error_message = "Invalid data."
-
-            for key in serializer.errors:
-                for first_error in serializer.errors[key]:
-                    error_message = first_error
-                    break
-
-            return Response(
-                data={
-                    'message': error_message,
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        new_data = serializer.validated_data
-        User = get_user_model()
-        user_instance = None
-        email_lowercase = new_data['email'].lower()
-
-        try:
-
-            #get user
-            user_instance = User.objects.get(
-                email_lowercase=email_lowercase
-            )
-
-        except User.DoesNotExist:
-
-            #create user
-            user_instance = User.objects.create_user(
-                email=new_data['email'],
-            )
-
-        with transaction.atomic():
-
-            #start with OTP
-            handle_user_otp_class = HandleUserOTP(
-                user_instance, settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-                settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
-            )
-            handle_user_otp_class.get_or_create_user_otp_instance()
-            
-            #handle request for new OTP
-            if new_data['is_requesting_new_otp'] is True:
-            
-                new_otp = handle_user_otp_class.generate_and_save_otp()
-    
-                #only send email if has legitimate new OTP
-                if len(new_otp) == settings.TOTP_NUMBER_OF_DIGITS:
-                
-                    handle_user_otp_class.send_otp_email(
-                        new_data['email'],
-                        'Code for sign-up',
-                        'Complete your sign-up with this code:',
-                        new_otp
-                    )
-    
-                return get_default_create_otp_response(new_data['email'])
-    
-            #continue to verifying OTP and logging in
-            #will always return Response()
-            return self.verify_and_log_in(request, user_instance, handle_user_otp_class, new_data['otp'])
 
 
 
 class UsersLogOutAPI(generics.GenericAPIView):
 
     serializer_class = None
-    permission_classes = []
+    permission_classes = [IsAuthenticated]
 
 
     def post(self, request, *args, **kwargs):
@@ -432,20 +399,14 @@ class UsersLogOutAPI(generics.GenericAPIView):
 
 
 
-
-
-
-
 class TestAPI(generics.GenericAPIView):
 
     serializer_class = None
+    #so, if you have permission_classes, they are evaluated after @decorators, not before
     permission_classes = []
 
 
     def get(self, request, *args, **kwargs):
-
-        print(request.user)
-        print(request.session.get_expiry_age())
 
 
         return Response(
@@ -476,7 +437,6 @@ class EventTonesAPI(generics.GenericAPIView):
 
     serializer_class = EventTonesSerializer
     permission_classes = []
-    queryset = EventTones.objects.all()
 
 
     def get(self, request, *args, **kwargs):
@@ -498,6 +458,7 @@ class EventTonesAPI(generics.GenericAPIView):
         )
 
         return response
+
 
 
 class EventRoomsAPI(generics.GenericAPIView):
@@ -938,11 +899,27 @@ class EventRoomsAPI(generics.GenericAPIView):
 #user can generate new event_room reply choice
     #will unlock previous is_replying=False event_room
     #will add to UserEventRooms when locking for is_replying=False
+@method_decorator(
+    [
+        app_decorators.disable_api_if_no_username,
+        app_decorators.disable_api_if_banned
+    ],
+    name='dispatch'
+)
 class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
 
     serializer_class = None
     permission_classes = [IsAuthenticated]
-    user_context:Literal["list", "expire"] = ""
+    current_context = ""
+
+
+    def __init__(self, *args, **kwargs):
+
+        if 'current_context' not in kwargs or kwargs['current_context'] not in ['list', 'expire']:
+
+            raise custom_error(ValueError, dev_message="Incorrect current_context passed. Check .as_view() at urls.py.")
+
+        super().__init__(*args, **kwargs)
 
 
     def lock_event_rooms_for_reply_choices(self, events):
@@ -1103,7 +1080,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
     #queue event room reply choices for user
     def post(self, request, *args, **kwargs):
 
-        if self.user_context == "list":
+        if self.current_context == "list":
 
             #get possible is_replying
             is_replying_events = self.get_event_rooms_by_is_replying()
@@ -1127,7 +1104,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
             with transaction.atomic():
 
                 #user is not replying, continue
-                if self.user_context == "list":
+                if self.current_context == "list":
 
                     #not replying, can unlock previous choices if any
                     self.unlock_event_rooms_from_past_reply_choices()
@@ -1166,7 +1143,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                         status=status.HTTP_200_OK
                     )
         
-                elif self.user_context == "expire":
+                elif self.current_context == "expire":
 
                     #has expired, so unlock
                     self.unlock_event_rooms_from_past_reply_choices()
@@ -1180,7 +1157,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
 
                 else:
 
-                    raise HandleError.new_error(
+                    raise custom_error(
                         AttributeError,
                         dev_message="Invalid user_context arg from urls.py."
                     )
@@ -1191,18 +1168,34 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'message': HandleError.get_user_message(e)
+                    'message': get_user_message_from_custom_error(e)
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
 
 
 
+@method_decorator(
+    [
+        app_decorators.disable_api_if_no_username,
+        app_decorators.disable_api_if_banned
+    ],
+    name='dispatch'
+)
 class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
     serializer_class = HandleReplyingEventRoomsSerializer
     permission_classes = [IsAuthenticated]
-    user_action:Literal["start", "cancel"] = ""
+    current_context = ""
+
+
+    def __init__(self, *args, **kwargs):
+
+        if 'current_context' not in kwargs or kwargs['current_context'] not in ['start', 'cancel']:
+
+            raise custom_error(ValueError, dev_message="Incorrect current_context. Check .as_view() at urls.py.")
+    
+        super().__init__(*args, **kwargs)
 
 
     #if user is already locked for event_room, do is_replying=True and update when_locked
@@ -1266,7 +1259,7 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
                         print(target_event_room.locked_for_user is not None and target_event_room.locked_for_user.id == self.request.user.id)
                         print(target_event_room.is_replying)
 
-                    raise HandleError.new_error(
+                    raise custom_error(
                         ValueError,
                         user_message="You cannot start replying to this event."
                     )
@@ -1320,7 +1313,7 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'message': HandleError.get_user_message(e),
+                    'message': get_user_message_from_custom_error(e),
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -1396,13 +1389,13 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'message': HandleError.get_user_message(e),
+                    'message': get_user_message_from_custom_error(e),
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
 
 
-    #get start/cancel reply after reply choice has already been locked for the user
+    #start/cancel reply after reply choice has already been locked for the user
     def post(self, request, *args, **kwargs):
 
         serializer = HandleReplyingEventRoomsSerializer(data=request.data, many=False)
@@ -1429,20 +1422,13 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
         #proceed
 
-        if self.user_action == "start":
+        if self.current_context == "start":
 
             return self.start_replying_to_event_room(new_data['event_room_id'])
         
-        elif self.user_action == "cancel":
+        elif self.current_context == "cancel":
 
             return self.cancel_replying_to_event_room(new_data['event_room_id'])
-        
-        else:
-
-            raise HandleError.new_error(
-                AttributeError,
-                dev_message="Unrecognised user_action arg from urls.py."
-            )
 
 
 
@@ -1450,12 +1436,28 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 #handle creating events
     #if event_role_name='originator', create event_room
     #if event_role_name='responder', link to event_room and reset lock
-class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
+@method_decorator(
+    [
+        app_decorators.disable_api_if_no_username,
+        app_decorators.disable_api_if_banned
+    ],
+    name='dispatch'
+)
+class EventsAPI(generics.GenericAPIView):
 
     serializer_class = CreateEventsSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
     queryset = None
-    user_action:Literal["create_new", "reply"] = ""
+    current_context = ""
+
+
+    def __init__(self, *args, **kwargs):
+
+        if 'current_context' not in kwargs or kwargs['current_context'] not in ['create_new', 'reply']:
+
+            raise custom_error(ValueError, dev_message="Incorrect current_context passed. Check .as_view() at urls.py.")
+    
+        super().__init__(*args, **kwargs)
 
 
     def check_user_create_event_room_daily_limit(self, user):
@@ -1557,12 +1559,12 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
                 #determine if originator/responder, then create/get event_room
                 #generic_status is handled by default, so it is skipped here
-                if self.user_action == "create_new":
+                if self.current_context == "create_new":
 
                     #check if created event_room limit is not yet reached
                     if self.check_user_create_event_room_daily_limit(user) is True:
 
-                        raise HandleError.new_error(
+                        raise custom_error(
                             TimeoutError,
                             user_message="You have reached your daily limit for creating events."
                         )
@@ -1576,12 +1578,12 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                         created_by=user
                     )
 
-                elif self.user_action == "reply":
+                elif self.current_context == "reply":
 
                     #check if reply event limit is not yet reached
                     if self.check_user_create_reply_event_daily_limit(user) is True:
 
-                        raise HandleError.new_error(
+                        raise custom_error(
                             ValueError,
                             user_message="You have reached your daily limit of replies."
                         )
@@ -1592,7 +1594,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                     #check if this user is already attached beforehand
                     if self.check_user_can_reply_event_room(event_room) is False:
 
-                        raise HandleError.new_error(
+                        raise custom_error(
                             ValueError,
                             user_message="Replying to this event is not allowed."
                         )
@@ -1606,7 +1608,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                         event_room.is_replying = None
                         event_room.save()
 
-                        raise HandleError.new_error(
+                        raise custom_error(
                             TimeoutError,
                             user_message="Reply was not successful. You had reached the time limit."
                         )
@@ -1618,15 +1620,8 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
                     event_room.is_replying = None
                     event_room.save()
 
-                    #proceed
+                    #can proceed
                     event_role = EventRoles.objects.get(event_role_name='responder')
-
-                else:
-
-                    raise HandleError.new_error(
-                        AttributeError,
-                        dev_message="Unrecognised user_action arg from urls.py."
-                    )
                 
                 #proceed
 
@@ -1694,7 +1689,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
             return Response(
                 data={
-                    'message': HandleError.get_user_message(e),
+                    'message': get_user_message_from_custom_error(e),
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -1703,7 +1698,7 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
             return Response(
                 data={
-                    'message': HandleError.get_user_message(e),
+                    'message': get_user_message_from_custom_error(e),
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -1712,11 +1707,11 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
             traceback.print_exc()
 
-            print(HandleError.get_dev_message(e))
+            print(get_dev_message_from_custom_error(e))
 
             return Response(
                 data={
-                    'message': HandleError.get_user_message(e),
+                    'message': get_user_message_from_custom_error(e),
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -1725,6 +1720,13 @@ class EventsAPI(generics.RetrieveUpdateDestroyAPIView):
 
 #to submit likes/dislikes
 #is_liked=True/False, or destroy when undone
+@method_decorator(
+    [
+        app_decorators.disable_api_if_no_username,
+        app_decorators.disable_api_if_banned
+    ],
+    name='dispatch'
+)
 class EventLikesDislikesAPI(generics.GenericAPIView):
 
     serializer_class = EventLikesDislikesSerializer
@@ -1843,6 +1845,13 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
 
 #create main events, but actual creation is via EventsAPI
 #handles originator events
+@method_decorator(
+    [
+        app_decorators.redirect_if_no_username,
+        app_decorators.redirect_if_banned
+    ],
+    name='get'
+)
 class CreateEventRooms(TemplateView):
 
     template_name = 'voicewake/event_rooms/create_event_rooms.html'
@@ -1850,6 +1859,13 @@ class CreateEventRooms(TemplateView):
 
 
 #view specific event_room and its events
+@method_decorator(
+    [
+        app_decorators.redirect_if_no_username,
+        app_decorators.redirect_if_banned
+    ],
+    name='get'
+)
 class GetEventRooms(TemplateView):
 
     template_name = 'voicewake/event_rooms/get_event_rooms.html'
@@ -1902,6 +1918,13 @@ class GetEventRooms(TemplateView):
 
 
 #for finding reply choices
+@method_decorator(
+    [
+        app_decorators.redirect_if_no_username,
+        app_decorators.redirect_if_banned
+    ],
+    name='get'
+)
 class ListEventRoomChoices(TemplateView):
 
     template_name = 'voicewake/event_rooms/list_event_room_choices.html'
@@ -1916,6 +1939,40 @@ class ListEventRoomChoices(TemplateView):
             'event_room_reply_expiry_seconds': settings.EVENT_ROOM_REPLY_EXPIRY_SECONDS,
             }
         )
+
+
+
+#for new username
+#once set, any GET attempt will return 404
+@method_decorator(never_cache, name='get')
+class SetUsername(TemplateView):
+
+    template_name = 'registration/set_username.html'
+    
+    def get(self, request, *args, **kwargs):
+
+        can_set_username = (
+            request.user.is_authenticated is True and
+            request.user.is_banned is False and
+            request.user.username_lowercase is None
+        )
+
+        #disallow access
+        if can_set_username is False:
+
+            raise Http404()
+
+        return render(
+            request,
+            template_name=self.template_name,
+            context={
+            }
+        )
+
+
+
+
+
 
 
 

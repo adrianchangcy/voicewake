@@ -20,11 +20,17 @@
             </VActionTextOnly>
         </div>
 
+        <!--
+            currently, title has pb-2, and the steps have pt-6
+            the steps have pt-6 so the "back" button can do -top-4 without its outline being clipped
+            these are ultimately to space "back" button more appropriately, while keeping overall height constraint
+        -->
+
         <!--title-->
         <VTitle
             v-if="propIsForStaticPage === false"
             propFontSize="l"
-            class="pb-4"
+            class="pb-2"
         >
             <template #title>
                 <TransitionFade>
@@ -61,7 +67,7 @@
                     >
                         <!--step 0-->
                         <div
-                            class="w-full h-full flex flex-col p-2 pt-4"
+                            class="w-full h-full flex flex-col p-2 pt-6"
                             v-show="current_step === 'log-in-step-0'"
                         >
 
@@ -116,13 +122,15 @@
 
                         <!--step 1-->
                         <div
-                            class="w-full h-full flex flex-col p-2 pt-4"
+                            class="w-full h-full flex flex-col p-2 pt-6"
                             v-show="current_step === 'log-in-step-1'"
                         >
 
-                            <p class="text-xl font-medium block">
-                                Log in and rejoin the fun!
-                            </p>
+                            <VTitle propFontSize="l">
+                                <template #titleDescription>
+                                    <span>Log in and rejoin the fun!</span>
+                                </template>
+                            </VTitle>
 
                             <VInput
                                 propElementId="email-address"
@@ -191,7 +199,7 @@
 
                         <!--step 2-->
                         <div
-                            class="w-full h-full flex flex-col p-2 pt-4"
+                            class="w-full h-full flex flex-col p-2 pt-6"
                             v-show="current_step === 'log-in-step-2'"
                         >
 
@@ -212,9 +220,11 @@
                                 </VActionTextOnly>
                             </div>
 
-                            <p class="text-xl font-medium block">
-                                Enter the login code.
-                            </p>
+                            <VTitle propFontSize="l">
+                                <template #titleDescription>
+                                    <span>Enter the login code.</span>
+                                </template>
+                            </VTitle>
                             <p class="text-base block">
                                 <span class="break-words">{{ email_string }}</span> 
                             </p>
@@ -332,7 +342,7 @@
                     >
                         <!--step 0-->
                         <div
-                            class="w-full h-full flex flex-col p-2 pt-4"
+                            class="w-full h-full flex flex-col p-2 pt-6"
                             v-show="current_step === 'sign-up-step-0'"
                         >
 
@@ -387,13 +397,15 @@
 
                         <!--step 1-->
                         <div
-                            class="w-full h-full flex flex-col p-2 pt-4"
+                            class="w-full h-full flex flex-col p-2 pt-6"
                             v-show="current_step === 'sign-up-step-1'"
                         >
 
-                            <p class="text-xl font-medium block">
-                                Sign up and chat with others!
-                            </p>
+                            <VTitle propFontSize="l">
+                                <template #titleDescription>
+                                    <span>Sign up and chat with others!</span>
+                                </template>
+                            </VTitle>
 
                             <VInput
                                 propElementId="email-address"
@@ -462,7 +474,7 @@
 
                         <!--step 2-->
                         <div
-                            class="w-full h-full flex flex-col p-2 pt-4"
+                            class="w-full h-full flex flex-col p-2 pt-6"
                             v-show="current_step === 'sign-up-step-2'"
                         >
                             <div class="h-10 relative">
@@ -482,9 +494,11 @@
                                 </VActionTextOnly>
                             </div>
 
-                            <p class="text-xl font-medium block">
-                                Enter the sign-up code.
-                            </p>
+                            <VTitle propFontSize="l">
+                                <template #titleDescription>
+                                    <span>Enter the sign-up code.</span>
+                                </template>
+                            </VTitle>
                             <p class="text-base block">
                                 <span class="break-words">{{ email_string }}</span>
                             </p>

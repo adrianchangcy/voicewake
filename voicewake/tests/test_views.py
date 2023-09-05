@@ -305,7 +305,7 @@ class Events_TestCase(TestCase):
         prepare_test_data_class.do_quick_start(1)
 
 
-    def test_file_handling_from_request(self):
+    def test_ffmpeg(self):
 
         #should have webm/opus and mp4/__ files for test, but too lazy for now
         #webm/opus works
