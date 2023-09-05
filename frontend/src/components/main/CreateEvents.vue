@@ -279,7 +279,8 @@
 
                         this.$emit('isSubmitSuccessful', true);
 
-                        window.location.href = window.location.origin + "/hear/" + response.data['data']['event_room_id'].toString();
+                        //redirect to this page without storing current URL, so it is only shown once in history
+                        window.location.replace(window.location.origin + "/hear/" + response.data['data']['event_room_id'].toString());
 
                     }else{
 
