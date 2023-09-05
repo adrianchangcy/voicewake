@@ -9,6 +9,8 @@ from rest_framework import status
 #need redirect_... and disable_api_... decorators of the same tasks
 #because some views are for DRF while some are for normal pages
 #and most importantly, I could not find a way to pass any "is_api" arg into decorators, due to the nature of decorators
+#also, middleware is not suitable because the 'Accept' header is unreliable
+#not all decorators need to run on every request and response
 
 
 
