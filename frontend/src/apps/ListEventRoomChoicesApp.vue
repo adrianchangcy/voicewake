@@ -18,7 +18,9 @@
         <!--content-->
         <div class="relative">
 
-            <TransitionGroupFade>
+            <TransitionGroupFade
+                :propHasAbsolute="true"
+            >
 
                 <!--search and any dialog-->
                 <div
@@ -40,7 +42,9 @@
                     </VTitle>
 
                     <!--content-->
-                    <TransitionGroupFade>
+                    <TransitionGroupFade
+                        :propHasAbsolute="true"
+                    >
 
                         <!--can search-->
                         <div
@@ -67,7 +71,9 @@
                             <!--we must pre-write them because the variables are reset before transition, causing warp-->
                             <div class="mt-10 relative">
 
-                                <TransitionGroupFade>
+                                <TransitionGroupFade
+                                    :propHasAbsolute="true"
+                                >
 
                                     <!--no new events-->
                                     <span
@@ -145,7 +151,9 @@
                     class="w-full h-fit"
                 >
 
-                    <TransitionGroupFade>
+                    <TransitionGroupFade
+                        :propHasAbsolute="true"
+                    >
 
                         <!--searching-->
                         <div

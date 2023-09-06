@@ -2022,6 +2022,10 @@ video {
   transition-delay: 500ms;
 }
 
+.delay-150 {
+  transition-delay: 150ms;
+}
+
 .duration-100 {
   transition-duration: 100ms;
 }
