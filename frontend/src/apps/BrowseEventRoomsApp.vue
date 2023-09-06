@@ -1,69 +1,96 @@
 <template>
-    <div class="flex flex-col gap-2 py-8">
+    <div>
 
-        <VTitle
-            propFontSize="l"
-            class="w-full"
-        >
-            <template #title>
-                <span>Best events today</span>
-            </template>
-        </VTitle>
+        <!--backdrop and title-->
+        <!--height is VTitle + py-8-->
+        <div class="h-32 relative">
+
+            <!--backdrop-->
+            <VBackdropAnime
+                class="h-full pb-14"
+            />
+
+            <!--title-->
+            <!--needs padding for more area to smoothen the transparent part, else a faint cutoff/border is visible-->
+            <div class="w-fit h-fit absolute inset-0 m-auto p-4 flex items-center rounded-lg bg-gradient-radial from-theme-light to-transparent">
+                <VTitle
+                    propFontSize="l"
+                >
+                    <template #title>
+                        <span>VoiceWake</span>
+                    </template>
+                </VTitle>
+            </div>
+        </div>
 
         <!--sorting options-->
-        <div class="flex flex-row items-center gap-2">
-            <VAction
-                prop-element="button"
-                prop-element-size="s"
-                prop-font-size="s"
-                :prop-is-icon-only="false"
-                class="px-2"
+        <div class="pb-8 flex flex-col">
+
+            <!--title description-->
+            <VTitle
+                prop-font-size="l"
             >
-                <div class="flex flex-row items-center gap-1">
-                    <i class="fas fa-check"></i>
-                    <span>Latest</span>
-                </div>
-            </VAction>
-            <VAction
-                prop-element="button"
-                prop-element-size="s"
-                prop-font-size="s"
-                :prop-is-icon-only="false"
-                class="px-2"
+                <template #titleDescription>
+                    <span>Events</span>
+                </template>
+            </VTitle>
+
+            <!--options-->
+            <div class="flex flex-row items-center gap-2">
+
+                <VAction
+                    prop-element="button"
+                    prop-element-size="s"
+                    prop-font-size="s"
+                    :prop-is-icon-only="false"
+                    class="px-2"
+                >
+                    <div class="flex flex-row items-center gap-1">
+                        <i class="fas fa-check"></i>
+                        <span>Latest</span>
+                    </div>
+                </VAction>
+
+                <VAction
+                    prop-element="button"
+                    prop-element-size="s"
+                    prop-font-size="s"
+                    :prop-is-icon-only="false"
+                    class="px-2"
+                >
+                    <span>Best</span>
+                </VAction>
+            </div>
+        </div>
+
+        <!--event_rooms-->
+        <TransitionGroupFade>
+            <div
+                v-for="event_room in event_rooms" :key="event_room.event_room.id"
             >
-                <span>Best</span>
-            </VAction>
+                <EventRoomCard
+                    :prop-show-title="true"
+                    :prop-event-room="event_room"
+                    :prop-has-border="true"
+                    @newSelectedEvent=handleNewSelectedEvent($event)
+                />
+            </div>
+        </TransitionGroupFade>
+
+        <!--VEventCard emits selection, which triggers :to, thus teleporting-->
+        <!--presence of VEventCard depends on VEventRoomCard-->
+        <div v-if="selected_event !== null">
+            <Teleport :to="playback_teleport_event_id">
+                <VPlayback
+                    :propEvent="selected_event"
+                    :propIsOpen="true"
+                    :propAudioVolumePeaks="selected_event.audio_volume_peaks"
+                    :propBucketQuantity="selected_event.audio_volume_peaks.length"
+                    :propAutoPlayOnSourceChange="true"
+                />
+            </Teleport>
         </div>
     </div>
-
-    <!--event_rooms-->
-    <div>
-        <div
-            v-for="event_room in event_rooms" :key="event_room.event_room.id"
-        >
-            <EventRoomCard
-                :prop-show-title="true"
-                :prop-event-room="event_room"
-                :prop-has-border="true"
-                @newSelectedEvent=handleNewSelectedEvent($event)
-            />
-        </div>
-    </div>
-
-    <!--VEventCard emits selection, which triggers :to, thus teleporting-->
-    <!--presence of VEventCard depends on VEventRoomCard-->
-    <div v-if="selected_event !== null">
-        <Teleport :to="playback_teleport_event_id">
-            <VPlayback
-                :propEvent="selected_event"
-                :propIsOpen="true"
-                :propAudioVolumePeaks="selected_event.audio_volume_peaks"
-                :propBucketQuantity="selected_event.audio_volume_peaks.length"
-                :propAutoPlayOnSourceChange="true"
-            />
-        </Teleport>
-    </div>
-
 </template>
 
 
@@ -71,6 +98,8 @@
     import EventRoomCard from '@/components/main/EventRoomCard.vue';
     import VTitle from '@/components/small/VTitle.vue';
     import VPlayback from '@/components/medium/VPlayback.vue';
+    import VBackdropAnime from '@/components/small/VBackdropAnime.vue';
+    import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
 </script>
 
 

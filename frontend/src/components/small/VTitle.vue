@@ -1,6 +1,6 @@
 <template>
     <div class="text-theme-black">
-        <div
+        <h1
             :class="[
                 propFontSize === 'xl' ? 'text-5xl' : '',
                 propFontSize === 'l' ? 'text-4xl' : '',
@@ -9,9 +9,10 @@
                 'h-fit break-words'
             ]"
         >
-            <slot name="title"></slot>
-        </div>
-        <div
+                <slot name="title"></slot>
+        </h1>
+
+        <h2
             :class="[
                 propFontSize === 'xl' ? 'text-4xl' : '',
                 propFontSize === 'l' ? 'text-xl font-medium' : '',
@@ -21,7 +22,7 @@
             ]"
         >
             <slot name="titleDescription"></slot>
-        </div>
+        </h2>
     </div>
 </template>
 

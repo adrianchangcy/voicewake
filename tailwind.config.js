@@ -67,7 +67,10 @@ module.exports = {
                 'theme-mud': '#82846D',
 
                 'theme-cream-pink': '#F9F0F8',
-            }
+            },
+            backgroundImage: {
+                'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+            },
         },
     },
     plugins: [],

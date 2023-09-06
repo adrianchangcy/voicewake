@@ -75,14 +75,14 @@
 <script lang="ts">
     //this depends on main.js clickOutside custom directive
     import { defineComponent } from 'vue';
-    import EventToneTypes from '@/types/EventTones.interface';
+    import EventTonesTypes from '@/types/EventTones.interface';
     import { notify } from 'notiwind';
     import axios from 'axios';
 
     export default defineComponent({
         data(){
             return{
-                event_tones: null as EventToneTypes[] | null,
+                event_tones: null as EventTonesTypes[] | null,
                 is_open: false,
                 is_loading: false,
                 has_error: false,
@@ -111,7 +111,7 @@
 
                 this.is_loading = true;
 
-                await axios.get(window.location.origin + '/api/event-tones')
+                await axios.get(window.location.origin + '/api/event-tones/list')
                 .then((results) => {
 
                     this.event_tones = results.data['data'];
@@ -129,7 +129,7 @@
                     }, 5000);
                 });
             },
-            handleEventToneSelected(event_tone_choice:EventToneTypes) : void {
+            handleEventToneSelected(event_tone_choice:EventTonesTypes) : void {
 
                 this.is_open = false;
                 this.$emit('eventToneSelected', event_tone_choice);

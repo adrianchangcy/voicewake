@@ -252,3 +252,14 @@ export function emailValidatorDjango(email:string) : boolean {
     return new RegExp(/(^[-!#$%&'*+/=?^_`{}|~0-9A-Z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z]+)*|^"([\001-\010\013\014\016-\037!#-[\]-\177]|\\[\001-\011\013\014\016-\177])*")@((?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)$)|\[(25[0-5]|2[0-4]\d|[0-1]?\d?\d)(\.(25[0-5]|2[0-4]\d|[0-1]?\d?\d)){3}\]$/, 'i').test(email);
 }
 
+
+export function getRandomNumber(min_value:number, max_value:number) : number {
+
+    //Math.random() gives 0 to 1
+    //we use 0 to 1 to represent actual range/difference between min and max
+    //we then add back min to accurately reflect "starts from min"
+    //you can use Math.floor() to ensure int
+
+    return Math.random() * (max_value - min_value) + min_value;
+}
+
