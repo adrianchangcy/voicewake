@@ -1,7 +1,7 @@
 <template>
     <div
         :class="[
-            propHasBorder === true ? 'px-4 pt-10 pb-12 mb-8      border border-theme-light-gray rounded-lg' : '',
+            propHasBorder === true ? 'px-4 pt-4 pb-12 mb-8      border border-theme-light-gray rounded-lg' : '',
             'flex flex-col'
         ]"
     >

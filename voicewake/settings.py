@@ -29,6 +29,13 @@ SECRET_KEY = 'django-insecure-hdgs8@4nxkx0du^2n-gdss(!eo6i0kj6vk=gx1mddc@g=6h_^1
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+
+#if you want to hide Django Debug Toolbar, put False
+DEBUG_TOOLBAR_CONFIG = {
+    'SHOW_TOOLBAR_CALLBACK': lambda r: True,
+}
+
+
 ALLOWED_HOSTS = []
 
 
@@ -257,12 +264,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')
 
 #URL, trailing slash is compulsory, must not include domain URL
 MEDIA_URL = '/media/'
-
-
-#if you want to hide Django Debug Toolbar, put False
-DEBUG_TOOLBAR_CONFIG = {
-    'SHOW_TOOLBAR_CALLBACK': lambda r: True,
-}
 
 
 #MEDIA SIZES

@@ -451,10 +451,10 @@ class EventTonesAPI(generics.GenericAPIView):
             }
         )
 
-        #cache for 2 weeks
+        #cache for 4 weeks
         patch_cache_control(
             response,
-            no_cache=False, no_store=False, must_revalidate=True, max_age=1209600
+            no_cache=False, no_store=False, must_revalidate=True, max_age=2419200
         )
 
         return response
