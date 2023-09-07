@@ -140,18 +140,21 @@ class User(AbstractBaseUser, PermissionsMixin):
     date_joined = models.DateTimeField(auto_now_add=True)
     
     #email_lowercase and username_lowercase are for matching against db
-    #email and username are for displaying and general usage
+    #email and username are for displaying and general use
 
     #FYI, do not need email and username to be unique together, else two unique emails can have the same username, and vice versa
     #for username, string should always use '', but due to unique constraint, we must use null
 
     #main field for account's identifier, must also be unique
+    #get_user_model().objects.get(pk=1).get_username() will reference this field
+    #whereas using get_user_model().objects.get(pk=1).username will simply and expectedly give you username field
     USERNAME_FIELD = 'email'
 
     #should match the email field's name
     EMAIL_FIELD = 'email'
 
-    #only for extra fields when running manage.py createsuperuser, excluding username and password
+    #only for extra fields when running manage.py createsuperuser
+    #don't have to specify already-required fields, i.e. USERNAME_FIELD and password
     REQUIRED_FIELDS = ['username']
 
     objects = UserManager()

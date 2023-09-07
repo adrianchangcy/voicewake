@@ -64,6 +64,7 @@
 <script lang="ts">
     import { defineComponent } from 'vue';
     import { notify } from 'notiwind';
+    import { usePageRefreshTriggerStore } from '@/stores/RefreshTriggerStore';
     const bad_usernames = require( '../../../../voicewake/static/json/bad_usernames.en.json')['usernames'];
     const axios = require('axios');
 
@@ -71,6 +72,8 @@
         name: "UserOptionsApp",
         data() {
             return {
+                page_refresh_trigger_store: usePageRefreshTriggerStore(),
+
                 username_string:"",
                 username_validation_status_text: "",
                 username_validation_has_error: false,
@@ -93,9 +96,6 @@
                 return this.is_username_check_loading === false && this.is_submitting === false;
             },
         },
-        emits: [
-            'newUsername',
-        ],
         methods: {
             newRegExp() : RegExp {
 
@@ -305,7 +305,10 @@
 
                     if(response.data['data']['exists'] === false){
 
-                        this.$emit('newUsername', response.data['data']['username']);
+                        //doing this will refresh all open tabs/pages for us
+                        this.page_refresh_trigger_store.$patch({
+                            refresh_context: "new_username"
+                        });
 
                         //redirect to home page without storing current URL
                         window.location.replace(window.location.origin);

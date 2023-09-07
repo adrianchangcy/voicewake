@@ -629,6 +629,7 @@
     import { defineComponent } from 'vue';
     import { notify } from 'notiwind';
     import { emailValidatorDjango } from '@/helper_functions';
+    import { usePageRefreshTriggerStore } from '@/stores/RefreshTriggerStore';
     const axios = require('axios');
 
     interface StepsType {
@@ -639,6 +640,8 @@
         name: "UserLogInSignUp",
         data() {
             return {
+                page_refresh_trigger_store: usePageRefreshTriggerStore(),
+
                 email_string: "",
                 email_check_timeout: null as number|null,
                 email_is_ok: false,
@@ -854,7 +857,11 @@
 
                     //200 when ok
                     console.log(response.data['message']);
-                    window.location.href = window.location.origin;
+
+                    //doing this will refresh all open tabs/pages for us
+                    this.page_refresh_trigger_store.$patch({
+                        refresh_context: "logging_in"
+                    });
 
                 })
                 .catch((error: any) => {

@@ -54,11 +54,14 @@
 <script lang="ts">
     import { defineComponent } from 'vue';
     import { getDataFromTemplateJSONScript } from '@/helper_functions';
+    import { usePageRefreshTriggerStore } from '@/stores/RefreshTriggerStore';
 
     export default defineComponent({
         name: 'BaseApp',
         data(){
             return {
+                page_refresh_trigger_store: usePageRefreshTriggerStore(),
+
                 is_nav_bar_open: false,
                 is_logged_in: false,
                 username: "",
@@ -92,6 +95,15 @@
 
                 this.username = username;
             }
+
+            //refresh all tabs when necessary
+            //provided that every tab has BaseApp.vue
+            this.page_refresh_trigger_store.$subscribe(()=>{
+
+                this.page_refresh_trigger_store.resetRefreshContext();
+
+                window.location.replace(window.location.href);
+            });
         },
     });
 </script>

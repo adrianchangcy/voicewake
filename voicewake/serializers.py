@@ -15,10 +15,12 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username']
 
 
+
 class EventRolesSerializer(serializers.ModelSerializer):
     class Meta:
         model = EventRoles
         exclude = ['when_created']
+
 
 
 class EventTonesSerializer(serializers.ModelSerializer):
@@ -27,10 +29,12 @@ class EventTonesSerializer(serializers.ModelSerializer):
         exclude = ['when_created']
 
 
+
 class UserVerificationOptionsSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserVerificationOptions
         fields = ['id', 'user_verification_option_name', 'when_created']
+
 
 
 class EventLikesDislikesSerializer(serializers.ModelSerializer):
@@ -40,10 +44,12 @@ class EventLikesDislikesSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+
 class GenericStatusesSerializer(serializers.ModelSerializer):
     class Meta:
         model = GenericStatuses
         exclude = ['when_created', 'last_modified']
+
 
 
 class EventRoomsSerializer(serializers.ModelSerializer):
@@ -71,6 +77,7 @@ class EventsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Events
         fields = '__all__'
+
 
 
 #no need event_room=EventRoomsSerializer
@@ -102,6 +109,7 @@ class GroupedEventsSerializer(serializers.Serializer):
     responder = serializers.ListField(
         child=EventsAndLikeDetailsSerializer()
     )
+
 
 
 class CreateEventLikesDislikesSerializer(serializers.Serializer):
@@ -152,7 +160,7 @@ class CreateEventsSerializer(serializers.Serializer):
 
 
 
-class HandleReplyingEventRoomsSerializer(serializers.Serializer):
+class HandleReplyingEventRoomsAPISerializer(serializers.Serializer):
 
     event_room_id = serializers.IntegerField()
 
@@ -248,7 +256,18 @@ class UsersLogInAPISerializer(serializers.Serializer):
 
 
 
+class UserBlocksSerializer(serializers.ModelSerializer):
 
+    class Meta:
+        model = UserBlocks
+        fields = '__all__'
+
+
+
+class UserBlocksAPISerializer(serializers.Serializer):
+
+    blocked_user_id = serializers.IntegerField()
+    to_block = serializers.BooleanField()
 
 
 

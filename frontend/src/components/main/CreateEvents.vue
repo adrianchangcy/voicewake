@@ -320,7 +320,7 @@
 
                 this.is_recorder_menu_open = new_value;
             },
-            handleEventToneSelected(new_value:EventToneTypes) : void {
+            handleEventToneSelected(new_value:EventToneTypes|null) : void {
 
                 this.is_event_tone_menu_open = false;
                 this.event_tone_choice = new_value;

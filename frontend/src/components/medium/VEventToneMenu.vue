@@ -49,15 +49,35 @@
                 v-else-if="hasEventTones === true"
                 class="items-center place-items-center grid grid-flow-row grid-cols-4 relative"
             >
+                <!--this is for deselect-->
                 <div
-                    class="col-span-1"
-                    v-for="event_tone in event_tones" :key="event_tone.id"
+                    v-if="propHasDeselectOption === true"
+                    class="col-span-1"                    
                 >
                     <button
-                        @click.prevent="handleEventToneSelected(event_tone)"
-                        :disabled="!is_open"
-                        class="w-10 h-10 pb-0.5 border border-transparent shade-border-when-hover rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline"
+                        @click="handleEventToneSelected(null)"
                         type="button"
+                        :class="[
+                            isSelected(null) === true ? 'bg-theme-dark-gray text-theme-light' : 'text-theme-black',
+                            'w-10 h-10 pb-0.5 flex items-center border border-transparent shade-border-when-hover rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline'
+                        ]"
+                    >
+                        <span class="text-base mx-auto">Any</span>
+                    </button>
+                </div>
+
+                <!--tags-->
+                <div
+                    class="col-span-1"
+                    v-for="(event_tone, index) in event_tones" :key="event_tone.id"
+                >
+                    <button
+                        @click="handleEventToneSelected(index)"
+                        type="button"
+                        :class="[
+                            isSelected(index) === true ? 'bg-theme-dark-gray' : '',
+                            'w-10 h-10 pb-0.5 border border-transparent shade-border-when-hover rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline'
+                        ]"
                     >
                         <span class="has-emoji">{{event_tone.event_tone_symbol}}</span>
                         <span class="sr-only">{{event_tone.event_tone_name}}</span>
@@ -83,7 +103,8 @@
         data(){
             return{
                 event_tones: null as EventTonesTypes[] | null,
-                is_open: false,
+                selected_event_tone_index: null as number|null,
+                is_open: false,     //need this for "close after select"
                 is_loading: false,
                 has_error: false,
             };
@@ -96,6 +117,18 @@
         },
         props: {
             propIsOpen: {
+                type: Boolean,
+                default: false
+            },
+            propCloseWhenSelected: {
+                type: Boolean,
+                default: true
+            },
+            propHasDeselectOption: {
+                type: Boolean,
+                default: false
+            },
+            propMustTrackSelectedOption: {
                 type: Boolean,
                 default: false
             },
@@ -129,13 +162,35 @@
                     }, 5000);
                 });
             },
-            handleEventToneSelected(event_tone_choice:EventTonesTypes) : void {
+            isSelected(event_tone_index:number|null) : boolean {
 
-                this.is_open = false;
-                this.$emit('eventToneSelected', event_tone_choice);
+                if(this.propMustTrackSelectedOption === false){
+
+                    return false;
+                }
+
+                return this.selected_event_tone_index === event_tone_index;
+            },
+            handleEventToneSelected(event_tone_index:number|null) : void {
+
+                if(this.propCloseWhenSelected === true){
+
+                    this.is_open = false;
+                }
+
+                //update selected index
+                this.selected_event_tone_index = event_tone_index;
+
+                //emit
+                this.$emit(
+                    'eventToneSelected',
+                    event_tone_index === null ? null : this.event_tones![event_tone_index]
+                );
             },
         },
         beforeMount(){
+
+            this.is_open = this.propIsOpen;
 
             this.getEventTonesData();
         },

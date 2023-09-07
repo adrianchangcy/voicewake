@@ -1,6 +1,6 @@
 from django.http import JsonResponse, QueryDict
 from django.db.models import Case, Value, When, Sum, Q, F, Count
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
 from django.core.mail import send_mail
 from django.template.loader import get_template
@@ -57,20 +57,20 @@ from django.db.utils import IntegrityError
 
 #===direct web pages===
 # @login_required(login_url='/login')
-@app_decorators.redirect_if_banned
-@app_decorators.redirect_if_no_username
+@app_decorators.deny_if_banned("redirect")
+@app_decorators.deny_if_no_username("redirect")
 def home(request):
 
     return render(request, template_name='voicewake/home.html')
 
 
-@app_decorators.redirect_if_already_logged_in
+@app_decorators.deny_if_already_logged_in("redirect")
 def log_in(request):
 
     return render(request, template_name='registration/log_in.html')
 
 
-@app_decorators.redirect_if_already_logged_in
+@app_decorators.deny_if_already_logged_in("redirect")
 def sign_up(request):
 
     return render(request, template_name='registration/sign_up.html')
@@ -89,7 +89,7 @@ def user_banned(request):
 #======================
 
 
-@method_decorator(app_decorators.disable_api_if_banned, name='dispatch')
+@method_decorator(app_decorators.deny_if_banned("response"), name='dispatch')
 class UsersUsernameAPI(generics.GenericAPIView):
 
     serializer_class = UsersUsernameAPISerializer
@@ -142,12 +142,8 @@ class UsersUsernameAPI(generics.GenericAPIView):
     #updates username, but only once, i.e. when username is None
     def post(self, request, *args, **kwargs):
 
-        User = get_user_model()
-
-        user_instance = User.objects.get(pk=request.user.id)
-
         #user must not already have a username
-        if user_instance.username is not None:
+        if request.user.username is not None:
 
             return Response(
                 {
@@ -198,9 +194,9 @@ class UsersUsernameAPI(generics.GenericAPIView):
             )
         
         #apply new username
-        user_instance.username = new_data['username']
-        user_instance.username_lowercase = new_data['username'].lower()
-        user_instance.save()
+        request.user.username = new_data['username']
+        request.user.username_lowercase = new_data['username'].lower()
+        request.user.save()
 
         return Response(
             data={
@@ -215,7 +211,7 @@ class UsersUsernameAPI(generics.GenericAPIView):
 
 
 
-@method_decorator(app_decorators.disable_api_if_already_logged_in, 'dispatch')
+@method_decorator(app_decorators.deny_if_already_logged_in("response"), 'dispatch')
 class UsersLogInSignUpAPI(generics.GenericAPIView):
 
     serializer_class = None
@@ -399,15 +395,15 @@ class UsersLogOutAPI(generics.GenericAPIView):
 
 
 
+
+
 class TestAPI(generics.GenericAPIView):
 
     serializer_class = None
-    #so, if you have permission_classes, they are evaluated after @decorators, not before
     permission_classes = []
 
 
     def get(self, request, *args, **kwargs):
-
 
         return Response(
             data={
@@ -432,6 +428,87 @@ class TestAPI(generics.GenericAPIView):
 
 
 #=====REST APIs=====
+
+
+
+class UserBlocksAPI(generics.GenericAPIView):
+
+    serializer_class = UserBlocksSerializer
+    permission_classes = [IsAuthenticated]
+
+
+    #get list of blocked users
+    def get(self, request, *args, **kwargs):
+
+        return Response(
+            data={
+                'data': UserBlocksSerializer(
+                    UserBlocks.objects.filter(user=request.user).order_by('-when_created'),
+                    many=True
+                ),
+                'message': ''
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+    #perform blocking/unblocking
+    def post(self, request, *args, **kwargs):
+
+        serializer = UserBlocksAPISerializer(data=request.data, many=False)
+
+        #validate
+        if serializer.is_valid() is False:
+
+            #return any first error message
+            error_message = "Invalid data."
+
+            for key in serializer.errors:
+                for first_error in serializer.errors[key]:
+                    error_message = first_error
+                    break
+
+            return Response(
+                data={
+                    'message': error_message,
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        new_data = serializer.validated_data
+        user_message = ""
+
+        #get user to block
+        blocked_user = get_object_or_404(get_user_model(), pk=new_data['blocked_user_id'])
+
+        if new_data['to_block'] is True:
+
+            #handle blocking
+            UserBlocks.objects.get_or_create(
+                user=request.user,
+                blocked_user=blocked_user
+            )
+
+            user_message = "You have blocked " + blocked_user.username + "."
+
+        else:
+
+            #handle unblocking
+            UserBlocks.objects.filter(
+                user=request.user,
+                blocked_user=blocked_user
+            ).delete()
+
+            user_message = "You have unblocked " + blocked_user.username + "."
+
+        return Response(
+            data={
+                'message': user_message
+            },
+            status=status.HTTP_200_OK
+        )
+
+
 
 class EventTonesAPI(generics.GenericAPIView):
 
@@ -901,8 +978,8 @@ class EventRoomsAPI(generics.GenericAPIView):
     #will add to UserEventRooms when locking for is_replying=False
 @method_decorator(
     [
-        app_decorators.disable_api_if_no_username,
-        app_decorators.disable_api_if_banned
+        app_decorators.deny_if_no_username("response"),
+        app_decorators.deny_if_banned("response"),
     ],
     name='dispatch'
 )
@@ -937,7 +1014,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
 
                 #lock for reply choices
                 event.event_room.when_locked = datetime_now
-                event.event_room.locked_for_user = User(pk=self.request.user.id)
+                event.event_room.locked_for_user = self.request.user
                 event.event_room.is_replying = False
                 event.event_room.last_modified = datetime_now
 
@@ -948,7 +1025,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
         #prevent repeated queue
         #we do this here to encourage choosing the best event room, while leaving the other good ones for other users
         prevent_event_room_from_queuing_twice_for_reply(
-            User(pk=self.request.user.id),
+            self.request.user,
             event_rooms
         )
 
@@ -1021,7 +1098,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
         datetime_now = get_datetime_now()
 
         event_rooms = EventRooms.objects.select_for_update().filter(
-            locked_for_user=User(pk=self.request.user.id)
+            locked_for_user=self.request.user
         )
         
         for event_room in event_rooms:
@@ -1177,14 +1254,14 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
 
 @method_decorator(
     [
-        app_decorators.disable_api_if_no_username,
-        app_decorators.disable_api_if_banned
+        app_decorators.deny_if_no_username("response"),
+        app_decorators.deny_if_banned("response"),
     ],
     name='dispatch'
 )
 class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
-    serializer_class = HandleReplyingEventRoomsSerializer
+    serializer_class = HandleReplyingEventRoomsAPISerializer
     permission_classes = [IsAuthenticated]
     current_context = ""
 
@@ -1398,7 +1475,7 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
     #start/cancel reply after reply choice has already been locked for the user
     def post(self, request, *args, **kwargs):
 
-        serializer = HandleReplyingEventRoomsSerializer(data=request.data, many=False)
+        serializer = HandleReplyingEventRoomsAPISerializer(data=request.data, many=False)
 
         #validate
         if serializer.is_valid() is False:
@@ -1438,8 +1515,8 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
     #if event_role_name='responder', link to event_room and reset lock
 @method_decorator(
     [
-        app_decorators.disable_api_if_no_username,
-        app_decorators.disable_api_if_banned
+        app_decorators.deny_if_no_username("response"),
+        app_decorators.deny_if_banned("response"),
     ],
     name='dispatch'
 )
@@ -1523,8 +1600,6 @@ class EventsAPI(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
 
-        User = get_user_model()
-
         #deserialize
         serializer = CreateEventsSerializer(data=request.data, many=False)
 
@@ -1548,7 +1623,6 @@ class EventsAPI(generics.GenericAPIView):
 
         #ok, continue
         new_data = serializer.validated_data
-        user = User(pk=request.user.id)
 
         try:
 
@@ -1562,7 +1636,7 @@ class EventsAPI(generics.GenericAPIView):
                 if self.current_context == "create_new":
 
                     #check if created event_room limit is not yet reached
-                    if self.check_user_create_event_room_daily_limit(user) is True:
+                    if self.check_user_create_event_room_daily_limit(request.user) is True:
 
                         raise custom_error(
                             TimeoutError,
@@ -1575,13 +1649,13 @@ class EventsAPI(generics.GenericAPIView):
                     event_room = EventRooms.objects.create(
                         event_room_name=new_data['event_room_name'],
                         generic_status=GenericStatuses.objects.get(generic_status_name='incomplete'),
-                        created_by=user
+                        created_by=request.user
                     )
 
                 elif self.current_context == "reply":
 
                     #check if reply event limit is not yet reached
-                    if self.check_user_create_reply_event_daily_limit(user) is True:
+                    if self.check_user_create_reply_event_daily_limit(request.user) is True:
 
                         raise custom_error(
                             ValueError,
@@ -1642,7 +1716,7 @@ class EventsAPI(generics.GenericAPIView):
                 #create event, excluding audio_file and event_room
                 #generic_status is handled by default, so it is skipped here
                 new_event = Events.objects.create(
-                    user=user,
+                    user=request.user,
                     event_role=event_role,
                     event_tone=event_tone,
                     event_room=event_room,
@@ -1722,8 +1796,8 @@ class EventsAPI(generics.GenericAPIView):
 #is_liked=True/False, or destroy when undone
 @method_decorator(
     [
-        app_decorators.disable_api_if_no_username,
-        app_decorators.disable_api_if_banned
+        app_decorators.deny_if_no_username("response"),
+        app_decorators.deny_if_banned("response"),
     ],
     name='dispatch'
 )
@@ -1847,8 +1921,8 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
 #handles originator events
 @method_decorator(
     [
-        app_decorators.redirect_if_no_username,
-        app_decorators.redirect_if_banned
+        app_decorators.deny_if_no_username("redirect"),
+        app_decorators.deny_if_banned("redirect"),
     ],
     name='get'
 )
@@ -1861,8 +1935,8 @@ class CreateEventRooms(TemplateView):
 #view specific event_room and its events
 @method_decorator(
     [
-        app_decorators.redirect_if_no_username,
-        app_decorators.redirect_if_banned
+        app_decorators.deny_if_no_username("redirect"),
+        app_decorators.deny_if_banned("redirect"),
     ],
     name='get'
 )
@@ -1920,8 +1994,8 @@ class GetEventRooms(TemplateView):
 #for finding reply choices
 @method_decorator(
     [
-        app_decorators.redirect_if_no_username,
-        app_decorators.redirect_if_banned
+        app_decorators.deny_if_no_username("redirect"),
+        app_decorators.deny_if_banned("redirect"),
     ],
     name='get'
 )

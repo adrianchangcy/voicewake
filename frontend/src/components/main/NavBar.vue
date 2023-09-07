@@ -331,12 +331,15 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
+    import { usePageRefreshTriggerStore } from '@/stores/RefreshTriggerStore';
     const axios = require('axios');
 
     export default defineComponent({
         name: 'NavBar',
         data(){
             return {
+                page_refresh_trigger_store: usePageRefreshTriggerStore(),
+
                 is_nav_main_more_open: false,
                 is_log_out_loading: false,
                 is_currently_log_in_sign_up_static_page: false,
@@ -386,7 +389,10 @@
                 await axios.post(window.location.origin + "/api/users/log-out")
                 .then(() => {
 
-                    window.location.href = window.location.origin;
+                    //doing this will refresh all open tabs/pages for us
+                    this.page_refresh_trigger_store.$patch({
+                        refresh_context: "logging_out"
+                    });
                 })
                 .catch((error: any) => {
 

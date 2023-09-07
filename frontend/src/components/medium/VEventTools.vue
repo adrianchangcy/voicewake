@@ -20,7 +20,7 @@
                 <div class="w-fit h-full mx-auto flex flex-row">
                     <!--like logo-->
                     <div
-                        class="h-full flex items-center relative pb-1"
+                        class="h-full flex items-center relative pb-0.5"
                         ref="like_logo"
                     >
                         <i
