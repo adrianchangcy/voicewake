@@ -331,7 +331,7 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import { usePageRefreshTriggerStore } from '@/stores/RefreshTriggerStore';
+    import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
     const axios = require('axios');
 
     export default defineComponent({
