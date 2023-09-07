@@ -64,7 +64,7 @@
 <script lang="ts">
     import { defineComponent } from 'vue';
     import { notify } from 'notiwind';
-    import { usePageRefreshTriggerStore } from '@/stores/RefreshTriggerStore';
+    import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
     const bad_usernames = require( '../../../../voicewake/static/json/bad_usernames.en.json')['usernames'];
     const axios = require('axios');
 

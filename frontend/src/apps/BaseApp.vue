@@ -54,7 +54,7 @@
 <script lang="ts">
     import { defineComponent } from 'vue';
     import { getDataFromTemplateJSONScript } from '@/helper_functions';
-    import { usePageRefreshTriggerStore } from '@/stores/RefreshTriggerStore';
+    import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
 
     export default defineComponent({
         name: 'BaseApp',

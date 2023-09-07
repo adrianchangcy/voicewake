@@ -3,23 +3,18 @@
         v-show="is_open"
         class="p-4 w-full h-fit"
     >
-        <div
-            :class="[
-                hasEventTones === true ? 'overflow-y-scroll' : 'overflow-y-hidden',
-                'h-40 p-1 box-content overflow-x-hidden text-2xl'
-            ]"
-        >
+        <div class="h-40 p-1 box-content overflow-x-hidden text-2xl overflow-y-scroll">
 
             <!--loading-->
             <!--relative fixes the problem where the child buttons overall overflow beyond <html>, causing whitespace-->
             <div
                 v-if="is_loading === true"
-                class="items-center place-items-center grid grid-flow-row grid-cols-4 relative"
+                class="items-center place-items-center grid grid-flow-row grid-cols-4 gap-y-1 relative"
             >
                 <span class="sr-only">tags are loading</span>
                 <div
-                    class="col-span-1 h-10 flex items-center"
-                    v-for="x in 30" :key="x"
+                    class="col-span-1 w-10 h-10 flex items-center"
+                    v-for="x in 24" :key="x"
                 >
                     <div class="w-8 h-8 mx-auto rounded-full skeleton">
                     </div>
@@ -47,7 +42,7 @@
             <!--has tags-->
             <div
                 v-else-if="hasEventTones === true"
-                class="items-center place-items-center grid grid-flow-row grid-cols-4 relative"
+                class="items-center place-items-center grid grid-flow-row grid-cols-4 gap-y-1 relative"
             >
                 <!--this is for deselect-->
                 <div
