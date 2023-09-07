@@ -24,7 +24,7 @@
                 <span
                     ref="event_tones_elements"
                     aria-hidden="true"
-                    class="text-xl w-fit h-fit block absolute left-0 right-0 top-0 m-auto select-none"
+                    class="text-base w-fit h-fit block absolute left-0 right-0 top-0 m-auto select-none"
                     style="opacity: 0;"
                 >
                     {{ event_tones[randomised_event_tones_indexes[n - 1]]?.event_tone_symbol }}
