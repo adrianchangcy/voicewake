@@ -12,7 +12,7 @@
 
             <!--title-->
             <!--needs padding for more area to smoothen the transparent part, else a faint cutoff/border is visible-->
-            <div class="w-fit h-fit absolute inset-0 m-auto p-4 flex items-center rounded-lg bg-gradient-radial from-theme-light to-transparent">
+            <div class="w-fit h-fit absolute inset-0 m-auto p-8 flex items-center rounded-lg bg-gradient-radial from-theme-light to-transparent">
                 <VTitle
                     propFontSize="l"
                 >
@@ -26,39 +26,36 @@
         <!--sorting options-->
         <div class="pb-8 flex flex-col">
 
-            <!--title description-->
-            <VTitle
-                prop-font-size="l"
-            >
-                <template #titleDescription>
-                    <span>Events</span>
-                </template>
-            </VTitle>
+
+            <label class="text-base font-medium">Filters</label>
+            
+            <VEventToneMenu
+                :prop-is-open="true"
+                :prop-close-when-selected="false"
+                :prop-has-deselect-option="true"
+                :prop-must-track-selected-option="true"
+            />
 
             <!--options-->
             <div class="flex flex-row items-center gap-2">
-
                 <VAction
+                    v-for="(filter_type, index) in filter_types" :key="index"
+                    @click="updateCurrentFilterTypeIndex(index)"
                     prop-element="button"
                     prop-element-size="s"
                     prop-font-size="s"
-                    :prop-is-icon-only="false"
+                    :prop-is-icon-only="true"
                     class="px-2"
                 >
-                    <div class="flex flex-row items-center gap-1">
-                        <i class="fas fa-check"></i>
-                        <span>Latest</span>
+                    <div class="flex flex-row items-center gap-2">
+                        <i
+                            :class="[
+                                isFilterTypeSelected(index) === true ? 'fa-square-check' : 'fa-square',
+                                'far text-xl'
+                            ]"
+                        ></i>
+                        <span class="pb-0.5">{{ filter_type }}</span>
                     </div>
-                </VAction>
-
-                <VAction
-                    prop-element="button"
-                    prop-element-size="s"
-                    prop-font-size="s"
-                    :prop-is-icon-only="false"
-                    class="px-2"
-                >
-                    <span>Best</span>
                 </VAction>
             </div>
         </div>
@@ -100,6 +97,7 @@
     import VPlayback from '@/components/medium/VPlayback.vue';
     import VBackdropAnime from '@/components/small/VBackdropAnime.vue';
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
+    import VEventToneMenu from '@/components/medium/VEventToneMenu.vue';
 </script>
 
 
@@ -117,13 +115,27 @@
         data(){
             return {
                 currently_playing_event_store: useCurrentlyPlayingEventStore(),
+
+                current_fitler_type_index: 0,
+                filter_types: ["Best", "Latest"],
+
                 api_page_increment: 1,
                 event_rooms: [] as GroupedEventsTypes[],
                 selected_event: null as EventsAndLikeDetailsTypes|null,
                 playback_teleport_event_id: '',
             };
         },
+        computed: {
+        },
         methods: {
+            updateCurrentFilterTypeIndex(index:number) : void {
+
+                this.current_fitler_type_index = index;
+            },
+            isFilterTypeSelected(index:number) : boolean {
+
+                return this.current_fitler_type_index === index;
+            },
             async getEventRooms(): Promise<void> {
 
                 await axios.get(window.location.origin + "/api/event-rooms/list/completed/best/all/" + this.api_page_increment)
