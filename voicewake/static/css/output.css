@@ -698,6 +698,10 @@ video {
   top: 1rem;
 }
 
+.bottom-1 {
+  bottom: 0.25rem;
+}
+
 .-z-10 {
   z-index: -10;
 }
@@ -990,6 +994,10 @@ video {
   height: 100%;
 }
 
+.h-9 {
+  height: 2.25rem;
+}
+
 .max-h-\[90\%\] {
   max-height: 90%;
 }
@@ -1078,6 +1086,10 @@ video {
 
 .w-7 {
   width: 1.75rem;
+}
+
+.w-9 {
+  width: 2.25rem;
 }
 
 .max-w-full {
@@ -1329,6 +1341,10 @@ video {
        column-gap: 0.5rem;
 }
 
+.gap-y-1 {
+  row-gap: 0.25rem;
+}
+
 .divide-y > :not([hidden]) ~ :not([hidden]) {
   --tw-divide-y-reverse: 0;
   border-top-width: calc(1px * calc(1 - var(--tw-divide-y-reverse)));
@@ -1362,6 +1378,10 @@ video {
 
 .overflow-x-clip {
   overflow-x: clip;
+}
+
+.overflow-y-visible {
+  overflow-y: visible;
 }
 
 .overflow-y-scroll {

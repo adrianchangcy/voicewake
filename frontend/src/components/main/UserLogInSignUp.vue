@@ -629,7 +629,7 @@
     import { defineComponent } from 'vue';
     import { notify } from 'notiwind';
     import { emailValidatorDjango } from '@/helper_functions';
-    import { usePageRefreshTriggerStore } from '@/stores/RefreshTriggerStore';
+    import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
     const axios = require('axios');
 
     interface StepsType {
