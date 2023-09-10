@@ -1,7 +1,7 @@
 <template>
     <!-- h-[5.5rem] = h-20 + p-2 -->
     <div class="h-20 text-theme-black text-center place-items-center relative">
-        <TransitionGroupFade>
+        <TransitionGroupFade :propHasAbsolute="true">
 
             <!--when not recording-->
             <div

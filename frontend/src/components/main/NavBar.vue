@@ -27,7 +27,7 @@
                     :propIsIconOnly="true"
                     class="w-full h-full"
                 >
-                    <span class="block sm:pb-1">
+                    <span class="block mx-auto sm:pb-1">
                         <i class="fas fa-comment sm:pr-2"></i>
                         <span class="hidden font-normal sm:inline">Start</span>
                     </span>
@@ -44,7 +44,7 @@
                     :propIsIconOnly="true"
                     class="w-full h-full"
                 >
-                    <span class="block sm:pb-1">
+                    <span class="block mx-auto sm:pb-1">
                         <i class="fas fa-comments sm:pr-2"></i>
                         <span class="hidden font-normal sm:inline">Reply</span>
                     </span>
@@ -109,11 +109,12 @@
                 >
                     <span class="mx-auto">
                         <i class="fas fa-user text-xl"></i>
+                        <!--do this so user icon stays truly centered-->
                         <span class="relative w-0">
                             <i
                                 :class="[
-                                    is_nav_main_more_open ? '' : 'scale-0',
-                                    'fas fa-chevron-down text-base transition-transform h-fit absolute top-0 bottom-0 left-2 m-auto'
+                                    is_nav_main_more_open ? '-rotate-180' : 'rotate-0',
+                                    'fas fa-chevron-down text-xs transition-transform h-fit absolute top-0 bottom-0 left-2 m-auto'
                                 ]"
                             ></i>
                         </span>
@@ -134,7 +135,7 @@
                     propFontSize="m"
                     class="w-full h-full"
                 >
-                    <span class="block">
+                    <span class="block mx-auto">
                         <i class="fas fa-circle-user sm:pr-2"></i>
                         <span>Log in</span>
                     </span>
@@ -147,7 +148,7 @@
                     type="button"
                     class="w-full h-full"
                 >
-                    <span class="block">
+                    <span class="block mx-auto">
                         <i class="fas fa-circle-user sm:pr-2"></i>
                         <span>Log in</span>
                     </span>
@@ -166,7 +167,7 @@
                     propElementSize="s"
                     class="w-full h-full"
                 >
-                    <span class="block text-xl font-medium">
+                    <span class="block mx-auto text-xl font-medium">
                         <i class="fas fa-right-to-bracket sm:pr-2"></i>
                         <span>Sign up</span>
                     </span>
@@ -179,7 +180,7 @@
                     propElementSize="s"
                     class="w-full h-full"
                 >
-                    <span class="block text-xl font-medium">
+                    <span class="block mx-auto text-xl font-medium">
                         <i class="fas fa-right-to-bracket sm:pr-2"></i>
                         <span>Sign up</span>
                     </span>
@@ -210,9 +211,9 @@
                 :class="propIsLoggedIn === false ? 'lg:hidden' : ''"
                 class="relative col-start-2 col-span-3 sm:col-start-6 sm:col-span-3 xl:col-start-7 xl:col-span-2"
             >
-                <TransitionFade :propIsForward="true">
+                <TransitionFade>
                     <!--uses calc to minus fixed height of navbar at base.html-->
-                    <div 
+                    <div
                         v-show="is_nav_main_more_open"
                         v-click-outside="{
                             var_name_for_element_bool_status: 'is_nav_main_more_open',

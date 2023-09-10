@@ -8,7 +8,7 @@
         :disabled="!propIsEnabled"
     >
         <!--current font sinks too low, hence pb-->
-        <div class="w-full h-full pb-0.5 grid items-center">
+        <div class="w-full h-full pb-0.5 flex items-center">
             <slot></slot>
         </div>
     </button>

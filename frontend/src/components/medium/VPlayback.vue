@@ -45,7 +45,7 @@
                     <i
                         :class="[
                             playback_paused ? 'fa-play' : 'fa-pause',
-                            'fas mt-[1px]'
+                            'fas mt-[1px] mx-auto'
                         ]"
                     ></i>
                     <span v-show="playback_paused" class="sr-only">

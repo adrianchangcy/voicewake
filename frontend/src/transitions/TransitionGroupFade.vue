@@ -1,4 +1,6 @@
 <template>
+    <!--parent div should look like:-->
+    <!--<div class="relative">-->
     <TransitionGroup
         name="transition-group-fade"
         enter-from-class="opacity-0"
