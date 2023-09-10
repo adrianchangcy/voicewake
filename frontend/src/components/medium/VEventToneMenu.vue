@@ -1,9 +1,10 @@
 <template>
     <div
         v-show="is_open"
-        class="p-4 w-full h-fit"
+        class="w-full h-fit"
     >
-        <div class="h-40 p-1 box-content overflow-x-hidden text-2xl overflow-y-scroll">
+        <!--py-1 allows us to match VRecorderMenu.vue's size via its elements' border-->
+        <div class="h-40 py-1 box-content overflow-x-hidden text-2xl overflow-y-scroll">
 
             <!--loading-->
             <!--relative fixes the problem where the child buttons overall overflow beyond <html>, causing whitespace-->
@@ -49,15 +50,16 @@
                     v-if="propHasDeselectOption === true"
                     class="col-span-1"                    
                 >
+                    <!--text-black has great contrast for bg-theme-dark-gray, whereas text-theme-black has bad contrast-->
                     <button
                         @click="handleEventToneSelected(null)"
                         type="button"
                         :class="[
-                            isSelected(null) === true ? 'bg-theme-dark-gray text-theme-light' : 'text-theme-black',
+                            isSelected(null) === true ? 'bg-theme-dark-gray text-black' : 'text-theme-black',
                             'w-10 h-10 pb-0.5 flex items-center border border-transparent shade-border-when-hover rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline'
                         ]"
                     >
-                        <span class="text-base mx-auto">Any</span>
+                        <span class="text-sm font-medium mx-auto">Any</span>
                     </button>
                 </div>
 
@@ -134,6 +136,9 @@
                 this.is_open = new_value;
             },
         },
+        emits: [
+            'eventToneSelected'
+        ],
         methods: {
             async getEventTonesData(){
 
@@ -171,6 +176,11 @@
                 if(this.propCloseWhenSelected === true){
 
                     this.is_open = false;
+                }
+
+                if(event_tone_index === this.selected_event_tone_index){
+
+                    return;
                 }
 
                 //update selected index

@@ -1,7 +1,5 @@
 <template>
-    <div
-        class=""
-    >
+    <div>
         <div class="w-20 h-20 mx-auto relative">
             <!--need inline CSS to prevent jolting from anime if without it-->
             <div

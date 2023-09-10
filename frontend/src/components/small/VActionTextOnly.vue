@@ -14,15 +14,19 @@
         <!--current font sinks too low, hence pb-->
         <div
             v-if="propIsIconOnly"
-            class="w-full h-full grid items-center"
+            class="w-full h-full flex items-center"
         >
             <slot></slot>
         </div>
         <div
             v-else
             :class="[
-                propElementSize === 's' ? 'pb-0.5' : 'pb-1',
-                'w-full h-full grid items-center'
+                propElementSize === 's' ? 'pb-0.5' : '',
+                propElementSize === 'm' ? 'pb-1' : '',
+                propElementSize === 'l' ? 'pb-2' : '',
+                propElementSize === 'xl' ? 'pb-2' : '',
+                propElementSize === '2xl' ? 'pb-2' : '',
+                'w-full h-full flex items-center'
             ]"
         >
             <slot></slot>

@@ -1,11 +1,10 @@
 <template>
     <div
         v-show="propIsOpen"
-        class="flex flex-col gap-2 bg-theme-light p-4"
+        class="flex flex-col gap-2 bg-theme-light"
     >
-        <!-- h-[5.5rem] = h-20 + p-2 -->
         <div class="h-20 relative">
-            <TransitionGroupFade>
+            <TransitionGroupFade :prop-has-absolute="true">
                 <VPlayback
                     v-show="!is_recording"
                     :propAudio="final_blob"

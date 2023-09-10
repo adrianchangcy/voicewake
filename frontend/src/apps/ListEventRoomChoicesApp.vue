@@ -286,7 +286,7 @@
                                 :propIsRound="true"
                                 class="w-24"
                             >
-                                <span>Reply</span>
+                                <span class="block mx-auto">Reply</span>
                             </VActionSpecial>
                         </div>
 
@@ -302,7 +302,7 @@
                                 :propIsRound="true"
                                 class="w-24"
                             >
-                                <span>Skip</span>
+                                <span class="block mx-auto">Skip</span>
                             </VAction>
                         </div>
                     </div>
