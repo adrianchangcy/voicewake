@@ -2,8 +2,6 @@
     <div>
 
 
-
-
     </div>
 </template>
 
@@ -18,6 +16,7 @@
     import { notify } from 'notiwind';
     // import anime from 'animejs';
     // import VPlayback from '../medium/VPlayback.vue';
+    // import { useFilteredGroupedEventsStore } from '@/stores/FilteredGroupedEventsStore';
     import GroupedEventsTypes from '@/types/GroupedEvents.interface';
     const axios = require('axios');
 
@@ -76,7 +75,6 @@
         },
 
         mounted(){
-
 
             // this.callTest();
 

@@ -161,7 +161,7 @@
                             class="w-full h-fit"
                         >
                             <!--reply/skip skeleton-->
-                            <div class="w-full h-fit grid grid-cols-2 gap-4">
+                            <div class="w-full h-fit grid grid-cols-2 gap-4 pb-8">
                                 <div class="col-span-1 justify-self-end">
                                     <div class="w-24 h-24 rounded-full skeleton"></div>
                                 </div>
@@ -171,8 +171,8 @@
                             </div>
                             <!--event room skeleton-->
                             <EventRoomCardSkeleton
+                                :prop-has-border="true"
                                 :prop-event-quantity="1"
-                                class="pt-8"
                             />
                         </div>
 
