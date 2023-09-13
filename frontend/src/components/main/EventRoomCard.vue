@@ -1,7 +1,7 @@
 <template>
     <div
         :class="[
-            propHasBorder === true ? 'px-4 pt-4 pb-12 mb-8      border border-theme-light-gray rounded-lg' : '',
+            propHasBorder === true ? 'px-4 pt-4 pb-12      border border-theme-light-gray rounded-lg' : '',
             'flex flex-col'
         ]"
     >
@@ -37,18 +37,19 @@
                 />
                 <VEventCard
                     :propEvent="propEventRoom.originator"
-                    @isSelected="handleNewSelectedEvent($event)"
                     :propIsSelected="checkIsSelected(propEventRoom.originator!.id)"
+                    @isSelected="handleNewSelectedEvent($event)"
                 />
                 <VEventTools
                     :propEvent="propEventRoom.originator"
                     :propEventRoomId="propEventRoom.event_room.id"
+                    :prop-filtered-grouped-events-store-event-room-index="propFilteredGroupedEventsStoreEventRoomIndex"
                 />
             </div>
 
             <!--responders-->
             <div
-                v-for="event in propEventRoom.responder" :key="event.id"
+                v-for="(event, index) in propEventRoom.responder" :key="event.id"
                 class="flex flex-col gap-2"
             >
                 <VUser
@@ -56,12 +57,14 @@
                 />
                 <VEventCard
                     :propEvent="event"
-                    @isSelected="handleNewSelectedEvent($event)"
                     :propIsSelected="checkIsSelected(event.id)"
+                    @isSelected="handleNewSelectedEvent($event)"
                 />
                 <VEventTools
                     :propEvent="event"
                     :propEventRoomId="propEventRoom.event_room.id"
+                    :prop-filtered-grouped-events-store-event-room-index="propFilteredGroupedEventsStoreEventRoomIndex"
+                    :prop-filtered-grouped-events-store-event-index="index"
                 />
             </div>
         </div>
@@ -85,12 +88,13 @@
                 <VEventTools
                     :propEvent="propEventRoom.originator"
                     :propEventRoomId="propEventRoom.event_room.id"
+                    :prop-filtered-grouped-events-store-event-room-index="propFilteredGroupedEventsStoreEventRoomIndex"
                 />
             </div>
 
             <!--responders-->
             <div
-                v-for="event in propEventRoom.responder" :key="event.id"
+                v-for="(event, index) in propEventRoom.responder" :key="event.id"
                 class="flex flex-col gap-2"
             >
                 <VUser
@@ -100,10 +104,12 @@
                     :propEvent="event"
                     :propAudioVolumePeaks="event.audio_volume_peaks"
                     :propBucketQuantity="event.audio_volume_peaks.length"
-                />
+                />  
                 <VEventTools
                     :propEvent="event"
                     :propEventRoomId="propEventRoom.event_room.id"
+                    :prop-filtered-grouped-events-store-event-room-index="propFilteredGroupedEventsStoreEventRoomIndex"
+                    :prop-filtered-grouped-events-store-event-index="index"
                 />
             </div>
         </div>
@@ -147,6 +153,10 @@
             propHasBorder: {
                 type: Boolean,
                 default: false
+            },
+            propFilteredGroupedEventsStoreEventRoomIndex: {
+                type: Number,
+                required: false
             },
         },
         computed: {
@@ -194,7 +204,7 @@
                 this.currently_playing_event_store.$patch({
                     playing_event: event
                 });
-            }
+            },
         },
         mounted(){
 

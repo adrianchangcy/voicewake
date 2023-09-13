@@ -128,11 +128,14 @@
     import { prettyCount } from '@/helper_functions';
     import { notify } from 'notiwind';
     import EventsAndLikeDetailsTypes from '@/types/EventsAndLikeDetails.interface';
+    import { useCurrentLikesDislikesStore } from '@/stores/CurrentLikesDislikesStore';
     const axios = require('axios');
 
     export default defineComponent({
         data(){
             return {
+                current_likes_dislikes_store: useCurrentLikesDislikesStore(),
+
                 is_liked: null as boolean|null,
                 like_count: 0,
                 dislike_count: 0,
@@ -152,6 +155,14 @@
             propEventRoomId: {
                 type: Number,
                 required: true,
+            },
+            propFilteredGroupedEventsStoreEventRoomIndex: {
+                type: Number,
+                default: null
+            },
+            propFilteredGroupedEventsStoreEventIndex: {
+                type: Number,
+                default: null
             },
         },
         computed: {
@@ -242,10 +253,7 @@
             },
             async submitLikeDislike() : Promise<void> {
 
-                if(this.submit_interval !== null){
-
-                    clearTimeout(this.submit_interval);
-                }
+                this.submit_interval !== null ? clearTimeout(this.submit_interval) : null;
 
                 //we use this to counter spam-clicking
                 this.submit_interval = window.setTimeout(()=>{
@@ -255,8 +263,13 @@
                     data.append('event_id', JSON.stringify(this.propEvent['id']));
                     data.append('is_liked', JSON.stringify(this.is_liked));
 
+                    const is_liked_value = this.is_liked;
+
                     axios.post('http://127.0.0.1:8000/api/event-likes-dislikes', data)
-                    .then(() => {})
+                    .then(() => {
+
+                        this.current_likes_dislikes_store.addLikeDislike(this.propEvent.id, is_liked_value);
+                    })
                     .catch(() => {
 
                         //revert
@@ -373,24 +386,28 @@
                 return true;
             },
         },
-        mounted(){
+        beforeMount(){
 
             this.axiosSetup();
 
-            //store props into variables
-            this.is_liked = this.propEvent['is_liked_by_user'];
-            this.like_count = this.propEvent['like_count'];
-            this.dislike_count = this.propEvent['dislike_count'];
+            //accurately deduct user's own is_liked from count
+            this.like_count = this.propEvent.like_count - (this.propEvent.is_liked_by_user === true ? 1 : 0);
+            this.dislike_count = this.propEvent.dislike_count - (this.propEvent.is_liked_by_user === false ? 1 : 0);
 
-            //we expect counts from REST API to also include user's own like/dislike
-            //if user has like/dislike, we -1 first, so at computed, we can +1 for existing or new like/dislike
-            if(this.propEvent['is_liked_by_user'] === true){
+            //check if store has latest is_liked, and is different from API results' is_liked
+            //we use the store because it is always updated, while API results are not updated when user changes is_liked
+            const likes_dislikes_store = this.current_likes_dislikes_store.getCurrentLikesDislikes;
 
-                this.like_count -= 1;
+            if(
+                this.propEvent.id in likes_dislikes_store === true &&
+                this.propEvent.is_liked_by_user !== likes_dislikes_store[this.propEvent.id]
+            )
 
-            }else if(this.propEvent['is_liked_by_user'] === false){
+                this.is_liked = likes_dislikes_store[this.propEvent.id];
 
-                this.dislike_count -= 1;
+            else{
+
+                this.is_liked = this.propEvent.is_liked_by_user;
             }
         },
     });

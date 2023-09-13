@@ -1,5 +1,10 @@
 <template>
-    <div>
+    <div
+        :class="[
+            propHasBorder === true ? 'px-4 pt-4 pb-12      border border-theme-light-gray rounded-lg' : '',
+            'flex flex-col'
+        ]"
+    >
         <span class="sr-only">loading events</span>
         <!--title and datetime-->
         <!--<div> seems to have bigger height than the inner <span>, and doing it all in <span> didn't work-->
@@ -31,6 +36,10 @@
 
     export default defineComponent({
         props: {
+            propHasBorder: {
+                type: Boolean,
+                default: false
+            },
             propEventQuantity: {
                 type: Number,
                 default: 2
