@@ -76,7 +76,7 @@
                             'w-10 h-10 pb-0.5 border border-transparent shade-border-when-hover rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline'
                         ]"
                     >
-                        <span class="has-emoji">{{event_tone.event_tone_symbol}}</span>
+                        <span class="has-emoji" aria-hidden="true">{{event_tone.event_tone_symbol}}</span>
                         <span class="sr-only">{{event_tone.event_tone_name}}</span>
                     </button>
                 </div>

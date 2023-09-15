@@ -13,7 +13,7 @@
                     :propIsIconOnly="true"
                     class="w-full h-full"
                 >
-                    <i class="fas fa-wave-square mx-auto"></i>
+                    <i class="fas fa-wave-square mx-auto" aria-hidden="true"></i>
                     <span class="sr-only">home</span>
                 </VActionTextOnly>
             </div>
@@ -28,7 +28,7 @@
                     class="w-full h-full"
                 >
                     <span class="block mx-auto sm:pb-1">
-                        <i class="fas fa-comment sm:pr-2"></i>
+                        <i class="fas fa-comment sm:pr-2" aria-hidden="true"></i>
                         <span class="hidden font-normal sm:inline">Start</span>
                     </span>
                     <span class="sr-only sm:hidden">start event</span>
@@ -45,7 +45,7 @@
                     class="w-full h-full"
                 >
                     <span class="block mx-auto sm:pb-1">
-                        <i class="fas fa-comments sm:pr-2"></i>
+                        <i class="fas fa-comments sm:pr-2" aria-hidden="true"></i>
                         <span class="hidden font-normal sm:inline">Reply</span>
                     </span>
                     <span class="sr-only sm:hidden">reply to events</span>
@@ -108,7 +108,7 @@
                     class="w-full h-full"
                 >
                     <span class="mx-auto">
-                        <i class="fas fa-user text-xl"></i>
+                        <i class="fas fa-user text-xl" aria-hidden="true"></i>
                         <!--do this so user icon stays truly centered-->
                         <span class="relative w-0">
                             <i
@@ -116,6 +116,7 @@
                                     is_nav_main_more_open ? '-rotate-180' : 'rotate-0',
                                     'fas fa-chevron-down text-xs transition-transform h-fit absolute top-0 bottom-0 left-2 m-auto'
                                 ]"
+                                aria-hidden="true"
                             ></i>
                         </span>
                     </span>
@@ -136,7 +137,7 @@
                     class="w-full h-full"
                 >
                     <span class="block mx-auto">
-                        <i class="fas fa-circle-user sm:pr-2"></i>
+                        <i class="fas fa-circle-user sm:pr-2" aria-hidden="true"></i>
                         <span>Log in</span>
                     </span>
                 </VActionTextOnly>
@@ -149,7 +150,7 @@
                     class="w-full h-full"
                 >
                     <span class="block mx-auto">
-                        <i class="fas fa-circle-user sm:pr-2"></i>
+                        <i class="fas fa-circle-user sm:pr-2" aria-hidden="true"></i>
                         <span>Log in</span>
                     </span>
                 </VActionTextOnly>
@@ -168,7 +169,7 @@
                     class="w-full h-full"
                 >
                     <span class="block mx-auto text-xl font-medium">
-                        <i class="fas fa-right-to-bracket sm:pr-2"></i>
+                        <i class="fas fa-right-to-bracket sm:pr-2" aria-hidden="true"></i>
                         <span>Sign up</span>
                     </span>
                 </VActionSpecial>
@@ -181,7 +182,7 @@
                     class="w-full h-full"
                 >
                     <span class="block mx-auto text-xl font-medium">
-                        <i class="fas fa-right-to-bracket sm:pr-2"></i>
+                        <i class="fas fa-right-to-bracket sm:pr-2" aria-hidden="true"></i>
                         <span>Sign up</span>
                     </span>
                 </VActionSpecial>
@@ -224,7 +225,7 @@
 
                         <!--profile area-->
                         <div class="pt-12 flex flex-col">
-                            <i class="fas fa-user text-base w-fit h-fit mx-auto"></i>
+                            <i class="fas fa-user text-base w-fit h-fit mx-auto" aria-hidden="true"></i>
                             <span class="max-w-full h-fit mx-auto text-xl font-light break-words">
                                 <span v-if="propIsLoggedIn">{{ propUsername }}</span>
                                 <span v-else>Not logged in</span>
@@ -248,7 +249,7 @@
                             >
                                 <div class="w-full h-full grid grid-cols-4">
                                     <div class="col-span-1 flex items-center">
-                                        <i class="fas fa-circle-user w-fit h-fit mx-auto"></i>
+                                        <i class="fas fa-circle-user w-fit h-fit mx-auto" aria-hidden="true"></i>
                                     </div>
                                     <div class="col-span-3 flex items-center">
                                         <span class="text-left font-normal break-all">
@@ -269,7 +270,7 @@
                             >
                                 <div class="w-full h-full grid grid-cols-4">
                                     <div class="col-span-1 flex items-center">
-                                        <i class="fas fa-right-to-bracket w-fit h-fit mx-auto"></i>
+                                        <i class="fas fa-right-to-bracket w-fit h-fit mx-auto" aria-hidden="true"></i>
                                     </div>
                                     <div class="col-span-3 flex items-center">
                                         <span class="text-left font-normal break-all">
@@ -298,7 +299,7 @@
                                             class="mx-auto"
                                         />
                                         <span v-else class="mx-auto">
-                                            <i class="fas fa-door-open"></i>
+                                            <i class="fas fa-door-open" aria-hidden="true"></i>
                                         </span>
                                     </div>
                                     <div class="col-span-3 flex items-center">

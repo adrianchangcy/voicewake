@@ -22,7 +22,7 @@
     >
 
         <!--follows VTitle-->
-        <div class="h-fit py-10 text-theme-black">
+        <h1 class="h-fit py-10 text-theme-black">
             {% if is_deleted %}
                 <p class="text-lg italic">
                     This post has been deleted.
@@ -37,7 +37,7 @@
                     {{when_created|date:"j M Y"}}
                 </p>
             {% endif %}
-        </div>
+        </h1>
 
         <!--the rest of the content-->
         {% if is_deleted is False %}

@@ -10,7 +10,7 @@
         >
             <template #title>
                 <div class="flex flex-col">
-                    <i class="fas fa-comments text-2xl w-full text-center"></i>
+                    <i class="fas fa-comments text-2xl w-full text-center" aria-hidden="true"></i>
                 </div>
             </template>
         </VTitle>
@@ -30,7 +30,7 @@
 
                     <VTitle
                         propFontSize="l"
-                        class="pb-8"
+                        class="pb-10"
                     >
                         <template #title>
                             <div class="flex flex-col">
@@ -76,24 +76,38 @@
                                 >
 
                                     <!--no new events-->
-                                    <span
+                                    <VDialogPlain
                                         v-show="current_simple_dialog === simple_dialogs[0]"
-                                        class="w-full h-fit flex flex-col text-center text-theme-black"
+                                        :prop-has-border="false"
+                                        :prop-has-auto-spacing="false"
                                     >
-                                        <i class="far fa-face-meh-blank block w-full text-xl"></i>
-                                        <span class="block w-full text-xl font-medium">No new events found.</span>
-                                        <span class="block w-full text-base">Search again in a moment!</span>
-                                    </span>
+                                        <template #logo>
+                                            <i class="far fa-face-meh-blank" aria-hidden="true"></i>
+                                        </template>
+                                        <template #title>
+                                            <span>No new events found.</span>
+                                        </template>
+                                        <template #content>
+                                            <span>Search again in a moment!</span>
+                                        </template>
+                                    </VDialogPlain>
 
                                     <!--reply choice expired-->
-                                    <span
+                                    <VDialogPlain
                                         v-show="current_simple_dialog === simple_dialogs[1]"
-                                        class="w-full h-fit flex flex-col text-center text-theme-black"
+                                        :prop-has-border="false"
+                                        :prop-has-auto-spacing="false"
                                     >
-                                        <i class="fas fa-hourglass-end block w-full text-xl"></i>
-                                        <span class="block w-full text-xl font-medium">Event choice has expired.</span>
-                                        <span class="block w-full text-base">Search again for more!</span>
-                                    </span>
+                                        <template #logo>
+                                            <i class="fas fa-hourglass-end" aria-hidden="true"></i>
+                                        </template>
+                                        <template #title>
+                                            <span>Event choice has expired.</span>
+                                        </template>
+                                        <template #content>
+                                            <span>Search again for more!</span>
+                                        </template>
+                                    </VDialogPlain>
                                 </TransitionGroupFade>
                             </div>
                         </div>
@@ -109,14 +123,14 @@
                                 class="w-full h-fit"
                             >
                                 <template #title>
-                                    <span class="block">1 unfinished reply found</span>
+                                    <span class="block">1 unfinished reply found.</span>
                                 </template>
                                 <template #content>
                                     <span class="block text-center">
                                         Please open and complete, or delete, before searching.
                                     </span>
                                     <div
-                                        class="grid grid-rows-1 grid-cols-2 mt-4 gap-2"
+                                        class="grid grid-rows-1 grid-cols-2 pt-4 gap-2"
                                     >
                                         <VActionSpecial
                                             propElement="a"
@@ -184,7 +198,7 @@
 
                             <VTitle
                                 propFontSize="l"
-                                class="pb-8"
+                                class="pb-10"
                             >
                                 <template #title>
                                     <div class="flex flex-col">
@@ -197,7 +211,7 @@
 
                             <div class="w-full h-40 flex items-center text-xl font-medium">
                                 <div class="w-full flex flex-col">
-                                    <i class="fas fa-eraser block mx-auto animate-pulse"></i>
+                                    <i class="fas fa-eraser block mx-auto animate-pulse" aria-hidden="true"></i>
                                     <span class="block mx-auto">Deleting unfinished reply...</span>
                                 </div>
                             </div>
@@ -211,7 +225,7 @@
 
                             <VTitle
                                 propFontSize="l"
-                                class="pb-8"
+                                class="pb-10"
                             >
                                 <template #title>
                                     <div class="flex flex-col">
@@ -241,7 +255,7 @@
 
                             <VTitle
                                 propFontSize="l"
-                                class="pb-8"
+                                class="pb-10"
                             >
                                 <template #title>
                                     <div class="flex flex-col">

@@ -1,6 +1,6 @@
 <template>
     <!--pass pb-__ here to customise/prevent emoji overflow-->
-    <div class="w-full">
+    <div class="w-full h-full">
 
         <!--on overflow, it overflows to the right while never going past left side-->
         <!--so pr-10 is ensuring that it doesn't go too far to the right-->

@@ -8,15 +8,15 @@
             @click.stop="[toggleMenu(), emitIsOpen()]"
             :class="[
                 is_open ? 'border-theme-black      focus-visible:outline-offset-0' : 'border-theme-medium-gray shade-border-when-hover   focus-visible:-outline-offset-2',
-                'w-full h-20 relative border-2 rounded-lg text-3xl text-theme-black text-center transition-colors     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-theme-dark-gray'
+                'w-full h-20 relative border-2 rounded-lg text-3xl text-theme-black text-center     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-theme-dark-gray'
             ]"
             type="button"
         >
             <span
                 v-if="propEventToneChoice !== null"
-                class="absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto has-emoji"
+                class="absolute w-fit h-fit left-0 right-0 top-0 bottom-0.5 m-auto has-emoji"
             >
-                {{propEventToneChoice.event_tone_symbol}}
+                <span aria-hidden="true">{{propEventToneChoice.event_tone_symbol}}</span>
                 <span class="sr-only">{{propEventToneChoice.event_tone_name}}</span>
             </span>
             <span v-else class="sr-only">No emoji selected</span>

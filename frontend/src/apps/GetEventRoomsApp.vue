@@ -80,7 +80,7 @@
                     v-else-if="reply_is_deleted"
                     class="w-full h-fit mt-10 flex flex-col text-xl font-medium text-center text-theme-black"
                 >
-                    <i class="fas fa-eraser block w-full"></i>
+                    <i class="fas fa-eraser block w-full" aria-hidden="true"></i>
                     <span class="block w-full">Your reply has been deleted.</span>
                     <VActionTextOnly
                         propElement="a"
@@ -91,7 +91,7 @@
                     >
                         <span class="flex items-center">
                             <span class="font-bold block">More event choices</span>
-                            <i class="fas fa-arrow-right block text-lg pl-2"></i>
+                            <i class="fas fa-arrow-right block text-lg pl-2" aria-hidden="true"></i>
                         </span>
                     </VActionTextOnly>
                 </span>
@@ -101,7 +101,7 @@
                     v-else-if="reply_is_expired"
                     class="w-full h-fit mt-10 flex flex-col text-xl font-medium text-center text-theme-black"
                 >
-                    <i class="fas fa-hourglass-end block w-full"></i>
+                    <i class="fas fa-hourglass-end block w-full" aria-hidden="true"></i>
                     <span class="block w-full">Your reply has expired.</span>
                     <VActionTextOnly
                         propElement="a"
@@ -112,7 +112,7 @@
                     >
                         <span class="flex items-center">
                             <span class="font-bold block">More event choices</span>
-                            <i class="fas fa-arrow-right block text-lg pl-2"></i>
+                            <i class="fas fa-arrow-right block text-lg pl-2" aria-hidden="true"></i>
                         </span>
                     </VActionTextOnly>
                 </span>
