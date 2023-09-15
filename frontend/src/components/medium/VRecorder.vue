@@ -17,7 +17,7 @@
                     :propIsIconOnly="true"
                     class="w-full"
                 >
-                    <i class="fas fa-microphone-lines text-4xl mx-auto"></i>
+                    <i class="fas fa-microphone-lines text-4xl mx-auto" aria-hidden="true"></i>
                     <span class="sr-only">start recording</span>
                 </VAction>
             </div>
@@ -38,7 +38,7 @@
                         :propIsIconOnly="true"
                         class="col-start-1 row-span-2 col-span-1"
                     >
-                        <i class="fas fa-xmark text-2xl mx-auto"></i>
+                        <i class="fas fa-xmark text-2xl mx-auto" aria-hidden="true"></i>
                         <span class="sr-only">cancel recording</span>
                     </VAction>
 
@@ -62,6 +62,7 @@
                                 (recorder_state === 'paused' ? 'fas fa-play' : 'fas fa-pause'),
                                 'text-2xl mx-auto'
                             ]"
+                            aria-hidden="true"
                         ></i>
                         <span class="sr-only">{{ getPlayPauseScreenReader }}</span>
                     </VAction>
@@ -76,7 +77,7 @@
                         :propIsIconOnly="true"
                         class="col-start-4 row-span-2 col-span-1"
                     >
-                        <i class="fas fa-check text-2xl mx-auto"></i>
+                        <i class="fas fa-check text-2xl mx-auto" aria-hidden="true"></i>
                         <span class="sr-only">stop recording</span>
                     </VAction>
                 </div>

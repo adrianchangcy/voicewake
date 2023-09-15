@@ -16,7 +16,8 @@
                 type="button"
                 class="w-10 absolute top-1 -right-3 m-auto"
             >
-                <i class="fas fa-xmark mx-auto text-xl"></i>
+                <i class="fas fa-xmark mx-auto text-xl" aria-hidden="true"></i>
+                <span class="sr-only">close login sign-up menu</span>
             </VActionTextOnly>
         </div>
 
@@ -83,7 +84,7 @@
                                         propFontSize="s"
                                         class="w-full px-4 gap-4"
                                     >
-                                        <i class="fas fa-hat-wizard text-2xl"></i>
+                                        <i class="fas fa-hat-wizard text-2xl" aria-hidden="true"></i>
                                         <span>Log in with email</span>
                                     </VAction>
                                 </div>
@@ -214,7 +215,7 @@
                                     class="w-fit absolute -top-4"
                                 >
                                     <div class="flex items-center">
-                                        <i class="fas fa-arrow-left w-fit h-fit text-lg block pr-2"></i>
+                                        <i class="fas fa-arrow-left w-fit h-fit text-lg block pr-2" aria-hidden="true"></i>
                                         <span class="font-bold break-words">Back</span>
                                     </div>
                                 </VActionTextOnly>
@@ -358,7 +359,7 @@
                                         propFontSize="s"
                                         class="w-full px-4 gap-4"
                                     >
-                                        <i class="fas fa-hat-wizard text-2xl"></i>
+                                        <i class="fas fa-hat-wizard text-2xl" aria-hidden="true"></i>
                                         <span>Sign in with email</span>
                                     </VAction>
                                 </div>
@@ -488,7 +489,7 @@
                                     class="w-fit absolute -top-4"
                                 >
                                     <div class="flex items-center">
-                                        <i class="fas fa-arrow-left w-fit h-fit text-lg block pr-2"></i>
+                                        <i class="fas fa-arrow-left w-fit h-fit text-lg block pr-2" aria-hidden="true"></i>
                                         <span class="font-bold break-words">Back</span>
                                     </div>
                                 </VActionTextOnly>

@@ -10,6 +10,7 @@ import GetEventRoomsApp from '/src/apps/GetEventRoomsApp.vue';
 import BrowseEventRoomsApp from '/src/apps/BrowseEventRoomsApp.vue';
 import UserLogInSignUp from '/src/components/main/UserLogInSignUp.vue';
 import VUserUsername from '/src/components/medium/VUserUsername.vue';
+import VBackdropAnime from '/src/components/small/VBackdropAnime.vue';
 
 
 const pinia = createPinia();
@@ -126,6 +127,7 @@ if(document.querySelector('#get-event-rooms-app')){
 if(document.querySelector('#browse-event-rooms-app')){
 
     createApp(BrowseEventRoomsApp)
+        .directive('click-outside', clickOutside)
         .mount('#browse-event-rooms-app');
 }
 
@@ -156,6 +158,13 @@ if(document.querySelector('#set-username-page')){
     createApp(VUserUsername)
         .mount('#set-username-page');
 }
+
+if(document.querySelector('#v-backdrop-anime-target')){
+
+    createApp(VBackdropAnime)
+        .mount('#v-backdrop-anime-target');
+}
+
 
 
 

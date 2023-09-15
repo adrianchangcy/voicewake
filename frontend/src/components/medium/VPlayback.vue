@@ -47,6 +47,7 @@
                             playback_paused ? 'fa-play' : 'fa-pause',
                             'fas mt-[1px] mx-auto'
                         ]"
+                        aria-hidden="true"
                     ></i>
                     <span v-show="playback_paused" class="sr-only">
                         pause
@@ -192,6 +193,7 @@
                                         (is_playback_volume_open ? '-rotate-90' : 'rotate-0'),
                                         'fas transition-transform w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto'
                                     ]"
+                                    aria-hidden="true"
                                 ></i>
                             </div>
                             <span v-show="isMuted" class="sr-only">

@@ -29,6 +29,7 @@
                 <i
                     class="fas text-lg mx-auto"
                     :class="show_password ? 'fa-eye' : 'fa-eye-slash'"
+                    aria-hidden="true"
                 ></i>
                 <span v-show="show_password" class="sr-only">hide password</span>
                 <span v-show="!show_password" class="sr-only">show password</span>

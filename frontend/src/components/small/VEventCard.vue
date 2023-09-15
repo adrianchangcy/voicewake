@@ -13,6 +13,7 @@
                 type="button"
                 @click.stop="handleIsSelected()"
             >
+                <span class="sr-only">play recording</span>
 
                 <div class="col-span-1 h-full relative">
                     <!--total duration, width is to match emoji-->
@@ -45,6 +46,7 @@
                     <!--label-->
                     <span
                         class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0.5 m-auto text-2xl has-emoji pb-0.5"
+                        aria-hidden="true"
                     >
                         {{ propEvent.event_tone.event_tone_symbol }}
                     </span>

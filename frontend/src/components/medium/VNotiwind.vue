@@ -33,7 +33,7 @@
                             class="flex w-full"
                         >
                             <div class="flex shrink-0 items-center justify-center w-10 bg-red-500 text-white">
-                                <i class="fas fa-exclamation text-xl"></i>
+                                <i class="fas fa-exclamation text-xl" aria-hidden="true"></i>
                             </div>
                             <div class="w-full px-4 py-2">
                                 <span class="text-base font-semibold text-red-500">{{ notification.title }}</span>
@@ -47,7 +47,7 @@
                             class="flex"
                         >
                             <div class="flex shrink-0 items-center justify-center w-10 bg-green-500 text-white">
-                                <i class="fas fa-check text-xl"></i>
+                                <i class="fas fa-check text-xl" aria-hidden="true"></i>
                             </div>
                             <div class="px-4 py-2">
                                 <span class="text-base font-semibold text-green-500">{{ notification.title }}</span>

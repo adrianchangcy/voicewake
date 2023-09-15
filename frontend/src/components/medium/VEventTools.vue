@@ -28,8 +28,9 @@
                                 is_liked === true ? 'text-theme-lead' : 'text-theme-black/0',
                                 'w-fit h-fit fas fa-thumbs-up mx-auto transition-colors'
                             ]"
+                            aria-hidden="true"
                         ></i>
-                        <i class="absolute w-fit h-fit far fa-thumbs-up mx-auto"></i>
+                        <i class="absolute w-fit h-fit far fa-thumbs-up mx-auto" aria-hidden="true"></i>
                     </div>
                     <!--like count-->
                     <div
@@ -63,8 +64,9 @@
                                 is_liked === false ? 'text-theme-lead' : 'text-theme-black/0',
                                 'w-fit h-fit fas fa-thumbs-down mx-auto transition-colors'
                             ]"
+                            aria-hidden="true"
                         ></i>
-                        <i class="absolute w-fit h-fit far fa-thumbs-down mx-auto"></i>
+                        <i class="absolute w-fit h-fit far fa-thumbs-down mx-auto" aria-hidden="true"></i>
                     </div>
                     <!--dislike count-->
                     <div
@@ -87,11 +89,11 @@
         >
             <TransitionFade>
                 <span v-if="has_shared === false" class="w-fit h-full flex items-center mx-auto">
-                    <i class="fas fa-share text-base"></i>
+                    <i class="fas fa-share text-base" aria-hidden="true"></i>
                     <span class="sr-only">Copy URL to share</span>
                 </span>
                 <span v-else-if="has_shared === true" class="w-fit h-full flex items-center mx-auto">
-                    <i class="fas fa-check text-base"></i>
+                    <i class="fas fa-check text-base" aria-hidden="true"></i>
                     <span class="hidden sm:inline pl-1 lg:pl-2 text-sm lg:text-base font-medium">Copied</span>
                 </span>
             </TransitionFade>
@@ -104,11 +106,11 @@
         >
             <TransitionFade>
                 <span v-if="has_shared === false" class="w-fit h-full flex items-center mx-auto">
-                    <i class="fas fa-ellipsis-vertical text-base"></i>
+                    <i class="fas fa-ellipsis-vertical text-base" aria-hidden="true"></i>
                     <span class="sr-only">Copy URL to share</span>
                 </span>
                 <span v-else-if="has_shared === true" class="w-fit h-full flex items-center mx-auto">
-                    <i class="fas fa-check text-base"></i>
+                    <i class="fas fa-check text-base" aria-hidden="true"></i>
                     <span class="hidden sm:inline pl-1 lg:pl-2 text-sm lg:text-base font-medium">Copied</span>
                 </span>
             </TransitionFade>
