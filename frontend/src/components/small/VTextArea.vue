@@ -29,7 +29,7 @@
                     (propIsOk ? 'border-theme-ok' : ''),
                     (propIsWarning ? 'border-theme-warning' : ''),
                     (propIsError ? 'border-theme-danger' : ''),
-                    'block w-full h-10 bg-theme-light border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover rounded-lg overflow-hidden p-2 pt-1'
+                    'block w-full h-10 bg-theme-light border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover rounded-lg overflow-hidden p-2 pt-1    focus:outline-none'
                 ]"
                 :placeholder="propPlaceholder"
                 autocomplete="off"

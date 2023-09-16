@@ -7,9 +7,11 @@ import GroupedEventsTypes from '@/types/GroupedEvents.interface';
 //need this whole thing abstracted as this store
 //due to complex indexing, and necessity to update nested values
 interface NoEventToneEventRoomsType{
-    [filter_type_index: number] : {
-        event_rooms: GroupedEventsTypes[],
-        current_page: number,
+    [event_role_name_index:number] : {
+        [filter_type_index: number] : {
+            event_rooms: GroupedEventsTypes[],
+            current_page: number,
+        }
     }
 }
 interface SelectedEventToneEventRoomsType{
@@ -19,6 +21,8 @@ interface SelectedEventToneEventRoomsType{
 
 export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_events_store', {
     state: ()=>({
+        current_event_role_name_index: 1,
+        event_role_names: ["originator", "responder"],
         current_filter_type_index: 0,
         filter_types: ["Best", "Latest"],
 
@@ -34,6 +38,10 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
         getSelectedEventToneEventRooms: (state) => {
 
             return state.selected_event_tone_event_rooms;
+        },
+        getCurrentEventRoleNameIndex: (state) => {
+
+            return state.current_event_role_name_index;
         },
         getCurrentFilterTypeIndex: (state) => {
 
@@ -58,13 +66,13 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
 
             if(state.selected_event_tone === null){
 
-                if(state.current_filter_type_index in state.no_event_tone_event_rooms === false){
+                if(Object.keys(state.no_event_tone_event_rooms).length === 0){
 
                     return [];
 
                 }else{
 
-                    return state.no_event_tone_event_rooms[state.current_filter_type_index]['event_rooms'];
+                    return state.no_event_tone_event_rooms[state.current_event_role_name_index][state.current_filter_type_index]['event_rooms'];
                 }
 
             }else{
@@ -75,7 +83,7 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
 
                 }else{
 
-                    return state.selected_event_tone_event_rooms[state.selected_event_tone.id][state.current_filter_type_index]['event_rooms'];
+                    return state.selected_event_tone_event_rooms[state.selected_event_tone.id][state.current_event_role_name_index][state.current_filter_type_index]['event_rooms'];
                 }
             }
         },
@@ -84,6 +92,15 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
         updateSelectedEventTone(new_value:EventTonesTypes|null) : void {
 
             this.selected_event_tone = new_value;
+        },
+        updateCurrentEventRoleNameIndex(new_value:number) : void {
+
+            if(new_value >= this.event_role_names.length){
+
+                throw new Error('Invalid current_event_role_name_index value passed.');
+            }
+
+            this.current_event_role_name_index = new_value;
         },
         updateCurrentFilterTypeIndex(new_value:number) : void {
 
@@ -94,7 +111,12 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
 
             this.current_filter_type_index = new_value;
         },
-        insertEventRooms(event_tone:EventTonesTypes|null, current_filter_type_index:number, data:GroupedEventsTypes[]) : void {
+        insertEventRooms(
+            event_tone:EventTonesTypes|null,
+            current_event_role_name_index:number,
+            current_filter_type_index:number,
+            data:GroupedEventsTypes[],
+        ) : void {
 
             //need to use params to prevent inaccuracy from race condition
             //i.e. data from filter choices previously but new choices were selected
@@ -106,11 +128,11 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
                 //add data
                 for(let x=0; x < data.length; x++){
 
-                    this.no_event_tone_event_rooms[current_filter_type_index]['event_rooms'].push(data[x]);
+                    this.no_event_tone_event_rooms[current_event_role_name_index][current_filter_type_index]['event_rooms'].push(data[x]);
                 }
 
                 //store page
-                this.no_event_tone_event_rooms[current_filter_type_index]['current_page'] += 1;
+                this.no_event_tone_event_rooms[current_event_role_name_index][current_filter_type_index]['current_page'] += 1;
 
             }else{
 
@@ -119,51 +141,61 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
                 //add data
                 for(let x=0; x < data.length; x++){
 
-                    this.selected_event_tone_event_rooms[event_tone.id][current_filter_type_index]['event_rooms'].push(data[x]);
+                    this.selected_event_tone_event_rooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['event_rooms'].push(data[x]);
                 }
 
                 //store page
-                this.selected_event_tone_event_rooms[event_tone.id][current_filter_type_index]['current_page'] += 1;
+                this.selected_event_tone_event_rooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['current_page'] += 1;
             }
         },
         initialiseDataOnFirstPageAfterFilterChange(
             event_tone:EventTonesTypes|null,
-            current_filter_type_index:number,
         ) : void {
 
-            //initialise dict for first time
-            //if first layer key doesn't exist, initialise all the way
+            if(event_tone === null && Object.keys(this.no_event_tone_event_rooms).length === 0){
 
-            if(event_tone === null && current_filter_type_index in this.no_event_tone_event_rooms === false){
+                for(let x=0; x < this.event_role_names.length; x++){
 
-                this.no_event_tone_event_rooms[current_filter_type_index] = {
-                    'event_rooms': [],
-                    'current_page': 0,
-                };
+                    this.no_event_tone_event_rooms[x] = {};
+
+                    for(let xx=0; xx < this.filter_types.length; xx++){
+
+                        this.no_event_tone_event_rooms[x][xx] = {
+                            'event_rooms': [],
+                            'current_page': 0
+                        };
+                    }
+                }
 
             }else if(event_tone !== null && event_tone.id in this.selected_event_tone_event_rooms === false){
 
                 this.selected_event_tone_event_rooms[event_tone.id] = {};
 
-                for(let x=0; x < this.filter_types.length; x++){
+                for(let x=0; x < this.event_role_names.length; x++){
 
-                    this.selected_event_tone_event_rooms[event_tone.id][x] = {
-                        'event_rooms': [],
-                        'current_page': 0
-                    };
+                    this.selected_event_tone_event_rooms[event_tone.id][x] = {};
+
+                    for(let xx=0; xx < this.filter_types.length; xx++){
+
+                        this.selected_event_tone_event_rooms[event_tone.id][x][xx] = {
+                            'event_rooms': [],
+                            'current_page': 0
+                        };
+                    }
                 }
             }
         },
         hasDataOnFirstPageAfterFilterChange(
             event_tone:EventTonesTypes|null,
+            current_event_role_name_index:number,
             current_filter_type_index:number,
         ) : boolean {
 
             //if is first page, check if we already have data
             //simply return, as our computed getEventRoomsForBrowsing handles retrieval for us
             return (
-                (event_tone === null && this.no_event_tone_event_rooms[current_filter_type_index]['event_rooms'].length > 0) ||
-                (event_tone !== null && this.selected_event_tone_event_rooms[event_tone.id][current_filter_type_index]['event_rooms'].length > 0)
+                (event_tone === null && this.no_event_tone_event_rooms[current_event_role_name_index][current_filter_type_index]['event_rooms'].length > 0) ||
+                (event_tone !== null && this.selected_event_tone_event_rooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['event_rooms'].length > 0)
             );
         },
     },

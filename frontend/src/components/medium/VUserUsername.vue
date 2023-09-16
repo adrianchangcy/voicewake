@@ -18,6 +18,7 @@
             :propStatusText="username_validation_status_text"
             :propIsError="username_validation_has_error"
             :propIsOk="username_is_ok === true"
+            :propIsLoading="is_username_check_loading"
             :propAllowWhitespace="false"
             @hasNewValue="validateUsername($event)"
         />
@@ -236,6 +237,7 @@
 
                 this.username_is_ok = false;
                 this.is_username_check_loading = true;
+                this.username_validation_has_error = false;
 
                 await axios.get(window.location.origin + "/api/users/username/get/" + this.username_string)
                 .then((response:any) => {

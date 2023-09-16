@@ -10,7 +10,7 @@
         <!--<div> seems to have bigger height than the inner <span>, and doing it all in <span> didn't work-->
         <div class="flex flex-col pb-10">
             <div class="w-[75%] h-7 flex items-center">
-                <div class="w-full h-6 rounded-lg skeleton"></div>
+                <div class="w-full h-5 rounded-lg skeleton"></div>
             </div>
             <div class="w-[25%] h-6 flex items-center">
                 <div class="w-full h-5 rounded-lg skeleton"></div>
