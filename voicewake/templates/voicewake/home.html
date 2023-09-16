@@ -6,19 +6,22 @@
     {% csrf_token %}
 
     <!--backdrop and title-->
-    <!--height is VTitle + py-8-->
+    <!--height is VTitle + py-6-->
     <div class="h-32 relative">
 
         <!--backdrop-->
             <div id="v-backdrop-anime-target" class="h-full pb-14"></div>
 
         <!--title-->
-        <!--needs padding for more area to smoothen the transparent part, else a faint cutoff/border is visible-->
-        <div class="w-fit h-fit absolute inset-0 m-auto p-8 flex items-center rounded-lg bg-gradient-radial from-theme-light to-transparent">
-            <div class="text-theme-black">
+        <!--needs padding for more area to smoothen the transparent part, the bigger the better, else a faint cutoff/border is visible-->
+        <div class="w-fit h-fit absolute inset-0 m-auto p-6 flex items-center rounded-lg bg-gradient-radial from-theme-light to-transparent">
+            <div class="text-theme-black text-center">
                 <h1 class="text-4xl h-fit break-words">
                     <span>Voicewake</span>
                 </h1>
+                <h2 class="text-xl font-medium h-fit break-words">
+                    <span>Two people saying things</span>
+                </h2>
             </div>
         </div>
     </div>

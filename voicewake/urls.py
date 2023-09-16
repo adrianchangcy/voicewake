@@ -60,7 +60,7 @@ urlpatterns = [
     path('api/users/username/get/<str:username>', views.UsersUsernameAPI.as_view(), name='users_get_username'),
     path('api/users/username/set', views.UsersUsernameAPI.as_view(), name='users_set_username'),
     path('api/users/sign-up', views.UsersLogInSignUpAPI.as_view(current_context='sign_up'), name='users_sign_up'),
-    path('api/users/log-in', views.UsersLogInSignUpAPI.as_view(current_context='login'), name='users_log_in'),
+    path('api/users/log-in', views.UsersLogInSignUpAPI.as_view(current_context='log_in'), name='users_log_in'),
     path('api/users/log-out', views.UsersLogOutAPI.as_view(), name='users_log_out'),
     
     #user management

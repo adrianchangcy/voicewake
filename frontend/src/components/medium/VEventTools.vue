@@ -1,5 +1,5 @@
 <template>
-    <div class="h-10 grid grid-cols-6 gap-0.5 sm:gap-1 text-xl text-theme-black">
+    <div class="h-10 grid grid-cols-6 gap-1 sm:gap-1 text-xl text-theme-black">
 
         <!--like/dislike-->
         <div class="h-full col-span-4 grid grid-cols-2 relative parent-trigger-shade-fake-border-when-hover">

@@ -15,7 +15,7 @@
                 {{current_length}}/{{propMaxLength}}
             </VInputLabel>
         </div>
-        <div class="text-lg">
+        <div class="text-lg relative">
             <input
                 ref="v_input_field"
                 :required="propIsRequired"
@@ -29,12 +29,17 @@
                 :maxlength="propMaxLength"
                 :class="[
                     propHasStatusText ? 'pr-10' : '',
-                    'w-full h-10 p-2 bg-theme-light border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover rounded-lg'
+                    'w-full h-10 p-2 bg-theme-light border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover rounded-lg   focus:outline-none'
                 ]"
             >
-            <i v-show="propIsOk" class="w-0 h-0 fas fa-check relative py-2 right-8 text-theme-toast-success" aria-hidden="true"></i>
-            <i v-show="propIsWarning" class="w-0 h-0 fas fa-triangle-exclamation relative py-2 right-9 text-theme-toast-warning" aria-hidden="true"></i>
-            <i v-show="propIsError" class="w-0 h-0 fas fa-exclamation relative py-2 right-6 text-theme-toast-danger" aria-hidden="true"></i>
+            <div class="w-10 h-full absolute right-0 top-0 bottom-0 m-auto">
+                <div class="w-full h-full relative">
+                    <i v-show="propIsOk" class="w-fit h-fit fas fa-check absolute inset-0 m-auto text-theme-toast-success" aria-hidden="true"></i>
+                    <i v-show="propIsWarning" class="w-fit h-fit fas fa-triangle-exclamation absolute inset-0 m-auto text-theme-toast-warning" aria-hidden="true"></i>
+                    <i v-show="propIsError" class="w-fit h-fit fas fa-exclamation absolute inset-0 m-auto text-theme-toast-danger" aria-hidden="true"></i>
+                    <VLoading v-show="propIsLoading" prop-element-size="s" class="w-fit h-fit absolute inset-0 m-auto"></VLoading>
+                </div>
+            </div>
         </div>
         <div v-show="propHasStatusText" class="h-6 text-base pl-2">
             <span v-show="propIsOk" class="text-theme-toast-success">{{ propStatusText }}</span>
@@ -49,6 +54,7 @@
 <script setup lang="ts">
 
     import VInputLabel from './VInputLabel.vue';
+    import VLoading from './VLoading.vue';
 </script>
 
 <script lang="ts">
@@ -78,6 +84,7 @@
             propIsOk: Boolean,
             propIsWarning: Boolean,
             propIsError: Boolean,
+            propIsLoading: Boolean,
             propStatusText: {
                 type: String,
                 default: ""

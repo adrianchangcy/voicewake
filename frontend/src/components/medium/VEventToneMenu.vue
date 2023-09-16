@@ -4,7 +4,7 @@
         class="w-full h-fit"
     >
         <!--py-1 allows us to match VRecorderMenu.vue's size via its elements' border-->
-        <div class="h-40 py-1 box-content overflow-x-hidden text-2xl overflow-y-scroll">
+        <div class="h-40 p-1 box-content overflow-x-hidden text-2xl overflow-y-scroll">
 
             <!--loading-->
             <!--relative fixes the problem where the child buttons overall overflow beyond <html>, causing whitespace-->

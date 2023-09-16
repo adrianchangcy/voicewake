@@ -88,13 +88,11 @@ const clickOutside = {
 
         //use mousedown and not click, since click also listens to mouseup
         //we don't want to trigger mouseup on window drag (e.g. slider)
-        document.addEventListener("mousedown", element.clickOutsideEvent);
-        document.addEventListener("touchstart", element.clickOutsideEvent);
+        document.addEventListener("pointerup", element.clickOutsideEvent);
     },
     unmounted: (element:any) => {
 
-        document.removeEventListener("mousedown", element.clickOutsideEvent);
-        document.removeEventListener("touchstart", element.clickOutsideEvent);
+        document.removeEventListener("pointerup", element.clickOutsideEvent);
     },
 };
 

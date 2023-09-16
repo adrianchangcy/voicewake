@@ -2,13 +2,46 @@
     <div>
 
         <!--sorting options-->
-        <div class="pb-8 flex flex-col">
+        <div class="flex flex-col gap-2 pb-6">
 
-            <!--open/close options, arrow-->
-            <div
-                ref="open_close_sort_menu_button"
-                class="w-fit"
-            >
+            <!--event roles-->
+            <div class="w-full grid grid-cols-2">
+                <VActionTextOnly
+                    @click="updateCurrentEventRoleNameIndex(0)"
+                    prop-element="button"
+                    prop-element-size="s"
+                    prop-font-size="s"
+                    :prop-is-icon-only="true"
+                    :class="[
+                        isSelectedEventRoleName(0) ? 'border-b-theme-black' : 'border-b-theme-medium-gray',
+                        'col-span-1 border-b-2 rounded-b-none p-2'
+                    ]"
+                >
+                    <span class="mx-auto">
+                        <i class="fas fa-comment"></i>
+                        <span class="pl-1">Started</span>
+                    </span>
+                </VActionTextOnly>
+                <VActionTextOnly
+                    @click="updateCurrentEventRoleNameIndex(1)"
+                    prop-element="button"
+                    prop-element-size="s"
+                    prop-font-size="s"
+                    :prop-is-icon-only="true"
+                    :class="[
+                        isSelectedEventRoleName(1) ? 'border-b-theme-black' : 'border-b-theme-medium-gray',
+                        'col-span-1 border-b-2 rounded-b-none p-2'
+                    ]"
+                >
+                    <span class="mx-auto">
+                        <i class="fas fa-comments"></i>
+                        <span class="pl-1">Replied</span>
+                    </span>
+                </VActionTextOnly>
+            </div>
+
+            <!--options-->
+            <div ref="open_close_sort_menu_button">
 
                 <!--open/close options-->
                 <VActionSpecial
@@ -19,7 +52,7 @@
                     prop-font-size="s"
                     :prop-is-icon-only="false"
                     :prop-is-enabled="true"
-                    class="w-fit px-4 flex-row"
+                    class="w-fit mx-auto px-4 flex-row"
                 >
                     <span class="pr-2">Filters</span>
                     <i
@@ -39,55 +72,49 @@
                         class="z-20 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"
                     ></div>
                 </div>
-            </div>
 
-            <div
-                v-show="is_sort_menu_open"
-                v-click-outside="{
-                    var_name_for_element_bool_status: 'is_sort_menu_open',
-                    refs_to_exclude: ['open_close_sort_menu_button']
-                }"
-                class="w-[75%] h-0 relative"
-            >
-
-                <!--options-->
-                <div class="absolute w-full h-fit z-10">
-
-                    <!--use gap-3 because VEventToneMenu.vue has py-1-->
-                    <div class="flex flex-col p-4 gap-3 rounded-lg border-2 border-theme-black bg-theme-light/60 backdrop-blur">
-
-                        <!--filter type-->
-                        <div class="flex flex-row items-center gap-2">
-                            <VActionTextOnly
-                                v-for="(filter_type, index) in filtered_grouped_events_store.getFilterTypes" :key="index"
-                                @click="updateCurrentFilterTypeIndex(index)"
-                                prop-element="button"
-                                prop-element-size="s"
-                                prop-font-size="s"
-                                :prop-is-icon-only="true"
-                                class="px-2"
-                            >
-                                <div class="flex flex-row items-center gap-2">
-                                    <i
-                                        :class="[
-                                            isFilterTypeSelected(index) === true ? 'fa-square-check' : 'fa-square',
-                                            'far text-xl'
-                                        ]"
-                                        aria-hidden="true"
-                                    ></i>
-                                    <span class="pb-0.5">{{ filter_type }}</span>
-                                </div>
-                            </VActionTextOnly>
+                <!--options menu-->
+                <div class="h-0 relative">
+                    <div
+                        v-show="is_sort_menu_open"
+                        v-click-outside="{
+                            var_name_for_element_bool_status: 'is_sort_menu_open',
+                            refs_to_exclude: ['open_close_sort_menu_button']
+                        }"
+                        class="absolute w-full h-fit z-10 bg-theme-light"
+                    >
+    
+                        <!--use gap-3 because VEventToneMenu.vue has py-1-->
+                        <div class="flex flex-col p-4 gap-4 rounded-lg border-2 border-theme-black bg-theme-light">
+    
+                            <!--filter type-->
+                            <div class="w-fit flex flex-row items-center border rounded-lg border-theme-light-gray px-2">
+                                <VActionTextOnly
+                                    v-for="(filter_type, index) in filtered_grouped_events_store.getFilterTypes" :key="index"
+                                    @click="updateCurrentFilterTypeIndex(index)"
+                                    prop-element="button"
+                                    prop-element-size="s"
+                                    prop-font-size="s"
+                                    :prop-is-icon-only="true"
+                                    :class="[
+                                        isSelectedFilterType(index) ? 'border-b-theme-black' : 'border-b-transparent',
+                                        'border-b-2 rounded-b-none p-2'
+                                    ]"
+                                >
+                                    <span>{{ filter_type }}</span>
+                                </VActionTextOnly>
+                            </div>
+    
+                            <!--event tones-->
+                            <VEventToneMenu
+                                :prop-is-open="true"
+                                :prop-close-when-selected="false"
+                                :prop-has-deselect-option="true"
+                                :prop-must-track-selected-option="true"
+                                @eventToneSelected="handleNewSelectedEventTone($event)"
+                                class="border rounded-l-lg border-theme-light-gray"
+                            />
                         </div>
-
-                        <!--event tones-->
-                        <VEventToneMenu
-                            :prop-is-open="true"
-                            :prop-close-when-selected="false"
-                            :prop-has-deselect-option="true"
-                            :prop-must-track-selected-option="true"
-                            @eventToneSelected="handleNewSelectedEventTone($event)"
-                        />
                     </div>
                 </div>
             </div>
@@ -112,55 +139,79 @@
                     :prop-has-border="true"
                     :prop-event-quantity="2"
                 />
-
-                <!--no event_rooms-->
-                <VDialogPlain
-                    v-show="canShowEventRoomsEmptyMessage"
-                    :prop-has-border="false"
-                    :prop-has-auto-spacing="false"
-                >
-                    <template #logo>
-                        <i class="far fa-face-meh-blank" aria-hidden="true"></i>
-                    </template>
-                    <template #title>
-                        <span>No events found.</span>
-                    </template>
-                    <template #content>
-                        <span>The filters can be changed to explore other content!</span>
-                    </template>
-                </VDialogPlain>
-
-                <!--reconsider loading more events -->
-                <VDialogPlain
-                    v-show="canPauseScrolling"
-                    :prop-has-auto-spacing="true"
-                    :prop-has-border="true"
-                >
-                    <template #title>
-                        <span>
-                            {{ getPlayedEventsLength }} recordings played!
-                        </span>
-                    </template>
-                    <template #content>
-                        <div class="flex flex-col gap-4">
-                            <span>
-                                Hope you're having a good time. Don't forget to take a break!
-                            </span>
-                            <VActionSpecial
-                                @click="continueScrolling()"
-                                prop-element="button"
-                                prop-element-size="s"
-                                prop-font-size="s"
-                                :prop-is-icon-only="false"
-                                type="button"
-                                class="w-full"
-                            >
-                                <span class="mx-auto">Load more events</span>
-                            </VActionSpecial>
-                        </div>
-                    </template>
-                </VDialogPlain>
             </TransitionGroupFade>
+
+            <div class="relative">
+                <TransitionGroupFade :prop-has-absolute="true">
+
+                    <!--no event_rooms-->
+                    <VDialogPlain
+                        v-show="canShowEventRoomsEmptyMessage"
+                        :prop-has-border="false"
+                        :prop-has-auto-spacing="false"
+                        class="w-full"
+                    >
+                        <template #logo>
+                            <i class="far fa-face-meh-blank" aria-hidden="true"></i>
+                        </template>
+                        <template #title>
+                            <span>No events found.</span>
+                        </template>
+                        <template #content>
+                            <span>The filters can be changed to explore other content!</span>
+                        </template>
+                    </VDialogPlain>
+
+                    <!--reconsider loading more events -->
+                    <VDialogPlain
+                        v-show="canPauseScrolling"
+                        :prop-has-auto-spacing="true"
+                        :prop-has-border="true"
+                        class="w-full"
+                    >
+                        <template #title>
+                            <span>
+                                {{ getPlayedEventsLength }} recordings played!
+                            </span>
+                        </template>
+                        <template #content>
+                            <div class="flex flex-col gap-4">
+                                <span>
+                                    Hope you're having a good time. Don't forget to take a break!
+                                </span>
+                                <VActionSpecial
+                                    @click="continueScrolling()"
+                                    prop-element="button"
+                                    prop-element-size="s"
+                                    prop-font-size="s"
+                                    :prop-is-icon-only="false"
+                                    type="button"
+                                    class="w-full"
+                                >
+                                    <span class="mx-auto">Load more events</span>
+                                </VActionSpecial>
+                            </div>
+                        </template>
+                    </VDialogPlain>
+
+                    <VDialogPlain
+                        v-show="canShowNoNewEventRoomsMessage"
+                        :prop-has-border="false"
+                        :prop-has-auto-spacing="false"
+                        class="w-full"
+                    >
+                        <template #logo>
+                            <i class="far fa-face-meh-blank" aria-hidden="true"></i>
+                        </template>
+                        <template #title>
+                            <span>You've reached the end.</span>
+                        </template>
+                        <template #content>
+                            <span>The filters can be changed to explore other events!</span>
+                        </template>
+                    </VDialogPlain>
+                </TransitionGroupFade>
+            </div>
         </div>
 
         <div id="load-more-event-rooms-observer-target"></div>
@@ -214,10 +265,12 @@
                 is_sort_menu_open: false,
 
                 is_fetching: false,
-                can_observer_fetch: true,
+                can_observer_fetch: false,
+                has_no_event_rooms_left_to_fetch: false,
 
                 selected_event: null as EventsAndLikeDetailsTypes|null,
                 playback_teleport_event_id: '',
+
                 played_events_by_id: [] as number[],
                 played_events_quantity_to_pause_scrolling: 50,
                 can_pause_scrolling: false,
@@ -236,8 +289,24 @@
 
                 return this.is_fetching === false && this.filtered_grouped_events_store.getEventRoomsForBrowsing.length === 0;
             },
+            canShowNoNewEventRoomsMessage() : boolean {
+
+                return (
+                    this.is_fetching === false &&
+                    this.filtered_grouped_events_store.getEventRoomsForBrowsing.length > 0 &&
+                    this.has_no_event_rooms_left_to_fetch === true
+                );
+            }
         },
         methods: {
+            isSelectedEventRoleName(index:number) : boolean {
+
+                return index === this.filtered_grouped_events_store.getCurrentEventRoleNameIndex;
+            },
+            isSelectedFilterType(index:number) : boolean {
+
+                return index === this.filtered_grouped_events_store.getCurrentFilterTypeIndex;
+            },
             async continueScrolling() : Promise<void> {
 
                 const is_first_page = this.filtered_grouped_events_store.getEventRoomsForBrowsing.length === 0;
@@ -245,50 +314,54 @@
                 this.can_pause_scrolling = false;
 
                 await this.getEventRooms(
-                    this.filtered_grouped_events_store.selected_event_tone,
-                    this.filtered_grouped_events_store.current_filter_type_index,
-                    is_first_page
+                    this.filtered_grouped_events_store.getSelectedEventTone,
+                    this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
+                    this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
+                    is_first_page,
                 );
             },
             openSortMenu() : void {
 
                 this.is_sort_menu_open = !this.is_sort_menu_open;
             },
-            updateCurrentFilterTypeIndex(index:number) : void {
+            async updateCurrentEventRoleNameIndex(index:number) : Promise<void> {
+
+                this.filtered_grouped_events_store.updateCurrentEventRoleNameIndex(index);
+            },
+            async updateCurrentFilterTypeIndex(index:number) : Promise<void> {
 
                 this.filtered_grouped_events_store.updateCurrentFilterTypeIndex(index);
                 
-                const selected_event_tone = this.filtered_grouped_events_store.getSelectedEventTone;
-
-                this.getEventRooms(selected_event_tone, index, true);
-            },
-            isFilterTypeSelected(index:number) : boolean {
-
-                return this.filtered_grouped_events_store.getCurrentFilterTypeIndex === index;
+                await this.getEventRooms(
+                    this.filtered_grouped_events_store.getSelectedEventTone,
+                    this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
+                    index,
+                    true,
+                );
             },
             async getEventRooms(
                 event_tone:EventTonesTypes|null,
+                current_event_role_name_index:number,
                 current_filter_type_index:number,
                 is_first_page:boolean
             ): Promise<void> {
 
                 this.is_fetching = true;
                 this.can_observer_fetch = false;
+                this.has_no_event_rooms_left_to_fetch = false;
 
                 //initialise to have all necessary keys available
                 //will only do so when no data exists
                 if(is_first_page === true){
 
-                    this.filtered_grouped_events_store.initialiseDataOnFirstPageAfterFilterChange(
-                        event_tone, current_filter_type_index
-                    );
+                    this.filtered_grouped_events_store.initialiseDataOnFirstPageAfterFilterChange(event_tone);
                 }
 
                 //check if we already have data
                 if(
                     is_first_page === true &&
                     this.filtered_grouped_events_store.hasDataOnFirstPageAfterFilterChange(
-                        event_tone, current_filter_type_index
+                        event_tone, current_event_role_name_index, current_filter_type_index,
                     ) === true
                 ){
 
@@ -306,22 +379,29 @@
                 if(event_tone === null){
 
                     full_url += (
-                        this.filtered_grouped_events_store.getNoEventToneEventRooms[current_filter_type_index]['current_page'] + 1
+                        this.filtered_grouped_events_store.getNoEventToneEventRooms[current_event_role_name_index][current_filter_type_index]['current_page'] + 1
                     ).toString();
 
                 }else{
 
                     full_url += event_tone.event_tone_slug + "/";
                     full_url += (
-                        this.filtered_grouped_events_store.getSelectedEventToneEventRooms[event_tone.id][current_filter_type_index]['current_page'] + 1
+                        this.filtered_grouped_events_store.getSelectedEventToneEventRooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['current_page'] + 1
                     ).toString();
                 }
+
+                console.trace('API called');
 
                 await axios.get(full_url)
                 .then((results: any) => {
 
-                    this.filtered_grouped_events_store.insertEventRooms(event_tone, current_filter_type_index, results.data['data']);
-                    console.log('API success');
+                    this.filtered_grouped_events_store.insertEventRooms(event_tone, current_event_role_name_index, current_filter_type_index, results.data['data']);
+
+                    if(results.data['data'].length === 0){
+
+                        this.has_no_event_rooms_left_to_fetch = true;
+                    }
+
                 })
                 .catch((error: any) => {
 
@@ -341,7 +421,12 @@
 
                 this.filtered_grouped_events_store.updateSelectedEventTone(event_tone);
 
-                this.getEventRooms(event_tone, this.filtered_grouped_events_store.getCurrentFilterTypeIndex, true);
+                await this.getEventRooms(
+                    event_tone,
+                    this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
+                    this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
+                    true,
+                );
             },
             handleNewSelectedEvent(event:EventsAndLikeDetailsTypes|null) : void {
 
@@ -381,6 +466,7 @@
 
             this.getEventRooms(
                 this.filtered_grouped_events_store.getSelectedEventTone,
+                this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
                 this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
                 true,
             );
@@ -395,7 +481,7 @@
                 if(
                     this.can_observer_fetch === false ||
                     this.can_pause_scrolling === true ||
-                    this.filtered_grouped_events_store.getEventRoomsForBrowsing.length === 0
+                    this.has_no_event_rooms_left_to_fetch === true
                 ){
 
                     return;
@@ -403,6 +489,7 @@
 
                 this.getEventRooms(
                     this.filtered_grouped_events_store.getSelectedEventTone,
+                    this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
                     this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
                     false,
                 );

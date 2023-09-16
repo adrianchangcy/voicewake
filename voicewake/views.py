@@ -121,9 +121,8 @@ class UsersUsernameAPI(generics.GenericAPIView):
         #proceed
 
         new_data = serializer.validated_data
-        User = get_user_model()
         
-        exists = User.objects.filter(
+        exists = get_user_model().objects.filter(
             username_lowercase=new_data['username'].lower()
         ).exists()
 
@@ -176,7 +175,7 @@ class UsersUsernameAPI(generics.GenericAPIView):
         new_data = serializer.validated_data
 
         #check again if it exists
-        username_exists = User.objects.filter(
+        username_exists = get_user_model().objects.filter(
             username_lowercase=new_data['username'].lower()
         ).exists()
 
@@ -221,7 +220,7 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
 
     def __init__(self, *args, **kwargs):
 
-        if 'current_context' not in kwargs or kwargs['current_context'] not in ['login', 'sign_up']:
+        if 'current_context' not in kwargs or kwargs['current_context'] not in ['log_in', 'sign_up']:
 
             raise custom_error(ValueError, dev_message="Incorrect current_context passed. Check .as_view() at urls.py.")
     
@@ -286,30 +285,39 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
             )
 
         new_data = serializer.validated_data
-        User = get_user_model()
         user_instance = None
 
         #get user
         #reminder that user shall always exist if following through account creation
         try:
 
-            user_instance = User.objects.get(email_lowercase = new_data['email'].lower())
+            user_instance = get_user_model().objects.get(email_lowercase = new_data['email'].lower())
 
-        except User.DoesNotExist:
+        except get_user_model().DoesNotExist:
 
-            #we do this to obscure clues that a user may or may not exist
-            if new_data['is_requesting_new_otp'] is True:
+            if self.current_context == "log_in":
 
-                #no need to notify non-registered emails on login attempts
-                #prevents the attack where our website is used as the source of DDOS (towards Gmail in this case)
+                #we do this to obscure clues that a user may or may not exist
+                if new_data['is_requesting_new_otp'] is True:
+                
+                    #no need to notify non-registered emails on login attempts
+                    #prevents the attack where our website is used as the source of DDOS (towards Gmail in this case)
+    
+                    #fake delay
+                    #during testing, send_mail() takes quite long, around 2+ secs
+                    time.sleep(random.uniform(0.7, 3.5))
+    
+                    return get_default_create_otp_response(email=new_data['email'])
+                
+                else:
 
-                #fake delay
-                #during testing, send_mail() takes quite long, around 2+ secs
-                time.sleep(random.uniform(0.7, 3.5))
+                    return get_default_verify_otp_response()
+                
+            elif self.current_context == "sign_up":
 
-                return get_default_create_otp_response(email=new_data['email'])
-            
-            return get_default_verify_otp_response()
+                user_instance = get_user_model().objects.create_user(email=new_data['email'])
+
+        #proceed with valid user_instance
         
         with transaction.atomic():
 
@@ -332,10 +340,10 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
                     template_title = ""
                     template_title_description = ""
 
-                    if self.current_context == 'login':
+                    if self.current_context == 'log_in':
                         template_title = "Code for login"
                         template_title_description = "Log in with this code:"
-                    else:
+                    elif self.current_context == 'sign_up':
                         template_title = "Code for sign-up"
                         template_title_description = "Sign up with this code:"
 
