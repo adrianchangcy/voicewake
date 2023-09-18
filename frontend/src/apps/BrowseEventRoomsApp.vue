@@ -2,49 +2,13 @@
     <div>
 
         <!--sorting options-->
-        <div class="flex flex-col gap-2 pb-6">
-
-            <!--event roles-->
-            <div class="w-full grid grid-cols-2">
-                <VActionTextOnly
-                    @click="updateCurrentEventRoleNameIndex(0)"
-                    prop-element="button"
-                    prop-element-size="s"
-                    prop-font-size="s"
-                    :prop-is-icon-only="true"
-                    :class="[
-                        isSelectedEventRoleName(0) ? 'border-b-theme-black' : 'border-b-theme-medium-gray',
-                        'col-span-1 border-b-2 rounded-b-none p-2'
-                    ]"
-                >
-                    <span class="mx-auto">
-                        <i class="fas fa-comment"></i>
-                        <span class="pl-1">Started</span>
-                    </span>
-                </VActionTextOnly>
-                <VActionTextOnly
-                    @click="updateCurrentEventRoleNameIndex(1)"
-                    prop-element="button"
-                    prop-element-size="s"
-                    prop-font-size="s"
-                    :prop-is-icon-only="true"
-                    :class="[
-                        isSelectedEventRoleName(1) ? 'border-b-theme-black' : 'border-b-theme-medium-gray',
-                        'col-span-1 border-b-2 rounded-b-none p-2'
-                    ]"
-                >
-                    <span class="mx-auto">
-                        <i class="fas fa-comments"></i>
-                        <span class="pl-1">Replied</span>
-                    </span>
-                </VActionTextOnly>
-            </div>
+        <div class="flex flex-col pb-14">
 
             <!--options-->
             <div ref="open_close_sort_menu_button">
 
                 <!--open/close options-->
-                <VActionSpecial
+                <VAction
                     @click="openSortMenu()"
                     prop-element="button"
                     type="button"
@@ -62,14 +26,14 @@
                         ]"
                         aria-hidden="true"
                     ></i>
-                </VActionSpecial>
+                </VAction>
 
                 <!--arrow-->
                 <!--needs mt-4 to stay to prevent snapping-->
                 <div class="mt-4 relative">
                     <div
                         v-show="is_sort_menu_open"
-                        class="z-20 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"
+                        class="z-30 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"
                     ></div>
                 </div>
 
@@ -81,7 +45,7 @@
                             var_name_for_element_bool_status: 'is_sort_menu_open',
                             refs_to_exclude: ['open_close_sort_menu_button']
                         }"
-                        class="absolute w-full h-fit z-10 bg-theme-light"
+                        class="absolute w-full h-fit z-20 bg-theme-light"
                     >
     
                         <!--use gap-3 because VEventToneMenu.vue has py-1-->
@@ -118,6 +82,42 @@
                     </div>
                 </div>
             </div>
+
+            <!--event roles-->
+            <div v-show="propIsUserProfilePage" class="w-full grid grid-cols-2">
+                <VActionTextOnly
+                    @click="updateCurrentEventRoleNameIndex(0)"
+                    prop-element="button"
+                    prop-element-size="s"
+                    prop-font-size="s"
+                    :prop-is-icon-only="true"
+                    :class="[
+                        isSelectedEventRoleName(0) ? 'border-b-theme-black' : 'border-b-theme-medium-gray',
+                        'col-span-1 border-b-2 rounded-b-none p-2'
+                    ]"
+                >
+                    <span class="mx-auto">
+                        <i class="fas fa-comment"></i>
+                        <span class="pl-1">Started</span>
+                    </span>
+                </VActionTextOnly>
+                <VActionTextOnly
+                    @click="updateCurrentEventRoleNameIndex(1)"
+                    prop-element="button"
+                    prop-element-size="s"
+                    prop-font-size="s"
+                    :prop-is-icon-only="true"
+                    :class="[
+                        isSelectedEventRoleName(1) ? 'border-b-theme-black' : 'border-b-theme-medium-gray',
+                        'col-span-1 border-b-2 rounded-b-none p-2'
+                    ]"
+                >
+                    <span class="mx-auto">
+                        <i class="fas fa-comments"></i>
+                        <span class="pl-1">Replied</span>
+                    </span>
+                </VActionTextOnly>
+            </div>
         </div>
 
         <div class="flex flex-col gap-8">
@@ -130,6 +130,7 @@
                     :prop-show-title="true"
                     :prop-event-room="event_room"
                     :prop-has-border="true"
+                    :prop-load-v-event-cards-only="true"
                     @newSelectedEvent=handleNewSelectedEvent($event)
                 />
 
@@ -141,12 +142,14 @@
                 />
             </TransitionGroupFade>
 
-            <div class="relative">
+            <!--dialogs-->
+            <!--make height at least same or bigger than largest element to avoid jolting-->
+            <div class="h-48 relative">
                 <TransitionGroupFade :prop-has-absolute="true">
 
                     <!--no event_rooms-->
                     <VDialogPlain
-                        v-show="canShowEventRoomsEmptyMessage"
+                        v-show="canShowEventRoomsEmptyMessage || canShowNoNewEventRoomsMessage"
                         :prop-has-border="false"
                         :prop-has-auto-spacing="false"
                         class="w-full"
@@ -155,7 +158,8 @@
                             <i class="far fa-face-meh-blank" aria-hidden="true"></i>
                         </template>
                         <template #title>
-                            <span>No events found.</span>
+                            <span v-show="canShowEventRoomsEmptyMessage">No events found.</span>
+                            <span v-show="canShowNoNewEventRoomsMessage">You've reached the end.</span>
                         </template>
                         <template #content>
                             <span>The filters can be changed to explore other content!</span>
@@ -193,23 +197,6 @@
                             </div>
                         </template>
                     </VDialogPlain>
-
-                    <VDialogPlain
-                        v-show="canShowNoNewEventRoomsMessage"
-                        :prop-has-border="false"
-                        :prop-has-auto-spacing="false"
-                        class="w-full"
-                    >
-                        <template #logo>
-                            <i class="far fa-face-meh-blank" aria-hidden="true"></i>
-                        </template>
-                        <template #title>
-                            <span>You've reached the end.</span>
-                        </template>
-                        <template #content>
-                            <span>The filters can be changed to explore other events!</span>
-                        </template>
-                    </VDialogPlain>
                 </TransitionGroupFade>
             </div>
         </div>
@@ -239,6 +226,7 @@
     import VPlayback from '@/components/medium/VPlayback.vue';
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
     import VEventToneMenu from '@/components/medium/VEventToneMenu.vue';
+    import VAction from '@/components/small/VAction.vue';
     import VActionSpecial from '@/components/small/VActionSpecial.vue';
     import VActionTextOnly from '@/components/small/VActionTextOnly.vue';
     import VDialogPlain from '@/components/small/VDialogPlain.vue';
@@ -262,6 +250,8 @@
                 currently_playing_event_store: useCurrentlyPlayingEventStore(),
                 filtered_grouped_events_store: useFilteredGroupedEventsStore(),
 
+                user_profile_username: "",  //only used at profile page
+
                 is_sort_menu_open: false,
 
                 is_fetching: false,
@@ -275,6 +265,12 @@
                 played_events_quantity_to_pause_scrolling: 50,
                 can_pause_scrolling: false,
             };
+        },
+        props: {
+            propIsUserProfilePage: {
+                type: Boolean,
+                default: false
+            },
         },
         computed: {
             getPlayedEventsLength() : number {
@@ -327,6 +323,13 @@
             async updateCurrentEventRoleNameIndex(index:number) : Promise<void> {
 
                 this.filtered_grouped_events_store.updateCurrentEventRoleNameIndex(index);
+
+                await this.getEventRooms(
+                    this.filtered_grouped_events_store.getSelectedEventTone,
+                    index,
+                    this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
+                    true,
+                );
             },
             async updateCurrentFilterTypeIndex(index:number) : Promise<void> {
 
@@ -373,22 +376,7 @@
 
                 //no existing data, proceed
 
-                //construct URL
-                let full_url = window.location.origin + "/api/event-rooms/list/completed/best/all/";
-
-                if(event_tone === null){
-
-                    full_url += (
-                        this.filtered_grouped_events_store.getNoEventToneEventRooms[current_event_role_name_index][current_filter_type_index]['current_page'] + 1
-                    ).toString();
-
-                }else{
-
-                    full_url += event_tone.event_tone_slug + "/";
-                    full_url += (
-                        this.filtered_grouped_events_store.getSelectedEventToneEventRooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['current_page'] + 1
-                    ).toString();
-                }
+                const full_url = await this.constructURL(event_tone, current_event_role_name_index, current_filter_type_index);
 
                 console.trace('API called');
 
@@ -428,6 +416,51 @@
                     true,
                 );
             },
+            async constructURL(
+                event_tone:EventTonesTypes|null,
+                current_event_role_name_index:number,
+                current_filter_type_index:number,
+            ) : Promise<string> {
+
+                //construct URL
+                let full_url = window.location.origin + "/api/event-rooms/list";
+
+                if(this.propIsUserProfilePage === true){
+                    full_url += "/user/" + this.user_profile_username;
+                }else{
+                    full_url += "/completed";
+                }
+
+                //latest/best
+                full_url += "/" + this.filtered_grouped_events_store.getFilterTypes[current_filter_type_index].toLowerCase();
+
+                //timeframe
+                full_url += "/all";
+
+                if(this.propIsUserProfilePage === true){
+                    full_url += "/" + this.filtered_grouped_events_store.getEventRoleNames[current_event_role_name_index].toLowerCase();
+                }else if(event_tone !== null){
+                    full_url += "/" + event_tone.event_tone_slug;
+                }
+
+                //get next page
+                if(event_tone === null){
+
+                    full_url += "/" + (
+                        this.filtered_grouped_events_store.getNoEventToneEventRooms[current_event_role_name_index][current_filter_type_index]['current_page'] + 1
+                    ).toString();
+
+                }else{
+
+                    full_url += "/" + (
+                        this.filtered_grouped_events_store.getSelectedEventToneEventRooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['current_page'] + 1
+                    ).toString();
+                }
+
+                console.log(full_url);
+
+                return full_url;
+            },
             handleNewSelectedEvent(event:EventsAndLikeDetailsTypes|null) : void {
 
                 this.selected_event = event;
@@ -457,6 +490,14 @@
             },
         },
         beforeMount(){
+
+            //get username
+            if(this.propIsUserProfilePage === true){
+
+                const container = (document.getElementById('data-container-get-user-profile') as HTMLElement);
+
+                this.user_profile_username = (container.getAttribute('data-user-profile-username') as string);
+            }
 
             //listen to store
             this.currently_playing_event_store.$subscribe((mutation, state)=>{

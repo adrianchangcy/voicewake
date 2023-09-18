@@ -129,6 +129,17 @@ if(document.querySelector('#browse-event-rooms-app')){
         .mount('#browse-event-rooms-app');
 }
 
+if(document.querySelector('#get-user-profile-app')){
+
+    createApp(
+        BrowseEventRoomsApp,
+        {
+            propIsUserProfilePage: true
+        }
+    ).directive('click-outside', clickOutside)
+    .mount('#get-user-profile-app');
+}
+
 if(document.querySelector('#log-in-page')){
 
     createApp(

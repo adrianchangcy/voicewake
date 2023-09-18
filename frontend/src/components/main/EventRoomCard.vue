@@ -24,7 +24,7 @@
             </VTitle>
         </div>
 
-        <!--more than 1 event total-->
+        <!--more than 1 event each-->
         <div v-if="originatorCount > 0 && responderCount > 0" class="flex flex-col gap-10">
 
             <!--originator-->
@@ -80,7 +80,14 @@
                 <VUser
                     :propUsername="propEventRoom.originator!.user.username"
                 />
+                <VEventCard
+                    v-if="propLoadVEventCardsOnly"
+                    :propEvent="propEventRoom.originator"
+                    :propIsSelected="checkIsSelected(propEventRoom.originator!.id)"
+                    @isSelected="handleNewSelectedEvent($event)"
+                />
                 <VPlayback
+                    v-else
                     :propEvent="propEventRoom.originator"
                     :propAudioVolumePeaks="propEventRoom.originator!.audio_volume_peaks"
                     :propBucketQuantity="propEventRoom.originator!.audio_volume_peaks.length"
@@ -93,24 +100,49 @@
             </div>
 
             <!--responders-->
-            <div
-                v-for="(event, index) in propEventRoom.responder" :key="event.id"
-                class="flex flex-col gap-2"
-            >
-                <VUser
-                    :propUsername="event.user.username"
-                />
-                <VPlayback
-                    :propEvent="event"
-                    :propAudioVolumePeaks="event.audio_volume_peaks"
-                    :propBucketQuantity="event.audio_volume_peaks.length"
-                />  
-                <VEventTools
-                    :propEvent="event"
-                    :propEventRoomId="propEventRoom.event_room.id"
-                    :prop-filtered-grouped-events-store-event-room-index="propFilteredGroupedEventsStoreEventRoomIndex"
-                    :prop-filtered-grouped-events-store-event-index="index"
-                />
+            <div v-if="responderCount > 0">
+                <div v-if="propLoadVEventCardsOnly">
+                    <div
+                        v-for="(event, index) in propEventRoom.responder" :key="event.id"
+                        class="flex flex-col gap-2"
+                    >
+                        <VUser
+                            :propUsername="event.user.username"
+                        />
+                        <VEventCard
+                            :propEvent="event"
+                            :propIsSelected="checkIsSelected(event.id)"
+                            @isSelected="handleNewSelectedEvent($event)"
+                        />
+                        <VEventTools
+                            :propEvent="event"
+                            :propEventRoomId="propEventRoom.event_room.id"
+                            :prop-filtered-grouped-events-store-event-room-index="propFilteredGroupedEventsStoreEventRoomIndex"
+                            :prop-filtered-grouped-events-store-event-index="index"
+                        />
+                    </div>
+                </div>
+                <div v-else>
+                    <div
+                        v-for="(event, index) in propEventRoom.responder" :key="event.id"
+                        class="flex flex-col gap-2"
+                    >
+                        <VUser
+                            :propUsername="event.user.username"
+                        />
+                        <VPlayback
+                            :propEvent="event"
+                            :propAudioVolumePeaks="event.audio_volume_peaks"
+                            :propBucketQuantity="event.audio_volume_peaks.length"
+                        />
+                        <VEventTools
+                            :propEvent="event"
+                            :propEventRoomId="propEventRoom.event_room.id"
+                            :prop-filtered-grouped-events-store-event-room-index="propFilteredGroupedEventsStoreEventRoomIndex"
+                            :prop-filtered-grouped-events-store-event-index="index"
+                        />
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -157,6 +189,10 @@
             propFilteredGroupedEventsStoreEventRoomIndex: {
                 type: Number,
                 required: false
+            },
+            propLoadVEventCardsOnly: {
+                type: Boolean,
+                default: false
             },
         },
         computed: {
