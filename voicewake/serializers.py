@@ -160,6 +160,12 @@ class CreateEventsSerializer(serializers.Serializer):
 
 
 
+class HandleEventRoomReplyChoicesAPISerializer(serializers.Serializer):
+
+    event_tone_id = serializers.IntegerField(required=False)
+
+
+
 class HandleReplyingEventRoomsAPISerializer(serializers.Serializer):
 
     event_room_id = serializers.IntegerField()

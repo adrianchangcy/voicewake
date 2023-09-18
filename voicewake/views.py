@@ -9,6 +9,7 @@ from django.db.models import Prefetch
 from django.views.decorators.cache import never_cache
 from django.utils.decorators import method_decorator
 from django.http import Http404
+from django.urls import reverse
 
 #auth
 from django.contrib.auth import get_user_model
@@ -552,48 +553,8 @@ class EventRoomsAPI(generics.GenericAPIView):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
 
-    def get_event_rooms_by_is_replying(self):
-
-        events = Events.objects.prefetch_related(
-            'event_role',
-            'event_room__generic_status',
-            'event_room__created_by',
-            'event_room',
-            'event_tone',
-            'generic_status',
-            'user',
-        ).raw(
-            '''
-            SELECT
-                events.*,
-                event_rooms.*,
-                event_tones.*,
-                generic_statuses.*,
-                event_likes_dislikes.is_liked AS is_liked_by_user
-            FROM events
-            LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
-            LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
-            LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
-            WHERE events.event_room_id IN (
-                SELECT id FROM event_rooms
-                WHERE locked_for_user_id=%s
-                AND is_replying=%s
-            )
-            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id, is_liked_by_user
-            ''',
-            params=(
-                self.request.user.id,
-                self.request.user.id,
-                True,
-            )
-        )
-
-        return events
-
-
     def get_event_rooms_by_completed(
-        self, best_or_new:Literal['best', 'new']='best',
+        self, latest_or_best:Literal['latest', 'best']='latest',
         event_tone_slug:str='',
         timeframe:Literal['day', 'week', 'month', 'all']='all',
         page=1
@@ -642,7 +603,7 @@ class EventRoomsAPI(generics.GenericAPIView):
         #determine order
         order_sql = ''
 
-        if best_or_new == 'best':
+        if latest_or_best == 'best':
             order_sql = 'ORDER BY events.like_count DESC, events.dislike_count ASC'
         else:
             order_sql = 'ORDER BY events.when_created DESC'
@@ -713,7 +674,7 @@ class EventRoomsAPI(generics.GenericAPIView):
 
     def get_event_rooms_by_user_and_event_role(
         self, username:str, event_role_name:str,
-        best_or_new:Literal['best', 'new']='best',
+        latest_or_best:Literal['latest', 'best']='latest',
         event_tone_slug:str='',
         timeframe:Literal['day', 'week', 'month', 'all']='all',
         page=1
@@ -762,7 +723,7 @@ class EventRoomsAPI(generics.GenericAPIView):
         #determine order
         order_sql = ''
 
-        if best_or_new == 'best':
+        if latest_or_best == 'best':
             order_sql = 'ORDER BY events.like_count DESC, events.dislike_count ASC'
         else:
             order_sql = 'ORDER BY events.when_created DESC'
@@ -909,9 +870,14 @@ class EventRoomsAPI(generics.GenericAPIView):
         response = None
 
         if(
-            'username' in kwargs and 'best_or_new' in kwargs and
+            'username' in kwargs and 'latest_or_best' in kwargs and
             'timeframe' in kwargs and 'event_role_name' in kwargs and 'page' in kwargs
         ):
+
+            event_tone_slug = ''
+
+            if 'event_tone_slug' in kwargs:
+                event_tone_slug = kwargs['event_tone_slug']
 
             response = Response(
                 data={
@@ -921,8 +887,8 @@ class EventRoomsAPI(generics.GenericAPIView):
                             self.get_event_rooms_by_user_and_event_role(
                                 kwargs['username'],
                                 kwargs['event_role_name'],
-                                kwargs['best_or_new'],
-                                kwargs['event_tone_slug'],
+                                kwargs['latest_or_best'],
+                                event_tone_slug,
                                 kwargs['timeframe'],
                                 url_page,
                             )
@@ -933,7 +899,7 @@ class EventRoomsAPI(generics.GenericAPIView):
                 status=status.HTTP_200_OK
             )
         
-        elif 'best_or_new' in kwargs and 'timeframe' in kwargs and 'page' in kwargs:
+        elif 'latest_or_best' in kwargs and 'timeframe' in kwargs and 'page' in kwargs:
 
             url_event_tone_slug = ''
             if 'event_tone_slug' in kwargs:
@@ -945,7 +911,7 @@ class EventRoomsAPI(generics.GenericAPIView):
                     'data': GroupedEventsSerializer(
                         group_events_into_event_rooms(
                             self.get_event_rooms_by_completed(
-                                kwargs['best_or_new'],
+                                kwargs['latest_or_best'],
                                 url_event_tone_slug,
                                 kwargs['timeframe'],
                                 url_page,
@@ -1041,7 +1007,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
 
 
     #excludes event_room started by user
-    def get_event_rooms_by_random_incomplete(self):
+    def get_event_rooms_by_random_incomplete(self, event_tone_slug:str=''):
 
         datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
         datetime_now = datetime_now.strftime('%Y-%m-%d %H:%M:%S %z')
@@ -1058,17 +1024,21 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
             'user',
         ).raw(
             '''
-            WITH selected_event_rooms AS (
-                SELECT event_rooms.id AS id FROM event_rooms
-                INNER JOIN generic_statuses ON event_rooms.generic_status_id = generic_statuses.id
-                LEFT JOIN user_event_rooms ON event_rooms.id = user_event_rooms.event_room_id AND user_event_rooms.user_id = %s
-                WHERE generic_statuses.generic_status_name = %s
-                AND locked_for_user_id IS NULL
-                AND created_by_id != %s
-                AND user_event_rooms.is_excluded_for_reply IS NOT TRUE
-                ORDER BY event_rooms.when_created DESC
-                LIMIT %s
-            )
+            WITH
+                selected_event_tones AS (
+                    SELECT id FROM get_id_of_one_or_all_event_tones_via_slug(%s)
+                ),
+                selected_event_rooms AS (
+                    SELECT event_rooms.id AS id FROM event_rooms
+                    INNER JOIN generic_statuses ON event_rooms.generic_status_id = generic_statuses.id
+                    LEFT JOIN user_event_rooms ON event_rooms.id = user_event_rooms.event_room_id AND user_event_rooms.user_id = %s
+                    WHERE generic_statuses.generic_status_name = %s
+                    AND locked_for_user_id IS NULL
+                    AND created_by_id != %s
+                    AND user_event_rooms.is_excluded_for_reply IS NOT TRUE
+                    ORDER BY event_rooms.when_created DESC
+                    LIMIT %s
+                )
             SELECT
                 events.*,
                 selected_event_rooms.*,
@@ -1077,6 +1047,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                 event_likes_dislikes.is_liked AS is_liked_by_user
             FROM events
             RIGHT JOIN selected_event_rooms ON events.event_room_id = selected_event_rooms.id
+            RIGHT JOIN selected_event_tones ON events.event_tone_id = selected_event_tones.id
             LEFT JOIN event_roles ON events.event_role_id = event_roles.id
             LEFT JOIN event_rooms ON selected_event_rooms.id = event_rooms.id
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
@@ -1087,6 +1058,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
             GROUP BY events.id, event_tones.id, generic_statuses.id, selected_event_rooms.id, is_liked_by_user
             ''',
             params=(
+                event_tone_slug,
                 self.request.user.id,
                 'incomplete',
                 self.request.user.id,
@@ -1183,7 +1155,38 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                         ).data,
                     },
                 )
+            
+        #check if user has specified event_tones
+        serializer = HandleEventRoomReplyChoicesAPISerializer(data=request.data, many=False)
+
+        if serializer.is_valid() is False:
+
+            return Response(
+                data={
+                    'message': 'Invalid data.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
+        new_data = serializer.validated_data
+
+        specified_event_tone = None
+
+        try:
+
+            if 'event_tone_id' in new_data:
+
+                specified_event_tone = EventTones.objects.get(pk=new_data['event_tone_id'])
+
+        except EventTones.DoesNotExist:
+
+            return Response(
+                data={
+                    'message': 'Specified event_tone_id does not exist.'
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
         try:
 
             with transaction.atomic():
@@ -1198,7 +1201,12 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                     #only unlock on skip
 
                     #get events
-                    events = self.get_event_rooms_by_random_incomplete()
+                    events = None
+
+                    if specified_event_tone is None:
+                        events = self.get_event_rooms_by_random_incomplete()
+                    else:
+                        events = self.get_event_rooms_by_random_incomplete(event_tone_slug=specified_event_tone.event_tone_slug)
 
                     if len(events) == 0:
 
@@ -1924,6 +1932,48 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
 
 
 #=====WEB PAGES=====
+
+@method_decorator(
+    [
+        app_decorators.deny_if_no_username("redirect"),
+        app_decorators.deny_if_banned("redirect"),
+    ],
+    name='get'
+)
+class GetUserProfile(TemplateView):
+
+    template_name = 'voicewake/user_profile.html'
+
+    def get(self, request, *args, **kwargs):
+
+        try:
+
+            specific_user = get_user_model().objects.get(username_lowercase=kwargs['username'].lower())
+
+        except get_user_model().DoesNotExist:
+
+            return render(
+                request,
+                template_name='voicewake/404.html',
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        #redirect/change URL to respect username's case sensitivity
+        if kwargs['username'] != specific_user.username:
+
+            return redirect(
+                reverse('user_profile', kwargs={'username': specific_user.username})
+            )
+
+        return render(
+            request,
+            template_name=self.template_name,
+            context={
+            'user_profile_username': specific_user.username,
+            }
+        )
+
+
 
 #create main events, but actual creation is via EventsAPI
 #handles originator events

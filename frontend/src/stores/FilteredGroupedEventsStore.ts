@@ -21,16 +21,20 @@ interface SelectedEventToneEventRoomsType{
 
 export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_events_store', {
     state: ()=>({
-        current_event_role_name_index: 1,
+        current_event_role_name_index: 0,
         event_role_names: ["originator", "responder"],
         current_filter_type_index: 0,
-        filter_types: ["Best", "Latest"],
+        filter_types: ["Latest", "Best"],
 
         selected_event_tone: null as EventTonesTypes|null,
         no_event_tone_event_rooms: {} as NoEventToneEventRoomsType,
         selected_event_tone_event_rooms: {} as SelectedEventToneEventRoomsType,
     }),    
     getters: {
+        getEventRoleNames: (state) => {
+
+            return state.event_role_names;
+        },
         getNoEventToneEventRooms: (state) => {
 
             return state.no_event_tone_event_rooms;
