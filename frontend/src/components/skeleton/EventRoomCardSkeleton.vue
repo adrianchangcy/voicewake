@@ -1,7 +1,7 @@
 <template>
     <div
         :class="[
-            propHasBorder === true ? 'px-4 pt-4 pb-12      border border-theme-light-gray rounded-lg' : '',
+            propHasBorder === true ? 'px-4 pt-4 pb-14      border border-theme-light-gray rounded-lg' : '',
             'flex flex-col'
         ]"
     >
@@ -9,7 +9,7 @@
         <!--title and datetime-->
         <!--<div> seems to have bigger height than the inner <span>, and doing it all in <span> didn't work-->
         <div class="flex flex-col pb-10">
-            <div class="w-[75%] h-7 flex items-center">
+            <div class="w-[75%] h-6 flex items-center">
                 <div class="w-full h-5 rounded-lg skeleton"></div>
             </div>
             <div class="w-[25%] h-6 flex items-center">
