@@ -9,8 +9,8 @@
             class="pt-8"
         >
             <template #title>
-                <div class="flex flex-col">
-                    <i class="fas fa-comments text-2xl w-full text-center" aria-hidden="true"></i>
+                <div class="flex flex-col text-center">
+                    <i class="fas fa-comments text-2xl" aria-hidden="true"></i>
                 </div>
             </template>
         </VTitle>
@@ -80,12 +80,13 @@
                                         v-show="current_simple_dialog === simple_dialogs[0]"
                                         :prop-has-border="false"
                                         :prop-has-auto-spacing="false"
+                                        class="w-full"
                                     >
                                         <template #logo>
                                             <i class="far fa-face-meh-blank" aria-hidden="true"></i>
                                         </template>
                                         <template #title>
-                                            <span>No new events found.</span>
+                                            <span>No new recordings found.</span>
                                         </template>
                                         <template #content>
                                             <span>Search again in a moment!</span>
@@ -97,12 +98,13 @@
                                         v-show="current_simple_dialog === simple_dialogs[1]"
                                         :prop-has-border="false"
                                         :prop-has-auto-spacing="false"
+                                        class="w-full"
                                     >
                                         <template #logo>
                                             <i class="fas fa-hourglass-end" aria-hidden="true"></i>
                                         </template>
                                         <template #title>
-                                            <span>Event choice has expired.</span>
+                                            <span>Reply choice has expired.</span>
                                         </template>
                                         <template #content>
                                             <span>Search again for more!</span>
@@ -357,6 +359,7 @@
     import GroupedEventsTypes from '@/types/GroupedEvents.interface';
     import StatusValues from '@/types/values/StatusValues';
     import { useUnfinishedReplyStore } from '@/stores/UnfinishedReplyStore';
+    import EventTonesTypes from '@/types/EventTones.interface';
 
     const axios = require('axios');
 
@@ -369,6 +372,9 @@
                 new_reply_choice_event_rooms: [] as GroupedEventsTypes[] | [],
                 unfinished_reply_event_room: null as GroupedEventsTypes | null,
                 redirect_url: "",
+
+                is_sort_menu_open: false,
+                selected_event_tone: null as EventTonesTypes|null,
 
                 expiry_interval: null as number | null,
                 expiry_string: "",
@@ -421,6 +427,16 @@
             },
         },
         methods: {
+            async handleNewSelectedEventTone(new_value:EventTonesTypes|null) : Promise<void> {
+
+                this.selected_event_tone = new_value;
+
+                this.getEventRooms();
+            },
+            toggleSortMenu() : void {
+
+                this.is_sort_menu_open = !this.is_sort_menu_open;
+            },
             handleUnfinishedReplyStoreChange() : void {
 
                 const store_status = this.unfinished_reply_store.getStatus;
@@ -570,7 +586,14 @@
 
                 this.is_searching = true;
 
-                await axios.post(window.location.origin + "/api/event-rooms/reply-choices/list")
+                let data = new FormData();
+
+                if(this.selected_event_tone !== null){
+
+                    data.append('event_tone_id', JSON.stringify(this.selected_event_tone.id));
+                }
+
+                await axios.post(window.location.origin + "/api/event-rooms/reply-choices/list", data)
                 .then((results: any) => {
 
                     if(results.data["data"].length === 0){

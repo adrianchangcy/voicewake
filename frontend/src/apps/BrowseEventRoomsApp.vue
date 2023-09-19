@@ -9,7 +9,7 @@
 
                 <!--open/close options-->
                 <VAction
-                    @click="openSortMenu()"
+                    @click="toggleSortMenu()"
                     prop-element="button"
                     type="button"
                     prop-element-size="s"
@@ -192,7 +192,7 @@
                                     type="button"
                                     class="w-full"
                                 >
-                                    <span class="mx-auto">Load more events</span>
+                                    <span class="mx-auto">Load more recordings</span>
                                 </VActionSpecial>
                             </div>
                         </template>
@@ -316,7 +316,7 @@
                     is_first_page,
                 );
             },
-            openSortMenu() : void {
+            toggleSortMenu() : void {
 
                 this.is_sort_menu_open = !this.is_sort_menu_open;
             },

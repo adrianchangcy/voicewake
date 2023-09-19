@@ -113,6 +113,7 @@ if(document.querySelector('#create-event-rooms-app')){
 if(document.querySelector('#list-event-room-choices-app')){
 
     createApp(ListEventRoomChoicesApp)
+        .directive('click-outside', clickOutside)
         .mount('#list-event-room-choices-app');
 }
 

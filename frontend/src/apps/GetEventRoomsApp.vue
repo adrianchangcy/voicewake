@@ -3,7 +3,7 @@
 
         <div v-if="is_searching" class="flex flex-col gap-10">
 
-            <!--events-->
+            <!--loading events-->
             <div v-for="x in event_count" :key="x">
                 <VEventCardSkeleton/>
             </div>
@@ -197,7 +197,6 @@
             };
         },
         computed: {
-
             canSubmit() : boolean {
 
                 return this.is_this_user_replying === true && this.is_searching === false &&
