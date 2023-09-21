@@ -105,6 +105,7 @@ const clickOutside = {
 };
 
 //as long as base-app has pinia, and since base-app is loaded everywhere, pinia can thus be used everywhere
+//the same cannot be said for click-outside
 createApp(BaseApp)
     .use(pinia)
     .directive('click-outside', clickOutside)
@@ -121,12 +122,14 @@ if(document.querySelector('#create-event-rooms-app')){
 if(document.querySelector('#list-event-room-choices-app')){
 
     createApp(ListEventRoomChoicesApp)
+        .directive('click-outside', clickOutside)
         .mount('#list-event-room-choices-app');
 }
 
 if(document.querySelector('#get-event-rooms-app')){
 
     createApp(GetEventRoomsApp)
+        .directive('click-outside', clickOutside)
         .mount('#get-event-rooms-app');
 }
 
