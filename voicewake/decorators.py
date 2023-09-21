@@ -11,6 +11,42 @@ from typing import Literal
 #not all decorators need to run on every request and response
 
 
+def deny_if_not_logged_in(return_instance:Literal["redirect"]):
+
+    if return_instance not in ["redirect"]:
+
+        raise ValueError("Invalid return_instance.")
+    
+    
+    def decorator(passed_function):
+
+        @functools.wraps(passed_function)
+        def inner(request, *args, **kwargs):
+
+            redirect_url = reverse('log_in')
+
+            if request.user.is_authenticated is False:
+
+                if return_instance == "response":
+
+                    return JsonResponse(
+                        data={
+                            'message': 'You are not logged in.',
+                        },
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+                
+                elif return_instance == "redirect" and request.path != redirect_url:
+
+                    return redirect(redirect_url)
+
+            return passed_function(request, *args, **kwargs)
+        
+        return inner
+    
+    return decorator
+
+
 
 def deny_if_already_logged_in(return_instance:Literal["response", "redirect"]):
 

@@ -1981,6 +1981,7 @@ class GetUserProfile(TemplateView):
     [
         app_decorators.deny_if_no_username("redirect"),
         app_decorators.deny_if_banned("redirect"),
+        app_decorators.deny_if_not_logged_in("redirect"),
     ],
     name='get'
 )
