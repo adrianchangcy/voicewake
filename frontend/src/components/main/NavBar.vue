@@ -105,7 +105,7 @@
                     propElement="button"
                     type="button"
                     :propIsIconOnly="true"
-                    class="w-full h-full pb-0.5"
+                    class="w-full h-full"
                 >
                     <span class="mx-auto">
                         <i class="fas fa-circle-user text-xl" aria-hidden="true"></i>
