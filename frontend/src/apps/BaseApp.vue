@@ -1,25 +1,36 @@
 <template>
     <NavBar
-        :propIsLoggedIn="is_logged_in"
         :propUsername="username"
-        @emitIsNavBarOpen="handleIsNavBarOpen($event)"
-        @emitToOpenUserLogInSignUp="handleOpenUserLogInSignUp($event)"
     />
 
     <!--all popups belong here so we can ensure that only one shows at a time-->
     <div class="w-full h-0 relative">
         <TransitionFade>
             <div
-                v-if="is_user_log_in_sign_up_open === true"
+                v-if="pop_up_manager_store.getIsUserLogInSignUpOpen"
                 class="absolute hidden lg:flex flex-row w-full h-[calc(100vh-4.5rem)] bg-theme-light/60 backdrop-blur"
             >
                 <div
                     class="lg:w-2/6 xl:w-2/6 max-h-[90%] min-h-fit m-auto px-4 border border-theme-light-gray bg-theme-light shadow-xl rounded-lg overflow-y-auto"
                 >
                     <UserLogInSignUp
-                        :propRequestedSection="requested_section"
+                        :propRequestedSection="pop_up_manager_store.getRequestedSection"
                         :propIsForStaticPage="false"
-                        @isClosed="handleOpenUserLogInSignUp($event)"
+                    />
+                </div>
+            </div>
+            <div
+                v-else-if="pop_up_manager_store.getIsLoginRequiredPromptOpen"
+                class="absolute flex items-center w-full h-[calc(100vh-4.5rem)] bg-theme-light/60 backdrop-blur"
+            >
+                <div
+                    v-click-outside="{
+                        var_name_for_element_bool_status: forceCloseLoginRequiredPromptMenu,
+                        refs_to_exclude: []
+                    }"
+                    class="w-5/6 sm:w-fit max-h-[90%] min-h-fit m-auto px-4 pt-10 pb-14 border border-theme-light-gray bg-theme-light shadow-xl rounded-lg"
+                >
+                    <VLoginRequiredPrompt
                     />
                 </div>
             </div>
@@ -31,7 +42,7 @@
 
         <!--ensure pop-ups don't clash with toasts-->
         <div
-            v-show="!is_nav_bar_open"
+            v-show="!pop_up_manager_store.getHasPopUpOpen"
             class="w-0 h-0"
         >
             <VNotiwind/>
@@ -49,44 +60,62 @@
     import NavBar from '@/components/main/NavBar.vue';
     import UserLogInSignUp from '@/components/main/UserLogInSignUp.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
+    import VLoginRequiredPrompt from '@/components/medium/VLoginRequiredPrompt.vue';
 </script>
 
 <script lang="ts">
     import { defineComponent } from 'vue';
     import { getDataFromTemplateJSONScript } from '@/helper_functions';
     import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
+    import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
+    import { notify } from 'notiwind';
 
     export default defineComponent({
         name: 'BaseApp',
         data(){
             return {
                 page_refresh_trigger_store: usePageRefreshTriggerStore(),
+                pop_up_manager_store: usePopUpManagerStore(),
 
-                is_nav_bar_open: false,
-                is_logged_in: false,
                 username: "",
-
-                requested_section: "",
-                is_user_log_in_sign_up_open: false
             };
         },
+        computed: {
+        },
         methods: {
-            handleIsNavBarOpen(new_value:boolean) : void {
+            forceCloseLoginRequiredPromptMenu() : void {
 
-                this.is_nav_bar_open = new_value;
+                this.pop_up_manager_store.toggleIsLoginRequiredPromptOpen(false);
             },
-            handleOpenUserLogInSignUp(section:string) : void {
+            checkHasCookiesConsent() : void {
 
-                this.requested_section = section;
+                if(localStorage.getItem('user_consents_to_cookies') !== null){
 
-                //"..." means open, "" means close
-                this.is_user_log_in_sign_up_open = section.length > 0;
+                    return;
+                }
+
+                notify({
+                    icon: 'fas fa-cookie-bite',
+                    title: 'Cookies Consent',
+                    text: 'We use cookies so users can stay logged in.',
+                    type: 'generic',
+                    button_1: {
+                        text: 'Accept',
+                        callback: this.setCookiesConsent,
+                    },
+                }, -1);
+            },
+            setCookiesConsent() : void {
+
+                localStorage.setItem('user_consents_to_cookies', true);
             },
         },
         beforeMount(){
 
             //is logged in
-            this.is_logged_in = getDataFromTemplateJSONScript("data-user-is-authenticated") as boolean;
+            this.pop_up_manager_store.setIsLoggedIn(
+                getDataFromTemplateJSONScript("data-user-is-authenticated") as boolean
+            );
 
             //username
             const username = getDataFromTemplateJSONScript("data-user-username") as string|null;
@@ -104,6 +133,10 @@
 
                 window.location.replace(window.location.href);
             });
+        },
+        mounted(){
+
+            this.checkHasCookiesConsent();
         },
     });
 </script>

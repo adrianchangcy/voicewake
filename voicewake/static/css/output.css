@@ -678,10 +678,6 @@ video {
   top: 0.25rem;
 }
 
-.top-10 {
-  top: 2.5rem;
-}
-
 .top-2 {
   top: 0.5rem;
 }
@@ -690,8 +686,36 @@ video {
   top: 1rem;
 }
 
-.top-12 {
-  top: 3rem;
+.top-3 {
+  top: 0.75rem;
+}
+
+.bottom-3 {
+  bottom: 0.75rem;
+}
+
+.bottom-4 {
+  bottom: 1rem;
+}
+
+.top-10 {
+  top: 2.5rem;
+}
+
+.top-14 {
+  top: 3.5rem;
+}
+
+.top-\[3\.3rem\] {
+  top: 3.3rem;
+}
+
+.top-\[3\.25rem\] {
+  top: 3.25rem;
+}
+
+.isolate {
+  isolation: isolate;
 }
 
 .-z-10 {
@@ -756,6 +780,14 @@ video {
 
 .col-start-7 {
   grid-column-start: 7;
+}
+
+.col-start-6 {
+  grid-column-start: 6;
+}
+
+.col-start-5 {
+  grid-column-start: 5;
 }
 
 .row-span-1 {
@@ -847,6 +879,14 @@ video {
 
 .mt-\[4\.5rem\] {
   margin-top: 4.5rem;
+}
+
+.mt-1 {
+  margin-top: 0.25rem;
+}
+
+.mt-12 {
+  margin-top: 3rem;
 }
 
 .box-content {
@@ -1080,6 +1120,18 @@ video {
   width: 100%;
 }
 
+.w-screen {
+  width: 100vw;
+}
+
+.w-4\/6 {
+  width: 66.666667%;
+}
+
+.w-5\/6 {
+  width: 83.333333%;
+}
+
 .max-w-full {
   max-width: 100%;
 }
@@ -1090,6 +1142,10 @@ video {
 
 .flex-1 {
   flex: 1 1 0%;
+}
+
+.flex-shrink-0 {
+  flex-shrink: 0;
 }
 
 .shrink-0 {
@@ -1459,6 +1515,10 @@ video {
   border-top-width: 2px;
 }
 
+.border-r-2 {
+  border-right-width: 2px;
+}
+
 .border-theme-black {
   --tw-border-opacity: 1;
   border-color: rgb(68 68 68 / var(--tw-border-opacity));
@@ -1595,6 +1655,10 @@ video {
   background-color: rgb(255 255 255 / 0.6);
 }
 
+.bg-theme-black\/60 {
+  background-color: rgb(68 68 68 / 0.6);
+}
+
 .bg-gradient-radial {
   background-image: radial-gradient(var(--tw-gradient-stops));
 }
@@ -1665,6 +1729,11 @@ video {
   padding-bottom: 2rem;
 }
 
+.py-4 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
 .pb-0 {
   padding-bottom: 0px;
 }
@@ -1679,10 +1748,6 @@ video {
 
 .pb-10 {
   padding-bottom: 2.5rem;
-}
-
-.pb-12 {
-  padding-bottom: 3rem;
 }
 
 .pb-14 {
@@ -1763,6 +1828,26 @@ video {
 
 .pt-8 {
   padding-top: 2rem;
+}
+
+.pt-3 {
+  padding-top: 0.75rem;
+}
+
+.pr-1 {
+  padding-right: 0.25rem;
+}
+
+.pb-12 {
+  padding-bottom: 3rem;
+}
+
+.pt-0 {
+  padding-top: 0px;
+}
+
+.pt-0\.5 {
+  padding-top: 0.125rem;
 }
 
 .text-left {
@@ -2073,6 +2158,10 @@ video {
 
 .\[event_role_name_index\:number\] {
   event_role_name_index: number;
+}
+
+.\[key\:string\] {
+  key: string;
 }
 
 /*enable this to troubleshoot css errors*/
@@ -2491,6 +2580,11 @@ textarea {
 
   .sm\:w-3\/4 {
     width: 75%;
+  }
+
+  .sm\:w-fit {
+    width: -moz-fit-content;
+    width: fit-content;
   }
 
   .sm\:translate-x-0 {

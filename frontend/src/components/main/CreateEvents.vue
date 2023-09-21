@@ -150,11 +150,13 @@
     import { defineComponent } from 'vue';
     import EventToneTypes from '@/types/EventTones.interface';
     import { notify } from 'notiwind';
+    import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     const axios = require('axios');
 
     export default defineComponent({
         data() {
             return {
+                pop_up_manager_store: usePopUpManagerStore(),
 
                 event_name: "",
 
@@ -248,6 +250,12 @@
                     return;
                 }
 
+                if(this.pop_up_manager_store.getIsLoggedIn === false){
+
+                    this.pop_up_manager_store.toggleIsLoginRequiredPromptOpen(true);
+                    return;
+                }
+
                 this.is_submitting = true;
 
                 let data = new FormData();
@@ -298,7 +306,7 @@
 
                     notify({
                         title: this.propIsOriginator === true ? 'Creating event failed' : 'Creating reply failed',
-                        text: error.response.data['message'],
+                        text: (this.propIsOriginator === true ? 'Unable to create event. ' : 'Unable to create reply. ') + error.response.data['message'],
                         type: "error"
                     }, 3000);
                 });

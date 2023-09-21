@@ -363,7 +363,7 @@
 
                     notify({
                         title: "Deleting reply failed",
-                        text: error.response.data['message'],
+                        text: "Unable to delete your reply. " + error.response.data['message'],
                         type: "error"
                     }, 3000);
                 });
@@ -399,7 +399,7 @@
 
                     notify({
                         title: "Event search failed",
-                        text: error.response.data['message'],
+                        text: "Unable to get this event. " + error.response.data['message'],
                         type: "error"
                     }, 3000);
                     this.is_searching = false;

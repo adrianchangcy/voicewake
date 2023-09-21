@@ -82,7 +82,15 @@ const clickOutside = {
                 
                 //change element's is_open to false manually, because no other way to run methods without binding.value()
                 //binding.value() requires that you pass only the method name to the directive
-                binding.instance.$data[var_name_for_element_bool_status] = false;
+                if(typeof var_name_for_element_bool_status === 'string'){
+
+                    binding.instance.$data[var_name_for_element_bool_status] = false;
+
+                }else{
+
+                    //callback
+                    var_name_for_element_bool_status();
+                }
             }
         };
 
@@ -113,7 +121,6 @@ if(document.querySelector('#create-event-rooms-app')){
 if(document.querySelector('#list-event-room-choices-app')){
 
     createApp(ListEventRoomChoicesApp)
-        .directive('click-outside', clickOutside)
         .mount('#list-event-room-choices-app');
 }
 

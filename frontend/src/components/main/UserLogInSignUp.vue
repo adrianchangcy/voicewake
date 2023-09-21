@@ -10,14 +10,14 @@
         >
             <VActionTextOnly
                 :propIsIconOnly="true"
-                @click.stop="emitIsClosed()"
+                @click.stop="forceClose()"
                 propElement="button"
                 propElementSize="s"
                 type="button"
                 class="w-10 absolute top-1 -right-3 m-auto"
             >
                 <i class="fas fa-xmark mx-auto text-xl" aria-hidden="true"></i>
-                <span class="sr-only">close login sign-up menu</span>
+                <span class="sr-only">close login and sign-up menu</span>
             </VActionTextOnly>
         </div>
 
@@ -134,8 +134,8 @@
                             </VTitle>
 
                             <VInput
-                                propElementId="email-address"
-                                propLabel="Email address"
+                                propElementId="user-log-in-sign-up-email-input"
+                                propLabel="Email"
                                 propPlaceholder=""
                                 propType="text"
                                 propInputmode="email"
@@ -409,8 +409,8 @@
                             </VTitle>
 
                             <VInput
-                                propElementId="email-address"
-                                propLabel="Email address"
+                                propElementId="user-log-in-sign-up-email-input"
+                                propLabel="Email"
                                 propPlaceholder=""
                                 propType="text"
                                 propInputmode="email"
@@ -631,6 +631,7 @@
     import { notify } from 'notiwind';
     import { emailValidatorDjango } from '@/helper_functions';
     import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
+    import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     const axios = require('axios');
 
     interface StepsType {
@@ -642,6 +643,7 @@
         data() {
             return {
                 page_refresh_trigger_store: usePageRefreshTriggerStore(),
+                pop_up_manager_store: usePopUpManagerStore(),
 
                 email_string: "",
                 email_check_timeout: null as number|null,
@@ -687,7 +689,8 @@
             },
             propRequestedSection: {
                 type: String,
-                required: true
+                required: true,
+                default: "log-in-section"
             },
         },
         watch: {
@@ -715,9 +718,6 @@
                 return this.email_is_ok === true && this.otp_request_cooldown_interval === null && this.is_otp_request_loading === false;
             }
         },
-        emits: [
-            'isClosed',
-        ],
         methods: {
             submitStep2(section_type:'log-in'|'sign-up') : void {
 
@@ -751,10 +751,9 @@
                 );
                 this.submitEmailAndRequestOTP(section_type);
             },
-            emitIsClosed() : void {
+            forceClose() : void {
 
-                //intentional ''
-                this.$emit('isClosed', '');
+                this.pop_up_manager_store.toggleIsUserLogInSignUpOpen(false);
             },
             resetOTPRelatedValues() : void {
 
@@ -1025,8 +1024,8 @@
             //watcher does not check props on first time mounting
             //so we repeat the procedure here
             this.doNavigation(
-                    this.propRequestedSection,
-                    this.steps[this.sections.indexOf(this.propRequestedSection)][1]
+                this.propRequestedSection,
+                this.steps[this.sections.indexOf(this.propRequestedSection)][1]
             );
         },
     });

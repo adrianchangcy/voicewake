@@ -602,10 +602,13 @@
                     return;
                 }
 
-                window.localStorage.backup_playback_volume = new_value;
+                localStorage.setItem('backup_playback_volume', new_value);
                 this.backup_playback_volume = new_value;
             },
             toggleMute(event:KeyboardEvent|PointerEvent|null=null) : void {
+
+                //TODO: isolate mute/unmute to tab-level
+                //problem: mute from tab A at 100% vol, unmute tab B and you get 100% vol
 
                 //we don't use audio_element.muted
                 //we simply move volume to 0 when user wants to mute, for better UX, as per YouTube
@@ -622,16 +625,16 @@
                 if(this.playback_volume === 0){
 
                     //unmute, i.e. set volume back to original
-                    this.playback_volume = parseFloat(window.localStorage.backup_playback_volume);
+                    this.playback_volume = parseFloat(localStorage.getItem('backup_playback_volume'));
                     (this.$refs.audio_element as HTMLAudioElement).volume = this.playback_volume;
-                    window.localStorage.playback_volume = this.playback_volume;
+                    localStorage.setItem('playback_volume', this.playback_volume);
 
                 }else{
 
                     //mute, i.e. set volume to 0
                     this.playback_volume = 0;
                     (this.$refs.audio_element as HTMLAudioElement).volume = 0;
-                    window.localStorage.playback_volume = 0;
+                    localStorage.setItem('playback_volume', 0);
                 }
 
                 //don't close if user is hovering with mouse
@@ -1164,7 +1167,7 @@
                 
                 (this.$refs.audio_element as HTMLAudioElement).volume = new_value;
                 this.playback_volume = new_value;
-                window.localStorage.playback_volume = new_value;
+                localStorage.setItem('playback_volume', new_value);
 
                 //show volume menu
                 this.openPlaybackVolume();
@@ -1190,7 +1193,7 @@
                 //attachAudioToPlayback() will handle this inconvenience
                 audio_element.playbackRate = new_value;
                 this.playback_rate = new_value;
-                window.localStorage.playback_rate = new_value;
+                localStorage.setItem('playback_rate', new_value);
 
                 //adjust anime
                 this.createPlaybackSliderAnime();
@@ -1569,25 +1572,25 @@
                 //invoking them gives you get() value, so const would not behave like a reference
 
                 //rate
-                if(window.localStorage.playback_rate === undefined){
-                    window.localStorage.playback_rate = 1;
+                if(localStorage.getItem('playback_rate') === null){
+                    localStorage.setItem('playback_rate', 1);
                 }
 
                 //volume, default 50%
-                if(window.localStorage.playback_volume === undefined){
-                    window.localStorage.playback_volume = 0.5;
+                if(localStorage.getItem('playback_volume') === null){
+                    localStorage.setItem('playback_volume', 0.5);
                 }
 
                 //backup volume, i.e. the value before volume is ever set to 0
                 //this is successfully done based on when you call to modify this
-                if(window.localStorage.backup_playback_volume === undefined){
-                    window.localStorage.backup_playback_volume = 0.5;
+                if(localStorage.getItem('backup_playback_volume') === null){
+                    localStorage.setItem('backup_playback_volume', 0.5);
                 }
 
                 //set values
-                this.playback_rate = parseFloat(window.localStorage.playback_rate);
-                this.playback_volume = parseFloat(window.localStorage.playback_volume);
-                this.backup_playback_volume = parseFloat(window.localStorage.backup_playback_volume);
+                this.playback_rate = parseFloat(localStorage.getItem('playback_rate'));
+                this.playback_volume = parseFloat(localStorage.getItem('playback_volume'));
+                this.backup_playback_volume = parseFloat(localStorage.getItem('backup_playback_volume'));
 
                 //mute decision
                     //scenario #1:
