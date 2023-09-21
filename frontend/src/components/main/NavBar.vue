@@ -11,7 +11,7 @@
                     propFontSize="m"
                     href="/"
                     :propIsIconOnly="true"
-                    class="w-full h-full"
+                    class="w-full h-full pb-0.5"
                 >
                     <i class="fas fa-wave-square mx-auto" aria-hidden="true"></i>
                     <span class="sr-only">home</span>
@@ -24,12 +24,12 @@
                     propElement="a"
                     propFontSize="m"
                     href="/start"
-                    :propIsIconOnly="true"
-                    class="w-full h-full"
+                    :propIsIconOnly="false"
+                    class="w-full h-full pb-0.5"
                 >
-                    <span class="block mx-auto sm:pb-1">
-                        <i class="fas fa-comment sm:pr-2" aria-hidden="true"></i>
-                        <!-- <span class="hidden font-normal sm:inline">Start</span> -->
+                    <span class="block mx-auto">
+                        <i class="fas fa-comment" aria-hidden="true"></i>
+                        <!-- <span class="hidden font-normal sm:inline sm:pl-2">Start</span> -->
                     </span>
                     <span class="sr-only sm:hidden">start event</span>
                 </VActionTextOnly>
@@ -41,12 +41,12 @@
                     propElement="a"
                     propFontSize="m"
                     href="/reply"
-                    :propIsIconOnly="true"
-                    class="w-full h-full"
+                    :propIsIconOnly="false"
+                    class="w-full h-full pb-0.5"
                 >
-                    <span class="block mx-auto sm:pb-1">
-                        <i class="fas fa-comments sm:pr-2" aria-hidden="true"></i>
-                        <!-- <span class="hidden font-normal sm:inline">Reply</span> -->
+                    <span class="block mx-auto">
+                        <i class="fas fa-comments" aria-hidden="true"></i>
+                        <!-- <span class="hidden font-normal sm:inline sm:pl-2">Reply</span> -->
                     </span>
                     <span class="sr-only sm:hidden">reply to events</span>
                 </VActionTextOnly>
@@ -105,7 +105,7 @@
                     propElement="button"
                     type="button"
                     :propIsIconOnly="true"
-                    class="w-full h-full"
+                    class="w-full h-full pb-0.5"
                 >
                     <span class="mx-auto">
                         <i class="fas fa-circle-user text-xl" aria-hidden="true"></i>
@@ -135,7 +135,7 @@
                     propElement="button"
                     propFontSize="m"
                     type="button"
-                    class="w-full h-full"
+                    class="w-full h-full pb-0.5"
                 >
                     <span class="block mx-auto">
                         <i class="fas fa-circle-user sm:pr-2" aria-hidden="true"></i>
@@ -155,7 +155,7 @@
                     propElement="button"
                     type="button"
                     propElementSize="s"
-                    class="w-full h-full"
+                    class="w-full h-full pb-0.5"
                 >
                     <span class="block mx-auto text-xl font-medium">
                         <i class="fas fa-right-to-bracket sm:pr-2" aria-hidden="true"></i>
