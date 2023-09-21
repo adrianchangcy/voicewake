@@ -131,7 +131,7 @@
             >
                 <TransitionFade>
                     <VActionTextOnly
-                        v-if="is_currently_log_in_sign_up_static_page === false && pop_up_manager_store.getIsUserLogInSignUpOpen === false"
+                        v-show="canShowLogInSignUpAtNav"
                         @click.stop="openUserLogInSignUp('log-in-section')"
                         propElement="button"
                         propFontSize="m"
@@ -153,7 +153,7 @@
             >
                 <TransitionFade>
                     <VActionSpecial
-                        v-if="is_currently_log_in_sign_up_static_page === false && pop_up_manager_store.getIsUserLogInSignUpOpen === false"
+                        v-show="canShowLogInSignUpAtNav"
                         @click.stop="openUserLogInSignUp('sign-up-section')"
                         propElement="button"
                         type="button"
@@ -334,11 +334,16 @@
                 default: ""
             },
         },
+        computed: {
+            canShowLogInSignUpAtNav() : boolean {
+                return (
+                    this.is_currently_log_in_sign_up_static_page === false &&
+                    this.pop_up_manager_store.getIsUserLogInSignUpOpen === false &&
+                    this.pop_up_manager_store.getIsLoginRequiredPromptOpen === false
+                );
+            },
+        },
         watch: {
-            is_nav_menu_open(new_value:boolean){
-
-                this.pop_up_manager_store.toggleIsNavMenuOpen(new_value);
-            }
         },
         methods: {
             forceCloseNavMenu() : void {
