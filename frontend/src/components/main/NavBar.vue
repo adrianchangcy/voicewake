@@ -54,11 +54,11 @@
 
             <!--mobile, always show-->
             <div
-                ref="nav_main_more_button_1"
+                ref="nav_menu_button_1"
                 class="block lg:hidden col-start-4 col-span-1 sm:col-start-8"
             >
                 <VActionTextOnly
-                    @click.stop="toggleNavMainMore()"
+                    @click.stop="pop_up_manager_store.toggleIsNavMenuOpen()"
                     propElement="button"
                     type="button"
                     :propIsIconOnly="true"
@@ -68,21 +68,21 @@
                     <div class="w-full h-full grid grid-rows-3 grid-flow-row      justify-items-center place-items-center">
                         <div
                             :class="[
-                                is_nav_main_more_open ? 'mb-0 rotate-45' : 'mb-4 rotate-0',
+                                pop_up_manager_store.getIsNavMenuOpen ? 'mb-0 rotate-45' : 'mb-4 rotate-0',
                                 'nav-burger-line row-span-1 bg-theme-black absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
                             ]"
                         >
                         </div>
                         <div
                             :class="[
-                                is_nav_main_more_open ? 'opacity-0' : 'opacity-100',
+                                pop_up_manager_store.getIsNavMenuOpen ? 'opacity-0' : 'opacity-100',
                                 'nav-burger-line row-span-1 bg-theme-black absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
                             ]"
                         >
                         </div>
                         <div
                             :class="[
-                                is_nav_main_more_open ? 'mt-0 -rotate-45' : 'mt-4 rotate-0',
+                                pop_up_manager_store.getIsNavMenuOpen ? 'mt-0 -rotate-45' : 'mt-4 rotate-0',
                                 'nav-burger-line row-span-1 bg-theme-black absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
                             ]"
                         >
@@ -95,25 +95,25 @@
             <!--desktop, if logged in-->
             <!--not using v-if because we need the ref-->
             <div
-                ref="nav_main_more_button_2"
+                ref="nav_menu_button_2"
                 :class="[
-                    propIsLoggedIn === true ? 'hidden lg:block lg:col-start-8 lg:col-span-1' : 'hidden'
+                    pop_up_manager_store.getIsLoggedIn === true ? 'hidden lg:block lg:col-start-8 lg:col-span-1' : 'hidden'
                 ]"
             >
                 <VActionTextOnly
-                    @click.stop="toggleNavMainMore()"
+                    @click.stop="pop_up_manager_store.toggleIsNavMenuOpen()"
                     propElement="button"
                     type="button"
                     :propIsIconOnly="true"
                     class="w-full h-full"
                 >
                     <span class="mx-auto">
-                        <i class="fas fa-user text-xl" aria-hidden="true"></i>
+                        <i class="fas fa-circle-user text-xl" aria-hidden="true"></i>
                         <!--do this so user icon stays truly centered-->
                         <span class="relative w-0">
                             <i
                                 :class="[
-                                    is_nav_main_more_open ? '-rotate-180' : 'rotate-0',
+                                    pop_up_manager_store.getIsNavMenuOpen ? '-rotate-180' : 'rotate-0',
                                     'fas fa-chevron-down text-xs transition-transform h-fit absolute top-0 bottom-0 left-2 m-auto'
                                 ]"
                                 aria-hidden="true"
@@ -126,7 +126,7 @@
 
             <!--desktop, if not logged in, show log in option-->
             <div
-                v-if="propIsLoggedIn === false"
+                v-if="pop_up_manager_store.getIsLoggedIn === false"
                 class="hidden lg:block lg:col-start-7 lg:col-span-1"
             >
                 <VActionTextOnly
@@ -143,7 +143,7 @@
                 </VActionTextOnly>
                 <VActionTextOnly
                     v-else
-                    @click.stop="emitToOpenUserLogInSignUp('log-in-section')"
+                    @click.stop="openUserLogInSignUp('log-in-section')"
                     propElement="button"
                     propFontSize="m"
                     type="button"
@@ -158,7 +158,7 @@
 
             <!--desktop, if not logged in, show sign up option-->
             <div
-                v-if="propIsLoggedIn === false"
+                v-if="pop_up_manager_store.getIsLoggedIn === false"
                 class="hidden lg:block lg:col-start-8 col-span-1"
             >
                 <VActionSpecial
@@ -175,7 +175,7 @@
                 </VActionSpecial>
                 <VActionSpecial
                     v-else
-                    @click.stop="emitToOpenUserLogInSignUp('sign-up-section')"
+                    @click.stop="openUserLogInSignUp('sign-up-section')"
                     propElement="button"
                     type="button"
                     propElementSize="s"
@@ -194,12 +194,12 @@
 
             <!--extra area to click when nav menu is open-->
             <div
-                :class="propIsLoggedIn === false ? 'lg:hidden' : ''"
+                :class="pop_up_manager_store.getIsLoggedIn === false ? 'lg:hidden' : ''"
                 class="relative col-start-1 col-span-1 sm:col-span-5 xl:col-span-6"
             >
                 <TransitionFade>
                     <div
-                        v-show="is_nav_main_more_open"
+                        v-show="pop_up_manager_store.getIsNavMenuOpen"
                         class="absolute w-full h-[calc(100vh-4.5rem)] bg-theme-light/60 backdrop-blur"
                     >
                     </div>
@@ -207,27 +207,27 @@
             </div>
 
             <!--nav menu-->
-            <!--don't show when lg and propIsLoggedIn, because the button to open will become a URL-->
+            <!--don't show when lg and pop_up_manager_store.getIsLoggedIn, because the button to open will become a URL-->
             <div
-                :class="propIsLoggedIn === false ? 'lg:hidden' : ''"
+                :class="pop_up_manager_store.getIsLoggedIn === false ? 'lg:hidden' : ''"
                 class="relative col-start-2 col-span-3 sm:col-start-6 sm:col-span-3 xl:col-start-7 xl:col-span-2"
             >
                 <TransitionFade>
                     <!--uses calc to minus fixed height of navbar at base.html-->
                     <div
-                        v-show="is_nav_main_more_open"
+                        v-show="pop_up_manager_store.getIsNavMenuOpen"
                         v-click-outside="{
-                            var_name_for_element_bool_status: 'is_nav_main_more_open',
-                            refs_to_exclude: ['nav_main_more_button_1', 'nav_main_more_button_2']
+                            var_name_for_element_bool_status: forceCloseNavMenu,
+                            refs_to_exclude: ['nav_menu_button_1', 'nav_menu_button_2']
                         }"
                         class="absolute w-full h-[calc(100vh-4.5rem)] flex flex-col overflow-hidden p-2 border-l border-theme-light-gray bg-theme-light"
                     >
 
                         <!--profile area-->
                         <div class="pt-12 flex flex-col">
-                            <i class="fas fa-user text-base w-fit h-fit mx-auto" aria-hidden="true"></i>
+                            <i class="fas fa-circle-user text-2xl w-fit h-fit mx-auto" aria-hidden="true"></i>
                             <span class="max-w-full h-fit mx-auto text-xl font-light break-words">
-                                <span v-if="propIsLoggedIn">{{ propUsername }}</span>
+                                <span v-if="pop_up_manager_store.getIsLoggedIn">{{ propUsername }}</span>
                                 <span v-else>Not logged in</span>
                             </span>
                         </div>
@@ -240,7 +240,7 @@
 
                             <!--log in-->
                             <VActionTextOnly
-                                v-if="propIsLoggedIn === false"
+                                v-if="pop_up_manager_store.getIsLoggedIn === false"
                                 propElement="a"
                                 href="/login"
                                 propFontSize="m"
@@ -249,7 +249,7 @@
                             >
                                 <div class="w-full h-full grid grid-cols-4">
                                     <div class="col-span-1 flex items-center">
-                                        <i class="fas fa-circle-user w-fit h-fit mx-auto" aria-hidden="true"></i>
+                                        <i class="fas fa-circle-user pt-0.5 w-fit h-fit mx-auto" aria-hidden="true"></i>
                                     </div>
                                     <div class="col-span-3 flex items-center">
                                         <span class="text-left font-normal break-all">
@@ -261,7 +261,7 @@
 
                             <!--sign up-->
                             <VActionTextOnly
-                                v-if="propIsLoggedIn === false"
+                                v-if="pop_up_manager_store.getIsLoggedIn === false"
                                 propElement="a"
                                 href="/signup"
                                 propFontSize="m"
@@ -270,7 +270,7 @@
                             >
                                 <div class="w-full h-full grid grid-cols-4">
                                     <div class="col-span-1 flex items-center">
-                                        <i class="fas fa-right-to-bracket w-fit h-fit mx-auto" aria-hidden="true"></i>
+                                        <i class="fas fa-right-to-bracket pt-0.5 w-fit h-fit mx-auto" aria-hidden="true"></i>
                                     </div>
                                     <div class="col-span-3 flex items-center">
                                         <span class="text-left font-normal break-all">
@@ -282,7 +282,7 @@
 
                             <!--log out-->
                             <VActionTextOnly
-                                v-if="propIsLoggedIn === true"
+                                v-if="pop_up_manager_store.getIsLoggedIn === true"
                                 :propIsEnabled="!is_log_out_loading"
                                 @click.stop="logOut()"
                                 propElement="button"
@@ -334,6 +334,7 @@
 <script lang="ts">
     import { defineComponent } from 'vue';
     import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
+    import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     const axios = require('axios');
 
     export default defineComponent({
@@ -341,48 +342,33 @@
         data(){
             return {
                 page_refresh_trigger_store: usePageRefreshTriggerStore(),
+                pop_up_manager_store: usePopUpManagerStore(),
 
-                is_nav_main_more_open: false,
                 is_log_out_loading: false,
                 is_currently_log_in_sign_up_static_page: false,
             };
         },
         props: {
-            propIsLoggedIn: {
-                type: Boolean,
-                default: false
-            },
             propUsername: {
                 type: String,
                 default: ""
             },
         },
-        emits: [
-            'emitToOpenUserLogInSignUp', 'emitIsNavBarOpen'
-        ],
         watch: {
-            is_nav_main_more_open(new_value:boolean){
+            is_nav_menu_open(new_value:boolean){
 
-                this.$emit('emitIsNavBarOpen', new_value);
+                this.pop_up_manager_store.toggleIsNavMenuOpen(new_value);
             }
         },
         methods: {
-            emitToOpenUserLogInSignUp(section:"log-in-section"|"sign-up-section") : void {
+            forceCloseNavMenu() : void {
 
-                this.is_nav_main_more_open = false;
-
-                this.$emit('emitToOpenUserLogInSignUp', section);
+                this.pop_up_manager_store.toggleIsNavMenuOpen(false);
             },
-            toggleNavMainMore(force_close=false) : void {
+            openUserLogInSignUp(section:"log-in-section"|"sign-up-section") : void {
 
-                if(force_close === true){
-
-                    this.is_nav_main_more_open = false;
-
-                }else{
-
-                    this.is_nav_main_more_open = !this.is_nav_main_more_open;
-                }
+                this.pop_up_manager_store.toggleIsNavMenuOpen(false);
+                this.pop_up_manager_store.toggleIsUserLogInSignUpOpen(true, section);
             },
             async logOut() : Promise<void> {
 

@@ -28,57 +28,52 @@
                     ></i>
                 </VAction>
 
-                <!--arrow-->
-                <!--needs mt-4 to stay to prevent snapping-->
-                <div class="mt-4 relative">
-                    <div
-                        v-show="is_sort_menu_open"
-                        class="z-30 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"
-                    ></div>
-                </div>
-
                 <!--options menu-->
                 <div class="h-0 relative">
+
+                    <!--arrow-->
+                    <div
+                        v-show="is_sort_menu_open"
+                        class="z-30 w-2 h-2 absolute top-3 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"
+                    ></div>
+
+                    <!--menu-->
                     <div
                         v-show="is_sort_menu_open"
                         v-click-outside="{
                             var_name_for_element_bool_status: 'is_sort_menu_open',
                             refs_to_exclude: ['open_close_sort_menu_button']
                         }"
-                        class="absolute w-full h-fit z-20 bg-theme-light"
+                        class="absolute w-full h-fit top-4 z-20 flex flex-col p-4 gap-4 rounded-lg border-2 border-theme-black bg-theme-light"
                     >
     
-                        <!--use gap-3 because VEventToneMenu.vue has py-1-->
-                        <div class="flex flex-col p-4 gap-4 rounded-lg border-2 border-theme-black bg-theme-light">
-    
-                            <!--filter type-->
-                            <div class="w-fit flex flex-row items-center border rounded-lg border-theme-light-gray px-2">
-                                <VActionTextOnly
-                                    v-for="(filter_type, index) in filtered_grouped_events_store.getFilterTypes" :key="index"
-                                    @click="updateCurrentFilterTypeIndex(index)"
-                                    prop-element="button"
-                                    prop-element-size="s"
-                                    prop-font-size="s"
-                                    :prop-is-icon-only="true"
-                                    :class="[
-                                        isSelectedFilterType(index) ? 'border-b-theme-black' : 'border-b-transparent',
-                                        'border-b-2 rounded-b-none p-2'
-                                    ]"
-                                >
-                                    <span>{{ filter_type }}</span>
-                                </VActionTextOnly>
-                            </div>
-    
-                            <!--event tones-->
-                            <VEventToneMenu
-                                :prop-is-open="true"
-                                :prop-close-when-selected="false"
-                                :prop-has-deselect-option="true"
-                                :prop-must-track-selected-option="true"
-                                @eventToneSelected="handleNewSelectedEventTone($event)"
-                                class="border rounded-l-lg border-theme-light-gray"
-                            />
+                        <!--filter type-->
+                        <div class="w-fit flex flex-row items-center border rounded-lg border-theme-light-gray px-2">
+                            <VActionTextOnly
+                                v-for="(filter_type, index) in filtered_grouped_events_store.getFilterTypes" :key="index"
+                                @click="updateCurrentFilterTypeIndex(index)"
+                                prop-element="button"
+                                prop-element-size="s"
+                                prop-font-size="s"
+                                :prop-is-icon-only="true"
+                                :class="[
+                                    isSelectedFilterType(index) ? 'border-b-theme-black' : 'border-b-transparent',
+                                    'border-b-2 rounded-b-none p-2'
+                                ]"
+                            >
+                                <span>{{ filter_type }}</span>
+                            </VActionTextOnly>
                         </div>
+    
+                        <!--event tones-->
+                        <VEventToneMenu
+                            :prop-is-open="true"
+                            :prop-close-when-selected="false"
+                            :prop-has-deselect-option="true"
+                            :prop-must-track-selected-option="true"
+                            @eventToneSelected="handleNewSelectedEventTone($event)"
+                            class="border rounded-l-lg border-theme-light-gray"
+                        />
                     </div>
                 </div>
             </div>
@@ -98,7 +93,7 @@
                 >
                     <span class="mx-auto">
                         <i class="fas fa-comment"></i>
-                        <span class="pl-1">Started</span>
+                        <span class="pl-2">Started</span>
                     </span>
                 </VActionTextOnly>
                 <VActionTextOnly
@@ -114,7 +109,7 @@
                 >
                     <span class="mx-auto">
                         <i class="fas fa-comments"></i>
-                        <span class="pl-1">Replied</span>
+                        <span class="pl-2">Replied</span>
                     </span>
                 </VActionTextOnly>
             </div>

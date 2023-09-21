@@ -129,7 +129,7 @@
                                 </template>
                                 <template #content>
                                     <span class="block text-center">
-                                        Please open and complete, or delete, before searching.
+                                        Open and complete your reply, or delete it, before searching.
                                     </span>
                                     <div
                                         class="grid grid-rows-1 grid-cols-2 pt-4 gap-2"
@@ -359,6 +359,7 @@
     import GroupedEventsTypes from '@/types/GroupedEvents.interface';
     import StatusValues from '@/types/values/StatusValues';
     import { useUnfinishedReplyStore } from '@/stores/UnfinishedReplyStore';
+    import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     import EventTonesTypes from '@/types/EventTones.interface';
 
     const axios = require('axios');
@@ -368,6 +369,7 @@
         data() {
             return {
                 unfinished_reply_store: useUnfinishedReplyStore(),
+                pop_up_manager_store: usePopUpManagerStore(),
 
                 new_reply_choice_event_rooms: [] as GroupedEventsTypes[] | [],
                 unfinished_reply_event_room: null as GroupedEventsTypes | null,
@@ -578,6 +580,12 @@
                     return;
                 }
 
+                if(this.pop_up_manager_store.getIsLoggedIn === false){
+
+                    this.pop_up_manager_store.toggleIsLoginRequiredPromptOpen(true);
+                    return;
+                }
+
                 //reset
                 this.current_simple_dialog = "";
                 this.new_reply_choice_event_rooms = [];
@@ -642,7 +650,7 @@
 
                     notify({
                         title: "Event search failed",
-                        text: error.response.data['message'],
+                        text: "Unable to search for events. " + error.response.data['message'],
                         type: "error"
                     }, 3000);
                 });
@@ -681,7 +689,7 @@
 
                     notify({
                         title: "Deleting reply failed",
-                        text: error.response.data['message'],
+                        text: "Unable to delete your reply. " + error.response.data['message'],
                         type: "error"
                     }, 3000);
                 });
@@ -722,8 +730,8 @@
                         this.is_new_reply_choice_confirming = false;
 
                         notify({
-                            title: "Reply confirmation failed",
-                            text: results.data['message'],
+                            title: "Reply selection failed",
+                            text: "Unable to select for reply. " + results.data['message'],
                             type: "error"
                         }, 3000);
                     }
@@ -736,8 +744,8 @@
                     this.startExpiryInterval("new_reply_choices");
 
                     notify({
-                        title: "Reply confirmation failed",
-                        text: error.response.data['message'],
+                        title: "Reply selection failed",
+                        text: "Unable to select for reply. " + error.response.data['message'],
                         type: "error"
                     }, 3000);
                 });

@@ -206,7 +206,7 @@ class UserEventReports(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     reported_event = models.ForeignKey('Events', on_delete=models.CASCADE)
     ban_decision = models.BooleanField(blank=True, null=True, default=None)    #True for ban, False to skip
-    banned_from = models.DateTimeField()
+    banned_from = models.DateTimeField()    #blank=True, null=True, default=None
     banned_to = models.DateTimeField()
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
