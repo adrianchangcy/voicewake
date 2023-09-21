@@ -129,19 +129,21 @@
                 v-if="pop_up_manager_store.getIsLoggedIn === false"
                 class="hidden lg:block lg:col-start-7 lg:col-span-1"
             >
-                <VActionTextOnly
-                    v-if="is_currently_log_in_sign_up_static_page === false"
-                    @click.stop="openUserLogInSignUp('log-in-section')"
-                    propElement="button"
-                    propFontSize="m"
-                    type="button"
-                    class="w-full h-full pb-0.5"
-                >
-                    <span class="block mx-auto">
-                        <i class="fas fa-circle-user sm:pr-2" aria-hidden="true"></i>
-                        <span>Log in</span>
-                    </span>
-                </VActionTextOnly>
+                <TransitionFade>
+                    <VActionTextOnly
+                        v-if="is_currently_log_in_sign_up_static_page === false && pop_up_manager_store.getIsUserLogInSignUpOpen === false"
+                        @click.stop="openUserLogInSignUp('log-in-section')"
+                        propElement="button"
+                        propFontSize="m"
+                        type="button"
+                        class="w-full h-full pb-0.5"
+                    >
+                        <span class="block mx-auto">
+                            <i class="fas fa-circle-user sm:pr-2" aria-hidden="true"></i>
+                            <span>Log in</span>
+                        </span>
+                    </VActionTextOnly>
+                </TransitionFade>
             </div>
 
             <!--desktop, if not logged in, show sign up option-->
@@ -149,19 +151,21 @@
                 v-if="pop_up_manager_store.getIsLoggedIn === false"
                 class="hidden lg:block lg:col-start-8 col-span-1"
             >
-                <VActionSpecial
-                    v-if="is_currently_log_in_sign_up_static_page === false"
-                    @click.stop="openUserLogInSignUp('sign-up-section')"
-                    propElement="button"
-                    type="button"
-                    propElementSize="s"
-                    class="w-full h-full pb-0.5"
-                >
-                    <span class="block mx-auto text-xl font-medium">
-                        <i class="fas fa-right-to-bracket sm:pr-2" aria-hidden="true"></i>
-                        <span>Sign up</span>
-                    </span>
-                </VActionSpecial>
+                <TransitionFade>
+                    <VActionSpecial
+                        v-if="is_currently_log_in_sign_up_static_page === false && pop_up_manager_store.getIsUserLogInSignUpOpen === false"
+                        @click.stop="openUserLogInSignUp('sign-up-section')"
+                        propElement="button"
+                        type="button"
+                        propElementSize="s"
+                        class="w-full h-full pb-0.5"
+                    >
+                        <span class="block mx-auto text-xl font-medium">
+                            <i class="fas fa-right-to-bracket sm:pr-2" aria-hidden="true"></i>
+                            <span>Sign up</span>
+                        </span>
+                    </VActionSpecial>
+                </TransitionFade>
             </div>
         </nav>
 
