@@ -29,7 +29,7 @@
                 >
                     <span class="block mx-auto sm:pb-1">
                         <i class="fas fa-comment sm:pr-2" aria-hidden="true"></i>
-                        <span class="hidden font-normal sm:inline">Start</span>
+                        <!-- <span class="hidden font-normal sm:inline">Start</span> -->
                     </span>
                     <span class="sr-only sm:hidden">start event</span>
                 </VActionTextOnly>
@@ -46,7 +46,7 @@
                 >
                     <span class="block mx-auto sm:pb-1">
                         <i class="fas fa-comments sm:pr-2" aria-hidden="true"></i>
-                        <span class="hidden font-normal sm:inline">Reply</span>
+                        <!-- <span class="hidden font-normal sm:inline">Reply</span> -->
                     </span>
                     <span class="sr-only sm:hidden">reply to events</span>
                 </VActionTextOnly>
@@ -130,19 +130,7 @@
                 class="hidden lg:block lg:col-start-7 lg:col-span-1"
             >
                 <VActionTextOnly
-                    v-if="is_currently_log_in_sign_up_static_page"
-                    propElement="a"
-                    href="/login"
-                    propFontSize="m"
-                    class="w-full h-full"
-                >
-                    <span class="block mx-auto">
-                        <i class="fas fa-circle-user sm:pr-2" aria-hidden="true"></i>
-                        <span>Log in</span>
-                    </span>
-                </VActionTextOnly>
-                <VActionTextOnly
-                    v-else
+                    v-if="is_currently_log_in_sign_up_static_page === false"
                     @click.stop="openUserLogInSignUp('log-in-section')"
                     propElement="button"
                     propFontSize="m"
@@ -162,19 +150,7 @@
                 class="hidden lg:block lg:col-start-8 col-span-1"
             >
                 <VActionSpecial
-                    v-if="is_currently_log_in_sign_up_static_page"
-                    propElement="a"
-                    href="/signup"
-                    propElementSize="s"
-                    class="w-full h-full"
-                >
-                    <span class="block mx-auto text-xl font-medium">
-                        <i class="fas fa-right-to-bracket sm:pr-2" aria-hidden="true"></i>
-                        <span>Sign up</span>
-                    </span>
-                </VActionSpecial>
-                <VActionSpecial
-                    v-else
+                    v-if="is_currently_log_in_sign_up_static_page === false"
                     @click.stop="openUserLogInSignUp('sign-up-section')"
                     propElement="button"
                     type="button"
