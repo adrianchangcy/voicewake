@@ -105,10 +105,7 @@
             <button
                 ref="open_close_extra_options_menu_button"
                 @click="toggleExtraOptionsMenu()"
-                :class="[
-                    is_extra_options_menu_open ? 'border-theme-black' : 'shade-border-when-hover border-theme-light-gray',
-                    'h-full col-span-1 relative flex items-center     transition-colors      bg-theme-light       border rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline'
-                ]"
+                class="h-full col-span-1 relative flex items-center     transition-colors shade-border-when-hover border-theme-light-gray      bg-theme-light       border rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                 type="button"
             >
                 <i class="fas fa-ellipsis-vertical text-base mx-auto" aria-hidden="true"></i>
