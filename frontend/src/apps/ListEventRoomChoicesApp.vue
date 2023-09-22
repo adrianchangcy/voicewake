@@ -4,6 +4,7 @@
         <!--title-->
         <!--logo only here, since "Reply" goes away for certain parts, and putting it here would make things jolt-->
         <!--you can find "Reply" at areas that need it instead-->
+        <!--for "Reply", we use pb-10 instead of pb-8 here due to the font overflowing out at current size-->
         <VTitle
             propFontSize="l"
             class="pt-8"
@@ -359,7 +360,6 @@
     import GroupedEventsTypes from '@/types/GroupedEvents.interface';
     import StatusValues from '@/types/values/StatusValues';
     import { useUnfinishedReplyStore } from '@/stores/UnfinishedReplyStore';
-    import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     import EventTonesTypes from '@/types/EventTones.interface';
 
     const axios = require('axios');
@@ -369,7 +369,6 @@
         data() {
             return {
                 unfinished_reply_store: useUnfinishedReplyStore(),
-                pop_up_manager_store: usePopUpManagerStore(),
 
                 new_reply_choice_event_rooms: [] as GroupedEventsTypes[] | [],
                 unfinished_reply_event_room: null as GroupedEventsTypes | null,
@@ -577,12 +576,6 @@
 
                 if(this.canSearch === false){
 
-                    return;
-                }
-
-                if(this.pop_up_manager_store.getIsLoggedIn === false){
-
-                    this.pop_up_manager_store.toggleIsLoginRequiredPromptOpen(true);
                     return;
                 }
 

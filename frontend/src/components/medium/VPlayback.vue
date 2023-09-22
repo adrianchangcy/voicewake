@@ -602,7 +602,7 @@
                     return;
                 }
 
-                localStorage.setItem('backup_playback_volume', new_value);
+                localStorage.setItem('backup_playback_volume', JSON.stringify(new_value));
                 this.backup_playback_volume = new_value;
             },
             toggleMute(event:KeyboardEvent|PointerEvent|null=null) : void {
@@ -625,16 +625,16 @@
                 if(this.playback_volume === 0){
 
                     //unmute, i.e. set volume back to original
-                    this.playback_volume = parseFloat(localStorage.getItem('backup_playback_volume'));
+                    this.playback_volume = parseFloat(localStorage.getItem('backup_playback_volume')!);
                     (this.$refs.audio_element as HTMLAudioElement).volume = this.playback_volume;
-                    localStorage.setItem('playback_volume', this.playback_volume);
+                    localStorage.setItem('playback_volume', JSON.stringify(this.playback_volume));
 
                 }else{
 
                     //mute, i.e. set volume to 0
                     this.playback_volume = 0;
                     (this.$refs.audio_element as HTMLAudioElement).volume = 0;
-                    localStorage.setItem('playback_volume', 0);
+                    localStorage.setItem('playback_volume', JSON.stringify(0));
                 }
 
                 //don't close if user is hovering with mouse
@@ -1167,7 +1167,7 @@
                 
                 (this.$refs.audio_element as HTMLAudioElement).volume = new_value;
                 this.playback_volume = new_value;
-                localStorage.setItem('playback_volume', new_value);
+                localStorage.setItem('playback_volume', JSON.stringify(new_value));
 
                 //show volume menu
                 this.openPlaybackVolume();
@@ -1193,7 +1193,7 @@
                 //attachAudioToPlayback() will handle this inconvenience
                 audio_element.playbackRate = new_value;
                 this.playback_rate = new_value;
-                localStorage.setItem('playback_rate', new_value);
+                localStorage.setItem('playback_rate', JSON.stringify(new_value));
 
                 //adjust anime
                 this.createPlaybackSliderAnime();
@@ -1573,24 +1573,24 @@
 
                 //rate
                 if(localStorage.getItem('playback_rate') === null){
-                    localStorage.setItem('playback_rate', 1);
+                    localStorage.setItem('playback_rate', JSON.stringify(1));
                 }
 
                 //volume, default 50%
                 if(localStorage.getItem('playback_volume') === null){
-                    localStorage.setItem('playback_volume', 0.5);
+                    localStorage.setItem('playback_volume', JSON.stringify(0.5));
                 }
 
                 //backup volume, i.e. the value before volume is ever set to 0
                 //this is successfully done based on when you call to modify this
                 if(localStorage.getItem('backup_playback_volume') === null){
-                    localStorage.setItem('backup_playback_volume', 0.5);
+                    localStorage.setItem('backup_playback_volume', JSON.stringify(0.5));
                 }
 
                 //set values
-                this.playback_rate = parseFloat(localStorage.getItem('playback_rate'));
-                this.playback_volume = parseFloat(localStorage.getItem('playback_volume'));
-                this.backup_playback_volume = parseFloat(localStorage.getItem('backup_playback_volume'));
+                this.playback_rate = parseFloat(JSON.parse(localStorage.getItem('playback_rate')!));
+                this.playback_volume = parseFloat(JSON.parse(localStorage.getItem('playback_volume')!));
+                this.backup_playback_volume = parseFloat(JSON.parse(localStorage.getItem('backup_playback_volume')!));
 
                 //mute decision
                     //scenario #1:

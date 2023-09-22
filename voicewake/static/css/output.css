@@ -1625,10 +1625,6 @@ video {
   padding: 1rem;
 }
 
-.p-6 {
-  padding: 1.5rem;
-}
-
 .px-2 {
   padding-left: 0.5rem;
   padding-right: 0.5rem;
@@ -2529,13 +2525,14 @@ textarea {
     grid-template-columns: repeat(8, minmax(0, 1fr));
   }
 
+  .sm\:px-8 {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+
   .sm\:px-\[5\%\] {
     padding-left: 5%;
     padding-right: 5%;
-  }
-
-  .sm\:pb-1 {
-    padding-bottom: 0.25rem;
   }
 
   .sm\:pl-2 {

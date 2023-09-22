@@ -55,6 +55,18 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
             
             this.is_logged_in = new_value;
         },
+        forceCloseAllPopUps(event:KeyboardEvent|null=null) : void {
+
+            if(event !== null && event.key !== 'Escape'){
+
+                return;
+            }
+
+            for(const key in this.is_open){
+
+                this.is_open[key] = false;
+            }
+        },
         forceCloseOtherPopUps(current_key:string) : void {
 
             for(const key in this.is_open){

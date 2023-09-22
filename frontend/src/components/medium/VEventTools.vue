@@ -1,5 +1,5 @@
 <template>
-    <div class="">
+    <div>
 
         <div class="h-10 grid grid-cols-6 gap-1 text-xl text-theme-black">
 
@@ -269,6 +269,12 @@
                 this.has_shared_timeout !== null ? window.clearTimeout(this.has_shared_timeout) : null;
                 this.has_shared_timeout = null;
 
+                notify({
+                    icon: 'fas fa-check',
+                    title: 'Link copied',
+                    type: 'ok',
+                }, 2000);
+
                 //code below is more complex so that it can handle "user copied but kept spamming" aesthetics
 
                 if(this.has_shared === true){
@@ -323,7 +329,7 @@
 
                         notify({
                             title: "Error",
-                            text: "Could not like or dislike this event.",
+                            text: "Could not like or dislike this recording.",
                             type: "error"
                         }, 3000);
                     });
