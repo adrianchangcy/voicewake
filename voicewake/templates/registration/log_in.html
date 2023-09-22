@@ -2,13 +2,24 @@
 {% block title %}Log In{% endblock %}
 
 {% block content %}
-    <!--replicate VTitleXL-->
-    <div class="pt-8 pb-2">
-        <div class="h-fit text-5xl text-theme-black">
-            <span class="block text-center">Voicewake</span>
-        </div>
-        <div class="h-fit text-4xl text-theme-black">
-            <span class="block text-center">Log in</span>
+
+    <!--backdrop and title-->
+    <div class="w-full h-fit relative">
+
+        <!--backdrop-->
+        <div id="v-backdrop-anime-target" class="absolute w-full h-full -z-10 pb-14"></div>
+
+        <!--title-->
+        <!--needs padding for more area to smoothen the transparent part, the bigger the better, else a faint cutoff/border is visible-->
+        <div class="w-fit h-fit mx-auto px-4 sm:px-8 pt-8 pb-2 flex items-center rounded-lg bg-gradient-radial from-theme-light to-transparent">
+            <div class="text-theme-black text-center">
+                <h1 class="text-5xl h-fit break-words">
+                    <span>Voicewake</span>
+                </h1>
+                <h2 class="text-4xl h-fit break-words">
+                    <span>Log in</span>
+                </h2>
+            </div>
         </div>
     </div>
 

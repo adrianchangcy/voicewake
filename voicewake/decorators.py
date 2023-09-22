@@ -5,7 +5,7 @@ from django.http import JsonResponse
 from rest_framework import status
 
 from typing import Literal
-
+from voicewake.services import get_datetime_now
 
 #middleware is not suitable because the 'Accept' header is unreliable
 #not all decorators need to run on every request and response
@@ -25,20 +25,11 @@ def deny_if_not_logged_in(return_instance:Literal["redirect"]):
 
             redirect_url = reverse('log_in')
 
-            if request.user.is_authenticated is False:
+            if request.user.is_authenticated is False and request.path != redirect_url:
 
-                if return_instance == "response":
-
-                    return JsonResponse(
-                        data={
-                            'message': 'You are not logged in.',
-                        },
-                        status=status.HTTP_403_FORBIDDEN,
-                    )
-                
-                elif return_instance == "redirect" and request.path != redirect_url:
-
-                    return redirect(redirect_url)
+                #you can use Django's messages to insert data at template
+                #allows you to do "redirect back to page when done", and toasts
+                return redirect(redirect_url)
 
             return passed_function(request, *args, **kwargs)
         
@@ -99,7 +90,13 @@ def deny_if_banned(return_instance:Literal["response", "redirect"]):
 
             redirect_url = reverse('user_banned')
 
-            if request.user.is_authenticated is True and request.user.is_banned is True:
+            if(
+                request.user.is_authenticated is True and
+                request.user.banned_until is not None and
+                request.user.banned_until > get_datetime_now()
+            ):
+
+                #user is still banned
 
                 if return_instance == "response":
 
@@ -113,6 +110,16 @@ def deny_if_banned(return_instance:Literal["response", "redirect"]):
                 elif return_instance == "redirect" and request.path != redirect_url:
 
                     return redirect(redirect_url)
+                
+            elif request.user.banned_until is not None and request.user.banned_until <= get_datetime_now():
+
+                #can unban
+
+                #doing unban here will not guarantee it being done in a timely banner
+                #because decorators are triggered by requests
+                #but it is good enough for this context
+                request.user.banned_until = None
+                request.user.save()
 
             return passed_function(request, *args, **kwargs)
         

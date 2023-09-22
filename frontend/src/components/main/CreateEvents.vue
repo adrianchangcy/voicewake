@@ -150,14 +150,11 @@
     import { defineComponent } from 'vue';
     import EventToneTypes from '@/types/EventTones.interface';
     import { notify } from 'notiwind';
-    import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     const axios = require('axios');
 
     export default defineComponent({
         data() {
             return {
-                pop_up_manager_store: usePopUpManagerStore(),
-
                 event_name: "",
 
                 is_event_tone_menu_open: false, //updates only from VEventToneField to VEventToneMenu, maybe use vuex
@@ -247,12 +244,6 @@
 
                 if(this.canSubmit === false){
 
-                    return;
-                }
-
-                if(this.pop_up_manager_store.getIsLoggedIn === false){
-
-                    this.pop_up_manager_store.toggleIsLoginRequiredPromptOpen(true);
                     return;
                 }
 

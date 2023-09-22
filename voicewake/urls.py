@@ -23,6 +23,7 @@ from django.contrib.staticfiles.storage import staticfiles_storage
 from django.views.generic.base import RedirectView
 
 from voicewake import views
+from voicewake import apis
 
 #register API URLs for auto-create
 router = routers.SimpleRouter(trailing_slash=False)
@@ -39,30 +40,30 @@ urlpatterns = [
     #we don't need default urls
     # path('', include(router.urls)),
 
-    path('api/test', views.TestAPI.as_view(), name='test'),
+    path('api/test', apis.TestAPI.as_view(), name='test'),
 
-    path('api/event-rooms/get/<int:event_room_id>', views.EventRoomsAPI.as_view(), name='get_event_rooms_by_event_room_id'),
+    path('api/event-rooms/get/<int:event_room_id>', apis.EventRoomsAPI.as_view(), name='get_event_rooms_by_event_room_id'),
 
-    path('api/event-rooms/list/completed/<str:latest_or_best>/<str:timeframe>/<int:page>', views.EventRoomsAPI.as_view(), name='get_event_rooms_by_best_or_new_paged'),
-    path('api/event-rooms/list/completed/<str:latest_or_best>/<str:timeframe>/<str:event_tone_slug>/<int:page>', views.EventRoomsAPI.as_view(), name='get_event_rooms'),
-    path('api/event-rooms/list/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:event_role_name>/<int:page>', views.EventRoomsAPI.as_view(), name='get_event_rooms'),
-    path('api/event-rooms/list/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:event_role_name>/<str:event_tone_slug>/<int:page>', views.EventRoomsAPI.as_view(), name='get_event_rooms'),
+    path('api/event-rooms/list/completed/<str:latest_or_best>/<str:timeframe>/<int:page>', apis.EventRoomsAPI.as_view(), name='get_event_rooms_by_best_or_new_paged'),
+    path('api/event-rooms/list/completed/<str:latest_or_best>/<str:timeframe>/<str:event_tone_slug>/<int:page>', apis.EventRoomsAPI.as_view(), name='get_event_rooms'),
+    path('api/event-rooms/list/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:event_role_name>/<int:page>', apis.EventRoomsAPI.as_view(), name='get_event_rooms'),
+    path('api/event-rooms/list/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:event_role_name>/<str:event_tone_slug>/<int:page>', apis.EventRoomsAPI.as_view(), name='get_event_rooms'),
 
-    path('api/event-rooms/reply-choices/list', views.HandleEventRoomReplyChoicesAPI.as_view(current_context="list"), name="list_event_room_choices"),
-    path('api/event-rooms/reply-choices/expire', views.HandleEventRoomReplyChoicesAPI.as_view(current_context="expire"), name="expire_event_room_choices"),
+    path('api/event-rooms/reply-choices/list', apis.HandleEventRoomReplyChoicesAPI.as_view(current_context="list"), name="list_event_room_choices"),
+    path('api/event-rooms/reply-choices/expire', apis.HandleEventRoomReplyChoicesAPI.as_view(current_context="expire"), name="expire_event_room_choices"),
 
-    path('api/event-rooms/create-new', views.EventsAPI.as_view(current_context="create_new"), name='create_new_event_rooms'),
-    path('api/event-rooms/reply/start', views.HandleReplyingEventRoomsAPI.as_view(current_context="start"), name="start_reply_event_rooms"),
-    path('api/event-rooms/reply', views.EventsAPI.as_view(current_context="reply"), name="reply_event_rooms"),
-    path('api/event-rooms/reply/cancel', views.HandleReplyingEventRoomsAPI.as_view(current_context="cancel"), name="cancel_reply_event_rooms"),
+    path('api/event-rooms/create-new', apis.EventsAPI.as_view(current_context="create_new"), name='create_new_event_rooms'),
+    path('api/event-rooms/reply/start', apis.HandleReplyingEventRoomsAPI.as_view(current_context="start"), name="start_reply_event_rooms"),
+    path('api/event-rooms/reply', apis.EventsAPI.as_view(current_context="reply"), name="reply_event_rooms"),
+    path('api/event-rooms/reply/cancel', apis.HandleReplyingEventRoomsAPI.as_view(current_context="cancel"), name="cancel_reply_event_rooms"),
 
-    path('api/event-tones/list', views.EventTonesAPI.as_view(), name='event_tones'),
-    path('api/event-likes-dislikes', views.EventLikesDislikesAPI.as_view(), name='event_likes_dislikes'),
-    path('api/users/username/get/<str:username>', views.UsersUsernameAPI.as_view(), name='users_get_username'),
-    path('api/users/username/set', views.UsersUsernameAPI.as_view(), name='users_set_username'),
-    path('api/users/sign-up', views.UsersLogInSignUpAPI.as_view(current_context='sign_up'), name='users_sign_up'),
-    path('api/users/log-in', views.UsersLogInSignUpAPI.as_view(current_context='log_in'), name='users_log_in'),
-    path('api/users/log-out', views.UsersLogOutAPI.as_view(), name='users_log_out'),
+    path('api/event-tones/list', apis.EventTonesAPI.as_view(), name='event_tones'),
+    path('api/event-likes-dislikes', apis.EventLikesDislikesAPI.as_view(), name='event_likes_dislikes'),
+    path('api/users/username/get/<str:username>', apis.UsersUsernameAPI.as_view(), name='users_get_username'),
+    path('api/users/username/set', apis.UsersUsernameAPI.as_view(), name='users_set_username'),
+    path('api/users/sign-up', apis.UsersLogInSignUpAPI.as_view(current_context='sign_up'), name='users_sign_up'),
+    path('api/users/log-in', apis.UsersLogInSignUpAPI.as_view(current_context='log_in'), name='users_log_in'),
+    path('api/users/log-out', apis.UsersLogOutAPI.as_view(), name='users_log_out'),
     
     #user management
     #refer to link below for all URLs/APIs already provided

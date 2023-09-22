@@ -63,18 +63,18 @@
                             class="flex"
                         >
                             <div class="flex shrink-0 items-center justify-center w-10 bg-theme-black text-white">
-                                <i class="text-xl" :class="notification.icon" aria-hidden="true"></i>
+                                <i class="text-xl" :class="(notification as ExtendedNotificationType).icon" aria-hidden="true"></i>
                             </div>
                             <div class="w-full px-4 py-2 text-theme-black">
                                 <span class="text-base font-semibold">{{ notification.title }}</span>
                                 <p class="text-sm">{{ notification.text }}</p>
                                 <div v-if="notification.button_1" class="w-full pt-2">
                                     <button
-                                        @click="[notification.button_1.callback(), close(notification.id)]"
+                                        @click="[(notification as ExtendedNotificationType).button_1.callback(), close(notification.id)]"
                                         type="button"
                                         class="w-full h-10 flex flex-row items-center     shade-border-when-hover transition-colors       border border-theme-light-gray rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                                     >
-                                        <span class="px-4 pb-0.5 mx-auto text-sm font-medium">{{ notification.button_1.text }}</span>
+                                        <span class="px-4 pb-0.5 mx-auto text-sm font-medium">{{ (notification as ExtendedNotificationType).button_1.text }}</span>
                                     </button>
                                 </div>
                             </div>
@@ -91,6 +91,19 @@
     import {Notification, NotificationGroup} from 'notiwind';
 </script>
 
+
+<script lang="ts">
+    interface ExtendedNotificationType {
+        [x: string]: unknown,
+        id: number,
+        group: string,
+        icon: string|undefined,
+        button_1: {
+            text: string,
+            callback: () => any,
+        },
+    }[]
+</script>
 
 
 

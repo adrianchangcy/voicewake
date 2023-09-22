@@ -135,7 +135,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
-    is_banned = models.BooleanField(default=False)
+    banned_until = models.DateTimeField(null=True, blank=True, default=None)
     last_login = models.DateTimeField(null=True, blank=True)
     date_joined = models.DateTimeField(auto_now_add=True)
     
@@ -201,23 +201,33 @@ class UserBlocks(models.Model):
 
 #on ban_decision becoming from None to True/False, delete all other rows with the same reported_event
 #a user can only be banned once per event
-class UserEventReports(models.Model):
+class EventReports(models.Model):
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     reported_event = models.ForeignKey('Events', on_delete=models.CASCADE)
-    ban_decision = models.BooleanField(blank=True, null=True, default=None)    #True for ban, False to skip
-    banned_from = models.DateTimeField()    #blank=True, null=True, default=None
-    banned_to = models.DateTimeField()
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
     class Meta:
         app_label = 'voicewake'
         managed = True
-        db_table = 'user_event_reports'
+        db_table = 'event_reports'
         constraints = [
             models.UniqueConstraint(fields=["user", "reported_event"], name="unique_user_reported_event")
         ]
+
+
+class EventReportBans(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    reported_event = models.OneToOneField('Events', on_delete=models.PROTECT)
+    banned_until = models.DateTimeField()
+    when_created = models.DateTimeField(auto_now_add=True)
+    last_modified = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = 'voicewake'
+        managed = True
+        db_table = 'event_report_bans'
 
 
 class EventLikesDislikes(models.Model):

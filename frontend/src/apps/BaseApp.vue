@@ -97,7 +97,7 @@
                 notify({
                     icon: 'fas fa-cookie-bite',
                     title: 'Cookies Consent',
-                    text: 'We use cookies so users can stay logged in.',
+                    text: 'We use cookies so you can stay logged in.',
                     type: 'generic',
                     button_1: {
                         text: 'Accept',
@@ -107,7 +107,7 @@
             },
             setCookiesConsent() : void {
 
-                localStorage.setItem('user_consents_to_cookies', true);
+                localStorage.setItem('user_consents_to_cookies', JSON.stringify(true));
             },
         },
         beforeMount(){
@@ -133,11 +133,19 @@
 
                 window.location.replace(window.location.href);
             });
+
+            //allow use of ESC key to close popups
+            window.addEventListener('keydown', this.pop_up_manager_store.forceCloseAllPopUps);
+
         },
         mounted(){
 
             this.checkHasCookiesConsent();
         },
+        beforeUnmount(){
+
+            window.removeEventListener('keydown', this.pop_up_manager_store.forceCloseAllPopUps);
+        }
     });
 </script>
 
