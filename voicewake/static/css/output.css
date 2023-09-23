@@ -853,6 +853,10 @@ video {
   margin-top: 4.5rem;
 }
 
+.ml-\[1px\] {
+  margin-left: 1px;
+}
+
 .box-content {
   box-sizing: content-box;
 }
@@ -1767,6 +1771,18 @@ video {
 
 .pt-8 {
   padding-top: 2rem;
+}
+
+.pr-\[1px\] {
+  padding-right: 1px;
+}
+
+.pt-\[1px\] {
+  padding-top: 1px;
+}
+
+.pl-\[2px\] {
+  padding-left: 2px;
 }
 
 .text-left {

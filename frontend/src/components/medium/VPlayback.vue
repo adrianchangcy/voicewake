@@ -44,8 +44,8 @@
                 >
                     <i
                         :class="[
-                            playback_paused ? 'fa-play' : 'fa-pause',
-                            'fas mt-[1px] mx-auto'
+                            playback_paused ? 'fa-play pl-[2px]' : 'fa-pause',
+                            'fas pt-[1px] mx-auto'
                         ]"
                         aria-hidden="true"
                     ></i>
