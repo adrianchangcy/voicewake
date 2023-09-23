@@ -5,7 +5,7 @@
         <div
             ref="slider"
             class="relative w-full h-full left-0 right-0 mx-auto cursor-pointer parent-trigger-double-width-when-hover"
-            @pointerdown="[startDrag($event), doDrag($event)]"
+            @pointerdown.prevent="[startDrag($event), doDrag($event)]"
         >
             <div
                 class="w-2 absolute bg-theme-light-gray left-0 right-0 top-0 bottom-0 m-auto double-width-when-hover transition-transform"
@@ -57,6 +57,7 @@
         watch: {
             propSliderValue(new_value){
 
+                //may be circular, but watchers don't trigger when value is the same
                 this.mainUpdateSlider(new_value);
             },
         },
@@ -110,8 +111,7 @@
                         this.slider_value = 0;
                     }
 
-                    //null because this child --> parent --> child via watcher updates this.slider_value here for us
-                    this.mainUpdateSlider(null);
+                    this.animeSlider();
                     this.$emit('hasNewSliderValue', this.slider_value);
 
                     //troubleshoot if needed
@@ -151,15 +151,14 @@
                 //since we have no px to refer to for translate due to v-show, we do inverse scale trick
                 (this.$refs.slider_knob as HTMLElement).style.transform = 'scaleY(' + (1 / scale_value).toString() + ')';
             },
-            mainUpdateSlider(new_value:number|null=null) : void {
+            mainUpdateSlider(new_value:number) : void {
 
                 //you can call this from parent, and everything at VSliderYSmall will update accordingly
-                if(new_value !== null && (new_value >= 0 && new_value <= 1)){
+                if(new_value >= 0 && new_value <= 1){
 
                     this.slider_value = new_value;
+                    this.animeSlider();
                 }
-
-                this.animeSlider();
             },
         },
         mounted(){
