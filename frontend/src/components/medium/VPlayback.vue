@@ -166,8 +166,8 @@
                     <!--volume content-->
                     <div
                         :class="[
-                            is_playback_volume_open ? 'h-32 z-10 bg-theme-light border-theme-dark-gray' : 'h-full border-transparent',
-                            'absolute w-full bottom-0 m-auto border rounded-lg'
+                            is_playback_volume_open ? 'h-32 z-10 bg-theme-light border-theme-black' : 'h-full border-transparent',
+                            'absolute w-full bottom-0 m-auto border-2 rounded-lg'
                         ]"
                         @pointerenter.stop="handlePlaybackVolumeHoverIn($event)"
                         @pointerleave.stop="handlePlaybackVolumeHoverOut($event)"
@@ -175,8 +175,8 @@
 
                         <!--volume button-->
                         <VActionTextOnly
-                            @pointerdown="toggleMute($event)"
-                            @keydown.enter="toggleMute($event)"
+                            @pointerdown="toggleMute(false)"
+                            @keydown.enter="toggleMute(true)"
                             :propIsEnabled="isPlaybackReady"
                             propElement="button"
                             type="button"
@@ -203,7 +203,7 @@
                                 current volume is {{ getCurrentVolume }}, click to mute
                             </span>
                             <span class="sr-only">
-                                after clicking, you can use keyboard arrow up and down keys to adjust volume
+                                when volume menu is open, keyboard up and down keys can also adjust volume
                             </span>
                         </VActionTextOnly>
 
@@ -214,8 +214,8 @@
                             ref="volume_slider"
                             :propSliderValue="playback_volume"
                             @hasNewSliderValue="changePlaybackVolume($event)"
-                            @startDragSliderValue="handleVolumeStartDrag($event)"
-                            @stopDragSliderValue="handleVolumeStopDrag($event)"
+                            @startDragSliderValue="handleVolumeStartDrag()"
+                            @stopDragSliderValue="handleVolumeStopDrag()"
                             class="w-full h-[5.5rem] absolute left-0 right-0 bottom-10 m-auto pt-5 pb-1"
                         >
                             <span class="sr-only">vertical volume box</span>
@@ -257,13 +257,13 @@
     import { prettyDuration, getRandomUUID } from '@/helper_functions';
     import anime from 'animejs';
     import EventsAndLikeDetailsTypes from '@/types/EventsAndLikeDetails.interface';
-    import VSliderTypes from '@/types/values/VSlider';
+    // import VSliderTypes from '@/types/values/VSlider';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
 
     export default defineComponent({
         data(){
             return {
-                is_debug: true,
+                is_debug: false,
 
                 instance_id: "",    //uuid, to identify between multiple VPlayback instances
                 vplayback_store: useVPlaybackStore(),
@@ -293,8 +293,10 @@
                 stay_paused_on_drag: true,  //if user pauses, then navigating will not auto-play
 
                 playback_rate: 1,   //allows 0 to 2, but we handle 0.5, 1, 1.5
-                playback_volume: 0, //accepts 0 to 1
-                backup_playback_volume: 0,  //accepts 0 to 1, used when unmuting playback_volume from 0
+                playback_volume: 1, //always changes, accepts 0 to 1
+                playback_volume_backup_never_0: 1,  //only changes when appropriate, accepts >0 to 1
+                is_playback_volume_slider_dragging: false,
+                is_playback_volume_slider_hovering: false,
 
                 is_playback_speed_options_open: false,
                 
@@ -400,8 +402,11 @@
 
                     if(this.playback_paused === false){
 
-                        this.pausePlayback();
-                        this.updatePlaybackSliderValue();
+                        (async ()=> {
+
+                            await this.pausePlayback();
+                            this.updatePlaybackSliderValue();
+                        })();
                     }
                 }
             },
@@ -411,10 +416,12 @@
                 if(new_value === true){
 
                     //ok to run this often, since it does nothing if dimension is the same
-                    this.$nextTick(()=>{
-                        if(this.adjustPlaybackSliderDimension() === true && this.isPlaybackReady === true){
-                            this.createPlaybackSliderAnime();
-                            this.syncSliderAnimeAfterSuspend();
+                    this.$nextTick(async () => {
+
+                        if(await this.adjustPlaybackSliderDimension() === true && this.isPlaybackReady === true){
+
+                            await this.createPlaybackSliderAnime();
+                            await this.syncSliderAnimeAfterSuspend();
                         }
                     });
                 }
@@ -422,23 +429,26 @@
                 //if is playing when close, pause playback
                 if(new_value === false && this.playback_paused === false){
 
-                    this.pausePlayback();
-                    this.updatePlaybackSliderValue();
+                    (async () => {
+
+                        await this.pausePlayback();
+                        this.updatePlaybackSliderValue();
+                    })();
                 }
             },
         },
         computed: {
+            isMuted() : boolean {
+
+                return this.playback_volume === 0;
+            },
             getCurrentVolume() : string {
 
                 return (this.playback_volume * 100).toString() + "%";
             },
             getBackupVolume() : string {
 
-                return (this.backup_playback_volume * 100).toString() + "%";
-            },
-            isMuted() : boolean {
-
-                return this.playback_volume === 0;
+                return (this.playback_volume * 100).toString() + "%";
             },
             isPlaybackReady() : boolean {
 
@@ -467,7 +477,7 @@
             },
         },
         methods: {
-            determineInstanceHasFocus(event:PointerEvent) : void {
+            async determineInstanceHasFocus(event:PointerEvent) : Promise<void> {
 
                 this.instance_has_focus = (this.$refs.playback_main as HTMLElement).contains(event.target as Node);
             },
@@ -498,7 +508,7 @@
 
                 this.playback_slider_value = new_value;
             },
-            storeCurrentEventLastStopped(specific_event:EventsAndLikeDetailsTypes) : void {
+            async storeCurrentEventLastStopped(specific_event:EventsAndLikeDetailsTypes) : Promise<void> {
 
                 //call this after pause on source change, but before source change happens
 
@@ -527,7 +537,7 @@
                 //store
                 this.vplayback_store.addEventPlaybackLastStopped(specific_event.id, current_time_s);
             },
-            updateInstanceLastInteracted(to_remove:boolean=false) : void {
+            async updateInstanceLastInteracted(to_remove:boolean=false) : Promise<void> {
 
                 //any actions taken to any VPlayback instance will update store
                 //so that handleKeyboardEvent() goes through for "last interacted VPlayback" only
@@ -555,7 +565,7 @@
                     this.playPlayback();
                 }
             },
-            handlePlaybackVolumeHoverIn(event:PointerEvent) : void {
+            async handlePlaybackVolumeHoverIn(event:PointerEvent) : Promise<void> {
 
                 //don't handle hover if not mouse, since hover behaviour is meant for mouse only
                 //otherwise, touch triggers mouseenter and mouseleave undesirably
@@ -564,9 +574,10 @@
                     return;
                 }
 
+                this.is_playback_volume_slider_hovering = true;
                 this.openPlaybackVolume();
             },
-            handlePlaybackVolumeHoverOut(event:PointerEvent) : void {
+            async handlePlaybackVolumeHoverOut(event:PointerEvent) : Promise<void> {
 
                 //don't handle hover if not mouse, since hover behaviour is meant for mouse only
                 //otherwise, touch triggers mouseenter and mouseleave undesirably
@@ -575,75 +586,54 @@
                     return;
                 }
 
-                this.closePlaybackVolume(false);
-            },
-            handleVolumeStartDrag(new_value:VSliderTypes) : void {
+                this.is_playback_volume_slider_hovering = false;
 
+                if(this.is_playback_volume_slider_dragging === false){
+
+                    this.closePlaybackVolume(false);
+                }
+            },
+            handleVolumeStartDrag() : void {
+
+                this.is_playback_volume_slider_dragging = true;
+                this.savePlaybackVolumeLocalStorage(this.playback_volume);
                 this.openPlaybackVolume();
-                this.saveBackupPlaybackVolume(new_value.slider_value);
             },
-            handleVolumeStopDrag(new_value:VSliderTypes) : void {
+            handleVolumeStopDrag() : void {
 
-                this.saveBackupPlaybackVolume(new_value.slider_value);
+                this.is_playback_volume_slider_dragging = false;
+                this.savePlaybackVolumeLocalStorage(this.playback_volume);
 
-                //don't close from here if user is hovering
-                if(new_value.pointer_type === "mouse"){
+                if(this.is_playback_volume_slider_hovering === false){
+
+                    this.closePlaybackVolume(false);
+                }
+            },
+            toggleMute(show_volume:boolean) : void {
+
+                if(this.is_playback_volume_slider_dragging === true){
 
                     return;
                 }
 
-                this.closePlaybackVolume();
-            },
-            saveBackupPlaybackVolume(new_value:number) : void {
-
-                //never 0
-                if(new_value === 0){
-
-                    return;
-                }
-
-                localStorage.setItem('backup_playback_volume', JSON.stringify(new_value));
-                this.backup_playback_volume = new_value;
-            },
-            toggleMute(event:KeyboardEvent|PointerEvent|null=null) : void {
-
-                //TODO: isolate mute/unmute to tab-level
-                //problem: mute from tab A at 100% vol, unmute tab B and you get 100% vol
-
-                //we don't use audio_element.muted
-                //we simply move volume to 0 when user wants to mute, for better UX, as per YouTube
-                //.muted continues to be used for bug fixes
-
-                if(this.propIsForRecording === true){
-                    
-                    return;
-                }
-
-                this.openPlaybackVolume();
-
-                //briefly open menu on unmute
                 if(this.playback_volume === 0){
 
-                    //unmute, i.e. set volume back to original
-                    this.playback_volume = parseFloat(localStorage.getItem('backup_playback_volume')!);
-                    (this.$refs.audio_element as HTMLAudioElement).volume = this.playback_volume;
-                    localStorage.setItem('playback_volume', JSON.stringify(this.playback_volume));
+                    //unmute
+                    this.changePlaybackVolume(this.playback_volume_backup_never_0);
+                    this.savePlaybackVolumeLocalStorage(this.playback_volume_backup_never_0);
 
                 }else{
 
-                    //mute, i.e. set volume to 0
-                    this.playback_volume = 0;
-                    (this.$refs.audio_element as HTMLAudioElement).volume = 0;
-                    localStorage.setItem('playback_volume', JSON.stringify(0));
+                    //mute
+                    this.changePlaybackVolume(0);
+                    this.savePlaybackVolumeLocalStorage(0);
                 }
 
-                //don't close if user is hovering with mouse
-                if(event !== null && "pointerType" in event && event.pointerType === "mouse"){
+                if(show_volume === true){
 
-                    return;
+                    this.openPlaybackVolume();
+                    this.closePlaybackVolume();
                 }
-
-                this.closePlaybackVolume();
             },
             openPlaybackVolume() : void {
 
@@ -677,13 +667,11 @@
                     this.is_playback_volume_open = false;
                 }
             },
-            userAdjustVolume(add_or_sub_value:number) : void {
+            keyboardAdjustVolume(add_or_sub_value:number) : void {
 
                 //pass values like 0.2 to add, -0.2 to sub
 
-                if(
-                    this.propIsForRecording === true || add_or_sub_value < -1 || add_or_sub_value > 1
-                ){
+                if(add_or_sub_value < -1 || add_or_sub_value > 1){
 
                     return;
                 }
@@ -700,15 +688,13 @@
 
                     new_playback_volume = 0;
                 }
-                
+
+                this.openPlaybackVolume();
+
                 this.changePlaybackVolume(new_playback_volume);
+                this.savePlaybackVolumeLocalStorage(new_playback_volume);
+
                 this.closePlaybackVolume();
-
-                //save backup volume for unmute scenario
-                if(new_playback_volume > 0){
-
-                    this.saveBackupPlaybackVolume(new_playback_volume);
-                }
             },
             handleKeyboardEvent(event:KeyboardEvent) : void {
 
@@ -760,7 +746,7 @@
                             //mute/unmute
                             //when for recording, no volume option
                             //we use localStorage for backup value from mute to unmute
-                            this.toggleMute(null);
+                            this.toggleMute(true);
                             break;
                         }
 
@@ -769,7 +755,7 @@
                         if(this.instance_has_focus === true){
 
                             event.preventDefault();
-                            this.userAdjustVolume(0.2);
+                            this.keyboardAdjustVolume(0.2);
                         }
 
                         break;
@@ -779,7 +765,7 @@
                         if(this.instance_has_focus === true){
 
                             event.preventDefault();
-                            this.userAdjustVolume(-0.2);
+                            this.keyboardAdjustVolume(-0.2);
                         }
 
                         break;
@@ -789,7 +775,7 @@
                         break;
                 }
             },
-            handleWindowResize() : void {
+            async handleWindowResize() : Promise<void> {
 
                 //during hot reload (change html/css --> save --> DOM changes without refresh), JS parts get slightly buggy
                 //e.g. all playback skips just lead to seek(0)
@@ -799,15 +785,15 @@
 
                 this.window_resize_timeout !== null ? clearTimeout(this.window_resize_timeout) : null;
 
-                this.window_resize_timeout = window.setTimeout(()=>{
+                const handler = async ()=>{
 
                     //for event listener 'resize', this recreates slider anime and syncs it
-                    this.adjustPlaybackSliderDimension();
+                    await this.adjustPlaybackSliderDimension();
 
                     if(this.isPlaybackReady === true && isNaN((this.$refs.audio_element as HTMLAudioElement).duration) === false){
                         
-                        this.createPlaybackSliderAnime();
-                        this.syncSliderAnimeAfterSuspend();
+                        await this.createPlaybackSliderAnime();
+                        await this.syncSliderAnimeAfterSuspend();
 
                         if(this.is_debug === true){
 
@@ -815,9 +801,17 @@
                             console.log("Navigation dimensions: " + JSON.stringify(this.playback_slider_dimension));
                         }
                     }
+                }
+
+                //run once, i.e. immediately
+                await handler();
+
+                //run this delayed one next, in case immediate call had fired before dimension is fixed
+                this.window_resize_timeout = window.setTimeout(async ()=>{
+                    await handler();
                 }, 200);
             },
-            syncSliderAnimeAfterSuspend() : void {
+            async syncSliderAnimeAfterSuspend() : Promise<void> {
 
                 //we need this because anime.suspendDocumentWhenHidden=false does not work
                 //basically just to reposition slider anime to playback, else it doesn't do that
@@ -831,25 +825,20 @@
 
                     if(this.playback_paused === false){
 
-                        this.pausePlayback();
-                        this.updatePlaybackSliderValue();
+                        await this.pausePlayback();
                         resume_later = true;
                     }
 
+                    this.updatePlaybackSliderValue();
                     this.seekPlayback();
 
                     if(resume_later === true){
 
-                        const target = (this.$refs.audio_element as HTMLAudioElement);
-
-                        //we want to mute to avoid the rare slight spike at certain db
-                        target.muted = true;
                         this.playPlayback();
-                        target.muted = false;
                     }
                 }
             },
-            createPlaybackSliderAnime() : void {
+            async createPlaybackSliderAnime() : Promise<void> {
 
                 //to be called during handleHasMetadata(), window resize, changePlaybackRate()
                 //we can then use .play/.pause/.seek
@@ -871,7 +860,8 @@
                 const ending_translateX = (this.playback_slider_dimension as DOMRect).width;
 
                 //calculate duration based on playback_rate
-                const anime_duration = this.getRealDurationAfterPlaybackRate() * 1000;
+                //note that when <audio> playbackRate changes, .duration is still the same
+                const anime_duration = ((this.$refs.audio_element as HTMLAudioElement).duration / this.playback_rate) * 1000;
 
                 //create new anime
                 this.playback_slider_knob_anime = anime({
@@ -898,7 +888,7 @@
                 this.is_playback_slider_ready = true;
                 this.is_playback_slider_processing = false;
             },
-            adjustPlaybackSliderDimension() : boolean {
+            async adjustPlaybackSliderDimension() : Promise<boolean> {
 
                 //returns true if there is change
 
@@ -930,7 +920,7 @@
                 this.playback_slider_dimension = new_dimension;
                 return true;
             },
-            startPlaybackDrag() : void {
+            async startPlaybackDrag() : Promise<void> {
 
                 if(this.isPlaybackReady === false){
 
@@ -941,7 +931,7 @@
 
                 if(this.playback_paused === false){
 
-                    this.pausePlayback();
+                    await this.pausePlayback();
                     this.updatePlaybackSliderValue();
                 }
 
@@ -1087,7 +1077,7 @@
                 //handle timer
                 this.updateCurrentPlaybackTime();
             },
-            skipPlayback(seconds=0) : void {
+            async skipPlayback(seconds=0) : Promise<void> {
 
                 //+x for forward, -x for backward
 
@@ -1101,7 +1091,7 @@
 
                 if(this.playback_paused === false){
 
-                    this.pausePlayback();
+                    await this.pausePlayback();
                 }
 
                 let updated_time = audio_element.currentTime + seconds;
@@ -1151,28 +1141,32 @@
 
                 this.playback_slider_value = audio_element.currentTime / audio_element.duration;
             },
-            updateCurrentPlaybackTime() : void {
+            async updateCurrentPlaybackTime() : Promise<void> {
 
                 const target = (this.$refs.audio_element as HTMLAudioElement);
 
                 //timer
                 this.pretty_current_playback_time = prettyDuration(target.currentTime);
             },
-            getRealDurationAfterPlaybackRate() : number{
+            async changePlaybackVolume(new_value:number) : Promise<void> {
 
-                //note that when <audio> playbackRate changes, .duration is still the same
-                return (this.$refs.audio_element as HTMLAudioElement).duration / this.playback_rate;
-            },
-            changePlaybackVolume(new_value:number) : void {
-                
-                (this.$refs.audio_element as HTMLAudioElement).volume = new_value;
                 this.playback_volume = new_value;
-                localStorage.setItem('playback_volume', JSON.stringify(new_value));
-
-                //show volume menu
-                this.openPlaybackVolume();
+                (this.$refs.audio_element as HTMLAudioElement).volume = new_value;
             },
-            changePlaybackRate(new_value:number) : void {
+            async savePlaybackVolumeLocalStorage(new_value:number) : Promise<void> {
+
+                if(new_value === 0){
+
+                    localStorage.setItem('is_muted', JSON.stringify(true));
+
+                }else{
+
+                    localStorage.setItem('is_muted', JSON.stringify(false));
+                    localStorage.setItem('playback_volume_backup_never_0', JSON.stringify(new_value));
+                    this.playback_volume_backup_never_0 = new_value;
+                }
+            },
+            async changePlaybackRate(new_value:number) : Promise<void> {
 
                 const audio_element = (this.$refs.audio_element as HTMLAudioElement);
 
@@ -1185,7 +1179,7 @@
                 const resume_later = !this.playback_paused;
 
                 //pause to make changes, and to update playback_slider_value
-                this.pausePlayback();
+                await this.pausePlayback();
                 this.updatePlaybackSliderValue();
 
                 //update values
@@ -1196,7 +1190,7 @@
                 localStorage.setItem('playback_rate', JSON.stringify(new_value));
 
                 //adjust anime
-                this.createPlaybackSliderAnime();
+                await this.createPlaybackSliderAnime();
                 this.playback_slider_knob_anime.seek(this.playback_slider_value * this.playback_slider_knob_anime.duration);
                 this.playback_slider_progress_anime.seek(this.playback_slider_value * this.playback_slider_progress_anime.duration);
 
@@ -1206,7 +1200,7 @@
                     this.playPlayback();
                 }
             },
-            togglePlaybackSpeedOptions() : void {
+            async togglePlaybackSpeedOptions() : Promise<void> {
                 
                 this.is_playback_speed_options_open = !this.is_playback_speed_options_open;
             },
@@ -1254,7 +1248,7 @@
                     this.play_promise = null;
                 });
             },
-            pausePlayback() : void {
+            async pausePlayback() : Promise<void> {
 
                 //if playing, call this before drag, then do playPlayback() once done
                 //done at startPlaybackDrag() and stopPlaybackDrag()
@@ -1281,7 +1275,7 @@
 
                 if(this.play_promise !== null){
 
-                    this.play_promise.then(()=>{
+                    await this.play_promise.then(()=>{
 
                         handler();
                     });
@@ -1291,7 +1285,7 @@
                     handler();
                 }
             },
-            userTogglePlaybackPlayPause() : void {
+            async userTogglePlaybackPlayPause() : Promise<void> {
 
                 //we let everything stay at the end if playback truly ended
                 //reset is only triggered on next play
@@ -1321,13 +1315,13 @@
 
                 }else{
 
-                    this.pausePlayback();
+                    await this.pausePlayback();
                     this.updatePlaybackSliderValue();
                     this.endPlaybackTruly();
                     this.stay_paused_on_drag = true;
                 }
             },
-            adjustVolumeRipples() : void {
+            async adjustVolumeRipples() : Promise<void> {
 
                 //we calculate height relative to most quiet and loudest parts
                 //samples are expected to be between -1 and 1, but we always get -0.0001 to 1
@@ -1381,7 +1375,7 @@
                     });
                 }
             },
-            attachAudioToPlayback(new_audio:string|Blob|File) : void {
+            async attachAudioToPlayback(new_audio:string|Blob|File) : Promise<void> {
 
                 const audio_element = (this.$refs.audio_element as HTMLAudioElement);
 
@@ -1389,7 +1383,7 @@
                 //we don't create new slider here, but at <audio>'s @loadedmetadata, as its .duration is only available then
                 if(this.playback_paused === false){
 
-                    this.pausePlayback();
+                    await this.pausePlayback();
                 }
 
                 //states
@@ -1432,7 +1426,7 @@
 
                 this.adjustVolumeRipples();
             },
-            handleHasMetadata() : void {
+            async handleHasMetadata() : Promise<void> {
 
                 //@loadedmetadata is when <audio>.duration is finally available
 
@@ -1443,7 +1437,7 @@
                 //this is how we fix it, which still applies after the fixWebmDuration solution
                 //https://stackoverflow.com/a/69512775
 
-                const handler = ()=>{
+                const handler = async () => {
 
                     audio_element.currentTime = 0;
                     audio_element.removeEventListener('timeupdate', handler);
@@ -1460,7 +1454,7 @@
                     }
 
                     this.adjustPlaybackSliderDimension();
-                    this.createPlaybackSliderAnime();
+                    await this.createPlaybackSliderAnime();
                     this.setInitialPlaybackSliderValue();
                     this.seekPlayback();
                     this.endPlaybackTruly();
@@ -1474,7 +1468,7 @@
                 //you'll get 0, but if you check via watch, the value does change
                 //put your code in handler instead if you need to run something else
             },
-            animeIsNotEmptyPlayback() : void {
+            async animeIsNotEmptyPlayback() : Promise<void> {
 
                 if(this.is_playback_empty_anime === false){
 
@@ -1492,7 +1486,7 @@
 
                 this.is_playback_empty_anime = false;
             },
-            animeIsEmptyPlayback(): void {
+            async animeIsEmptyPlayback(): Promise<void> {
 
                 const volume_ripples = (this.$refs.volume_ripple as HTMLElement[]);
 
@@ -1516,6 +1510,8 @@
             },
         },
         mounted(){
+
+            localStorage.removeItem('playback_volume');
 
             if(this.is_debug === true){
 
@@ -1565,6 +1561,7 @@
                 //there is no need for them if intended for recording, for best feedback
                 this.playback_rate = 1;
                 this.playback_volume = 1;
+                this.playback_volume_backup_never_0 = 1;
 
             }else{
 
@@ -1576,21 +1573,29 @@
                     localStorage.setItem('playback_rate', JSON.stringify(1));
                 }
 
-                //volume, default 50%
-                if(localStorage.getItem('playback_volume') === null){
-                    localStorage.setItem('playback_volume', JSON.stringify(0.5));
+                //volume
+                //always save >0, never 0
+                //starts as 1, so volume changes are saved on touch events, i.e. mobile
+                //else, unmute must always be 1, which is bad for users using touch but are able to adjust volume
+                if(localStorage.getItem('playback_volume_backup_never_0') === null){
+                    localStorage.setItem('playback_volume_backup_never_0', JSON.stringify(1));
                 }
 
-                //backup volume, i.e. the value before volume is ever set to 0
-                //this is successfully done based on when you call to modify this
-                if(localStorage.getItem('backup_playback_volume') === null){
-                    localStorage.setItem('backup_playback_volume', JSON.stringify(0.5));
+                //when muted, this is true, but playback_volume is still >0
+                if(localStorage.getItem('is_muted') === null){
+                    localStorage.setItem('is_muted', JSON.stringify(true));
                 }
 
                 //set values
                 this.playback_rate = parseFloat(JSON.parse(localStorage.getItem('playback_rate')!));
-                this.playback_volume = parseFloat(JSON.parse(localStorage.getItem('playback_volume')!));
-                this.backup_playback_volume = parseFloat(JSON.parse(localStorage.getItem('backup_playback_volume')!));
+                this.playback_volume_backup_never_0 = parseFloat(JSON.parse(localStorage.getItem('playback_volume_backup_never_0')!));
+
+                //set volume
+                if(JSON.parse(localStorage.getItem('is_muted')!) === true){
+                    this.playback_volume = 0;
+                }else{
+                    this.playback_volume = this.playback_volume_backup_never_0;
+                }
 
                 //mute decision
                     //scenario #1:
@@ -1603,14 +1608,14 @@
 
             const audio_element = (this.$refs.audio_element as HTMLAudioElement);
 
-            //set <audio> rate and volume
+            //set <audio> properties
             audio_element.playbackRate = this.playback_rate;
             audio_element.volume = this.playback_volume;
             
-            //tell user that their browser cannot play mp3
+            //check if user's browser is unable to play mp3
             if(audio_element.canPlayType("audio/mp3").toLowerCase().length === 0){
 
-                alert("Your browser does not support mp3 files.");
+                alert("Oops! Your browser does not support mp3 files. All recordings are in mp3 format.");
             }
 
             //attach listeners
@@ -1618,7 +1623,7 @@
             window.addEventListener('pointermove', this.doPlaybackDrag);
             window.addEventListener('pointerup', this.stopPlaybackDrag);
             window.addEventListener('resize', this.handleWindowResize);
-            window.addEventListener('keydown', this.handleKeyboardEvent);
+            this.propIsRecording === false ? window.addEventListener('keydown', this.handleKeyboardEvent) : null;
             document.addEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
             audio_element.addEventListener('timeupdate', this.updateCurrentPlaybackTime);
         },
@@ -1631,7 +1636,7 @@
             window.removeEventListener('pointermove', this.doPlaybackDrag);
             window.removeEventListener('pointerup', this.stopPlaybackDrag);
             window.removeEventListener('resize', this.handleWindowResize);
-            window.removeEventListener('keydown', this.handleKeyboardEvent);
+            this.propIsRecording === false ? window.removeEventListener('keydown', this.handleKeyboardEvent) : null;
             document.removeEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
             audio_element.removeEventListener('timeupdate', this.updateCurrentPlaybackTime);
         },
