@@ -182,7 +182,7 @@
                             type="button"
                             :propIsIconOnly="true"
                             :propIsDefaultOutlineOffset="false"
-                            class="w-full h-10 absolute -bottom-[3px] focus-visible:-outline-offset-8"
+                            class="w-full h-10 absolute -bottom-[3px] focus-visible:-outline-offset-4"
                         >
                             <div class="w-full h-full relative">
                                 <i
