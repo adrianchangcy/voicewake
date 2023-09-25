@@ -297,7 +297,7 @@ class Events_TestCase(TestCase):
 
         pass
 
-    
+
     def test_prepare_test_data(self):
 
         prepare_test_data_class = PrepareTestData(for_test=True)
@@ -384,11 +384,232 @@ class RandomTests_TestCase(TestCase):
         pass
 
 
+class System_TestCase(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+
+        cls.user_1_email = "someemail@gmail.com"
+        cls.user_1_username = "someemail"
+        cls.user_1_password = "abc"
+
+        cls.user_2_email = "someemail2@gmail.com"
+        cls.user_2_username = "someemail2"
+        cls.user_2_password = "abc2"
+
+        #prepare data
+        #we put it here so that our new account below is not involved
+        prepare_test_data_class = PrepareTestData(for_test=True)
+        prepare_test_data_class.do_quick_start(1)
+
+        #sign up
+        #API already works, as tested in other test cases
+        get_user_model().objects.create_user(cls.user_1_email, cls.user_1_username)
+        get_user_model().objects.create_user(cls.user_2_email, cls.user_2_username)
+
+        #we do set_unusable_password() for normal users
+        #but we need username + password to sign in here, so we set normal password
+        cls.user_1_instance = get_user_model().objects.get(email=cls.user_1_email)
+        cls.user_2_instance = get_user_model().objects.get(email=cls.user_2_email)
+
+        #set is_active=True for login success
+        cls.user_1_instance.is_active = True
+        cls.user_1_instance.save()
+        cls.user_1_instance.refresh_from_db()
+
+        cls.user_2_instance.is_active = True
+        cls.user_2_instance.save()
+        cls.user_2_instance.refresh_from_db()
 
 
+    def login(self, user_instance):
+
+        #need this here because @classmethod does not have .client attribute
+        self.client.force_login(user_instance)
 
 
+    def test_like_dislike(self):
 
+        self.login()
+
+        def do_like_dislike(event_id, is_liked):
+
+            #submit
+            request = self.client.post(
+                path=reverse('event_likes_dislikes'),
+                data={
+                    'event_id': event_id,
+                    'is_liked': is_liked
+                },
+                content_type='application/json'
+            )
+
+            #expect success
+            self.assertEqual(request.status_code, 200)
+
+            #check db
+            try:
+                event_like_dislike = EventLikesDislikes.objects.get(event_id=first_event.id, user_id=self.user_instance.id)
+                self.assertEqual(event_like_dislike.is_liked, is_liked)
+            except EventLikesDislikes.DoesNotExist:
+                print('event_likes_dislikes record removed')
+
+        #get any event
+        first_event = Events.objects.first()
+
+        #check like/dislike doesn't exist for current user
+        self.assertFalse(
+            EventLikesDislikes.objects.filter(
+                event_id=first_event.id, user_id=self.user_instance.id
+            ).exists()
+        )
+
+        #do request, and try repeating for resiliency
+        do_like_dislike(event_id=first_event.id, is_liked=True)
+        do_like_dislike(event_id=first_event.id, is_liked=True)
+
+        #switch to dislike, also repeat
+        do_like_dislike(event_id=first_event.id, is_liked=False)
+        do_like_dislike(event_id=first_event.id, is_liked=False)
+
+        #remove, and repeat
+        do_like_dislike(event_id=first_event.id, is_liked=None)
+        do_like_dislike(event_id=first_event.id, is_liked=None)
+
+
+    def test_(self):
+
+        pass
+
+
+    def test_user_block(self):
+
+        self.login(self.user_1_instance)
+
+        self.client.post(
+            path=reverse('users_block_users'),
+            data={
+                'blocked_user_id': self.user_2_instance.id,
+                'to_block': True
+            }
+        )
+
+        self.assertTrue(UserBlocks.objects.filter(user_id=self.user_1_instance, blocked_user_id=self.user_2_instance).exists())
+
+        #here, you run event_rooms querysets to validate that blocked users don't show up
+
+
+    def test_event_report(self):
+
+        self.login(self.user_1_instance)
+
+        #create user2 event
+        prepare_test_data_class = PrepareTestData(for_test=True)
+        prepare_test_data_class.prepare_test_data_event_rooms(
+            self.user_1_username,
+            self.user_2_username,
+            0,
+            1
+        )
+
+        #get events from event_rooms that both users are involved in
+        linked_events = Events.objects.raw(
+            '''
+                WITH
+                    user_1_event_rooms AS (
+                        SELECT event_rooms.id FROM event_rooms
+                        INNER JOIN events ON event_rooms.id = events.event_room_id
+                        WHERE events.user_id = %s
+                    ),
+                    user_2_event_rooms AS (
+                        SELECT event_rooms.id FROM event_rooms
+                        INNER JOIN events ON event_rooms.id = events.event_room_id
+                        WHERE events.user_id = %s
+                    ),
+                    shared_event_rooms AS (
+                        SELECT event_rooms.id FROM event_rooms
+                        RIGHT JOIN user_1_event_rooms ON event_rooms.id = user_1_event_rooms.id
+                        RIGHT JOIN user_2_event_rooms ON event_rooms.id = user_2_event_rooms.id
+                    )
+                    SELECT events.* FROM events
+                    RIGHT JOIN shared_event_rooms ON events.event_room_id = shared_event_rooms.id
+            ''',
+            params=(
+                self.user_1_instance.id,
+                self.user_2_instance.id
+            )
+        )
+
+        #report the other event that does not belong to this signed in user
+        event_to_report = None
+
+        for row in linked_events:
+
+            if row.user_id != self.user_1_instance.id:
+
+                event_to_report = row
+
+        #no reports initially
+        self.assertEqual(EventReports.objects.count(), 0)
+
+        #report
+        self.client.post(
+            path=reverse('create_event_reports'),
+            data={
+                'reported_event_id': event_to_report.id
+            }
+        )
+
+        self.assertTrue(EventReports.objects.filter(user_id=self.user_1_instance.id, reported_event_id=event_to_report.id).exists())
+
+        #try report again, expect to not accept duplicates
+        self.client.post(
+            path=reverse('create_event_reports'),
+            data={
+                'reported_event_id': event_to_report.id
+            }
+        )
+
+        self.assertTrue(EventReports.objects.filter(user_id=self.user_1_instance.id, reported_event_id=event_to_report.id).exists())
+
+        #get event_report row
+        event_report_row = EventReports.objects.select_related('reported_event__user').get(
+            user_id=self.user_1_instance.id,
+            reported_event_id=event_to_report.id
+        )
+
+        #this is where your cronjob evaluates banning
+        #let's simulate the ban
+
+        banned_until = get_datetime_now() + timedelta(seconds=60)
+
+        #ban
+        EventReportBans.objects.create(
+            reported_event_id=event_to_report.id,
+            banned_until=banned_until
+        )
+        get_user_model().objects.filter(pk=event_report_row.reported_event.user.id).update(banned_until=banned_until)
+
+        #event bans are only shown to the user that created those events
+        #expect []
+        request = self.client.get(
+            path=reverse('get_event_report_bans')
+        )
+
+        result = json.loads(request.content)
+
+        self.assertEqual(len(result['data']), 0)
+
+        #log in to user_2, and expect 1 event ban row
+        self.login(self.user_2_instance)
+
+        request = self.client.get(
+            path=reverse('get_event_report_bans')
+        )
+
+        result = json.loads(request.content)
+
+        self.assertGreater(len(result['data']), 0)
 
 
 

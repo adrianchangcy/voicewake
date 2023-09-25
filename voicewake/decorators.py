@@ -90,8 +90,11 @@ def deny_if_banned(return_instance:Literal["response", "redirect"]):
 
             redirect_url = reverse('user_banned')
 
-            if(
-                request.user.is_authenticated is True and
+            if request.user.is_authenticated is False:
+
+                pass
+
+            elif(
                 request.user.banned_until is not None and
                 request.user.banned_until > get_datetime_now()
             ):
