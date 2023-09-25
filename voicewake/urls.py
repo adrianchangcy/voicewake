@@ -57,8 +57,12 @@ urlpatterns = [
     path('api/event-rooms/reply', apis.EventsAPI.as_view(current_context="reply"), name="reply_event_rooms"),
     path('api/event-rooms/reply/cancel', apis.HandleReplyingEventRoomsAPI.as_view(current_context="cancel"), name="cancel_reply_event_rooms"),
 
+    path('api/event-reports/create', apis.EventReportsAPI.as_view(), name="create_event_reports"),
+    path('api/event-report-bans/get', apis.EventReportBansAPI.as_view(), name="get_event_report_bans"),
+
     path('api/event-tones/list', apis.EventTonesAPI.as_view(), name='event_tones'),
     path('api/event-likes-dislikes', apis.EventLikesDislikesAPI.as_view(), name='event_likes_dislikes'),
+    path('api/users/blocks', apis.UserBlocksAPI.as_view(), name='users_block_users'),
     path('api/users/username/get/<str:username>', apis.UsersUsernameAPI.as_view(), name='users_get_username'),
     path('api/users/username/set', apis.UsersUsernameAPI.as_view(), name='users_set_username'),
     path('api/users/sign-up', apis.UsersLogInSignUpAPI.as_view(current_context='sign_up'), name='users_sign_up'),

@@ -291,9 +291,13 @@ class EventReportsAPISerializer(serializers.Serializer):
 
     reported_event_id = serializers.IntegerField()
 
-    class Meta:
-        model = EventReports
-        fields = '__all__'
+
+
+
+
+
+
+
 
 
 

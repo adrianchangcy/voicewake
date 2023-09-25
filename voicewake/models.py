@@ -67,7 +67,7 @@ def remove_all_whitespace(string_value):
 
 #custom user model
 #username should be default None instead of typical '' to comply with unique string field constraint
-#since '' is considered unique
+    #since '' is considered unique
 class UserManager(BaseUserManager):
 
     def _create_user(self, email, username, password, is_active, is_staff, is_superuser, **extra_fields):
@@ -106,8 +106,8 @@ class UserManager(BaseUserManager):
             **extra_fields
         )
 
-        #FYI, set_password() falls back to set_unusable_password() when None
-        #password=None for regular users
+        #FYI, set_password() has fallback to set_unusable_password() when None
+        #password=None is for regular users
         user.set_password(password)
         user.save(using=self._db)
 
@@ -134,7 +134,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     password = models.CharField(max_length=128) #still used for superuser
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)   #when False, login() and force_login() will fail
     banned_until = models.DateTimeField(null=True, blank=True, default=None)
     last_login = models.DateTimeField(null=True, blank=True)
     date_joined = models.DateTimeField(auto_now_add=True)

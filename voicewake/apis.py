@@ -51,7 +51,8 @@ class TestAPI(generics.GenericAPIView):
     permission_classes = []
 
 
-    def get(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
+
 
         return Response(
             data={
@@ -71,7 +72,6 @@ class TestAPI(generics.GenericAPIView):
 
 
 
-@method_decorator(app_decorators.deny_if_banned("response"), name='dispatch')
 class EventReportsAPI(generics.GenericAPIView):
 
     serializer_class = EventReportsAPISerializer
@@ -80,6 +80,7 @@ class EventReportsAPI(generics.GenericAPIView):
     #no get() here, users don't have to see what events they've reported
 
     #user wants to report an event
+    @method_decorator(app_decorators.deny_if_banned("response"))
     def post(self, request, *args, **kwargs):
 
         serializer = EventReportsAPISerializer(data=request.data, many=False)
@@ -151,14 +152,18 @@ class EventReportBansAPI(generics.GenericAPIView):
             offset_quantity:settings.GENERAL_ROW_QUANTITY_PER_PAGE
         ]
 
-        serializer = EventReportBansSerializer(
-            qs,
-            many=True
-        )
+        banned_events = []
+
+        if len(qs) > 0:
+
+            banned_events = EventReportBansSerializer(
+                qs,
+                many=True
+            ).data
 
         return Response(
             data={
-                'data': serializer,
+                'data': banned_events,
                 'message': ''
             },
             status=status.HTTP_200_OK
@@ -192,7 +197,7 @@ class UserBlocksAPI(generics.GenericAPIView):
 
         return Response(
             data={
-                'data': serializer,
+                'data': serializer.data,
                 'message': ''
             },
             status=status.HTTP_200_OK
@@ -257,13 +262,13 @@ class UserBlocksAPI(generics.GenericAPIView):
 
 
 
-@method_decorator(app_decorators.deny_if_banned("response"), name='dispatch')
 class UsersUsernameAPI(generics.GenericAPIView):
 
     serializer_class = UsersUsernameAPISerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
     #checks if username exists
+    @method_decorator(app_decorators.deny_if_banned("response"))
     def get(self, request, *args, **kwargs):
 
         serializer = UsersUsernameAPISerializer(data=kwargs, many=False)
@@ -307,6 +312,7 @@ class UsersUsernameAPI(generics.GenericAPIView):
 
 
     #updates username, but only once, i.e. when username is None
+    @method_decorator(app_decorators.deny_if_banned("response"))
     def post(self, request, *args, **kwargs):
 
         #user must not already have a username
@@ -378,7 +384,6 @@ class UsersUsernameAPI(generics.GenericAPIView):
 
 
 
-@method_decorator(app_decorators.deny_if_already_logged_in("response"), 'dispatch')
 class UsersLogInSignUpAPI(generics.GenericAPIView):
 
     serializer_class = None
@@ -407,9 +412,8 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
         #OTP verified, continue
 
         #currently set to True because we have no implication for is_active=False
-        if user_instance.is_active is False:
-
-            user_instance.is_active = True
+        #on is_active=False, login() will fail, as well as force_login() at tests
+        user_instance.is_active = True
 
         #set last_login
         user_instance.last_login = get_datetime_now()
@@ -430,6 +434,7 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
 
 
     #we let users log in even if banned
+    @method_decorator(app_decorators.deny_if_already_logged_in("response"))
     def post(self, request, *args, **kwargs):
 
         serializer = UsersLogInAPISerializer(data=request.data, many=False)
@@ -988,13 +993,6 @@ class EventRoomsAPI(generics.GenericAPIView):
 #user can generate new event_room reply choice
     #will unlock previous is_replying=False event_room
     #will add to UserEventRooms when locking for is_replying=False
-@method_decorator(
-    [
-        app_decorators.deny_if_no_username("response"),
-        app_decorators.deny_if_banned("response"),
-    ],
-    name='dispatch'
-)
 class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
 
     serializer_class = None
@@ -1173,6 +1171,10 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
 
 
     #queue event room reply choices for user
+    @method_decorator([
+        app_decorators.deny_if_no_username("response"),
+        app_decorators.deny_if_banned("response"),
+    ])
     def post(self, request, *args, **kwargs):
 
         if self.current_context == "list":
@@ -1306,13 +1308,6 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
 
 
 
-@method_decorator(
-    [
-        app_decorators.deny_if_no_username("response"),
-        app_decorators.deny_if_banned("response"),
-    ],
-    name='dispatch'
-)
 class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
     serializer_class = HandleReplyingEventRoomsAPISerializer
@@ -1527,6 +1522,10 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
 
     #start/cancel reply after reply choice has already been locked for the user
+    @method_decorator([
+        app_decorators.deny_if_no_username("response"),
+        app_decorators.deny_if_banned("response"),
+    ])
     def post(self, request, *args, **kwargs):
 
         serializer = HandleReplyingEventRoomsAPISerializer(data=request.data, many=False)
@@ -1567,13 +1566,6 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 #handle creating events
     #if event_role_name='originator', create event_room
     #if event_role_name='responder', link to event_room and reset lock
-@method_decorator(
-    [
-        app_decorators.deny_if_no_username("response"),
-        app_decorators.deny_if_banned("response"),
-    ],
-    name='dispatch'
-)
 class EventsAPI(generics.GenericAPIView):
 
     serializer_class = CreateEventsSerializer
@@ -1652,6 +1644,10 @@ class EventsAPI(generics.GenericAPIView):
         return False
 
 
+    @method_decorator([
+        app_decorators.deny_if_no_username("response"),
+        app_decorators.deny_if_banned("response"),
+    ])
     def post(self, request, *args, **kwargs):
 
         #deserialize
@@ -1848,13 +1844,6 @@ class EventsAPI(generics.GenericAPIView):
 
 #to submit likes/dislikes
 #is_liked=True/False, or destroy when undone
-@method_decorator(
-    [
-        app_decorators.deny_if_no_username("response"),
-        app_decorators.deny_if_banned("response"),
-    ],
-    name='dispatch'
-)
 class EventLikesDislikesAPI(generics.GenericAPIView):
 
     serializer_class = EventLikesDislikesSerializer
@@ -1863,6 +1852,10 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
     #no get() needed, since likes/dislikes are tied directly to events
 
     #create
+    @method_decorator([
+        app_decorators.deny_if_no_username("response"),
+        app_decorators.deny_if_banned("response"),
+    ])
     def post(self, request, *args, **kwargs):
 
         User = get_user_model()
