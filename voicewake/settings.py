@@ -282,6 +282,7 @@ EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS = 1200      #20 mins, when locked but is_
 EVENT_ROOM_REPLY_EXPIRY_SECONDS = 3600       #60 mins, when locked and is_replying=True
 EVENT_ROOM_QUANTITY_PER_PAGE = 10
 EVENT_ROOM_INCOMPLETE_ROLL_QUANTITY = 1
+EVENT_ROOM_UNDO_REPLY_QUANTITY_PER_CRON = 100
 
 
 #EMAIL
@@ -308,6 +309,19 @@ TOTP_TOLERANCE_SECONDS = 120    #allow early/late by x seconds until truly not a
 OTP_CREATE_TIMEOUT_SECONDS = 30    #for creating new OTP
 OTP_MAX_ATTEMPTS = 6            #times someone can try before being timed out
 OTP_MAX_ATTEMPT_TIMEOUT_SECONDS = 600
+
+
+#values used to evaluate event_reports and banning the events
+#keeping it simple
+BAN_EVENT_DISLIKE_RATIO = 0.75   #0 to 1
+BAN_EVENT_DISLIKE_COUNT = 100
+BAN_EVENT_AGE_SECONDS = 3600    #1 hour
+BAN_EVENT_QUANTITY_PER_CRON = 100
+BAN_EVENT_DURATION_PER_BAN_DAYS = 2     #multiply this with ban count
+
+
+
+
 
 
 

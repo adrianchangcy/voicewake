@@ -217,19 +217,6 @@ class EventReports(models.Model):
         ]
 
 
-class EventReportBans(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    reported_event = models.OneToOneField('Events', on_delete=models.PROTECT)
-    banned_until = models.DateTimeField()
-    when_created = models.DateTimeField(auto_now_add=True)
-    last_modified = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        app_label = 'voicewake'
-        managed = True
-        db_table = 'event_report_bans'
-
-
 class EventLikesDislikes(models.Model):
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -348,6 +335,7 @@ class Events(models.Model):
     )
     like_count = models.IntegerField(default=0)
     dislike_count = models.IntegerField(default=0)
+    is_banned = models.BooleanField(default=False)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 

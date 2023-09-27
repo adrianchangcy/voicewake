@@ -90,14 +90,11 @@ def deny_if_banned(return_instance:Literal["response", "redirect"]):
 
             redirect_url = reverse('user_banned')
 
-            if request.user.is_authenticated is False:
+            if request.user.is_authenticated is False or request.user.banned_until is None:
 
                 pass
 
-            elif(
-                request.user.banned_until is not None and
-                request.user.banned_until > get_datetime_now()
-            ):
+            elif request.user.banned_until > get_datetime_now():
 
                 #user is still banned
 
@@ -114,13 +111,13 @@ def deny_if_banned(return_instance:Literal["response", "redirect"]):
 
                     return redirect(redirect_url)
                 
-            elif request.user.banned_until is not None and request.user.banned_until <= get_datetime_now():
+            elif request.user.banned_until <= get_datetime_now():
 
                 #can unban
 
                 #doing unban here will not guarantee it being done in a timely banner
                 #because decorators are triggered by requests
-                #but it is good enough for this context
+                #but it is good enough for this context, since most APIs use this decorator
                 request.user.banned_until = None
                 request.user.save()
 

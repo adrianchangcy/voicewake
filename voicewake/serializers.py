@@ -277,16 +277,6 @@ class UserBlocksAPISerializer(serializers.Serializer):
 
 
 
-class EventReportBansSerializer(serializers.Serializer):
-
-    reported_event = EventsSerializer()
-
-    class Meta:
-        model = EventReportBans
-        fields = '__all__'
-
-
-
 class EventReportsAPISerializer(serializers.Serializer):
 
     reported_event_id = serializers.IntegerField()

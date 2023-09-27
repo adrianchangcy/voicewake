@@ -10,10 +10,12 @@ from django.http import StreamingHttpResponse
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
+from django.db.models import Count
 
 #apps
 from voicewake.services import *
 from voicewake.models import *
+from voicewake.cronjobs import *
 from django.conf import settings
 
 #py packages
@@ -399,8 +401,8 @@ class System_TestCase(TestCase):
 
         #prepare data
         #we put it here so that our new account below is not involved
-        prepare_test_data_class = PrepareTestData(for_test=True)
-        prepare_test_data_class.do_quick_start(1)
+        cls.prepare_test_data_class = PrepareTestData(for_test=True)
+        cls.prepare_test_data_class.do_quick_start(1)
 
         #sign up
         #API already works, as tested in other test cases
@@ -477,11 +479,6 @@ class System_TestCase(TestCase):
         do_like_dislike(event_id=first_event.id, is_liked=None)
 
 
-    def test_(self):
-
-        pass
-
-
     def test_user_block(self):
 
         self.login(self.user_1_instance)
@@ -497,6 +494,7 @@ class System_TestCase(TestCase):
         self.assertTrue(UserBlocks.objects.filter(user_id=self.user_1_instance, blocked_user_id=self.user_2_instance).exists())
 
         #here, you run event_rooms querysets to validate that blocked users don't show up
+
 
 
     def test_event_report(self):
@@ -548,68 +546,53 @@ class System_TestCase(TestCase):
             if row.user_id != self.user_1_instance.id:
 
                 event_to_report = row
+                break
+
+        #we change event's values to meet ban conditions
+        event_to_report.like_count = 25
+        event_to_report.dislike_count = settings.BAN_EVENT_DISLIKE_COUNT * 2
+        event_to_report.when_created = get_datetime_now() - timedelta(seconds=settings.BAN_EVENT_AGE_SECONDS * 2)
+        event_to_report.save()
 
         #no reports initially
         self.assertEqual(EventReports.objects.count(), 0)
 
         #report
-        self.client.post(
+        result = self.client.post(
             path=reverse('create_event_reports'),
             data={
                 'reported_event_id': event_to_report.id
             }
         )
+        self.assertEqual(result.status_code, 200)
 
+        #check whether report now exists
         self.assertTrue(EventReports.objects.filter(user_id=self.user_1_instance.id, reported_event_id=event_to_report.id).exists())
 
-        #try report again, expect to not accept duplicates
-        self.client.post(
+        #try report again, expect to be fine but not accept duplicates
+        result = self.client.post(
             path=reverse('create_event_reports'),
             data={
                 'reported_event_id': event_to_report.id
             }
         )
+        self.assertEqual(result.status_code, 200)
 
+        #check whether report now exists
         self.assertTrue(EventReports.objects.filter(user_id=self.user_1_instance.id, reported_event_id=event_to_report.id).exists())
 
-        #get event_report row
-        event_report_row = EventReports.objects.select_related('reported_event__user').get(
-            user_id=self.user_1_instance.id,
-            reported_event_id=event_to_report.id
-        )
 
-        #this is where your cronjob evaluates banning
-        #let's simulate the ban
+    def test_ban(self):
 
-        banned_until = get_datetime_now() + timedelta(seconds=60)
+        self.prepare_test_data_class.prepare_test_data_for_bans(3)
 
-        #ban
-        EventReportBans.objects.create(
-            reported_event_id=event_to_report.id,
-            banned_until=banned_until
-        )
-        get_user_model().objects.filter(pk=event_report_row.reported_event.user.id).update(banned_until=banned_until)
+        #do ban
+        cronjob_ban_events()
 
-        #event bans are only shown to the user that created those events
-        #expect []
-        request = self.client.get(
-            path=reverse('get_event_report_bans')
-        )
 
-        result = json.loads(request.content)
 
-        self.assertEqual(len(result['data']), 0)
 
-        #log in to user_2, and expect 1 event ban row
-        self.login(self.user_2_instance)
 
-        request = self.client.get(
-            path=reverse('get_event_report_bans')
-        )
-
-        result = json.loads(request.content)
-
-        self.assertGreater(len(result['data']), 0)
 
 
 

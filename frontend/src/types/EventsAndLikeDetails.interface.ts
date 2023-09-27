@@ -24,6 +24,7 @@ interface EventsAndLikeDetailsTypes{
     audio_volume_peaks: number[],
     like_count: number,
     dislike_count: number,
+    is_banned: boolean,
     is_liked_by_user: boolean|null
 };
 

@@ -51,7 +51,7 @@ class TestAPI(generics.GenericAPIView):
     permission_classes = []
 
 
-    def post(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
 
 
         return Response(
@@ -105,12 +105,22 @@ class EventReportsAPI(generics.GenericAPIView):
         
         new_data = serializer.validated_data
 
-        #check if ban has already been done
-        check_ban_exists = EventReportBans.objects.filter(
-            reported_event_id=new_data['reported_event_id']
-        ).exists()
+        try:
 
-        if check_ban_exists is False:
+            #get event
+            target_event = Events.objects.get(pk=new_data['reported_event_id'])
+
+        except Events.DoesNotExist:
+
+            return Response(
+                data={
+                    'message': 'Recording does not exist.',
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        #check if already banned
+        if target_event.is_banned is False:
 
             #add report
             EventReports.objects.get_or_create(
@@ -127,9 +137,9 @@ class EventReportsAPI(generics.GenericAPIView):
 
 
 
-class EventReportBansAPI(generics.GenericAPIView):
+class EventBansAPI(generics.GenericAPIView):
 
-    serializer_class = EventReportBansSerializer
+    serializer_class = EventsSerializer
     permission_classes = [IsAuthenticated]
 
     #no post() here, once an event is banned, nobody can do anything
@@ -144,10 +154,10 @@ class EventReportBansAPI(generics.GenericAPIView):
 
             offset_quantity = settings.GENERAL_ROW_QUANTITY_PER_PAGE * (kwargs['page'] - 1)
 
-        qs = EventReportBans.objects.select_related(
-            'reported_event', 'reported_event__user', 'reported_event__event_tone'
+        qs = Events.objects.select_related(
+            'event__user', 'event__event_tone'
         ).filter(
-            reported_event__user=request.user
+            event__user=request.user
         ).order_by('-when_created')[
             offset_quantity:settings.GENERAL_ROW_QUANTITY_PER_PAGE
         ]
@@ -156,7 +166,7 @@ class EventReportBansAPI(generics.GenericAPIView):
 
         if len(qs) > 0:
 
-            banned_events = EventReportBansSerializer(
+            banned_events = EventsSerializer(
                 qs,
                 many=True
             ).data
@@ -699,6 +709,7 @@ class EventRoomsAPI(generics.GenericAPIView):
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
             LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
+            WHERE events.is_banned IS NOT TRUE
             GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id, is_liked_by_user
             ''',
             params=(
