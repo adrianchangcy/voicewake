@@ -136,7 +136,8 @@
                 class="absolute w-fit h-fit right-0 m-auto p-2 top-4 z-20 flex flex-col rounded-lg border-2 border-theme-black bg-theme-light"
             >
                 <VActionTextOnly
-                    @click="handleReport()"
+                    @click="submitReport()"
+                    :prop-is-enabled="!has_reported"
                     propElement="button"
                     type="button"
                     propFontSize="s"
@@ -146,7 +147,8 @@
                 >
                     <span>
                         <i class="fas fa-flag w-fit h-fit text-sm"></i>
-                        <span class="pl-2">Report</span>
+                        <span v-show="!has_reported" class="pl-2">Report</span>
+                        <span v-show="has_reported" class="pl-2">Reported</span>
                     </span>
                 </VActionTextOnly>
             </div>
@@ -186,6 +188,8 @@
 
                 has_shared: false as boolean|null,
                 has_shared_timeout: null as number|null,
+                has_reported: false as boolean,
+
                 is_extra_options_menu_open: false,
             };
         },
@@ -270,7 +274,6 @@
                 this.has_shared_timeout = null;
 
                 notify({
-                    icon: 'fas fa-check',
                     title: 'Link copied',
                     type: 'ok',
                 }, 2000);
@@ -335,11 +338,20 @@
                     });
                 }, 500);
             },
-            async handleLiked() : Promise<void> {
+            async isLoggedIn() : Promise<boolean> {
 
                 if(this.pop_up_manager_store.getIsLoggedIn === false){
 
                     this.pop_up_manager_store.toggleIsLoginRequiredPromptOpen(true);
+                    return false;
+                }
+
+                return true;
+            },
+            async handleLiked() : Promise<void> {
+
+                if(await this.isLoggedIn() === false){
+
                     return;
                 }
 
@@ -358,9 +370,8 @@
             },
             async handleDisliked() : Promise<void> {
 
-                if(this.pop_up_manager_store.getIsLoggedIn === false){
+                if(await this.isLoggedIn() === false){
 
-                    this.pop_up_manager_store.toggleIsLoginRequiredPromptOpen(true);
                     return;
                 }
 
@@ -377,13 +388,39 @@
 
                 this.submitLikeDislike();
             },
-            async handleReport() : Promise<void> {
+            async submitReport() : Promise<void> {
 
-                if(this.pop_up_manager_store.getIsLoggedIn === false){
+                if(await this.isLoggedIn() === false){
 
-                    this.pop_up_manager_store.toggleIsLoginRequiredPromptOpen(true);
                     return;
                 }
+
+                let data = new FormData();
+                
+                data.append('reported_event_id', JSON.stringify(this.propEvent['id']));
+
+                axios.post('http://127.0.0.1:8000/api/event-reports/create', data)
+                .then(() => {
+
+                    this.has_reported = true;
+
+                    notify({
+                        icon: 'fas fa-flag',
+                        title: 'Recording reported',
+                        text: 'Thank you for bringing this to our attention. We will review it shortly.',
+                        type: 'generic',
+                    }, 6000);
+
+                })
+                .catch(() => {
+
+                    notify({
+                        icon: 'fas fa-check',
+                        title: 'Report failed',
+                        text: 'Oops! Unable to report this recording.',
+                        type: 'error',
+                    }, 2000);
+                });
             },
             animeLikeDislike(like_or_dislike:'like'|'dislike', is_adding:boolean) : void {
 

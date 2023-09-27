@@ -413,7 +413,7 @@ class PrepareTestData:
         bulk_user_event_rooms = UserEventRooms.objects.bulk_create(bulk_user_event_rooms)
 
 
-    def prepare_test_data_likes_dislikes(
+    def prepare_test_data_one_user_likes_dislikes(
         self, action_username, username_of_events, like_percentage, dislike_percentage
     ):
         
@@ -473,6 +473,75 @@ class PrepareTestData:
         Events.objects.bulk_update(events, ["like_count", "dislike_count"])
 
 
+    def prepare_test_data_for_bans(self, event_quantity:int=10):
+
+        event_count = Events.objects.count()
+
+        if event_count < event_quantity:
+
+            raise ValueError('Not enough existing events to fulfill event_quantity.')
+
+        #get events, starting with dislike_count DESC for less effort
+        events = Events.objects.all().order_by('-dislike_count', 'like_count')[:event_quantity]
+
+        #reset likes dislikes for these events
+        EventLikesDislikes.objects.filter(event__in=events).delete()
+
+        #prepare to achieve like dislike ratio
+        bulk_event_likes_dislikes = []
+        expected_like_count = math.floor((settings.BAN_EVENT_DISLIKE_RATIO / settings.BAN_EVENT_DISLIKE_COUNT) * (1 - settings.BAN_EVENT_DISLIKE_RATIO) * 100)
+        expected_dislike_count = settings.BAN_EVENT_DISLIKE_COUNT
+
+        #make sure we have sufficient users for dislike count
+        user_count = get_user_model().objects.all().count()
+
+        if user_count < (expected_like_count + expected_dislike_count):
+
+            self.prepare_users(
+                user_quantity=(expected_like_count + expected_dislike_count - user_count),
+                offset=user_count
+            )
+
+        #get users
+        users = get_user_model().objects.all().order_by('id')[:(expected_like_count + expected_dislike_count)]
+
+        #update Events.when_created
+        when_created = get_datetime_now() - timedelta(seconds=settings.BAN_EVENT_AGE_SECONDS)
+
+        for x in range(len(events)):
+
+            #create likes
+            for xx in range(expected_like_count):
+
+                bulk_event_likes_dislikes.append(
+                    EventLikesDislikes(
+                        user=users[xx],
+                        is_liked=True,
+                        event=events[x]
+                    )
+                )
+
+            #create dislikes
+            for xx in range(expected_like_count, expected_dislike_count):
+
+                bulk_event_likes_dislikes.append(
+                    EventLikesDislikes(
+                        user=users[xx],
+                        is_liked=False,
+                        event=events[x]
+                    )
+                )
+
+            events[x].when_created = when_created
+
+        #create likes dislikes in db
+        EventLikesDislikes.objects.bulk_create(bulk_event_likes_dislikes)
+
+        #update when_created
+        Events.objects.bulk_update(events, ('when_created',))
+
+
+
     def do_quick_start(self, quantity_scale:int=1):
 
         if type(quantity_scale) != int:
@@ -515,25 +584,25 @@ class PrepareTestData:
         for user in bulk_users:
 
             #create likes/dislikes
-            self.prepare_test_data_likes_dislikes(
+            self.prepare_test_data_one_user_likes_dislikes(
                 action_username=user.username,
                 username_of_events="user0",
                 like_percentage=0.6,
                 dislike_percentage=0.4,
             )
-            self.prepare_test_data_likes_dislikes(
+            self.prepare_test_data_one_user_likes_dislikes(
                 action_username=user.username,
                 username_of_events="user1",
                 like_percentage=0.7,
                 dislike_percentage=0.3,
             )
-            self.prepare_test_data_likes_dislikes(
+            self.prepare_test_data_one_user_likes_dislikes(
                 action_username=user.username,
                 username_of_events="user2",
                 like_percentage=0.8,
                 dislike_percentage=0.2,
             )
-            self.prepare_test_data_likes_dislikes(
+            self.prepare_test_data_one_user_likes_dislikes(
                 action_username=user.username,
                 username_of_events="user3",
                 like_percentage=0.9,
