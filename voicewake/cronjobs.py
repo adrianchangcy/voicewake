@@ -6,7 +6,7 @@ from voicewake.models import *
 from django.conf import settings
 
 
-def cronjob_ban_events(self):
+def cronjob_ban_events():
 
     #as long as quantity of event_reports rows is not a factor, we delete all of them after cron
 
@@ -20,6 +20,15 @@ def cronjob_ban_events(self):
     #otherwise, since all of them are int, we'd get 0
     events_to_ban = Events.objects.prefetch_related('user').raw(
         '''
+            WITH
+            ordered_event_reports AS (
+                SELECT * FROM event_reports ORDER BY when_created ASC
+            ),
+            distinct_reported_events AS (
+                SELECT DISTINCT reported_event_id
+                FROM ordered_event_reports
+                LIMIT %s
+            )
             SELECT events.*,
             (
                 SELECT COUNT(*) FROM events as events2
@@ -27,18 +36,17 @@ def cronjob_ban_events(self):
                 AND events2.is_banned IS TRUE
             ) as ban_count
             FROM events
-            RIGHT JOIN event_reports ON event_reports.reported_event_id = events.id
+            RIGHT JOIN distinct_reported_events ON distinct_reported_events.reported_event_id = events.id
             WHERE events.dislike_count >= %s
             AND (events.dislike_count::float / (events.like_count + events.dislike_count)) >= %s
             AND events.when_created <= %s
-            ORDER BY events.when_created ASC
-            LIMIT %s
+            AND events.is_banned IS FALSE
         ''',
         params=(
+            settings.BAN_EVENT_QUANTITY_PER_CRON,
             settings.BAN_EVENT_DISLIKE_COUNT,
             settings.BAN_EVENT_DISLIKE_RATIO,
             maximum_when_created,
-            settings.BAN_EVENT_QUANTITY_PER_CRON,
         )
     )
 
@@ -93,6 +101,9 @@ def cronjob_ban_events(self):
 
     #update users
     get_user_model().objects.bulk_update(bulk_users, ('banned_until',))
+
+    #delete event_reports
+    EventReports.objects.filter(reported_event__in=events_to_ban).delete()
 
 
 def cronjob_reset_replying_overdue():

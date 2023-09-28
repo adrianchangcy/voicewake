@@ -119,14 +119,31 @@ class EventReportsAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        #check if already banned
-        if target_event.is_banned is False:
+        #check if event belongs to user
+        if target_event.user.id == request.user.id:
 
-            #add report
-            EventReports.objects.get_or_create(
-                user_id=request.user.id,
-                reported_event_id=new_data['reported_event_id']
+            return Response(
+                data={
+                    'message': 'You cannot report your own recording.',
+                },
+                status=status.HTTP_200_OK
             )
+
+        #check if already banned
+        if target_event.is_banned is True:
+
+            return Response(
+                data={
+                    'message': 'This recording has already been banned.',
+                },
+                status=status.HTTP_200_OK
+            )
+
+        #add report
+        EventReports.objects.get_or_create(
+            user_id=request.user.id,
+            reported_event_id=new_data['reported_event_id']
+        )
 
         return Response(
             data={

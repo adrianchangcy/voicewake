@@ -584,7 +584,7 @@ class System_TestCase(TestCase):
 
     def test_ban(self):
 
-        self.prepare_test_data_class.prepare_test_data_for_bans(3)
+        self.prepare_test_data_class.prepare_test_data_for_bans(event_quantity=10, reporting_user_quantity=10)
 
         #do ban
         cronjob_ban_events()
