@@ -584,10 +584,17 @@ class System_TestCase(TestCase):
 
     def test_ban(self):
 
-        self.prepare_test_data_class.prepare_test_data_for_bans(event_quantity=10, reporting_user_quantity=10)
+        self.prepare_test_data_class.prepare_test_data_for_bans(
+            username=self.user_1_username,
+            event_quantity=10,
+            reporting_user_quantity=10
+        )
 
         #do ban
         cronjob_ban_events()
+
+        self.assertEqual(Events.objects.filter(is_banned=True).count(), 10)
+        self.assertEqual(EventReports.objects.count(), 0)
 
 
 

@@ -240,20 +240,21 @@ class SetUsername(TemplateView):
     
     def get(self, request, *args, **kwargs):
 
-        #disallow access
+        #can continue
         if(
             request.user.is_authenticated is True and
             request.user.banned_until is None and
             request.user.username_lowercase is None
         ):
 
-            raise Http404()
+            return render(
+                request,
+                template_name=self.template_name,
+                context={
+                }
+            )
 
-        return render(
-            request,
-            template_name=self.template_name,
-            context={
-            }
-        )
+        raise Http404()
+
 
 

@@ -45,6 +45,7 @@ from django.db.utils import IntegrityError
 
 
 
+from voicewake.cronjobs import *
 class TestAPI(generics.GenericAPIView):
 
     serializer_class = None
@@ -53,6 +54,9 @@ class TestAPI(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
 
+        # yolo = PrepareTestData()
+        # yolo.prepare_test_data_for_bans('user0', 10, 10)
+        cronjob_ban_events()
 
         return Response(
             data={
@@ -726,7 +730,6 @@ class EventRoomsAPI(generics.GenericAPIView):
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
             LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
-            WHERE events.is_banned IS NOT TRUE
             GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id, is_liked_by_user
             ''',
             params=(

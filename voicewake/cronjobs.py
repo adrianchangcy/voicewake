@@ -21,12 +21,10 @@ def cronjob_ban_events():
     events_to_ban = Events.objects.prefetch_related('user').raw(
         '''
             WITH
-            ordered_event_reports AS (
-                SELECT * FROM event_reports ORDER BY when_created ASC
-            ),
             distinct_reported_events AS (
                 SELECT DISTINCT reported_event_id
-                FROM ordered_event_reports
+                FROM event_reports
+                ORDER BY reported_event_id ASC
                 LIMIT %s
             )
             SELECT events.*,
@@ -51,6 +49,8 @@ def cronjob_ban_events():
     )
 
     print(str(len(events_to_ban)) + ' events to ban')
+
+    return
 
     #ban
     #we will likely get multiple events from the same user here
