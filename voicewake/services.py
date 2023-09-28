@@ -302,9 +302,13 @@ class PrepareTestData:
 
     def prepare_test_data_event_rooms(
         self,
-        originator_username, responder_username,
-        incomplete_count, completed_count,
+        originator_username, responder_username='',
+        incomplete_count=0, completed_count=0,
     ):
+        
+        if completed_count > 0 and len(responder_username) == 0:
+
+            raise ValueError('Requested completed event_rooms but missing responder_username.')
 
         #prepare fake audio column values
         audio_file = "/audio_test.mp3"
@@ -318,12 +322,17 @@ class PrepareTestData:
         datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
         event_role_originator = EventRoles.objects.get(event_role_name='originator')
         event_role_responder = EventRoles.objects.get(event_role_name='responder')
-        originator_user = get_user_model().objects.get(username_lowercase=originator_username)
-        responder_user = get_user_model().objects.get(username_lowercase=responder_username)
+        originator_user = get_user_model().objects.get(username_lowercase=originator_username.lower())
+        responder_user = None
         generic_status_ok = GenericStatuses.objects.get(generic_status_name='ok')
         generic_status_incomplete = GenericStatuses.objects.get(generic_status_name='incomplete')
         generic_status_completed = GenericStatuses.objects.get(generic_status_name='completed')
         event_tone = EventTones.objects.first()
+
+        if len(responder_username) > 0:
+
+            responder_user = get_user_model().objects.get(username_lowercase=responder_username.lower())
+
 
         #create incomplete event rooms
         bulk_event_rooms = []
@@ -473,21 +482,26 @@ class PrepareTestData:
         Events.objects.bulk_update(events, ["like_count", "dislike_count"])
 
 
-    def prepare_test_data_for_bans(self, event_quantity:int=10, reporting_user_quantity:int=1):
+    def prepare_test_data_for_bans(self, username:str='', event_quantity:int=10, reporting_user_quantity:int=1):
 
-        event_count = Events.objects.count()
+        event_count = Events.objects.filter(user__username_lowercase=username.lower()).count()
 
         if event_count < event_quantity:
 
-            raise ValueError('Not enough existing events to fulfill event_quantity.')
+            print('Not enough events, creating now.')
+
+            self.prepare_test_data_event_rooms(
+                originator_username=username,
+                incomplete_count=(event_quantity - event_count)
+            )
 
         #get events
-        events = Events.objects.all().order_by('-dislike_count', 'like_count')[:event_quantity]
+        events = Events.objects.filter(user__username_lowercase=username.lower())[:event_quantity]
 
         #excluding this causes bug
         #i.e. events is treated as subquery in delete(), and for-loop executes events only after deletion
         #hence EventLikesDislikes violating unique constraint
-        len(events)
+        print(str(len(events)) + ' events ready for ban')
 
         #reset likes dislikes for these events
         EventLikesDislikes.objects.filter(event__in=events).delete()
@@ -557,7 +571,6 @@ class PrepareTestData:
         EventLikesDislikes.objects.bulk_create(bulk_event_likes_dislikes)
         Events.objects.bulk_update(events, ('when_created', 'is_banned',))
         EventReports.objects.bulk_create(bulk_event_reports)
-
 
 
     def do_quick_start(self, quantity_scale:int=1):
