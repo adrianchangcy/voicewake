@@ -55,14 +55,14 @@ urlpatterns = [
     path('api/event-rooms/create-new', apis.EventsAPI.as_view(current_context="create_new"), name='create_new_event_rooms'),
     path('api/event-rooms/reply/start', apis.HandleReplyingEventRoomsAPI.as_view(current_context="start"), name="start_reply_event_rooms"),
     path('api/event-rooms/reply', apis.EventsAPI.as_view(current_context="reply"), name="reply_event_rooms"),
-    path('api/event-rooms/reply/cancel', apis.HandleReplyingEventRoomsAPI.as_view(current_context="cancel"), name="cancel_reply_event_rooms"),
+    path('api/event-rooms/reply/delete', apis.HandleReplyingEventRoomsAPI.as_view(current_context="delete"), name="delete_reply_event_rooms"),
 
     path('api/event-reports/create', apis.EventReportsAPI.as_view(), name="create_event_reports"),
-    path('api/event-bans/get', apis.EventBansAPI.as_view(), name="get_event_bans"),
 
+    path('api/users/blocks/<int:page>', apis.UserBlocksAPI.as_view(), name='users_block_users'),
+    path('api/users/banned-events/get/<int:page>', apis.UserBannedEventsAPI.as_view(), name="get_user_banned_events"),
     path('api/event-tones/list', apis.EventTonesAPI.as_view(), name='event_tones'),
     path('api/event-likes-dislikes', apis.EventLikesDislikesAPI.as_view(), name='event_likes_dislikes'),
-    path('api/users/blocks', apis.UserBlocksAPI.as_view(), name='users_block_users'),
     path('api/users/username/get/<str:username>', apis.UsersUsernameAPI.as_view(), name='users_get_username'),
     path('api/users/username/set', apis.UsersUsernameAPI.as_view(), name='users_set_username'),
     path('api/users/sign-up', apis.UsersLogInSignUpAPI.as_view(current_context='sign_up'), name='users_sign_up'),
@@ -83,7 +83,7 @@ urlpatterns = [
     path('', views.home, name='home'),
     path('login', views.log_in, name='log_in'),
     path('signup', views.sign_up, name='sign_up'),
-    path('banned', views.user_banned, name='user_banned'),
+    path('banned', views.user_banned_events, name='user_banned_events'),
 
     path('user/<str:username>', views.GetUserProfile.as_view(), name='user_profile'),
     path('username/new', views.SetUsername.as_view(), name='set_username'),

@@ -373,8 +373,6 @@
 
                 const full_url = await this.constructURL(event_tone, current_event_role_name_index, current_filter_type_index);
 
-                console.trace('API called');
-
                 await axios.get(full_url)
                 .then((results: any) => {
 
@@ -385,19 +383,20 @@
                         this.has_no_event_rooms_left_to_fetch = true;
                     }
 
+                    this.can_observer_fetch = true;
+
                 })
-                .catch((error: any) => {
+                .catch(() => {
 
                     notify({
-                        title: "Could not get events",
-                        text: error.response.data['message'],
+                        title: "Error",
+                        text: "Oops, something is not right. Try again later.",
                         type: "error"
                     }, 3000);
 
                 }).finally(()=>{
 
                     this.is_fetching = false;
-                    this.can_observer_fetch = true;
                 });
             },
             async handleNewSelectedEventTone(event_tone:EventTonesTypes|null) : Promise<void> {
@@ -483,6 +482,37 @@
                     this.can_pause_scrolling = true;
                 }
             },
+            setUpObserver() : void {
+
+                //set up observer for infinite scroll
+                const observer_target = document.querySelector('#load-more-event-rooms-observer-target');
+
+                const observer = new IntersectionObserver(()=>{
+
+                    if(
+                        this.can_observer_fetch === false ||
+                        this.can_pause_scrolling === true ||
+                        this.has_no_event_rooms_left_to_fetch === true
+                    ){
+
+                        return;
+                    }
+
+                    this.getEventRooms(
+                        this.filtered_grouped_events_store.getSelectedEventTone,
+                        this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
+                        this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
+                        false,
+                    );
+                }, {
+                    threshold: 1,
+                });
+
+                if(observer_target !== null){
+
+                    observer.observe(observer_target);
+                }
+            },
         },
         beforeMount(){
 
@@ -497,7 +527,7 @@
             //listen to store
             this.currently_playing_event_store.$subscribe((mutation, state)=>{
 
-                this.handleNewSelectedEvent(state.playing_event);
+                this.handleNewSelectedEvent(state.playing_event as EventsAndLikeDetailsTypes|null);
             });
 
             this.getEventRooms(
@@ -509,34 +539,7 @@
         },
         mounted(){
 
-            //set up observer for infinite scroll
-            const observer_target = document.querySelector('#load-more-event-rooms-observer-target');
-
-            const observer = new IntersectionObserver(()=>{
-
-                if(
-                    this.can_observer_fetch === false ||
-                    this.can_pause_scrolling === true ||
-                    this.has_no_event_rooms_left_to_fetch === true
-                ){
-
-                    return;
-                }
-
-                this.getEventRooms(
-                    this.filtered_grouped_events_store.getSelectedEventTone,
-                    this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
-                    this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
-                    false,
-                );
-            }, {
-                threshold: 1,
-            });
-
-            if(observer_target !== null){
-
-                observer.observe(observer_target);
-            }
+            this.setUpObserver();
         },
     });
 </script>

@@ -66,13 +66,13 @@ export function prettyTimePassed(date:Date) : string {
             return interval.toString() + ' years ago';
 }
 
-export function prettyTimeRemaining(current_ms:number, max_ms:number) : string|false {
+export function prettyTimeRemaining(current_ms:number, max_ms:number) : string {
 
     //more optimised version, since visits to newer content will always be more
     //to use: timeDifferenceUTC(new Date('2023-04-26T07:45:22.258243Z'))
     //i.e. can immediately use datetime from Django's Serializer
 
-    const seconds = (max_ms - current_ms) / 1000;
+    const seconds = Math.floor((max_ms - current_ms) / 1000);
     let interval = 0;
 
     interval = Math.floor(seconds);
@@ -81,7 +81,7 @@ export function prettyTimeRemaining(current_ms:number, max_ms:number) : string|f
     }else if(interval === 1){
         return interval + ' second';
     }else if(interval <= 0){
-        return false;
+        return '';
     }
 
     interval = Math.floor(seconds / 60);

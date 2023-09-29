@@ -257,6 +257,7 @@
     import { prettyDuration, getRandomUUID } from '@/helper_functions';
     import anime from 'animejs';
     import EventsAndLikeDetailsTypes from '@/types/EventsAndLikeDetails.interface';
+    import EventsTypes from '@/types/Events.interface';
     // import VSliderTypes from '@/types/values/VSlider';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
 
@@ -268,7 +269,7 @@
                 instance_id: "",    //uuid, to identify between multiple VPlayback instances
                 vplayback_store: useVPlaybackStore(),
                 instance_has_focus: false,  //enables keyboard events inside VPlayback that need e.preventDefault()
-                previous_event: null as EventsAndLikeDetailsTypes | null,  //store triggers on new event, but needs previous event
+                previous_event: null as EventsTypes|EventsAndLikeDetailsTypes|null,  //store triggers on new event, but needs previous event
 
                 pretty_current_playback_time: '00:00',
                 pretty_playback_duration: '00:00',
@@ -323,7 +324,7 @@
                 default: false
             },
             propEvent: {
-                type: Object as PropType<EventsAndLikeDetailsTypes>,
+                type: Object as PropType<EventsAndLikeDetailsTypes|EventsTypes>,
                 default: null
             },
             propAudio: {    //used when receiving from VRecorder
@@ -508,7 +509,7 @@
 
                 this.playback_slider_value = new_value;
             },
-            async storeCurrentEventLastStopped(specific_event:EventsAndLikeDetailsTypes) : Promise<void> {
+            async storeCurrentEventLastStopped(specific_event:EventsTypes|EventsAndLikeDetailsTypes) : Promise<void> {
 
                 //call this after pause on source change, but before source change happens
 

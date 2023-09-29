@@ -272,6 +272,7 @@ class EventRoles(models.Model):
 
 
 class EventRooms(models.Model):
+    #is_replying: None when not replying, False when locked for choice, True when replying
     id = models.BigAutoField(primary_key=True)
     event_room_name = models.TextField(max_length=200, default='-') #ensure default is never used
     generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)

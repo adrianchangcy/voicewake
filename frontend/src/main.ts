@@ -6,6 +6,7 @@ import { PiniaSharedState } from 'pinia-shared-state';
 import BaseApp from '/src/apps/BaseApp.vue';
 import CreateEventRoomsApp from '/src/apps/CreateEventRoomsApp.vue';
 import ListEventRoomChoicesApp from '/src/apps/ListEventRoomChoicesApp.vue';
+import ListUserBannedEventsApp from '/src/apps/ListUserBannedEventsApp.vue';
 import GetEventRoomsApp from '/src/apps/GetEventRoomsApp.vue';
 import BrowseEventRoomsApp from '/src/apps/BrowseEventRoomsApp.vue';
 import UserLogInSignUp from '/src/components/main/UserLogInSignUp.vue';
@@ -149,6 +150,12 @@ if(document.querySelector('#get-user-profile-app')){
         }
     ).directive('click-outside', clickOutside)
     .mount('#get-user-profile-app');
+}
+
+if(document.querySelector('#list-user-banned-events-app')){
+
+    createApp(ListUserBannedEventsApp)
+        .mount('#list-user-banned-events-app');
 }
 
 if(document.querySelector('#log-in-page')){

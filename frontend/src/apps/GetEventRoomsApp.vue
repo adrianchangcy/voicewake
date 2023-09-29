@@ -321,12 +321,8 @@
                     this.is_expiring = true;
                 }
 
-                //do API request
-                let data = new FormData();
-                data.append('event_room_id', JSON.stringify(this.event_room_id));
-
-                await axios.post(window.location.origin + '/api/event-rooms/reply/cancel', data)
-                .then(() => {
+                //state handling
+                const handler = ()=>{
 
                     this.is_this_user_replying = false;
                     this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
@@ -351,21 +347,42 @@
                             status: "replying_expired"
                         });
                     }
+                };
+
+                //do API request
+                let data = new FormData();
+                data.append('event_room_id', JSON.stringify(this.event_room_id));
+
+                await axios.post(window.location.origin + '/api/event-rooms/reply/delete', data)
+                .then(() => {
+
+                    handler();
 
                 })
                 .catch((error:any) => {
 
-                    if(context === "deleted"){
-                        this.is_deleting = false;
-                    }else if(context === "expired"){
-                        this.is_expiring = false;
+                    handler();
+
+                    //401 is when you cannot cancel because you are no longer replying
+                    //happens when cronjob cancels first
+                    if(error.request.status !== 401 && 'response' in error.request){
+
+                        const response = JSON.parse(error.request.response);
+                        let notify_title = 'Error';
+
+                        if(context === "deleted"){
+                            notify_title = "Reply deletion failed";
+                        }else if(context === "expired"){
+                            notify_title = "Reply expiry failed";
+                        }
+
+                        notify({
+                            title: notify_title,
+                            text: 'message' in response ? response['message'] : '',
+                            type: 'error'
+                        }, 4000);
                     }
 
-                    notify({
-                        title: "Deleting reply failed",
-                        text: "Unable to delete your reply. " + error.response.data['message'],
-                        type: "error"
-                    }, 3000);
                 });
             },
             async getEventRoom() : Promise<void> {
@@ -488,7 +505,7 @@
 
                 //set possible first time expiry string
                 const time_remaining = prettyTimeRemaining(time_elapsed_ms, this.reply_expiry_max_ms);
-                this.reply_expiry_string = time_remaining === false ? '' : time_remaining as string;
+                this.reply_expiry_string = time_remaining === '' ? '' : time_remaining as string;
 
                 //declare this here for reusability
                 const interval_function = ()=>{
@@ -518,7 +535,7 @@
 
                     //set string
                     const time_remaining = prettyTimeRemaining(time_elapsed_ms, this.reply_expiry_max_ms);
-                    this.reply_expiry_string = time_remaining === false ? '' : time_remaining as string;
+                    this.reply_expiry_string = time_remaining === '' ? '' : time_remaining as string;
                 }
 
                 //start interval
@@ -593,7 +610,7 @@
             //listen to store
             this.currently_playing_event_store.$subscribe((mutation, state)=>{
 
-                this.handleNewSelectedEvent(state.playing_event);
+                this.handleNewSelectedEvent(state.playing_event as EventsAndLikeDetailsTypes|null);
             });
         },
     });

@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia';
 import EventsAndLikeDetailsTypes from '@/types/EventsAndLikeDetails.interface';
+import EventsTypes from '@/types/Events.interface';
 
 export const useCurrentlyPlayingEventStore = defineStore('currently_playing_event', {
     state: ()=>({
-        playing_event: null as EventsAndLikeDetailsTypes|null,
+        playing_event: null as EventsTypes|EventsAndLikeDetailsTypes|null,
     }),    
     getters: {
         getEventId: (state)=>{
@@ -12,7 +13,7 @@ export const useCurrentlyPlayingEventStore = defineStore('currently_playing_even
         },
     },
     actions: {
-        updateEventId(playing_event:EventsAndLikeDetailsTypes): void {
+        updateEventId(playing_event:EventsTypes|EventsAndLikeDetailsTypes): void {
 
             this.playing_event = playing_event;
         }

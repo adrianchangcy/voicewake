@@ -60,7 +60,7 @@ def sign_up(request):
 
 
 
-def user_banned(request):
+def user_banned_events(request):
 
     if\
         request.user.is_authenticated is True and\
@@ -71,7 +71,7 @@ def user_banned(request):
 
             return render(
                 request,
-                template_name='voicewake/user_banned.html',
+                template_name='voicewake/user_banned_events.html',
                 context={
                     'banned_until': request.user.banned_until
                 }
@@ -181,10 +181,12 @@ class GetEventRooms(TemplateView):
         ).count()
 
         #check if this user is already supposed to reply
-        is_this_user_replying = self.request.user.is_authenticated and\
-            event_room.locked_for_user is not None and\
-            request.user.id == event_room.locked_for_user.id and\
+        is_this_user_replying = (
+            self.request.user.is_authenticated and
+            event_room.locked_for_user is not None and
+            request.user.id == event_room.locked_for_user.id and
             event_room.is_replying is True
+        )
         
         #is event_room deleted
         is_deleted = event_room.generic_status.generic_status_name == 'deleted'

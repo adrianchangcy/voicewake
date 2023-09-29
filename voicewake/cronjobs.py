@@ -50,8 +50,6 @@ def cronjob_ban_events():
 
     print(str(len(events_to_ban)) + ' events to ban')
 
-    return
-
     #ban
     #we will likely get multiple events from the same user here
     #to accurately set banned_until on a per-event basis, we track and update ban_count here
@@ -108,7 +106,11 @@ def cronjob_ban_events():
 
 def cronjob_reset_replying_overdue():
 
-    minimum_when_locked = get_datetime_now() - timedelta(seconds=settings.EVENT_ROOM_REPLY_EXPIRY_SECONDS)
+    #have this to reduce the chances of cronjob + auto-cancel reply from frontend colliding
+    #which would be fine, but it's better for UX
+    extra_seconds = 60
+
+    minimum_when_locked = get_datetime_now() - timedelta(seconds=(settings.EVENT_ROOM_REPLY_EXPIRY_SECONDS + extra_seconds))
 
     EventRooms.objects.filter(
         is_replying=True,

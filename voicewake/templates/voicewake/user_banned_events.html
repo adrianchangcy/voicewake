@@ -1,0 +1,28 @@
+{% extends 'voicewake/base.html' %}
+{% block title %}You are banned{% endblock %}
+
+{% block extra_head %}
+    <META NAME="robots" CONTENT="noindex,nofollow">
+{% endblock %}
+
+{% block content %}
+
+    <div
+        data-banned-until="{{banned_until|date:"Y-m-d H:i:s"}}"
+        id="data-container-user-banned-events"
+    >
+
+        <!--follows VTitle-->
+        <div class="py-8 text-theme-black text-center">
+            <i class="text-2xl fas fa-gavel" aria-hidden="true"></i>
+            <h1 class="text-4xl h-fit break-words">
+                Banned
+            </h1>
+            <h2 class="text-xl font-medium h-fit break-words">
+                You are banned&nbsp;<span class="banned-until"></span>
+            </h2>
+        </div>
+
+        <div id="list-user-banned-events-app"></div>
+    </div>
+{% endblock %}

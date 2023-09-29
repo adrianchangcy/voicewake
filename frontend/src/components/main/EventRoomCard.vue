@@ -252,7 +252,7 @@
             //listen to store
             this.currently_playing_event_store.$subscribe((mutation, state)=>{
 
-                this.selected_event = state.playing_event;
+                this.selected_event = state.playing_event as EventsAndLikeDetailsTypes|null;
             });
         },
     });
