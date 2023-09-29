@@ -54,9 +54,6 @@ class TestAPI(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
 
-        # yolo = PrepareTestData()
-        # yolo.prepare_test_data_for_bans('user0', 10, 10)
-        cronjob_ban_events()
 
         return Response(
             data={
@@ -158,7 +155,7 @@ class EventReportsAPI(generics.GenericAPIView):
 
 
 
-class EventBansAPI(generics.GenericAPIView):
+class UserBannedEventsAPI(generics.GenericAPIView):
 
     serializer_class = EventsSerializer
     permission_classes = [IsAuthenticated]
@@ -169,18 +166,14 @@ class EventBansAPI(generics.GenericAPIView):
     #user wants to see their own banned events
     def get(self, request, *args, **kwargs):
 
-        offset_quantity = 0
-
-        if 'page' in kwargs and kwargs['page'] > 0:
-
-            offset_quantity = settings.GENERAL_ROW_QUANTITY_PER_PAGE * (kwargs['page'] - 1)
+        offset_quantity = settings.BAN_EVENT_QUANTITY_PER_PAGE * (kwargs['page'] - 1)
 
         qs = Events.objects.select_related(
-            'event__user', 'event__event_tone'
+            'user', 'event_tone'
         ).filter(
-            event__user=request.user
+            user=request.user
         ).order_by('-when_created')[
-            offset_quantity:settings.GENERAL_ROW_QUANTITY_PER_PAGE
+            offset_quantity : offset_quantity + settings.BAN_EVENT_QUANTITY_PER_PAGE
         ]
 
         banned_events = []
@@ -211,14 +204,10 @@ class UserBlocksAPI(generics.GenericAPIView):
     #get list of blocked users
     def get(self, request, *args, **kwargs):
 
-        offset_quantity = 0
-
-        if 'page' in kwargs and kwargs['page'] > 0:
-
-            offset_quantity = settings.GENERAL_ROW_QUANTITY_PER_PAGE * (kwargs['page'] - 1)
+        offset_quantity = settings.GENERAL_ROW_QUANTITY_PER_PAGE * (kwargs['page'] - 1)
 
         qs = UserBlocks.objects.filter(user=request.user).order_by('-when_created')[
-            offset_quantity:settings.GENERAL_ROW_QUANTITY_PER_PAGE
+            offset_quantity : offset_quantity + settings.GENERAL_ROW_QUANTITY_PER_PAGE
         ]
 
         serializer = UserBlocksSerializer(
@@ -1042,7 +1031,6 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
 
     def lock_event_rooms_for_reply_choices(self, events):
 
-        User = get_user_model()
         event_room_ids = []
         event_rooms = []
         datetime_now = get_datetime_now()
@@ -1348,7 +1336,7 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
     def __init__(self, *args, **kwargs):
 
-        if 'current_context' not in kwargs or kwargs['current_context'] not in ['start', 'cancel']:
+        if 'current_context' not in kwargs or kwargs['current_context'] not in ['start', 'delete']:
 
             raise custom_error(ValueError, dev_message="Incorrect current_context. Check .as_view() at urls.py.")
     
@@ -1477,8 +1465,8 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
 
     #if user has already selected a reply choice and is now replying, allow to cancel
-    #204 nothing to cancel, 205 success
-    def cancel_replying_to_event_room(self, event_room_id):
+    #401 not allowed to cancel or has already cancelled
+    def delete_replying_to_event_room(self, event_room_id):
 
         try:
 
@@ -1509,9 +1497,9 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
                     #UI being removed is of higher priority than status_code
                     return Response(
                         data={
-                            'message': 'Cannot cancel this replying process.',
+                            'message': 'You are not replying to this event.',
                         },
-                        status=status.HTTP_204_NO_CONTENT
+                        status=status.HTTP_401_UNAUTHORIZED
                     )
 
                 #cancel replying
@@ -1519,18 +1507,13 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
                 event_room.is_replying = None
                 event_room.when_locked = None
 
-                #careful not to change 'deleted' to 'incomplete'
-                if event_room.generic_status.generic_status_name != 'deleted':
-
-                    event_room.generic_status = GenericStatuses.objects.get(generic_status_name='incomplete')
-
                 event_room.save()
 
                 return Response(
                     data={
-                        'message': 'Reply has been cancelled.',
+                        'message': 'Reply has been deleted.',
                     },
-                    status=status.HTTP_205_RESET_CONTENT
+                    status=status.HTTP_200_OK
                 )
             
         except EventRooms.DoesNotExist:
@@ -1587,9 +1570,9 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
             return self.start_replying_to_event_room(new_data['event_room_id'])
         
-        elif self.current_context == "cancel":
+        elif self.current_context == "delete":
 
-            return self.cancel_replying_to_event_room(new_data['event_room_id'])
+            return self.delete_replying_to_event_room(new_data['event_room_id'])
 
 
 

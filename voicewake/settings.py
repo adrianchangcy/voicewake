@@ -112,7 +112,7 @@ MIDDLEWARE = []
 #development
 if DEBUG is True:
 
-    REQUEST_TIME_DELAY = 0  #seconds
+    REQUEST_TIME_DELAY = 2  #seconds
 
     MIDDLEWARE += [
         'voicewake.middleware.drf_api_delay_middleware.TimeDelayMiddleware',
@@ -318,6 +318,7 @@ BAN_EVENT_DISLIKE_COUNT = 100
 BAN_EVENT_AGE_SECONDS = 3600    #1 hour
 BAN_EVENT_QUANTITY_PER_CRON = 100
 BAN_EVENT_DURATION_PER_BAN_DAYS = 2     #multiply this with ban count
+BAN_EVENT_QUANTITY_PER_PAGE = 6
 
 
 
