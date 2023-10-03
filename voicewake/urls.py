@@ -40,34 +40,35 @@ urlpatterns = [
     #we don't need default urls
     # path('', include(router.urls)),
 
-    path('api/test', apis.TestAPI.as_view(), name='test'),
+    path('api/test', apis.TestAPI.as_view(), name='test_api'),
 
-    path('api/event-rooms/get/<int:event_room_id>', apis.EventRoomsAPI.as_view(), name='get_event_rooms_by_event_room_id'),
+    path('api/event-rooms/get/<int:event_room_id>', apis.EventRoomsAPI.as_view(), name='get_event_rooms_by_event_room_id_api'),
 
-    path('api/event-rooms/list/completed/<str:latest_or_best>/<str:timeframe>/<int:page>', apis.EventRoomsAPI.as_view(), name='get_event_rooms_by_best_or_new_paged'),
-    path('api/event-rooms/list/completed/<str:latest_or_best>/<str:timeframe>/<str:event_tone_slug>/<int:page>', apis.EventRoomsAPI.as_view(), name='get_event_rooms'),
-    path('api/event-rooms/list/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:event_role_name>/<int:page>', apis.EventRoomsAPI.as_view(), name='get_event_rooms'),
-    path('api/event-rooms/list/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:event_role_name>/<str:event_tone_slug>/<int:page>', apis.EventRoomsAPI.as_view(), name='get_event_rooms'),
+    path('api/event-rooms/list/completed/<str:latest_or_best>/<str:timeframe>/<int:page>', apis.EventRoomsAPI.as_view(), name='get_event_rooms_by_best_or_new_paged_api'),
+    path('api/event-rooms/list/completed/<str:latest_or_best>/<str:timeframe>/<str:event_tone_slug>/<int:page>', apis.EventRoomsAPI.as_view(), name='get_event_rooms_api'),
+    path('api/event-rooms/list/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:event_role_name>/<int:page>', apis.EventRoomsAPI.as_view(), name='get_event_rooms_api'),
+    path('api/event-rooms/list/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:event_role_name>/<str:event_tone_slug>/<int:page>', apis.EventRoomsAPI.as_view(), name='get_event_rooms_api'),
 
-    path('api/event-rooms/reply-choices/list', apis.HandleEventRoomReplyChoicesAPI.as_view(current_context="list"), name="list_event_room_choices"),
-    path('api/event-rooms/reply-choices/expire', apis.HandleEventRoomReplyChoicesAPI.as_view(current_context="expire"), name="expire_event_room_choices"),
+    path('api/event-rooms/reply-choices/list', apis.HandleEventRoomReplyChoicesAPI.as_view(current_context="list"), name="list_event_room_choices_api"),
+    path('api/event-rooms/reply-choices/expire', apis.HandleEventRoomReplyChoicesAPI.as_view(current_context="expire"), name="expire_event_room_choices_api"),
 
-    path('api/event-rooms/create-new', apis.EventsAPI.as_view(current_context="create_new"), name='create_new_event_rooms'),
-    path('api/event-rooms/reply/start', apis.HandleReplyingEventRoomsAPI.as_view(current_context="start"), name="start_reply_event_rooms"),
-    path('api/event-rooms/reply', apis.EventsAPI.as_view(current_context="reply"), name="reply_event_rooms"),
-    path('api/event-rooms/reply/delete', apis.HandleReplyingEventRoomsAPI.as_view(current_context="delete"), name="delete_reply_event_rooms"),
+    path('api/event-rooms/create-new', apis.EventsAPI.as_view(current_context="create_new"), name='create_new_event_rooms_api'),
+    path('api/event-rooms/reply/start', apis.HandleReplyingEventRoomsAPI.as_view(current_context="start"), name="start_reply_event_rooms_api"),
+    path('api/event-rooms/reply', apis.EventsAPI.as_view(current_context="reply"), name="reply_event_rooms_api"),
+    path('api/event-rooms/reply/delete', apis.HandleReplyingEventRoomsAPI.as_view(current_context="delete"), name="delete_reply_event_rooms_api"),
 
-    path('api/event-reports/create', apis.EventReportsAPI.as_view(), name="create_event_reports"),
+    path('api/event-reports/create', apis.EventReportsAPI.as_view(), name="create_event_reports_api"),
 
-    path('api/users/blocks/<int:page>', apis.UserBlocksAPI.as_view(), name='users_block_users'),
-    path('api/users/banned-events/get/<int:page>', apis.UserBannedEventsAPI.as_view(), name="get_user_banned_events"),
-    path('api/event-tones/list', apis.EventTonesAPI.as_view(), name='event_tones'),
-    path('api/event-likes-dislikes', apis.EventLikesDislikesAPI.as_view(), name='event_likes_dislikes'),
-    path('api/users/username/get/<str:username>', apis.UsersUsernameAPI.as_view(), name='users_get_username'),
-    path('api/users/username/set', apis.UsersUsernameAPI.as_view(), name='users_set_username'),
-    path('api/users/sign-up', apis.UsersLogInSignUpAPI.as_view(current_context='sign_up'), name='users_sign_up'),
-    path('api/users/log-in', apis.UsersLogInSignUpAPI.as_view(current_context='log_in'), name='users_log_in'),
-    path('api/users/log-out', apis.UsersLogOutAPI.as_view(), name='users_log_out'),
+    path('api/users/blocks/list/<int:page>', apis.UserBlocksAPI.as_view(), name='list_user_blocks_api'),
+    path('api/users/blocks', apis.UserBlocksAPI.as_view(), name='user_blocks_api'),
+    path('api/users/banned-events/get/<int:page>', apis.UserBannedEventsAPI.as_view(), name="user_banned_events_api"),
+    path('api/event-tones/list', apis.EventTonesAPI.as_view(), name='event_tones_api'),
+    path('api/event-likes-dislikes', apis.EventLikesDislikesAPI.as_view(), name='event_likes_dislikes_api'),
+    path('api/users/username/get/<str:username>', apis.UsersUsernameAPI.as_view(), name='users_get_username_api'),
+    path('api/users/username/set', apis.UsersUsernameAPI.as_view(), name='users_set_username_api'),
+    path('api/users/sign-up', apis.UsersLogInSignUpAPI.as_view(current_context='sign_up'), name='users_sign_up_api'),
+    path('api/users/log-in', apis.UsersLogInSignUpAPI.as_view(current_context='log_in'), name='users_log_in_api'),
+    path('api/users/log-out', apis.UsersLogOutAPI.as_view(), name='users_log_out_api'),
     
     #user management
     #refer to link below for all URLs/APIs already provided
@@ -83,8 +84,9 @@ urlpatterns = [
     path('', views.home, name='home'),
     path('login', views.log_in, name='log_in'),
     path('signup', views.sign_up, name='sign_up'),
-    path('banned', views.user_banned_events, name='user_banned_events'),
+    path('banned', views.user_banned_events, name='user_banned'),
 
+    path('block', views.ListUserBlocks.as_view(), name='user_blocks'),
     path('user/<str:username>', views.GetUserProfile.as_view(), name='user_profile'),
     path('username/new', views.SetUsername.as_view(), name='set_username'),
     path('start', views.CreateEventRooms.as_view(), name='create_event_rooms'),

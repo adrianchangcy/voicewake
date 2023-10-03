@@ -16,7 +16,7 @@
             :class="[
                 propFontSize === 'xl' ? 'text-4xl' : '',
                 propFontSize === 'l' ? 'text-xl font-medium' : '',
-                propFontSize === 'm' ? 'text-base' : '',
+                propFontSize === 'm' ? 'text-lg' : '',
                 propFontSize === 's' ? 'text-sm' : '',
                 'h-fit break-words'
             ]"

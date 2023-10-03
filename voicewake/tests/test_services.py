@@ -48,7 +48,7 @@ class UserOTP_TestCase(TestCase):
 
     # def post_req_ex(self):
 
-        # self.client.post(reverse('sign_up'), data={
+        # self.client.post(reverse('sign_up_api'), data={
         #     'username': 'listener_here',
         #     'email': 'abc@gmail.com',
         #     'password1': 'tarantula123',

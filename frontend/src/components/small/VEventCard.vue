@@ -9,7 +9,7 @@
             style="opacity: 1;"
         >
             <button
-                class="w-full grid grid-cols-4     h-20 text-4xl bg-theme-light/60 hover:bg-theme-light/80 hover:border-theme-light-trim/40 hover:shadow-sm      border-t-2 border-theme-light-trim rounded-lg shadow-md transition     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline"
+                class="w-full h-20 grid grid-cols-4     text-4xl bg-theme-light/60 hover:bg-theme-light/80 hover:border-theme-light-trim/40 hover:shadow-sm      border-t-2 border-theme-light-trim rounded-lg shadow-md transition     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline"
                 type="button"
                 @click.stop="handleIsSelected()"
             >

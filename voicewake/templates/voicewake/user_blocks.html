@@ -1,0 +1,25 @@
+{% extends 'voicewake/base.html' %}
+{% block title %}Block List{% endblock %}
+
+{% block extra_head %}
+    <META NAME="robots" CONTENT="noindex,nofollow">
+{% endblock %}
+
+{% block content %}
+
+    <div>
+
+        <!--follows VTitle-->
+        <div class="py-8 text-theme-black text-center">
+            <i class="text-2xl fas fa-ban" aria-hidden="true"></i>
+            <h1 class="text-4xl h-fit break-words">
+                Block List
+            </h1>
+            <h2 class="pt-5 text-lg text-center">
+                These are the users you've blocked, sorted by 0-A-Z.
+            </h2>
+        </div>
+
+        <div id="list-user-blocks-app"></div>
+    </div>
+{% endblock %}

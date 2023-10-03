@@ -7,6 +7,7 @@ import BaseApp from '/src/apps/BaseApp.vue';
 import CreateEventRoomsApp from '/src/apps/CreateEventRoomsApp.vue';
 import ListEventRoomChoicesApp from '/src/apps/ListEventRoomChoicesApp.vue';
 import ListUserBannedEventsApp from '/src/apps/ListUserBannedEventsApp.vue';
+import ListUserBlocksApp from '/src/apps/ListUserBlocksApp.vue';
 import GetEventRoomsApp from '/src/apps/GetEventRoomsApp.vue';
 import BrowseEventRoomsApp from '/src/apps/BrowseEventRoomsApp.vue';
 import UserLogInSignUp from '/src/components/main/UserLogInSignUp.vue';
@@ -156,6 +157,12 @@ if(document.querySelector('#list-user-banned-events-app')){
 
     createApp(ListUserBannedEventsApp)
         .mount('#list-user-banned-events-app');
+}
+
+if(document.querySelector('#list-user-blocks-app')){
+
+    createApp(ListUserBlocksApp)
+        .mount('#list-user-blocks-app');
 }
 
 if(document.querySelector('#log-in-page')){

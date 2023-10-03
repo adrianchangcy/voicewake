@@ -30,6 +30,8 @@
                 event_room: null as GroupedEventsTypes|null,
             };
         },
+        watch: {
+        },
         methods: {
             async callTest() : Promise<void> {
                 await axios.get(window.location.origin + '/api/test')

@@ -9,10 +9,10 @@ import json
 
 
 
-class UserSerializer(serializers.ModelSerializer):
+class UsersSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username']
+        fields = ['username']
 
 
 
@@ -38,7 +38,7 @@ class UserVerificationOptionsSerializer(serializers.ModelSerializer):
 
 
 class EventLikesDislikesSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
+    user = UsersSerializer()
     class Meta:
         model = EventLikesDislikes
         fields = '__all__'
@@ -54,8 +54,8 @@ class GenericStatusesSerializer(serializers.ModelSerializer):
 
 class EventRoomsSerializer(serializers.ModelSerializer):
     generic_status = GenericStatusesSerializer()
-    locked_for_user = UserSerializer()
-    created_by = UserSerializer()
+    locked_for_user = UsersSerializer()
+    created_by = UsersSerializer()
     class Meta:
         model = EventRooms
         fields = '__all__'
@@ -63,7 +63,7 @@ class EventRoomsSerializer(serializers.ModelSerializer):
 
 
 class EventsSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
+    user = UsersSerializer()
     event_role = EventRolesSerializer()
     event_tone = EventTonesSerializer()
     event_room = EventRoomsSerializer()
@@ -83,7 +83,7 @@ class EventsSerializer(serializers.ModelSerializer):
 #no need event_room=EventRoomsSerializer
 #because we will use store into SortedEventsIntoEventRoomsSerializer.event_room, once for all related events
 class EventsAndLikeDetailsSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
+    user = UsersSerializer()
     event_role = EventRolesSerializer()
     event_tone = EventTonesSerializer()
     event_room_id = serializers.IntegerField()
@@ -264,15 +264,18 @@ class UsersLogInAPISerializer(serializers.Serializer):
 
 class UserBlocksSerializer(serializers.ModelSerializer):
 
+    blocked_user = UsersSerializer()
+    is_blocked = serializers.BooleanField(default=True) #for frontend only
+
     class Meta:
         model = UserBlocks
-        fields = '__all__'
+        fields = ['blocked_user']
 
 
 
 class UserBlocksAPISerializer(serializers.Serializer):
 
-    blocked_user_id = serializers.IntegerField()
+    username = serializers.CharField()
     to_block = serializers.BooleanField()
 
 

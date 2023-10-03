@@ -3,15 +3,9 @@
 
 {% block content %}
 
-    <h1 class="h-fit py-8 break-words text-xl font-medium text-theme-black">
-        <div class="flex flex-col">
-            <i class="fas fa-user block text-2xl w-full text-center"></i>
-            <span class="block w-full text-center">{{ user_profile_username }}</span>
-        </div>
-    </h1>
-
     <div
         data-user-profile-username="{{user_profile_username}}"
+        data-is-own-profile="{{is_own_profile}}"
         id="data-container-get-user-profile"
     >
 

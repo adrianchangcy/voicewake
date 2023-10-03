@@ -1,17 +1,23 @@
 <template>
     <div>
 
-        <div class="h-10 flex items-center border-b-2 border-theme-black text-base font-medium">
-            <span class="mx-auto">
-                Banned recordings
-            </span>
-        </div>
-
         <EventsCard
             :prop-events="events"
             :prop-is-fetching="is_fetching"
-            class="pt-14"
         />
+
+        <TransitionFade>
+            <VDialogPlain
+                v-show="has_no_events_left_to_fetch"
+                :prop-has-border="false"
+                :prop-has-auto-spacing="false"
+                class="w-full py-8"
+            >
+                <template #title>
+                    <span>You've reached the end of this page.</span>
+                </template>
+            </VDialogPlain>
+        </TransitionFade>
 
         <div id="load-more-user-banned-events-observer-target"></div>
 
@@ -35,6 +41,8 @@
 <script setup lang="ts">
     import EventsCard from '@/components/main/EventsCard.vue';
     import VPlayback from '@/components/medium/VPlayback.vue';
+    import VDialogPlain from '@/components/small/VDialogPlain.vue';
+    import TransitionFade from '@/transitions/TransitionFade.vue';
 </script>
 
 
@@ -77,7 +85,7 @@
                 axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
                 return true;
             },
-            async GetUserBannedEvents() : Promise<void> {
+            async getUserBannedEvents() : Promise<void> {
 
                 this.is_fetching = true;
                 this.can_observer_fetch = false;
@@ -145,7 +153,7 @@
                         return;
                     }
 
-                    this.GetUserBannedEvents();
+                    this.getUserBannedEvents();
                 }, {
                     threshold: 1,
                 });
@@ -161,7 +169,7 @@
             //set up Axios appropriately
             this.axiosSetup();
 
-            this.GetUserBannedEvents();
+            this.getUserBannedEvents();
 
             //listen to store
             this.currently_playing_event_store.$subscribe((mutation, state)=>{

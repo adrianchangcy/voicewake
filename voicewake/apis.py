@@ -55,6 +55,7 @@ class TestAPI(generics.GenericAPIView):
     def get(self, request, *args, **kwargs):
 
 
+
         return Response(
             data={
                 'data': {
@@ -166,6 +167,15 @@ class UserBannedEventsAPI(generics.GenericAPIView):
     #user wants to see their own banned events
     def get(self, request, *args, **kwargs):
 
+        if 'page' not in kwargs:
+
+            return Response(
+                data={
+                    'message': 'No page specified in URL.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         offset_quantity = settings.BAN_EVENT_QUANTITY_PER_PAGE * (kwargs['page'] - 1)
 
         qs = Events.objects.select_related(
@@ -204,9 +214,22 @@ class UserBlocksAPI(generics.GenericAPIView):
     #get list of blocked users
     def get(self, request, *args, **kwargs):
 
+        if 'page' not in kwargs:
+
+            return Response(
+                data={
+                    'message': 'No page specified in URL.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         offset_quantity = settings.GENERAL_ROW_QUANTITY_PER_PAGE * (kwargs['page'] - 1)
 
-        qs = UserBlocks.objects.filter(user=request.user).order_by('-when_created')[
+        qs = UserBlocks.objects.select_related(
+            'blocked_user'
+        ).filter(
+            user=request.user
+        ).order_by('blocked_user__username')[
             offset_quantity : offset_quantity + settings.GENERAL_ROW_QUANTITY_PER_PAGE
         ]
 
@@ -251,7 +274,17 @@ class UserBlocksAPI(generics.GenericAPIView):
         user_message = ""
 
         #get user to block
-        blocked_user = get_object_or_404(get_user_model(), pk=new_data['blocked_user_id'])
+        blocked_user = get_object_or_404(get_user_model(), username_lowercase=new_data['username'].lower())
+
+        #disallow users from blocking themselves
+        if blocked_user.id == request.user.id:
+
+            return Response(
+                data={
+                    'message': 'You cannot block yourself.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         if new_data['to_block'] is True:
 
@@ -484,7 +517,7 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
         #reminder that user shall always exist if following through account creation
         try:
 
-            user_instance = get_user_model().objects.get(email_lowercase = new_data['email'].lower())
+            user_instance = get_user_model().objects.get(email_lowercase=new_data['email'].lower())
 
         except get_user_model().DoesNotExist:
 

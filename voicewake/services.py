@@ -482,21 +482,25 @@ class PrepareTestData:
         Events.objects.bulk_update(events, ["like_count", "dislike_count"])
 
 
-    def prepare_test_data_for_bans(self, username:str='', event_quantity:int=10, reporting_user_quantity:int=1):
+    def prepare_test_data_for_bans(
+        self, username:str='',
+        events_to_ban_quantity:int=10, events_not_to_ban_quantity:int=5,
+        reporting_user_quantity:int=1
+    ):
 
         event_count = Events.objects.filter(user__username_lowercase=username.lower()).count()
 
-        if event_count < event_quantity:
+        if event_count < (events_not_to_ban_quantity + events_to_ban_quantity):
 
             print('Not enough events, creating now.')
 
             self.prepare_test_data_event_rooms(
                 originator_username=username,
-                incomplete_count=(event_quantity - event_count)
+                incomplete_count=((events_not_to_ban_quantity + events_to_ban_quantity) - event_count)
             )
 
         #get events
-        events = Events.objects.filter(user__username_lowercase=username.lower())[:event_quantity]
+        events = Events.objects.filter(user__username_lowercase=username.lower())[:(events_not_to_ban_quantity + events_to_ban_quantity)]
 
         #excluding this causes bug
         #i.e. events is treated as subquery in delete(), and for-loop executes events only after deletion
@@ -528,7 +532,7 @@ class PrepareTestData:
         #update Events.when_created
         when_created = get_datetime_now() - timedelta(seconds=(settings.BAN_EVENT_AGE_SECONDS * 2))
 
-        for x in range(len(events)):
+        for x in range(events_to_ban_quantity):
 
             #create likes
             for xx in range(expected_like_count):
@@ -571,6 +575,31 @@ class PrepareTestData:
         EventLikesDislikes.objects.bulk_create(bulk_event_likes_dislikes)
         Events.objects.bulk_update(events, ('when_created', 'is_banned',))
         EventReports.objects.bulk_create(bulk_event_reports)
+
+
+    def prepare_test_data_for_blocking_users(self, username:str='', user_quantity:int=10):
+
+        #check if we have enough users, excluding the user blocking other users
+        if (get_user_model().objects.all().count() - 1) < user_quantity:
+
+            raise ValueError('Insufficient users.')
+        
+        #main user
+        main_user = get_user_model().objects.get(username_lowercase=username.lower())
+
+        #get users
+        users = get_user_model().objects.all().order_by('id')[:user_quantity]
+
+        blocked_users = []
+
+        for user in users:
+
+            blocked_users.append(UserBlocks(
+                user=main_user,
+                blocked_user=user
+            ))
+
+        UserBlocks.objects.bulk_create(blocked_users)
 
 
     def do_quick_start(self, quantity_scale:int=1):

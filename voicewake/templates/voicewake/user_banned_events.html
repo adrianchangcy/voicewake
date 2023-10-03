@@ -1,5 +1,5 @@
 {% extends 'voicewake/base.html' %}
-{% block title %}You are banned{% endblock %}
+{% block title %}You Are Banned{% endblock %}
 
 {% block extra_head %}
     <META NAME="robots" CONTENT="noindex,nofollow">
@@ -21,6 +21,9 @@
             <h2 class="text-xl font-medium h-fit break-words">
                 You are banned&nbsp;<span class="banned-until"></span>
             </h2>
+            <h3 class="pt-5 text-lg text-center">
+                These are your banned recordings, sorted by most recent.
+            </h3>
         </div>
 
         <div id="list-user-banned-events-app"></div>
