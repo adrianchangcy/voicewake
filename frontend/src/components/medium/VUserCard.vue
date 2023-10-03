@@ -188,7 +188,7 @@
             },
         },
 
-        mounted(){
+        beforeMount(){
 
             const container = (document.getElementById('data-container-get-user-profile') as HTMLElement);
             this.username = (container.getAttribute('data-user-profile-username') as string);

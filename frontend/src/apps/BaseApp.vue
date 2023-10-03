@@ -28,9 +28,10 @@
                         var_name_for_element_bool_status: forceCloseLoginRequiredPromptMenu,
                         refs_to_exclude: []
                     }"
-                    class="w-5/6 sm:w-fit max-h-[90%] min-h-fit m-auto px-4 pt-10 pb-14 border border-theme-light-gray bg-theme-light shadow-xl rounded-lg"
+                    class="w-5/6 sm:w-fit max-h-[90%] min-h-fit m-auto px-4 pb-14 border border-theme-light-gray bg-theme-light shadow-xl rounded-lg"
                 >
                     <VLoginRequiredPrompt
+                        @is-open="forceCloseLoginRequiredPromptMenu()"
                     />
                 </div>
             </div>
