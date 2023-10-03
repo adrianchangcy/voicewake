@@ -1,7 +1,21 @@
 <template>
     <div class="">
 
-        <div class="flex flex-col gap-1">
+        <div class="relative h-10">
+            <VActionTextOnly
+                @click="emitIsOpen()"
+                prop-element="button"
+                type="button"
+                prop-element-size="s"
+                prop-font-size="s"
+                :prop-is-icon-only="true"
+                class="absolute w-10 -right-4"
+            >
+                <i class="fas fa-xmark mx-auto"></i>
+            </VActionTextOnly>
+        </div>
+
+        <div class="pt-4 flex flex-col gap-1">
             <VTitle propFontSize="l" class="text-center">
                 <template #titleDescription>
                     <span>Log in to perform that action.</span>
@@ -41,6 +55,7 @@
 
 <script setup lang="ts">
     import VAction from '../small/VAction.vue';
+    import VActionTextOnly from '../small/VActionTextOnly.vue';
     import VActionSpecial from '../small/VActionSpecial.vue';
     import VTitle from '../small/VTitle.vue';
 </script>
@@ -53,7 +68,6 @@
     export default defineComponent({
         data(){
             return{
-                is_open: false,
             };
         },
         emits: ['isOpen'],
@@ -72,19 +86,12 @@
 
         },
         watch: {
-            propIsOpen(new_value:boolean) : void {
-                this.is_open = new_value;
-            },
+
         },
         methods: {
-            toggleMenu() : void {
-                //this dictates whether VEventToneMenu is open
-                this.is_open = !this.is_open;
-                
-            },
             emitIsOpen() : void {
-                this.$emit('isOpen', this.is_open);
-            }
+                this.$emit('isOpen', false);
+            },
         },
     });
 </script>
