@@ -26,6 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 #else if always using new SECRET_KEY, it would kill all existing sessions
 SECRET_KEY = 'django-insecure-hdgs8@4nxkx0du^2n-gdss(!eo6i0kj6vk=gx1mddc@g=6h_^1'
 
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
@@ -34,6 +35,19 @@ DEBUG = True
 DEBUG_TOOLBAR_CONFIG = {
     'SHOW_TOOLBAR_CALLBACK': lambda r: True,
 }
+
+
+MIDDLEWARE = []
+
+#development
+if DEBUG is True:
+
+    REQUEST_TIME_DELAY = 0  #seconds
+
+    MIDDLEWARE += [
+        'voicewake.middleware.drf_api_delay_middleware.TimeDelayMiddleware',
+        'debug_toolbar.middleware.DebugToolbarMiddleware',
+    ]
 
 
 ALLOWED_HOSTS = []
@@ -107,17 +121,6 @@ SESSION_SAVE_EVERY_REQUEST = True
 # CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
 # CRISPY_TEMPLATE_PACK = 'bootstrap5'
 
-MIDDLEWARE = []
-
-#development
-if DEBUG is True:
-
-    REQUEST_TIME_DELAY = 2  #seconds
-
-    MIDDLEWARE += [
-        'voicewake.middleware.drf_api_delay_middleware.TimeDelayMiddleware',
-        'debug_toolbar.middleware.DebugToolbarMiddleware',
-    ]
 
 #standard
 MIDDLEWARE += [
@@ -318,9 +321,10 @@ BAN_EVENT_DISLIKE_COUNT = 100
 BAN_EVENT_AGE_SECONDS = 3600    #1 hour
 BAN_EVENT_QUANTITY_PER_CRON = 100
 BAN_EVENT_DURATION_PER_BAN_DAYS = 2     #multiply this with ban count
-BAN_EVENT_QUANTITY_PER_PAGE = 6
+BAN_EVENT_QUANTITY_PER_PAGE = 20
 
 
+USER_BLOCK_QUANTITY_PER_PAGE = 50
 
 
 

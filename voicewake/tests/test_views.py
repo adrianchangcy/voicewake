@@ -61,7 +61,7 @@ class Users_TestCase(TestCase):
             email = self.email
 
         #create and request OTP at the same time
-        response = self.client.post(reverse('users_sign_up'), data={
+        response = self.client.post(reverse('users_sign_up_api'), data={
             'email': email,
             'is_requesting_new_otp': True
         })
@@ -78,7 +78,7 @@ class Users_TestCase(TestCase):
         new_otp = UserOTP.objects.get(user=user_instance).otp
 
         #create and log in
-        response = self.client.post(reverse('users_sign_up'), data={
+        response = self.client.post(reverse('users_sign_up_api'), data={
             'email': email,
             'otp': new_otp
         })
@@ -101,7 +101,7 @@ class Users_TestCase(TestCase):
 
         self.test_sign_up_correctly()
 
-        response = self.client.post(reverse('users_log_out'))
+        response = self.client.post(reverse('users_log_out_api'))
 
         #expect
         self.assertEqual(response.wsgi_request.user.is_authenticated, False)
@@ -110,7 +110,7 @@ class Users_TestCase(TestCase):
     def test_log_in_for_account_that_does_not_exist(self):
 
         #create and request OTP at the same time
-        response = self.client.post(reverse('users_log_in'), data={
+        response = self.client.post(reverse('users_log_in_api'), data={
             'email': self.email,
             'is_requesting_new_otp': True
         })
@@ -134,7 +134,7 @@ class Users_TestCase(TestCase):
         self.test_sign_up_correctly()
 
         #generate OTP
-        response = self.client.post(reverse('users_log_in'), data={
+        response = self.client.post(reverse('users_log_in_api'), data={
             'email': self.email,
             'is_requesting_new_otp': True
         })
@@ -153,7 +153,7 @@ class Users_TestCase(TestCase):
         new_otp = UserOTP.objects.get(user=user_instance).otp
 
         #log in
-        response = self.client.post(reverse('users_log_in'), data={
+        response = self.client.post(reverse('users_log_in_api'), data={
             'email': self.email,
             'otp': new_otp
         })
@@ -180,7 +180,7 @@ class Users_TestCase(TestCase):
         self.test_log_in_correctly()
 
         #log out
-        response = self.client.post(reverse('users_log_out'))
+        response = self.client.post(reverse('users_log_out_api'))
 
         #expect
         self.assertEqual(response.wsgi_request.user.is_authenticated, False)
@@ -191,7 +191,7 @@ class Users_TestCase(TestCase):
         self.test_log_in_log_out()
 
         #set username
-        response = self.client.post(reverse('users_set_username'), data={
+        response = self.client.post(reverse('users_set_username_api'), data={
             'username': 'user1',
         })
 
@@ -204,7 +204,7 @@ class Users_TestCase(TestCase):
         self.test_log_in_correctly()
 
         #set username
-        response = self.client.post(reverse('users_set_username'), data={
+        response = self.client.post(reverse('users_set_username_api'), data={
             'username': 'admin',
         })
 
@@ -225,7 +225,7 @@ class Users_TestCase(TestCase):
         self.test_log_in_correctly()
 
         #set username
-        response = self.client.post(reverse('users_set_username'), data={
+        response = self.client.post(reverse('users_set_username_api'), data={
             'username': 'user1',
         })
 
@@ -242,7 +242,7 @@ class Users_TestCase(TestCase):
 
         self.test_set_username_is_logged_in()
 
-        response = self.client.post(reverse('users_log_out'))
+        response = self.client.post(reverse('users_log_out_api'))
         self.assertEqual(response.wsgi_request.user.is_authenticated, False)
 
         #new account
@@ -251,7 +251,7 @@ class Users_TestCase(TestCase):
         self.test_sign_up_correctly(another_email)
 
         #set username identical to user1
-        response = self.client.post(reverse('users_set_username'), data={
+        response = self.client.post(reverse('users_set_username_api'), data={
             'username': 'user1',
         })
 
@@ -265,7 +265,7 @@ class Users_TestCase(TestCase):
 
 
         #set username identical to user1, but check via case insensitive
-        response = self.client.post(reverse('users_set_username'), data={
+        response = self.client.post(reverse('users_set_username_api'), data={
             'username': 'uSEr1',
         })
 
@@ -278,7 +278,7 @@ class Users_TestCase(TestCase):
         self.assertEqual(user_instance.username_lowercase, None)
 
         #set username, but correct
-        response = self.client.post(reverse('users_set_username'), data={
+        response = self.client.post(reverse('users_set_username_api'), data={
             'username': 'user2',
         })
 
@@ -438,7 +438,7 @@ class System_TestCase(TestCase):
 
             #submit
             request = self.client.post(
-                path=reverse('event_likes_dislikes'),
+                path=reverse('event_likes_dislikes_api'),
                 data={
                     'event_id': event_id,
                     'is_liked': is_liked
@@ -484,7 +484,7 @@ class System_TestCase(TestCase):
         self.login(self.user_1_instance)
 
         self.client.post(
-            path=reverse('users_block_users'),
+            path=reverse('users_block_users_api'),
             data={
                 'blocked_user_id': self.user_2_instance.id,
                 'to_block': True
@@ -494,7 +494,6 @@ class System_TestCase(TestCase):
         self.assertTrue(UserBlocks.objects.filter(user_id=self.user_1_instance, blocked_user_id=self.user_2_instance).exists())
 
         #here, you run event_rooms querysets to validate that blocked users don't show up
-
 
 
     def test_event_report(self):
@@ -559,7 +558,7 @@ class System_TestCase(TestCase):
 
         #report
         result = self.client.post(
-            path=reverse('create_event_reports'),
+            path=reverse('create_event_reports_api'),
             data={
                 'reported_event_id': event_to_report.id
             }
@@ -571,7 +570,7 @@ class System_TestCase(TestCase):
 
         #try report again, expect to be fine but not accept duplicates
         result = self.client.post(
-            path=reverse('create_event_reports'),
+            path=reverse('create_event_reports_api'),
             data={
                 'reported_event_id': event_to_report.id
             }
@@ -586,7 +585,8 @@ class System_TestCase(TestCase):
 
         self.prepare_test_data_class.prepare_test_data_for_bans(
             username=self.user_1_username,
-            event_quantity=10,
+            events_to_ban_quantity=10,
+            events_not_to_ban_quantity=5,
             reporting_user_quantity=10
         )
 

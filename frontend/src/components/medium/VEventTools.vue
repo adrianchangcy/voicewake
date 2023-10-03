@@ -92,11 +92,11 @@
                 <TransitionGroupFade :prop-has-absolute="true">
                     <span v-show="has_shared === false" class="w-full flex items-center text-center">
                         <i class="fas fa-share text-base mx-auto" aria-hidden="true"></i>
-                        <span class="sr-only">Copy URL to share</span>
+                        <span class="sr-only">Copy recording URL to share</span>
                     </span>
                     <span v-show="has_shared === true" class="w-full flex items-center text-center">
                         <i class="fas fa-check text-base mx-auto" aria-hidden="true"></i>
-                        <span class="sr-only">URL copied</span>
+                        <span class="sr-only">recording URL copied</span>
                     </span>
                 </TransitionGroupFade>
             </button>
@@ -137,7 +137,7 @@
             >
                 <VActionTextOnly
                     @click="submitReport()"
-                    :prop-is-enabled="!has_reported"
+                    :prop-is-enabled="!has_reported && !is_reporting"
                     propElement="button"
                     type="button"
                     propFontSize="s"
@@ -145,7 +145,13 @@
                     :prop-is-icon-only="false"
                     class="w-fit px-2"
                 >
-                    <span>
+
+                    <span v-if="is_reporting">
+                        <VLoading prop-element-size="s">
+                            <span class="pl-2">Reporting...</span>
+                        </VLoading>
+                    </span>
+                    <span v-else>
                         <i class="fas fa-flag w-fit h-fit text-sm"></i>
                         <span v-show="!has_reported" class="pl-2">Report</span>
                         <span v-show="has_reported" class="pl-2">Reported</span>
@@ -160,6 +166,7 @@
 <script setup lang="ts">
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
     import VActionTextOnly from '../small/VActionTextOnly.vue';
+    import VLoading from '../small/VLoading.vue';
 </script>
 
 
@@ -186,9 +193,11 @@
                 minimum_dislike_percentage_for_display: 0.2,
                 submit_interval: null as number|null,
 
-                has_shared: false as boolean|null,
+                has_shared: false,
                 has_shared_timeout: null as number|null,
-                has_reported: false as boolean,
+
+                is_reporting: false,
+                has_reported: false,
 
                 is_extra_options_menu_open: false,
             };
@@ -267,44 +276,26 @@
             },
             async copyEventURL() : Promise<void> {
 
+                if(this.has_shared_timeout !== null){
+
+                    return;
+                }
+
                 const url = window.origin + "/hear/" + this.propEventRoomId;
                 navigator.clipboard.writeText(url);
-
-                this.has_shared_timeout !== null ? window.clearTimeout(this.has_shared_timeout) : null;
-                this.has_shared_timeout = null;
 
                 notify({
                     title: 'Link copied',
                     type: 'ok',
                 }, 2000);
 
-                //code below is more complex so that it can handle "user copied but kept spamming" aesthetics
+                this.has_shared = true;
 
-                if(this.has_shared === true){
-
-                    this.has_shared = null;
-
-                    this.has_shared_timeout = window.setTimeout(()=>{
-
-                        this.has_shared = true;
-
-                        this.has_shared_timeout !== null ? window.clearTimeout(this.has_shared_timeout) : null;
-                        this.has_shared_timeout = null;
-
-                        this.has_shared_timeout = window.setTimeout(()=>{
-                            this.has_shared = false;
-                        }, 2000);
-
-                    }, 200);
-
-                }else{
-
-                    this.has_shared = true;
-
-                    this.has_shared_timeout = window.setTimeout(()=>{
-                        this.has_shared = false;
-                    }, 2000);
-                }
+                this.has_shared_timeout = window.setTimeout(()=>{
+                    this.has_shared = false;
+                    this.has_shared_timeout !== null ? window.clearTimeout(this.has_shared_timeout) : null;
+                    this.has_shared_timeout = null;
+                }, 2000);
             },
             async submitLikeDislike() : Promise<void> {
 
@@ -395,6 +386,8 @@
                     return;
                 }
 
+                this.is_reporting = true;
+
                 let data = new FormData();
                 
                 data.append('reported_event_id', JSON.stringify(this.propEvent['id']));
@@ -411,8 +404,7 @@
                         type: 'generic',
                     }, 6000);
 
-                })
-                .catch(() => {
+                }).catch(() => {
 
                     notify({
                         icon: 'fas fa-check',
@@ -420,6 +412,10 @@
                         text: 'Oops! Unable to report this recording.',
                         type: 'error',
                     }, 2000);
+
+                }).finally(() => {
+
+                    this.is_reporting = false;
                 });
             },
             animeLikeDislike(like_or_dislike:'like'|'dislike', is_adding:boolean) : void {
@@ -479,20 +475,18 @@
                     });
                 }
             },
-            axiosSetup() : boolean {
+            async axiosSetup() : Promise<void> {
 
                 //your template must have {% csrf_token %}
                 let token = document.getElementsByName("csrfmiddlewaretoken")[0];
 
                 if(token === undefined){
 
-                    console.log('CSRF not found.');
-                    return false;
+                    throw new Error('CSRF not found.');
                 }
 
                 axios.defaults.headers.common['X-CSRFToken'] = (token as HTMLFormElement).value;
                 axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
-                return true;
             },
         },
         beforeMount(){

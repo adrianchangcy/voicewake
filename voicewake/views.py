@@ -83,8 +83,20 @@ def user_banned_events(request):
             request.user.banned_until = None
             request.user.save()
 
-    #do 404 for others
-    raise Http404()
+    return redirect(reverse('home'))
+
+
+
+@method_decorator(
+    [
+        app_decorators.deny_if_not_logged_in("redirect"),
+        app_decorators.deny_if_no_username("redirect"),
+    ],
+    name='get'
+)
+class ListUserBlocks(TemplateView):
+
+    template_name = 'voicewake/user_blocks.html'
 
 
 
@@ -101,18 +113,8 @@ class GetUserProfile(TemplateView):
 
     def get(self, request, *args, **kwargs):
 
-        try:
+        specific_user = get_object_or_404(get_user_model(), username_lowercase=kwargs['username'].lower())
 
-            specific_user = get_user_model().objects.get(username_lowercase=kwargs['username'].lower())
-
-        except get_user_model().DoesNotExist:
-
-            return render(
-                request,
-                template_name='voicewake/404.html',
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
         #redirect/change URL to respect username's case sensitivity
         if kwargs['username'] != specific_user.username:
 
@@ -125,6 +127,7 @@ class GetUserProfile(TemplateView):
             template_name=self.template_name,
             context={
             'user_profile_username': specific_user.username,
+            'is_own_profile': json.dumps(request.user.is_authenticated is True and request.user.id == specific_user.id)
             }
         )
 

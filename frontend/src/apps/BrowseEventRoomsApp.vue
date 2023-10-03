@@ -1,8 +1,14 @@
 <template>
     <div>
 
+        <!--user profile-->
+        <VUserCard
+            v-if="propIsUserProfilePage"
+            :prop-username="user_profile_username"
+        />
+
         <!--sorting options-->
-        <div class="flex flex-col pb-14">
+        <div class="flex flex-col pb-8">
 
             <!--options-->
             <div ref="open_close_sort_menu_button">
@@ -79,7 +85,7 @@
             </div>
 
             <!--event roles-->
-            <div v-show="propIsUserProfilePage" class="w-full grid grid-cols-2">
+            <div v-show="propIsUserProfilePage" class="w-full grid grid-cols-2 px-4">
                 <VActionTextOnly
                     @click="updateCurrentEventRoleNameIndex(0)"
                     prop-element="button"
@@ -94,6 +100,7 @@
                     <span class="mx-auto">
                         <i class="fas fa-comment"></i>
                         <span class="pl-2">Started</span>
+                        <span v-show="isSelectedEventRoleName(0)" class="sr-only">selected</span>
                     </span>
                 </VActionTextOnly>
                 <VActionTextOnly
@@ -110,12 +117,13 @@
                     <span class="mx-auto">
                         <i class="fas fa-comments"></i>
                         <span class="pl-2">Replied</span>
+                        <span v-show="isSelectedEventRoleName(1)" class="sr-only">selected</span>
                     </span>
                 </VActionTextOnly>
             </div>
         </div>
 
-        <div class="flex flex-col gap-8">
+        <div class="flex flex-col gap-4">
             <TransitionGroupFade>
 
                 <!--event_rooms-->
@@ -170,13 +178,13 @@
                     >
                         <template #title>
                             <span>
-                                {{ getPlayedEventsLength }} recordings played!
+                                {{ getPlayedEventsLength }} recordings played.
                             </span>
                         </template>
                         <template #content>
                             <div class="flex flex-col gap-4">
                                 <span>
-                                    Hope you're having a good time. Don't forget to take a break!
+                                    Don't forget to take a break!
                                 </span>
                                 <VActionSpecial
                                     @click="continueScrolling()"
@@ -225,6 +233,7 @@
     import VActionSpecial from '@/components/small/VActionSpecial.vue';
     import VActionTextOnly from '@/components/small/VActionTextOnly.vue';
     import VDialogPlain from '@/components/small/VDialogPlain.vue';
+    import VUserCard from '@/components/medium/VUserCard.vue';
 </script>
 
 
@@ -450,8 +459,6 @@
                         this.filtered_grouped_events_store.getSelectedEventToneEventRooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['current_page'] + 1
                     ).toString();
                 }
-
-                console.log(full_url);
 
                 return full_url;
             },
