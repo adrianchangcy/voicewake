@@ -56,6 +56,7 @@ class TestAPI(generics.GenericAPIView):
 
 
 
+
         return Response(
             data={
                 'data': {
@@ -195,13 +196,20 @@ class UserBannedEventsAPI(generics.GenericAPIView):
                 many=True
             ).data
 
-        return Response(
+        response = Response(
             data={
                 'data': banned_events,
                 'message': ''
             },
             status=status.HTTP_200_OK
         )
+
+        patch_cache_control(
+            response,
+            no_cache=True, no_store=True, must_revalidate=True, max_age=0
+        )
+
+        return response
 
 
 
@@ -238,13 +246,20 @@ class UserBlocksAPI(generics.GenericAPIView):
             many=True
         )
 
-        return Response(
+        response = Response(
             data={
                 'data': serializer.data,
                 'message': ''
             },
             status=status.HTTP_200_OK
         )
+
+        patch_cache_control(
+            response,
+            no_cache=True, no_store=True, must_revalidate=True, max_age=0
+        )
+
+        return response
 
 
     #perform blocking/unblocking
@@ -633,10 +648,9 @@ class EventTonesAPI(generics.GenericAPIView):
             }
         )
 
-        #cache for 4 weeks
         patch_cache_control(
             response,
-            no_cache=False, no_store=False, must_revalidate=True, max_age=2419200
+            no_cache=False, no_store=False, must_revalidate=True, max_age=settings.EVENT_TONE_CACHE_AGE_SECONDS
         )
 
         return response

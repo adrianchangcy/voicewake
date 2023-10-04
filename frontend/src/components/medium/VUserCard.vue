@@ -1,57 +1,63 @@
 <template>
     <div>
         <div class="py-8 text-theme-black">
-            <div class="flex flex-col gap-2 px-4 py-6 pt-4 rounded-lg border-2 border-theme-black">
+            <div class="flex flex-col gap-2 px-2 py-6 pt-4 rounded-lg border-2 border-theme-black">
 
                 <div class="flex flex-row items-center">
-                    <i class="fas fa-user text-2xl pl-2 pr-6" aria-hidden="true"></i>
-                    <span class="text-2xl font-medium break-all">012345678901234567890123456789</span>
-                </div>
 
-                <div class="flex flex-row gap-1 justify-end">
-                    <VActionSimplest
-                        @click="copyUserURL()"
-                        prop-element-size="s"
-                        prop-font-size="s"
-                        prop-element="button"
-                        type="button"
-                        class="min-w-[102px]"
-                    >
-                        <TransitionFade>
-                            <span v-if="has_shared === false" class="mx-auto flex items-center text-center">
-                                <i class="fas fa-share text-base" aria-hidden="true"></i>
-                                <span class="pl-1">Share</span>
-                            </span>
-                            <span v-else class="mx-auto flex items-center text-center">
-                                <i class="fas fa-check text-base" aria-hidden="true"></i>
-                                <span class="pl-1">Copied</span>
-                            </span>
-                        </TransitionFade>
-                    </VActionSimplest>
+                    <i class="fas fa-user text-2xl pl-2 pr-4" aria-hidden="true"></i>
 
-                    <VActionSimplest
-                        v-if="canBlockUnblock"
-                        @click="handleBlock()"
-                        prop-element-size="s"
-                        prop-font-size="s"
-                        prop-element="button"
-                        :prop-is-enabled="!is_blocking"
-                        :prop-is-icon-only="is_blocking"
-                        type="button"
-                        class="min-w-[112px]"
-                    >
-                        <div
-                            v-if="is_blocking"
-                            class="mx-auto"
-                        >
-                            <VLoading prop-element-size="s"/>
+                    <div class="flex flex-col gap-2">
+
+                        <span class="text-2xl font-medium break-all">{{ propUsername }}</span>
+
+                        <div class="flex flex-row gap-1">
+                            <VActionSimplest
+                                @click="copyUserURL()"
+                                prop-element-size="s"
+                                prop-font-size="s"
+                                prop-element="button"
+                                type="button"
+                                class="min-w-[102px]"
+                            >
+                                <TransitionFade>
+                                    <span v-if="has_shared === false" class="mx-auto flex items-center text-center">
+                                        <i class="fas fa-share text-base" aria-hidden="true"></i>
+                                        <span class="pl-1">Share</span>
+                                    </span>
+                                    <span v-else class="mx-auto flex items-center text-center">
+                                        <i class="fas fa-check text-base" aria-hidden="true"></i>
+                                        <span class="pl-1">Copied</span>
+                                    </span>
+                                </TransitionFade>
+                            </VActionSimplest>
+
+                            <VActionSimplest
+                                v-if="canBlockUnblock"
+                                @click="handleBlock()"
+                                prop-element-size="s"
+                                prop-font-size="s"
+                                prop-element="button"
+                                :prop-is-enabled="!is_blocking"
+                                :prop-is-icon-only="is_blocking"
+                                type="button"
+                                class="min-w-[112px]"
+                            >
+                                <div
+                                    v-if="is_blocking"
+                                    class="mx-auto"
+                                >
+                                    <VLoading prop-element-size="s"/>
+                                </div>
+                                <span v-else class="mx-auto flex items-center text-center">
+                                    <i v-show="!is_blocked" class="fas fa-ban text-base" aria-hidden="true"></i>
+                                    <i v-show="is_blocked" class="far fa-circle text-base" aria-hidden="true"></i>
+                                    <span v-show="!is_blocked" class="pl-1">Block</span>
+                                    <span v-show="is_blocked" class="pl-1">Unblock</span>
+                                </span>
+                            </VActionSimplest>
                         </div>
-                        <span v-else class="mx-auto flex items-center text-center">
-                            <i class="fas fa-ban text-base" aria-hidden="true"></i>
-                            <span v-show="!is_blocked" class="pl-1">Block</span>
-                            <span v-show="is_blocked" class="pl-1">Unblock</span>
-                        </span>
-                    </VActionSimplest>
+                    </div>
                 </div>
             </div>
         </div>
@@ -194,6 +200,7 @@
             this.username = (container.getAttribute('data-user-profile-username') as string);
 
             this.is_own_profile = JSON.parse(container.getAttribute('data-is-own-profile') as string);
+            this.is_blocked = JSON.parse(container.getAttribute('data-is-blocked') as string);
         },
     });
 </script>

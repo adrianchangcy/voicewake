@@ -1,6 +1,76 @@
 <template>
     <div>
 
+        <div class="flex flex-col gap-2">
+            <div
+                v-for="(user, index) in user_blocks" :key="index"
+                class="w-full flex flex-row items-center p-2 gap-2 border border-theme-light-gray transition-colors shade-border-when-hover rounded-lg text-theme-black"
+            >
+
+                <!--user-->
+                <VActionTextOnly
+                    prop-element="a"
+                    :href="getProfileURL(index)"
+                    prop-element-size="s"
+                    prop-font-size="s"
+                    class="min-w-0 flex-grow"
+                >
+                    <i class="fas fa-user text-base pl-2 pr-4"></i>
+                    <span class="text-base font-normal text-ellipsis overflow-hidden">{{ user.blocked_user.username }}</span>
+                </VActionTextOnly>
+
+                <!--block/unblock-->
+                <div class="w-fit flex-shrink-0">
+
+                    <TransitionFade>
+                        <!--block-->
+                        <VActionSimplest
+                            v-if="!user.is_blocked"
+                            @click="handleBlock(index)"
+                            prop-element-size="s"
+                            prop-font-size="s"
+                            prop-element="button"
+                            :prop-is-enabled="!isBlocking(index)"
+                            :prop-is-icon-only="isBlocking(index)"
+                            type="button"
+                            class="w-[100px]"
+                        >
+                            <div
+                                v-if="isBlocking(index)"
+                                class="mx-auto"
+                            >
+                                <VLoading prop-element-size="s"/>
+                            </div>
+                            <span v-else class="mx-auto flex items-center text-center">
+                                <i class="fas fa-ban text-base" aria-hidden="true"></i>
+                                <span class="pl-1">Block</span>
+                            </span>
+                        </VActionSimplest>
+
+                        <!--unblock-->
+                        <VActionTextOnly
+                            v-else-if="user.is_blocked"
+                            @click="handleBlock(index)"
+                            :prop-is-enabled="!isBlocking(index)"
+                            :prop-is-icon-only="true"
+                            prop-element-size="s"
+                            prop-font-size="s"
+                            prop-element="button"
+                            type="button"
+                            class="w-10"
+                        >
+                            <VLoading
+                                v-if="isBlocking(index)"
+                                prop-element-size="s"
+                                class="mx-auto"
+                            />
+                            <i v-else class="fas fa-square-minus text-2xl mx-auto" aria-hidden="true"></i>
+                            <span class="sr-only">unblock</span>
+                        </VActionTextOnly>
+                    </TransitionFade>
+                </div>
+            </div>
+        </div>
 
         <TransitionFade>
             <VDialogPlain
@@ -24,6 +94,9 @@
 <script setup lang="ts">
     import TransitionFade from '@/transitions/TransitionFade.vue';
     import VDialogPlain from '@/components/small/VDialogPlain.vue';
+    import VActionTextOnly from '@/components/small/VActionTextOnly.vue';
+    import VActionSimplest from '@/components/small/VActionSimplest.vue';
+    import VLoading from '@/components/small/VLoading.vue';
 </script>
 
 
@@ -33,9 +106,8 @@
     const axios = require('axios');
 
     interface UserBlocksTypes {
-        user: {
-            id: number,
-            username: string
+        blocked_user: {
+            username: string,
         },
         is_blocked: boolean
     }
@@ -45,6 +117,8 @@
         data(){
             return {
                 user_blocks: [] as UserBlocksTypes[],
+                is_blocking: false,
+                is_blocking_index: null as number|null,
 
                 is_fetching: false,
                 can_observer_fetch: false,
@@ -71,6 +145,14 @@
             },
         },
         methods: {
+            getProfileURL(index:number) : string {
+
+                return window.location.origin + '/user/' + this.user_blocks[index].blocked_user.username;
+            },
+            isBlocking(index:number) : boolean {
+
+                return this.is_blocking === true && this.is_blocking_index === index;
+            },
             axiosSetup() : boolean {
 
                 //your template must have {% csrf_token %}
@@ -86,7 +168,7 @@
                 axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
                 return true;
             },
-            async doUserBlocksAction(user_block_index:number) : Promise<void> {
+            async handleBlock(user_block_index:number) : Promise<void> {
 
                 //your template must have {% csrf_token %}
                 let token = document.getElementsByName("csrfmiddlewaretoken")[0];
@@ -97,10 +179,18 @@
                     return;
                 }
 
+                if(this.is_blocking === true){
+
+                    return;
+                }
+
+                this.is_blocking = true;
+                this.is_blocking_index = user_block_index;
+
                 const url = window.location.origin + '/api/users/blocks';
 
                 let data = new FormData();
-                data.append('user_id', JSON.stringify(this.user_blocks[user_block_index].user.id));
+                data.append('username', this.user_blocks[user_block_index].blocked_user.username);
                 data.append('to_block', JSON.stringify(!this.user_blocks[user_block_index].is_blocked));
 
                 const config = {
@@ -114,10 +204,30 @@
                     }
                 };
 
-                await axios.post(url, data, config).then((result:any)=>{
-                    console.log(result);
-                })
+                await axios.post(url, data, config)
+                .then((results:any)=>{
 
+                    this.user_blocks[user_block_index].is_blocked = !this.user_blocks[user_block_index].is_blocked;
+
+                    notify({
+                        title: this.user_blocks[user_block_index].is_blocked === true ? 'Blocked user' : 'Unblocked user',
+                        text: results.data['message'],
+                        type: 'ok'
+                    }, 2000);
+
+                }).catch(()=>{
+
+                    notify({
+                        title: 'Error',
+                        text: 'Unable to get your list of blocked users.',
+                        type: 'error'
+                    }, 2000);
+
+                }).finally(()=>{
+
+                    this.is_blocking = false;
+                    this.is_blocking_index = null;
+                })
             },
             async getUserBlocks() : Promise<void> {
 
@@ -153,7 +263,7 @@
 
                     notify({
                         title: 'Error',
-                        text: 'Unable to retrieve your banned recordings.',
+                        text: "Unable to get the list of users you've blocked.",
                         type: 'error'
                     });
 
