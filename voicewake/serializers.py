@@ -269,7 +269,7 @@ class UserBlocksSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserBlocks
-        fields = ['blocked_user']
+        fields = ['blocked_user', 'is_blocked']
 
 
 

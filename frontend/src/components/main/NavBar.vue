@@ -204,35 +204,59 @@
                     >
 
                         <!--profile area-->
-                        <div class="pt-12 flex flex-col">
-                            <i class="fas fa-circle-user text-2xl w-fit h-fit mx-auto" aria-hidden="true"></i>
-                            <span class="max-w-full h-fit mx-auto text-xl font-light break-words">
-                                <span v-if="pop_up_manager_store.getIsLoggedIn">{{ propUsername }}</span>
-                                <span v-else>Not logged in</span>
-                            </span>
+                        <div class="pt-12 pb-14">
+
+                            <!--logged in, can click to view profile-->
+                            <VActionTextOnly
+                                v-if="pop_up_manager_store.getIsLoggedIn"
+                                prop-element="a"
+                                :href="getProfileURL()"
+                            >
+                                <div class="w-full flex flex-col">
+                                    <i class="fas fa-circle-user text-2xl w-fit h-fit mx-auto" aria-hidden="true"></i>
+                                    <span class="max-w-full h-fit mx-auto text-xl font-medium break-words">
+                                        <span>012345678901234567890123456789</span>
+                                    </span>
+                                </div>
+                            </VActionTextOnly>
+
+                            <!--not logged in-->
+                            <div
+                                v-else
+                                class="flex flex-col"
+                            >
+                                <i class="fas fa-circle-user text-2xl w-fit h-fit mx-auto" aria-hidden="true"></i>
+                                <span class="max-w-full h-fit mx-auto text-xl font-light break-words">
+                                    <span>Not logged in</span>
+                                </span>
+                            </div>
                         </div>
 
                         <!--divider-->
-                        <div class="w-[75%] h-[1px] mt-14 mb-12 bg-theme-light-gray mx-auto"></div>
+                        <div class="pb-4">
+                            <div class="w-[75%] h-[1px] bg-theme-light-gray mx-auto"></div>
+                        </div>
 
-                        <!--account options-->
-                        <div class="h-fit grid grid-rows-2 gap-2">
+                        <!--log in / sign up-->
+                        <div
+                            v-if="pop_up_manager_store.getIsLoggedIn === false"
+                            class="h-fit grid"
+                        >
 
                             <!--log in-->
                             <VActionTextOnly
-                                v-if="pop_up_manager_store.getIsLoggedIn === false"
                                 propElement="a"
                                 href="/login"
-                                propFontSize="m"
+                                propFontSize="s"
                                 propElementSize="s"
-                                class="row-start-1 row-span-1 w-full"
+                                class="row-span-1 w-full"
                             >
                                 <div class="w-full h-full grid grid-cols-4">
                                     <div class="col-span-1 flex items-center">
                                         <i class="fas fa-circle-user pt-0.5 w-fit h-fit mx-auto" aria-hidden="true"></i>
                                     </div>
                                     <div class="col-span-3 flex items-center">
-                                        <span class="text-left font-normal break-all">
+                                        <span class="text-left break-all">
                                             Log in
                                         </span>
                                     </div>
@@ -241,35 +265,74 @@
 
                             <!--sign up-->
                             <VActionTextOnly
-                                v-if="pop_up_manager_store.getIsLoggedIn === false"
                                 propElement="a"
                                 href="/signup"
-                                propFontSize="m"
+                                propFontSize="s"
                                 propElementSize="s"
-                                class="row-start-2 row-span-1 w-full"
+                                class="row-span-1 w-full"
                             >
                                 <div class="w-full h-full grid grid-cols-4">
                                     <div class="col-span-1 flex items-center">
                                         <i class="fas fa-right-to-bracket pt-0.5 w-fit h-fit mx-auto" aria-hidden="true"></i>
                                     </div>
                                     <div class="col-span-3 flex items-center">
-                                        <span class="text-left font-normal break-all">
+                                        <span class="text-left break-all">
                                             Sign up
                                         </span>
                                     </div>
                                 </div>
                             </VActionTextOnly>
+                        </div>
 
+                        <!--block list-->
+                        <div
+                            v-if="pop_up_manager_store.getIsLoggedIn === true"
+                            class="h-fit grid"
+                        >
+                            <!--block list-->
+                            <VActionTextOnly
+                                propElement="a"
+                                href="/block"
+                                propFontSize="s"
+                                propElementSize="s"
+                                class="row-span-1 w-full"
+                            >
+                                <div class="w-full h-full grid grid-cols-4">
+                                    <div class="col-span-1 flex items-center">
+                                        <i class="fas fa-ban pt-0.5 w-fit h-fit mx-auto" aria-hidden="true"></i>
+                                    </div>
+                                    <div class="col-span-3 flex items-center">
+                                        <span class="text-left break-all">
+                                            Block list
+                                        </span>
+                                    </div>
+                                </div>
+                            </VActionTextOnly>
+                        </div>
+
+                        <!--divider-->
+                        <div
+                            v-if="pop_up_manager_store.getIsLoggedIn === true"
+                            class="py-4"
+                        >
+                            <div class="w-[75%] h-[1px] bg-theme-light-gray mx-auto"></div>
+                        </div>
+
+                        <!--log out-->
+                        <div
+                            v-if="pop_up_manager_store.getIsLoggedIn === true"
+                            class="h-fit grid gap-2"
+                        >
                             <!--log out-->
                             <VActionTextOnly
                                 v-if="pop_up_manager_store.getIsLoggedIn === true"
                                 :propIsEnabled="!is_log_out_loading"
                                 @click.stop="logOut()"
                                 propElement="button"
-                                propFontSize="m"
+                                propFontSize="s"
                                 propElementSize="s"
                                 type="button"
-                                class="row-start-1 row-span-1 w-full"
+                                class="w-full"
                             >
                                 <div class="w-full h-full grid grid-cols-4">
                                     <div class="col-span-1 flex items-center">
@@ -283,7 +346,7 @@
                                         </span>
                                     </div>
                                     <div class="col-span-3 flex items-center">
-                                        <span class="text-left font-normal break-all">
+                                        <span class="text-left break-all">
                                             <span v-if="is_log_out_loading">
                                                 Logging out...
                                             </span>
@@ -346,6 +409,10 @@
         watch: {
         },
         methods: {
+            getProfileURL() : string {
+
+                return window.location.origin + '/user/' + this.propUsername;
+            },
             forceCloseNavMenu() : void {
 
                 this.pop_up_manager_store.toggleIsNavMenuOpen(false);

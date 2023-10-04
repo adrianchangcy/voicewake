@@ -1,7 +1,6 @@
 interface EventsAndLikeDetailsTypes{
     id: number,
     user: {
-        id: number,
         username: string
     },
     event_role: {

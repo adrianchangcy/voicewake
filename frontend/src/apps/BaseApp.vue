@@ -90,7 +90,7 @@
             },
             checkHasCookiesConsent() : void {
 
-                if(localStorage.getItem('user_consents_to_cookies') !== null){
+                if(this.pop_up_manager_store.getIsLoggedIn === false || localStorage.getItem('user_consents_to_cookies') !== null){
 
                     return;
                 }

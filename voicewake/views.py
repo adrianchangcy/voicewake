@@ -104,6 +104,7 @@ class ListUserBlocks(TemplateView):
     [
         app_decorators.deny_if_no_username("redirect"),
         app_decorators.deny_if_banned("redirect"),
+        never_cache
     ],
     name='get'
 )
@@ -121,13 +122,21 @@ class GetUserProfile(TemplateView):
             return redirect(
                 reverse('user_profile', kwargs={'username': specific_user.username})
             )
+        
+        #check if blocked
+        is_blocked = False
+
+        if request.user.is_authenticated is True:
+
+            is_blocked = UserBlocks.objects.filter(blocked_user=specific_user, user=request.user).exists()
 
         return render(
             request,
             template_name=self.template_name,
             context={
             'user_profile_username': specific_user.username,
-            'is_own_profile': json.dumps(request.user.is_authenticated is True and request.user.id == specific_user.id)
+            'is_own_profile': json.dumps(request.user.is_authenticated is True and request.user.id == specific_user.id),
+            'is_blocked': json.dumps(is_blocked)
             }
         )
 
