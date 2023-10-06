@@ -33,7 +33,7 @@
                             :prop-is-enabled="!isBlocking(index)"
                             :prop-is-icon-only="isBlocking(index)"
                             type="button"
-                            class="w-[100px]"
+                            class="w-[6rem]"
                         >
                             <div
                                 v-if="isBlocking(index)"

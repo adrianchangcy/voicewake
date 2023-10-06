@@ -31,6 +31,9 @@ SECRET_KEY = 'django-insecure-hdgs8@4nxkx0du^2n-gdss(!eo6i0kj6vk=gx1mddc@g=6h_^1
 DEBUG = True
 
 
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+
+
 #if you want to hide Django Debug Toolbar, put False
 DEBUG_TOOLBAR_CONFIG = {
     'SHOW_TOOLBAR_CALLBACK': lambda r: True,
@@ -48,9 +51,6 @@ if DEBUG is True:
         'voicewake.middleware.drf_api_delay_middleware.TimeDelayMiddleware',
         'debug_toolbar.middleware.DebugToolbarMiddleware',
     ]
-
-
-ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -80,9 +80,6 @@ INSTALLED_APPS = [
     #fontawesome, installed via requirements.txt
     'fontawesomefree',
 
-    #debug
-    'debug_toolbar',
-
     #OTP
     'django_otp',
     # 'django_otp.plugins.otp_totp',
@@ -97,6 +94,14 @@ INSTALLED_APPS = [
     #social providers
     # 'allauth.socialaccount.providers.google',
 ]
+
+
+if DEBUG is True:
+
+    INSTALLED_APPS += [
+        #debug
+        'debug_toolbar'
+    ]
 
 
 #if this doesn't work, check django_site in db

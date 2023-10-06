@@ -1,8 +1,11 @@
 {% extends 'voicewake/base.html' %}
-{% block title %}Block List{% endblock %}
 
 {% block extra_head %}
-    <META NAME="robots" CONTENT="noindex,nofollow">
+    <title>
+        VoiceWake - Block List
+    </title>
+    <meta name="description" content="Users you've blocked cannot reply to your events.">
+    <meta name="robots" content="noindex,nofollow">
 {% endblock %}
 
 {% block content %}
@@ -10,7 +13,7 @@
     <div>
 
         <!--follows VTitle-->
-        <div class="py-8 text-theme-black text-center">
+        <div class="py-8 text-center">
             <i class="text-2xl fas fa-ban" aria-hidden="true"></i>
             <h1 class="text-4xl h-fit break-words">
                 Block List

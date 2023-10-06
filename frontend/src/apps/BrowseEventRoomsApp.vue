@@ -5,6 +5,7 @@
         <VUserCard
             v-if="propIsUserProfilePage"
             :prop-username="user_profile_username"
+            class="pt-8 pb-14"
         />
 
         <!--sorting options-->

@@ -1,13 +1,19 @@
 {% extends 'voicewake/base.html'%}
-{% block title %}Start{% endblock %}
+
+{% block extra_head %}
+    <title>
+        VoiceWake - Start Event
+    </title>
+    <meta name="description" content="Start an event with your recording for someone to reply to.">
+{% endblock %}
 
 {% block content %}
 
     <!--follows VTitle-->
-    <h1 class="h-fit py-8 break-words text-4xl text-theme-black">
+    <h1 class="h-fit py-8 break-words text-4xl">
         <div class="flex flex-col">
             <i class="fas fa-comment block text-2xl w-full text-center" aria-hidden="true"></i>
-            <span class="block w-full text-center">Start</span>
+            <h1 class="block w-full text-center">Start</h1>
         </div>
     </h1>
 

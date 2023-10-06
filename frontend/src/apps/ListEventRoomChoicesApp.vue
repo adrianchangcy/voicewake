@@ -728,7 +728,7 @@
                         });
 
                         //redirect
-                        window.location.href = window.location.origin + "/hear/" + event_room.event_room.id.toString();
+                        window.location.href = window.location.origin + "/event/" + event_room.event_room.id.toString();
 
                     }else{
 

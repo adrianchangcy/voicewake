@@ -281,7 +281,7 @@
                     return;
                 }
 
-                const url = window.origin + "/hear/" + this.propEventRoomId;
+                const url = window.origin + "/event/" + this.propEventRoomId;
                 navigator.clipboard.writeText(url);
 
                 notify({

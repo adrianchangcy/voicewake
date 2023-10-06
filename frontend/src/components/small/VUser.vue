@@ -1,7 +1,12 @@
 <template>
-    <div class="w-full h-fit overflow-hidden flex flex-row gap-2 items-center text-theme-black text-sm">
-        <i class="block h-fit fas fa-user" aria-hidden="true"></i>
-        <span class="block h-fit text-ellipsis whitespace-nowrap">{{ propUsername }}</span>
+    <div>
+        <a
+            :href="user_url"
+            class="w-fit h-fit overflow-hidden flex flex-row items-center gap-2 text-theme-black text-sm shade-text-when-hover transition-colors    rounded-lg focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-theme-outline"
+        >
+            <i class="h-fit fas fa-user" aria-hidden="true"></i>
+            <span class="h-fit break-all">{{ propUsername }}</span>
+        </a>
     </div>
 </template>
 
@@ -14,11 +19,20 @@
     import { defineComponent } from 'vue';
 
     export default defineComponent({
+        data(){
+            return {
+                user_url: '',
+            };
+        },
         props: {
             propUsername: {
                 type: String,
                 default: ''
             },
         },
+        beforeMount(){
+
+            this.user_url = window.location.origin + '/user/' + this.propUsername;
+        }
     });
 </script>
