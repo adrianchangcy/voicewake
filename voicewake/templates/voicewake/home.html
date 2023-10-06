@@ -1,5 +1,11 @@
 {% extends 'voicewake/base.html' %}
-{% block title %}voicewake.com{% endblock %}
+
+{% block extra_head %}
+    <title>
+        VoiceWake - Two people saying things.
+    </title>
+    <meta name="description" content="VoiceWake, a place where one person starts and another replies to complete an event.">
+{% endblock %}
 
 {% block content %}
 
@@ -12,9 +18,9 @@
         <!--title-->
         <!--needs padding for more area to smoothen the transparent part, the bigger the better, else a faint cutoff/border is visible-->
         <div class="w-fit h-fit mx-auto px-4 sm:px-8 py-8 flex items-center rounded-lg bg-gradient-radial from-theme-light to-transparent">
-            <div class="text-theme-black text-center">
+            <div class="text-center">
                 <h1 class="text-5xl h-fit break-words">
-                    <span>Voicewake</span>
+                    <span>VoiceWake</span>
                 </h1>
                 <h2 class="text-xl font-medium h-fit break-words">
                     <span>Two people saying things.</span>

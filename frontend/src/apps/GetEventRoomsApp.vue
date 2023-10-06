@@ -582,11 +582,17 @@
             this.event_room_id = parseInt(container.getAttribute('data-event-room-id') as string);
             this.is_deleted = JSON.parse(container.getAttribute('data-is-deleted') as string);
             this.event_count = JSON.parse(container.getAttribute('data-event-count') as string);
+            this.is_this_user_replying = JSON.parse(container.getAttribute('data-is-this-user-replying') as string);
 
             //if not deleted, get everything
             if(this.is_deleted === false){
 
                 this.getEventRoom();
+            }
+
+            if(this.is_this_user_replying === true){
+
+                this.startReplyExpiryInterval();
             }
 
             //change '1 Jan 2023' to '1 century ago'

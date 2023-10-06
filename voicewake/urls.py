@@ -29,18 +29,22 @@ from voicewake import apis
 router = routers.SimpleRouter(trailing_slash=False)
 # router.register(r'api/event-tones', views.EventTonesAPI)
 
-#original URL
-urlpatterns = [
-    path('admin', admin.site.urls),
-    path('__debug__/', include('debug_toolbar.urls')),
+#URLs
+urlpatterns = []
 
-    
-    #APIs
+if settings.DEBUG is True:
 
-    #we don't need default urls
+    urlpatterns += [
+        path('admin', admin.site.urls),
+        path('__debug__/', include('debug_toolbar.urls')),
+        path('api/test', apis.TestAPI.as_view(), name='test_api'),
+        path('test', views.test_page, name='test_page'),
+    ]
+
+urlpatterns += [
+
+    #we don't need default URLs
     # path('', include(router.urls)),
-
-    path('api/test', apis.TestAPI.as_view(), name='test_api'),
 
     path('api/event-rooms/get/<int:event_room_id>', apis.EventRoomsAPI.as_view(), name='get_event_rooms_by_event_room_id_api'),
 
@@ -91,7 +95,7 @@ urlpatterns = [
     path('username/new', views.SetUsername.as_view(), name='set_username'),
     path('start', views.CreateEventRooms.as_view(), name='create_event_rooms'),
     path('reply', views.ListEventRoomChoices.as_view(), name='list_event_room_choices'),
-    path('hear/<int:event_room_id>', views.GetEventRooms.as_view(), name='get_event_rooms'),
+    path('event/<int:event_room_id>', views.GetEventRooms.as_view(), name='get_event_rooms'),
 
     #favicon
     #only for tab icon, not to be used as actual svg

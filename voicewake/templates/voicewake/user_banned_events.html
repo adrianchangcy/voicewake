@@ -1,8 +1,11 @@
 {% extends 'voicewake/base.html' %}
-{% block title %}You Are Banned{% endblock %}
 
 {% block extra_head %}
-    <META NAME="robots" CONTENT="noindex,nofollow">
+    <title>
+        You Are Banned
+    </title>
+    <meta name="description" content="Your banned recordings, sorted by most recent.">
+    <meta name="robots" content="noindex,nofollow">
 {% endblock %}
 
 {% block content %}
@@ -13,7 +16,7 @@
     >
 
         <!--follows VTitle-->
-        <div class="py-8 text-theme-black text-center">
+        <div class="py-8 text-center">
             <i class="text-2xl fas fa-gavel" aria-hidden="true"></i>
             <h1 class="text-4xl h-fit break-words">
                 Banned

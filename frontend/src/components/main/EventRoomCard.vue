@@ -9,19 +9,27 @@
         <!--title and datetime-->
         <div
             v-if="propShowTitle === true"
-            class="h-fit pb-10"
+            class="pb-10"
         >
-            <VTitle
-                propFontSize="s"
-                class="w-full"
+
+            <VActionTextOnly
+                prop-element="a"
+                :href="event_room_url"
+                rel="ugc"
+                class="h-fit"
             >
-                <template #title>
-                    <span>{{ propEventRoom.event_room.event_room_name }}</span>
-                </template>
-                <template #titleDescription>
-                    <span>{{ pretty_when_created }}</span>
-                </template>
-            </VTitle>
+                <VTitle
+                    propFontSize="s"
+                    class="w-full shade-text-when-hover transition-colors"
+                >
+                    <template #title>
+                        <span>{{ propEventRoom.event_room.event_room_name }}</span>
+                    </template>
+                    <template #titleDescription>
+                        <span>{{ pretty_when_created }}</span>
+                    </template>
+                </VTitle>
+            </VActionTextOnly>
         </div>
 
         <!--more than 1 event each-->
@@ -154,6 +162,7 @@
     import VEventCard from '/src/components/small/VEventCard.vue';
     import VEventTools from '/src/components/medium/VEventTools.vue';
     import VUser from '/src/components/small/VUser.vue';
+    import VActionTextOnly from '../small/VActionTextOnly.vue';
 </script>
 
 
@@ -171,6 +180,8 @@
                 currently_playing_event_store: useCurrentlyPlayingEventStore(),
                 selected_event: null as EventsAndLikeDetailsTypes|null,
                 pretty_when_created: '',
+
+                event_room_url: '',
             };
         },
         props: {
@@ -254,6 +265,11 @@
 
                 this.selected_event = state.playing_event as EventsAndLikeDetailsTypes|null;
             });
+
+            if(this.propShowTitle === true){
+
+                this.event_room_url = window.location.origin + '/event/' + this.propEventRoom.event_room.id.toString();
+            }
         },
     });
 </script>

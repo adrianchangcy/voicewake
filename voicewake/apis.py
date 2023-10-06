@@ -31,6 +31,7 @@ import random
 import traceback
 import io
 from typing import Literal
+from subprocess import CalledProcessError
 
 #app files
 from voicewake.models import *
@@ -1817,10 +1818,10 @@ class EventsAPI(generics.GenericAPIView):
                 #prepare audio file info, which also self-validates
                 #reminder that .size check should be done at form/serializer
                 handle_audio_file_class.prepare_audio_file_info()
-                
+
                 #normalize
                 handle_audio_file_class.do_normalisation()
-                
+
                 #get peaks
                 handle_audio_file_class.get_peaks_by_buckets()
 
@@ -1888,6 +1889,15 @@ class EventsAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        except subprocess.CalledProcessError as e:
+
+            return Response(
+                data={
+                    'message': 'Make sure your recording is not completely silent.',
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         except Exception as e:
 
             traceback.print_exc()

@@ -1,5 +1,11 @@
 {% extends 'voicewake/base.html' %}
-{% block title %}{{ user_profile_username }}{% endblock %}
+
+{% block extra_head %}
+    <title>
+        User: {{ user_profile_username }}
+    </title>
+    <meta name="description" content="User page for {{ user_profile_username }}">
+{% endblock %}
 
 {% block content %}
 

@@ -281,7 +281,7 @@
                         this.$emit('isSubmitSuccessful', true);
 
                         //redirect to this page without storing current URL, so it is only shown once in history
-                        window.location.replace(window.location.origin + "/hear/" + response.data['data']['event_room_id'].toString());
+                        window.location.replace(window.location.origin + "/event/" + response.data['data']['event_room_id'].toString());
 
                     }else{
 
@@ -299,7 +299,7 @@
                         title: this.propIsOriginator === true ? 'Creating event failed' : 'Creating reply failed',
                         text: (this.propIsOriginator === true ? 'Unable to create event. ' : 'Unable to create reply. ') + error.response.data['message'],
                         type: "error"
-                    }, 3000);
+                    }, 4000);
                 });
             },
             getPreparedFileForSubmit() : File {

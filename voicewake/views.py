@@ -37,6 +37,12 @@ from django.conf import settings
 
 
 
+def test_page(request):
+
+    return render(request, template_name='500.html')
+
+
+
 # @login_required(login_url='/login')
 @app_decorators.deny_if_banned("redirect")
 @app_decorators.deny_if_no_username("redirect")
@@ -83,7 +89,7 @@ def user_banned_events(request):
             request.user.banned_until = None
             request.user.save()
 
-    return redirect(reverse('home'))
+    return redirect(reverse('home'), permanent=True)
 
 
 
@@ -120,7 +126,8 @@ class GetUserProfile(TemplateView):
         if kwargs['username'] != specific_user.username:
 
             return redirect(
-                reverse('user_profile', kwargs={'username': specific_user.username})
+                reverse('user_profile', kwargs={'username': specific_user.username}),
+                permanent=True
             )
         
         #check if blocked
@@ -199,11 +206,11 @@ class GetEventRooms(TemplateView):
             request.user.id == event_room.locked_for_user.id and
             event_room.is_replying is True
         )
-        
+
         #is event_room deleted
         is_deleted = event_room.generic_status.generic_status_name == 'deleted'
 
-        return render(
+        response = render(
             request,
             template_name=self.template_name,
             context={
@@ -213,9 +220,19 @@ class GetEventRooms(TemplateView):
             'is_deleted': is_deleted,
             'is_deleted_json': json.dumps(is_deleted),
             'event_count': json.dumps(event_count),
-            'is_this_user_replying': json.dumps(is_this_user_replying),
+            'is_this_user_replying': is_this_user_replying,
+            'is_this_user_replying_json': json.dumps(is_this_user_replying),
             }
         )
+
+        if is_this_user_replying is True:
+
+            patch_cache_control(
+                response,
+                no_cache=True, no_store=True, must_revalidate=True, max_age=0
+            )
+
+        return response
 
 
 
@@ -264,8 +281,7 @@ class SetUsername(TemplateView):
             return render(
                 request,
                 template_name=self.template_name,
-                context={
-                }
+                context={},
             )
 
         raise Http404()
