@@ -70,21 +70,6 @@
             };
         },
         methods: {
-            axiosSetup() : boolean {
-
-                //your template must have {% csrf_token %}
-                let token = document.getElementsByName("csrfmiddlewaretoken")[0];
-
-                if(token === undefined){
-
-                    console.log('CSRF not found.');
-                    return false;
-                }
-
-                axios.defaults.headers.common['X-CSRFToken'] = (token as HTMLFormElement).value;
-                axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
-                return true;
-            },
             async getUserBannedEvents() : Promise<void> {
 
                 this.is_fetching = true;
@@ -165,9 +150,6 @@
             },
         },
         beforeMount(){
-
-            //set up Axios appropriately
-            this.axiosSetup();
 
             this.getUserBannedEvents();
 

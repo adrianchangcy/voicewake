@@ -541,24 +541,8 @@
                 //start interval
                 this.reply_expiry_interval = window.setInterval(interval_function, interval_ms);
             },
-            async axiosSetup() : Promise<void> {
-
-                //your template must have {% csrf_token %}
-                let token = document.getElementsByName("csrfmiddlewaretoken")[0];
-
-                if(token === undefined){
-
-                    throw new Error('CSRF not found.');
-                }
-
-                axios.defaults.headers.common['X-CSRFToken'] = (token as HTMLFormElement).value;
-                axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
-            },
         },
         beforeMount(){
-
-            //prepare axios
-            this.axiosSetup();
 
             //get user_id
             this.user_id = getDataFromTemplateJSONScript('data-user-id') as number|null;

@@ -224,7 +224,7 @@ def get_default_verify_otp_response():
     #always return this Response when error to give 0 clues on whether user exists or not
     return Response(
         data={
-            'message': 'Your code did not match the latest one that we sent.',
+            'message': "Your entered OTP is either incorrect, or you've reached the maximum attempts and should try again later.",
             'verify_otp_success': False
         },
         status=status.HTTP_400_BAD_REQUEST
@@ -785,6 +785,7 @@ class HandleUserOTP(TOTPVerification):
 
         self.user_instance = user_instance
         self.user_otp_instance = None
+        self.otp = ''
 
         self.otp_create_timeout_seconds = otp_create_timeout_seconds
         self.otp_max_attempts = otp_max_attempts
@@ -821,18 +822,19 @@ class HandleUserOTP(TOTPVerification):
 
         if self.user_otp_instance is not None:
 
-            self.user_otp_instance.attempts = 0
-            self.user_otp_instance.otp = ''
+            self.user_otp_instance.otp_last_created = None
+            self.user_otp_instance.otp_attempts = 0
+            self.user_otp_instance.otp_last_attempted = None
             self.user_otp_instance.save()
 
 
     def is_max_attempts_timed_out(self):
 
         #max attempts reached
-        if self.user_otp_instance.attempts >= self.otp_max_attempts:
+        if self.user_otp_instance.otp_attempts >= self.otp_max_attempts and self.user_otp_instance.otp_last_attempted is not None:
 
             #check for timeout
-            timeout_end = self.user_otp_instance.last_attempted + timedelta(seconds=self.otp_max_attempt_timeout_seconds)
+            timeout_end = self.user_otp_instance.otp_last_attempted + timedelta(seconds=self.otp_max_attempt_timeout_seconds)
 
             if get_datetime_now() < timeout_end:
 
@@ -853,7 +855,7 @@ class HandleUserOTP(TOTPVerification):
 
             return 0
         
-        timeout_end = self.user_otp_instance.last_attempted + timedelta(seconds=self.otp_max_attempt_timeout_seconds)
+        timeout_end = self.user_otp_instance.otp_last_attempted + timedelta(seconds=self.otp_max_attempt_timeout_seconds)
         time_remaining = (timeout_end - get_datetime_now()).total_seconds()
         time_remaining = math.ceil(time_remaining)
 
@@ -862,11 +864,15 @@ class HandleUserOTP(TOTPVerification):
 
     def is_creating_otp_timed_out(self):
 
+        if self.user_otp_instance.otp_last_created is None:
+
+            return False
+
         #check for timeout
-        timeout_end = self.user_otp_instance.when_created + timedelta(seconds=self.otp_create_timeout_seconds)
+        timeout_end = self.user_otp_instance.otp_last_created + timedelta(seconds=self.otp_create_timeout_seconds)
 
         #UserOTP will first be created with otp == ''
-        if get_datetime_now() < timeout_end and len(self.user_otp_instance.otp) > 0:
+        if get_datetime_now() < timeout_end:
 
             print('Is timed out from creating OTP.')
             return True
@@ -880,16 +886,11 @@ class HandleUserOTP(TOTPVerification):
 
             return 0
         
-        timeout_end = self.user_otp_instance.when_created + timedelta(seconds=self.otp_create_timeout_seconds)
+        timeout_end = self.user_otp_instance.otp_last_created + timedelta(seconds=self.otp_create_timeout_seconds)
         time_remaining = (timeout_end - get_datetime_now()).total_seconds()
         time_remaining = math.ceil(time_remaining)
 
         return time_remaining
-
-
-    def has_otp_saved(self):
-
-        return self.user_otp_instance is not None and self.user_otp_instance.otp != ''
 
 
     def generate_and_save_otp(self):
@@ -900,11 +901,12 @@ class HandleUserOTP(TOTPVerification):
 
             return ''
 
-        #having an existing OTP already saved does not matter, just replace
-        self.user_otp_instance.otp = self.generate_token()
-        self.user_otp_instance.when_created = get_datetime_now()
+        self.user_otp_instance.otp_last_created = get_datetime_now()
         self.user_otp_instance.save()
-        return self.user_otp_instance.otp
+
+        self.otp = self.generate_token()
+
+        return self.otp
 
 
     def verify_otp(self, otp:str):
@@ -912,17 +914,20 @@ class HandleUserOTP(TOTPVerification):
         self._set_key_if_none()
 
         #reminder that is_max_attempts_timed_out() calls reset_user_otp_instance() appropriately for us
-        if self.is_max_attempts_timed_out() is True or self.has_otp_saved() is False:
+        #due to the reset, there is no point in +1 attempt, as there is not supposed to be a valid OTP anymore
+        if(
+            self.user_otp_instance is None or
+            self.is_max_attempts_timed_out() is True or
+            self.user_otp_instance.otp_last_created is None
+        ):
 
             return False
-        
-        #record attempt
-        self.user_otp_instance.attempts += 1
-        self.user_otp_instance.last_attempted = get_datetime_now()
 
         #check token validity
-        if otp != self.user_otp_instance.otp or self.verify_token(otp) is False:
+        if self.verify_token(otp) is False:
 
+            self.user_otp_instance.otp_attempts += 1
+            self.user_otp_instance.otp_last_attempted = get_datetime_now()
             self.user_otp_instance.save()
             return False
         

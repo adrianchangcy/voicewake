@@ -868,11 +868,12 @@
 
                     //400 when invalid
                     this.is_main_action_loading = false;
+
                     notify({
                         title: procedure_url === "log-in" ? 'Login failed' : 'Sign-up failed',
                         text: error.response.data['message'],
                         type: "error"
-                    }, 3000);
+                    }, 8000);
 
                     //prevent auto-submit
                     this.otp_can_auto_submit = false;
@@ -917,6 +918,7 @@
                     
                     this.otp_request_status_text = "Oops! Could not send code.";
                     this.is_otp_request_loading = false;
+
                     notify({
                         title: "OTP request failed",
                         text: error.response.data['message'],

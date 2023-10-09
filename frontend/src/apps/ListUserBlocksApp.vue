@@ -153,21 +153,6 @@
 
                 return this.is_blocking === true && this.is_blocking_index === index;
             },
-            axiosSetup() : boolean {
-
-                //your template must have {% csrf_token %}
-                let token = document.getElementsByName("csrfmiddlewaretoken")[0];
-
-                if(token === undefined){
-
-                    console.log('CSRF not found.');
-                    return false;
-                }
-
-                axios.defaults.headers.common['X-CSRFToken'] = (token as HTMLFormElement).value;
-                axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
-                return true;
-            },
             async handleBlock(user_block_index:number) : Promise<void> {
 
                 //your template must have {% csrf_token %}
@@ -193,18 +178,7 @@
                 data.append('username', this.user_blocks[user_block_index].blocked_user.username);
                 data.append('to_block', JSON.stringify(!this.user_blocks[user_block_index].is_blocked));
 
-                const config = {
-                    headers: {
-                        common: {
-                            'X-CSRFToken': (token as HTMLFormElement).value
-                        },
-                        post: {
-                            'Content-Type': 'multipart/form-data'
-                        }
-                    }
-                };
-
-                await axios.post(url, data, config)
+                await axios.post(url, data)
                 .then((results:any)=>{
 
                     this.user_blocks[user_block_index].is_blocked = !this.user_blocks[user_block_index].is_blocked;
@@ -299,9 +273,6 @@
             },
         },
         beforeMount(){
-
-            //set up Axios appropriately
-            this.axiosSetup();
 
             this.getUserBlocks();
         },

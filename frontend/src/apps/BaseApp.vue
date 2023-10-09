@@ -41,9 +41,8 @@
     <!--toasts-->
     <TransitionFade>
 
-        <!--ensure pop-ups don't clash with toasts-->
+        <!--if pop-ups clash with toasts, do v-if here-->
         <div
-            v-show="!pop_up_manager_store.getHasPopUpOpen"
             class="w-0 h-0"
         >
             <VNotiwind/>
@@ -70,6 +69,7 @@
     import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     import { notify } from 'notiwind';
+    import { axiosCSRFSetup } from '@/helper_functions';
 
     export default defineComponent({
         name: 'BaseApp',
@@ -112,6 +112,8 @@
             },
         },
         beforeMount(){
+
+            axiosCSRFSetup();
 
             //is logged in
             this.pop_up_manager_store.setIsLoggedIn(

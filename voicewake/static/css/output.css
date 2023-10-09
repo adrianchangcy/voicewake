@@ -986,15 +986,6 @@ video {
   max-height: 90%;
 }
 
-.max-h-fit {
-  max-height: -moz-fit-content;
-  max-height: fit-content;
-}
-
-.min-h-\[10\] {
-  min-height: 10;
-}
-
 .min-h-\[calc\(100vh-4\.5rem\)\] {
   min-height: calc(100vh - 4.5rem);
 }
@@ -1298,10 +1289,6 @@ video {
 
 .items-start {
   align-items: flex-start;
-}
-
-.items-end {
-  align-items: flex-end;
 }
 
 .items-center {
@@ -1681,11 +1668,6 @@ video {
 .py-8 {
   padding-top: 2rem;
   padding-bottom: 2rem;
-}
-
-.px-1 {
-  padding-left: 0.25rem;
-  padding-right: 0.25rem;
 }
 
 .pb-0 {
@@ -2475,6 +2457,10 @@ textarea {
   outline-width: 2px;
 }
 
+.focus-visible\:-outline-offset-1:focus-visible {
+  outline-offset: -1px;
+}
+
 .focus-visible\:-outline-offset-2:focus-visible {
   outline-offset: -2px;
 }
@@ -2485,10 +2471,6 @@ textarea {
 
 .focus-visible\:outline-offset-0:focus-visible {
   outline-offset: 0px;
-}
-
-.focus-visible\:-outline-offset-1:focus-visible {
-  outline-offset: -1px;
 }
 
 .focus-visible\:outline-theme-dark-gray:focus-visible {

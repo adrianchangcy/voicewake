@@ -475,23 +475,8 @@
                     });
                 }
             },
-            async axiosSetup() : Promise<void> {
-
-                //your template must have {% csrf_token %}
-                let token = document.getElementsByName("csrfmiddlewaretoken")[0];
-
-                if(token === undefined){
-
-                    throw new Error('CSRF not found.');
-                }
-
-                axios.defaults.headers.common['X-CSRFToken'] = (token as HTMLFormElement).value;
-                axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
-            },
         },
         beforeMount(){
-
-            this.axiosSetup();
 
             //accurately deduct user's own is_liked from count
             this.like_count = this.propEvent.like_count - (this.propEvent.is_liked_by_user === true ? 1 : 0);
