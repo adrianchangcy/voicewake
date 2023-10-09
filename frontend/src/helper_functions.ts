@@ -1,3 +1,21 @@
+export async function axiosCSRFSetup() : Promise<void> {
+
+    //seems like we just have to call this function once and it'll be set globally
+    //this is proven by how we no longer get 403 error when called once at BaseApp
+
+    const axios = require('axios');
+
+    //your template must have {% csrf_token %}
+    const token = document.getElementsByName("csrfmiddlewaretoken")[0];
+
+    if(token === undefined){
+
+        throw new Error('CSRF not found.');
+    }
+
+    axios.defaults.headers.common['X-CSRFToken'] = (token as HTMLFormElement).value;
+    axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
+}
 
 
 export function arrayMin(your_array:number[]) : number {
@@ -7,12 +25,14 @@ export function arrayMin(your_array:number[]) : number {
             });
 }
 
+
 export function arrayMax(your_array:number[]) : number {
 
             return your_array.reduce(function(a, b){
                 return Math.max(a, b);
             });
 }
+
 
 export function prettyTimePassed(date:Date) : string {
 
@@ -65,6 +85,7 @@ export function prettyTimePassed(date:Date) : string {
 
             return interval.toString() + ' years ago';
 }
+
 
 export function prettyTimeRemaining(current_ms:number, max_ms:number) : string {
 
@@ -121,10 +142,12 @@ export function prettyTimeRemaining(current_ms:number, max_ms:number) : string {
     return interval.toString() + ' years';
 }
 
+
 export function timeFromNowMS(date:Date) : number {
 
     return Math.floor(new Date().getTime() - date.getTime());
 }
+
 
 export function prettyCount(number:number) : string {
     
@@ -213,11 +236,13 @@ export function prettyCount(number:number) : string {
     return pretty_string;
 }
 
+
 export function prettyDuration(seconds:number) : string {
     return new Date(
         seconds * 1000
     ).toISOString().substring(14, 19);
 }
+
 
 export function getDataFromTemplateJSONScript(element_id:string) : number|string|boolean|null {
 
@@ -230,6 +255,7 @@ export function getDataFromTemplateJSONScript(element_id:string) : number|string
 
     return JSON.parse(target.textContent);
 }
+
 
 export function getRandomUUID() : any {
 

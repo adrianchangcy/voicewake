@@ -172,7 +172,6 @@
     import GroupedEventsTypes from '@/types/GroupedEvents.interface';
     import EventsAndLikeDetailsTypes from '@/types/EventsAndLikeDetails.interface';
     import { useCurrentlyPlayingEventStore } from '@/stores/CurrentlyPlayingEventStore';
-    const axios = require('axios');
 
     export default defineComponent({
         data() {
@@ -227,21 +226,6 @@
             },
         },
         methods: {
-            axiosSetup() : boolean {
-
-                //your template must have {% csrf_token %}
-                let token = document.getElementsByName("csrfmiddlewaretoken")[0];
-
-                if(token === undefined){
-
-                    console.log('CSRF not found.');
-                    return false;
-                }
-
-                axios.defaults.headers.common['X-CSRFToken'] = (token as HTMLFormElement).value;
-                axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
-                return true;
-            },
             checkIsSelected(event_id:number) : boolean {
 
                 return this.selected_event !== null && this.selected_event.id === event_id;
@@ -256,7 +240,6 @@
         mounted(){
 
             //set up Axios appropriately
-            this.axiosSetup();
 
             this.pretty_when_created = prettyTimePassed(new Date(this.propEventRoom.event_room.when_created));
 

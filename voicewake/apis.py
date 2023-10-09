@@ -6,8 +6,8 @@ from django.utils.cache import patch_cache_control
 from django.utils.decorators import method_decorator
 
 #auth
-from django.contrib.auth import get_user_model
-from django.contrib.auth import login, logout
+from django.contrib.auth import get_user_model, login, logout
+from django.views.decorators.csrf import csrf_protect
 
 #DRF, class-based views
 from rest_framework.response import Response
@@ -46,17 +46,14 @@ from django.db.utils import IntegrityError
 
 
 
-from voicewake.cronjobs import *
 class TestAPI(generics.GenericAPIView):
 
     serializer_class = None
     permission_classes = []
 
+    def post(self, request, *args, **kwargs):
 
-    def get(self, request, *args, **kwargs):
-
-
-
+        print(request.headers)
 
         return Response(
             data={
@@ -503,7 +500,10 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
 
 
     #we let users log in even if banned
-    @method_decorator(app_decorators.deny_if_already_logged_in("response"))
+    @method_decorator([
+        app_decorators.deny_if_already_logged_in("response"),
+        csrf_protect
+    ])
     def post(self, request, *args, **kwargs):
 
         serializer = UsersLogInAPISerializer(data=request.data, many=False)
@@ -1928,8 +1928,6 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
         app_decorators.deny_if_banned("response"),
     ])
     def post(self, request, *args, **kwargs):
-
-        User = get_user_model()
 
         serializer = CreateEventLikesDislikesSerializer(data=request.data, many=False)
 

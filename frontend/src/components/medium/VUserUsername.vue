@@ -336,25 +336,9 @@
                     }, 3000);
                 });
             },
-            axiosSetup() : boolean {
-
-                //your template must have {% csrf_token %}
-                let token = document.getElementsByName("csrfmiddlewaretoken")[0];
-
-                if(token === undefined){
-
-                    console.log('CSRF not found.');
-                    return false;
-                }
-
-                axios.defaults.headers.common['X-CSRFToken'] = (token as HTMLFormElement).value;
-                axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
-                return true;
-            },
         },
         mounted(){
 
-            this.axiosSetup();
         }
     });
 </script>

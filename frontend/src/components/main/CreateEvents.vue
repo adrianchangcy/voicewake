@@ -334,24 +334,10 @@
 
                 this.event_name = new_value;
             },
-            async axiosSetup() : Promise<void> {
-
-                //your template must have {% csrf_token %}
-                let token = document.getElementsByName("csrfmiddlewaretoken")[0];
-
-                if(token === undefined){
-
-                    throw new Error('CSRF not found.');
-                }
-
-                axios.defaults.headers.common['X-CSRFToken'] = (token as HTMLFormElement).value;
-                axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
-            },
         },
         mounted(){
 
-            //set up axios appropriately
-            this.axiosSetup();
+
         },
     });
 </script>

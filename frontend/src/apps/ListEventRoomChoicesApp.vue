@@ -844,21 +844,8 @@
                 //start interval
                 this.expiry_interval = window.setInterval(interval_function, interval_ms);
             },
-            axiosSetup(): boolean {
-                //your template must have {% csrf_token %}
-                let token = document.getElementsByName("csrfmiddlewaretoken")[0];
-                if (token === undefined) {
-                    console.log("CSRF not found.");
-                    return false;
-                }
-                axios.defaults.headers.common["X-CSRFToken"] = (token as HTMLFormElement).value;
-                axios.defaults.headers.post["Content-Type"] = "multipart/form-data";
-                return true;
-            },
         },
         beforeMount(){
-
-            this.axiosSetup();
 
             const container = (document.getElementById('data-container-list-event-room-choices') as HTMLElement);
 

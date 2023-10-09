@@ -173,10 +173,9 @@ class User(AbstractBaseUser, PermissionsMixin):
 class UserOTP(models.Model):
     id = models.BigAutoField(primary_key=True)
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    otp = models.CharField(max_length=6)
-    when_created = models.DateTimeField(auto_now_add=True)
-    attempts = models.SmallIntegerField(default=0)
-    last_attempted = models.DateTimeField(auto_now=True)
+    otp_last_created = models.DateTimeField(blank=True, null=True, default=None)
+    otp_attempts = models.SmallIntegerField(default=0)
+    otp_last_attempted = models.DateTimeField(blank=True, null=True, default=None)
 
     class Meta:
         app_label = 'voicewake'

@@ -34,7 +34,12 @@
         },
         methods: {
             async callTest() : Promise<void> {
-                await axios.get(window.location.origin + '/api/test')
+
+                let data = new FormData();
+                data.append('email', 'user1@gmail.com');
+                data.append('is_requesting_otp', JSON.stringify(true));
+
+                await axios.post(window.location.origin + '/api/test', data)
                 .then((results:any) => {
                     console.log(results.data);
                 });
@@ -61,21 +66,6 @@
                         type: "error"
                     }, 3000);
                 });
-            },
-            axiosSetup() : boolean {
-
-                //your template must have {% csrf_token %}
-                const token = document.getElementsByName("csrfmiddlewaretoken")[0];
-
-                if(token === undefined){
-
-                    console.log('CSRF not found.');
-                    return false;
-                }
-
-                axios.defaults.headers.common['X-CSRFToken'] = (token as HTMLFormElement).value;
-                axios.defaults.headers.post['Content-Type'] = 'multipart/form-data';
-                return true;
             },
         },
 
