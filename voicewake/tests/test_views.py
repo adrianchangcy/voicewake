@@ -584,9 +584,10 @@ class System_TestCase(TestCase):
     def test_ban(self):
 
         self.prepare_test_data_class.prepare_test_data_for_bans(
-            username=self.user_1_username,
+            target_username=self.user_1_username,
+            backup_username=self.user_2_username,
             events_to_ban_quantity=10,
-            events_not_to_ban_quantity=5,
+            events_not_to_ban_quantity=6,
             reporting_user_quantity=10
         )
 

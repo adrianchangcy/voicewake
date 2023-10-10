@@ -339,8 +339,10 @@ class PrepareTestData:
 
         for x in range(0, incomplete_count):
 
+            event_room_name = "incomplete #" + str(x) + " by " + originator_username
+
             bulk_event_rooms.append(EventRooms(
-                event_room_name="should be incomplete",
+                event_room_name=event_room_name,
                 created_by=originator_user,
                 generic_status=generic_status_incomplete,
             ))
@@ -370,8 +372,10 @@ class PrepareTestData:
 
         for x in range(0, completed_count):
 
+            event_room_name = "completed #" + str(x) + " by " + originator_username
+
             bulk_event_rooms.append(EventRooms(
-                event_room_name="should be completed",
+                event_room_name=event_room_name,
                 created_by=originator_user,
                 generic_status=generic_status_completed,
             ))
@@ -482,30 +486,39 @@ class PrepareTestData:
         Events.objects.bulk_update(events, ["like_count", "dislike_count"])
 
 
+    #your target user should not have existing events
     def prepare_test_data_for_bans(
-        self, username:str='',
-        events_to_ban_quantity:int=10, events_not_to_ban_quantity:int=5,
+        self, target_username:str='', backup_username:str='',
+        events_to_ban_quantity:int=10, events_not_to_ban_quantity:int=6,
         reporting_user_quantity:int=1
     ):
 
-        event_count = Events.objects.filter(user__username_lowercase=username.lower()).count()
+        if (events_to_ban_quantity % 2) != 0 or (events_not_to_ban_quantity % 2) != 0:
 
-        if event_count < (events_not_to_ban_quantity + events_to_ban_quantity):
+            raise ValueError('Make sure events_to_ban_quantity and events_not_to_ban_quantity are even numbers for consistency.')
 
-            print('Not enough events, creating now.')
+        expected_events_count = events_to_ban_quantity + events_not_to_ban_quantity
 
-            self.prepare_test_data_event_rooms(
-                originator_username=username,
-                incomplete_count=((events_not_to_ban_quantity + events_to_ban_quantity) - event_count)
-            )
+        self.prepare_test_data_event_rooms(
+            originator_username=target_username,
+            incomplete_count=int(expected_events_count/2),
+            completed_count=0,
+        )
+
+        self.prepare_test_data_event_rooms(
+            originator_username=backup_username,
+            responder_username=target_username,
+            incomplete_count=0,
+            completed_count=int(expected_events_count/2),
+        )
 
         #get events
-        events = Events.objects.filter(user__username_lowercase=username.lower())[:(events_not_to_ban_quantity + events_to_ban_quantity)]
+        events = Events.objects.filter(user__username_lowercase=target_username.lower())
 
         #excluding this causes bug
         #i.e. events is treated as subquery in delete(), and for-loop executes events only after deletion
         #hence EventLikesDislikes violating unique constraint
-        print(str(len(events)) + ' events ready for ban')
+        print(str(len(events)) + ' events ready to evaluate')
 
         #reset likes dislikes for these events
         EventLikesDislikes.objects.filter(event__in=events).delete()
@@ -575,6 +588,29 @@ class PrepareTestData:
         EventLikesDislikes.objects.bulk_create(bulk_event_likes_dislikes)
         Events.objects.bulk_update(events, ('when_created', 'is_banned',))
         EventReports.objects.bulk_create(bulk_event_reports)
+
+        #to clear these data
+        '''
+            UPDATE events SET event_room_id=NULL WHERE is_banned IS TRUE;
+            DELETE FROM user_event_rooms WHERE event_room_id IN (SELECT event_room_id FROM events WHERE is_banned IS TRUE);
+            DELETE FROM event_rooms WHERE id NOT IN (SELECT event_room_id FROM events WHERE event_room_id IS NOT NULL);
+            DELETE FROM event_likes_dislikes WHERE event_id IN (SELECT id FROM events WHERE is_banned IS TRUE);
+            DELETE FROM events WHERE event_room_id IS NULL;
+            UPDATE voicewake_user SET banned_until=NULL WHERE username_lowercase='oompa';
+        '''
+
+        #to clear all data related to specific user in this context
+        '''
+            UPDATE events SET event_room_id=NULL WHERE event_room_id IN (
+                SELECT event_room_id FROM events WHERE user_id = (
+                    SELECT id FROM voicewake_user WHERE username_lowercase='oompa'
+                )
+            );
+            DELETE FROM user_event_rooms WHERE event_room_id NOT IN (SELECT event_room_id FROM events WHERE event_room_id IS NOT NULL);
+            DELETE FROM event_likes_dislikes WHERE event_id IN (SELECT id FROM events WHERE event_room_id IS NULL);
+            DELETE FROM event_rooms WHERE id NOT IN (SELECT event_room_id FROM events WHERE event_room_id IS NOT NULL);
+            DELETE FROM events WHERE event_room_id IS NULL;
+        '''
 
 
     def prepare_test_data_for_blocking_users(self, username:str='', user_quantity:int=10):

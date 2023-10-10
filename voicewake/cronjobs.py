@@ -55,7 +55,11 @@ def cronjob_ban_events():
     #otherwise, since all of them are int, we'd get 0
     with transaction.atomic():
 
-        events_to_ban = Events.objects.prefetch_related('user').select_for_update(of=('self',)).raw(
+        events_to_ban = Events.objects.prefetch_related(
+            'user', 'event_role', 'event_room'
+        ).select_for_update(
+            of=('self', 'event_room')
+        ).raw(
             '''
                 WITH
                 distinct_reported_events AS (
@@ -94,6 +98,10 @@ def cronjob_ban_events():
         datetime_now = get_datetime_now()
         user_details = {}   #keeps track of ban_count and banned_until
 
+        event_room_ids = []
+        bulk_event_rooms = []
+        generic_status_deleted = GenericStatuses.objects.get(generic_status_name='deleted')
+
         for x in range(len(events_to_ban)):
 
             events_to_ban[x].is_banned = True
@@ -121,8 +129,31 @@ def cronjob_ban_events():
                     'banned_until': banned_until
                 }
 
+            #if banned event is not originator, skip event_room
+            if events_to_ban[x].event_role.event_role_name != 'originator':
+
+                continue
+
+            #prepare event_room for deletion
+            event_room_id = events_to_ban[x].event_room.id
+
+            if event_room_id not in event_room_ids:
+
+                event_room_ids.append(event_room_id)
+
+                bulk_event_rooms.append(EventRooms(
+                    pk=event_room_id,
+                    generic_status=generic_status_deleted,
+                    when_locked=None,
+                    is_replying=None,
+                    locked_for_user=None
+                ))
+
         #update events
         Events.objects.bulk_update(events_to_ban, ('is_banned',))
+
+        #update event_rooms
+        EventRooms.objects.bulk_update(bulk_event_rooms, ('generic_status', 'when_locked', 'is_replying', 'locked_for_user',))
 
     #prepare users for update
     bulk_users = []

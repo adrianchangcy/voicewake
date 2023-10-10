@@ -51,9 +51,11 @@ class TestAPI(generics.GenericAPIView):
     serializer_class = None
     permission_classes = []
 
-    def post(self, request, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
 
-        print(request.headers)
+
+
+
 
         return Response(
             data={
@@ -977,12 +979,18 @@ class EventRoomsAPI(generics.GenericAPIView):
             #>1 above allows us to ensure 0 is not used
             url_page = kwargs['page']
 
+        #event_tone
+        #leave empty to get all
+        url_event_tone_slug = ''
+        if 'event_tone_slug' in kwargs:
+            url_event_tone_slug = kwargs['event_tone_slug']
+
         #determine the appropriate results
         response = None
 
         if(
             'username' in kwargs and 'latest_or_best' in kwargs and
-            'timeframe' in kwargs and 'event_role_name' in kwargs and 'page' in kwargs
+            'timeframe' in kwargs and 'event_role_name' in kwargs
         ):
 
             event_tone_slug = ''
@@ -1010,11 +1018,7 @@ class EventRoomsAPI(generics.GenericAPIView):
                 status=status.HTTP_200_OK
             )
         
-        elif 'latest_or_best' in kwargs and 'timeframe' in kwargs and 'page' in kwargs:
-
-            url_event_tone_slug = ''
-            if 'event_tone_slug' in kwargs:
-                url_event_tone_slug = kwargs['event_tone_slug']
+        elif 'latest_or_best' in kwargs and 'timeframe' in kwargs and 'page':
 
             response = Response(
                 data={
@@ -1782,7 +1786,7 @@ class EventsAPI(generics.GenericAPIView):
 
                         raise custom_error(
                             ValueError,
-                            user_message="Replying to this event is not allowed."
+                            user_message="This event is no longer available for reply."
                         )
                     
                     #check if user exceeded reply time window but automated script has not detected yet
