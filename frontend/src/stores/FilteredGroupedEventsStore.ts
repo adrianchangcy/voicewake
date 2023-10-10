@@ -11,6 +11,8 @@ interface NoEventToneEventRoomsType{
         [filter_type_index: number] : {
             event_rooms: GroupedEventsTypes[],
             current_page: number,
+            stop_searching: boolean,
+            when_stopped_searching: Date|null,
         }
     }
 }
@@ -29,6 +31,8 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
         selected_event_tone: null as EventTonesTypes|null,
         no_event_tone_event_rooms: {} as NoEventToneEventRoomsType,
         selected_event_tone_event_rooms: {} as SelectedEventToneEventRoomsType,
+
+        stop_searching_duration_s: 120,
     }),    
     getters: {
         getEventRoleNames: (state) => {
@@ -115,6 +119,72 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
 
             this.current_filter_type_index = new_value;
         },
+        checkCanFetch(
+            event_tone:EventTonesTypes|null,
+            current_event_role_name_index:number,
+            current_filter_type_index:number,
+        ) : boolean {
+
+            //if never stopped searching, return true
+            if(
+                event_tone === null &&
+                this.no_event_tone_event_rooms[current_event_role_name_index][current_filter_type_index]['stop_searching'] === false
+            ){
+
+                return true;
+
+            }else if(
+                event_tone !== null &&
+                this.selected_event_tone_event_rooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['stop_searching'] === false
+            ){
+
+                return true;
+            }
+
+            //has stopped searching before
+            //if when_stopped_searching is too in the past, reset and return true
+            const datetime_now = new Date();
+            let when_stopped_searching_difference_s = 0;
+
+            if(
+                event_tone === null &&
+                this.no_event_tone_event_rooms[current_event_role_name_index][current_filter_type_index]['stop_searching'] === true &&
+                this.no_event_tone_event_rooms[current_event_role_name_index][current_filter_type_index]['when_stopped_searching'] !== null
+            ){
+
+                when_stopped_searching_difference_s = datetime_now.getTime() - this.no_event_tone_event_rooms[current_event_role_name_index][current_filter_type_index]['when_stopped_searching']!.getTime();
+
+                when_stopped_searching_difference_s = when_stopped_searching_difference_s / 1000;
+
+                if(when_stopped_searching_difference_s >= this.stop_searching_duration_s){
+    
+                    this.no_event_tone_event_rooms[current_event_role_name_index][current_filter_type_index]['stop_searching'] = false;
+                    this.no_event_tone_event_rooms[current_event_role_name_index][current_filter_type_index]['when_stopped_searching'] = null;
+
+                    return true;
+                }
+
+            }else if(
+                event_tone !== null &&
+                this.selected_event_tone_event_rooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['stop_searching'] === true &&
+                this.selected_event_tone_event_rooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['when_stopped_searching'] !== null
+            ){
+
+                when_stopped_searching_difference_s = datetime_now.getTime() - this.selected_event_tone_event_rooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['when_stopped_searching']!.getTime();
+
+                when_stopped_searching_difference_s = when_stopped_searching_difference_s / 1000;
+
+                if(when_stopped_searching_difference_s >= this.stop_searching_duration_s){
+    
+                    this.selected_event_tone_event_rooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['stop_searching'] = false;
+                    this.selected_event_tone_event_rooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['when_stopped_searching'] = null;
+
+                    return true;
+                }
+            }
+
+            return false;
+        },
         insertEventRooms(
             event_tone:EventTonesTypes|null,
             current_event_role_name_index:number,
@@ -124,6 +194,25 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
 
             //need to use params to prevent inaccuracy from race condition
             //i.e. data from filter choices previously but new choices were selected
+
+            //stop searching if received no event_rooms
+            if(data.length === 0){
+
+                const datetime_now = new Date();
+
+                if(event_tone === null){
+
+                    this.no_event_tone_event_rooms[current_event_role_name_index][current_filter_type_index]['stop_searching'] = true;
+                    this.no_event_tone_event_rooms[current_event_role_name_index][current_filter_type_index]['when_stopped_searching'] = datetime_now;
+
+                }else{
+
+                    this.selected_event_tone_event_rooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['stop_searching'] = true;
+                    this.selected_event_tone_event_rooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['when_stopped_searching'] = datetime_now;
+                }
+
+                return;
+            }
 
             if(event_tone === null){
 
@@ -166,7 +255,9 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
 
                         this.no_event_tone_event_rooms[x][xx] = {
                             'event_rooms': [],
-                            'current_page': 0
+                            'current_page': 0,
+                            'stop_searching': false,
+                            'when_stopped_searching': null,
                         };
                     }
                 }
@@ -183,7 +274,9 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
 
                         this.selected_event_tone_event_rooms[event_tone.id][x][xx] = {
                             'event_rooms': [],
-                            'current_page': 0
+                            'current_page': 0,
+                            'stop_searching': false,
+                            'when_stopped_searching': null,
                         };
                     }
                 }

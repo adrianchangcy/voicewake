@@ -148,7 +148,7 @@
 
             <!--dialogs-->
             <!--make height at least same or bigger than largest element to avoid jolting-->
-            <div class="h-48 relative">
+            <div class="pt-8 relative">
                 <TransitionGroupFade :prop-has-absolute="true">
 
                     <!--no event_rooms-->
@@ -261,13 +261,12 @@
 
                 is_fetching: false,
                 can_observer_fetch: false,
-                has_no_event_rooms_left_to_fetch: false,
 
                 selected_event: null as EventsAndLikeDetailsTypes|null,
                 playback_teleport_event_id: '',
 
                 played_events_by_id: [] as number[],
-                played_events_quantity_to_pause_scrolling: 50,
+                played_events_quantity_to_pause_scrolling: 10,
                 can_pause_scrolling: false,
             };
         },
@@ -295,7 +294,7 @@
                 return (
                     this.is_fetching === false &&
                     this.filtered_grouped_events_store.getEventRoomsForBrowsing.length > 0 &&
-                    this.has_no_event_rooms_left_to_fetch === true
+                    this.can_observer_fetch === false
                 );
             }
         },
@@ -356,7 +355,6 @@
 
                 this.is_fetching = true;
                 this.can_observer_fetch = false;
-                this.has_no_event_rooms_left_to_fetch = false;
 
                 //initialise to have all necessary keys available
                 //will only do so when no data exists
@@ -364,6 +362,8 @@
 
                     this.filtered_grouped_events_store.initialiseDataOnFirstPageAfterFilterChange(event_tone);
                 }
+
+                const check_can_fetch = this.filtered_grouped_events_store.checkCanFetch(event_tone, current_event_role_name_index, current_filter_type_index);
 
                 //check if we already have data
                 if(
@@ -375,7 +375,13 @@
 
                     //do nothing else, as template uses getter, which auto-retrieves for us
                     this.is_fetching = false;
-                    this.can_observer_fetch = true;
+                    this.can_observer_fetch = check_can_fetch;
+                    return;
+                }
+
+                if(check_can_fetch === false){
+
+                    this.is_fetching = false;
                     return;
                 }
 
@@ -388,13 +394,6 @@
 
                     this.filtered_grouped_events_store.insertEventRooms(event_tone, current_event_role_name_index, current_filter_type_index, results.data['data']);
 
-                    if(results.data['data'].length === 0){
-
-                        this.has_no_event_rooms_left_to_fetch = true;
-                    }
-
-                    this.can_observer_fetch = true;
-
                 })
                 .catch(() => {
 
@@ -406,6 +405,7 @@
 
                 }).finally(()=>{
 
+                    this.can_observer_fetch = this.filtered_grouped_events_store.checkCanFetch(event_tone, current_event_role_name_index, current_filter_type_index);
                     this.is_fetching = false;
                 });
             },
@@ -430,8 +430,11 @@
                 let full_url = window.location.origin + "/api/event-rooms/list";
 
                 if(this.propIsUserProfilePage === true){
+
                     full_url += "/user/" + this.user_profile_username;
+
                 }else{
+
                     full_url += "/completed";
                 }
 
@@ -442,8 +445,13 @@
                 full_url += "/all";
 
                 if(this.propIsUserProfilePage === true){
+
                     full_url += "/" + this.filtered_grouped_events_store.getEventRoleNames[current_event_role_name_index].toLowerCase();
-                }else if(event_tone !== null){
+                }
+
+                //event_tone
+                if(event_tone !== null){
+
                     full_url += "/" + event_tone.event_tone_slug;
                 }
 
@@ -499,8 +507,7 @@
 
                     if(
                         this.can_observer_fetch === false ||
-                        this.can_pause_scrolling === true ||
-                        this.has_no_event_rooms_left_to_fetch === true
+                        this.can_pause_scrolling === true
                     ){
 
                         return;
