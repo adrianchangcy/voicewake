@@ -119,6 +119,25 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
 
             this.current_filter_type_index = new_value;
         },
+        incrementPage(
+            event_tone:EventTonesTypes|null,
+            current_event_role_name_index:number,
+            current_filter_type_index:number,
+        ) : void {
+
+            //a bit worried about race condition on API request, where we get duplicate same-page data
+            //but perhaps this worry is unjustified
+            //hence, this is placed back into insertEventRooms()
+
+            if(event_tone === null){
+
+                this.no_event_tone_event_rooms[current_event_role_name_index][current_filter_type_index]['current_page'] += 1;
+
+            }else{
+
+                this.selected_event_tone_event_rooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['current_page'] += 1;
+            }
+        },
         checkCanFetch(
             event_tone:EventTonesTypes|null,
             current_event_role_name_index:number,
@@ -214,6 +233,8 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
                 return;
             }
 
+            this.incrementPage(event_tone, current_event_role_name_index, current_filter_type_index);
+
             if(event_tone === null){
 
                 //handle event_rooms retrieved from query with no event_tone specified
@@ -224,9 +245,6 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
                     this.no_event_tone_event_rooms[current_event_role_name_index][current_filter_type_index]['event_rooms'].push(data[x]);
                 }
 
-                //store page
-                this.no_event_tone_event_rooms[current_event_role_name_index][current_filter_type_index]['current_page'] += 1;
-
             }else{
 
                 //handle event_rooms retrieved from query with event_tone specified
@@ -236,9 +254,6 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
 
                     this.selected_event_tone_event_rooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['event_rooms'].push(data[x]);
                 }
-
-                //store page
-                this.selected_event_tone_event_rooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['current_page'] += 1;
             }
         },
         initialiseDataOnFirstPageAfterFilterChange(
@@ -255,7 +270,7 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
 
                         this.no_event_tone_event_rooms[x][xx] = {
                             'event_rooms': [],
-                            'current_page': 0,
+                            'current_page': 1,
                             'stop_searching': false,
                             'when_stopped_searching': null,
                         };
@@ -274,7 +289,7 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
 
                         this.selected_event_tone_event_rooms[event_tone.id][x][xx] = {
                             'event_rooms': [],
-                            'current_page': 0,
+                            'current_page': 1,
                             'stop_searching': false,
                             'when_stopped_searching': null,
                         };

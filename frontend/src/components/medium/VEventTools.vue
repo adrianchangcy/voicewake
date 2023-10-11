@@ -316,14 +316,14 @@
 
                         this.current_likes_dislikes_store.addLikeDislike(this.propEvent.id, is_liked_value);
                     })
-                    .catch(() => {
+                    .catch((error:any) => {
 
                         //revert
                         this.is_liked = this.propEvent['is_liked_by_user'];
 
                         notify({
                             title: "Error",
-                            text: "Could not like or dislike this recording.",
+                            text: JSON.parse(error.request.response)['message'],
                             type: "error"
                         }, 3000);
                     });

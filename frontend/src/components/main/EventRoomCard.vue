@@ -22,10 +22,19 @@
                     propFontSize="s"
                     class="w-full shade-text-when-hover transition-colors"
                 >
+
                     <template #title>
-                        <span>{{ propEventRoom.event_room.event_room_name }}</span>
+                        <span
+                            v-if="propEventRoom.event_room.generic_status.generic_status_name === 'deleted'"
+                            class="italic"
+                        >
+                            Event and original recording deleted.
+                        </span>
+                        <span v-else>
+                            {{ propEventRoom.event_room.event_room_name }}
+                        </span>
                     </template>
-                    <template #titleDescription>
+                    <template v-if="propEventRoom.event_room.generic_status.generic_status_name !== 'deleted'" #titleDescription>
                         <span>{{ pretty_when_created }}</span>
                     </template>
                 </VTitle>

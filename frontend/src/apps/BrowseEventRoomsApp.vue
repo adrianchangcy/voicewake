@@ -147,7 +147,6 @@
             </TransitionGroupFade>
 
             <!--dialogs-->
-            <!--make height at least same or bigger than largest element to avoid jolting-->
             <div class="pt-8 relative">
                 <TransitionGroupFade :prop-has-absolute="true">
 
@@ -389,6 +388,8 @@
 
                 const full_url = await this.constructURL(event_tone, current_event_role_name_index, current_filter_type_index);
 
+                console.log(full_url);
+
                 await axios.get(full_url)
                 .then((results: any) => {
 
@@ -459,13 +460,13 @@
                 if(event_tone === null){
 
                     full_url += "/" + (
-                        this.filtered_grouped_events_store.getNoEventToneEventRooms[current_event_role_name_index][current_filter_type_index]['current_page'] + 1
+                        this.filtered_grouped_events_store.getNoEventToneEventRooms[current_event_role_name_index][current_filter_type_index]['current_page']
                     ).toString();
 
                 }else{
 
                     full_url += "/" + (
-                        this.filtered_grouped_events_store.getSelectedEventToneEventRooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['current_page'] + 1
+                        this.filtered_grouped_events_store.getSelectedEventToneEventRooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['current_page']
                     ).toString();
                 }
 

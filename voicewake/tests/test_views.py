@@ -386,6 +386,11 @@ class RandomTests_TestCase(TestCase):
         pass
 
 
+    def test_random(self):
+
+        pass
+
+
 class System_TestCase(TestCase):
 
     @classmethod

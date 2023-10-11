@@ -215,7 +215,7 @@
                                 <div class="w-full flex flex-col">
                                     <i class="fas fa-circle-user text-2xl w-fit h-fit mx-auto" aria-hidden="true"></i>
                                     <span class="max-w-full h-fit mx-auto text-xl font-medium break-words">
-                                        <span>012345678901234567890123456789</span>
+                                        <span>{{ propUsername }}</span>
                                     </span>
                                 </div>
                             </VActionTextOnly>

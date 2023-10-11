@@ -638,6 +638,172 @@ class PrepareTestData:
         UserBlocks.objects.bulk_create(blocked_users)
 
 
+    def prepare_test_data_for_frontend_browse(self):
+
+        #target user
+            #originator: 2 incomplete, 2 completed, 2 banned
+            #responder: 2 incomplete, 2 completed, 2 banned
+
+        #get users
+        target_user = get_user_model().objects.get(username_lowercase='user0')
+        backup_user = get_user_model().objects.get(username_lowercase='user1')
+        backup_user_2 = get_user_model().objects.get(username_lowercase='user2')
+        backup_user_3 = get_user_model().objects.get(username_lowercase='user3')
+
+        #prepare info for events
+        #prepare fake audio column values
+        audio_file = "/audio_test.mp3"
+        audio_volume_peaks = [
+            0.32, 0.47, 0.76, 0.75, 0.79, 0.59, 0.78, 0.83, 0.85, 0.77,
+            0.62, 0.69, 0.97, 0.96, 0.97, 0.96, 0.96, 0.63, 0.47, 0.0
+        ]
+        audio_duration_s = 26
+
+        #prepare relevant values
+        datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
+        event_role_originator = EventRoles.objects.get(event_role_name='originator')
+        event_role_responder = EventRoles.objects.get(event_role_name='responder')
+        generic_status_ok = GenericStatuses.objects.get(generic_status_name='ok')
+        generic_status_incomplete = GenericStatuses.objects.get(generic_status_name='incomplete')
+        generic_status_completed = GenericStatuses.objects.get(generic_status_name='completed')
+        generic_status_deleted = GenericStatuses.objects.get(generic_status_name='deleted')
+        event_tone = EventTones.objects.first()
+
+        def bulk_create_events(event_details):
+
+            bulk_events = []
+
+            for row in event_details:
+
+                bulk_events.append(Events(
+                    user=row['user'],
+                    event_role=row['event_role'],
+                    audio_file=audio_file,
+                    audio_volume_peaks=audio_volume_peaks,
+                    audio_duration_s=audio_duration_s,
+                    event_room=row['event_room'],
+                    generic_status=row['generic_status'],
+                    is_banned=row['is_banned'],
+                    event_tone=event_tone
+                ))
+
+            list(Events.objects.bulk_create(bulk_events))
+
+        #create 2 incomplete originator for target user
+
+        event_details = []
+
+        event_room_1 = EventRooms.objects.create(
+            event_room_name='target_user incomplete #1',
+            created_by=target_user,
+            generic_status=generic_status_incomplete,
+        )
+        event_room_2 = EventRooms.objects.create(
+            event_room_name='target_user incomplete #2',
+            created_by=target_user,
+            generic_status=generic_status_incomplete,
+        )
+
+        event_details = [
+            {'event_room': event_room_1, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event_room': event_room_2, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+        ]
+
+        bulk_create_events(event_details)
+
+        #create 2 originator completed for target user
+
+        event_room_1 = EventRooms.objects.create(
+            event_room_name='target_user completed #1',
+            created_by=target_user,
+            generic_status=generic_status_completed,
+        )
+        event_room_2 = EventRooms.objects.create(
+            event_room_name='target_user completed #2',
+            created_by=target_user,
+            generic_status=generic_status_completed,
+        )
+
+        event_details = [
+            {'event_room': event_room_1, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event_room': event_room_1, 'user': backup_user, 'event_role': event_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event_room': event_room_2, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event_room': event_room_2, 'user': backup_user, 'event_role': event_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
+        ]
+
+        bulk_create_events(event_details)
+
+        #create 2 completed, but originator is banned
+
+        event_room_1 = EventRooms.objects.create(
+            event_room_name='target_user completed, target_user banned #1',
+            created_by=target_user,
+            generic_status=generic_status_deleted,
+        )
+        event_room_2 = EventRooms.objects.create(
+            event_room_name='target_user completed, target_user banned #2',
+            created_by=target_user,
+            generic_status=generic_status_deleted,
+        )
+
+        event_details = [
+            {'event_room': event_room_1, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event_room': event_room_1, 'user': backup_user, 'event_role': event_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event_room': event_room_2, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event_room': event_room_2, 'user': backup_user, 'event_role': event_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
+        ]
+
+        bulk_create_events(event_details)
+
+        #create 2 completed, but responder is banned
+
+        event_room_1 = EventRooms.objects.create(
+            event_room_name='target_user completed, backup_user banned #1',
+            created_by=target_user,
+            generic_status=generic_status_incomplete,
+        )
+        event_room_2 = EventRooms.objects.create(
+            event_room_name='target_user completed, backup_user banned #2',
+            created_by=target_user,
+            generic_status=generic_status_incomplete,
+        )
+
+        event_details = [
+            {'event_room': event_room_1, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event_room': event_room_1, 'user': backup_user, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event_room': event_room_2, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event_room': event_room_2, 'user': backup_user, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
+        ]
+
+        bulk_create_events(event_details)
+
+        #create 2 completed, each has 2 banned responders previously, then 1 responder
+
+        event_room_1 = EventRooms.objects.create(
+            event_room_name='target_user completed, 2 banned responses, backup_user responded #1',
+            created_by=target_user,
+            generic_status=generic_status_completed,
+        )
+        event_room_2 = EventRooms.objects.create(
+            event_room_name='target_user completed, 2 banned responses, backup_user responded #2',
+            created_by=target_user,
+            generic_status=generic_status_completed,
+        )
+
+        event_details = [
+            {'event_room': event_room_1, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event_room': event_room_1, 'user': backup_user_2, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event_room': event_room_1, 'user': backup_user_3, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event_room': event_room_1, 'user': backup_user, 'event_role': event_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event_room': event_room_2, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event_room': event_room_2, 'user': backup_user_2, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event_room': event_room_2, 'user': backup_user_3, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event_room': event_room_2, 'user': backup_user, 'event_role': event_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
+        ]
+
+        bulk_create_events(event_details)
+
+
     def do_quick_start(self, quantity_scale:int=1):
 
         if type(quantity_scale) != int:
@@ -736,6 +902,7 @@ class TOTPVerification:
 
         self.token_validity_tolerance = totp_tolerance_seconds
 
+
     def totp_obj(self):
 
         # create a TOTP object
@@ -749,18 +916,22 @@ class TOTPVerification:
         totp.time = time.time()
 
         return totp
-    
+
+
     def set_key(self, key):
 
         self.key = key
+
 
     def create_key(self, totp_key_byte_size):
 
         self.key = secrets.token_bytes(totp_key_byte_size)
 
+
     def get_key(self):
 
         return self.key
+
 
     def generate_token(self):
 
@@ -771,6 +942,7 @@ class TOTPVerification:
         token = str(totp.token())
         token = token.zfill(self.totp_number_of_digits)
         return token
+
 
     def verify_token(self, token):
 
