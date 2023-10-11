@@ -55,8 +55,6 @@ class TestAPI(generics.GenericAPIView):
 
 
 
-
-
         return Response(
             data={
                 'data': {
@@ -722,6 +720,8 @@ class EventRoomsAPI(generics.GenericAPIView):
             order_sql = 'ORDER BY events.when_created DESC'
 
         #start
+        #we get by completed event_rooms, i.e. guaranteed ok events
+        #then, since banned events are still associated with event_rooms, get only ok events
         events = Events.objects.prefetch_related(
             'event_role',
             'event_room__generic_status',
@@ -736,7 +736,7 @@ class EventRoomsAPI(generics.GenericAPIView):
                 selected_event_tones AS (
                     SELECT id FROM get_id_of_one_or_all_event_tones_via_slug(%s)
                 ),
-                event_room_id_of_best_events AS (
+                selected_event_room_ids AS (
                     SELECT DISTINCT event_room_id AS id FROM (
                         SELECT
                             events.event_room_id,
@@ -746,10 +746,8 @@ class EventRoomsAPI(generics.GenericAPIView):
                         RIGHT JOIN selected_event_tones ON events.event_tone_id = selected_event_tones.id
                         LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
                         LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
-                        LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
                         LEFT JOIN generic_statuses AS event_rooms_generic_statuses ON event_rooms.generic_status_id = event_rooms_generic_statuses.id
-                        WHERE
-                        event_rooms_generic_statuses.generic_status_name = %s
+                        WHERE event_rooms_generic_statuses.generic_status_name = %s
                         AND events.when_created BETWEEN %s AND %s
                         GROUP BY events.id
                         ''' + order_sql + '''
@@ -764,11 +762,13 @@ class EventRoomsAPI(generics.GenericAPIView):
                 generic_statuses.*,
                 event_likes_dislikes.is_liked AS is_liked_by_user
             FROM events
-            RIGHT JOIN event_room_id_of_best_events ON events.event_room_id = event_room_id_of_best_events.id
+            RIGHT JOIN selected_event_room_ids ON events.event_room_id = selected_event_room_ids.id
             LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
             LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
+            WHERE events.is_banned IS FALSE
+            AND generic_statuses.generic_status_name = %s
             GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id, is_liked_by_user
             ''',
             params=(
@@ -779,6 +779,7 @@ class EventRoomsAPI(generics.GenericAPIView):
                 pagination_offset,
                 settings.EVENT_ROOM_QUANTITY_PER_PAGE,
                 self.request.user.id,
+                'ok'
             )
         )
 
@@ -842,6 +843,8 @@ class EventRoomsAPI(generics.GenericAPIView):
             order_sql = 'ORDER BY events.when_created DESC'
 
         #start
+        #get event_rooms from role-specific events where events are ok, i.e. as long as one event is ok
+        #then, we get only ok events
         events = Events.objects.prefetch_related(
             'event_role',
             'event_room__generic_status',
@@ -856,7 +859,7 @@ class EventRoomsAPI(generics.GenericAPIView):
                 selected_event_tones AS (
                     SELECT id FROM get_id_of_one_or_all_event_tones_via_slug(%s)
                 ),
-                event_room_id_of_best_events AS (
+                selected_event_room_ids AS (
                     SELECT DISTINCT event_room_id AS id FROM (
                         SELECT
                             events.event_room_id,
@@ -869,8 +872,9 @@ class EventRoomsAPI(generics.GenericAPIView):
                         LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
                         LEFT JOIN event_roles ON events.event_role_id = event_roles.id
                         LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
-                        LEFT JOIN generic_statuses AS event_rooms_generic_statuses ON event_rooms.generic_status_id = event_rooms_generic_statuses.id
                         WHERE voicewake_user.username_lowercase = %s
+                        AND events.is_banned IS FALSE
+                        AND generic_statuses.generic_status_name = %s
                         AND event_roles.event_role_name = %s
                         AND events.when_created BETWEEN %s AND %s
                         GROUP BY events.id
@@ -886,22 +890,26 @@ class EventRoomsAPI(generics.GenericAPIView):
                 generic_statuses.*,
                 event_likes_dislikes.is_liked AS is_liked_by_user
             FROM events
-            RIGHT JOIN event_room_id_of_best_events ON events.event_room_id = event_room_id_of_best_events.id
+            RIGHT JOIN selected_event_room_ids ON events.event_room_id = selected_event_room_ids.id
             LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
             LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
             LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
+            WHERE events.is_banned IS FALSE
+            AND generic_statuses.generic_status_name = %s
             GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id, is_liked_by_user
             ''',
             params=(
                 event_tone_slug,
                 username.lower(),
+                'ok',
                 event_role_name,
                 datetime_from,
                 datetime_to,
                 pagination_offset,
                 settings.EVENT_ROOM_QUANTITY_PER_PAGE,
                 self.request.user.id,
+                'ok',
             )
         )
 
@@ -932,11 +940,14 @@ class EventRoomsAPI(generics.GenericAPIView):
             LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
             WHERE events.event_room_id = %s
+            AND events.is_banned IS FALSE
+            AND generic_statuses.generic_status_name = %s
             GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id, is_liked_by_user
             ''',
             params=(
                 self.request.user.id,
                 event_room_id,
+                'ok',
             )
         )
 
@@ -993,11 +1004,6 @@ class EventRoomsAPI(generics.GenericAPIView):
             'timeframe' in kwargs and 'event_role_name' in kwargs
         ):
 
-            event_tone_slug = ''
-
-            if 'event_tone_slug' in kwargs:
-                event_tone_slug = kwargs['event_tone_slug']
-
             response = Response(
                 data={
                     'message': '',
@@ -1007,7 +1013,7 @@ class EventRoomsAPI(generics.GenericAPIView):
                                 kwargs['username'],
                                 kwargs['event_role_name'],
                                 kwargs['latest_or_best'],
-                                event_tone_slug,
+                                url_event_tone_slug,
                                 kwargs['timeframe'],
                                 url_page,
                             )
@@ -1119,6 +1125,8 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
         datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
         datetime_now = datetime_now.strftime('%Y-%m-%d %H:%M:%S %z')
 
+        #start
+        #do not get event_rooms where this user has been involved in before
         #we select only event_rooms.id in selected_event_rooms, followed by event_rooms JOIN
         #because if we do event_rooms.* in selected_event_rooms, we'll have to write all columns in GROUP BY clause
         events = Events.objects.select_for_update(of=("event_room",)).prefetch_related(
@@ -1135,11 +1143,17 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                 selected_event_tones AS (
                     SELECT id FROM get_id_of_one_or_all_event_tones_via_slug(%s)
                 ),
+                past_involved_event_rooms AS (
+                    SELECT event_room_id FROM events
+                    WHERE user_id = %s
+                ),
                 selected_event_rooms AS (
                     SELECT event_rooms.id AS id FROM event_rooms
                     INNER JOIN generic_statuses ON event_rooms.generic_status_id = generic_statuses.id
                     LEFT JOIN user_event_rooms ON event_rooms.id = user_event_rooms.event_room_id AND user_event_rooms.user_id = %s
+                    LEFT JOIN past_involved_event_rooms ON event_rooms.id = past_involved_event_rooms.event_room_id
                     WHERE generic_statuses.generic_status_name = %s
+                    AND past_involved_event_rooms.event_room_id IS NULL
                     AND locked_for_user_id IS NULL
                     AND created_by_id != %s
                     AND user_event_rooms.is_excluded_for_reply IS NOT TRUE
@@ -1161,11 +1175,13 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
             LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
             WHERE generic_statuses.generic_status_name = %s
+            AND events.is_banned IS FALSE
             AND event_roles.event_role_name = %s
             GROUP BY events.id, event_tones.id, generic_statuses.id, selected_event_rooms.id, is_liked_by_user
             ''',
             params=(
                 event_tone_slug,
+                self.request.user.id,
                 self.request.user.id,
                 'incomplete',
                 self.request.user.id,
@@ -1226,6 +1242,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
             WHERE event_rooms.locked_for_user_id = %s
             AND event_rooms_generic_statuses.generic_status_name = %s
             AND event_rooms.is_replying = %s
+            AND events.is_banned IS FALSE
             AND generic_statuses.generic_status_name = %s
             GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id, is_liked_by_user
             ''',
@@ -1955,12 +1972,25 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
 
         new_data = serializer.validated_data
 
-        #check if event exists
-        if Events.objects.filter(pk=new_data['event_id']).exists() is False:
+        try:
+
+            target_event = Events.objects.get(pk=new_data['event_id'])
+
+            #check if event is banned
+            if target_event.is_banned is True:
+
+                return Response(
+                    data={
+                        'message': 'This recording has been banned.',
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        except Events.DoesNotExist:
 
             return Response(
                 data={
-                    'message': 'Event no longer exists.',
+                    'message': 'This recording no longer exists.',
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -1971,7 +2001,7 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
         #what worked:
             #using trigger that also checks for OLD.is_liked != NEW.is_liked during INSERT prevents race condition
         #peculiar:
-            #with/without trigger, both yield the same response times (avg. 17000ms)
+            #with/without trigger, both at Locust had yielded the same response times (avg. 17000ms)
 
         #start
 

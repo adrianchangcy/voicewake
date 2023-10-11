@@ -1,5 +1,5 @@
 <template>
-    <div v-if="!is_deleted" class="flex flex-col">
+    <div class="flex flex-col">
 
         <div v-if="is_searching" class="flex flex-col gap-10">
 
@@ -568,11 +568,7 @@
             this.event_count = JSON.parse(container.getAttribute('data-event-count') as string);
             this.is_this_user_replying = JSON.parse(container.getAttribute('data-is-this-user-replying') as string);
 
-            //if not deleted, get everything
-            if(this.is_deleted === false){
-
-                this.getEventRoom();
-            }
+            this.getEventRoom();
 
             if(this.is_this_user_replying === true){
 

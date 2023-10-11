@@ -101,10 +101,12 @@ def cronjob_ban_events():
         event_room_ids = []
         bulk_event_rooms = []
         generic_status_deleted = GenericStatuses.objects.get(generic_status_name='deleted')
+        generic_status_incomplete = GenericStatuses.objects.get(generic_status_name='incomplete')
 
         for x in range(len(events_to_ban)):
 
             events_to_ban[x].is_banned = True
+            events_to_ban[x].generic_status = generic_status_deleted
 
             #track user and ban_count for cases of multiple events retrieved with same user
             user_id = events_to_ban[x].user.id
@@ -129,12 +131,23 @@ def cronjob_ban_events():
                     'banned_until': banned_until
                 }
 
-            #if banned event is not originator, skip event_room
-            if events_to_ban[x].event_role.event_role_name != 'originator':
+            current_event_role_name = events_to_ban[x].event_role.event_role_name
+            expected_generic_status = None
 
-                continue
+            if current_event_role_name == 'originator':
 
-            #prepare event_room for deletion
+                expected_generic_status = generic_status_deleted
+
+            elif current_event_role_name == 'responder':
+
+                expected_generic_status = generic_status_incomplete
+
+            else:
+
+                raise ValueError('Error when evaluating event_role_name.')
+
+            #prepare to handle event_room
+            #on edge case where event_room can be both deleted/incomplete, deleted takes precedence
             event_room_id = events_to_ban[x].event_room.id
 
             if event_room_id not in event_room_ids:
@@ -143,14 +156,22 @@ def cronjob_ban_events():
 
                 bulk_event_rooms.append(EventRooms(
                     pk=event_room_id,
-                    generic_status=generic_status_deleted,
+                    generic_status=expected_generic_status,
                     when_locked=None,
                     is_replying=None,
                     locked_for_user=None
                 ))
 
+            elif (
+                current_event_role_name == 'originator' and
+                bulk_event_rooms[event_room_ids.index(event_room_id)].generic_status != generic_status_deleted
+            ):
+
+                #ensure deleted takes precedence over incomplete
+                bulk_event_rooms[event_room_ids.index(event_room_id)].generic_status = generic_status_deleted
+
         #update events
-        Events.objects.bulk_update(events_to_ban, ('is_banned',))
+        Events.objects.bulk_update(events_to_ban, ('is_banned', 'generic_status',))
 
         #update event_rooms
         EventRooms.objects.bulk_update(bulk_event_rooms, ('generic_status', 'when_locked', 'is_replying', 'locked_for_user',))

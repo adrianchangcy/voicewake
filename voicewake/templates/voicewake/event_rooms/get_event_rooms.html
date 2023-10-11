@@ -9,6 +9,10 @@
         {% endif %}
     </title>
     <meta name="description" content="{{ event_room.event_room_name }}">
+
+    {% if is_deleted %}
+        <meta name="robots" content="noindex,nofollow">
+    {% endif %}
 {% endblock %}
 
 {% block content %}
@@ -33,7 +37,7 @@
         <h1 class="h-fit py-10">
             {% if is_deleted %}
                 <p class="text-lg italic">
-                    This event has been deleted.
+                    Event and original recording deleted.
                 </p>
             {% else %}
                 <!--title-->
@@ -48,9 +52,7 @@
         </h1>
 
         <!--the rest of the content-->
-        {% if is_deleted is False %}
-            <div id="get-event-rooms-app"></div>
-        {% endif %}
+        <div id="get-event-rooms-app"></div>
     </div>
 
 {% endblock %}
