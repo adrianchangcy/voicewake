@@ -193,23 +193,47 @@ def cronjob_ban_events():
     EventReports.objects.filter(reported_event__in=events_to_ban).delete()
 
 
+def cronjob_reset_reply_choice_overdue():
+
+    #have this to reduce the chances of cronjob + auto-cancel reply from frontend colliding
+    #which would be fine, but it's better for UX
+    extra_seconds = 60
+
+    max_when_locked = get_datetime_now() - timedelta(seconds=(settings.EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS + extra_seconds))
+
+    #would apply LIMIT as overload prevention, but UPDATE LIMIT is not straightforward
+    EventRooms.objects.filter(
+        is_replying=False,
+        locked_for_user__isnull=False,
+        when_locked__lte=max_when_locked
+    ).update(
+        is_replying=None,
+        locked_for_user=None,
+        when_locked=None
+    )
+
+
 def cronjob_reset_replying_overdue():
 
     #have this to reduce the chances of cronjob + auto-cancel reply from frontend colliding
     #which would be fine, but it's better for UX
     extra_seconds = 60
 
-    minimum_when_locked = get_datetime_now() - timedelta(seconds=(settings.EVENT_ROOM_REPLY_EXPIRY_SECONDS + extra_seconds))
+    max_when_locked = get_datetime_now() - timedelta(seconds=(settings.EVENT_ROOM_REPLY_EXPIRY_SECONDS + extra_seconds))
 
+    #would apply LIMIT as overload prevention, but UPDATE LIMIT is not straightforward
     EventRooms.objects.filter(
         is_replying=True,
         locked_for_user__isnull=False,
-        when_locked__lte=minimum_when_locked
-    ).order_by(
-        'when_locked'
+        when_locked__lte=max_when_locked
     ).update(
         is_replying=None,
         locked_for_user=None,
         when_locked=None
-    )[:settings.EVENT_ROOM_UNDO_REPLY_QUANTITY_PER_CRON]
+    )
+
+
+
+
+
 

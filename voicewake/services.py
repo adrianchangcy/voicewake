@@ -689,9 +689,9 @@ class PrepareTestData:
 
             list(Events.objects.bulk_create(bulk_events))
 
-        #create 2 incomplete originator for target user
-
         event_details = []
+
+        #create 2 incomplete originator for target user
 
         event_room_1 = EventRooms.objects.create(
             event_room_name='target_user incomplete #1',
@@ -799,6 +799,30 @@ class PrepareTestData:
             {'event_room': event_room_2, 'user': backup_user_2, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
             {'event_room': event_room_2, 'user': backup_user_3, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
             {'event_room': event_room_2, 'user': backup_user, 'event_role': event_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
+        ]
+
+        bulk_create_events(event_details)
+
+        #create 2 incomplete, each has 2 banned responders previously
+
+        event_room_1 = EventRooms.objects.create(
+            event_room_name='target_user incomplete, 2 responses banned #1',
+            created_by=target_user,
+            generic_status=generic_status_incomplete,
+        )
+        event_room_2 = EventRooms.objects.create(
+            event_room_name='target_user incomplete, 2 responses banned #2',
+            created_by=target_user,
+            generic_status=generic_status_incomplete,
+        )
+
+        event_details = [
+            {'event_room': event_room_1, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event_room': event_room_1, 'user': backup_user_2, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event_room': event_room_1, 'user': backup_user_3, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event_room': event_room_2, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event_room': event_room_2, 'user': backup_user_2, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event_room': event_room_2, 'user': backup_user_3, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
         ]
 
         bulk_create_events(event_details)

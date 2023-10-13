@@ -744,13 +744,23 @@
                 })
                 .catch((error: any) => {
 
-                    //restart expiry interval
+                    if(error.request.status === 404){
+
+                        //either no longer exists or unavailable
+                        //auto-skip
+                        this.getEventRooms();
+
+                    }else{
+
+                        //restart expiry interval
+                        this.startExpiryInterval("new_reply_choices");
+                    }
+
                     this.is_new_reply_choice_confirming = false;
-                    this.startExpiryInterval("new_reply_choices");
 
                     notify({
                         title: "Reply selection failed",
-                        text: "Unable to select for reply. " + error.response.data['message'],
+                        text: error.response.data['message'],
                         type: "error"
                     }, 3000);
                 });

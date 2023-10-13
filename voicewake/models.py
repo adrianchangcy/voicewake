@@ -183,6 +183,9 @@ class UserOTP(models.Model):
         db_table = 'user_otp'
 
 
+#prevents blocked users from replying
+#prevents blocked users' content from appearing on front page (could be more complex, but prioritised query speed)
+#at profile page, everyone can see everyone's content
 class UserBlocks(models.Model):
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_blocks_user_1")
