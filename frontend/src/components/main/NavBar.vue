@@ -19,7 +19,10 @@
             </div>
 
             <!--start-->
-            <div class="col-start-2 col-span-1 sm:col-start-3 sm:col-span-2 lg:col-start-4 lg:col-span-1">
+            <div
+                v-if="pop_up_manager_store.getIsLoggedIn === true"
+                class="col-start-2 col-span-1 sm:col-start-3 sm:col-span-2 lg:col-start-4 lg:col-span-1"
+            >
                 <VActionTextOnly
                     propElement="a"
                     propFontSize="m"
@@ -36,7 +39,10 @@
             </div>
 
             <!--reply-->
-            <div class="col-start-3 col-span-1 sm:col-start-5 sm:col-span-2 lg:col-start-5 lg:col-span-1">
+            <div
+                v-if="pop_up_manager_store.getIsLoggedIn === true"
+                class="col-start-3 col-span-1 sm:col-start-5 sm:col-span-2 lg:col-start-5 lg:col-span-1"
+            >
                 <VActionTextOnly
                     propElement="a"
                     propFontSize="m"

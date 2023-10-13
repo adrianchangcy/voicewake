@@ -45,13 +45,17 @@ from psycopg.errors import UniqueViolation
 from django.db.utils import IntegrityError
 
 
-
+from voicewake.cronjobs import *
 class TestAPI(generics.GenericAPIView):
 
     serializer_class = None
     permission_classes = []
 
     def get(self, request, *args, **kwargs):
+
+
+
+
 
 
 
@@ -719,6 +723,16 @@ class EventRoomsAPI(generics.GenericAPIView):
         else:
             order_sql = 'ORDER BY events.when_created DESC'
 
+        #some notes on compromise
+            #desired
+                #userA blocks userB, userA won't see userB content, vice versa
+                #however, if userB is in same event_room as userA, then show
+            #issue
+                #desired situation requires another excluded_users, and "events.user_id=userA OR ..."
+                #the OR condition brings query time from 10ms+ to 40ms+
+            #current
+                #userA blocks userB, userA won't see any content from userB at all
+
         #start
         #we get by completed event_rooms, i.e. guaranteed ok events
         #then, since banned events are still associated with event_rooms, get only ok events
@@ -736,23 +750,28 @@ class EventRoomsAPI(generics.GenericAPIView):
                 selected_event_tones AS (
                     SELECT id FROM get_id_of_one_or_all_event_tones_via_slug(%s)
                 ),
+                excluded_users AS (
+                    SELECT blocked_user_id AS id FROM user_blocks
+                    WHERE user_id = %s
+                ),
+                excluded_event_room_ids AS (
+                    SELECT event_room_id AS id FROM events
+                    RIGHT JOIN excluded_users ON events.user_id = excluded_users.id
+                ),
                 selected_event_room_ids AS (
                     SELECT DISTINCT event_room_id AS id FROM (
-                        SELECT
-                            events.event_room_id,
-                            events.like_count,
-                            events.dislike_count
-                        FROM events
+                        SELECT events.event_room_id FROM events
                         RIGHT JOIN selected_event_tones ON events.event_tone_id = selected_event_tones.id
+                        LEFT JOIN excluded_event_room_ids ON events.event_room_id = excluded_event_room_ids.id
                         LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
                         LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
                         LEFT JOIN generic_statuses AS event_rooms_generic_statuses ON event_rooms.generic_status_id = event_rooms_generic_statuses.id
                         WHERE event_rooms_generic_statuses.generic_status_name = %s
+                        AND excluded_event_room_ids.id IS NULL
                         AND events.when_created BETWEEN %s AND %s
-                        GROUP BY events.id
                         ''' + order_sql + '''
                     )
-                    AS events_with_count
+                    AS distinct_event_room_ids
                     OFFSET %s LIMIT %s
                 )
             SELECT
@@ -769,10 +788,10 @@ class EventRoomsAPI(generics.GenericAPIView):
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
             WHERE events.is_banned IS FALSE
             AND generic_statuses.generic_status_name = %s
-            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id, is_liked_by_user
             ''',
             params=(
                 event_tone_slug,
+                self.request.user.id,
                 'completed',
                 datetime_from,
                 datetime_to,
@@ -861,11 +880,7 @@ class EventRoomsAPI(generics.GenericAPIView):
                 ),
                 selected_event_room_ids AS (
                     SELECT DISTINCT event_room_id AS id FROM (
-                        SELECT
-                            events.event_room_id,
-                            events.like_count,
-                            events.dislike_count
-                        FROM events
+                        SELECT events.event_room_id FROM events
                         RIGHT JOIN selected_event_tones ON events.event_tone_id = selected_event_tones.id
                         LEFT JOIN voicewake_user ON events.user_id = voicewake_user.id
                         LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
@@ -877,10 +892,9 @@ class EventRoomsAPI(generics.GenericAPIView):
                         AND generic_statuses.generic_status_name = %s
                         AND event_roles.event_role_name = %s
                         AND events.when_created BETWEEN %s AND %s
-                        GROUP BY events.id
                         ''' + order_sql + '''
                     )
-                    AS events_with_count
+                    AS distinct_event_room_ids
                     OFFSET %s LIMIT %s
                 )
             SELECT
@@ -897,7 +911,6 @@ class EventRoomsAPI(generics.GenericAPIView):
             LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
             WHERE events.is_banned IS FALSE
             AND generic_statuses.generic_status_name = %s
-            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id, is_liked_by_user
             ''',
             params=(
                 event_tone_slug,
@@ -942,7 +955,6 @@ class EventRoomsAPI(generics.GenericAPIView):
             WHERE events.event_room_id = %s
             AND events.is_banned IS FALSE
             AND generic_statuses.generic_status_name = %s
-            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id, is_liked_by_user
             ''',
             params=(
                 self.request.user.id,
@@ -1120,6 +1132,8 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
 
 
     #excludes event_room started by user
+    #excludes event_room that user has talked in before, e.g. talked and banned, etc.
+    #excludes those that blocked user, as well as those that the user has blocked, i.e. goes both ways
     def get_event_rooms_by_random_incomplete(self, event_tone_slug:str=''):
 
         datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
@@ -1147,13 +1161,25 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                     SELECT event_room_id FROM events
                     WHERE user_id = %s
                 ),
+                excluded_users_1 AS (
+                    SELECT blocked_user_id AS id FROM user_blocks
+                    WHERE user_id = %s
+                ),
+                excluded_users_2 AS (
+                    SELECT user_id AS id FROM user_blocks
+                    WHERE blocked_user_id = %s
+                ),
                 selected_event_rooms AS (
                     SELECT event_rooms.id AS id FROM event_rooms
                     INNER JOIN generic_statuses ON event_rooms.generic_status_id = generic_statuses.id
                     LEFT JOIN user_event_rooms ON event_rooms.id = user_event_rooms.event_room_id AND user_event_rooms.user_id = %s
                     LEFT JOIN past_involved_event_rooms ON event_rooms.id = past_involved_event_rooms.event_room_id
+                    LEFT JOIN excluded_users_1 ON event_rooms.created_by_id = excluded_users_1.id
+                    LEFT JOIN excluded_users_2 ON event_rooms.created_by_id = excluded_users_2.id
                     WHERE generic_statuses.generic_status_name = %s
                     AND past_involved_event_rooms.event_room_id IS NULL
+                    AND excluded_users_1.id IS NULL
+                    AND excluded_users_2.id IS NULL
                     AND locked_for_user_id IS NULL
                     AND created_by_id != %s
                     AND user_event_rooms.is_excluded_for_reply IS NOT TRUE
@@ -1177,10 +1203,11 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
             WHERE generic_statuses.generic_status_name = %s
             AND events.is_banned IS FALSE
             AND event_roles.event_role_name = %s
-            GROUP BY events.id, event_tones.id, generic_statuses.id, selected_event_rooms.id, is_liked_by_user
             ''',
             params=(
                 event_tone_slug,
+                self.request.user.id,
+                self.request.user.id,
                 self.request.user.id,
                 self.request.user.id,
                 'incomplete',
@@ -1244,7 +1271,6 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
             AND event_rooms.is_replying = %s
             AND events.is_banned IS FALSE
             AND generic_statuses.generic_status_name = %s
-            GROUP BY events.id, event_rooms.id, event_tones.id, generic_statuses.id, is_liked_by_user
             ''',
             params=(
                 self.request.user.id,
@@ -1516,7 +1542,7 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'message': 'This event no longer exists.',
+                    'message': 'This event either no longer exists, or is unavailable.',
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
@@ -1589,7 +1615,7 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'message': 'This event no longer exists.',
+                    'message': 'This event either no longer exists, or is unavailable.',
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
