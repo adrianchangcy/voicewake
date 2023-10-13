@@ -201,16 +201,27 @@ def cronjob_reset_reply_choice_overdue():
 
     max_when_locked = get_datetime_now() - timedelta(seconds=(settings.EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS + extra_seconds))
 
-    #would apply LIMIT as overload prevention, but UPDATE LIMIT is not straightforward
-    EventRooms.objects.filter(
-        is_replying=False,
-        locked_for_user__isnull=False,
-        when_locked__lte=max_when_locked
-    ).update(
-        is_replying=None,
-        locked_for_user=None,
-        when_locked=None
-    )
+    with connection.cursor() as cursor:
+
+        cursor.execute(
+            '''
+            WITH selected_event_rooms AS (
+                SELECT * FROM event_rooms
+                WHERE is_replying IS FALSE
+                AND locked_for_user_id IS NOT NULL
+                AND when_locked <= %s
+                LIMIT %s
+            )
+            UPDATE event_rooms
+            SET is_replying = NULL, locked_for_user_id = NULL, when_locked = NULL
+            FROM selected_event_rooms
+            WHERE event_rooms.id = selected_event_rooms.id
+            ''',
+            params=(
+                max_when_locked,
+                settings.EVENT_ROOM_UNDO_REPLY_QUANTITY_PER_CRON,
+            )
+        )
 
 
 def cronjob_reset_replying_overdue():
@@ -221,16 +232,27 @@ def cronjob_reset_replying_overdue():
 
     max_when_locked = get_datetime_now() - timedelta(seconds=(settings.EVENT_ROOM_REPLY_EXPIRY_SECONDS + extra_seconds))
 
-    #would apply LIMIT as overload prevention, but UPDATE LIMIT is not straightforward
-    EventRooms.objects.filter(
-        is_replying=True,
-        locked_for_user__isnull=False,
-        when_locked__lte=max_when_locked
-    ).update(
-        is_replying=None,
-        locked_for_user=None,
-        when_locked=None
-    )
+    with connection.cursor() as cursor:
+
+        cursor.execute(
+            '''
+            WITH selected_event_rooms AS (
+                SELECT * FROM event_rooms
+                WHERE is_replying IS TRUE
+                AND locked_for_user_id IS NOT NULL
+                AND when_locked <= %s
+                LIMIT %s
+            )
+            UPDATE event_rooms
+            SET is_replying = NULL, locked_for_user_id = NULL, when_locked = NULL
+            FROM selected_event_rooms
+            WHERE event_rooms.id = selected_event_rooms.id
+            ''',
+            params=(
+                max_when_locked,
+                settings.EVENT_ROOM_UNDO_REPLY_QUANTITY_PER_CRON,
+            )
+        )
 
 
 

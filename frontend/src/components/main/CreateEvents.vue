@@ -297,7 +297,7 @@
 
                     notify({
                         title: this.propIsOriginator === true ? 'Creating event failed' : 'Creating reply failed',
-                        text: (this.propIsOriginator === true ? 'Unable to create event. ' : 'Unable to create reply. ') + error.response.data['message'],
+                        text: error.response.data['message'],
                         type: "error"
                     }, 4000);
                 });

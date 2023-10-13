@@ -416,9 +416,9 @@
 
                     notify({
                         title: "Event search failed",
-                        text: "Unable to get this event. " + error.response.data['message'],
+                        text: error.response.data['message'],
                         type: "error"
-                    }, 3000);
+                    }, 4000);
                     this.is_searching = false;
                 });
             },

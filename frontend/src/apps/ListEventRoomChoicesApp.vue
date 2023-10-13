@@ -744,6 +744,8 @@
                 })
                 .catch((error: any) => {
 
+                    this.is_new_reply_choice_confirming = false;
+
                     if(error.request.status === 404){
 
                         //either no longer exists or unavailable
@@ -755,8 +757,6 @@
                         //restart expiry interval
                         this.startExpiryInterval("new_reply_choices");
                     }
-
-                    this.is_new_reply_choice_confirming = false;
 
                     notify({
                         title: "Reply selection failed",
