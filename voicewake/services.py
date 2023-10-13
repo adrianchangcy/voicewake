@@ -196,7 +196,6 @@ def prevent_event_room_from_queuing_twice_for_reply(user, event_rooms:list):
         user_event_room = UserEventRooms(
             user=user,
             event_room=event_room,
-            is_excluded_for_reply=True,
             when_created=datetime_now
         )
 
@@ -216,6 +215,41 @@ def prevent_event_room_from_queuing_twice_for_reply(user, event_rooms:list):
         event_room_id__in=event_room_ids
     ).update(
         is_excluded_for_reply=True
+    )
+
+
+def prevent_event_room_from_showing_twice_at_front_page(user, event_rooms:list):
+
+    datetime_now = get_datetime_now()
+    user_event_rooms = []
+    event_room_ids = []
+
+    for event_room in event_rooms:
+
+        event_room_ids.append(event_room.id)
+
+        user_event_room = UserEventRooms(
+            user=user,
+            event_room=event_room,
+            when_created=datetime_now
+        )
+
+        if user_event_room not in user_event_rooms:
+
+            user_event_rooms.append(user_event_room)
+
+    #create rows if they don't yet exist
+    UserEventRooms.objects.bulk_create(
+        user_event_rooms,
+        ignore_conflicts=True
+    )
+
+    #do extra update just in case row already existed during bulk_create
+    UserEventRooms.objects.filter(
+        user=user,
+        event_room_id__in=event_room_ids
+    ).update(
+        is_seen_at_front_page=True
     )
 
 

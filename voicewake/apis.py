@@ -45,11 +45,12 @@ from psycopg.errors import UniqueViolation
 from django.db.utils import IntegrityError
 
 
-from voicewake.cronjobs import *
+
 class TestAPI(generics.GenericAPIView):
 
     serializer_class = None
     permission_classes = []
+
 
     def get(self, request, *args, **kwargs):
 
@@ -677,6 +678,7 @@ class EventRoomsAPI(generics.GenericAPIView):
 
         #when event_tone_slug is '', will just get entire event_tones
         #when timeframe is 'all_time', leaving datetime_from as '' is sufficient
+        #since this is non-user page, i.e. front page, show "latest" event_rooms once only
         #page starts from 1
 
         if page < 1:
@@ -715,6 +717,14 @@ class EventRoomsAPI(generics.GenericAPIView):
         #calculate offset for pagination
         pagination_offset = (page - 1) * settings.EVENT_ROOM_QUANTITY_PER_PAGE
 
+        #prevent showing twice
+        previously_shown_event_rooms_sql = {'join': '', 'and': ''}
+
+        if latest_or_best == 'latest':
+
+            previously_shown_event_rooms_sql['join'] = 'LEFT JOIN previously_shown_event_room_ids ON events.event_room_id = previously_shown_event_room_ids.id'
+            previously_shown_event_rooms_sql['and'] = 'AND previously_shown_event_room_ids.id IS NULL'
+
         #determine order
         order_sql = ''
 
@@ -750,6 +760,11 @@ class EventRoomsAPI(generics.GenericAPIView):
                 selected_event_tones AS (
                     SELECT id FROM get_id_of_one_or_all_event_tones_via_slug(%s)
                 ),
+                previously_shown_event_room_ids AS (
+                    SELECT event_room_id AS id FROM user_event_rooms
+                    WHERE user_id = %s
+                    AND is_seen_at_front_page IS TRUE
+                ),
                 excluded_users AS (
                     SELECT blocked_user_id AS id FROM user_blocks
                     WHERE user_id = %s
@@ -763,11 +778,13 @@ class EventRoomsAPI(generics.GenericAPIView):
                         SELECT events.event_room_id FROM events
                         RIGHT JOIN selected_event_tones ON events.event_tone_id = selected_event_tones.id
                         LEFT JOIN excluded_event_room_ids ON events.event_room_id = excluded_event_room_ids.id
+                        ''' + previously_shown_event_rooms_sql['join'] + '''
                         LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
                         LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
                         LEFT JOIN generic_statuses AS event_rooms_generic_statuses ON event_rooms.generic_status_id = event_rooms_generic_statuses.id
                         WHERE event_rooms_generic_statuses.generic_status_name = %s
                         AND excluded_event_room_ids.id IS NULL
+                        ''' + previously_shown_event_rooms_sql['and'] + '''
                         AND events.when_created BETWEEN %s AND %s
                         ''' + order_sql + '''
                     )
@@ -791,6 +808,7 @@ class EventRoomsAPI(generics.GenericAPIView):
             ''',
             params=(
                 event_tone_slug,
+                self.request.user.id,
                 self.request.user.id,
                 'completed',
                 datetime_from,
@@ -1038,18 +1056,31 @@ class EventRoomsAPI(generics.GenericAPIView):
         
         elif 'latest_or_best' in kwargs and 'timeframe' in kwargs and 'page':
 
+            grouped_event_rooms = group_events_into_event_rooms(
+                self.get_event_rooms_by_completed(
+                    kwargs['latest_or_best'],
+                    url_event_tone_slug,
+                    kwargs['timeframe'],
+                    url_page,
+                )
+            )
+
+            #for non-user page, i.e. front page, only show once for latest
+            if request.user.is_authenticated is True and kwargs['latest_or_best'] == 'latest':
+
+                event_rooms = []
+
+                for row in grouped_event_rooms:
+
+                    event_rooms.append(row['event_room'])
+
+                prevent_event_room_from_showing_twice_at_front_page(request.user, event_rooms)
+
             response = Response(
                 data={
                     'message': '',
                     'data': GroupedEventsSerializer(
-                        group_events_into_event_rooms(
-                            self.get_event_rooms_by_completed(
-                                kwargs['latest_or_best'],
-                                url_event_tone_slug,
-                                kwargs['timeframe'],
-                                url_page,
-                            )
-                        ),
+                        grouped_event_rooms,
                         many=True
                     ).data,
                 },
@@ -1157,9 +1188,14 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                 selected_event_tones AS (
                     SELECT id FROM get_id_of_one_or_all_event_tones_via_slug(%s)
                 ),
-                past_involved_event_rooms AS (
+                past_involved_event_rooms_1 AS (
                     SELECT event_room_id FROM events
                     WHERE user_id = %s
+                ),
+                past_involved_event_rooms_2 AS (
+                    SELECT event_room_id FROM user_event_rooms
+                    WHERE user_id = %s
+                    AND is_excluded_for_reply IS TRUE
                 ),
                 excluded_users_1 AS (
                     SELECT blocked_user_id AS id FROM user_blocks
@@ -1172,17 +1208,17 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                 selected_event_rooms AS (
                     SELECT event_rooms.id AS id FROM event_rooms
                     INNER JOIN generic_statuses ON event_rooms.generic_status_id = generic_statuses.id
-                    LEFT JOIN user_event_rooms ON event_rooms.id = user_event_rooms.event_room_id AND user_event_rooms.user_id = %s
-                    LEFT JOIN past_involved_event_rooms ON event_rooms.id = past_involved_event_rooms.event_room_id
+                    LEFT JOIN past_involved_event_rooms_1 ON event_rooms.id = past_involved_event_rooms_1.event_room_id
+                    LEFT JOIN past_involved_event_rooms_2 ON event_rooms.id = past_involved_event_rooms_2.event_room_id
                     LEFT JOIN excluded_users_1 ON event_rooms.created_by_id = excluded_users_1.id
                     LEFT JOIN excluded_users_2 ON event_rooms.created_by_id = excluded_users_2.id
                     WHERE generic_statuses.generic_status_name = %s
-                    AND past_involved_event_rooms.event_room_id IS NULL
+                    AND past_involved_event_rooms_1.event_room_id IS NULL
+                    AND past_involved_event_rooms_2.event_room_id IS NULL
                     AND excluded_users_1.id IS NULL
                     AND excluded_users_2.id IS NULL
                     AND locked_for_user_id IS NULL
                     AND created_by_id != %s
-                    AND user_event_rooms.is_excluded_for_reply IS NOT TRUE
                     ORDER BY event_rooms.when_created DESC
                     LIMIT %s
                 )
