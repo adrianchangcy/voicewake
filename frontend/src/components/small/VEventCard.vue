@@ -5,8 +5,9 @@
 
         <!--label, ripples, total duration-->
         <div
+            v-show="!propIsSelected"
             ref="card_button"
-            style="opacity: 1;"
+            class="w-full h-full"
         >
             <button
                 class="w-full h-20 grid grid-cols-4     text-4xl bg-theme-light/60 hover:bg-theme-light/80 hover:border-theme-light-trim/40 hover:shadow-sm      border-t-2 border-theme-light-trim rounded-lg shadow-md transition     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline"
@@ -58,16 +59,16 @@
         <!--for playback teleport-->
         <!--must be here to ensure it's in the correct order of focus after card_button disappears-->
         <div
-            :id="playback_teleport_event_id"
+            v-show="propIsSelected"
+            :id="getTeleportId"
             ref="playback_container"
-            style="opacity: 0;"
+            class="w-full h-full"
         ></div>
     </div>
 </template>
 
 
 <script setup lang="ts">
-
 </script>
 
 
@@ -77,35 +78,12 @@
     import EventsAndLikeDetailsTypes from '@/types/EventsAndLikeDetails.interface';
     import { prettyDuration } from '@/helper_functions';
 
+
     export default defineComponent({
         data(){
             return {
-                playback_teleport_event_id: '',
                 main_anime: null as InstanceType<typeof anime> | null,
             };
-        },
-        mounted(){
-
-            this.playback_teleport_event_id = 'playback-teleport-event-id-' + this.propEvent.id.toString();
-
-            for(let x = 0; x < this.propEvent.audio_volume_peaks.length; x++){
-
-                const target_ripple = (this.$refs.volume_ripple as HTMLElement[])[x];
-
-                //UPDATE: non-zero feels more functional for end user
-                if(this.propEvent.audio_volume_peaks[x] < 0.05){
-
-                    target_ripple.style.transform = 'scaleY('+ 0.05 +')';
-
-                }else if(this.propEvent.audio_volume_peaks[x] > 1){
-
-                    target_ripple.style.transform = 'scaleY('+ 1 +')';                    
-
-                }else{
-
-                    target_ripple.style.transform = 'scaleY('+ this.propEvent.audio_volume_peaks[x] +')';                    
-                }
-            }
         },
         props: {
             propEvent: {
@@ -117,12 +95,32 @@
                 default: false
             },
         },
+        computed: {
+            prettyFileDuration(){
+
+                return prettyDuration(this.propEvent.audio_duration_s);
+            },
+            getTeleportId() : string {
+
+                return 'playback-teleport-event-id-' + this.propEvent.id.toString();
+            },
+        },
         watch: {
-            propIsSelected(new_value){
+            propEvent(new_value:EventsAndLikeDetailsTypes){
+
+                this.updateAudioVolumePeaks(new_value);
+            },
+        },
+        methods: {
+            handleIsSelected() : void {
+
+                this.$emit('isSelected', this.propEvent);
+            },
+            async handleSelectionAnime(is_selected:boolean) : Promise<void> {
 
                 this.main_anime === null ? null : this.main_anime.pause();
 
-                if(new_value === true){
+                if(is_selected === true){
 
                     this.main_anime = anime.timeline({
                         easing: 'linear',
@@ -160,21 +158,32 @@
                         duration: 150,
                     });
                 }
-            }
-        },
-        computed: {
-            prettyFileDuration(){
+            },
+            async updateAudioVolumePeaks(new_value:EventsAndLikeDetailsTypes) : Promise<void> {
 
-                return prettyDuration(this.propEvent.audio_duration_s);
+                for(let x = 0; x < new_value.audio_volume_peaks.length; x++){
+
+                    const target_ripple = (this.$refs.volume_ripple as HTMLElement[])[x];
+
+                    //UPDATE: non-zero feels more functional for end user
+                    if(new_value.audio_volume_peaks[x] < 0.05){
+
+                        target_ripple.style.transform = 'scaleY('+ 0.05 +')';
+
+                    }else if(new_value.audio_volume_peaks[x] > 1){
+
+                        target_ripple.style.transform = 'scaleY('+ 1 +')';                    
+
+                    }else{
+
+                        target_ripple.style.transform = 'scaleY('+ new_value.audio_volume_peaks[x] +')';                    
+                    }
+                }
             },
         },
-        methods: {
-            handleIsSelected() : void {
+        mounted(){
 
-                this.$emit('isSelected', this.propEvent);
-            },
-
-        }
-
+            this.updateAudioVolumePeaks(this.propEvent);
+        },
     });
 </script>

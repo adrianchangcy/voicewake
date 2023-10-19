@@ -4,6 +4,8 @@
     >
         <!--add @timeupdate at mounted(), not here, as beforeUnmount() cannot remove it, and it'll still fire after unmount-->
         <!--must add all calls in handleHasMetadata(), not here, since the Infinity duration is not fixed until then-->
+        <!--@pause and @playing is 99% but not 100% reliable, e.g. during pause + source change-->
+        <!--so together with playPlayback() + pausePlayback() + @playing + @pause, playback_paused is now 100% reliable-->
         <audio
             ref="audio_element"
             @loadedmetadata="[handleHasMetadata()]"
@@ -22,9 +24,9 @@
                 propEvent === null ? 'grid-cols-3 pr-4' : 'grid-cols-4',
                 'h-20 grid grid-rows-2 rounded-lg border border-theme-light-gray shade-border-when-hover transition-colors'
             ]"
-            @click="[updateInstanceLastInteracted(), instance_has_focus=true]"
-            @pointerdown="[updateInstanceLastInteracted(), instance_has_focus=true]"
-            @focusin="[updateInstanceLastInteracted(), instance_has_focus=true]"
+            @click="[updateInstanceLastInteracted()]"
+            @pointerdown="[updateInstanceLastInteracted()]"
+            @focusin="[updateInstanceLastInteracted()]"
             @focusout="instance_has_focus=false"
         >
 
@@ -324,11 +326,11 @@
                 default: false
             },
             propEvent: {
-                type: Object as PropType<EventsAndLikeDetailsTypes|EventsTypes>,
+                type: Object as PropType<EventsAndLikeDetailsTypes|EventsTypes|null>,
                 default: null
             },
             propAudio: {    //used when receiving from VRecorder
-                type: Object as PropType<Blob> | PropType<File> | null,
+                type: Object as PropType<Blob|File|null>,
                 default: null
             },
             propIsRecording: {  //when changed, pause VPlayback
@@ -349,6 +351,10 @@
             propBucketQuantity: {   //with no default value, this is the fix for unrendered this.$refs.volume_ripple
                 type: Number,
                 required: true
+            },
+            propPauseTrigger: {
+                type: Boolean,
+                default: false, //switch between true/false to trigger watcher and pause
             },
         },
         watch: {
@@ -376,25 +382,33 @@
             propAudio(new_value){
 
                 this.attachAudioToPlayback(new_value);
+
+                //apply focus on source change
+                this.updateInstanceLastInteracted();
             },
             propEvent(new_value:EventsAndLikeDetailsTypes|null){
 
                 //reminder that with v-if and props already supplied, first time will not trigger watchers
 
-                if(new_value !== null){
+                if(new_value === null){
 
-                    //do store before new audio is attached
-                    if(this.previous_event !== null){
-
-                        this.storeCurrentEventLastStopped(this.previous_event);
-                    }
-
-                    //store previous event for situations where store needs it
-                    this.previous_event = new_value;
-
-                    //attach new audio
-                    this.attachAudioToPlayback(new_value.audio_file);
+                    return;
                 }
+
+                //do store before new audio is attached
+                if(this.previous_event !== null){
+
+                    this.storeCurrentEventLastStopped(this.previous_event);
+                }
+
+                //store previous event for situations where store needs it
+                this.previous_event = new_value;
+
+                //attach new audio
+                this.attachAudioToPlayback(new_value.audio_file);
+
+                //apply focus on source change
+                this.updateInstanceLastInteracted();
             },
             propIsRecording(new_value){
 
@@ -425,17 +439,24 @@
                             await this.syncSliderAnimeAfterSuspend();
                         }
                     });
-                }
 
-                //if is playing when close, pause playback
-                if(new_value === false && this.playback_paused === false){
-
+                }else if(new_value === false && this.playback_paused === false){
+                    
+                    //if is playing when close, pause playback
                     (async () => {
 
                         await this.pausePlayback();
                         this.updatePlaybackSliderValue();
                     })();
                 }
+            },
+            propPauseTrigger(){
+
+                (async ()=>{
+                    await this.pausePlayback();
+                    this.updatePlaybackSliderValue();
+                    this.endPlaybackTruly();
+                })();
             },
         },
         computed: {
@@ -538,19 +559,12 @@
                 //store
                 this.vplayback_store.addEventPlaybackLastStopped(specific_event.id, current_time_s);
             },
-            async updateInstanceLastInteracted(to_remove:boolean=false) : Promise<void> {
+            async updateInstanceLastInteracted() : Promise<void> {
 
                 //any actions taken to any VPlayback instance will update store
                 //so that handleKeyboardEvent() goes through for "last interacted VPlayback" only
-
-                if(to_remove === false){
-
-                    this.vplayback_store.updateLastInteractedUUID(this.instance_id);
-
-                }else{
-
-                    this.vplayback_store.updateLastInteractedUUID("");
-                }
+                this.vplayback_store.updateLastInteractedUUID(this.instance_id);
+                this.instance_has_focus = true;
             },
             handleInitialAutoplay() : void {
 
@@ -700,7 +714,7 @@
             handleKeyboardEvent(event:KeyboardEvent) : void {
 
                 //FYI, some keyup events are too late for .preventDefault(), so they use keydown
-
+                
                 //these keys affect only playback, so no point if there's no file
                 if(this.isPlaybackReady === false || this.isInstanceLastInteracted === false){
 
@@ -835,7 +849,7 @@
 
                     if(resume_later === true){
 
-                        this.playPlayback();
+                        await this.playPlayback();
                     }
                 }
             },
@@ -965,7 +979,7 @@
                     this.seekPlayback();
                 }
             },
-            stopPlaybackDrag() : void {
+            async stopPlaybackDrag() : Promise<void> {
 
                 if(this.is_playback_slider_drag === false){
 
@@ -989,7 +1003,7 @@
 
                 if(this.playback_slider_value < 1 && this.stay_paused_on_drag === false){
 
-                    this.playPlayback();
+                    await this.playPlayback();
                 }
 
                 this.is_playback_slider_drag = false;
@@ -1129,7 +1143,7 @@
                     this.playback_slider_progress_anime.completed = false;
 
                     //resume if originally playing
-                    this.playPlayback();
+                    await this.playPlayback();
 
                 }else{
 
@@ -1198,14 +1212,14 @@
                 //play if was playing
                 if(resume_later === true){
 
-                    this.playPlayback();
+                    await this.playPlayback();
                 }
             },
             async togglePlaybackSpeedOptions() : Promise<void> {
                 
                 this.is_playback_speed_options_open = !this.is_playback_speed_options_open;
             },
-            playPlayback() : void {
+            async playPlayback() : Promise<void> {
 
                 //using anime.play/pause instead of remove+create prevents slight off-position on second play
                 //our new anime position is already settled by seekPlayback()
@@ -1221,6 +1235,8 @@
                     //although redundant, we put audio_element.muted=false here to guarantee it
                     //as there has been a rare instance where playback had no audio unintentionally until the next replay
                     audio_element.muted = false;
+                    this.playback_paused = false;
+
                     this.stay_paused_on_drag = false;
 
                     if(this.is_playback_buffering === false){
@@ -1269,6 +1285,7 @@
 
                     //also recalculate slider value
                     audio_element.pause();
+                    this.playback_paused = true;
 
                     this.playback_slider_knob_anime.pause();
                     this.playback_slider_progress_anime.pause();
@@ -1301,7 +1318,7 @@
                 //cancel drag if so, while stopPlaybackDrag() auto-plays for us
                 if(this.is_playback_slider_drag === true){
                     
-                    this.stopPlaybackDrag();
+                    await this.stopPlaybackDrag();
 
                     //if we don't return here, we get "play() interrupted by pause()"
                     return;
@@ -1311,7 +1328,7 @@
                 //stay_paused_on_drag must be here to record user's manual pausing
                 if(this.playback_paused === true){
 
-                    this.playPlayback();
+                    await this.playPlayback();
                     this.stay_paused_on_drag = false;
 
                 }else{
@@ -1446,7 +1463,7 @@
                     //mm:ss
                     //only for duration display we will use floor
                     this.pretty_playback_duration = prettyDuration(
-                        (this.$refs.audio_element as HTMLAudioElement).duration
+                        audio_element.duration
                     );
 
                     if(this.is_debug === true){
@@ -1454,7 +1471,7 @@
                         console.log("audio metadata duration: " + this.pretty_playback_duration);
                     }
 
-                    this.adjustPlaybackSliderDimension();
+                    await this.adjustPlaybackSliderDimension();
                     await this.createPlaybackSliderAnime();
                     this.setInitialPlaybackSliderValue();
                     this.seekPlayback();
@@ -1542,11 +1559,7 @@
             this.animeIsEmptyPlayback();
             this.$emit('isProcessing', false);
 
-            //if store has no instance recorded yet, use current instance as default, whichever mounts first
-            if(this.vplayback_store.getLastInteractedUUID === ""){
-
-                this.vplayback_store.updateLastInteractedUUID(this.instance_id);
-            }
+            this.updateInstanceLastInteracted();
 
             //handle when propEvent already exists on mounted, which means it's from API
             if(this.propEvent !== null && this.propEvent.audio_file.length > 0){
@@ -1627,6 +1640,8 @@
             this.propIsRecording === false ? window.addEventListener('keydown', this.handleKeyboardEvent) : null;
             document.addEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
             audio_element.addEventListener('timeupdate', this.updateCurrentPlaybackTime);
+
+            console.log('hola, mounted');
         },
         beforeUnmount(){
 

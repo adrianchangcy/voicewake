@@ -124,101 +124,120 @@
             </div>
         </div>
 
-        <div class="flex flex-col gap-4">
-            <TransitionGroupFade>
+        <!--item-size and min-item-size seem to be gap in px, and gap-4 is 16px-->
+        <DynamicScroller
+            v-show="filtered_grouped_events_store.getEventRoomsForBrowsing.length > 0"
+            :items="filtered_grouped_events_store.getEventRoomsForBrowsing"
+            :min-item-size="16"
+            key-field="event_room_id"
+            class="scroller"
+        >
+
+            <template #default="{ item, index, active }">
 
                 <!--event_rooms-->
-                <EventRoomCard
-                    v-for="(event_room, index) in filtered_grouped_events_store.getEventRoomsForBrowsing" :key="event_room.event_room.id"
-                    :prop-filtered-grouped-events-store-event-room-index="index"
-                    :prop-show-title="true"
-                    :prop-event-room="event_room"
+                <DynamicScrollerItem
+                    :item="item"
+                    :index="index"
+                    :active="active"
+                >
+                    <div class="pb-4">
+                        <EventRoomCard
+                            :prop-show-title="true"
+                            :prop-event-room="item"
+                            :prop-has-border="true"
+                            :prop-load-v-event-cards-only="true"
+                        />
+                    </div>
+                </DynamicScrollerItem>
+            </template>
+        </DynamicScroller>
+
+        <!--loading event_rooms-->
+        <TransitionFade>
+            <EventRoomCardSkeleton
+                v-show="is_fetching"
+                :prop-has-border="true"
+                :prop-event-quantity="2"
+            />
+        </TransitionFade>
+
+        <!--dialogs-->
+        <div class="pt-8 relative">
+
+            <TransitionGroupFade :prop-has-absolute="true">
+
+                <!--no event_rooms-->
+                <VDialogPlain
+                    v-show="canShowEventRoomsEmptyMessage || canShowNoNewEventRoomsMessage"
+                    :prop-has-border="false"
+                    :prop-has-auto-spacing="false"
+                    class="w-full"
+                >
+                    <template #logo>
+                        <i class="far fa-face-meh-blank" aria-hidden="true"></i>
+                    </template>
+                    <template #title>
+                        <span v-show="canShowEventRoomsEmptyMessage">No events found.</span>
+                        <span v-show="canShowNoNewEventRoomsMessage">You've reached the end.</span>
+                    </template>
+                    <template #content>
+                        <span>The filters can be changed to explore other content!</span>
+                    </template>
+                </VDialogPlain>
+
+                <!--reconsider loading more events -->
+                <VDialogPlain
+                    v-show="canPauseScrolling"
+                    :prop-has-auto-spacing="true"
                     :prop-has-border="true"
-                    :prop-load-v-event-cards-only="true"
-                    @newSelectedEvent=handleNewSelectedEvent($event)
-                />
-
-                <!--loading event_rooms-->
-                <EventRoomCardSkeleton
-                    v-show="is_fetching"
-                    :prop-has-border="true"
-                    :prop-event-quantity="2"
-                />
-            </TransitionGroupFade>
-
-            <!--dialogs-->
-            <div class="pt-8 relative">
-                <TransitionGroupFade :prop-has-absolute="true">
-
-                    <!--no event_rooms-->
-                    <VDialogPlain
-                        v-show="canShowEventRoomsEmptyMessage || canShowNoNewEventRoomsMessage"
-                        :prop-has-border="false"
-                        :prop-has-auto-spacing="false"
-                        class="w-full"
-                    >
-                        <template #logo>
-                            <i class="far fa-face-meh-blank" aria-hidden="true"></i>
-                        </template>
-                        <template #title>
-                            <span v-show="canShowEventRoomsEmptyMessage">No events found.</span>
-                            <span v-show="canShowNoNewEventRoomsMessage">You've reached the end.</span>
-                        </template>
-                        <template #content>
-                            <span>The filters can be changed to explore other content!</span>
-                        </template>
-                    </VDialogPlain>
-
-                    <!--reconsider loading more events -->
-                    <VDialogPlain
-                        v-show="canPauseScrolling"
-                        :prop-has-auto-spacing="true"
-                        :prop-has-border="true"
-                        class="w-full"
-                    >
-                        <template #title>
+                    class="w-full"
+                >
+                    <template #title>
+                        <span>
+                            {{ getPlayedEventsLength }} recordings played.
+                        </span>
+                    </template>
+                    <template #content>
+                        <div class="flex flex-col gap-4">
                             <span>
-                                {{ getPlayedEventsLength }} recordings played.
+                                Don't forget to take a break!
                             </span>
-                        </template>
-                        <template #content>
-                            <div class="flex flex-col gap-4">
-                                <span>
-                                    Don't forget to take a break!
-                                </span>
-                                <VActionSpecial
-                                    @click="continueScrolling()"
-                                    prop-element="button"
-                                    prop-element-size="s"
-                                    prop-font-size="s"
-                                    :prop-is-icon-only="false"
-                                    type="button"
-                                    class="w-full"
-                                >
-                                    <span class="mx-auto">Load more recordings</span>
-                                </VActionSpecial>
-                            </div>
-                        </template>
-                    </VDialogPlain>
-                </TransitionGroupFade>
-            </div>
+                            <VActionSpecial
+                                @click="continueScrolling()"
+                                prop-element="button"
+                                prop-element-size="s"
+                                prop-font-size="s"
+                                :prop-is-icon-only="false"
+                                type="button"
+                                class="w-full"
+                            >
+                                <span class="mx-auto">Load more recordings</span>
+                            </VActionSpecial>
+                        </div>
+                    </template>
+                </VDialogPlain>
+            </TransitionGroupFade>
         </div>
 
         <div id="load-more-event-rooms-observer-target"></div>
 
         <!--VEventCard emits selection, which triggers :to, thus teleporting-->
         <!--presence of VEventCard depends on VEventRoomCard-->
-        <div v-if="selected_event !== null">
-            <Teleport :to="playback_teleport_event_id">
-                <VPlayback
-                    :propEvent="selected_event"
-                    :propIsOpen="true"
-                    :propAudioVolumePeaks="selected_event.audio_volume_peaks"
-                    :propBucketQuantity="selected_event.audio_volume_peaks.length"
-                    :propAutoPlayOnSourceChange="true"
-                />
-            </Teleport>
-        </div>
+        <!--we don't use :disabled because it will still attempt to teleport to :to-->
+        <Teleport
+            :to="getVPlaybackTeleportId"
+        >
+            <VPlayback
+                v-show="selected_event !== null"
+                :propEvent="selected_event"
+                :propIsOpen="true"
+                :propAudioVolumePeaks="getSelectedEventAudioVolumePeaks"
+                :propBucketQuantity="20"
+                :propAutoPlayOnSourceChange="can_autoplay"
+                :propPauseTrigger="filter_change_trigger"
+            />
+        </Teleport>
     </div>
 </template>
 
@@ -228,12 +247,14 @@
     import EventRoomCardSkeleton from '@/components/skeleton/EventRoomCardSkeleton.vue';
     import VPlayback from '@/components/medium/VPlayback.vue';
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
+    import TransitionFade from '@/transitions/TransitionFade.vue';
     import VEventToneMenu from '@/components/medium/VEventToneMenu.vue';
     import VAction from '@/components/small/VAction.vue';
     import VActionSpecial from '@/components/small/VActionSpecial.vue';
     import VActionTextOnly from '@/components/small/VActionTextOnly.vue';
     import VDialogPlain from '@/components/small/VDialogPlain.vue';
     import VUserCard from '@/components/medium/VUserCard.vue';
+    import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 </script>
 
 
@@ -262,7 +283,8 @@
                 can_observer_fetch: false,
 
                 selected_event: null as EventsAndLikeDetailsTypes|null,
-                playback_teleport_event_id: '',
+                filter_change_trigger: false,  //switch between true/false to trigger pause
+                can_autoplay: true,
 
                 played_events_by_id: [] as number[],
                 played_events_quantity_to_pause_scrolling: 10,
@@ -295,9 +317,31 @@
                     this.filtered_grouped_events_store.getEventRoomsForBrowsing.length > 0 &&
                     this.can_observer_fetch === false
                 );
-            }
+            },
+            getVPlaybackTeleportId() : string {
+
+                if(this.selected_event === null){
+
+                    return '#temporary-teleport-target';
+                }
+
+                return '#playback-teleport-event-id-' + this.selected_event.id;
+            },
+            getSelectedEventAudioVolumePeaks() : number[] {
+
+                if(this.selected_event === null){
+
+                    return [];
+                }
+
+                return this.selected_event.audio_volume_peaks;
+            },
         },
         methods: {
+            switchTriggerBeforeFilterChange() : void {
+
+                this.filter_change_trigger = !this.filter_change_trigger;
+            },
             isSelectedEventRoleName(index:number) : boolean {
 
                 return index === this.filtered_grouped_events_store.getCurrentEventRoleNameIndex;
@@ -342,6 +386,17 @@
                     this.filtered_grouped_events_store.getSelectedEventTone,
                     this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
                     index,
+                    true,
+                );
+            },
+            async handleNewSelectedEventTone(event_tone:EventTonesTypes|null) : Promise<void> {
+
+                this.filtered_grouped_events_store.updateSelectedEventTone(event_tone);
+
+                await this.getEventRooms(
+                    event_tone,
+                    this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
+                    this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
                     true,
                 );
             },
@@ -410,17 +465,6 @@
                     this.is_fetching = false;
                 });
             },
-            async handleNewSelectedEventTone(event_tone:EventTonesTypes|null) : Promise<void> {
-
-                this.filtered_grouped_events_store.updateSelectedEventTone(event_tone);
-
-                await this.getEventRooms(
-                    event_tone,
-                    this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
-                    this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
-                    true,
-                );
-            },
             async constructURL(
                 event_tone:EventTonesTypes|null,
                 current_event_role_name_index:number,
@@ -472,17 +516,15 @@
 
                 return full_url;
             },
-            handleNewSelectedEvent(event:EventsAndLikeDetailsTypes|null) : void {
+            async handleNewSelectedEvent(event:EventsAndLikeDetailsTypes|null, can_autoplay:boolean) : Promise<void> {
 
+                this.can_autoplay = can_autoplay;
                 this.selected_event = event;
 
                 if(event === null){
 
                     return;
                 }
-
-                //must be the same as in VEventCard
-                this.playback_teleport_event_id = '#playback-teleport-event-id-' + event.id.toString();
 
                 //record how many unique events have been played
                 if(this.played_events_by_id.includes(event.id) === false){
@@ -540,10 +582,57 @@
                 this.user_profile_username = (container.getAttribute('data-user-profile-username') as string);
             }
 
-            //listen to store
+            //listen from EventRoomCard
             this.currently_playing_event_store.$subscribe((mutation, state)=>{
 
-                this.handleNewSelectedEvent(state.playing_event as EventsAndLikeDetailsTypes|null);
+                //if playing_event is identical to selected_event,
+                //it means that this $patch is fired from filter change
+
+                const playing_event = (state.playing_event as EventsAndLikeDetailsTypes|null);
+
+                if(
+                    playing_event !== null && this.selected_event !== null &&
+                    playing_event.id === this.selected_event.id
+                ){
+
+                    return;
+                }
+
+                //selected_event from here is fired when user has just manually selected event
+
+                this.handleNewSelectedEvent(playing_event, true);
+
+                if(playing_event !== null){
+
+                    this.filtered_grouped_events_store.updateLastSelectedEvent(playing_event);
+                }
+            });
+
+            //handle things on filter change
+            this.filtered_grouped_events_store.$onAction(({
+                name,
+                after,
+            })=>{
+
+                if(
+                    name === 'updateSelectedEventTone' ||
+                    name === 'updateCurrentEventRoleNameIndex' ||
+                    name === 'updateCurrentFilterTypeIndex'
+                ){
+                    after(()=>{
+
+                        //last selected event to be currently selected event
+
+                        this.switchTriggerBeforeFilterChange();
+
+                        const last_selected_event = this.filtered_grouped_events_store.getLastSelectedEvent;
+                        this.handleNewSelectedEvent(last_selected_event, false);
+
+                        this.currently_playing_event_store.$patch({
+                            playing_event: last_selected_event
+                        });
+                    });
+                }
             });
 
             this.getEventRooms(

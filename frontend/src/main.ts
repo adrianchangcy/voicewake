@@ -2,6 +2,8 @@ import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import piniaPluginPersistedState from 'pinia-plugin-persistedstate';
 import { PiniaSharedState } from 'pinia-shared-state';
+import VueVirtualScroller from 'vue-virtual-scroller';
+import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 
 import BaseApp from '/src/apps/BaseApp.vue';
 import CreateEventRoomsApp from '/src/apps/CreateEventRoomsApp.vue';
@@ -13,6 +15,7 @@ import BrowseEventRoomsApp from '/src/apps/BrowseEventRoomsApp.vue';
 import UserLogInSignUp from '/src/components/main/UserLogInSignUp.vue';
 import VUserUsername from '/src/components/medium/VUserUsername.vue';
 import VBackdropAnime from '/src/components/small/VBackdropAnime.vue';
+import TestingStuff from '/src/components/main/TestingStuff.vue';
 
 
 const pinia = createPinia();
@@ -115,6 +118,13 @@ createApp(BaseApp)
 
 //if-else for all # might or might not be the most efficient fix
 //https://vuejs.org/guide/essentials/application.html#the-root-component
+
+if(document.querySelector('#testing-stuff')){
+
+    createApp(TestingStuff)
+        .mount('#testing-stuff');
+}
+
 if(document.querySelector('#create-event-rooms-app')){
 
     createApp(CreateEventRoomsApp)
@@ -150,6 +160,7 @@ if(document.querySelector('#get-user-profile-app')){
             propIsUserProfilePage: true
         }
     ).directive('click-outside', clickOutside)
+    .use(VueVirtualScroller)
     .mount('#get-user-profile-app');
 }
 

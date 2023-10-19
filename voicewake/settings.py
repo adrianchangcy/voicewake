@@ -45,7 +45,7 @@ MIDDLEWARE = []
 #development
 if DEBUG is True:
 
-    REQUEST_TIME_DELAY = 1  #seconds
+    REQUEST_TIME_DELAY = 0  #seconds
 
     MIDDLEWARE += [
         'voicewake.middleware.drf_api_delay_middleware.TimeDelayMiddleware',
@@ -291,7 +291,7 @@ EVENT_ROOM_CREATE_DAILY_LIMIT = 10      #compares from 00:00:00 UTC
 EVENT_ROOM_REPLY_DAILY_LIMIT = 10       #compares from 00:00:00 UTC
 EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS = 1200      #20 mins, when locked but is_replying=False
 EVENT_ROOM_REPLY_EXPIRY_SECONDS = 3600       #60 mins, when locked and is_replying=True
-EVENT_ROOM_QUANTITY_PER_PAGE = 10
+EVENT_ROOM_QUANTITY_PER_PAGE = 4
 EVENT_ROOM_INCOMPLETE_ROLL_QUANTITY = 1
 EVENT_ROOM_UNDO_REPLY_QUANTITY_PER_CRON = 100
 
