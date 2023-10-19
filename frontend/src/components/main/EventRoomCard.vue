@@ -12,33 +12,26 @@
             class="pb-10"
         >
 
-            <VActionTextOnly
-                prop-element="a"
-                :href="event_room_url"
-                rel="ugc"
-                class="h-fit"
+            <VTitle
+                propFontSize="s"
+                class="w-full"
             >
-                <VTitle
-                    propFontSize="s"
-                    class="w-full shade-text-when-hover transition-colors"
-                >
 
-                    <template #title>
-                        <span
-                            v-if="propEventRoom.event_room.generic_status.generic_status_name === 'deleted'"
-                            class="italic"
-                        >
-                            Event and original recording deleted.
-                        </span>
-                        <span v-else>
-                            {{ propEventRoom.event_room.event_room_name }}
-                        </span>
-                    </template>
-                    <template v-if="propEventRoom.event_room.generic_status.generic_status_name !== 'deleted'" #titleDescription>
-                        <span>{{ pretty_when_created }}</span>
-                    </template>
-                </VTitle>
-            </VActionTextOnly>
+                <template #title>
+                    <span
+                        v-if="propEventRoom.event_room.generic_status.generic_status_name === 'deleted'"
+                        class="italic"
+                    >
+                        Event and original recording deleted.
+                    </span>
+                    <span v-else>
+                        {{ propEventRoom.event_room.event_room_name }}
+                    </span>
+                </template>
+                <template v-if="propEventRoom.event_room.generic_status.generic_status_name !== 'deleted'" #titleDescription>
+                    <span>{{ pretty_when_created }}</span>
+                </template>
+            </VTitle>
         </div>
 
         <!--more than 1 event each-->
@@ -164,7 +157,6 @@
     import VEventCard from '/src/components/small/VEventCard.vue';
     import VEventTools from '/src/components/medium/VEventTools.vue';
     import VUsernameURL from '/src/components/small/VUsernameURL.vue';
-    import VActionTextOnly from '../small/VActionTextOnly.vue';
 </script>
 
 
@@ -180,8 +172,6 @@
             return {
                 currently_playing_event_store: useCurrentlyPlayingEventStore(),
                 pretty_when_created: '',
-
-                event_room_url: '',
             };
         },
         props: {
@@ -223,10 +213,7 @@
             },
         },
         watch: {
-            propEventRoom(){
 
-                this.updateTitleURL();
-            },
         },
         methods: {
             checkIsSelected(event_id:number) : boolean {
@@ -244,19 +231,10 @@
                     playing_event: event
                 });
             },
-            updateTitleURL() : void {
-
-                if(this.propShowTitle === true){
-
-                    this.event_room_url = window.location.origin + '/event/' + this.propEventRoom.event_room.id.toString();
-                }
-            },
         },
         beforeMount(){
 
             this.pretty_when_created = prettyTimePassed(new Date(this.propEventRoom.event_room.when_created));
-
-            this.updateTitleURL();
         },
     });
 </script>
