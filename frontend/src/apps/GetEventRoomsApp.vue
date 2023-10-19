@@ -24,7 +24,7 @@
                     id="is-replying-area"
                     class="flex flex-col gap-2 pt-10"
                 >
-                    <VUser
+                    <VUsernameURL
                         :propUsername="(getDataFromTemplateJSONScript('data-user-username') as string)"
                     />
 
@@ -121,7 +121,7 @@
             <!--VEventCard emits selection, which triggers :to, thus teleporting-->
             <!--presence of VEventCard depends on VEventRoomCard-->
             <div v-if="selected_event !== null">
-                <Teleport :to="playback_teleport_event_id">
+                <Teleport :to="getVPlaybackTeleportId">
                     <VPlayback
                         :propEvent="selected_event"
                         :propIsOpen="true"
@@ -144,7 +144,7 @@
     import VTitle from '@/components/small/VTitle.vue';
     import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
     import VPlayback from '@/components/medium/VPlayback.vue';
-    import VUser from '@/components/small/VUser.vue';
+    import VUsernameURL from '@/components/small/VUsernameURL.vue';
     import VEventCardSkeleton from '@/components/skeleton/VEventCardSkeleton.vue';
     import VLoading from '@/components/small/VLoading.vue';
 </script>
@@ -185,7 +185,6 @@
                 is_submitting: false,
                 
                 selected_event: null as EventsAndLikeDetailsTypes|null,
-                playback_teleport_event_id: '',
                 reply_expiry_interval: null as number|null,
                 reply_expiry_string: '',
 
@@ -205,7 +204,16 @@
             canDelete() : boolean {
 
                 return this.canSubmit;
-            }
+            },
+            getVPlaybackTeleportId() : string {
+
+                if(this.selected_event === null){
+
+                    return '';
+                }
+
+                return '#playback-teleport-event-id-' + this.selected_event.id;
+            },
         },
         watch: {
         },
@@ -462,12 +470,6 @@
             handleNewSelectedEvent(event:EventsAndLikeDetailsTypes|null) : void {
 
                 this.selected_event = event;
-
-                if(event !== null){
-
-                    //must be the same as in VEventCard
-                    this.playback_teleport_event_id = '#playback-teleport-event-id-' + event.id.toString();
-                }
             },
             startReplyExpiryInterval() : void {
 

@@ -46,10 +46,10 @@
 
             <!--originator-->
             <div
-                v-if="originatorCount > 0"
+                v-show="originatorCount > 0"
                 class="flex flex-col gap-2"
             >
-                <VUser
+                <VUsernameURL
                     :propUsername="propEventRoom.originator!.user.username"
                 />
                 <VEventCard
@@ -60,16 +60,15 @@
                 <VEventTools
                     :propEvent="propEventRoom.originator"
                     :propEventRoomId="propEventRoom.event_room.id"
-                    :prop-filtered-grouped-events-store-event-room-index="propFilteredGroupedEventsStoreEventRoomIndex"
                 />
             </div>
 
             <!--responders-->
             <div
-                v-for="(event, index) in propEventRoom.responder" :key="event.id"
+                v-for="event in propEventRoom.responder" :key="event.id"
                 class="flex flex-col gap-2"
             >
-                <VUser
+                <VUsernameURL
                     :propUsername="event.user.username"
                 />
                 <VEventCard
@@ -80,21 +79,20 @@
                 <VEventTools
                     :propEvent="event"
                     :propEventRoomId="propEventRoom.event_room.id"
-                    :prop-filtered-grouped-events-store-event-room-index="propFilteredGroupedEventsStoreEventRoomIndex"
-                    :prop-filtered-grouped-events-store-event-index="index"
                 />
             </div>
         </div>
 
         <!--only 1 event total-->
+        <!--must use v-if here, else VPlayback error, unsure why its code runs when it's using v-else and not v-show-->
         <div v-else class="flex flex-col gap-10">
 
             <!--originator-->
             <div
-                v-if="originatorCount > 0"
+                v-show="originatorCount > 0"
                 class="flex flex-col gap-2"
             >
-                <VUser
+                <VUsernameURL
                     :propUsername="propEventRoom.originator!.user.username"
                 />
                 <VEventCard
@@ -112,18 +110,17 @@
                 <VEventTools
                     :propEvent="propEventRoom.originator"
                     :propEventRoomId="propEventRoom.event_room.id"
-                    :prop-filtered-grouped-events-store-event-room-index="propFilteredGroupedEventsStoreEventRoomIndex"
                 />
             </div>
 
             <!--responders-->
-            <div v-if="responderCount > 0">
+            <div v-show="responderCount > 0">
                 <div v-if="propLoadVEventCardsOnly">
                     <div
-                        v-for="(event, index) in propEventRoom.responder" :key="event.id"
+                        v-for="event in propEventRoom.responder" :key="event.id"
                         class="flex flex-col gap-2"
                     >
-                        <VUser
+                        <VUsernameURL
                             :propUsername="event.user.username"
                         />
                         <VEventCard
@@ -134,17 +131,15 @@
                         <VEventTools
                             :propEvent="event"
                             :propEventRoomId="propEventRoom.event_room.id"
-                            :prop-filtered-grouped-events-store-event-room-index="propFilteredGroupedEventsStoreEventRoomIndex"
-                            :prop-filtered-grouped-events-store-event-index="index"
                         />
                     </div>
                 </div>
                 <div v-else>
                     <div
-                        v-for="(event, index) in propEventRoom.responder" :key="event.id"
+                        v-for="event in propEventRoom.responder" :key="event.id"
                         class="flex flex-col gap-2"
                     >
-                        <VUser
+                        <VUsernameURL
                             :propUsername="event.user.username"
                         />
                         <VPlayback
@@ -155,8 +150,6 @@
                         <VEventTools
                             :propEvent="event"
                             :propEventRoomId="propEventRoom.event_room.id"
-                            :prop-filtered-grouped-events-store-event-room-index="propFilteredGroupedEventsStoreEventRoomIndex"
-                            :prop-filtered-grouped-events-store-event-index="index"
                         />
                     </div>
                 </div>
@@ -170,7 +163,7 @@
     import VPlayback from '/src/components/medium/VPlayback.vue';
     import VEventCard from '/src/components/small/VEventCard.vue';
     import VEventTools from '/src/components/medium/VEventTools.vue';
-    import VUser from '/src/components/small/VUser.vue';
+    import VUsernameURL from '/src/components/small/VUsernameURL.vue';
     import VActionTextOnly from '../small/VActionTextOnly.vue';
 </script>
 
@@ -186,7 +179,6 @@
         data() {
             return {
                 currently_playing_event_store: useCurrentlyPlayingEventStore(),
-                selected_event: null as EventsAndLikeDetailsTypes|null,
                 pretty_when_created: '',
 
                 event_room_url: '',
@@ -204,10 +196,6 @@
             propHasBorder: {
                 type: Boolean,
                 default: false
-            },
-            propFilteredGroupedEventsStoreEventRoomIndex: {
-                type: Number,
-                required: false
             },
             propLoadVEventCardsOnly: {
                 type: Boolean,
@@ -234,10 +222,21 @@
                 return this.propEventRoom.responder.length;
             },
         },
+        watch: {
+            propEventRoom(){
+
+                this.updateTitleURL();
+            },
+        },
         methods: {
             checkIsSelected(event_id:number) : boolean {
 
-                return this.selected_event !== null && this.selected_event.id === event_id;
+                const playing_event = this.currently_playing_event_store.getPlayingEvent;
+
+                return (
+                    playing_event !== null &&
+                    playing_event.id === event_id
+                );
             },
             handleNewSelectedEvent(event:EventsAndLikeDetailsTypes) : void {
 
@@ -245,23 +244,19 @@
                     playing_event: event
                 });
             },
-        },
-        mounted(){
+            updateTitleURL() : void {
 
-            //set up Axios appropriately
+                if(this.propShowTitle === true){
+
+                    this.event_room_url = window.location.origin + '/event/' + this.propEventRoom.event_room.id.toString();
+                }
+            },
+        },
+        beforeMount(){
 
             this.pretty_when_created = prettyTimePassed(new Date(this.propEventRoom.event_room.when_created));
 
-            //listen to store
-            this.currently_playing_event_store.$subscribe((mutation, state)=>{
-
-                this.selected_event = state.playing_event as EventsAndLikeDetailsTypes|null;
-            });
-
-            if(this.propShowTitle === true){
-
-                this.event_room_url = window.location.origin + '/event/' + this.propEventRoom.event_room.id.toString();
-            }
+            this.updateTitleURL();
         },
     });
 </script>

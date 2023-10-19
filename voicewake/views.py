@@ -39,7 +39,7 @@ from django.conf import settings
 
 def test_page(request):
 
-    return render(request, template_name='500.html')
+    return render(request, template_name='test.html')
 
 
 

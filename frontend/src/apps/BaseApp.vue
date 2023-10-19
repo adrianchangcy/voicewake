@@ -3,6 +3,10 @@
         :propUsername="username"
     />
 
+    <!--use v-show and teleport your components here when not ready to teleport to the right place yet-->
+    <div id="temporary-teleport-target" class="w-0 h-0">
+    </div>
+
     <!--all popups belong here so we can ensure that only one shows at a time-->
     <div class="w-full h-0 relative">
         <TransitionFade>
@@ -48,15 +52,11 @@
             <VNotiwind/>
         </div>
     </TransitionFade>
-
-    <!--tests-->
-    <TestingStuff/>
 </template>
 
 
 <script setup lang="ts">
     import VNotiwind from '@/components/medium/VNotiwind.vue';
-    import TestingStuff from '@/components/main/TestingStuff.vue';
     import NavBar from '@/components/main/NavBar.vue';
     import UserLogInSignUp from '@/components/main/UserLogInSignUp.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';

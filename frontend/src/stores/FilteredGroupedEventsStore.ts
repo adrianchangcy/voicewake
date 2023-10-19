@@ -1,21 +1,26 @@
 import { defineStore } from 'pinia';
 import EventTonesTypes from '@/types/EventTones.interface';
 import GroupedEventsTypes from '@/types/GroupedEvents.interface';
+import EventsAndLikeDetailsTypes from '@/types/EventsAndLikeDetails.interface';
 
 
-//this store is essentially a pseudo-cache to prevent repeated calls as user switches filters
-//need this whole thing abstracted as this store
-//due to complex indexing, and necessity to update nested values
+//need this because RecycleScroller's keyField is not flexible for nested values
+interface GroupedEventsAndScrollerIndexTypes extends GroupedEventsTypes{
+    event_room_id: number
+}
+
 interface NoEventToneEventRoomsType{
     [event_role_name_index:number] : {
         [filter_type_index: number] : {
-            event_rooms: GroupedEventsTypes[],
+            event_rooms: GroupedEventsAndScrollerIndexTypes[],
             current_page: number,
             stop_searching: boolean,
             when_stopped_searching: Date|null,
+            last_selected_event: EventsAndLikeDetailsTypes|null,
         }
     }
 }
+
 interface SelectedEventToneEventRoomsType{
     [event_tone_id: number]: NoEventToneEventRoomsType
 }
@@ -95,6 +100,31 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
                 }
             }
         },
+        getLastSelectedEvent: (state):EventsAndLikeDetailsTypes|null => {
+
+            if(state.selected_event_tone === null){
+
+                if(Object.keys(state.no_event_tone_event_rooms).length === 0){
+
+                    return null;
+
+                }else{
+
+                    return state.no_event_tone_event_rooms[state.current_event_role_name_index][state.current_filter_type_index].last_selected_event;
+                }
+
+            }else{
+
+                if(state.selected_event_tone.id in state.selected_event_tone_event_rooms === false){
+
+                    return null;
+
+                }else{
+
+                    return state.selected_event_tone_event_rooms[state.selected_event_tone.id][state.current_event_role_name_index][state.current_filter_type_index].last_selected_event;
+                }
+            }
+        },
     },
     actions: {
         updateSelectedEventTone(new_value:EventTonesTypes|null) : void {
@@ -118,6 +148,17 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
             }
 
             this.current_filter_type_index = new_value;
+        },
+        updateLastSelectedEvent(event:EventsAndLikeDetailsTypes) : void {
+
+            if(this.selected_event_tone === null){
+
+                this.no_event_tone_event_rooms[this.current_event_role_name_index][this.current_filter_type_index].last_selected_event = event;
+
+            }else{
+
+                this.selected_event_tone_event_rooms[this.selected_event_tone.id][this.current_event_role_name_index][this.current_filter_type_index].last_selected_event = event;
+            }
         },
         incrementPage(
             event_tone:EventTonesTypes|null,
@@ -235,6 +276,9 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
 
             this.incrementPage(event_tone, current_event_role_name_index, current_filter_type_index);
 
+            //insertion below adds 'event_room_id' for VirtualScroller's keyField indexing
+            //it accepts only literal string, i.e. nested values in objects won't work
+
             if(event_tone === null){
 
                 //handle event_rooms retrieved from query with no event_tone specified
@@ -242,7 +286,9 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
                 //add data
                 for(let x=0; x < data.length; x++){
 
-                    this.no_event_tone_event_rooms[current_event_role_name_index][current_filter_type_index]['event_rooms'].push(data[x]);
+                    (data[x] as GroupedEventsAndScrollerIndexTypes)['event_room_id'] = data[x].event_room.id;
+
+                    this.no_event_tone_event_rooms[current_event_role_name_index][current_filter_type_index]['event_rooms'].push(data[x] as GroupedEventsAndScrollerIndexTypes);
                 }
 
             }else{
@@ -252,7 +298,9 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
                 //add data
                 for(let x=0; x < data.length; x++){
 
-                    this.selected_event_tone_event_rooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['event_rooms'].push(data[x]);
+                    (data[x] as GroupedEventsAndScrollerIndexTypes)['event_room_id'] = data[x].event_room.id;
+
+                    this.selected_event_tone_event_rooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['event_rooms'].push(data[x] as GroupedEventsAndScrollerIndexTypes);
                 }
             }
         },
@@ -273,6 +321,7 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
                             'current_page': 1,
                             'stop_searching': false,
                             'when_stopped_searching': null,
+                            'last_selected_event': null,
                         };
                     }
                 }
@@ -292,6 +341,7 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
                             'current_page': 1,
                             'stop_searching': false,
                             'when_stopped_searching': null,
+                            'last_selected_event': null,
                         };
                     }
                 }

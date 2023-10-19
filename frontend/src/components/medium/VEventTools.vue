@@ -1,7 +1,7 @@
 <template>
     <div>
 
-        <div class="h-10 grid grid-cols-6 gap-1 text-xl text-theme-black">
+        <div class="h-10 grid grid-cols-6 gap-0.5 sm:gap-1 text-xl text-theme-black">
 
             <!--like/dislike-->
             <div class="h-full col-span-4 grid grid-cols-2 relative parent-trigger-shade-fake-border-when-hover">
@@ -211,14 +211,6 @@
                 type: Number,
                 required: true,
             },
-            propFilteredGroupedEventsStoreEventRoomIndex: {
-                type: Number,
-                default: null
-            },
-            propFilteredGroupedEventsStoreEventIndex: {
-                type: Number,
-                default: null
-            },
         },
         computed: {
             prettyLikeCount() : string {
@@ -269,6 +261,12 @@
                 }
             },
         },
+        watch: {
+            propEvent(){
+
+                this.syncLikesDislikes();
+            },
+        },
         methods: {
             toggleExtraOptionsMenu() : void {
 
@@ -304,22 +302,24 @@
                 //we use this to counter spam-clicking
                 this.submit_interval = window.setTimeout(()=>{
 
+                    const event_id = this.propEvent.id;
+                    const is_liked = this.is_liked;
+
                     let data = new FormData();
                 
-                    data.append('event_id', JSON.stringify(this.propEvent['id']));
-                    data.append('is_liked', JSON.stringify(this.is_liked));
+                    data.append('event_id', JSON.stringify(event_id));
+                    data.append('is_liked', JSON.stringify(is_liked));
 
-                    const is_liked_value = this.is_liked;
+                    this.current_likes_dislikes_store.updateLikeDislike(event_id, is_liked);
 
                     axios.post('http://127.0.0.1:8000/api/event-likes-dislikes', data)
                     .then(() => {
 
-                        this.current_likes_dislikes_store.addLikeDislike(this.propEvent.id, is_liked_value);
                     })
                     .catch((error:any) => {
 
                         //revert
-                        this.is_liked = this.propEvent['is_liked_by_user'];
+                        this.is_liked = this.current_likes_dislikes_store.revertLikeDislike(event_id);
 
                         notify({
                             title: "Error",
@@ -475,28 +475,29 @@
                     });
                 }
             },
+            async syncLikesDislikes() : Promise<void> {
+
+                //accurately deduct user's own is_liked from count
+                this.like_count = this.propEvent.like_count - (this.propEvent.is_liked_by_user === true ? 1 : 0);
+                this.dislike_count = this.propEvent.dislike_count - (this.propEvent.is_liked_by_user === false ? 1 : 0);
+
+                //check if store has latest is_liked, and is different from API results' is_liked
+                //we use the store because it is always updated, while API results are not updated when user changes is_liked
+                const likes_dislikes_store = this.current_likes_dislikes_store.getCurrentLikesDislikes;
+
+                if(this.propEvent.id in likes_dislikes_store)
+
+                    this.is_liked = likes_dislikes_store[this.propEvent.id].current_value;
+
+                else{
+
+                    this.is_liked = this.propEvent.is_liked_by_user;
+                }
+            }
         },
         beforeMount(){
 
-            //accurately deduct user's own is_liked from count
-            this.like_count = this.propEvent.like_count - (this.propEvent.is_liked_by_user === true ? 1 : 0);
-            this.dislike_count = this.propEvent.dislike_count - (this.propEvent.is_liked_by_user === false ? 1 : 0);
-
-            //check if store has latest is_liked, and is different from API results' is_liked
-            //we use the store because it is always updated, while API results are not updated when user changes is_liked
-            const likes_dislikes_store = this.current_likes_dislikes_store.getCurrentLikesDislikes;
-
-            if(
-                this.propEvent.id in likes_dislikes_store === true &&
-                this.propEvent.is_liked_by_user !== likes_dislikes_store[this.propEvent.id]
-            )
-
-                this.is_liked = likes_dislikes_store[this.propEvent.id];
-
-            else{
-
-                this.is_liked = this.propEvent.is_liked_by_user;
-            }
+            this.syncLikesDislikes();
         },
     });
 </script>

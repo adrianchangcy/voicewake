@@ -6,3 +6,5 @@ declare module '*.vue' {
 }
 
 declare module 'animejs';
+
+declare module 'vue-virtual-scroller';

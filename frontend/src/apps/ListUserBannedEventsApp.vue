@@ -24,7 +24,7 @@
         <!--VEventCard emits selection, which triggers :to, thus teleporting-->
         <!--presence of VEventCard depends on VEventRoomCard-->
         <div v-if="selected_event !== null">
-            <Teleport :to="playback_teleport_event_id">
+            <Teleport :to="getVPlaybackTeleportId">
                 <VPlayback
                     :propEvent="selected_event"
                     :propIsOpen="true"
@@ -61,13 +61,23 @@
                 events: [] as EventsTypes[],
                 currently_playing_event_store: useCurrentlyPlayingEventStore(),
                 selected_event: null as EventsTypes|null,
-                playback_teleport_event_id: '',
 
                 is_fetching: false,
                 can_observer_fetch: false,
                 has_no_events_left_to_fetch: false,
                 current_page: 1,
             };
+        },
+        computed: {
+            getVPlaybackTeleportId() : string {
+
+                if(this.selected_event === null){
+
+                    return '';
+                }
+
+                return '#playback-teleport-event-id-' + this.selected_event.id;
+            },
         },
         methods: {
             async getUserBannedEvents() : Promise<void> {
@@ -114,14 +124,6 @@
             handleNewSelectedEvent(event:EventsTypes|null) : void {
 
                 this.selected_event = event;
-
-                if(event === null){
-
-                    return;
-                }
-
-                //must be the same as in VEventCard
-                this.playback_teleport_event_id = '#playback-teleport-event-id-' + event.id.toString();
             },
             setUpObserver() : void {
 
