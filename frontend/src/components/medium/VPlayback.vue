@@ -1012,6 +1012,11 @@
 
                 const audio_element = (this.$refs.audio_element as HTMLAudioElement);
 
+                if(audio_element.src === ''){
+
+                    return;
+                }
+
                 if(audio_element.paused === true && this.playback_slider_value === 1 && audio_element.ended === false){
 
                     //on next play, anime starts from 0
@@ -1153,6 +1158,11 @@
             updatePlaybackSliderValue() : void {
 
                 const audio_element = (this.$refs.audio_element as HTMLAudioElement);
+
+                if(isNaN(audio_element.duration) === true){
+
+                    return;
+                }
 
                 this.playback_slider_value = audio_element.currentTime / audio_element.duration;
             },
@@ -1640,8 +1650,6 @@
             this.propIsRecording === false ? window.addEventListener('keydown', this.handleKeyboardEvent) : null;
             document.addEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
             audio_element.addEventListener('timeupdate', this.updateCurrentPlaybackTime);
-
-            console.log('hola, mounted');
         },
         beforeUnmount(){
 
