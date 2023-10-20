@@ -15,7 +15,7 @@ export const usePageRefreshTriggerStore = defineStore('page_refresh_trigger', {
         },
     },
     actions: {
-        resetRefreshContext() : void {
+        async resetRefreshContext() : Promise<void> {
 
             this.refresh_context = "";
         },

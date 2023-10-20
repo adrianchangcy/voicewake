@@ -32,7 +32,7 @@
 </template>
 
 <script setup lang="ts">
-    import VEventCard from '/src/components/small/VEventCard.vue';
+    import VEventCard from '/src/components/medium/VEventCard.vue';
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
 </script>
 

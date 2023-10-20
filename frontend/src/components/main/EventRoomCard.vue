@@ -154,7 +154,7 @@
 <script setup lang="ts">
     import VTitle from '../small/VTitle.vue';
     import VPlayback from '/src/components/medium/VPlayback.vue';
-    import VEventCard from '/src/components/small/VEventCard.vue';
+    import VEventCard from '/src/components/medium/VEventCard.vue';
     import VEventTools from '/src/components/medium/VEventTools.vue';
     import VUsernameURL from '/src/components/small/VUsernameURL.vue';
 </script>

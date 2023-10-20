@@ -14,7 +14,7 @@
                 <button
                     ref="like_button"
                     @click.stop="handleLiked()"
-                    class="col-span-1 h-full     shade-border-when-hover transition-colors      bg-theme-light       border border-r-0 border-theme-light-gray rounded-full rounded-r-none    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                    class="col-span-1 h-full     shade-border-when-hover active:bg-theme-lightest-gray transition-colors      bg-theme-light       border border-r-0 border-theme-light-gray rounded-full rounded-r-none    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                     type="button"
                 >
                     <span class="sr-only">like button</span>
@@ -50,7 +50,7 @@
                 <button
                     ref="dislike_button"
                     @click.stop="handleDisliked()"
-                    class="col-span-1 h-full     shade-border-when-hover transition-colors      bg-theme-light       border border-l-0 border-theme-light-gray rounded-full rounded-l-none     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                    class="col-span-1 h-full     shade-border-when-hover active:bg-theme-lightest-gray transition-colors      bg-theme-light       border border-l-0 border-theme-light-gray rounded-full rounded-l-none     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                     type="button"
                 >
                     <span class="sr-only">dislike button</span>
@@ -86,7 +86,7 @@
             <!--share-->
             <button
                 @click="copyEventURL()"
-                class="h-full col-span-1 relative flex flex-row items-center     shade-border-when-hover transition-colors      bg-theme-light       border border-theme-light-gray rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                class="h-full col-span-1 relative flex flex-row items-center     shade-border-when-hover active:bg-theme-lightest-gray transition-colors      bg-theme-light       border border-theme-light-gray rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                 type="button"
             >
                 <TransitionGroupFade :prop-has-absolute="true">
@@ -105,7 +105,7 @@
             <button
                 ref="open_close_extra_options_menu_button"
                 @click="toggleExtraOptionsMenu()"
-                class="h-full col-span-1 relative flex items-center     transition-colors shade-border-when-hover border-theme-light-gray      bg-theme-light       border rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                class="h-full col-span-1 relative flex items-center     transition-colors shade-border-when-hover active:bg-theme-lightest-gray border-theme-light-gray      bg-theme-light       border rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                 type="button"
             >
                 <i class="fas fa-ellipsis-vertical text-base mx-auto" aria-hidden="true"></i>
@@ -316,10 +316,10 @@
                     .then(() => {
 
                     })
-                    .catch((error:any) => {
+                    .catch(async (error:any) => {
 
                         //revert
-                        this.is_liked = this.current_likes_dislikes_store.revertLikeDislike(event_id);
+                        this.is_liked = await this.current_likes_dislikes_store.revertLikeDislike(event_id);
 
                         notify({
                             title: "Error",

@@ -19,15 +19,15 @@ export const useUnfinishedReplyStore = defineStore('unfinished_reply', {
         },
     },
     actions: {
-        updateStatus(status:StatusValues) : void {
+        async updateStatus(status:StatusValues) : Promise<void> {
 
             this.status = status;
         },
-        updateUnfinishedReply(event_room:GroupedEventsTypes) : void {
+        async updateUnfinishedReply(event_room:GroupedEventsTypes) : Promise<void> {
 
             this.event_room = event_room;
         },
-        removeUnfinishedReply() : void {
+        async removeUnfinishedReply() : Promise<void> {
 
             this.event_room = null;
         },

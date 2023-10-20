@@ -2,7 +2,7 @@
     <button
         :class="[
             (propIsEnabled ? '' : 'opacity-30'),
-            'block h-10 text-base font-medium      rounded-lg border-t-2 shadow-md    bg-theme-danger/90 border-theme-light-trim/40 shadow-theme-soft-danger/75     text-theme-light hover:shadow-sm hover:shadow-theme-soft-danger/75 hover:bg-theme-danger hover:border-theme-light-trim/30   transition      focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline'
+            'block h-10 text-base font-medium text-theme-light action-danger-hover      rounded-lg border-t-2    shadow-md active:shadow-sm     shadow-theme-soft-danger/75 active:shadow-theme-soft-danger/75        bg-[#f9482b] active:bg-theme-danger     border-[#fd8a8a] active:border-[#f66868]    transition      focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline'
         ]"
         type="button"
         :disabled="!propIsEnabled"

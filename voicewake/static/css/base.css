@@ -221,6 +221,15 @@ textarea {
     .nav-burger-when-hover:hover > .nav-burger-line{
         background-color: #a8a29e;
     }
+    .action-hover:hover{
+        filter: brightness(0.97);
+    }
+    .action-special-hover:hover{
+        background-color: #FFF2C0;
+    }
+    .action-danger-hover:hover{
+        filter: brightness(0.90);
+    }
 
     /*triggers from parent to all descendants that have classes above*/
     .parent-trigger-double-width-when-hover:hover .double-width-when-hover{

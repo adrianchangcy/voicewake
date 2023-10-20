@@ -369,9 +369,9 @@
             },
             async updateCurrentEventRoleNameIndex(index:number) : Promise<void> {
 
-                this.filtered_grouped_events_store.updateCurrentEventRoleNameIndex(index);
+                await this.filtered_grouped_events_store.updateCurrentEventRoleNameIndex(index);
 
-                await this.getEventRooms(
+                this.getEventRooms(
                     this.filtered_grouped_events_store.getSelectedEventTone,
                     index,
                     this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
@@ -380,9 +380,9 @@
             },
             async updateCurrentFilterTypeIndex(index:number) : Promise<void> {
 
-                this.filtered_grouped_events_store.updateCurrentFilterTypeIndex(index);
+                await this.filtered_grouped_events_store.updateCurrentFilterTypeIndex(index);
                 
-                await this.getEventRooms(
+                this.getEventRooms(
                     this.filtered_grouped_events_store.getSelectedEventTone,
                     this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
                     index,
@@ -391,9 +391,9 @@
             },
             async handleNewSelectedEventTone(event_tone:EventTonesTypes|null) : Promise<void> {
 
-                this.filtered_grouped_events_store.updateSelectedEventTone(event_tone);
+                await this.filtered_grouped_events_store.updateSelectedEventTone(event_tone);
 
-                await this.getEventRooms(
+                this.getEventRooms(
                     event_tone,
                     this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
                     this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
@@ -414,15 +414,15 @@
                 //will only do so when no data exists
                 if(is_first_page === true){
 
-                    this.filtered_grouped_events_store.initialiseDataOnFirstPageAfterFilterChange(event_tone);
+                    await this.filtered_grouped_events_store.initialiseDataOnFirstPageAfterFilterChange(event_tone);
                 }
 
-                const check_can_fetch = this.filtered_grouped_events_store.checkCanFetch(event_tone, current_event_role_name_index, current_filter_type_index);
+                const check_can_fetch = await this.filtered_grouped_events_store.checkCanFetch(event_tone, current_event_role_name_index, current_filter_type_index);
 
                 //check if we already have data
                 if(
                     is_first_page === true &&
-                    this.filtered_grouped_events_store.hasDataOnFirstPageAfterFilterChange(
+                    await this.filtered_grouped_events_store.hasDataOnFirstPageAfterFilterChange(
                         event_tone, current_event_role_name_index, current_filter_type_index,
                     ) === true
                 ){
@@ -446,9 +446,9 @@
                 console.log(full_url);
 
                 await axios.get(full_url)
-                .then((results: any) => {
+                .then(async (results: any) => {
 
-                    this.filtered_grouped_events_store.insertEventRooms(event_tone, current_event_role_name_index, current_filter_type_index, results.data['data']);
+                    await this.filtered_grouped_events_store.insertEventRooms(event_tone, current_event_role_name_index, current_filter_type_index, results.data['data']);
 
                 })
                 .catch(() => {
@@ -459,9 +459,9 @@
                         type: "error"
                     }, 3000);
 
-                }).finally(()=>{
+                }).finally(async ()=>{
 
-                    this.can_observer_fetch = this.filtered_grouped_events_store.checkCanFetch(event_tone, current_event_role_name_index, current_filter_type_index);
+                    this.can_observer_fetch = await this.filtered_grouped_events_store.checkCanFetch(event_tone, current_event_role_name_index, current_filter_type_index);
                     this.is_fetching = false;
                 });
             },

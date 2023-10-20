@@ -13,10 +13,6 @@ export const useCurrentlyPlayingEventStore = defineStore('currently_playing_even
         },
     },
     actions: {
-        updatePlayingEvent(playing_event:EventsTypes|EventsAndLikeDetailsTypes): void {
-
-            this.playing_event = playing_event;
-        }
     },
     persist: false,
     share: {
