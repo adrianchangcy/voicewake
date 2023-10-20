@@ -11,7 +11,7 @@
             propElementSize === 'xl' ? 'h-32 shadow-lg active:shadow-md' : '',
             propElementSize === 'l' ? 'h-24 shadow-lg active:shadow-md' : '',
             propElementSize === 'm' ? 'h-20 shadow-lg active:shadow-md' : '',
-            propElementSize === 's' ? 'h-10 shadow-md' : '',
+            propElementSize === 's' ? 'h-10 shadow-md active:shadow-sm' : '',
             propIsEnabled ? '' : 'opacity-30',
             propIsRound ? 'rounded-full' : 'rounded-lg',
             'block transition       text-theme-black border-t-2     action-hover    bg-theme-light active:bg-theme-lightest-gray border-theme-light-trim active:border-[#f6f7f8]      focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline'
