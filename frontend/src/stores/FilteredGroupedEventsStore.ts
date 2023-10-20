@@ -127,11 +127,11 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
         },
     },
     actions: {
-        updateSelectedEventTone(new_value:EventTonesTypes|null) : void {
+        async updateSelectedEventTone(new_value:EventTonesTypes|null) : Promise<void> {
 
             this.selected_event_tone = new_value;
         },
-        updateCurrentEventRoleNameIndex(new_value:number) : void {
+        async updateCurrentEventRoleNameIndex(new_value:number) : Promise<void> {
 
             if(new_value >= this.event_role_names.length){
 
@@ -140,7 +140,7 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
 
             this.current_event_role_name_index = new_value;
         },
-        updateCurrentFilterTypeIndex(new_value:number) : void {
+        async updateCurrentFilterTypeIndex(new_value:number) : Promise<void> {
 
             if(new_value >= this.filter_types.length){
 
@@ -149,7 +149,7 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
 
             this.current_filter_type_index = new_value;
         },
-        updateLastSelectedEvent(event:EventsAndLikeDetailsTypes) : void {
+        async updateLastSelectedEvent(event:EventsAndLikeDetailsTypes) : Promise<void> {
 
             if(this.selected_event_tone === null){
 
@@ -160,11 +160,11 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
                 this.selected_event_tone_event_rooms[this.selected_event_tone.id][this.current_event_role_name_index][this.current_filter_type_index].last_selected_event = event;
             }
         },
-        incrementPage(
+        async incrementPage(
             event_tone:EventTonesTypes|null,
             current_event_role_name_index:number,
             current_filter_type_index:number,
-        ) : void {
+        ) : Promise<void> {
 
             //a bit worried about race condition on API request, where we get duplicate same-page data
             //but perhaps this worry is unjustified
@@ -179,11 +179,11 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
                 this.selected_event_tone_event_rooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['current_page'] += 1;
             }
         },
-        checkCanFetch(
+        async checkCanFetch(
             event_tone:EventTonesTypes|null,
             current_event_role_name_index:number,
             current_filter_type_index:number,
-        ) : boolean {
+        ) : Promise<boolean> {
 
             //if never stopped searching, return true
             if(
@@ -245,12 +245,12 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
 
             return false;
         },
-        insertEventRooms(
+        async insertEventRooms(
             event_tone:EventTonesTypes|null,
             current_event_role_name_index:number,
             current_filter_type_index:number,
             data:GroupedEventsTypes[],
-        ) : void {
+        ) : Promise<void> {
 
             //need to use params to prevent inaccuracy from race condition
             //i.e. data from filter choices previously but new choices were selected
@@ -274,7 +274,7 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
                 return;
             }
 
-            this.incrementPage(event_tone, current_event_role_name_index, current_filter_type_index);
+            await this.incrementPage(event_tone, current_event_role_name_index, current_filter_type_index);
 
             //insertion below adds 'event_room_id' for VirtualScroller's keyField indexing
             //it accepts only literal string, i.e. nested values in objects won't work
@@ -304,9 +304,9 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
                 }
             }
         },
-        initialiseDataOnFirstPageAfterFilterChange(
+        async initialiseDataOnFirstPageAfterFilterChange(
             event_tone:EventTonesTypes|null,
-        ) : void {
+        ) : Promise<void> {
 
             if(event_tone === null && Object.keys(this.no_event_tone_event_rooms).length === 0){
 
@@ -347,11 +347,11 @@ export const useFilteredGroupedEventsStore = defineStore('filtered_grouped_event
                 }
             }
         },
-        hasDataOnFirstPageAfterFilterChange(
+        async hasDataOnFirstPageAfterFilterChange(
             event_tone:EventTonesTypes|null,
             current_event_role_name_index:number,
             current_filter_type_index:number,
-        ) : boolean {
+        ) : Promise<boolean> {
 
             //if is first page, check if we already have data
             //simply return, as our computed getEventRoomsForBrowsing handles retrieval for us

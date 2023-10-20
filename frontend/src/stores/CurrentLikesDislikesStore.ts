@@ -23,7 +23,7 @@ export const useCurrentLikesDislikesStore = defineStore('current_likes_dislikes_
         },
     },
     actions: {
-        updateLikeDislike(event_id:number, is_liked:boolean|null) : void {
+        async updateLikeDislike(event_id:number, is_liked:boolean|null) : Promise<void> {
 
             let old_is_liked = null;
 
@@ -40,7 +40,7 @@ export const useCurrentLikesDislikesStore = defineStore('current_likes_dislikes_
                 old_value: old_is_liked
             };
         },
-        revertLikeDislike(event_id:number) : boolean|null {
+        async revertLikeDislike(event_id:number) : Promise<boolean|null> {
 
             if(event_id in this.current_likes_dislikes === false){
 

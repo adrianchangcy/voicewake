@@ -7,14 +7,14 @@
             propFontSize === 'l' ? 'text-2xl font-medium' : '',
             propFontSize === 'm' ? 'text-xl font-medium' : '',
             propFontSize === 's' ? 'text-base font-medium' : '',
-            propElementSize === '2xl' ? 'h-40 shadow-lg hover:shadow-md' : '',
-            propElementSize === 'xl' ? 'h-32 shadow-lg hover:shadow-md' : '',
-            propElementSize === 'l' ? 'h-24 shadow-lg hover:shadow-md' : '',
-            propElementSize === 'm' ? 'h-20 shadow-lg hover:shadow-md' : '',
-            propElementSize === 's' ? 'h-10 shadow-md hover:shadow-sm' : '',
+            propElementSize === '2xl' ? 'h-40 shadow-lg active:shadow-md' : '',
+            propElementSize === 'xl' ? 'h-32 shadow-lg active:shadow-md' : '',
+            propElementSize === 'l' ? 'h-24 shadow-lg active:shadow-md' : '',
+            propElementSize === 'm' ? 'h-20 shadow-lg active:shadow-md' : '',
+            propElementSize === 's' ? 'h-10 shadow-md' : '',
             propIsEnabled ? '' : 'opacity-30',
             propIsRound ? 'rounded-full' : 'rounded-lg',
-            'block transition       text-theme-black border-t-2    bg-theme-light/60 hover:bg-theme-light/80      border-theme-light-trim hover:border-theme-light-trim/40      focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline'
+            'block transition       text-theme-black border-t-2     action-hover    bg-theme-light active:bg-theme-lightest-gray border-theme-light-trim active:border-[#f6f7f8]      focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline'
         ]"
         :disabled="!propIsEnabled"
     >

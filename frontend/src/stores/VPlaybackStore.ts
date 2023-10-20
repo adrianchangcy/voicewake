@@ -26,11 +26,11 @@ export const useVPlaybackStore = defineStore('vplayback', {
         },
     },
     actions: {
-        updateLastInteractedUUID(uuid:string) : void {
+        async updateLastInteractedUUID(uuid:string) : Promise<void> {
 
             this.last_interacted_uuid = uuid;
         },
-        addEventPlaybackLastStopped(event_id:number, stopped_at_s:number) : void {
+        async addEventPlaybackLastStopped(event_id:number, stopped_at_s:number) : Promise<void> {
 
             const target_index = this.event_id.indexOf(event_id);
 
@@ -64,7 +64,7 @@ export const useVPlaybackStore = defineStore('vplayback', {
                 this.stopped_at_s.push(stopped_at_s);
             }
         },
-        getEventPlaybackLastStoppedS(event_id:number) : number|null {
+        async getEventPlaybackLastStoppedS(event_id:number) : Promise<number|null> {
 
             const target_index = this.event_id.indexOf(event_id);
 

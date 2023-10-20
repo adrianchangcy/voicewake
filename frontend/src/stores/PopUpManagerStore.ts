@@ -51,11 +51,11 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
         },
     },
     actions: {
-        setIsLoggedIn(new_value:boolean) : void {
+        async setIsLoggedIn(new_value:boolean) : Promise<void> {
             
             this.is_logged_in = new_value;
         },
-        forceCloseAllPopUps(event:KeyboardEvent|null=null) : void {
+        async forceCloseAllPopUps(event:KeyboardEvent|null=null) : Promise<void> {
 
             if(event !== null && event.key !== 'Escape'){
 
@@ -67,7 +67,7 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
                 this.is_open[key] = false;
             }
         },
-        forceCloseOtherPopUps(current_key:string) : void {
+        async forceCloseOtherPopUps(current_key:string) : Promise<void> {
 
             for(const key in this.is_open){
 
@@ -77,7 +77,7 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
                 }
             }
         },
-        toggleIsUserLogInSignUpOpen(new_value:boolean|null=null, section:"log-in-section"|"sign-up-section"|null=null) : void {
+        async toggleIsUserLogInSignUpOpen(new_value:boolean|null=null, section:"log-in-section"|"sign-up-section"|null=null) : Promise<void> {
 
             const new_store_value = new_value === null ? !this.is_open.is_user_log_in_sign_up_open : new_value;
 
@@ -93,7 +93,7 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
                 this.requested_section = section;
             }
         },
-        toggleIsLoginRequiredPromptOpen(new_value:boolean|null=null) : void {
+        async toggleIsLoginRequiredPromptOpen(new_value:boolean|null=null) : Promise<void> {
 
             const new_store_value = new_value === null ? !this.is_open.is_login_required_prompt_open : new_value;
 
@@ -104,7 +104,7 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
 
             this.is_open.is_login_required_prompt_open = new_store_value;
         },
-        toggleIsNavMenuOpen(new_value:boolean|null=null) : void {
+        async toggleIsNavMenuOpen(new_value:boolean|null=null) : Promise<void> {
 
             const new_store_value = new_value === null ? !this.is_open.is_nav_menu_open : new_value;
 

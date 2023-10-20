@@ -9,51 +9,57 @@
             ref="card_button"
             class="w-full h-full"
         >
-            <button
-                class="w-full h-20 grid grid-cols-4     text-4xl bg-theme-light/60 hover:bg-theme-light/80 hover:border-theme-light-trim/40 hover:shadow-sm      border-t-2 border-theme-light-trim rounded-lg shadow-md transition     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline"
+            <VAction
+                prop-element="button"
+                prop-element-size="m"
+                prop-font-size="m"
+                :prop-is-icon-only="true"
                 type="button"
+                class="w-full shadow-md active:shadow-sm"
                 @click.stop="handleIsSelected()"
             >
-                <span class="sr-only">play recording</span>
+                <div class="w-full grid grid-cols-4 text-4xl">
+                    <span class="sr-only">play recording</span>
 
-                <div class="col-span-1 h-full relative">
-                    <!--total duration, width is to match emoji-->
-                    <span
-                        class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto text-sm"
-                    >
-                        {{ prettyFileDuration }}
-                    </span>
-                </div>
-
-                <!--ripples-->
-                <!--h-8 because VPlayback at half is h-4-->
-                <div class="col-span-2 h-8 top-0 bottom-0 my-auto relative">
-                    <div
-                        ref="volume_ripples_container"
-                        class="w-full h-full absolute flex flex-row justify-evenly"
-                    >
-                        <div
-                            v-for="volume_ripple in propEvent.audio_volume_peaks.length" :key="volume_ripple"
-                            ref="volume_ripple"
-                            class="h-full scale-y-0 origin-center"
+                    <div class="col-span-1 h-full relative">
+                        <!--total duration, width is to match emoji-->
+                        <span
+                            class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto text-sm"
                         >
-                            <div class="left-0 right-0 mx-auto w-0.5 h-full bg-theme-black">
+                            {{ prettyFileDuration }}
+                        </span>
+                    </div>
+
+                    <!--ripples-->
+                    <!--h-8 because VPlayback at half is h-4-->
+                    <div class="col-span-2 h-8 top-0 bottom-0 my-auto relative">
+                        <div
+                            ref="volume_ripples_container"
+                            class="w-full h-full absolute flex flex-row justify-evenly"
+                        >
+                            <div
+                                v-for="volume_ripple in propEvent.audio_volume_peaks.length" :key="volume_ripple"
+                                ref="volume_ripple"
+                                class="h-full scale-y-0 origin-center"
+                            >
+                                <div class="left-0 right-0 mx-auto w-0.5 h-full bg-theme-black">
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="col-span-1 h-full relative">
-                    <!--label-->
-                    <span
-                        class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0.5 m-auto text-2xl has-emoji pb-0.5"
-                        aria-hidden="true"
-                    >
-                        {{ propEvent.event_tone.event_tone_symbol }}
-                    </span>
-                    <span class="sr-only">{{ propEvent.event_tone.event_tone_name }}</span>
+                    <div class="col-span-1 h-full relative">
+                        <!--label-->
+                        <span
+                            class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0.5 m-auto text-2xl has-emoji pb-0.5"
+                            aria-hidden="true"
+                        >
+                            {{ propEvent.event_tone.event_tone_symbol }}
+                        </span>
+                        <span class="sr-only">{{ propEvent.event_tone.event_tone_name }}</span>
+                    </div>
                 </div>
-            </button>
+            </VAction>
         </div>
 
         <!--for playback teleport-->
@@ -69,6 +75,7 @@
 
 
 <script setup lang="ts">
+    import VAction from '../small/VAction.vue';
 </script>
 
 

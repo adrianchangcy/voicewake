@@ -503,7 +503,7 @@
 
                 this.instance_has_focus = (this.$refs.playback_main as HTMLElement).contains(event.target as Node);
             },
-            setInitialPlaybackSliderValue() : void {
+            async setInitialPlaybackSliderValue() : Promise<void> {
                 
                 //initial
                 this.playback_slider_value = 0;
@@ -513,7 +513,7 @@
                     return;
                 }
 
-                const last_stopped_s = this.vplayback_store.getEventPlaybackLastStoppedS(this.propEvent.id);
+                const last_stopped_s = await this.vplayback_store.getEventPlaybackLastStoppedS(this.propEvent.id);
 
                 //not stored
                 if(last_stopped_s === null){
@@ -1483,7 +1483,7 @@
 
                     await this.adjustPlaybackSliderDimension();
                     await this.createPlaybackSliderAnime();
-                    this.setInitialPlaybackSliderValue();
+                    await this.setInitialPlaybackSliderValue();
                     this.seekPlayback();
                     this.endPlaybackTruly();
                     this.handleInitialAutoplay();

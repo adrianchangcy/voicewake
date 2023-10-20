@@ -171,7 +171,7 @@
 
                 return this.selected_event_tone_index === event_tone_index;
             },
-            handleEventToneSelected(event_tone_index:number|null) : void {
+            async handleEventToneSelected(event_tone_index:number|null) : Promise<void> {
 
                 if(this.propCloseWhenSelected === true){
 
