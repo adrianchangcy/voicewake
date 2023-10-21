@@ -72,7 +72,7 @@
                                     <button
                                         @click="[(notification as ExtendedNotificationType).button_1.callback(), close(notification.id)]"
                                         type="button"
-                                        class="w-full h-10 flex flex-row items-center     shade-border-when-hover transition-colors       border border-theme-light-gray rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                                        class="w-full h-10 flex flex-row items-center     shade-border-when-hover active:bg-theme-lightest-gray transition-colors       border border-theme-light-gray rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                                     >
                                         <span class="px-4 pb-0.5 mx-auto text-sm font-medium">{{ (notification as ExtendedNotificationType).button_1.text }}</span>
                                     </button>

@@ -78,6 +78,8 @@
                             :prop-close-when-selected="false"
                             :prop-has-deselect-option="true"
                             :prop-must-track-selected-option="true"
+                            :prop-initial-event-tone="filtered_grouped_events_store.getSelectedEventTone"
+                            :prop-filtered-grouped-events-store="filtered_grouped_events_store"
                             @eventToneSelected="handleNewSelectedEventTone($event)"
                             class="border rounded-l-lg border-theme-light-gray"
                         />
@@ -124,11 +126,13 @@
             </div>
         </div>
 
-        <!--item-size and min-item-size seem to be gap in px, and gap-4 is 16px-->
+        <!--item-size seems to work like gap size in px, not sure, but it's not needed for DynamicScroller-->
+        <!--page-mode is needed here, else it behaves like flex, and the components will never be reused-->
         <DynamicScroller
             v-show="filtered_grouped_events_store.getEventRoomsForBrowsing.length > 0"
             :items="filtered_grouped_events_store.getEventRoomsForBrowsing"
-            :min-item-size="16"
+            :min-item-size="50"
+            :page-mode="true"
             key-field="event_room_id"
             class="scroller"
         >
@@ -265,7 +269,13 @@
     import EventTonesTypes from '@/types/EventTones.interface';
     import { useCurrentlyPlayingEventStore } from '@/stores/CurrentlyPlayingEventStore';
     import { useFilteredGroupedEventsStore } from '@/stores/FilteredGroupedEventsStore';
+    import { useCurrentLikesDislikesStore } from '@/stores/CurrentLikesDislikesStore';
     const axios = require('axios');
+
+    //TODO:
+        //#1: clear FilteredGroupedEventsStore on least recent
+            //follow through with CurrentLikesDislikesStore and CurrentlyPlayingEventStore
+        //#2: when scrolled to components that only exist after initial render, page resume is inaccurate
 
 
     export default defineComponent({
@@ -273,14 +283,15 @@
         data(){
             return {
                 currently_playing_event_store: useCurrentlyPlayingEventStore(),
-                filtered_grouped_events_store: useFilteredGroupedEventsStore(),
+                filtered_grouped_events_store: useFilteredGroupedEventsStore(this.propIsUserProfilePage),
+                current_likes_dislikes_store: useCurrentLikesDislikesStore(this.propIsUserProfilePage),
 
                 user_profile_username: "",  //only used at profile page
 
                 is_sort_menu_open: false,
 
                 is_fetching: false,
-                can_observer_fetch: false,
+                is_observer_on_cooldown: false,
 
                 selected_event: null as EventsAndLikeDetailsTypes|null,
                 filter_change_trigger: false,  //switch between true/false to trigger pause
@@ -315,7 +326,7 @@
                 return (
                     this.is_fetching === false &&
                     this.filtered_grouped_events_store.getEventRoomsForBrowsing.length > 0 &&
-                    this.can_observer_fetch === false
+                    this.is_observer_on_cooldown === true
                 );
             },
             getVPlaybackTeleportId() : string {
@@ -338,7 +349,7 @@
             },
         },
         methods: {
-            switchTriggerBeforeFilterChange() : void {
+            switchTriggerOnFilterChange() : void {
 
                 this.filter_change_trigger = !this.filter_change_trigger;
             },
@@ -408,7 +419,6 @@
             ): Promise<void> {
 
                 this.is_fetching = true;
-                this.can_observer_fetch = false;
 
                 //initialise to have all necessary keys available
                 //will only do so when no data exists
@@ -416,8 +426,6 @@
 
                     await this.filtered_grouped_events_store.initialiseDataOnFirstPageAfterFilterChange(event_tone);
                 }
-
-                const check_can_fetch = await this.filtered_grouped_events_store.checkCanFetch(event_tone, current_event_role_name_index, current_filter_type_index);
 
                 //check if we already have data
                 if(
@@ -429,9 +437,10 @@
 
                     //do nothing else, as template uses getter, which auto-retrieves for us
                     this.is_fetching = false;
-                    this.can_observer_fetch = check_can_fetch;
                     return;
                 }
+
+                const check_can_fetch = await this.filtered_grouped_events_store.checkCanFetch(event_tone, current_event_role_name_index, current_filter_type_index);
 
                 if(check_can_fetch === false){
 
@@ -448,10 +457,14 @@
                 await axios.get(full_url)
                 .then(async (results: any) => {
 
+                    if(results.data['data'].length === 0){
+
+                        this.is_observer_on_cooldown = true;
+                    }
+
                     await this.filtered_grouped_events_store.insertEventRooms(event_tone, current_event_role_name_index, current_filter_type_index, results.data['data']);
 
-                })
-                .catch(() => {
+                }).catch(() => {
 
                     notify({
                         title: "Error",
@@ -459,9 +472,8 @@
                         type: "error"
                     }, 3000);
 
-                }).finally(async ()=>{
+                }).finally(()=>{
 
-                    this.can_observer_fetch = await this.filtered_grouped_events_store.checkCanFetch(event_tone, current_event_role_name_index, current_filter_type_index);
                     this.is_fetching = false;
                 });
             },
@@ -546,16 +558,32 @@
                 //set up observer for infinite scroll
                 const observer_target = document.querySelector('#load-more-event-rooms-observer-target');
 
-                const observer = new IntersectionObserver(()=>{
+                const observer = new IntersectionObserver(async ()=>{
 
                     if(
-                        this.can_observer_fetch === false ||
-                        this.can_pause_scrolling === true
+                        this.is_fetching === true ||
+                        this.can_pause_scrolling === true ||
+                        this.filtered_grouped_events_store.getEventRoomsForBrowsing.length === 0
                     ){
 
                         return;
                     }
 
+                    const can_fetch = await this.filtered_grouped_events_store.checkCanFetch(
+                        this.filtered_grouped_events_store.getSelectedEventTone,
+                        this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
+                        this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
+                    );
+
+                    if(can_fetch === false){
+
+                        return;
+                    }
+
+                    this.is_observer_on_cooldown = false;
+
+                    //on filter change, we already run getEventRooms()
+                    //upon reaching here, that first page fetch is already done
                     this.getEventRooms(
                         this.filtered_grouped_events_store.getSelectedEventTone,
                         this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
@@ -571,6 +599,17 @@
                     observer.observe(observer_target);
                 }
             },
+            async resetStores() : Promise<void> {
+
+                if(this.propIsUserProfilePage === true || localStorage.getItem('reset_home_page_event_stores') === null){
+
+                    return;
+                }
+
+                await this.filtered_grouped_events_store.partialResetStore();
+                this.current_likes_dislikes_store.$reset();
+                localStorage.removeItem('reset_home_page_event_stores');
+            },
         },
         beforeMount(){
 
@@ -581,6 +620,11 @@
 
                 this.user_profile_username = (container.getAttribute('data-user-profile-username') as string);
             }
+
+            //reset store if scheduled by home button click at NavBar
+            (async ()=>{
+                await this.resetStores();
+            })();
 
             //listen from EventRoomCard
             this.currently_playing_event_store.$subscribe((mutation, state)=>{
@@ -623,7 +667,7 @@
 
                         //last selected event to be currently selected event
 
-                        this.switchTriggerBeforeFilterChange();
+                        this.switchTriggerOnFilterChange();
 
                         const last_selected_event = this.filtered_grouped_events_store.getLastSelectedEvent;
                         this.handleNewSelectedEvent(last_selected_event, false);
@@ -635,12 +679,15 @@
                 }
             });
 
-            this.getEventRooms(
-                this.filtered_grouped_events_store.getSelectedEventTone,
-                this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
-                this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
-                true,
-            );
+            if(this.filtered_grouped_events_store.getEventRoomsForBrowsing.length === 0){
+
+                this.getEventRooms(
+                    this.filtered_grouped_events_store.getSelectedEventTone,
+                    this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
+                    this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
+                    true,
+                );
+            }
         },
         mounted(){
 

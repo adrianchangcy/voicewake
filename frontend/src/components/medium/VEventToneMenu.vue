@@ -91,15 +91,16 @@
 
 <script lang="ts">
     //this depends on main.js clickOutside custom directive
-    import { defineComponent } from 'vue';
+    import { PropType, defineComponent } from 'vue';
     import EventTonesTypes from '@/types/EventTones.interface';
     import { notify } from 'notiwind';
     import axios from 'axios';
+    import { useFilteredGroupedEventsStore } from '@/stores/FilteredGroupedEventsStore';
 
     export default defineComponent({
         data(){
             return{
-                event_tones: null as EventTonesTypes[] | null,
+                event_tones: [] as EventTonesTypes[],
                 selected_event_tone_index: null as number|null,
                 is_open: false,     //need this for "close after select"
                 is_loading: false,
@@ -129,6 +130,14 @@
                 type: Boolean,
                 default: false
             },
+            propInitialEventTone: {
+                type: Object as PropType<EventTonesTypes|null>,
+                default: null
+            },
+            propFilteredGroupedEventsStore: {
+                type: Object as PropType<ReturnType<typeof useFilteredGroupedEventsStore>>,
+                default: null
+            }
         },
         watch: {
             propIsOpen(new_value){
@@ -137,7 +146,7 @@
             },
         },
         emits: [
-            'eventToneSelected'
+            'eventToneSelected',
         ],
         methods: {
             async getEventTonesData(){
@@ -197,7 +206,30 @@
 
             this.is_open = this.propIsOpen;
 
-            this.getEventTonesData();
+            (async ()=>{
+
+                await this.getEventTonesData();
+
+                //find index if we have preselected event_tone
+                if(this.propInitialEventTone !== null){
+
+                    const event_tone_index = this.event_tones.findIndex((element:EventTonesTypes)=>{
+
+                        return element.id === this.propInitialEventTone!.id;
+                    });
+
+                    if(event_tone_index !== -1){
+
+                        this.selected_event_tone_index = event_tone_index;
+
+                    }else if(this.propFilteredGroupedEventsStore !== null && event_tone_index === -1){
+
+                        //remove data from store if event_tone no longer exists
+                        this.propFilteredGroupedEventsStore.destroySelectedEventToneData(this.propInitialEventTone);
+                        this.propFilteredGroupedEventsStore.updateSelectedEventTone(null);
+                    }
+                }
+            })();
         },
     });
 </script>
