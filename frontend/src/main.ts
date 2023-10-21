@@ -29,7 +29,7 @@ pinia.use(piniaPluginPersistedState);
 pinia.use(
     PiniaSharedState({
         // Enables the plugin for all stores. Defaults to true.
-        enable: true,
+        enable: false,
         // If set to true this tab tries to immediately recover the shared state from another tab. Defaults to true.
         initialize: false,
         // Enforce a type. One of native, idb, localstorage or node. Defaults to native.

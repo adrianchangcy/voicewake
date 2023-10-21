@@ -168,6 +168,11 @@
             },
             async updateAudioVolumePeaks(new_value:EventsAndLikeDetailsTypes) : Promise<void> {
 
+                if(this.$refs.volume_ripple === undefined){
+
+                    return;
+                }
+
                 for(let x = 0; x < new_value.audio_volume_peaks.length; x++){
 
                     const target_ripple = (this.$refs.volume_ripple as HTMLElement[])[x];

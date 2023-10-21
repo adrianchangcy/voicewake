@@ -117,12 +117,4 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
             this.is_open.is_nav_menu_open = new_store_value;
         },
     },
-    persist: false,
-    share: {
-        //array of fields that the plugin will ignore
-        omit: [],
-        //override global config for this store
-        enable: false,
-        initialize: false,
-    },
 });

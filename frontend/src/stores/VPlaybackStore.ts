@@ -84,13 +84,4 @@ export const useVPlaybackStore = defineStore('vplayback', {
         ],
         debug: true
     },
-
-    //no need to share store across tabs, hence false values below
-    share: {
-        //array of fields that the plugin will ignore
-        omit: [],
-        //override global config for this store
-        enable: false,
-        initialize: false,
-    },
 });

@@ -14,12 +14,5 @@ export const useCurrentlyPlayingEventStore = defineStore('currently_playing_even
     },
     actions: {
     },
-    persist: false,
-    share: {
-        //array of fields that the plugin will ignore
-        omit: [],
-        //override global config for this store
-        enable: false,
-        initialize: false,
-    },
+    persist: false
 });

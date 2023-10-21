@@ -25,6 +25,6 @@ interface EventsAndLikeDetailsTypes{
     dislike_count: number,
     is_banned: boolean,
     is_liked_by_user: boolean|null
-};
+}
 
 export default EventsAndLikeDetailsTypes;

@@ -23,6 +23,6 @@ interface EventsTypes{
     audio_duration_s: number,
     audio_volume_peaks: number[],
     is_banned: boolean,
-};
+}
 
 export default EventsTypes;

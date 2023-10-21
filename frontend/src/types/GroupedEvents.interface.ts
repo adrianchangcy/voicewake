@@ -18,6 +18,6 @@ interface GroupedEventsTypes{
     },
     originator: EventsAndLikeDetailsTypes|null,
     responder: EventsAndLikeDetailsTypes[]|[]
-};
+}
 
 export default GroupedEventsTypes;

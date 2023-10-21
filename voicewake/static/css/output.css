@@ -990,6 +990,10 @@ video {
   max-height: 90%;
 }
 
+.max-h-screen {
+  max-height: 100vh;
+}
+
 .min-h-\[calc\(100vh-4\.5rem\)\] {
   min-height: calc(100vh - 4.5rem);
 }
