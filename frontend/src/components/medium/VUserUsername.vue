@@ -75,6 +75,8 @@
             return {
                 page_refresh_trigger_store: usePageRefreshTriggerStore(),
 
+                controller: new AbortController(),
+
                 username_string:"",
                 username_validation_status_text: "",
                 username_validation_has_error: false,
@@ -117,7 +119,7 @@
                 //is always >= 0, but it will never restart from 0, so we must restart it ourselves
                 return new RegExp(default_regex, "g");
             },
-            checkRegExpForDetailedErrorMessage(new_value:string) : string {
+            async checkRegExpForDetailedErrorMessage(new_value:string) : Promise<string> {
 
                 //directly related to newRegExp()
                 //because these are not mentioned to keep the tip simple, we only share these as errors when encountered
@@ -163,7 +165,7 @@
                     return "Cannot use '" + bad_char + "' in usernames.";
                 }
             },
-            resetUsernameRelatedValues() : void {
+            async resetUsernameRelatedValues() : Promise<void> {
 
                 this.username_string = "";
                 this.username_validation_status_text = "";
@@ -172,10 +174,12 @@
 
                 this.username_check_timeout !== null ? window.clearTimeout(this.username_check_timeout) : null;
                 this.username_check_timeout = null;
+                this.controller.abort();
+                this.controller = new AbortController();
             },
-            validateUsername(new_value:string) : void {
+            async validateUsername(new_value:string) : Promise<void> {
 
-                this.resetUsernameRelatedValues();
+                await this.resetUsernameRelatedValues();
 
                 //do nothing if there is no text
                 if(new_value.length === 0){
@@ -187,7 +191,7 @@
                 this.is_username_check_loading = true;
 
                 //has text
-                this.username_check_timeout = window.setTimeout(() => {
+                this.username_check_timeout = window.setTimeout(async () => {
 
                     //must not have any whitespace
                     //do not make this too complicated, it is easier to just send email and see if user receives it
@@ -198,7 +202,7 @@
                         this.username_validation_has_error = false;
                         this.username_validation_status_text = "";
 
-                        this.checkUsernameExists();
+                        await this.checkUsernameExists();
 
                     }else if(bad_usernames.includes(new_value) === true){
                     
@@ -222,7 +226,7 @@
                         this.username_string = "";
                         this.username_is_ok = false;
                         this.username_validation_has_error = true;
-                        this.username_validation_status_text = this.checkRegExpForDetailedErrorMessage(new_value);
+                        this.username_validation_status_text = await this.checkRegExpForDetailedErrorMessage(new_value);
                         this.is_username_check_loading = false;
                     }
 
@@ -239,7 +243,11 @@
                 this.is_username_check_loading = true;
                 this.username_validation_has_error = false;
 
-                await axios.get(window.location.origin + "/api/users/username/get/" + this.username_string)
+                const url = window.location.origin + "/api/users/username/get/" + this.username_string;
+
+                await axios.get(url, {
+                    signal: this.controller.signal
+                })
                 .then((response:any) => {
 
                     if(response.data['data']['username'] !== this.username_string){
@@ -265,17 +273,26 @@
                 })
                 .catch((error: any) => {
 
+                    if(axios.isCancel(error)){
+
+                        //currently only cancelled on input change, so not an actual error, i.e. do nothing
+                        return;
+                    }
+
                     this.username_is_ok = false;
                     this.username_validation_has_error = true;
                     this.username_validation_status_text = "An error had occurred. Try again later.";
 
                     this.is_username_check_loading = false;
 
-                    notify({
-                        title: "Username check failed",
-                        text: error.response.data['message'],
-                        type: "error"
-                    }, 3000);
+                    if('response' in error){
+
+                        notify({
+                            title: "Username check failed",
+                            text: error.response.data['message'],
+                            type: "error"
+                        }, 3000);
+                    }
                 });
             },
             async submitUsernameChange() : Promise<void> {

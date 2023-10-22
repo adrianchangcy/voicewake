@@ -289,3 +289,22 @@ export function getRandomNumber(min_value:number, max_value:number) : number {
     return Math.random() * (max_value - min_value) + min_value;
 }
 
+
+export function isPageAccessedByReload() : boolean {
+
+    const entries = performance.getEntriesByType("navigation");
+
+    let is_reload = false;
+
+    entries.forEach((entry) => {
+        if((entry as PerformanceNavigationTiming).type === "reload"){
+            is_reload = true;
+        }
+    });
+
+    return is_reload;
+}
+
+
+
+
