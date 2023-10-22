@@ -9,86 +9,96 @@
         />
 
         <!--sorting options-->
-        <div class="flex flex-col pb-8">
+        <div
+            ref="sorting_options_container"
+            :class="[
+                propIsUserProfilePage ? 'pb-8' : 'pb-10',
+                'flex flex-col'
+            ]"
+        >
 
-            <!--options-->
-            <div ref="open_close_sort_menu_button">
+            <!--filter-->
+            <div class="h-10">
+                <Teleport to="#extra-fixed-space" :disabled="!can_filter_menu_teleport">
+                    <div ref="open_close_filter_menu_button">
 
-                <!--open/close options-->
-                <VAction
-                    @click="toggleSortMenu()"
-                    prop-element="button"
-                    type="button"
-                    prop-element-size="s"
-                    prop-font-size="s"
-                    :prop-is-icon-only="false"
-                    :prop-is-enabled="true"
-                    class="w-fit mx-auto px-4 flex-row"
-                >
-                    <span class="pr-2">Filters</span>
-                    <i
-                        :class="[
-                            is_sort_menu_open ? '-rotate-180' : 'rotate-0',
-                            'fas text-xs fa-chevron-down transition-transform'
-                        ]"
-                        aria-hidden="true"
-                    ></i>
-                </VAction>
-
-                <!--options menu-->
-                <div class="h-0 relative">
-
-                    <!--arrow-->
-                    <div
-                        v-show="is_sort_menu_open"
-                        class="z-30 w-2 h-2 absolute top-3 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"
-                    ></div>
-
-                    <!--menu-->
-                    <div
-                        v-show="is_sort_menu_open"
-                        v-click-outside="{
-                            var_name_for_element_bool_status: 'is_sort_menu_open',
-                            refs_to_exclude: ['open_close_sort_menu_button']
-                        }"
-                        class="absolute w-full h-fit top-4 z-20 flex flex-col p-4 gap-4 rounded-lg border-2 border-theme-black bg-theme-light"
-                    >
-    
-                        <!--filter type-->
-                        <div class="w-fit flex flex-row items-center border rounded-lg border-theme-light-gray px-2">
-                            <VActionTextOnly
-                                v-for="(filter_type, index) in filtered_grouped_events_store.getFilterTypes" :key="index"
-                                @click="updateCurrentFilterTypeIndex(index)"
-                                prop-element="button"
-                                prop-element-size="s"
-                                prop-font-size="s"
-                                :prop-is-icon-only="true"
+                        <!--open/close filter menu-->
+                        <VAction
+                            @click="toggleFilterMenu()"
+                            prop-element="button"
+                            type="button"
+                            prop-element-size="s"
+                            prop-font-size="s"
+                            :prop-is-icon-only="false"
+                            :prop-is-enabled="true"
+                            class="w-fit mx-auto px-4 flex-row"
+                        >
+                            <span class="pr-2">Filters</span>
+                            <i
                                 :class="[
-                                    isSelectedFilterType(index) ? 'border-b-theme-black' : 'border-b-transparent',
-                                    'border-b-2 rounded-b-none p-2'
+                                    is_filter_menu_open ? '-rotate-180' : 'rotate-0',
+                                    'fas text-xs fa-chevron-down transition-transform'
                                 ]"
+                                aria-hidden="true"
+                            ></i>
+                        </VAction>
+
+                        <!--filter menu-->
+                        <div class="h-0 relative">
+
+                            <!--arrow-->
+                            <div
+                                v-show="is_filter_menu_open"
+                                class="z-30 w-2 h-2 absolute top-3 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"
+                            ></div>
+
+                            <!--menu-->
+                            <div
+                                v-show="is_filter_menu_open"
+                                v-click-outside="{
+                                    var_name_for_element_bool_status: 'is_filter_menu_open',
+                                    refs_to_exclude: ['open_close_filter_menu_button']
+                                }"
+                                class="absolute w-full h-fit top-4 z-20 flex flex-col p-4 gap-4 rounded-lg border-2 border-theme-black bg-theme-light"
                             >
-                                <span>{{ filter_type }}</span>
-                            </VActionTextOnly>
+            
+                                <!--filter type-->
+                                <div class="w-fit flex flex-row items-center border rounded-lg border-theme-light-gray px-2">
+                                    <VActionTextOnly
+                                        v-for="(filter_type, index) in filtered_grouped_events_store.getFilterTypes" :key="index"
+                                        @click="updateCurrentFilterTypeIndex(index)"
+                                        prop-element="button"
+                                        prop-element-size="s"
+                                        prop-font-size="s"
+                                        :prop-is-icon-only="true"
+                                        :class="[
+                                            isSelectedFilterType(index) ? 'border-b-theme-black' : 'border-b-transparent',
+                                            'border-b-2 rounded-b-none p-2'
+                                        ]"
+                                    >
+                                        <span>{{ filter_type }}</span>
+                                    </VActionTextOnly>
+                                </div>
+            
+                                <!--event tones-->
+                                <VEventToneMenu
+                                    :prop-is-open="true"
+                                    :prop-close-when-selected="false"
+                                    :prop-has-deselect-option="true"
+                                    :prop-must-track-selected-option="true"
+                                    :prop-initial-event-tone="filtered_grouped_events_store.getSelectedEventTone"
+                                    :prop-filtered-grouped-events-store="filtered_grouped_events_store"
+                                    @eventToneSelected="handleNewSelectedEventTone($event)"
+                                    class="border rounded-l-lg border-theme-light-gray"
+                                />
+                            </div>
                         </div>
-    
-                        <!--event tones-->
-                        <VEventToneMenu
-                            :prop-is-open="true"
-                            :prop-close-when-selected="false"
-                            :prop-has-deselect-option="true"
-                            :prop-must-track-selected-option="true"
-                            :prop-initial-event-tone="filtered_grouped_events_store.getSelectedEventTone"
-                            :prop-filtered-grouped-events-store="filtered_grouped_events_store"
-                            @eventToneSelected="handleNewSelectedEventTone($event)"
-                            class="border rounded-l-lg border-theme-light-gray"
-                        />
                     </div>
-                </div>
+                </Teleport>
             </div>
 
             <!--event roles-->
-            <div v-show="propIsUserProfilePage" class="w-full grid grid-cols-2 px-4">
+            <div v-if="propIsUserProfilePage" class="w-full grid grid-cols-2 px-4">
                 <VActionTextOnly
                     @click="updateCurrentEventRoleNameIndex(0)"
                     prop-element="button"
@@ -127,11 +137,17 @@
         </div>
 
         <!--item-size seems to work like gap size in px, not sure, but it's not needed for DynamicScroller-->
-        <!--page-mode is needed here, else it behaves like flex, and the components will never be reused-->
+        <!--page-mode is needed here, else it behaves like flex, i.e. DynamicScroller doesn't know when to reuse components-->
+        <!--arbitrarily large buffer value solves:
+            -whitespace before render that is the same size as "previous elements' height combined" after going past 1st/2nd item
+            -no item for keyboard focus, due to being unrendered
+        -->
+        <!--as long as data persists, backward and close-reopen navigations accurately continue to where the user had left off-->
         <DynamicScroller
             v-show="filtered_grouped_events_store.getEventRoomsForBrowsing.length > 0"
             :items="filtered_grouped_events_store.getEventRoomsForBrowsing"
-            :min-item-size="50"
+            :min-item-size="2"
+            :buffer="1000"
             :page-mode="true"
             key-field="event_room_id"
             class="scroller"
@@ -270,12 +286,12 @@
     import { useCurrentlyPlayingEventStore } from '@/stores/CurrentlyPlayingEventStore';
     import { useFilteredGroupedEventsStore } from '@/stores/FilteredGroupedEventsStore';
     import { useCurrentLikesDislikesStore } from '@/stores/CurrentLikesDislikesStore';
+    import { isPageAccessedByReload } from '@/helper_functions';
     const axios = require('axios');
 
     //TODO:
         //#1: clear FilteredGroupedEventsStore on least recent
             //follow through with CurrentLikesDislikesStore and CurrentlyPlayingEventStore
-        //#2: when scrolled to components that only exist after initial render, page resume is inaccurate
 
 
     export default defineComponent({
@@ -288,10 +304,10 @@
 
                 user_profile_username: "",  //only used at profile page
 
-                is_sort_menu_open: false,
+                is_filter_menu_open: false,
+                can_filter_menu_teleport: false,
 
                 is_fetching: false,
-                is_observer_on_cooldown: false,
 
                 selected_event: null as EventsAndLikeDetailsTypes|null,
                 filter_change_trigger: false,  //switch between true/false to trigger pause
@@ -300,6 +316,11 @@
                 played_events_by_id: [] as number[],
                 played_events_quantity_to_pause_scrolling: 10,
                 can_pause_scrolling: false,
+                scrolling_timeout: window.setTimeout(()=>{}, 0),
+                scrolling_checkpoint_px: 0,
+
+                is_observer_on_cooldown: false,
+                must_skip_observer_once: true,
             };
         },
         props: {
@@ -374,9 +395,9 @@
                     is_first_page,
                 );
             },
-            toggleSortMenu() : void {
+            toggleFilterMenu() : void {
 
-                this.is_sort_menu_open = !this.is_sort_menu_open;
+                this.is_filter_menu_open = !this.is_filter_menu_open;
             },
             async updateCurrentEventRoleNameIndex(index:number) : Promise<void> {
 
@@ -569,6 +590,13 @@
                         return;
                     }
 
+                    //prevents first run when DOM is still fresh
+                    if(this.must_skip_observer_once === true){
+
+                        this.must_skip_observer_once = false;
+                        return;
+                    }
+
                     const can_fetch = await this.filtered_grouped_events_store.checkCanFetch(
                         this.filtered_grouped_events_store.getSelectedEventTone,
                         this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
@@ -599,16 +627,45 @@
                     observer.observe(observer_target);
                 }
             },
+            async canShowFilterOptionBelowNavBar() : Promise<void> {
+
+                window.clearTimeout(this.scrolling_timeout);
+
+                //start evaluating past x distance downwards, and showing when user scrolls upwards a bit
+                this.scrolling_timeout = window.setTimeout(async ()=>{
+
+                    const target = (this.$refs.sorting_options_container as HTMLElement);
+
+                    //get fixed distance of element relative to document
+                    //+1000 for extra space
+                    const minimum_scroll_distance_px = target.offsetTop + 400;
+
+                    //compare with current scroll distance
+                    if(window.scrollY < this.scrolling_checkpoint_px && window.scrollY > minimum_scroll_distance_px){
+
+                        this.can_filter_menu_teleport = true;
+
+                    }else{
+
+                        this.can_filter_menu_teleport = false;
+                    }
+
+                    //set checkpoint for next comparison
+                    this.scrolling_checkpoint_px = window.scrollY;
+
+                }, 400);
+            },
             async resetStores() : Promise<void> {
 
-                if(this.propIsUserProfilePage === true || localStorage.getItem('reset_home_page_event_stores') === null){
+                if(
+                    this.propIsUserProfilePage === false &&
+                    (localStorage.getItem('reset_home_page_event_stores') !== null || isPageAccessedByReload() === true)
+                ){
 
-                    return;
+                    await this.filtered_grouped_events_store.partialResetStore();
+                    this.current_likes_dislikes_store.$reset();
+                    localStorage.removeItem('reset_home_page_event_stores');
                 }
-
-                await this.filtered_grouped_events_store.partialResetStore();
-                this.current_likes_dislikes_store.$reset();
-                localStorage.removeItem('reset_home_page_event_stores');
             },
         },
         beforeMount(){
@@ -675,23 +732,36 @@
                         this.currently_playing_event_store.$patch({
                             playing_event: last_selected_event
                         });
+
+                        this.must_skip_observer_once = true;
                     });
                 }
             });
 
             if(this.filtered_grouped_events_store.getEventRoomsForBrowsing.length === 0){
 
-                this.getEventRooms(
-                    this.filtered_grouped_events_store.getSelectedEventTone,
-                    this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
-                    this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
-                    true,
-                );
+                (async ()=>{
+                    await this.getEventRooms(
+                        this.filtered_grouped_events_store.getSelectedEventTone,
+                        this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
+                        this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
+                        true,
+                    ).then(()=>{
+
+                        this.must_skip_observer_once = false;
+                    });
+                })();
             }
         },
         mounted(){
 
             this.setUpObserver();
+
+            window.addEventListener('scroll', this.canShowFilterOptionBelowNavBar);
         },
+        beforeUnmount(){
+
+            window.removeEventListener('scroll', this.canShowFilterOptionBelowNavBar);
+        }
     });
 </script>

@@ -455,7 +455,6 @@
                 (async ()=>{
                     await this.pausePlayback();
                     this.updatePlaybackSliderValue();
-                    this.endPlaybackTruly();
                 })();
             },
         },
@@ -1485,7 +1484,6 @@
                     await this.createPlaybackSliderAnime();
                     await this.setInitialPlaybackSliderValue();
                     this.seekPlayback();
-                    this.endPlaybackTruly();
                     this.handleInitialAutoplay();
                 };
 

@@ -690,12 +690,8 @@ video {
   top: 1rem;
 }
 
-.top-\[3px\] {
-  top: 3px;
-}
-
-.-bottom-\[2px\] {
-  bottom: -2px;
+.top-\[4\.5rem\] {
+  top: 4.5rem;
 }
 
 .-z-10 {
@@ -990,8 +986,13 @@ video {
   max-height: 90%;
 }
 
-.max-h-screen {
-  max-height: 100vh;
+.max-h-fit {
+  max-height: -moz-fit-content;
+  max-height: fit-content;
+}
+
+.min-h-0 {
+  min-height: 0px;
 }
 
 .min-h-\[calc\(100vh-4\.5rem\)\] {
@@ -1525,10 +1526,6 @@ video {
 
 .border-transparent {
   border-color: transparent;
-}
-
-.border-theme-black\/0 {
-  border-color: rgb(68 68 68 / 0);
 }
 
 .border-b-theme-black {
@@ -2413,20 +2410,6 @@ textarea {
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
 }
 
-.hover\:border-theme-light-trim\/40:hover {
-  border-color: rgb(253 253 253 / 0.4);
-}
-
-.hover\:bg-theme-light\/80:hover {
-  background-color: rgb(242 244 245 / 0.8);
-}
-
-.hover\:shadow-sm:hover {
-  --tw-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --tw-shadow-colored: 0 1px 2px 0 var(--tw-shadow-color);
-  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
-}
-
 .hover\:shadow-theme-lead:hover {
   --tw-shadow-color: #facc15;
   --tw-shadow: var(--tw-shadow-colored);
@@ -2490,18 +2473,6 @@ textarea {
   outline-color: #a8a29e;
 }
 
-.active\:scale-\[0\.99\]:active {
-  --tw-scale-x: 0.99;
-  --tw-scale-y: 0.99;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
-
-.active\:scale-95:active {
-  --tw-scale-x: .95;
-  --tw-scale-y: .95;
-  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y));
-}
-
 .active\:border-\[\#f66868\]:active {
   --tw-border-opacity: 1;
   border-color: rgb(246 104 104 / var(--tw-border-opacity));
@@ -2514,11 +2485,6 @@ textarea {
 
 .active\:border-theme-light-trim\/40:active {
   border-color: rgb(253 253 253 / 0.4);
-}
-
-.active\:border-theme-black:active {
-  --tw-border-opacity: 1;
-  border-color: rgb(68 68 68 / var(--tw-border-opacity));
 }
 
 .active\:bg-\[\#FFE88B\]:active {
