@@ -5,7 +5,7 @@
             'flex flex-col'
         ]"
     >
-        <span class="sr-only">loading events</span>
+        <span class="sr-only">loading audio_clips</span>
         <!--title and datetime-->
         <!--<div> seems to have bigger height than the inner <span>, and doing it all in <span> didn't work-->
         <div class="flex flex-col pb-10">
@@ -17,9 +17,9 @@
             </div>
         </div>
         <div class="flex flex-col gap-10">
-            <!--events-->
-            <div v-for="x in propEventQuantity" :key="x">
-                <VEventCardSkeleton/>
+            <!--audio-clips-->
+            <div v-for="x in propAudioClipQuantity" :key="x">
+                <VAudioClipCardSkeleton/>
             </div>
         </div>
     </div>
@@ -27,7 +27,7 @@
 
 
 <script setup lang="ts">
-    import VEventCardSkeleton from './VEventCardSkeleton.vue';
+    import VAudioClipCardSkeleton from './VAudioClipCardSkeleton.vue';
 </script>
 
 
@@ -40,7 +40,7 @@
                 type: Boolean,
                 default: false
             },
-            propEventQuantity: {
+            propAudioClipQuantity: {
                 type: Number,
                 default: 2
             },

@@ -3,12 +3,12 @@
 {% block extra_head %}
     <title>
         {% if is_this_user_replying %}
-            You Are Replying: {{event_room.event_room_name}}
+            You Are Replying: {{event.event_name}}
         {% else %}
-            Event: {{event_room.event_room_name}}
+            AudioClip: {{event.event_name}}
         {% endif %}
     </title>
-    <meta name="description" content="{{ event_room.event_room_name }}">
+    <meta name="description" content="{{ event.event_name }}">
 
     {% if is_deleted %}
         <meta name="robots" content="noindex,nofollow">
@@ -23,26 +23,26 @@
         shouldn't have to adjust '1 Jan 2022' to local timezone, as it's only for SEO
     -->
     <div
-        data-event-room-id="{{event_room.id}}"
+        data-event-id="{{event.id}}"
         data-is-deleted="{{is_deleted_json}}"
-        data-when-created="{{event_room.when_created|date:"Y-m-d H:i:s"}}"
-        data-event-count="{{event_count}}"
+        data-when-created="{{event.when_created|date:"Y-m-d H:i:s"}}"
+        data-audio-clip-count="{{audio_clip_count}}"
         data-is-this-user-replying="{{is_this_user_replying_json}}"
-        data-event-room-reply-choice-expiry-seconds="{{event_room_reply_choice_expiry_seconds}}"
-        data-event-room-reply-expiry-seconds="{{event_room_reply_expiry_seconds}}"
-        id="data-container-get-event-rooms"
+        data-event-reply-choice-expiry-seconds="{{event_reply_choice_expiry_seconds}}"
+        data-event-reply-expiry-seconds="{{event_reply_expiry_seconds}}"
+        id="data-container-get-events"
     >
 
         <!--follows VTitle-->
         <h1 class="h-fit py-10">
             {% if is_deleted %}
                 <p class="text-lg italic">
-                    Event and original recording deleted.
+                    AudioClip and original recording deleted.
                 </p>
             {% else %}
                 <!--title-->
                 <p class="text-lg break-words">
-                    {{event_room.event_room_name}}
+                    {{event.event_name}}
                 </p>
                 <!--last updated-->
                 <p class="when-created      text-sm">
@@ -52,7 +52,7 @@
         </h1>
 
         <!--the rest of the content-->
-        <div id="get-event-rooms-app"></div>
+        <div id="get-events-app"></div>
     </div>
 
 {% endblock %}

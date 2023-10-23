@@ -123,17 +123,17 @@
             },
         },
         methods: {
-            handleNewInput(event:InputEvent|null, input_field:HTMLInputElement) : void {
+            handleNewInput(e:InputEvent|null, input_field:HTMLInputElement) : void {
 
                 //we only run on manual input having whitespace, instead of entire input_field.value
                 //because we don't want to block pasted values
                 //this is to avoid the case of "99% valid paste input but has a space"
                 //you should have another bigger-picture validator at the parent component
 
-                //input event triggers on value change, including paste and voice-to-speech
+                //input e triggers on value change, including paste and voice-to-speech
                 //hence, we can be rest assured that the emit always fires
 
-                if(event === null){
+                if(e === null){
 
                     this.current_length = input_field.value.length;
                     this.$emit('hasNewValue', input_field.value);
@@ -142,14 +142,14 @@
                     return;
                 }
 
-                //event.data gives undefined on auto-complete
-                const new_value = event.data === null || event.data === undefined ? '' : event.data!;
+                //e.data gives undefined on auto-complete
+                const new_value = e.data === null || e.data === undefined ? '' : e.data!;
 
                 //fine-tune caret behaviour
                 if(this.propAllowWhitespace === false && /\s+/g.test(new_value) === true){
 
                     //get caret position
-                    //since event.target is only a reference, any value change will change .selectionStart value immediately after
+                    //since e.target is only a reference, any value change will change .selectionStart value immediately after
                     const current_caret_position = input_field.selectionStart as number - 1;
 
                     //user inserts whitespace, set input_field value to be of last regex success string
@@ -182,7 +182,7 @@
             });
 
             //since browser saves copy of page on close, it will autocomplete on page reopen
-            //we can reliably get autocompleted values via window.onload = (event)=>{}
+            //we can reliably get autocompleted values via window.onload = (audio_clip)=>{}
             window.onload = ()=>{
 
                 //update Vue from autocompleted value

@@ -1,9 +1,9 @@
-import EventsAndLikeDetailsTypes from "./EventsAndLikeDetails.interface";
+import AudioClipsAndLikeDetailsTypes from "./AudioClipsAndLikeDetails.interface";
 
-interface GroupedEventsTypes{
-    event_room: {
+interface GroupedAudioClipsTypes{
+    event: {
         id: number,
-        event_room_name: string,
+        event_name: string,
         when_created: string,
         generic_status: {
             id: number,
@@ -16,8 +16,8 @@ interface GroupedEventsTypes{
         }|null,
         is_replying: boolean|null,
     },
-    originator: EventsAndLikeDetailsTypes|null,
-    responder: EventsAndLikeDetailsTypes[]|[]
+    originator: AudioClipsAndLikeDetailsTypes|null,
+    responder: AudioClipsAndLikeDetailsTypes[]|[]
 }
 
-export default GroupedEventsTypes;
+export default GroupedAudioClipsTypes;

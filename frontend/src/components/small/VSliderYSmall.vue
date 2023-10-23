@@ -62,14 +62,14 @@
             },
         },
         methods: {
-            emitDragSliderValue(event:PointerEvent, start_or_stop:"start"|"stop") : void {
+            emitDragSliderValue(e:PointerEvent, start_or_stop:"start"|"stop") : void {
 
                 if(start_or_stop === "start"){
 
                     this.$emit('startDragSliderValue',
                         {
                             slider_value: this.slider_value,
-                            pointer_type: event.pointerType
+                            pointer_type: e.pointerType
                         } as VSliderTypes
                     );
                 
@@ -78,25 +78,25 @@
                     this.$emit('stopDragSliderValue',
                         {
                             slider_value: this.slider_value,
-                            pointer_type: event.pointerType
+                            pointer_type: e.pointerType
                         } as VSliderTypes
                     );
                 }
             },
-            startDrag(event:PointerEvent){
+            startDrag(e:PointerEvent){
 
                 this.slider_dimension = (this.$refs.slider as HTMLElement).getBoundingClientRect();
                 this.is_dragging = true;
 
-                this.emitDragSliderValue(event, "start");
+                this.emitDragSliderValue(e, "start");
             },
-            doDrag(event:PointerEvent){
+            doDrag(e:PointerEvent){
 
                 if(this.is_dragging === true && this.slider_dimension !== null){
 
                     //can use clientY, screenY, pageY, but they are calculated slightly differently
                     //clientY seems to work best
-                    const user_y = event.clientY;
+                    const user_y = e.clientY;
                     
                     if(user_y >= this.slider_dimension.top && user_y <= this.slider_dimension.bottom){
                         
@@ -123,7 +123,7 @@
                     // console.log("==========================");
                 }
             },
-            stopDrag(event:PointerEvent) : void {
+            stopDrag(e:PointerEvent) : void {
 
                 if(this.is_dragging === false){
 
@@ -131,7 +131,7 @@
                 }
 
                 this.is_dragging = false;
-                this.emitDragSliderValue(event, "stop");
+                this.emitDragSliderValue(e, "stop");
             },
             animeSlider() : void {
 

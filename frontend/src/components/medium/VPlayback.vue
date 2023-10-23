@@ -21,7 +21,7 @@
         <div
             ref="playback_main"
             :class="[
-                propEvent === null ? 'grid-cols-3 pr-4' : 'grid-cols-4',
+                propAudioClip === null ? 'grid-cols-3 pr-4' : 'grid-cols-4',
                 'h-20 grid grid-rows-2 rounded-lg border border-theme-light-gray shade-border-when-hover transition-colors'
             ]"
             @click="[updateInstanceLastInteracted()]"
@@ -235,11 +235,11 @@
             </div>
 
             <div
-                v-if="propEvent !== null"
+                v-if="propAudioClip !== null"
                 class="row-span-2 col-span-1 relative"
             >
                 <span class="text-2xl pb-0.5 absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto">
-                    {{ propEvent.event_tone.event_tone_symbol }}
+                    {{ propAudioClip.audio_clip_tone.audio_clip_tone_symbol }}
                 </span>
             </div>
         </div>
@@ -258,8 +258,8 @@
     import { defineComponent, PropType } from 'vue';
     import { prettyDuration, getRandomUUID } from '@/helper_functions';
     import anime from 'animejs';
-    import EventsAndLikeDetailsTypes from '@/types/EventsAndLikeDetails.interface';
-    import EventsTypes from '@/types/Events.interface';
+    import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
+    import AudioClipsTypes from '@/types/AudioClips.interface';
     // import VSliderTypes from '@/types/values/VSlider';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
 
@@ -270,8 +270,8 @@
 
                 instance_id: "",    //uuid, to identify between multiple VPlayback instances
                 vplayback_store: useVPlaybackStore(),
-                instance_has_focus: false,  //enables keyboard events inside VPlayback that need e.preventDefault()
-                previous_event: null as EventsTypes|EventsAndLikeDetailsTypes|null,  //store triggers on new event, but needs previous event
+                instance_has_focus: false,  //enables keyboard audio_clips inside VPlayback that need e.preventDefault()
+                previous_audio_clip: null as AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null,  //store triggers on new audio_clip, but needs previous audio_clip
 
                 pretty_current_playback_time: '00:00',
                 pretty_playback_duration: '00:00',
@@ -325,8 +325,8 @@
                 type: Boolean,
                 default: false
             },
-            propEvent: {
-                type: Object as PropType<EventsAndLikeDetailsTypes|EventsTypes|null>,
+            propAudioClip: {
+                type: Object as PropType<AudioClipsAndLikeDetailsTypes|AudioClipsTypes|null>,
                 default: null
             },
             propAudio: {    //used when receiving from VRecorder
@@ -386,7 +386,7 @@
                 //apply focus on source change
                 this.updateInstanceLastInteracted();
             },
-            propEvent(new_value:EventsAndLikeDetailsTypes|null){
+            propAudioClip(new_value:AudioClipsAndLikeDetailsTypes|null){
 
                 //reminder that with v-if and props already supplied, first time will not trigger watchers
 
@@ -396,13 +396,13 @@
                 }
 
                 //do store before new audio is attached
-                if(this.previous_event !== null){
+                if(this.previous_audio_clip !== null){
 
-                    this.storeCurrentEventLastStopped(this.previous_event);
+                    this.storeCurrentAudioClipLastStopped(this.previous_audio_clip);
                 }
 
-                //store previous event for situations where store needs it
-                this.previous_event = new_value;
+                //store previous audio_clip for situations where store needs it
+                this.previous_audio_clip = new_value;
 
                 //attach new audio
                 this.attachAudioToPlayback(new_value.audio_file);
@@ -476,7 +476,7 @@
                 const is_playback_ready = (
                     this.propAudioVolumePeaks.length > 0 &&
                     this.propAudioVolumePeaks.length === this.propBucketQuantity &&
-                    (this.propAudio !== null || this.propEvent !== null) &&
+                    (this.propAudio !== null || this.propAudioClip !== null) &&
                     this.is_playback_slider_ready === true &&
                     this.is_playback_attached === true &&
                     this.isProcessing === false
@@ -498,21 +498,21 @@
             },
         },
         methods: {
-            async determineInstanceHasFocus(event:PointerEvent) : Promise<void> {
+            async determineInstanceHasFocus(e:PointerEvent) : Promise<void> {
 
-                this.instance_has_focus = (this.$refs.playback_main as HTMLElement).contains(event.target as Node);
+                this.instance_has_focus = (this.$refs.playback_main as HTMLElement).contains(e.target as Node);
             },
             async setInitialPlaybackSliderValue() : Promise<void> {
                 
                 //initial
                 this.playback_slider_value = 0;
 
-                if(this.propEvent === null){
+                if(this.propAudioClip === null){
 
                     return;
                 }
 
-                const last_stopped_s = await this.vplayback_store.getEventPlaybackLastStoppedS(this.propEvent.id);
+                const last_stopped_s = await this.vplayback_store.getAudioClipPlaybackLastStoppedS(this.propAudioClip.id);
 
                 //not stored
                 if(last_stopped_s === null){
@@ -523,23 +523,23 @@
                 const total_duration_s = (this.$refs.audio_element as HTMLAudioElement).duration;
 
                 //restore slider value
-                //as long as both this function and StoreCurrentEventLastStopped() use <audio>.currentTime,
+                //as long as both this function and StoreCurrentAudioClipLastStopped() use <audio>.currentTime,
                 //value should always be <= 1
                 let new_value = Number((last_stopped_s / total_duration_s).toFixed(3));
 
                 this.playback_slider_value = new_value;
             },
-            async storeCurrentEventLastStopped(specific_event:EventsTypes|EventsAndLikeDetailsTypes) : Promise<void> {
+            async storeCurrentAudioClipLastStopped(specific_audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes) : Promise<void> {
 
                 //call this after pause on source change, but before source change happens
 
                 const audio_element = (this.$refs.audio_element as HTMLAudioElement);
-                const specific_event_full_url = window.location.origin + specific_event.audio_file;
+                const specific_audio_clip_full_url = window.location.origin + specific_audio_clip.audio_file;
 
                 if(
-                    specific_event.audio_file.length === 0 ||
-                    specific_event === null || audio_element.src === '' ||
-                    audio_element.src !== specific_event_full_url
+                    specific_audio_clip.audio_file.length === 0 ||
+                    specific_audio_clip === null || audio_element.src === '' ||
+                    audio_element.src !== specific_audio_clip_full_url
                 ){
 
                     return;
@@ -556,7 +556,7 @@
                 }
 
                 //store
-                this.vplayback_store.addEventPlaybackLastStopped(specific_event.id, current_time_s);
+                this.vplayback_store.addAudioClipPlaybackLastStopped(specific_audio_clip.id, current_time_s);
             },
             async updateInstanceLastInteracted() : Promise<void> {
 
@@ -579,11 +579,11 @@
                     this.playPlayback();
                 }
             },
-            async handlePlaybackVolumeHoverIn(event:PointerEvent) : Promise<void> {
+            async handlePlaybackVolumeHoverIn(e:PointerEvent) : Promise<void> {
 
                 //don't handle hover if not mouse, since hover behaviour is meant for mouse only
                 //otherwise, touch triggers mouseenter and mouseleave undesirably
-                if(event.pointerType !== "mouse"){
+                if(e.pointerType !== "mouse"){
 
                     return;
                 }
@@ -591,11 +591,11 @@
                 this.is_playback_volume_slider_hovering = true;
                 this.openPlaybackVolume();
             },
-            async handlePlaybackVolumeHoverOut(event:PointerEvent) : Promise<void> {
+            async handlePlaybackVolumeHoverOut(e:PointerEvent) : Promise<void> {
 
                 //don't handle hover if not mouse, since hover behaviour is meant for mouse only
                 //otherwise, touch triggers mouseenter and mouseleave undesirably
-                if(event.pointerType !== "mouse"){
+                if(e.pointerType !== "mouse"){
 
                     return;
                 }
@@ -712,7 +712,7 @@
             },
             handleKeyboardEvent(event:KeyboardEvent) : void {
 
-                //FYI, some keyup events are too late for .preventDefault(), so they use keydown
+                //FYI, some keyup audio_clips are too late for .preventDefault(), so they use keydown
                 
                 //these keys affect only playback, so no point if there's no file
                 if(this.isPlaybackReady === false || this.isInstanceLastInteracted === false){
@@ -721,9 +721,9 @@
                 }
 
                 //ensure this won't be used during user input
-                const event_target = (event.target as Node);
+                const audio_clip_target = (event.target as Node);
 
-                if(event_target.nodeName === "INPUT" || event_target.nodeName === "TEXTAREA"){
+                if(audio_clip_target.nodeName === "INPUT" || audio_clip_target.nodeName === "TEXTAREA"){
 
                     return;
                 }
@@ -795,13 +795,13 @@
                 //e.g. all playback skips just lead to seek(0)
                 //simply do a manual refresh
 
-                //we need to use timeout because resize event randomly fires before actual dimension is fixed
+                //we need to use timeout because resize audio_clip randomly fires before actual dimension is fixed
 
                 this.window_resize_timeout !== null ? clearTimeout(this.window_resize_timeout) : null;
 
                 const handler = async ()=>{
 
-                    //for event listener 'resize', this recreates slider anime and syncs it
+                    //for audio_clip listener 'resize', this recreates slider anime and syncs it
                     await this.adjustPlaybackSliderDimension();
 
                     if(this.isPlaybackReady === true && isNaN((this.$refs.audio_element as HTMLAudioElement).duration) === false){
@@ -915,7 +915,7 @@
                 }
 
                 //expects playback_slider to have the same width
-                //use not only during 'resize' event, but when playback_states[2] is ready
+                //use not only during 'resize' audio_clip, but when playback_states[2] is ready
                 //as 'resize' may occur when element is display:none
                 let new_dimension = playback_slider.getBoundingClientRect();
 
@@ -953,13 +953,13 @@
                 this.playback_slider_knob_anime.completed = false;
                 this.playback_slider_progress_anime.completed = false;
             },
-            doPlaybackDrag(event:PointerEvent) : void {
+            doPlaybackDrag(e:PointerEvent) : void {
 
                 if(this.is_playback_slider_drag === true && this.playback_slider_dimension !== null){
 
                     //can use clientX, screenX, pageX
                     //clientY seems to work best
-                    const user_x = event.clientX;
+                    const user_x = e.clientX;
 
                     if(user_x >= this.playback_slider_dimension.left && user_x <= this.playback_slider_dimension.right){
 
@@ -1423,7 +1423,7 @@
 
                     //destroy URL.createObjectURL() instance to free from memory, then stop loading, no checks needed
                     //https://developer.mozilla.org/en-US/docs/Web/Guide/Audio_and_video_delivery#other_tips_for_audiovideo
-                    //when this happens, it also triggers @ended event
+                    //when this happens, it also triggers @ended audio_clip
                     URL.revokeObjectURL(audio_element.src);
                     audio_element.removeAttribute('src');
                     audio_element.load();
@@ -1569,11 +1569,11 @@
 
             this.updateInstanceLastInteracted();
 
-            //handle when propEvent already exists on mounted, which means it's from API
-            if(this.propEvent !== null && this.propEvent.audio_file.length > 0){
+            //handle when propAudioClip already exists on mounted, which means it's from API
+            if(this.propAudioClip !== null && this.propAudioClip.audio_file.length > 0){
 
-                this.previous_event = this.propEvent;
-                this.attachAudioToPlayback(this.propEvent.audio_file);
+                this.previous_audio_clip = this.propAudioClip;
+                this.attachAudioToPlayback(this.propAudioClip.audio_file);
             }
 
             //handle rate and volume differently
@@ -1597,7 +1597,7 @@
 
                 //volume
                 //always save >0, never 0
-                //starts as 1, so volume changes are saved on touch events, i.e. mobile
+                //starts as 1, so volume changes are saved on touch audio_clips, i.e. mobile
                 //else, unmute must always be 1, which is bad for users using touch but are able to adjust volume
                 if(localStorage.getItem('playback_volume_backup_never_0') === null){
                     localStorage.setItem('playback_volume_backup_never_0', JSON.stringify(1));

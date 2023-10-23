@@ -4,17 +4,17 @@
     <title>
         VoiceWake - Reply
     </title>
-    <meta name="description" content="Search for random recordings to reply to. Replying completes the event.">
+    <meta name="description" content="Search for random recordings to reply to. Replying completes the audio_clip.">
 {% endblock %}
 
 {% block content %}
 
     <div
-        data-event-room-reply-choice-expiry-seconds="{{event_room_reply_choice_expiry_seconds}}"
-        data-event-room-reply-expiry-seconds="{{event_room_reply_expiry_seconds}}"
-        id="data-container-list-event-room-choices"
+        data-event-reply-choice-expiry-seconds="{{event_reply_choice_expiry_seconds}}"
+        data-event-reply-expiry-seconds="{{event_reply_expiry_seconds}}"
+        id="data-container-list-event-choices"
     >
 
-        <div id="list-event-room-choices-app"></div>
+        <div id="list-event-choices-app"></div>
     </div>
 {% endblock %}

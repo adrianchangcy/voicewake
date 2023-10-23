@@ -35,7 +35,7 @@
                         <i class="fas fa-comment" aria-hidden="true"></i>
                         <!-- <span class="hidden font-normal sm:inline sm:pl-2">Start</span> -->
                     </span>
-                    <span class="sr-only sm:hidden">start event</span>
+                    <span class="sr-only sm:hidden">start audio_clip</span>
                 </VActionTextOnly>
             </div>
 
@@ -55,7 +55,7 @@
                         <i class="fas fa-comments" aria-hidden="true"></i>
                         <!-- <span class="hidden font-normal sm:inline sm:pl-2">Reply</span> -->
                     </span>
-                    <span class="sr-only sm:hidden">reply to events</span>
+                    <span class="sr-only sm:hidden">reply to audio_clips</span>
                 </VActionTextOnly>
             </div>
 
@@ -164,8 +164,7 @@
                         @click.stop="openUserLogInSignUp('sign-up-section')"
                         propElement="button"
                         type="button"
-                        propElementSize="s"
-                        class="w-full h-full pb-0.5"
+                        class="w-full h-full pb-0.5 shadow-md active:shadow-sm -translate-y-[1px]"
                     >
                         <span class="block mx-auto text-xl font-medium">
                             <i class="fas fa-right-to-bracket sm:pr-2" aria-hidden="true"></i>
@@ -464,7 +463,7 @@
             },
             scheduleHomePageStoreResetNextRevisit() : void {
 
-                localStorage.setItem('reset_home_page_event_stores', JSON.stringify(true));
+                localStorage.setItem('reset_home_page_audio_clip_stores', JSON.stringify(true));
             },
         },
         beforeMount(){

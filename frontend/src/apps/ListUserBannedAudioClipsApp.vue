@@ -1,14 +1,14 @@
 <template>
     <div>
 
-        <EventsCard
-            :prop-events="events"
+        <AudioClipsCard
+            :prop-audio_clips="audio_clips"
             :prop-is-fetching="is_fetching"
         />
 
         <TransitionFade>
             <VDialogPlain
-                v-show="has_no_events_left_to_fetch"
+                v-show="has_no_audio_clips_left_to_fetch"
                 :prop-has-border="false"
                 :prop-has-auto-spacing="false"
                 class="w-full py-8"
@@ -19,17 +19,17 @@
             </VDialogPlain>
         </TransitionFade>
 
-        <div id="load-more-user-banned-events-observer-target"></div>
+        <div id="load-more-user-banned-audio-clips-observer-target"></div>
 
-        <!--VEventCard emits selection, which triggers :to, thus teleporting-->
-        <!--presence of VEventCard depends on VEventRoomCard-->
-        <div v-if="selected_event !== null">
+        <!--VAudioClipCard emits selection, which triggers :to, thus teleporting-->
+        <!--presence of VAudioClipCard depends on VEventCard-->
+        <div v-if="selected_audio_clip !== null">
             <Teleport :to="getVPlaybackTeleportId">
                 <VPlayback
-                    :propEvent="selected_event"
+                    :propAudioClip="selected_audio_clip"
                     :propIsOpen="true"
-                    :propAudioVolumePeaks="selected_event.audio_volume_peaks"
-                    :propBucketQuantity="selected_event.audio_volume_peaks.length"
+                    :propAudioVolumePeaks="selected_audio_clip.audio_volume_peaks"
+                    :propBucketQuantity="selected_audio_clip.audio_volume_peaks.length"
                     :propAutoPlayOnSourceChange="true"
                 />
             </Teleport>
@@ -39,7 +39,7 @@
 
 
 <script setup lang="ts">
-    import EventsCard from '@/components/main/EventsCard.vue';
+    import AudioClipsCard from '@/components/main/AudioClipsCard.vue';
     import VPlayback from '@/components/medium/VPlayback.vue';
     import VDialogPlain from '@/components/small/VDialogPlain.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
@@ -49,51 +49,51 @@
 <script lang="ts">
     import { defineComponent } from 'vue';
     import { prettyTimeRemaining } from '@/helper_functions';
-    import EventsTypes from '@/types/Events.interface';
-    import { useCurrentlyPlayingEventStore } from '@/stores/CurrentlyPlayingEventStore';
+    import AudioClipsTypes from '@/types/AudioClips.interface';
+    import { useCurrentlyPlayingAudioClipStore } from '@/stores/CurrentlyPlayingAudioClipStore';
     import { notify } from 'notiwind';
     const axios = require('axios');
 
     export default defineComponent({
-        name: 'ListUserBannedEventsApp',
+        name: 'ListUserBannedAudioClipsApp',
         data(){
             return {
-                events: [] as EventsTypes[],
-                currently_playing_event_store: useCurrentlyPlayingEventStore(),
-                selected_event: null as EventsTypes|null,
+                audio_clips: [] as AudioClipsTypes[],
+                currently_playing_audio_clip_store: useCurrentlyPlayingAudioClipStore(),
+                selected_audio_clip: null as AudioClipsTypes|null,
 
                 is_fetching: false,
                 can_observer_fetch: false,
-                has_no_events_left_to_fetch: false,
+                has_no_audio_clips_left_to_fetch: false,
                 current_page: 1,
             };
         },
         computed: {
             getVPlaybackTeleportId() : string {
 
-                if(this.selected_event === null){
+                if(this.selected_audio_clip === null){
 
                     return '';
                 }
 
-                return '#playback-teleport-event-id-' + this.selected_event.id;
+                return '#playback-teleport-audio-clip-id-' + this.selected_audio_clip.id;
             },
         },
         methods: {
-            async getUserBannedEvents() : Promise<void> {
+            async getUserBannedAudioClips() : Promise<void> {
 
                 this.is_fetching = true;
                 this.can_observer_fetch = false;
-                this.has_no_events_left_to_fetch = false;
+                this.has_no_audio_clips_left_to_fetch = false;
 
-                await axios.get(window.location.origin + '/api/users/banned-events/get/' + this.current_page.toString())
+                await axios.get(window.location.origin + '/api/users/banned-audio_clips/get/' + this.current_page.toString())
                 .then((result:any) => {
 
                     console.log(result.data['data'].length);
 
-                    result.data['data'].forEach((event:EventsTypes)=>{
+                    result.data['data'].forEach((audio_clip:AudioClipsTypes)=>{
 
-                        this.events.push(event);
+                        this.audio_clips.push(audio_clip);
                     });
 
                     if(result.data['data'].length > 0){
@@ -102,7 +102,7 @@
 
                     }else{
 
-                        this.has_no_events_left_to_fetch = true;
+                        this.has_no_audio_clips_left_to_fetch = true;
 
                     }
 
@@ -121,26 +121,26 @@
                     this.is_fetching = false;
                 });
             },
-            handleNewSelectedEvent(event:EventsTypes|null) : void {
+            handleNewSelectedAudioClip(audio_clip:AudioClipsTypes|null) : void {
 
-                this.selected_event = event;
+                this.selected_audio_clip = audio_clip;
             },
             setUpObserver() : void {
 
                 //set up observer for infinite scroll
-                const observer_target = document.querySelector('#load-more-user-banned-events-observer-target');
+                const observer_target = document.querySelector('#load-more-user-banned-audio-clips-observer-target');
 
                 const observer = new IntersectionObserver(()=>{
 
                     if(
                         this.can_observer_fetch === false ||
-                        this.has_no_events_left_to_fetch === true
+                        this.has_no_audio_clips_left_to_fetch === true
                     ){
 
                         return;
                     }
 
-                    this.getUserBannedEvents();
+                    this.getUserBannedAudioClips();
                 }, {
                     threshold: 1,
                 });
@@ -153,16 +153,16 @@
         },
         beforeMount(){
 
-            this.getUserBannedEvents();
+            this.getUserBannedAudioClips();
 
             //listen to store
-            this.currently_playing_event_store.$subscribe((mutation, state)=>{
+            this.currently_playing_audio_clip_store.$subscribe((mutation, state)=>{
 
-                this.handleNewSelectedEvent(state.playing_event as EventsTypes|null);
+                this.handleNewSelectedAudioClip(state.playing_audio_clip as AudioClipsTypes|null);
             });
 
             //make ban duration pretty
-            const container = (document.getElementById('data-container-user-banned-events') as HTMLElement);
+            const container = (document.getElementById('data-container-user-banned-audio_clips') as HTMLElement);
 
             //change '1 Jan 2023' to '1 century left'
             //we are passing 'YYYY-MM-DD HH:mm:ss' from template

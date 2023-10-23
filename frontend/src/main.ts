@@ -6,12 +6,12 @@ import VueVirtualScroller from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 
 import BaseApp from '/src/apps/BaseApp.vue';
-import CreateEventRoomsApp from '/src/apps/CreateEventRoomsApp.vue';
-import ListEventRoomChoicesApp from '/src/apps/ListEventRoomChoicesApp.vue';
-import ListUserBannedEventsApp from '/src/apps/ListUserBannedEventsApp.vue';
+import CreateEventsApp from '/src/apps/CreateEventsApp.vue';
+import ListEventChoicesApp from '/src/apps/ListEventChoicesApp.vue';
+import ListUserBannedAudioClipsApp from '/src/apps/ListUserBannedAudioClipsApp.vue';
 import ListUserBlocksApp from '/src/apps/ListUserBlocksApp.vue';
-import GetEventRoomsApp from '/src/apps/GetEventRoomsApp.vue';
-import BrowseEventRoomsApp from '/src/apps/BrowseEventRoomsApp.vue';
+import GetEventsApp from '/src/apps/GetEventsApp.vue';
+import BrowseEventsApp from '/src/apps/BrowseEventsApp.vue';
 import UserLogInSignUp from '/src/components/main/UserLogInSignUp.vue';
 import VUserUsername from '/src/components/medium/VUserUsername.vue';
 import VBackdropAnime from '/src/components/small/VBackdropAnime.vue';
@@ -40,20 +40,20 @@ pinia.use(
 const clickOutside = {
 
     //PROBLEM: make anything with v-click-outside to treat other v-click-outside like any other elements
-    //FIX: don't use event.stopPropagation(), else your events cannot reach here
+    //FIX: don't use audio_clip.stopPropagation(), else your audio_clips cannot reach here
 
     beforeMount: (element:any, binding:any) => {
 
         //2022-12-28
-        //QUESTION: where did event come from?
-        element.clickOutsideEvent = (event:any) => {
+        //QUESTION: where did audio_clip come from?
+        element.clickOutsideAudioClip = (audio_clip:any) => {
 
             //unpack passed arguments
             //var_name_for_element_bool_status, string, is the bool status variable, in charge of your element
             //refs_to_exclude, [], means elements that already handle the same var_name_for_element_bool_status variable on their own
             const {var_name_for_element_bool_status, refs_to_exclude} = binding.value;
 
-            //contains() on this ref element always returns true when event.target refers to ref child or itself
+            //contains() on this ref element always returns true when audio_clip.target refers to ref child or itself
             //if true, we don't do anything, because excluded element already runs handler at @click
             let is_clicked_element_excluded = false;
 
@@ -61,7 +61,7 @@ const clickOutside = {
 
                 try{
 
-                    if(binding.instance.$refs[ref_name].contains(event.target)){
+                    if(binding.instance.$refs[ref_name].contains(audio_clip.target)){
                         
                         is_clicked_element_excluded = true;
                     }
@@ -78,11 +78,11 @@ const clickOutside = {
                 }
             });
 
-            //finally, also check if event.target is outside of our element with this directive attached
+            //finally, also check if audio_clip.target is outside of our element with this directive attached
             if(
                 is_clicked_element_excluded === false &&
-                element !== event.target &&
-                element.contains(event.target) === false
+                element !== audio_clip.target &&
+                element.contains(audio_clip.target) === false
             ){
                 
                 //change element's is_open to false manually, because no other way to run methods without binding.value()
@@ -101,20 +101,22 @@ const clickOutside = {
 
         //use mousedown and not click, since click also listens to mouseup
         //we don't want to trigger mouseup on window drag (e.g. slider)
-        document.addEventListener("pointerup", element.clickOutsideEvent);
+        document.addEventListener("pointerup", element.clickOutsideAudioClip);
     },
     unmounted: (element:any) => {
 
-        document.removeEventListener("pointerup", element.clickOutsideEvent);
+        document.removeEventListener("pointerup", element.clickOutsideAudioClip);
     },
 };
 
 //as long as base-app has pinia, and since base-app is loaded everywhere, pinia can thus be used everywhere
 //the same cannot be said for click-outside
-createApp(BaseApp)
-    .use(pinia)
-    .directive('click-outside', clickOutside)
-    .mount('#base-app');
+if(document.querySelector('#base-app')){
+    createApp(BaseApp)
+        .use(pinia)
+        .directive('click-outside', clickOutside)
+        .mount('#base-app');
+}
 
 //if-else for all # might or might not be the most efficient fix
 //https://vuejs.org/guide/essentials/application.html#the-root-component
@@ -125,37 +127,37 @@ if(document.querySelector('#testing-stuff')){
         .mount('#testing-stuff');
 }
 
-if(document.querySelector('#create-event-rooms-app')){
+if(document.querySelector('#create-events-app')){
 
-    createApp(CreateEventRoomsApp)
-        .mount('#create-event-rooms-app');
+    createApp(CreateEventsApp)
+        .mount('#create-events-app');
 }
 
-if(document.querySelector('#list-event-room-choices-app')){
+if(document.querySelector('#list-event-choices-app')){
 
-    createApp(ListEventRoomChoicesApp)
+    createApp(ListEventChoicesApp)
         .directive('click-outside', clickOutside)
-        .mount('#list-event-room-choices-app');
+        .mount('#list-event-choices-app');
 }
 
-if(document.querySelector('#get-event-rooms-app')){
+if(document.querySelector('#get-events-app')){
 
-    createApp(GetEventRoomsApp)
+    createApp(GetEventsApp)
         .directive('click-outside', clickOutside)
-        .mount('#get-event-rooms-app');
+        .mount('#get-events-app');
 }
 
-if(document.querySelector('#browse-event-rooms-app')){
+if(document.querySelector('#browse-events-app')){
 
-    createApp(BrowseEventRoomsApp)
+    createApp(BrowseEventsApp)
         .directive('click-outside', clickOutside)
-        .mount('#browse-event-rooms-app');
+        .mount('#browse-events-app');
 }
 
 if(document.querySelector('#get-user-profile-app')){
 
     createApp(
-        BrowseEventRoomsApp,
+        BrowseEventsApp,
         {
             propIsUserProfilePage: true
         }
@@ -164,10 +166,10 @@ if(document.querySelector('#get-user-profile-app')){
     .mount('#get-user-profile-app');
 }
 
-if(document.querySelector('#list-user-banned-events-app')){
+if(document.querySelector('#list-user-banned-audio-clips-app')){
 
-    createApp(ListUserBannedEventsApp)
-        .mount('#list-user-banned-events-app');
+    createApp(ListUserBannedAudioClipsApp)
+        .mount('#list-user-banned-audio-clips-app');
 }
 
 if(document.querySelector('#list-user-blocks-app')){

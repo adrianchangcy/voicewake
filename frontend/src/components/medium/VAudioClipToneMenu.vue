@@ -24,7 +24,7 @@
 
             <!--could not get tags-->
             <div
-                v-else-if="hasEventTones === false || has_error === true"
+                v-else-if="hasAudioClipTones === false || has_error === true"
                 class="h-full flex items-center"
             >
                 <VDialogPlain
@@ -42,7 +42,7 @@
 
             <!--has tags-->
             <div
-                v-else-if="hasEventTones === true"
+                v-else-if="hasAudioClipTones === true"
                 class="items-center place-items-center grid grid-flow-row grid-cols-4 gap-y-1 relative"
             >
                 <!--this is for deselect-->
@@ -52,7 +52,7 @@
                 >
                     <!--text-black has great contrast for bg-theme-dark-gray, whereas text-theme-black has bad contrast-->
                     <button
-                        @click="handleEventToneSelected(null)"
+                        @click="handleAudioClipToneSelected(null)"
                         type="button"
                         :class="[
                             isSelected(null) === true ? 'bg-theme-dark-gray text-black' : 'text-theme-black',
@@ -66,18 +66,18 @@
                 <!--tags-->
                 <div
                     class="col-span-1"
-                    v-for="(event_tone, index) in event_tones" :key="event_tone.id"
+                    v-for="(audio_clip_tone, index) in audio_clip_tones" :key="audio_clip_tone.id"
                 >
                     <button
-                        @click="handleEventToneSelected(index)"
+                        @click="handleAudioClipToneSelected(index)"
                         type="button"
                         :class="[
                             isSelected(index) === true ? 'bg-theme-dark-gray' : '',
                             'w-10 h-10 pb-0.5 border border-transparent shade-border-when-hover rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline'
                         ]"
                     >
-                        <span class="has-emoji" aria-hidden="true">{{event_tone.event_tone_symbol}}</span>
-                        <span class="sr-only">{{event_tone.event_tone_name}}</span>
+                        <span class="has-emoji" aria-hidden="true">{{audio_clip_tone.audio_clip_tone_symbol}}</span>
+                        <span class="sr-only">{{audio_clip_tone.audio_clip_tone_name}}</span>
                     </button>
                 </div>
             </div>
@@ -92,25 +92,25 @@
 <script lang="ts">
     //this depends on main.js clickOutside custom directive
     import { PropType, defineComponent } from 'vue';
-    import EventTonesTypes from '@/types/EventTones.interface';
+    import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
     import { notify } from 'notiwind';
     import axios from 'axios';
-    import { useFilteredGroupedEventsStore } from '@/stores/FilteredGroupedEventsStore';
+    import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
 
     export default defineComponent({
         data(){
             return{
-                event_tones: [] as EventTonesTypes[],
-                selected_event_tone_index: null as number|null,
+                audio_clip_tones: [] as AudioClipTonesTypes[],
+                selected_audio_clip_tone_index: null as number|null,
                 is_open: false,     //need this for "close after select"
                 is_loading: false,
                 has_error: false,
             };
         },
         computed: {
-            hasEventTones() : boolean {
+            hasAudioClipTones() : boolean {
 
-                return this.event_tones !== null && this.event_tones.length > 0;
+                return this.audio_clip_tones !== null && this.audio_clip_tones.length > 0;
             },
         },
         props: {
@@ -130,12 +130,12 @@
                 type: Boolean,
                 default: false
             },
-            propInitialEventTone: {
-                type: Object as PropType<EventTonesTypes|null>,
+            propInitialAudioClipTone: {
+                type: Object as PropType<AudioClipTonesTypes|null>,
                 default: null
             },
-            propFilteredGroupedEventsStore: {
-                type: Object as PropType<ReturnType<typeof useFilteredGroupedEventsStore>>,
+            propFilteredEventsStore: {
+                type: Object as PropType<ReturnType<typeof useFilteredEventsStore>>,
                 default: null
             }
         },
@@ -146,17 +146,17 @@
             },
         },
         emits: [
-            'eventToneSelected',
+            'audio_clipToneSelected',
         ],
         methods: {
-            async getEventTonesData(){
+            async getAudioClipTonesData(){
 
                 this.is_loading = true;
 
-                await axios.get(window.location.origin + '/api/event-tones/list')
+                await axios.get(window.location.origin + '/api/audio-clip-tones/list')
                 .then((results) => {
 
-                    this.event_tones = results.data['data'];
+                    this.audio_clip_tones = results.data['data'];
                     this.is_loading = false;
 
                 }).catch(() => {
@@ -171,34 +171,34 @@
                     }, 5000);
                 });
             },
-            isSelected(event_tone_index:number|null) : boolean {
+            isSelected(audio_clip_tone_index:number|null) : boolean {
 
                 if(this.propMustTrackSelectedOption === false){
 
                     return false;
                 }
 
-                return this.selected_event_tone_index === event_tone_index;
+                return this.selected_audio_clip_tone_index === audio_clip_tone_index;
             },
-            async handleEventToneSelected(event_tone_index:number|null) : Promise<void> {
+            async handleAudioClipToneSelected(audio_clip_tone_index:number|null) : Promise<void> {
 
                 if(this.propCloseWhenSelected === true){
 
                     this.is_open = false;
                 }
 
-                if(event_tone_index === this.selected_event_tone_index){
+                if(audio_clip_tone_index === this.selected_audio_clip_tone_index){
 
                     return;
                 }
 
                 //update selected index
-                this.selected_event_tone_index = event_tone_index;
+                this.selected_audio_clip_tone_index = audio_clip_tone_index;
 
                 //emit
                 this.$emit(
-                    'eventToneSelected',
-                    event_tone_index === null ? null : this.event_tones![event_tone_index]
+                    'audio_clipToneSelected',
+                    audio_clip_tone_index === null ? null : this.audio_clip_tones![audio_clip_tone_index]
                 );
             },
         },
@@ -208,25 +208,25 @@
 
             (async ()=>{
 
-                await this.getEventTonesData();
+                await this.getAudioClipTonesData();
 
-                //find index if we have preselected event_tone
-                if(this.propInitialEventTone !== null){
+                //find index if we have preselected audio_clip_tone
+                if(this.propInitialAudioClipTone !== null){
 
-                    const event_tone_index = this.event_tones.findIndex((element:EventTonesTypes)=>{
+                    const audio_clip_tone_index = this.audio_clip_tones.findIndex((element:AudioClipTonesTypes)=>{
 
-                        return element.id === this.propInitialEventTone!.id;
+                        return element.id === this.propInitialAudioClipTone!.id;
                     });
 
-                    if(event_tone_index !== -1){
+                    if(audio_clip_tone_index !== -1){
 
-                        this.selected_event_tone_index = event_tone_index;
+                        this.selected_audio_clip_tone_index = audio_clip_tone_index;
 
-                    }else if(this.propFilteredGroupedEventsStore !== null && event_tone_index === -1){
+                    }else if(this.propFilteredEventsStore !== null && audio_clip_tone_index === -1){
 
-                        //remove data from store if event_tone no longer exists
-                        this.propFilteredGroupedEventsStore.destroySelectedEventToneData(this.propInitialEventTone);
-                        this.propFilteredGroupedEventsStore.updateSelectedEventTone(null);
+                        //remove data from store if audio_clip_tone no longer exists
+                        this.propFilteredEventsStore.destroySelectedAudioClipToneData(this.propInitialAudioClipTone);
+                        this.propFilteredEventsStore.updateSelectedAudioClipTone(null);
                     }
                 }
             })();

@@ -1,11 +1,11 @@
 <template>
-    <CreateEvents
+    <CreateAudioClips
         :propIsOriginator="true"
     />
 </template>
 
 <script setup lang="ts">
-    import CreateEvents from '/src/components/main/CreateEvents.vue';
+    import CreateAudioClips from '/src/components/main/CreateAudioClips.vue';
 </script>
 
 <script lang="ts">
@@ -16,7 +16,7 @@
             return {
             };
         },
-        name: 'CreateEventRoomsApp',
+        name: 'CreateEventsApp',
         methods: {
         }
     });

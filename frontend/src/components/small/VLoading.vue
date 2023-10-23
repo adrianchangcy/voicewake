@@ -18,7 +18,7 @@
 
 
 <script lang="ts">
-    //we don't keep VEventToneMenu in this component due to the inflexibility of button size =/= menu size
+    //we don't keep VAudioClipToneMenu in this component due to the inflexibility of button size =/= menu size
     import { defineComponent, PropType } from 'vue';
     import LetterSizeValues from '@/types/values/LetterSizeValues';
 

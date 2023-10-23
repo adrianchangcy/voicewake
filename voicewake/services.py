@@ -65,8 +65,8 @@ def get_datetime_now(to_string:bool=False):
     return datetime_now
 
     #to get difference
-    #minutes_passed = (get_datetime_now() - event_room.when_locked).total_seconds() / 60
-    #hours_passed = (get_datetime_now() - event_room.when_locked).total_seconds() / 60 / 60
+    #minutes_passed = (get_datetime_now() - event.when_locked).total_seconds() / 60
+    #hours_passed = (get_datetime_now() - event.when_locked).total_seconds() / 60 / 60
 
     #to format into queryset and/or sql-friendly format:
     #get_datetime_now().strftime('%Y-%m-%d %H:%M:%S %z')
@@ -127,127 +127,127 @@ def is_user_banned(request):
     return False
 
 
-def check_user_is_replying(request, excluded_event_room_id=None):
+def check_user_is_replying(request, excluded_event_id=None):
 
     User = get_user_model()
 
     #check if user is replying to anything
-    if excluded_event_room_id is None:
+    if excluded_event_id is None:
 
-        the_count = EventRooms.objects.filter(
+        the_count = Events.objects.filter(
             locked_for_user=User(pk=request.user.id),
             is_replying=True
         ).count()
 
     else:
 
-        the_count = EventRooms.objects.filter(
+        the_count = Events.objects.filter(
             locked_for_user=User(pk=request.user.id),
             is_replying=True
         ).exclude(
-            pk=excluded_event_room_id
+            pk=excluded_event_id
         ).count()
 
     return the_count > 0
 
 
-def group_events_into_event_rooms(events:Events)->list:
+def group_audio_clips_into_events(audio_clips:AudioClips)->list:
 
-    if len(events) == 0 or events is None:
+    if len(audio_clips) == 0 or audio_clips is None:
 
         return []
 
-    sorted_events = []
-    event_room_id = []  #simpler way to check and get element position in sorted_events
+    sorted_audio_clips = []
+    event_id = []  #simpler way to check and get element position in sorted_audio_clips
 
-    for row in events:
+    for row in audio_clips:
 
-        if row.event_room.id not in event_room_id:
+        if row.event.id not in event_id:
 
-            sorted_events.append({
-                'event_room': row.event_room,
+            sorted_audio_clips.append({
+                'event': row.event,
                 'originator': None,
                 'responder': []
             })
 
-            event_room_id.append(row.event_room.id)
+            event_id.append(row.event.id)
 
-        if row.event_role.event_role_name == 'originator':
+        if row.audio_clip_role.audio_clip_role_name == 'originator':
 
-            sorted_events[event_room_id.index(row.event_room.id)]['originator'] = row
+            sorted_audio_clips[event_id.index(row.event.id)]['originator'] = row
 
         else:
 
-            sorted_events[event_room_id.index(row.event_room.id)]['responder'].append(row)
+            sorted_audio_clips[event_id.index(row.event.id)]['responder'].append(row)
 
-    return sorted_events
+    return sorted_audio_clips
 
 
-def prevent_event_room_from_queuing_twice_for_reply(user, event_rooms:list):
+def prevent_events_from_queuing_twice_for_reply(user, events:list):
 
     datetime_now = get_datetime_now()
-    user_event_rooms = []
-    event_room_ids = []
+    user_events = []
+    event_ids = []
 
-    for event_room in event_rooms:
+    for event in events:
 
-        event_room_ids.append(event_room.id)
+        event_ids.append(event.id)
 
-        user_event_room = UserEventRooms(
+        user_event = UserEvents(
             user=user,
-            event_room=event_room,
+            event=event,
             when_created=datetime_now
         )
 
-        if user_event_room not in user_event_rooms:
+        if user_event not in user_events:
 
-            user_event_rooms.append(user_event_room)
+            user_events.append(user_event)
 
     #create rows if they don't yet exist
-    UserEventRooms.objects.bulk_create(
-        user_event_rooms,
+    UserEvents.objects.bulk_create(
+        user_events,
         ignore_conflicts=True
     )
 
     #do extra update just in case row already existed during bulk_create
-    UserEventRooms.objects.filter(
+    UserEvents.objects.filter(
         user=user,
-        event_room_id__in=event_room_ids
+        event_id__in=event_ids
     ).update(
         when_excluded_for_reply=datetime_now
     )
 
 
-def prevent_event_room_from_showing_twice_at_front_page(user, event_rooms:list):
+def prevent_events_from_showing_twice_at_front_page(user, events:list):
 
     datetime_now = get_datetime_now()
-    user_event_rooms = []
-    event_room_ids = []
+    user_events = []
+    event_ids = []
 
-    for event_room in event_rooms:
+    for event in events:
 
-        event_room_ids.append(event_room.id)
+        event_ids.append(event.id)
 
-        user_event_room = UserEventRooms(
+        user_event = UserEvents(
             user=user,
-            event_room=event_room,
+            event=event,
             when_created=datetime_now
         )
 
-        if user_event_room not in user_event_rooms:
+        if user_event not in user_events:
 
-            user_event_rooms.append(user_event_room)
+            user_events.append(user_event)
 
     #create rows if they don't yet exist
-    UserEventRooms.objects.bulk_create(
-        user_event_rooms,
+    UserEvents.objects.bulk_create(
+        user_events,
         ignore_conflicts=True
     )
 
     #do extra update just in case row already existed during bulk_create
-    UserEventRooms.objects.filter(
+    UserEvents.objects.filter(
         user=user,
-        event_room_id__in=event_room_ids
+        event_id__in=event_ids
     ).update(
         when_seen_at_front_page=datetime_now
     )
@@ -334,7 +334,7 @@ class PrepareTestData:
             get_user_model().objects.create_user(email="user"+str(x)+"@gmail.com", username="user"+str(x))
 
 
-    def prepare_test_data_event_rooms(
+    def prepare_test_data_events(
         self,
         originator_username, responder_username='',
         incomplete_count=0, completed_count=0,
@@ -342,7 +342,7 @@ class PrepareTestData:
         
         if completed_count > 0 and len(responder_username) == 0:
 
-            raise ValueError('Requested completed event_rooms but missing responder_username.')
+            raise ValueError('Requested completed events but missing responder_username.')
 
         #prepare fake audio column values
         audio_file = "/audio_test.mp3"
@@ -354,114 +354,114 @@ class PrepareTestData:
 
         #prepare relevant values
         datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
-        event_role_originator = EventRoles.objects.get(event_role_name='originator')
-        event_role_responder = EventRoles.objects.get(event_role_name='responder')
+        audio_clip_role_originator = AudioClipRoles.objects.get(audio_clip_role_name='originator')
+        audio_clip_role_responder = AudioClipRoles.objects.get(audio_clip_role_name='responder')
         originator_user = get_user_model().objects.get(username_lowercase=originator_username.lower())
         responder_user = None
         generic_status_ok = GenericStatuses.objects.get(generic_status_name='ok')
         generic_status_incomplete = GenericStatuses.objects.get(generic_status_name='incomplete')
         generic_status_completed = GenericStatuses.objects.get(generic_status_name='completed')
-        event_tone = EventTones.objects.first()
+        audio_clip_tone = AudioClipTones.objects.first()
 
         if len(responder_username) > 0:
 
             responder_user = get_user_model().objects.get(username_lowercase=responder_username.lower())
 
 
-        #create incomplete event rooms
-        bulk_event_rooms = []
+        #create incomplete audio_clip rooms
+        bulk_events = []
 
         for x in range(0, incomplete_count):
 
-            event_room_name = "incomplete #" + str(x) + " by " + originator_username
+            event_name = "incomplete #" + str(x) + " by " + originator_username
 
-            bulk_event_rooms.append(EventRooms(
-                event_room_name=event_room_name,
+            bulk_events.append(Events(
+                event_name=event_name,
                 created_by=originator_user,
                 generic_status=generic_status_incomplete,
             ))
 
-        bulk_event_rooms = EventRooms.objects.bulk_create(bulk_event_rooms)
+        bulk_events = Events.objects.bulk_create(bulk_events)
 
-        #create incomplete events
-        bulk_events = []
+        #create incomplete audio_clips
+        bulk_audio_clips = []
 
         for x in range(0, incomplete_count):
 
-            bulk_events.append(Events(
+            bulk_audio_clips.append(AudioClips(
                 user=originator_user,
-                event_role=event_role_originator,
+                audio_clip_role=audio_clip_role_originator,
                 audio_file=audio_file,
                 audio_volume_peaks=audio_volume_peaks,
                 audio_duration_s=audio_duration_s,
                 generic_status=generic_status_ok,
-                event_room=bulk_event_rooms[x],
-                event_tone=event_tone
+                event=bulk_events[x],
+                audio_clip_tone=audio_clip_tone
             ))
 
-        Events.objects.bulk_create(bulk_events)
+        AudioClips.objects.bulk_create(bulk_audio_clips)
 
-        #create completed event rooms
-        bulk_event_rooms = []
+        #create completed audio_clip rooms
+        bulk_events = []
 
         for x in range(0, completed_count):
 
-            event_room_name = "completed #" + str(x) + " by " + originator_username
+            event_name = "completed #" + str(x) + " by " + originator_username
 
-            bulk_event_rooms.append(EventRooms(
-                event_room_name=event_room_name,
+            bulk_events.append(Events(
+                event_name=event_name,
                 created_by=originator_user,
                 generic_status=generic_status_completed,
             ))
 
-        bulk_event_rooms = EventRooms.objects.bulk_create(bulk_event_rooms)
+        bulk_events = Events.objects.bulk_create(bulk_events)
 
-        #create completed events
-        bulk_events = []
+        #create completed audio_clips
+        bulk_audio_clips = []
 
         for x in range(0, completed_count):
 
-            bulk_events.append(Events(
+            bulk_audio_clips.append(AudioClips(
                 user=originator_user,
-                event_role=event_role_originator,
+                audio_clip_role=audio_clip_role_originator,
                 audio_file=audio_file,
                 audio_volume_peaks=audio_volume_peaks,
                 audio_duration_s=audio_duration_s,
                 generic_status=generic_status_ok,
-                event_room=bulk_event_rooms[x],
-                event_tone=event_tone
+                event=bulk_events[x],
+                audio_clip_tone=audio_clip_tone
             ))
 
-            bulk_events.append(Events(
+            bulk_audio_clips.append(AudioClips(
                 user=responder_user,
-                event_role=event_role_responder,
+                audio_clip_role=audio_clip_role_responder,
                 audio_file=audio_file,
                 audio_volume_peaks=audio_volume_peaks,
                 audio_duration_s=audio_duration_s,
                 generic_status=generic_status_ok,
-                event_room=bulk_event_rooms[x],
-                event_tone=event_tone
+                event=bulk_events[x],
+                audio_clip_tone=audio_clip_tone
             ))
 
-        Events.objects.bulk_create(bulk_events)
+        AudioClips.objects.bulk_create(bulk_audio_clips)
 
-        #create user_event_rooms to prevent responders from queuing the same originators twice
-        bulk_user_event_rooms = []
+        #create user_events to prevent responders from queuing the same originators twice
+        bulk_user_events = []
 
-        for event_room in bulk_event_rooms:
+        for event in bulk_events:
 
-            bulk_user_event_rooms.append(
-                UserEventRooms(
-                    event_room=event_room,
+            bulk_user_events.append(
+                UserEvents(
+                    event=event,
                     user=responder_user
                 )
             )
 
-        bulk_user_event_rooms = UserEventRooms.objects.bulk_create(bulk_user_event_rooms)
+        bulk_user_events = UserEvents.objects.bulk_create(bulk_user_events)
 
 
     def prepare_test_data_one_user_likes_dislikes(
-        self, action_username, username_of_events, like_percentage, dislike_percentage
+        self, action_username, username_of_audio_clips, like_percentage, dislike_percentage
     ):
         
         if (like_percentage + dislike_percentage) > 1:
@@ -469,99 +469,99 @@ class PrepareTestData:
             raise ValueError('like_percentage and dislike_percentage can only total from 0 to 1')
         
         action_user = get_user_model().objects.get(username_lowercase=action_username)
-        user_of_events = get_user_model().objects.get(username_lowercase=username_of_events)
+        user_of_audio_clips = get_user_model().objects.get(username_lowercase=username_of_audio_clips)
         datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
 
-        #get events
-        events = Events.objects.filter(user=user_of_events)
+        #get audio_clips
+        audio_clips = AudioClips.objects.filter(user=user_of_audio_clips)
 
-        if len(events) == 0:
+        if len(audio_clips) == 0:
 
-            raise Events.DoesNotExist
+            raise AudioClips.DoesNotExist
 
         #create likes
         bulk_likes = []
-        likes_floor = math.floor(like_percentage * len(events))
+        likes_floor = math.floor(like_percentage * len(audio_clips))
 
         for x in range(0, likes_floor):
 
             bulk_likes.append(
-                EventLikesDislikes(
-                    event=events[x],
+                AudioClipLikesDislikes(
+                    audio_clip=audio_clips[x],
                     user=action_user,
                     is_liked=True,
                 )
             )
 
             #update count
-            events[x].like_count += 1
+            audio_clips[x].like_count += 1
 
-        EventLikesDislikes.objects.bulk_create(bulk_likes)
+        AudioClipLikesDislikes.objects.bulk_create(bulk_likes)
 
         #create dislikes
         bulk_dislikes = []
 
-        for x in range(likes_floor, len(events)):
+        for x in range(likes_floor, len(audio_clips)):
 
             bulk_dislikes.append(
-                EventLikesDislikes(
-                    event=events[x],
+                AudioClipLikesDislikes(
+                    audio_clip=audio_clips[x],
                     user=action_user,
                     is_liked=False,
                 )
             )
 
             #update count
-            events[x].dislike_count += 1
+            audio_clips[x].dislike_count += 1
 
-        EventLikesDislikes.objects.bulk_create(bulk_dislikes)
+        AudioClipLikesDislikes.objects.bulk_create(bulk_dislikes)
 
         #update count
-        Events.objects.bulk_update(events, ["like_count", "dislike_count"])
+        AudioClips.objects.bulk_update(audio_clips, ["like_count", "dislike_count"])
 
 
-    #your target user should not have existing events
+    #your target user should not have existing audio_clips
     def prepare_test_data_for_bans(
         self, target_username:str='', backup_username:str='',
-        events_to_ban_quantity:int=10, events_not_to_ban_quantity:int=6,
+        audio_clips_to_ban_quantity:int=10, audio_clips_not_to_ban_quantity:int=6,
         reporting_user_quantity:int=1
     ):
 
-        if (events_to_ban_quantity % 2) != 0 or (events_not_to_ban_quantity % 2) != 0:
+        if (audio_clips_to_ban_quantity % 2) != 0 or (audio_clips_not_to_ban_quantity % 2) != 0:
 
-            raise ValueError('Make sure events_to_ban_quantity and events_not_to_ban_quantity are even numbers for consistency.')
+            raise ValueError('Make sure audio_clips_to_ban_quantity and audio_clips_not_to_ban_quantity are even numbers for consistency.')
 
-        expected_events_count = events_to_ban_quantity + events_not_to_ban_quantity
+        expected_audio_clips_count = audio_clips_to_ban_quantity + audio_clips_not_to_ban_quantity
 
-        self.prepare_test_data_event_rooms(
+        self.prepare_test_data_events(
             originator_username=target_username,
-            incomplete_count=int(expected_events_count/2),
+            incomplete_count=int(expected_audio_clips_count/2),
             completed_count=0,
         )
 
-        self.prepare_test_data_event_rooms(
+        self.prepare_test_data_events(
             originator_username=backup_username,
             responder_username=target_username,
             incomplete_count=0,
-            completed_count=int(expected_events_count/2),
+            completed_count=int(expected_audio_clips_count/2),
         )
 
-        #get events
-        events = Events.objects.filter(user__username_lowercase=target_username.lower())
+        #get audio_clips
+        audio_clips = AudioClips.objects.filter(user__username_lowercase=target_username.lower())
 
         #excluding this causes bug
-        #i.e. events is treated as subquery in delete(), and for-loop executes events only after deletion
-        #hence EventLikesDislikes violating unique constraint
-        print(str(len(events)) + ' events ready to evaluate')
+        #i.e. audio_clips is treated as subquery in delete(), and for-loop executes audio_clips only after deletion
+        #hence AudioClipLikesDislikes violating unique constraint
+        print(str(len(audio_clips)) + ' audio_clips ready to evaluate')
 
-        #reset likes dislikes for these events
-        EventLikesDislikes.objects.filter(event__in=events).delete()
+        #reset likes dislikes for these audio_clips
+        AudioClipLikesDislikes.objects.filter(audio_clip__in=audio_clips).delete()
 
         #prepare to achieve like dislike ratio
-        bulk_event_likes_dislikes = []
-        bulk_event_reports = []
-        expected_like_count = math.floor((settings.BAN_EVENT_DISLIKE_COUNT / settings.BAN_EVENT_DISLIKE_RATIO) - settings.BAN_EVENT_DISLIKE_COUNT)
-        expected_dislike_count = settings.BAN_EVENT_DISLIKE_COUNT
+        bulk_audio_clip_likes_dislikes = []
+        bulk_audio_clip_reports = []
+        expected_like_count = math.floor((settings.BAN_AUDIO_CLIP_DISLIKE_COUNT / settings.BAN_AUDIO_CLIP_DISLIKE_RATIO) - settings.BAN_AUDIO_CLIP_DISLIKE_COUNT)
+        expected_dislike_count = settings.BAN_AUDIO_CLIP_DISLIKE_COUNT
 
         #make sure we have sufficient users for dislike count
         user_count = get_user_model().objects.all().count()
@@ -576,74 +576,74 @@ class PrepareTestData:
         #get users
         users = get_user_model().objects.all().order_by('id')[:(expected_like_count + expected_dislike_count + reporting_user_quantity)]
 
-        #update Events.when_created
-        when_created = get_datetime_now() - timedelta(seconds=(settings.BAN_EVENT_AGE_SECONDS * 2))
+        #update AudioClips.when_created
+        when_created = get_datetime_now() - timedelta(seconds=(settings.BAN_AUDIO_CLIP_AGE_SECONDS * 2))
 
-        for x in range(events_to_ban_quantity):
+        for x in range(audio_clips_to_ban_quantity):
 
             #create likes
             for xx in range(expected_like_count):
 
-                bulk_event_likes_dislikes.append(
-                    EventLikesDislikes(
+                bulk_audio_clip_likes_dislikes.append(
+                    AudioClipLikesDislikes(
                         user=users[xx],
                         is_liked=True,
-                        event=events[x]
+                        audio_clip=audio_clips[x]
                     )
                 )
 
             #create dislikes
             for xx in range(expected_like_count, (expected_like_count + expected_dislike_count)):
 
-                bulk_event_likes_dislikes.append(
-                    EventLikesDislikes(
+                bulk_audio_clip_likes_dislikes.append(
+                    AudioClipLikesDislikes(
                         user=users[xx],
                         is_liked=False,
-                        event=events[x]
+                        audio_clip=audio_clips[x]
                     )
                 )
 
-            #update events
-            events[x].when_created = when_created
-            events[x].is_banned = False
+            #update audio_clips
+            audio_clips[x].when_created = when_created
+            audio_clips[x].is_banned = False
 
-            #create event_reports
+            #create audio_clip_reports
             for xx in range(
                 (expected_like_count + expected_dislike_count),
                 (expected_like_count + expected_dislike_count + reporting_user_quantity)
             ):
 
-                bulk_event_reports.append(EventReports(
-                    reported_event=events[x],
+                bulk_audio_clip_reports.append(AudioClipReports(
+                    reported_audio_clip=audio_clips[x],
                     user=users[xx]
                 ))
 
         #update db
-        EventLikesDislikes.objects.bulk_create(bulk_event_likes_dislikes)
-        Events.objects.bulk_update(events, ('when_created', 'is_banned',))
-        EventReports.objects.bulk_create(bulk_event_reports)
+        AudioClipLikesDislikes.objects.bulk_create(bulk_audio_clip_likes_dislikes)
+        AudioClips.objects.bulk_update(audio_clips, ('when_created', 'is_banned',))
+        AudioClipReports.objects.bulk_create(bulk_audio_clip_reports)
 
         #to clear these data
         '''
-            UPDATE events SET event_room_id=NULL WHERE is_banned IS TRUE;
-            DELETE FROM user_event_rooms WHERE event_room_id IN (SELECT event_room_id FROM events WHERE is_banned IS TRUE);
-            DELETE FROM event_rooms WHERE id NOT IN (SELECT event_room_id FROM events WHERE event_room_id IS NOT NULL);
-            DELETE FROM event_likes_dislikes WHERE event_id IN (SELECT id FROM events WHERE is_banned IS TRUE);
-            DELETE FROM events WHERE event_room_id IS NULL;
+            UPDATE audio_clips SET event_id=NULL WHERE is_banned IS TRUE;
+            DELETE FROM user_events WHERE event_id IN (SELECT event_id FROM audio_clips WHERE is_banned IS TRUE);
+            DELETE FROM events WHERE id NOT IN (SELECT event_id FROM audio_clips WHERE event_id IS NOT NULL);
+            DELETE FROM audio_clip_likes_dislikes WHERE audio_clip_id IN (SELECT id FROM audio_clips WHERE is_banned IS TRUE);
+            DELETE FROM audio_clips WHERE event_id IS NULL;
             UPDATE voicewake_user SET banned_until=NULL WHERE username_lowercase='oompa';
         '''
 
         #to clear all data related to specific user in this context
         '''
-            UPDATE events SET event_room_id=NULL WHERE event_room_id IN (
-                SELECT event_room_id FROM events WHERE user_id = (
+            UPDATE audio_clips SET event_id=NULL WHERE event_id IN (
+                SELECT event_id FROM audio_clips WHERE user_id = (
                     SELECT id FROM voicewake_user WHERE username_lowercase='oompa'
                 )
             );
-            DELETE FROM user_event_rooms WHERE event_room_id NOT IN (SELECT event_room_id FROM events WHERE event_room_id IS NOT NULL);
-            DELETE FROM event_likes_dislikes WHERE event_id IN (SELECT id FROM events WHERE event_room_id IS NULL);
-            DELETE FROM event_rooms WHERE id NOT IN (SELECT event_room_id FROM events WHERE event_room_id IS NOT NULL);
-            DELETE FROM events WHERE event_room_id IS NULL;
+            DELETE FROM user_events WHERE event_id NOT IN (SELECT event_id FROM audio_clips WHERE event_id IS NOT NULL);
+            DELETE FROM audio_clip_likes_dislikes WHERE audio_clip_id IN (SELECT id FROM audio_clips WHERE event_id IS NULL);
+            DELETE FROM events WHERE id NOT IN (SELECT event_id FROM audio_clips WHERE event_id IS NOT NULL);
+            DELETE FROM audio_clips WHERE event_id IS NULL;
         '''
 
 
@@ -684,7 +684,7 @@ class PrepareTestData:
         backup_user_2 = get_user_model().objects.get(username_lowercase='user2')
         backup_user_3 = get_user_model().objects.get(username_lowercase='user3')
 
-        #prepare info for events
+        #prepare info for audio_clips
         #prepare fake audio column values
         audio_file = "/audio_test.mp3"
         audio_volume_peaks = [
@@ -695,171 +695,171 @@ class PrepareTestData:
 
         #prepare relevant values
         datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
-        event_role_originator = EventRoles.objects.get(event_role_name='originator')
-        event_role_responder = EventRoles.objects.get(event_role_name='responder')
+        audio_clip_role_originator = AudioClipRoles.objects.get(audio_clip_role_name='originator')
+        audio_clip_role_responder = AudioClipRoles.objects.get(audio_clip_role_name='responder')
         generic_status_ok = GenericStatuses.objects.get(generic_status_name='ok')
         generic_status_incomplete = GenericStatuses.objects.get(generic_status_name='incomplete')
         generic_status_completed = GenericStatuses.objects.get(generic_status_name='completed')
         generic_status_deleted = GenericStatuses.objects.get(generic_status_name='deleted')
-        event_tone = EventTones.objects.first()
+        audio_clip_tone = AudioClipTones.objects.first()
 
-        def bulk_create_events(event_details):
+        def bulk_create_audio_clips(audio_clip_details):
 
-            bulk_events = []
+            bulk_audio_clips = []
 
-            for row in event_details:
+            for row in audio_clip_details:
 
-                bulk_events.append(Events(
+                bulk_audio_clips.append(AudioClips(
                     user=row['user'],
-                    event_role=row['event_role'],
+                    audio_clip_role=row['audio_clip_role'],
                     audio_file=audio_file,
                     audio_volume_peaks=audio_volume_peaks,
                     audio_duration_s=audio_duration_s,
-                    event_room=row['event_room'],
+                    event=row['event'],
                     generic_status=row['generic_status'],
                     is_banned=row['is_banned'],
-                    event_tone=event_tone
+                    audio_clip_tone=audio_clip_tone
                 ))
 
-            list(Events.objects.bulk_create(bulk_events))
+            list(AudioClips.objects.bulk_create(bulk_audio_clips))
 
-        event_details = []
+        audio_clip_details = []
 
         #create 2 incomplete originator for target user
 
-        event_room_1 = EventRooms.objects.create(
-            event_room_name='target_user incomplete #1',
+        event_1 = Events.objects.create(
+            event_name='target_user incomplete #1',
             created_by=target_user,
             generic_status=generic_status_incomplete,
         )
-        event_room_2 = EventRooms.objects.create(
-            event_room_name='target_user incomplete #2',
+        event_2 = Events.objects.create(
+            event_name='target_user incomplete #2',
             created_by=target_user,
             generic_status=generic_status_incomplete,
         )
 
-        event_details = [
-            {'event_room': event_room_1, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event_room': event_room_2, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+        audio_clip_details = [
+            {'event': event_1, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event': event_2, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
         ]
 
-        bulk_create_events(event_details)
+        bulk_create_audio_clips(audio_clip_details)
 
         #create 2 originator completed for target user
 
-        event_room_1 = EventRooms.objects.create(
-            event_room_name='target_user completed #1',
+        event_1 = Events.objects.create(
+            event_name='target_user completed #1',
             created_by=target_user,
             generic_status=generic_status_completed,
         )
-        event_room_2 = EventRooms.objects.create(
-            event_room_name='target_user completed #2',
+        event_2 = Events.objects.create(
+            event_name='target_user completed #2',
             created_by=target_user,
             generic_status=generic_status_completed,
         )
 
-        event_details = [
-            {'event_room': event_room_1, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event_room': event_room_1, 'user': backup_user, 'event_role': event_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event_room': event_room_2, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event_room': event_room_2, 'user': backup_user, 'event_role': event_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
+        audio_clip_details = [
+            {'event': event_1, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event': event_1, 'user': backup_user, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event': event_2, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event': event_2, 'user': backup_user, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
         ]
 
-        bulk_create_events(event_details)
+        bulk_create_audio_clips(audio_clip_details)
 
         #create 2 completed, but originator is banned
 
-        event_room_1 = EventRooms.objects.create(
-            event_room_name='target_user completed, target_user banned #1',
+        event_1 = Events.objects.create(
+            event_name='target_user completed, target_user banned #1',
             created_by=target_user,
             generic_status=generic_status_deleted,
         )
-        event_room_2 = EventRooms.objects.create(
-            event_room_name='target_user completed, target_user banned #2',
+        event_2 = Events.objects.create(
+            event_name='target_user completed, target_user banned #2',
             created_by=target_user,
             generic_status=generic_status_deleted,
         )
 
-        event_details = [
-            {'event_room': event_room_1, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event_room': event_room_1, 'user': backup_user, 'event_role': event_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event_room': event_room_2, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event_room': event_room_2, 'user': backup_user, 'event_role': event_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
+        audio_clip_details = [
+            {'event': event_1, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event': event_1, 'user': backup_user, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event': event_2, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event': event_2, 'user': backup_user, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
         ]
 
-        bulk_create_events(event_details)
+        bulk_create_audio_clips(audio_clip_details)
 
         #create 2 completed, but responder is banned
 
-        event_room_1 = EventRooms.objects.create(
-            event_room_name='target_user completed, backup_user banned #1',
+        event_1 = Events.objects.create(
+            event_name='target_user completed, backup_user banned #1',
             created_by=target_user,
             generic_status=generic_status_incomplete,
         )
-        event_room_2 = EventRooms.objects.create(
-            event_room_name='target_user completed, backup_user banned #2',
+        event_2 = Events.objects.create(
+            event_name='target_user completed, backup_user banned #2',
             created_by=target_user,
             generic_status=generic_status_incomplete,
         )
 
-        event_details = [
-            {'event_room': event_room_1, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event_room': event_room_1, 'user': backup_user, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event_room': event_room_2, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event_room': event_room_2, 'user': backup_user, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
+        audio_clip_details = [
+            {'event': event_1, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event': event_1, 'user': backup_user, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event': event_2, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event': event_2, 'user': backup_user, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
         ]
 
-        bulk_create_events(event_details)
+        bulk_create_audio_clips(audio_clip_details)
 
         #create 2 completed, each has 2 banned responders previously, then 1 responder
 
-        event_room_1 = EventRooms.objects.create(
-            event_room_name='target_user completed, 2 banned responses, backup_user responded #1',
+        event_1 = Events.objects.create(
+            event_name='target_user completed, 2 banned responses, backup_user responded #1',
             created_by=target_user,
             generic_status=generic_status_completed,
         )
-        event_room_2 = EventRooms.objects.create(
-            event_room_name='target_user completed, 2 banned responses, backup_user responded #2',
+        event_2 = Events.objects.create(
+            event_name='target_user completed, 2 banned responses, backup_user responded #2',
             created_by=target_user,
             generic_status=generic_status_completed,
         )
 
-        event_details = [
-            {'event_room': event_room_1, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event_room': event_room_1, 'user': backup_user_2, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event_room': event_room_1, 'user': backup_user_3, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event_room': event_room_1, 'user': backup_user, 'event_role': event_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event_room': event_room_2, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event_room': event_room_2, 'user': backup_user_2, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event_room': event_room_2, 'user': backup_user_3, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event_room': event_room_2, 'user': backup_user, 'event_role': event_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
+        audio_clip_details = [
+            {'event': event_1, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event': event_1, 'user': backup_user_2, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event': event_1, 'user': backup_user_3, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event': event_1, 'user': backup_user, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event': event_2, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event': event_2, 'user': backup_user_2, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event': event_2, 'user': backup_user_3, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event': event_2, 'user': backup_user, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
         ]
 
-        bulk_create_events(event_details)
+        bulk_create_audio_clips(audio_clip_details)
 
         #create 2 incomplete, each has 2 banned responders previously
 
-        event_room_1 = EventRooms.objects.create(
-            event_room_name='target_user incomplete, 2 responses banned #1',
+        event_1 = Events.objects.create(
+            event_name='target_user incomplete, 2 responses banned #1',
             created_by=target_user,
             generic_status=generic_status_incomplete,
         )
-        event_room_2 = EventRooms.objects.create(
-            event_room_name='target_user incomplete, 2 responses banned #2',
+        event_2 = Events.objects.create(
+            event_name='target_user incomplete, 2 responses banned #2',
             created_by=target_user,
             generic_status=generic_status_incomplete,
         )
 
-        event_details = [
-            {'event_room': event_room_1, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event_room': event_room_1, 'user': backup_user_2, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event_room': event_room_1, 'user': backup_user_3, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event_room': event_room_2, 'user': target_user, 'event_role': event_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event_room': event_room_2, 'user': backup_user_2, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event_room': event_room_2, 'user': backup_user_3, 'event_role': event_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
+        audio_clip_details = [
+            {'event': event_1, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event': event_1, 'user': backup_user_2, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event': event_1, 'user': backup_user_3, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event': event_2, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
+            {'event': event_2, 'user': backup_user_2, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
+            {'event': event_2, 'user': backup_user_3, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
         ]
 
-        bulk_create_events(event_details)
+        bulk_create_audio_clips(audio_clip_details)
 
 
     def do_quick_start(self, quantity_scale:int=1):
@@ -874,20 +874,20 @@ class PrepareTestData:
         #create users
         self.prepare_users(20*quantity_scale)
 
-        #create incomplete/completed event_rooms
-        self.prepare_test_data_event_rooms(
+        #create incomplete/completed events
+        self.prepare_test_data_events(
             originator_username="user0",
             responder_username="user1",
             incomplete_count=100*quantity_scale,
             completed_count=50*quantity_scale,
         )
-        self.prepare_test_data_event_rooms(
+        self.prepare_test_data_events(
             originator_username="user2",
             responder_username="user3",
             incomplete_count=20*quantity_scale,
             completed_count=10*quantity_scale,
         )
-        self.prepare_test_data_event_rooms(
+        self.prepare_test_data_events(
             originator_username="user4",
             responder_username="user5",
             incomplete_count=20*quantity_scale,
@@ -897,34 +897,34 @@ class PrepareTestData:
         #get users for bulk_create
         bulk_users = get_user_model().objects.all()
 
-        #apply likes/dislikes to events by only user0 and user1
-        bulk_event_like_dislikes = []
-        bulk_user_event_rooms = []
+        #apply likes/dislikes to audio_clips by only user0 and user1
+        bulk_audio_clip_like_dislikes = []
+        bulk_user_events = []
 
         for user in bulk_users:
 
             #create likes/dislikes
             self.prepare_test_data_one_user_likes_dislikes(
                 action_username=user.username,
-                username_of_events="user0",
+                username_of_audio_clips="user0",
                 like_percentage=0.6,
                 dislike_percentage=0.4,
             )
             self.prepare_test_data_one_user_likes_dislikes(
                 action_username=user.username,
-                username_of_events="user1",
+                username_of_audio_clips="user1",
                 like_percentage=0.7,
                 dislike_percentage=0.3,
             )
             self.prepare_test_data_one_user_likes_dislikes(
                 action_username=user.username,
-                username_of_events="user2",
+                username_of_audio_clips="user2",
                 like_percentage=0.8,
                 dislike_percentage=0.2,
             )
             self.prepare_test_data_one_user_likes_dislikes(
                 action_username=user.username,
-                username_of_events="user3",
+                username_of_audio_clips="user3",
                 like_percentage=0.9,
                 dislike_percentage=0.1,
             )
@@ -1105,7 +1105,7 @@ class HandleUserOTP(TOTPVerification):
             if get_datetime_now() < timeout_end:
 
                 #still under timeout
-                print('Is timed out from max attempts.')
+                print('Timed out from max attempts.')
                 return True
 
             #reset after timeout
@@ -1140,7 +1140,7 @@ class HandleUserOTP(TOTPVerification):
         #UserOTP will first be created with otp == ''
         if get_datetime_now() < timeout_end:
 
-            print('Is timed out from creating OTP.')
+            print('Timed out from creating OTP.')
             return True
         
         return False
@@ -1159,7 +1159,7 @@ class HandleUserOTP(TOTPVerification):
         return time_remaining
 
 
-    def generate_and_save_otp(self):
+    def generate_otp(self):
 
         self._set_key_if_none()
 

@@ -134,10 +134,10 @@
 
                 this.otp_string = concat_string;
             },
-            handlePaste(event:ClipboardEvent, input_fields:any) : void {
+            handlePaste(e:ClipboardEvent, input_fields:any) : void {
 
                 //thanks to Lighthouse for discovering this when analysing
-                if(event.clipboardData === null){
+                if(e.clipboardData === null){
 
                     return;
                 }
@@ -145,7 +145,7 @@
                 //remove spaces
                 //getData() returns "" if there is nothing
                 //we don't want to use deep-clean with regex here, so that user can identify their mistake
-                const pasted_value:string = (event.clipboardData as DataTransfer).getData("text/plain").replace(/\s/g, "");
+                const pasted_value:string = (e.clipboardData as DataTransfer).getData("text/plain").replace(/\s/g, "");
 
                 //check and override error message
                 if(/^[0-9]+$/.test(pasted_value) === false){
@@ -187,7 +187,7 @@
                 }
                 
                 //focus on last character of pasted input
-                //input listener only triggers for last slot, with event.data===null and current_input_field.value!=null
+                //input listener only triggers for last slot, with e.data===null and current_input_field.value!=null
                 //input listener will not trigger for every slot before the last one if done in for-loop above
                 input_fields[last_filled_input_index].focus();
                 input_fields[last_filled_input_index].setSelectionRange(input_fields[last_filled_input_index].value.length, input_fields[last_filled_input_index].value.length);
@@ -213,12 +213,12 @@
                 }
             },
             validateSlot(
-                event:InputEvent, input_fields:any, current_input_field:HTMLInputElement, current_input_field_index:number
+                e:InputEvent, input_fields:any, current_input_field:HTMLInputElement, current_input_field_index:number
             ) : void {
 
                 //current_input_field behaves as reference
-                    //when manual user input, current_input_field.value!=null, event.data!=null
-                    //when programmatically inserted input, current_input_field.value!=null, event.data===null
+                    //when manual user input, current_input_field.value!=null, e.data!=null
+                    //when programmatically inserted input, current_input_field.value!=null, e.data===null
 
                 //null if not found
                 const next_input_field = current_input_field.nextElementSibling as HTMLInputElement;
@@ -227,9 +227,9 @@
                 //irrelevant reminder that typeof null is object, not "null type"
                 let new_slot_value = "";
 
-                if(event.data !== null && event.data.length > 0){
+                if(e.data !== null && e.data.length > 0){
 
-                    new_slot_value = event.data;
+                    new_slot_value = e.data;
 
                 }else if(current_input_field.value !== null && current_input_field.value.length > 0){
 
@@ -249,7 +249,7 @@
                     //has valid input
 
                     //put this here to avoid resetting error message of handlePaste()
-                    //since paste event also triggers input event
+                    //since paste e also triggers input e
                     this.resetErrorMessage();
 
                     //handle input position

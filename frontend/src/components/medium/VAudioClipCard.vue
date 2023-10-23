@@ -38,7 +38,7 @@
                             class="w-full h-full absolute flex flex-row justify-evenly"
                         >
                             <div
-                                v-for="volume_ripple in propEvent.audio_volume_peaks.length" :key="volume_ripple"
+                                v-for="volume_ripple in propAudioClip.audio_volume_peaks.length" :key="volume_ripple"
                                 ref="volume_ripple"
                                 class="h-full scale-y-0 origin-center"
                             >
@@ -54,9 +54,9 @@
                             class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0.5 m-auto text-2xl has-emoji pb-0.5"
                             aria-hidden="true"
                         >
-                            {{ propEvent.event_tone.event_tone_symbol }}
+                            {{ propAudioClip.audio_clip_tone.audio_clip_tone_symbol }}
                         </span>
-                        <span class="sr-only">{{ propEvent.event_tone.event_tone_name }}</span>
+                        <span class="sr-only">{{ propAudioClip.audio_clip_tone.audio_clip_tone_name }}</span>
                     </div>
                 </div>
             </VAction>
@@ -82,7 +82,7 @@
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
     import anime from 'animejs';
-    import EventsAndLikeDetailsTypes from '@/types/EventsAndLikeDetails.interface';
+    import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
     import { prettyDuration } from '@/helper_functions';
 
 
@@ -93,8 +93,8 @@
             };
         },
         props: {
-            propEvent: {
-                type: Object as PropType<EventsAndLikeDetailsTypes>,
+            propAudioClip: {
+                type: Object as PropType<AudioClipsAndLikeDetailsTypes>,
                 required: true,
             },
             propIsSelected: {
@@ -105,15 +105,15 @@
         computed: {
             prettyFileDuration(){
 
-                return prettyDuration(this.propEvent.audio_duration_s);
+                return prettyDuration(this.propAudioClip.audio_duration_s);
             },
             getTeleportId() : string {
 
-                return 'playback-teleport-event-id-' + this.propEvent.id.toString();
+                return 'playback-teleport-audio-clip-id-' + this.propAudioClip.id.toString();
             },
         },
         watch: {
-            propEvent(new_value:EventsAndLikeDetailsTypes){
+            propAudioClip(new_value:AudioClipsAndLikeDetailsTypes){
 
                 this.updateAudioVolumePeaks(new_value);
             },
@@ -121,7 +121,7 @@
         methods: {
             handleIsSelected() : void {
 
-                this.$emit('isSelected', this.propEvent);
+                this.$emit('isSelected', this.propAudioClip);
             },
             async handleSelectionAnime(is_selected:boolean) : Promise<void> {
 
@@ -166,7 +166,7 @@
                     });
                 }
             },
-            async updateAudioVolumePeaks(new_value:EventsAndLikeDetailsTypes) : Promise<void> {
+            async updateAudioVolumePeaks(new_value:AudioClipsAndLikeDetailsTypes) : Promise<void> {
 
                 if(this.$refs.volume_ripple === undefined){
 
@@ -195,7 +195,7 @@
         },
         mounted(){
 
-            this.updateAudioVolumePeaks(this.propEvent);
+            this.updateAudioVolumePeaks(this.propAudioClip);
         },
     });
 </script>

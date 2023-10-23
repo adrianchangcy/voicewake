@@ -26,15 +26,15 @@
     import { notify } from 'notiwind';
     // import anime from 'animejs';
     // import VPlayback from '../medium/VPlayback.vue';
-    // import { useFilteredGroupedEventsStore } from '@/stores/FilteredGroupedEventsStore';
-    import GroupedEventsTypes from '@/types/GroupedEvents.interface';
+    // import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
+    import GroupedAudioClipsTypes from '@/types/GroupedAudioClips.interface';
     const axios = require('axios');
 
     export default defineComponent({
         data(){
             return {
                 notifications: [] as any[],
-                event_room: null as GroupedEventsTypes|null,
+                event: null as GroupedAudioClipsTypes|null,
             };
         },
         watch: {
@@ -51,10 +51,10 @@
                     console.log(results.data);
                 });
             },
-            async getEventRoom(event_room_id:number) : Promise<void> {
+            async getEvent(event_id:number) : Promise<void> {
 
-                //prepare events, then separate
-                await axios.get(window.location.origin + '/api/events/get/event-room/' + event_room_id.toString())
+                //prepare audio_clips, then separate
+                await axios.get(window.location.origin + '/api/audio_clips/get/event/' + event_id.toString())
                 .then((results:any) => {
 
                     if(results.data['data'].length === 0){
@@ -62,13 +62,13 @@
                         return;
                     }
 
-                    //API always returns list, even if there is only one event_room
-                    this.event_room = results.data['data'][0];
+                    //API always returns list, even if there is only one event
+                    this.event = results.data['data'][0];
                 })
                 .catch((error:any) => {
 
                     notify({
-                        title: "Event search failed",
+                        title: "AudioClip search failed",
                         text: error.response.data['message'],
                         type: "error"
                     }, 3000);

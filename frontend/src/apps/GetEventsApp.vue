@@ -3,17 +3,17 @@
 
         <div v-if="is_searching" class="flex flex-col gap-10">
 
-            <!--loading events-->
-            <div v-for="x in event_count" :key="x">
-                <VEventCardSkeleton/>
+            <!--loading audio-clips-->
+            <div v-for="x in audio_clip_count" :key="x">
+                <VAudioClipCardSkeleton/>
             </div>
         </div>
 
-        <div v-else-if="event_room !== null">
+        <div v-else-if="event !== null">
 
-            <!--events-->
-            <EventRoomCard
-                :propEventRoom="event_room"
+            <!--audio-clips-->
+            <EventCard
+                :propEvent="event"
                 :propShowTitle="false"
             />
 
@@ -65,9 +65,9 @@
                             </div>
                         </div>
 
-                        <CreateEvents
+                        <CreateAudioClips
                             :propIsOriginator="false"
-                            :propEventRoomId="event_room.event_room.id"
+                            :propEventId="event.event.id"
                             :propCanSubmit="canSubmit"
                             @isSubmitting="handleIsSubmitting($event)"
                             @isSubmitSuccessful="handleIsSubmitSuccessful($event)"
@@ -90,7 +90,7 @@
                         class="w-fit mx-auto"
                     >
                         <span class="flex items-center">
-                            <span class="font-bold block">More event choices</span>
+                            <span class="font-bold block">More audio_clip choices</span>
                             <i class="fas fa-arrow-right block text-lg pl-2" aria-hidden="true"></i>
                         </span>
                     </VActionTextOnly>
@@ -111,22 +111,22 @@
                         class="w-fit mx-auto"
                     >
                         <span class="flex items-center">
-                            <span class="font-bold block">More event choices</span>
+                            <span class="font-bold block">More audio_clip choices</span>
                             <i class="fas fa-arrow-right block text-lg pl-2" aria-hidden="true"></i>
                         </span>
                     </VActionTextOnly>
                 </span>
             </TransitionFadeSlow>
 
-            <!--VEventCard emits selection, which triggers :to, thus teleporting-->
-            <!--presence of VEventCard depends on VEventRoomCard-->
-            <div v-if="selected_event !== null">
+            <!--VAudioClipCard emits selection, which triggers :to, thus teleporting-->
+            <!--presence of VAudioClipCard depends on VEventCard-->
+            <div v-if="selected_audio_clip !== null">
                 <Teleport :to="getVPlaybackTeleportId">
                     <VPlayback
-                        :propEvent="selected_event"
+                        :propAudioClip="selected_audio_clip"
                         :propIsOpen="true"
-                        :propAudioVolumePeaks="selected_event.audio_volume_peaks"
-                        :propBucketQuantity="selected_event.audio_volume_peaks.length"
+                        :propAudioVolumePeaks="selected_audio_clip.audio_volume_peaks"
+                        :propBucketQuantity="selected_audio_clip.audio_volume_peaks.length"
                         :propAutoPlayOnSourceChange="true"
                     />
                 </Teleport>
@@ -137,15 +137,15 @@
 
 
 <script setup lang="ts">
-    import EventRoomCard from '@/components/main/EventRoomCard.vue';
+    import EventCard from '@/components/main/EventCard.vue';
     import VActionButtonDangerS from '@/components/small/VActionButtonDangerS.vue';
     import VActionTextOnly from '@/components/small/VActionTextOnly.vue';
-    import CreateEvents from '@/components/main/CreateEvents.vue';
+    import CreateAudioClips from '@/components/main/CreateAudioClips.vue';
     import VTitle from '@/components/small/VTitle.vue';
     import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
     import VPlayback from '@/components/medium/VPlayback.vue';
     import VUsernameURL from '@/components/small/VUsernameURL.vue';
-    import VEventCardSkeleton from '@/components/skeleton/VEventCardSkeleton.vue';
+    import VAudioClipCardSkeleton from '@/components/skeleton/VAudioClipCardSkeleton.vue';
     import VLoading from '@/components/small/VLoading.vue';
 </script>
 
@@ -153,38 +153,38 @@
 <script lang="ts">
     import { defineComponent, } from 'vue';
     import { prettyTimePassed, prettyTimeRemaining, getDataFromTemplateJSONScript, timeFromNowMS } from '@/helper_functions';
-    import GroupedEventsTypes from '@/types/GroupedEvents.interface';
-    import EventsAndLikeDetailsTypes from '@/types/EventsAndLikeDetails.interface';
+    import GroupedAudioClipsTypes from '@/types/GroupedAudioClips.interface';
+    import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
     import StatusValues from '@/types/values/StatusValues';
     import { notify } from 'notiwind';
     import { useUnfinishedReplyStore } from '@/stores/UnfinishedReplyStore';
-    import { useCurrentlyPlayingEventStore } from '@/stores/CurrentlyPlayingEventStore';
+    import { useCurrentlyPlayingAudioClipStore } from '@/stores/CurrentlyPlayingAudioClipStore';
     const axios = require('axios');
 
     export default defineComponent({
-        name: 'GetEventRoomsApp',
+        name: 'GetEventsApp',
         data() {
             return {
                 unfinished_reply_store: useUnfinishedReplyStore(),
-                currently_playing_event_store: useCurrentlyPlayingEventStore(),
+                currently_playing_audio_clip_store: useCurrentlyPlayingAudioClipStore(),
 
                 user_id: null as number|null,
-                event_room_id: null as number|null,
-                event_count: 0, //from DOM
+                event_id: null as number|null,
+                audio_clip_count: 0, //from DOM
                 is_this_user_replying: false,
                 is_deleted: false,
 
                 reply_is_deleted: false,    //set True once, only to show message
                 reply_is_expired: false,  //set True once, only to show message
 
-                event_room: null as GroupedEventsTypes|null,
+                event: null as GroupedAudioClipsTypes|null,
 
                 is_searching: false,
                 is_deleting: false,
                 is_expiring: false,
                 is_submitting: false,
                 
-                selected_event: null as EventsAndLikeDetailsTypes|null,
+                selected_audio_clip: null as AudioClipsAndLikeDetailsTypes|null,
                 reply_expiry_interval: null as number|null,
                 reply_expiry_string: '',
 
@@ -207,12 +207,12 @@
             },
             getVPlaybackTeleportId() : string {
 
-                if(this.selected_event === null){
+                if(this.selected_audio_clip === null){
 
                     return '';
                 }
 
-                return '#playback-teleport-event-id-' + this.selected_event.id;
+                return '#playback-teleport-audio-clip-id-' + this.selected_audio_clip.id;
             },
         },
         watch: {
@@ -227,8 +227,8 @@
 
                 if(
                     relevant_statuses.includes(store_status) === false ||
-                    this.unfinished_reply_store.event_room === null ||
-                    this.unfinished_reply_store.event_room.event_room.id !== this.event_room_id
+                    this.unfinished_reply_store.event === null ||
+                    this.unfinished_reply_store.event.event.id !== this.event_id
                 ){
 
                     return;
@@ -250,7 +250,7 @@
                         //user originally isn't replying, but may now be
                         //i.e. not replying --> tab left open --> triggers replying
                         //we refresh our stale data, and it will evaluate if user is replying
-                        this.getEventRoom();
+                        this.getEvent();
                         break;
 
                     case 'replying_deleted':
@@ -276,7 +276,7 @@
                         break;
                 }
             },
-            checkUserIsReplying(event_room:GroupedEventsTypes){
+            checkUserIsReplying(event:GroupedAudioClipsTypes){
 
                 //check if user is supposed to reply to this
                 //might not seem important to do this much if journey is standard reply --> open
@@ -284,7 +284,7 @@
 
                 //basic validation
                 if(
-                    event_room.event_room.id !== this.event_room_id ||
+                    event.event.id !== this.event_id ||
                     this.user_id === null
                 ){
 
@@ -293,9 +293,9 @@
 
                 //validate whether user is replying
                 if(
-                    event_room.event_room.is_replying === true &&
-                    event_room.event_room.locked_for_user !== null &&
-                    event_room.event_room.locked_for_user.id === this.user_id
+                    event.event.is_replying === true &&
+                    event.event.locked_for_user !== null &&
+                    event.event.locked_for_user.id === this.user_id
                 ){
 
                     //is replying
@@ -305,7 +305,7 @@
 
                     //patch store
                     this.unfinished_reply_store.$patch({
-                        event_room: event_room,
+                        event: event,
                         status: "replying"
                     });
 
@@ -359,9 +359,9 @@
 
                 //do API request
                 let data = new FormData();
-                data.append('event_room_id', JSON.stringify(this.event_room_id));
+                data.append('event_id', JSON.stringify(this.event_id));
 
-                await axios.post(window.location.origin + '/api/event-rooms/reply/delete', data)
+                await axios.post(window.location.origin + '/api/events/reply/delete', data)
                 .then(() => {
 
                     handler();
@@ -393,18 +393,18 @@
 
                 });
             },
-            async getEventRoom() : Promise<void> {
+            async getEvent() : Promise<void> {
 
-                if(this.event_room_id === null){
+                if(this.event_id === null){
 
                     return;
                 }
 
                 this.is_searching = true;
-                this.event_room = null;
+                this.event = null;
 
-                //prepare events, then separate
-                await axios.get(window.location.origin + '/api/event-rooms/get/' + this.event_room_id.toString())
+                //prepare audio_clips, then separate
+                await axios.get(window.location.origin + '/api/events/get/' + this.event_id.toString())
                 .then((results:any) => {
 
                     if(results.data['data'].length === 0){
@@ -413,8 +413,8 @@
                         return;
                     }
 
-                    //API always returns list, even if there is only one event_room
-                    this.event_room = results.data['data'][0];
+                    //API always returns list, even if there is only one event
+                    this.event = results.data['data'][0];
 
                     //if user is replying, auto-handles everything else
                     this.checkUserIsReplying(results.data['data'][0]);
@@ -423,7 +423,7 @@
                 .catch((error:any) => {
 
                     notify({
-                        title: "Event search failed",
+                        title: "AudioClip search failed",
                         text: error.response.data['message'],
                         type: "error"
                     }, 4000);
@@ -445,7 +445,7 @@
                         status: "replying_successful"
                     });
 
-                    //redirect is taken care of by CreateEvents
+                    //redirect is taken care of by CreateAudioClips
                 }
             },
             handleIsSubmitting(new_value:boolean) : void {
@@ -467,16 +467,16 @@
                     left: target.offsetLeft,
                 });
             },
-            handleNewSelectedEvent(event:EventsAndLikeDetailsTypes|null) : void {
+            handleNewSelectedAudioClip(audio_clip:AudioClipsAndLikeDetailsTypes|null) : void {
 
-                this.selected_event = event;
+                this.selected_audio_clip = audio_clip;
             },
             startReplyExpiryInterval() : void {
 
                 if(
                     this.is_this_user_replying === false ||
-                    this.event_room === null ||
-                    this.event_room.event_room.when_locked === null
+                    this.event === null ||
+                    this.event.event.when_locked === null
                 ){
 
                     return;
@@ -486,7 +486,7 @@
                 this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
                 this.reply_expiry_interval = null;
 
-                const when_locked_ms = new Date(this.event_room.event_room.when_locked);
+                const when_locked_ms = new Date(this.event.event.when_locked);
                 const time_elapsed_ms = timeFromNowMS(when_locked_ms);
 
                 //time is up
@@ -549,13 +549,13 @@
             //get user_id
             this.user_id = getDataFromTemplateJSONScript('data-user-id') as number|null;
 
-            const container = (document.getElementById('data-container-get-event-rooms') as HTMLElement);
+            const container = (document.getElementById('data-container-get-events') as HTMLElement);
 
             //get essential data first, where we don't proceed if they don't exist
-            const event_choice_expiry_seconds = (container.getAttribute('data-event-room-reply-choice-expiry-seconds') as string);
-            const event_reply_expiry_seconds = (container.getAttribute('data-event-room-reply-expiry-seconds') as string);
+            const audio_clip_choice_expiry_seconds = (container.getAttribute('data-event-reply-choice-expiry-seconds') as string);
+            const audio_clip_reply_expiry_seconds = (container.getAttribute('data-event-reply-expiry-seconds') as string);
 
-            if(event_choice_expiry_seconds === null || event_reply_expiry_seconds === null){
+            if(audio_clip_choice_expiry_seconds === null || audio_clip_reply_expiry_seconds === null){
 
                 //don't proceed because we lack essential data
                 console.log('Essential data was not passed into template.');
@@ -563,14 +563,14 @@
             }
 
             //get data from SSR template
-            this.choice_expiry_max_ms = parseInt(event_choice_expiry_seconds) * 1000;
-            this.reply_expiry_max_ms = parseInt(event_reply_expiry_seconds) * 1000;
-            this.event_room_id = parseInt(container.getAttribute('data-event-room-id') as string);
+            this.choice_expiry_max_ms = parseInt(audio_clip_choice_expiry_seconds) * 1000;
+            this.reply_expiry_max_ms = parseInt(audio_clip_reply_expiry_seconds) * 1000;
+            this.event_id = parseInt(container.getAttribute('data-event-id') as string);
             this.is_deleted = JSON.parse(container.getAttribute('data-is-deleted') as string);
-            this.event_count = JSON.parse(container.getAttribute('data-event-count') as string);
+            this.audio_clip_count = JSON.parse(container.getAttribute('data-audio-clip-count') as string);
             this.is_this_user_replying = JSON.parse(container.getAttribute('data-is-this-user-replying') as string);
 
-            this.getEventRoom();
+            this.getEvent();
 
             if(this.is_this_user_replying === true){
 
@@ -594,9 +594,9 @@
             });
 
             //listen to store
-            this.currently_playing_event_store.$subscribe((mutation, state)=>{
+            this.currently_playing_audio_clip_store.$subscribe((mutation, state)=>{
 
-                this.handleNewSelectedEvent(state.playing_event as EventsAndLikeDetailsTypes|null);
+                this.handleNewSelectedAudioClip(state.playing_audio_clip as AudioClipsAndLikeDetailsTypes|null);
             });
         },
     });

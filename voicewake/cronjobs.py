@@ -8,113 +8,113 @@ from voicewake.models import *
 from django.conf import settings
 
 
-def cronjob_ban_events():
+def cronjob_ban_audio_clips():
 
-    #as long as quantity of event_reports rows is not a factor, we delete all of them after cron
+    #as long as quantity of audio_clip_reports rows is not a factor, we delete all of them after cron
 
-    #ensure not to select events that are too new
-    maximum_when_created = get_datetime_now() - timedelta(seconds=settings.BAN_EVENT_AGE_SECONDS)
+    #ensure not to select audio_clips that are too new
+    maximum_when_created = get_datetime_now() - timedelta(seconds=settings.BAN_AUDIO_CLIP_AGE_SECONDS)
 
-    #we delete reports of events that do not meet ban conditions
+    #we delete reports of audio_clips that do not meet ban conditions
     with connection.cursor() as cursor:
 
         cursor.execute(
             '''
                 WITH
-                distinct_reported_events AS (
-                    SELECT DISTINCT reported_event_id
-                    FROM event_reports
-                    ORDER BY reported_event_id ASC
+                distinct_reported_audio_clips AS (
+                    SELECT DISTINCT reported_audio_clip_id
+                    FROM audio_clip_reports
+                    ORDER BY reported_audio_clip_id ASC
                     LIMIT %s
                 ),
-                events_not_to_ban AS (
-                    SELECT events.id
-                    FROM events
-                    INNER JOIN distinct_reported_events ON events.id = distinct_reported_events.reported_event_id
-                    WHERE events.dislike_count < %s
-                    OR (events.dislike_count::float / (events.like_count + events.dislike_count)) < %s
-                    OR events.when_created > %s
-                    OR events.is_banned IS TRUE
+                audio_clips_not_to_ban AS (
+                    SELECT audio_clips.id
+                    FROM audio_clips
+                    INNER JOIN distinct_reported_audio_clips ON audio_clips.id = distinct_reported_audio_clips.reported_audio_clip_id
+                    WHERE audio_clips.dislike_count < %s
+                    OR (audio_clips.dislike_count::float / (audio_clips.like_count + audio_clips.dislike_count)) < %s
+                    OR audio_clips.when_created > %s
+                    OR audio_clips.is_banned IS TRUE
                 )
-                DELETE FROM event_reports AS er
-                USING events_not_to_ban AS entb
-                WHERE er.reported_event_id = entb.id
+                DELETE FROM audio_clip_reports AS er
+                USING audio_clips_not_to_ban AS entb
+                WHERE er.reported_audio_clip_id = entb.id
             ''',
             params=(
-                settings.BAN_EVENT_QUANTITY_PER_CRON,
-                settings.BAN_EVENT_DISLIKE_COUNT,
-                settings.BAN_EVENT_DISLIKE_RATIO,
+                settings.BAN_AUDIO_CLIP_QUANTITY_PER_CRON,
+                settings.BAN_AUDIO_CLIP_DISLIKE_COUNT,
+                settings.BAN_AUDIO_CLIP_DISLIKE_RATIO,
                 maximum_when_created,
             )
         )
 
-    #for events we are about to ban, we get count of those users' event_report_bans
+    #for audio_clips we are about to ban, we get count of those users' audio_clip_report_bans
     #this is to determine the  appropriate banned_until value
 
     #must cast any one column as float for the ratio to work
     #otherwise, since all of them are int, we'd get 0
     with transaction.atomic():
 
-        events_to_ban = Events.objects.prefetch_related(
-            'user', 'event_role', 'event_room'
+        audio_clips_to_ban = AudioClips.objects.prefetch_related(
+            'user', 'audio_clip_role', 'event'
         ).select_for_update(
-            of=('self', 'event_room')
+            of=('self', 'event')
         ).raw(
             '''
                 WITH
-                distinct_reported_events AS (
-                    SELECT DISTINCT reported_event_id
-                    FROM event_reports
-                    ORDER BY reported_event_id ASC
+                distinct_reported_audio_clips AS (
+                    SELECT DISTINCT reported_audio_clip_id
+                    FROM audio_clip_reports
+                    ORDER BY reported_audio_clip_id ASC
                     LIMIT %s
                 )
-                SELECT events.*,
+                SELECT audio_clips.*,
                 (
-                    SELECT COUNT(*) FROM events as events2
-                    WHERE events2.user_id = events.user_id
-                    AND events2.is_banned IS TRUE
+                    SELECT COUNT(*) FROM audio_clips as audio_clips2
+                    WHERE audio_clips2.user_id = audio_clips.user_id
+                    AND audio_clips2.is_banned IS TRUE
                 ) as ban_count
-                FROM events
-                RIGHT JOIN distinct_reported_events ON distinct_reported_events.reported_event_id = events.id
-                WHERE events.dislike_count >= %s
-                AND (events.dislike_count::float / (events.like_count + events.dislike_count)) >= %s
-                AND events.when_created <= %s
-                AND events.is_banned IS FALSE
+                FROM audio_clips
+                RIGHT JOIN distinct_reported_audio_clips ON distinct_reported_audio_clips.reported_audio_clip_id = audio_clips.id
+                WHERE audio_clips.dislike_count >= %s
+                AND (audio_clips.dislike_count::float / (audio_clips.like_count + audio_clips.dislike_count)) >= %s
+                AND audio_clips.when_created <= %s
+                AND audio_clips.is_banned IS FALSE
             ''',
             params=(
-                settings.BAN_EVENT_QUANTITY_PER_CRON,
-                settings.BAN_EVENT_DISLIKE_COUNT,
-                settings.BAN_EVENT_DISLIKE_RATIO,
+                settings.BAN_AUDIO_CLIP_QUANTITY_PER_CRON,
+                settings.BAN_AUDIO_CLIP_DISLIKE_COUNT,
+                settings.BAN_AUDIO_CLIP_DISLIKE_RATIO,
                 maximum_when_created,
             )
         )
 
-        print(str(len(events_to_ban)) + ' events to ban')
+        print(str(len(audio_clips_to_ban)) + ' audio_clips to ban')
 
         #ban
-        #we will likely get multiple events from the same user here
-        #to accurately set banned_until on a per-event basis, we track and update ban_count here
+        #we will likely get multiple audio_clips from the same user here
+        #to accurately set banned_until on a per-audio_clip basis, we track and update ban_count here
 
         datetime_now = get_datetime_now()
         user_details = {}   #keeps track of ban_count and banned_until
 
-        event_room_ids = []
-        bulk_event_rooms = []
+        event_ids = []
+        bulk_events = []
         generic_status_deleted = GenericStatuses.objects.get(generic_status_name='deleted')
         generic_status_incomplete = GenericStatuses.objects.get(generic_status_name='incomplete')
 
-        for x in range(len(events_to_ban)):
+        for x in range(len(audio_clips_to_ban)):
 
-            events_to_ban[x].is_banned = True
-            events_to_ban[x].generic_status = generic_status_deleted
+            audio_clips_to_ban[x].is_banned = True
+            audio_clips_to_ban[x].generic_status = generic_status_deleted
 
-            #track user and ban_count for cases of multiple events retrieved with same user
-            user_id = events_to_ban[x].user.id
+            #track user and ban_count for cases of multiple audio_clips retrieved with same user
+            user_id = audio_clips_to_ban[x].user.id
 
             if user_id in user_details:
 
                 banned_until = datetime_now + timedelta(days=(
-                    settings.BAN_EVENT_DURATION_PER_BAN_DAYS * user_details[user_id]['ban_count']
+                    settings.BAN_AUDIO_CLIP_DURATION_PER_BAN_DAYS * user_details[user_id]['ban_count']
                 ))
 
                 user_details[user_id]['ban_count'] = user_details[user_id]['ban_count'] + 1
@@ -123,39 +123,39 @@ def cronjob_ban_events():
             else:
 
                 banned_until = datetime_now + timedelta(days=(
-                    settings.BAN_EVENT_DURATION_PER_BAN_DAYS * events_to_ban[x].ban_count
+                    settings.BAN_AUDIO_CLIP_DURATION_PER_BAN_DAYS * audio_clips_to_ban[x].ban_count
                 ))
 
                 user_details[user_id] = {
-                    'ban_count': events_to_ban[x].ban_count + 1,
+                    'ban_count': audio_clips_to_ban[x].ban_count + 1,
                     'banned_until': banned_until
                 }
 
-            current_event_role_name = events_to_ban[x].event_role.event_role_name
+            current_audio_clip_role_name = audio_clips_to_ban[x].audio_clip_role.audio_clip_role_name
             expected_generic_status = None
 
-            if current_event_role_name == 'originator':
+            if current_audio_clip_role_name == 'originator':
 
                 expected_generic_status = generic_status_deleted
 
-            elif current_event_role_name == 'responder':
+            elif current_audio_clip_role_name == 'responder':
 
                 expected_generic_status = generic_status_incomplete
 
             else:
 
-                raise ValueError('Error when evaluating event_role_name.')
+                raise ValueError('Error when evaluating audio_clip_role_name.')
 
-            #prepare to handle event_room
-            #on edge case where event_room can be both deleted/incomplete, deleted takes precedence
-            event_room_id = events_to_ban[x].event_room.id
+            #prepare to handle event
+            #on edge case where event can be both deleted/incomplete, deleted takes precedence
+            event_id = audio_clips_to_ban[x].event.id
 
-            if event_room_id not in event_room_ids:
+            if event_id not in event_ids:
 
-                event_room_ids.append(event_room_id)
+                event_ids.append(event_id)
 
-                bulk_event_rooms.append(EventRooms(
-                    pk=event_room_id,
+                bulk_events.append(Events(
+                    pk=event_id,
                     generic_status=expected_generic_status,
                     when_locked=None,
                     is_replying=None,
@@ -163,18 +163,18 @@ def cronjob_ban_events():
                 ))
 
             elif (
-                current_event_role_name == 'originator' and
-                bulk_event_rooms[event_room_ids.index(event_room_id)].generic_status != generic_status_deleted
+                current_audio_clip_role_name == 'originator' and
+                bulk_events[event_ids.index(event_id)].generic_status != generic_status_deleted
             ):
 
                 #ensure deleted takes precedence over incomplete
-                bulk_event_rooms[event_room_ids.index(event_room_id)].generic_status = generic_status_deleted
+                bulk_events[event_ids.index(event_id)].generic_status = generic_status_deleted
+
+        #update audio_clips
+        AudioClips.objects.bulk_update(audio_clips_to_ban, ('is_banned', 'generic_status',))
 
         #update events
-        Events.objects.bulk_update(events_to_ban, ('is_banned', 'generic_status',))
-
-        #update event_rooms
-        EventRooms.objects.bulk_update(bulk_event_rooms, ('generic_status', 'when_locked', 'is_replying', 'locked_for_user',))
+        Events.objects.bulk_update(bulk_events, ('generic_status', 'when_locked', 'is_replying', 'locked_for_user',))
 
     #prepare users for update
     bulk_users = []
@@ -189,8 +189,8 @@ def cronjob_ban_events():
     #update users
     get_user_model().objects.bulk_update(bulk_users, ('banned_until',))
 
-    #delete event_reports
-    EventReports.objects.filter(reported_event__in=events_to_ban).delete()
+    #delete audio_clip_reports
+    AudioClipReports.objects.filter(reported_audio_clip__in=audio_clips_to_ban).delete()
 
 
 def cronjob_reset_reply_choice_overdue():
@@ -199,27 +199,27 @@ def cronjob_reset_reply_choice_overdue():
     #which would be fine, but it's better for UX
     extra_seconds = 60
 
-    max_when_locked = get_datetime_now() - timedelta(seconds=(settings.EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS + extra_seconds))
+    max_when_locked = get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS + extra_seconds))
 
     with connection.cursor() as cursor:
 
         cursor.execute(
             '''
-            WITH selected_event_rooms AS (
-                SELECT * FROM event_rooms
+            WITH selected_events AS (
+                SELECT * FROM events
                 WHERE is_replying IS FALSE
                 AND locked_for_user_id IS NOT NULL
                 AND when_locked <= %s
                 LIMIT %s
             )
-            UPDATE event_rooms
+            UPDATE events
             SET is_replying = NULL, locked_for_user_id = NULL, when_locked = NULL
-            FROM selected_event_rooms
-            WHERE event_rooms.id = selected_event_rooms.id
+            FROM selected_events
+            WHERE events.id = selected_events.id
             ''',
             params=(
                 max_when_locked,
-                settings.EVENT_ROOM_UNDO_REPLY_QUANTITY_PER_CRON,
+                settings.EVENT_UNDO_REPLY_QUANTITY_PER_CRON,
             )
         )
 
@@ -230,27 +230,27 @@ def cronjob_reset_replying_overdue():
     #which would be fine, but it's better for UX
     extra_seconds = 60
 
-    max_when_locked = get_datetime_now() - timedelta(seconds=(settings.EVENT_ROOM_REPLY_EXPIRY_SECONDS + extra_seconds))
+    max_when_locked = get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_EXPIRY_SECONDS + extra_seconds))
 
     with connection.cursor() as cursor:
 
         cursor.execute(
             '''
-            WITH selected_event_rooms AS (
-                SELECT * FROM event_rooms
+            WITH selected_events AS (
+                SELECT * FROM events
                 WHERE is_replying IS TRUE
                 AND locked_for_user_id IS NOT NULL
                 AND when_locked <= %s
                 LIMIT %s
             )
-            UPDATE event_rooms
+            UPDATE events
             SET is_replying = NULL, locked_for_user_id = NULL, when_locked = NULL
-            FROM selected_event_rooms
-            WHERE event_rooms.id = selected_event_rooms.id
+            FROM selected_events
+            WHERE events.id = selected_events.id
             ''',
             params=(
                 max_when_locked,
-                settings.EVENT_ROOM_UNDO_REPLY_QUANTITY_PER_CRON,
+                settings.EVENT_UNDO_REPLY_QUANTITY_PER_CRON,
             )
         )
 
