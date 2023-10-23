@@ -16,16 +16,16 @@ class UsersSerializer(serializers.ModelSerializer):
 
 
 
-class EventRolesSerializer(serializers.ModelSerializer):
+class AudioClipRolesSerializer(serializers.ModelSerializer):
     class Meta:
-        model = EventRoles
+        model = AudioClipRoles
         exclude = ['when_created']
 
 
 
-class EventTonesSerializer(serializers.ModelSerializer):
+class AudioClipTonesSerializer(serializers.ModelSerializer):
     class Meta:
-        model = EventTones
+        model = AudioClipTones
         exclude = ['when_created']
 
 
@@ -37,10 +37,10 @@ class UserVerificationOptionsSerializer(serializers.ModelSerializer):
 
 
 
-class EventLikesDislikesSerializer(serializers.ModelSerializer):
+class AudioClipLikesDislikesSerializer(serializers.ModelSerializer):
     user = UsersSerializer()
     class Meta:
-        model = EventLikesDislikes
+        model = AudioClipLikesDislikes
         fields = '__all__'
 
 
@@ -52,21 +52,21 @@ class GenericStatusesSerializer(serializers.ModelSerializer):
 
 
 
-class EventRoomsSerializer(serializers.ModelSerializer):
+class EventsSerializer(serializers.ModelSerializer):
     generic_status = GenericStatusesSerializer()
     locked_for_user = UsersSerializer()
     created_by = UsersSerializer()
     class Meta:
-        model = EventRooms
+        model = Events
         fields = '__all__'
 
 
 
-class EventsSerializer(serializers.ModelSerializer):
+class AudioClipsSerializer(serializers.ModelSerializer):
     user = UsersSerializer()
-    event_role = EventRolesSerializer()
-    event_tone = EventTonesSerializer()
-    event_room = EventRoomsSerializer()
+    audio_clip_role = AudioClipRolesSerializer()
+    audio_clip_tone = AudioClipTonesSerializer()
+    event = EventsSerializer()
     generic_status = GenericStatusesSerializer()
     audio_volume_peaks = serializers.ListField(
         child=serializers.DecimalField(min_value=0, max_value=1, max_digits=3, decimal_places=2, coerce_to_string=False),
@@ -75,18 +75,18 @@ class EventsSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        model = Events
+        model = AudioClips
         fields = '__all__'
 
 
 
-#no need event_room=EventRoomsSerializer
-#because we will use store into SortedEventsIntoEventRoomsSerializer.event_room, once for all related events
-class EventsAndLikeDetailsSerializer(serializers.ModelSerializer):
+#no need event=EventsSerializer
+#because we will use store into SortedAudioClipsIntoEventsSerializer.event, once for all related audio_clips
+class AudioClipsAndLikeDetailsSerializer(serializers.ModelSerializer):
     user = UsersSerializer()
-    event_role = EventRolesSerializer()
-    event_tone = EventTonesSerializer()
-    event_room_id = serializers.IntegerField()
+    audio_clip_role = AudioClipRolesSerializer()
+    audio_clip_tone = AudioClipTonesSerializer()
+    event_id = serializers.IntegerField()
     generic_status = GenericStatusesSerializer()
     audio_volume_peaks = serializers.ListField(
         child=serializers.DecimalField(min_value=0, max_value=1, max_digits=3, decimal_places=2, coerce_to_string=False),
@@ -98,41 +98,41 @@ class EventsAndLikeDetailsSerializer(serializers.ModelSerializer):
     is_liked_by_user = serializers.BooleanField(allow_null=True)
 
     class Meta:
-        model = Events
-        fields = ['id', 'user', 'event_role', 'event_tone', 'event_room_id', 'generic_status', 'audio_file', 'audio_volume_peaks', 'audio_duration_s', 'like_count', 'dislike_count', 'is_liked_by_user']
+        model = AudioClips
+        fields = ['id', 'user', 'audio_clip_role', 'audio_clip_tone', 'event_id', 'generic_status', 'audio_file', 'audio_volume_peaks', 'audio_duration_s', 'like_count', 'dislike_count', 'is_liked_by_user']
 
 
 
-class GroupedEventsSerializer(serializers.Serializer):
-    event_room = EventRoomsSerializer()
-    originator = EventsAndLikeDetailsSerializer()
+class GroupedAudioClipsSerializer(serializers.Serializer):
+    event = EventsSerializer()
+    originator = AudioClipsAndLikeDetailsSerializer()
     responder = serializers.ListField(
-        child=EventsAndLikeDetailsSerializer()
+        child=AudioClipsAndLikeDetailsSerializer()
     )
 
 
 
-class CreateEventLikesDislikesSerializer(serializers.Serializer):
-    event_id = serializers.IntegerField()
+class CreateAudioClipLikesDislikesSerializer(serializers.Serializer):
+    audio_clip_id = serializers.IntegerField()
     is_liked = serializers.BooleanField(allow_null=True)
 
 
 
-class CreateEventsSerializer(serializers.Serializer):
+class CreateAudioClipsSerializer(serializers.Serializer):
 
     #pass only when is_originator=False
-    event_room_id = serializers.IntegerField(
+    event_id = serializers.IntegerField(
         required=False
     )
 
     #pass only when is_originator=True
-    event_room_name = serializers.CharField(
+    event_name = serializers.CharField(
         required=False,
         min_length=1,
-        max_length=200, #follow EventRooms.event_room_name
+        max_length=200, #follow Events.event_name
     )
 
-    event_tone_id = serializers.IntegerField()
+    audio_clip_tone_id = serializers.IntegerField()
 
     audio_file = serializers.FileField(
         allow_empty_file=False
@@ -144,12 +144,12 @@ class CreateEventsSerializer(serializers.Serializer):
         #ensure audio_file does not exceed max file size
         #web serve should be first line of defense at production (e.g. LimitRequestBody setting at Apache)
         #https://stackoverflow.com/questions/6195478/max-image-size-on-file-upload
-        if value.size > settings.EVENT_MAX_FILE_SIZE_BYTES:
+        if value.size > settings.AUDIO_CLIP_MAX_FILE_SIZE_BYTES:
 
             #file is too large
             custom_error_message = "Invalid data, file is too big. Your file is %sMB, while the limit is %sMB." % (
                 round(value.size / (1024 * 1024), 2),
-                round(settings.EVENT_MAX_FILE_SIZE_BYTES / (1024 * 1024), 2)
+                round(settings.AUDIO_CLIP_MAX_FILE_SIZE_BYTES / (1024 * 1024), 2)
             )
 
             raise serializers.ValidationError(custom_error_message)
@@ -160,15 +160,15 @@ class CreateEventsSerializer(serializers.Serializer):
 
 
 
-class HandleEventRoomReplyChoicesAPISerializer(serializers.Serializer):
+class HandleEventReplyChoicesAPISerializer(serializers.Serializer):
 
-    event_tone_id = serializers.IntegerField(required=False)
+    audio_clip_tone_id = serializers.IntegerField(required=False)
 
 
 
-class HandleReplyingEventRoomsAPISerializer(serializers.Serializer):
+class HandleReplyingEventsAPISerializer(serializers.Serializer):
 
-    event_room_id = serializers.IntegerField()
+    event_id = serializers.IntegerField()
 
 
 
@@ -212,8 +212,8 @@ class UsersUsernameAPISerializer(serializers.Serializer):
 
 
 
-#used for both signing in and creating account
-class UsersLogInAPISerializer(serializers.Serializer):
+#used for both login and sign-up
+class UsersLogInSignUpAPISerializer(serializers.Serializer):
 
     #no need to do our own regex check for EmailField
     email = serializers.EmailField(max_length=254)
@@ -254,9 +254,13 @@ class UsersLogInAPISerializer(serializers.Serializer):
 
     def validate(self, data):
 
-        if 'otp' in data and data['is_requesting_new_otp'] is True:
+        if data['is_requesting_new_otp'] is True and 'otp' in data:
 
             raise serializers.ValidationError('Cannot request for new OTP while submitting OTP.')
+        
+        elif data['is_requesting_new_otp'] is False and 'otp' not in data:
+
+            raise serializers.ValidationError('Missing OTP.')
 
         return data
 
@@ -280,9 +284,9 @@ class UserBlocksAPISerializer(serializers.Serializer):
 
 
 
-class EventReportsAPISerializer(serializers.Serializer):
+class AudioClipReportsAPISerializer(serializers.Serializer):
 
-    reported_event_id = serializers.IntegerField()
+    reported_audio_clip_id = serializers.IntegerField()
 
 
 

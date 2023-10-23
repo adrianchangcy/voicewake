@@ -6,18 +6,18 @@
         ]"
     >
 
-        <!--events-->
+        <!--audio-clips-->
         <div
             class="flex flex-col gap-8"
         >
             <TransitionGroupFade>
                 <div
-                    v-for="event in propEvents" :key="event.id"
+                    v-for="audio_clip in propAudioClips" :key="audio_clip.id"
                 >
-                    <VEventCard
-                        :propEvent="event"
-                        :propIsSelected="checkIsSelected(event.id)"
-                        @isSelected="handleNewSelectedEvent($event)"
+                    <VAudioClipCard
+                        :propAudioClip="audio_clip"
+                        :propIsSelected="checkIsSelected(audio_clip.id)"
+                        @isSelected="handleNewSelectedAudioClip($event)"
                     />
                 </div>
 
@@ -32,27 +32,27 @@
 </template>
 
 <script setup lang="ts">
-    import VEventCard from '/src/components/medium/VEventCard.vue';
+    import VAudioClipCard from '/src/components/medium/VAudioClipCard.vue';
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
 </script>
 
 
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
-    import EventsTypes from '@/types/Events.interface';
-    import { useCurrentlyPlayingEventStore } from '@/stores/CurrentlyPlayingEventStore';
+    import AudioClipsTypes from '@/types/AudioClips.interface';
+    import { useCurrentlyPlayingAudioClipStore } from '@/stores/CurrentlyPlayingAudioClipStore';
 
     export default defineComponent({
         data() {
             return {
-                currently_playing_event_store: useCurrentlyPlayingEventStore(),
-                selected_event: null as EventsTypes|null,
+                currently_playing_audio_clip_store: useCurrentlyPlayingAudioClipStore(),
+                selected_audio_clip: null as AudioClipsTypes|null,
                 pretty_when_created: '',
             };
         },
         props: {
-            propEvents: {
-                type: Object as PropType<EventsTypes[]>,
+            propAudioClips: {
+                type: Object as PropType<AudioClipsTypes[]>,
                 required: true,
             },
             propShowTitle: {
@@ -71,23 +71,23 @@
         computed: {
         },
         methods: {
-            checkIsSelected(event_id:number) : boolean {
+            checkIsSelected(audio_clip_id:number) : boolean {
 
-                return this.selected_event !== null && this.selected_event.id === event_id;
+                return this.selected_audio_clip !== null && this.selected_audio_clip.id === audio_clip_id;
             },
-            handleNewSelectedEvent(event:EventsTypes) : void {
+            handleNewSelectedAudioClip(audio_clip:AudioClipsTypes) : void {
 
-                this.currently_playing_event_store.$patch({
-                    playing_event: event
+                this.currently_playing_audio_clip_store.$patch({
+                    playing_audio_clip: audio_clip
                 });
             },
         },
         mounted(){
 
             //listen to store
-            this.currently_playing_event_store.$subscribe((mutation, state)=>{
+            this.currently_playing_audio_clip_store.$subscribe((mutation, state)=>{
 
-                this.selected_event = state.playing_event as EventsTypes|null;
+                this.selected_audio_clip = state.playing_audio_clip as AudioClipsTypes|null;
             });
         },
     });

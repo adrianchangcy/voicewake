@@ -59,7 +59,6 @@ class TestAPI(generics.GenericAPIView):
 
 
 
-
         return Response(
             data={
                 'data': {
@@ -78,18 +77,18 @@ class TestAPI(generics.GenericAPIView):
 
 
 
-class EventReportsAPI(generics.GenericAPIView):
+class AudioClipReportsAPI(generics.GenericAPIView):
 
-    serializer_class = EventReportsAPISerializer
+    serializer_class = AudioClipReportsAPISerializer
     permission_classes = [IsAuthenticated]
 
-    #no get() here, users don't have to see what events they've reported
+    #no get() here, users don't have to see what audio_clips they've reported
 
-    #user wants to report an event
+    #user wants to report an audio_clip
     @method_decorator(app_decorators.deny_if_banned("response"))
     def post(self, request, *args, **kwargs):
 
-        serializer = EventReportsAPISerializer(data=request.data, many=False)
+        serializer = AudioClipReportsAPISerializer(data=request.data, many=False)
 
         #validate
         if serializer.is_valid() is False:
@@ -113,10 +112,10 @@ class EventReportsAPI(generics.GenericAPIView):
 
         try:
 
-            #get event
-            target_event = Events.objects.get(pk=new_data['reported_event_id'])
+            #get audio_clip
+            target_audio_clip = AudioClips.objects.get(pk=new_data['reported_audio_clip_id'])
 
-        except Events.DoesNotExist:
+        except AudioClips.DoesNotExist:
 
             return Response(
                 data={
@@ -125,8 +124,8 @@ class EventReportsAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        #check if event belongs to user
-        if target_event.user.id == request.user.id:
+        #check if audio_clip belongs to user
+        if target_audio_clip.user.id == request.user.id:
 
             return Response(
                 data={
@@ -136,7 +135,7 @@ class EventReportsAPI(generics.GenericAPIView):
             )
 
         #check if already banned
-        if target_event.is_banned is True:
+        if target_audio_clip.is_banned is True:
 
             return Response(
                 data={
@@ -146,9 +145,9 @@ class EventReportsAPI(generics.GenericAPIView):
             )
 
         #add report
-        EventReports.objects.get_or_create(
+        AudioClipReports.objects.get_or_create(
             user_id=request.user.id,
-            reported_event_id=new_data['reported_event_id']
+            reported_audio_clip_id=new_data['reported_audio_clip_id']
         )
 
         return Response(
@@ -160,15 +159,15 @@ class EventReportsAPI(generics.GenericAPIView):
 
 
 
-class UserBannedEventsAPI(generics.GenericAPIView):
+class UserBannedAudioClipsAPI(generics.GenericAPIView):
 
-    serializer_class = EventsSerializer
+    serializer_class = AudioClipsSerializer
     permission_classes = [IsAuthenticated]
 
-    #no post() here, once an event is banned, nobody can do anything
+    #no post() here, once an audio_clip is banned, nobody can do anything
     #cronjob does the banning
 
-    #user wants to see their own banned events
+    #user wants to see their own banned audio_clips
     def get(self, request, *args, **kwargs):
 
         if 'page' not in kwargs:
@@ -180,28 +179,28 @@ class UserBannedEventsAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        offset_quantity = settings.BAN_EVENT_QUANTITY_PER_PAGE * (kwargs['page'] - 1)
+        offset_quantity = settings.BAN_AUDIO_CLIP_QUANTITY_PER_PAGE * (kwargs['page'] - 1)
 
-        qs = Events.objects.select_related(
-            'user', 'event_tone'
+        qs = AudioClips.objects.select_related(
+            'user', 'audio_clip_tone'
         ).filter(
             user=request.user
         ).order_by('-when_created')[
-            offset_quantity : offset_quantity + settings.BAN_EVENT_QUANTITY_PER_PAGE
+            offset_quantity : offset_quantity + settings.BAN_AUDIO_CLIP_QUANTITY_PER_PAGE
         ]
 
-        banned_events = []
+        banned_audio_clips = []
 
         if len(qs) > 0:
 
-            banned_events = EventsSerializer(
+            banned_audio_clips = AudioClipsSerializer(
                 qs,
                 many=True
             ).data
 
         response = Response(
             data={
-                'data': banned_events,
+                'data': banned_audio_clips,
                 'message': ''
             },
             status=status.HTTP_200_OK
@@ -511,7 +510,7 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
     ])
     def post(self, request, *args, **kwargs):
 
-        serializer = UsersLogInAPISerializer(data=request.data, many=False)
+        serializer = UsersLogInSignUpAPISerializer(data=request.data, many=False)
 
         #validate
         if serializer.is_valid() is False:
@@ -579,7 +578,7 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
             #handle request for new OTP
             if new_data['is_requesting_new_otp'] is True:
 
-                new_otp = handle_user_otp_class.generate_and_save_otp()
+                new_otp = handle_user_otp_class.generate_otp()
 
                 #only send email if has legitimate new OTP
                 if len(new_otp) == settings.TOTP_NUMBER_OF_DIGITS:
@@ -636,9 +635,9 @@ class UsersLogOutAPI(generics.GenericAPIView):
 
 
 
-class EventTonesAPI(generics.GenericAPIView):
+class AudioClipTonesAPI(generics.GenericAPIView):
 
-    serializer_class = EventTonesSerializer
+    serializer_class = AudioClipTonesSerializer
     permission_classes = []
 
 
@@ -647,8 +646,8 @@ class EventTonesAPI(generics.GenericAPIView):
         response = Response(
             data={
                 'message': '',
-                'data': EventTonesSerializer(
-                    EventTones.objects.all(),
+                'data': AudioClipTonesSerializer(
+                    AudioClipTones.objects.all(),
                     many=True
                 ).data
             }
@@ -656,29 +655,29 @@ class EventTonesAPI(generics.GenericAPIView):
 
         patch_cache_control(
             response,
-            no_cache=False, no_store=False, must_revalidate=True, max_age=settings.EVENT_TONE_CACHE_AGE_SECONDS
+            no_cache=False, no_store=False, must_revalidate=True, max_age=settings.AUDIO_CLIP_TONE_CACHE_AGE_SECONDS
         )
 
         return response
 
 
 
-class EventRoomsAPI(generics.GenericAPIView):
+class EventsAPI(generics.GenericAPIView):
 
-    serializer_class = GroupedEventsSerializer
+    serializer_class = GroupedAudioClipsSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
 
-    def get_event_rooms_by_completed(
+    def get_events_by_completed(
         self, latest_or_best:Literal['latest', 'best']='latest',
-        event_tone_slug:str='',
+        audio_clip_tone_slug:str='',
         timeframe:Literal['day', 'week', 'month', 'all']='all',
         page=1
     ):
 
-        #when event_tone_slug is '', will just get entire event_tones
+        #when audio_clip_tone_slug is '', will just get entire audio_clip_tones
         #when timeframe is 'all_time', leaving datetime_from as '' is sufficient
-        #since this is non-user page, i.e. front page, show "latest" event_rooms once only
+        #since this is non-user page, i.e. front page, show "latest" events once only
         #page starts from 1
 
         if page < 1:
@@ -704,64 +703,64 @@ class EventRoomsAPI(generics.GenericAPIView):
 
         else:
 
-            #getting earliest events.when_created adds 5-10ms
-            #using custom function get_id_of_event_rooms_by_when_created() adds 40ms+
+            #getting earliest audio_clips.when_created adds 5-10ms
+            #using custom function get_id_of_events_by_when_created() adds 40ms+
 
-            #random datetime that is guaranteed beyond earliest events row is the best so far
+            #random datetime that is guaranteed beyond earliest audio_clips row is the best so far
             #here are the risks where this may/would break things:
-                #new events.when_created can start using past datetime
-                #events.when_created is no longer secured by auto_now_add
+                #new audio_clips.when_created can start using past datetime
+                #audio_clips.when_created is no longer secured by auto_now_add
                 #suddenly no longer uses time zone
             datetime_from = '2020-01-01 01:01:01 +00'
 
         #calculate offset for pagination
-        pagination_offset = (page - 1) * settings.EVENT_ROOM_QUANTITY_PER_PAGE
+        pagination_offset = (page - 1) * settings.EVENT_QUANTITY_PER_PAGE
 
         #prevent showing twice
-        previously_shown_event_rooms_sql = {'join': '', 'and': ''}
+        previously_shown_events_sql = {'join': '', 'and': ''}
 
         if latest_or_best == 'latest':
 
-            previously_shown_event_rooms_sql['join'] = 'LEFT JOIN previously_shown_event_room_ids ON events.event_room_id = previously_shown_event_room_ids.id'
-            previously_shown_event_rooms_sql['and'] = 'AND previously_shown_event_room_ids.id IS NULL'
+            previously_shown_events_sql['join'] = 'LEFT JOIN previously_shown_event_ids ON audio_clips.event_id = previously_shown_event_ids.id'
+            previously_shown_events_sql['and'] = 'AND previously_shown_event_ids.id IS NULL'
 
         #determine order
         order_sql = ''
 
         if latest_or_best == 'best':
-            order_sql = 'ORDER BY events.like_count DESC, events.dislike_count ASC'
+            order_sql = 'ORDER BY audio_clips.like_count DESC, audio_clips.dislike_count ASC'
         else:
-            order_sql = 'ORDER BY events.when_created DESC'
+            order_sql = 'ORDER BY audio_clips.when_created DESC'
 
         #some notes on compromise
             #desired
                 #userA blocks userB, userA won't see userB content, vice versa
-                #however, if userB is in same event_room as userA, then show
+                #however, if userB is in same event as userA, then show
             #issue
-                #desired situation requires another excluded_users, and "events.user_id=userA OR ..."
+                #desired situation requires another excluded_users, and "audio_clips.user_id=userA OR ..."
                 #the OR condition brings query time from 10ms+ to 40ms+
             #current
                 #userA blocks userB, userA won't see any content from userB at all
 
         #start
-        #we get by completed event_rooms, i.e. guaranteed ok events
-        #then, since banned events are still associated with event_rooms, get only ok events
-        events = Events.objects.prefetch_related(
-            'event_role',
-            'event_room__generic_status',
-            'event_room__created_by',
-            'event_room',
-            'event_tone',
+        #we get by completed events, i.e. guaranteed ok audio_clips
+        #then, since banned audio_clips are still associated with events, get only ok audio_clips
+        audio_clips = AudioClips.objects.prefetch_related(
+            'audio_clip_role',
+            'event__generic_status',
+            'event__created_by',
+            'event',
+            'audio_clip_tone',
             'generic_status',
             'user',
         ).raw(
             '''		
             WITH
-                selected_event_tones AS (
-                    SELECT id FROM get_id_of_one_or_all_event_tones_via_slug(%s)
+                selected_audio_clip_tones AS (
+                    SELECT id FROM get_id_of_one_or_all_audio_clip_tones_via_slug(%s)
                 ),
-                previously_shown_event_room_ids AS (
-                    SELECT event_room_id AS id FROM user_event_rooms
+                previously_shown_event_ids AS (
+                    SELECT event_id AS id FROM user_events
                     WHERE user_id = %s
                     AND when_seen_at_front_page IS NOT NULL
                 ),
@@ -769,73 +768,73 @@ class EventRoomsAPI(generics.GenericAPIView):
                     SELECT blocked_user_id AS id FROM user_blocks
                     WHERE user_id = %s
                 ),
-                excluded_event_room_ids AS (
-                    SELECT event_room_id AS id FROM events
-                    RIGHT JOIN excluded_users ON events.user_id = excluded_users.id
+                excluded_event_ids AS (
+                    SELECT event_id AS id FROM audio_clips
+                    RIGHT JOIN excluded_users ON audio_clips.user_id = excluded_users.id
                 ),
-                selected_event_room_ids AS (
-                    SELECT DISTINCT event_room_id AS id FROM (
-                        SELECT events.event_room_id FROM events
-                        RIGHT JOIN selected_event_tones ON events.event_tone_id = selected_event_tones.id
-                        LEFT JOIN excluded_event_room_ids ON events.event_room_id = excluded_event_room_ids.id
-                        ''' + previously_shown_event_rooms_sql['join'] + '''
-                        LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-                        LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
-                        LEFT JOIN generic_statuses AS event_rooms_generic_statuses ON event_rooms.generic_status_id = event_rooms_generic_statuses.id
-                        WHERE event_rooms_generic_statuses.generic_status_name = %s
-                        AND excluded_event_room_ids.id IS NULL
-                        ''' + previously_shown_event_rooms_sql['and'] + '''
-                        AND events.when_created BETWEEN %s AND %s
+                selected_event_ids AS (
+                    SELECT DISTINCT event_id AS id FROM (
+                        SELECT audio_clips.event_id FROM audio_clips
+                        RIGHT JOIN selected_audio_clip_tones ON audio_clips.audio_clip_tone_id = selected_audio_clip_tones.id
+                        LEFT JOIN excluded_event_ids ON audio_clips.event_id = excluded_event_ids.id
+                        ''' + previously_shown_events_sql['join'] + '''
+                        LEFT JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
+                        LEFT JOIN events ON audio_clips.event_id = events.id
+                        LEFT JOIN generic_statuses AS events_generic_statuses ON events.generic_status_id = events_generic_statuses.id
+                        WHERE events_generic_statuses.generic_status_name = %s
+                        AND excluded_event_ids.id IS NULL
+                        ''' + previously_shown_events_sql['and'] + '''
+                        AND audio_clips.when_created BETWEEN %s AND %s
                         ''' + order_sql + '''
                     )
-                    AS distinct_event_room_ids
+                    AS distinct_event_ids
                     OFFSET %s LIMIT %s
                 )
             SELECT
+                audio_clips.*,
                 events.*,
-                event_rooms.*,
-                event_tones.*,
+                audio_clip_tones.*,
                 generic_statuses.*,
-                event_likes_dislikes.is_liked AS is_liked_by_user
-            FROM events
-            RIGHT JOIN selected_event_room_ids ON events.event_room_id = selected_event_room_ids.id
-            LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
-            LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
-            LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
-            WHERE events.is_banned IS FALSE
+                audio_clip_likes_dislikes.is_liked AS is_liked_by_user
+            FROM audio_clips
+            RIGHT JOIN selected_event_ids ON audio_clips.event_id = selected_event_ids.id
+            LEFT JOIN events ON audio_clips.event_id = events.id
+            LEFT JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
+            LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id AND audio_clip_likes_dislikes.user_id = %s
+            LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
+            WHERE audio_clips.is_banned IS FALSE
             AND generic_statuses.generic_status_name = %s
             ''',
             params=(
-                event_tone_slug,
+                audio_clip_tone_slug,
                 self.request.user.id,
                 self.request.user.id,
                 'completed',
                 datetime_from,
                 datetime_to,
                 pagination_offset,
-                settings.EVENT_ROOM_QUANTITY_PER_PAGE,
+                settings.EVENT_QUANTITY_PER_PAGE,
                 self.request.user.id,
                 'ok'
             )
         )
 
-        return events
+        return audio_clips
 
 
-    def get_event_rooms_by_user_and_event_role(
-        self, username:str, event_role_name:str,
+    def get_events_by_user_and_audio_clip_role(
+        self, username:str, audio_clip_role_name:str,
         latest_or_best:Literal['latest', 'best']='latest',
-        event_tone_slug:str='',
+        audio_clip_tone_slug:str='',
         timeframe:Literal['day', 'week', 'month', 'all']='all',
         page=1
     ):
 
-        #when event_tone_slug is '', will just get entire event_tones
+        #when audio_clip_tone_slug is '', will just get entire audio_clip_tones
         #when timeframe is 'all_time', leaving datetime_from as '' is sufficient
         #page starts from 1
 
-        if page < 1 or len(username) == 0 or len(event_role_name) == 0:
+        if page < 1 or len(username) == 0 or len(audio_clip_role_name) == 0:
 
             raise ValueError("One or more required parameters are missing.")
 
@@ -858,144 +857,144 @@ class EventRoomsAPI(generics.GenericAPIView):
 
         else:
 
-            #getting earliest events.when_created adds 5-10ms
-            #using custom function get_id_of_event_rooms_by_when_created() adds 40ms+
+            #getting earliest audio_clips.when_created adds 5-10ms
+            #using custom function get_id_of_events_by_when_created() adds 40ms+
 
-            #random datetime that is guaranteed beyond earliest events row is the best so far
+            #random datetime that is guaranteed beyond earliest audio_clips row is the best so far
             #here are the risks where this may/would break things:
-                #new events.when_created can start using past datetime
-                #events.when_created is no longer secured by auto_now_add
+                #new audio_clips.when_created can start using past datetime
+                #audio_clips.when_created is no longer secured by auto_now_add
                 #suddenly no longer uses time zone
             datetime_from = '2020-01-01 01:01:01 +00'
 
         #calculate offset for pagination
-        pagination_offset = (page - 1) * settings.EVENT_ROOM_QUANTITY_PER_PAGE
+        pagination_offset = (page - 1) * settings.EVENT_QUANTITY_PER_PAGE
 
         #determine order
         order_sql = ''
 
         if latest_or_best == 'best':
-            order_sql = 'ORDER BY events.like_count DESC, events.dislike_count ASC'
+            order_sql = 'ORDER BY audio_clips.like_count DESC, audio_clips.dislike_count ASC'
         else:
-            order_sql = 'ORDER BY events.when_created DESC'
+            order_sql = 'ORDER BY audio_clips.when_created DESC'
 
         #start
-        #get event_rooms from role-specific events where events are ok, i.e. as long as one event is ok
-        #then, we get only ok events
-        events = Events.objects.prefetch_related(
-            'event_role',
-            'event_room__generic_status',
-            'event_room__created_by',
-            'event_room',
-            'event_tone',
+        #get events from role-specific audio_clips where audio_clips are ok, i.e. as long as one audio_clip is ok
+        #then, we get only ok audio_clips
+        audio_clips = AudioClips.objects.prefetch_related(
+            'audio_clip_role',
+            'event__generic_status',
+            'event__created_by',
+            'event',
+            'audio_clip_tone',
             'generic_status',
             'user',
         ).raw(
             '''		
             WITH
-                selected_event_tones AS (
-                    SELECT id FROM get_id_of_one_or_all_event_tones_via_slug(%s)
+                selected_audio_clip_tones AS (
+                    SELECT id FROM get_id_of_one_or_all_audio_clip_tones_via_slug(%s)
                 ),
-                selected_event_room_ids AS (
-                    SELECT DISTINCT event_room_id AS id FROM (
-                        SELECT events.event_room_id FROM events
-                        RIGHT JOIN selected_event_tones ON events.event_tone_id = selected_event_tones.id
-                        LEFT JOIN voicewake_user ON events.user_id = voicewake_user.id
-                        LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-                        LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
-                        LEFT JOIN event_roles ON events.event_role_id = event_roles.id
-                        LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
+                selected_event_ids AS (
+                    SELECT DISTINCT event_id AS id FROM (
+                        SELECT audio_clips.event_id FROM audio_clips
+                        RIGHT JOIN selected_audio_clip_tones ON audio_clips.audio_clip_tone_id = selected_audio_clip_tones.id
+                        LEFT JOIN voicewake_user ON audio_clips.user_id = voicewake_user.id
+                        LEFT JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
+                        LEFT JOIN events ON audio_clips.event_id = events.id
+                        LEFT JOIN audio_clip_roles ON audio_clips.audio_clip_role_id = audio_clip_roles.id
+                        LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
                         WHERE voicewake_user.username_lowercase = %s
-                        AND events.is_banned IS FALSE
+                        AND audio_clips.is_banned IS FALSE
                         AND generic_statuses.generic_status_name = %s
-                        AND event_roles.event_role_name = %s
-                        AND events.when_created BETWEEN %s AND %s
+                        AND audio_clip_roles.audio_clip_role_name = %s
+                        AND audio_clips.when_created BETWEEN %s AND %s
                         ''' + order_sql + '''
                     )
-                    AS distinct_event_room_ids
+                    AS distinct_event_ids
                     OFFSET %s LIMIT %s
                 )
             SELECT
+                audio_clips.*,
                 events.*,
-                event_rooms.*,
-                event_tones.*,
+                audio_clip_tones.*,
                 generic_statuses.*,
-                event_likes_dislikes.is_liked AS is_liked_by_user
-            FROM events
-            RIGHT JOIN selected_event_room_ids ON events.event_room_id = selected_event_room_ids.id
-            LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
-            LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
-            LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
-            WHERE events.is_banned IS FALSE
+                audio_clip_likes_dislikes.is_liked AS is_liked_by_user
+            FROM audio_clips
+            RIGHT JOIN selected_event_ids ON audio_clips.event_id = selected_event_ids.id
+            LEFT JOIN events ON audio_clips.event_id = events.id
+            LEFT JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
+            LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id AND audio_clip_likes_dislikes.user_id = %s
+            LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
+            WHERE audio_clips.is_banned IS FALSE
             AND generic_statuses.generic_status_name = %s
             ''',
             params=(
-                event_tone_slug,
+                audio_clip_tone_slug,
                 username.lower(),
                 'ok',
-                event_role_name,
+                audio_clip_role_name,
                 datetime_from,
                 datetime_to,
                 pagination_offset,
-                settings.EVENT_ROOM_QUANTITY_PER_PAGE,
+                settings.EVENT_QUANTITY_PER_PAGE,
                 self.request.user.id,
                 'ok',
             )
         )
 
-        return events
+        return audio_clips
 
 
-    def get_event_rooms_by_id(self, event_room_id):
+    def get_events_by_id(self, event_id):
 
-        events = Events.objects.prefetch_related(
-            'event_role',
-            'event_room__generic_status',
-            'event_room__created_by',
-            'event_room',
-            'event_tone',
+        audio_clips = AudioClips.objects.prefetch_related(
+            'audio_clip_role',
+            'event__generic_status',
+            'event__created_by',
+            'event',
+            'audio_clip_tone',
             'generic_status',
             'user',
         ).raw(
             '''
             SELECT
+                audio_clips.*,
                 events.*,
-                event_rooms.*,
-                event_tones.*,
+                audio_clip_tones.*,
                 generic_statuses.*,
-                event_likes_dislikes.is_liked AS is_liked_by_user
-            FROM events
-            LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
-            LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
-            LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
-            WHERE events.event_room_id = %s
-            AND events.is_banned IS FALSE
+                audio_clip_likes_dislikes.is_liked AS is_liked_by_user
+            FROM audio_clips
+            LEFT JOIN events ON audio_clips.event_id = events.id
+            LEFT JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
+            LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id AND audio_clip_likes_dislikes.user_id = %s
+            LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
+            WHERE audio_clips.event_id = %s
+            AND audio_clips.is_banned IS FALSE
             AND generic_statuses.generic_status_name = %s
             ''',
             params=(
                 self.request.user.id,
-                event_room_id,
+                event_id,
                 'ok',
             )
         )
 
-        return events
+        return audio_clips
 
 
-    #get event_room.id to simply view
+    #get event.id to simply view
     def get(self, request, *args, **kwargs):
 
-        #handle singular event_rooms view
-        if 'event_room_id' in kwargs:
+        #handle singular events view
+        if 'event_id' in kwargs:
 
-            #user simply wants to check the post for an event_room
+            #user simply wants to check the post for an event
             response = Response(
                 data={
                     'message': '',
-                    'data': GroupedEventsSerializer(
-                        group_events_into_event_rooms(self.get_event_rooms_by_id(self.kwargs['event_room_id'])),
+                    'data': GroupedAudioClipsSerializer(
+                        group_audio_clips_into_events(self.get_events_by_id(self.kwargs['event_id'])),
                         many=True
                     ).data,
                 },
@@ -1011,7 +1010,7 @@ class EventRoomsAPI(generics.GenericAPIView):
 
             return response
         
-        #proceed to handling multiple event_rooms
+        #proceed to handling multiple events
         
         #pagination
         url_page = 1
@@ -1020,30 +1019,30 @@ class EventRoomsAPI(generics.GenericAPIView):
             #>1 above allows us to ensure 0 is not used
             url_page = kwargs['page']
 
-        #event_tone
+        #audio_clip_tone
         #leave empty to get all
-        url_event_tone_slug = ''
-        if 'event_tone_slug' in kwargs:
-            url_event_tone_slug = kwargs['event_tone_slug']
+        url_audio_clip_tone_slug = ''
+        if 'audio_clip_tone_slug' in kwargs:
+            url_audio_clip_tone_slug = kwargs['audio_clip_tone_slug']
 
         #determine the appropriate results
         response = None
 
         if(
             'username' in kwargs and 'latest_or_best' in kwargs and
-            'timeframe' in kwargs and 'event_role_name' in kwargs
+            'timeframe' in kwargs and 'audio_clip_role_name' in kwargs
         ):
 
             response = Response(
                 data={
                     'message': '',
-                    'data': GroupedEventsSerializer(
-                        group_events_into_event_rooms(
-                            self.get_event_rooms_by_user_and_event_role(
+                    'data': GroupedAudioClipsSerializer(
+                        group_audio_clips_into_events(
+                            self.get_events_by_user_and_audio_clip_role(
                                 kwargs['username'],
-                                kwargs['event_role_name'],
+                                kwargs['audio_clip_role_name'],
                                 kwargs['latest_or_best'],
-                                url_event_tone_slug,
+                                url_audio_clip_tone_slug,
                                 kwargs['timeframe'],
                                 url_page,
                             )
@@ -1056,10 +1055,10 @@ class EventRoomsAPI(generics.GenericAPIView):
         
         elif 'latest_or_best' in kwargs and 'timeframe' in kwargs and 'page':
 
-            grouped_event_rooms = group_events_into_event_rooms(
-                self.get_event_rooms_by_completed(
+            grouped_events = group_audio_clips_into_events(
+                self.get_events_by_completed(
                     kwargs['latest_or_best'],
-                    url_event_tone_slug,
+                    url_audio_clip_tone_slug,
                     kwargs['timeframe'],
                     url_page,
                 )
@@ -1068,19 +1067,19 @@ class EventRoomsAPI(generics.GenericAPIView):
             #for non-user page, i.e. front page, only show once for latest
             if request.user.is_authenticated is True and kwargs['latest_or_best'] == 'latest':
 
-                event_rooms = []
+                events = []
 
-                for row in grouped_event_rooms:
+                for row in grouped_events:
 
-                    event_rooms.append(row['event_room'])
+                    events.append(row['event'])
 
-                prevent_event_room_from_showing_twice_at_front_page(request.user, event_rooms)
+                prevent_events_from_showing_twice_at_front_page(request.user, events)
 
             response = Response(
                 data={
                     'message': '',
-                    'data': GroupedEventsSerializer(
-                        grouped_event_rooms,
+                    'data': GroupedAudioClipsSerializer(
+                        grouped_events,
                         many=True
                     ).data,
                 },
@@ -1111,10 +1110,10 @@ class EventRoomsAPI(generics.GenericAPIView):
 
 
 
-#user can generate new event_room reply choice
-    #will unlock previous is_replying=False event_room
-    #will add to UserEventRooms when locking for is_replying=False
-class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
+#user can generate new event reply choice
+    #will unlock previous is_replying=False event
+    #will add to UserEvents when locking for is_replying=False
+class HandleEventReplyChoicesAPI(generics.GenericAPIView):
 
     serializer_class = None
     permission_classes = [IsAuthenticated]
@@ -1130,70 +1129,70 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
         super().__init__(*args, **kwargs)
 
 
-    def lock_event_rooms_for_reply_choices(self, events):
+    def lock_events_for_reply_choices(self, audio_clips):
 
-        event_room_ids = []
-        event_rooms = []
+        event_ids = []
+        events = []
         datetime_now = get_datetime_now()
 
-        for event in events:
+        for audio_clip in audio_clips:
 
-            if event.event_room.id not in event_room_ids:
+            if audio_clip.event.id not in event_ids:
 
-                event_room_ids.append(event.event_room.id)
+                event_ids.append(audio_clip.event.id)
 
                 #lock for reply choices
-                event.event_room.when_locked = datetime_now
-                event.event_room.locked_for_user = self.request.user
-                event.event_room.is_replying = False
-                event.event_room.last_modified = datetime_now
+                audio_clip.event.when_locked = datetime_now
+                audio_clip.event.locked_for_user = self.request.user
+                audio_clip.event.is_replying = False
+                audio_clip.event.last_modified = datetime_now
 
-                event_rooms.append(event.event_room)
+                events.append(audio_clip.event)
 
-        EventRooms.objects.bulk_update(event_rooms, ['when_locked', 'locked_for_user', 'is_replying', 'last_modified'])
+        Events.objects.bulk_update(events, ['when_locked', 'locked_for_user', 'is_replying', 'last_modified'])
 
         #prevent repeated queue
-        #we do this here to encourage choosing the best event room, while leaving the other good ones for other users
-        prevent_event_room_from_queuing_twice_for_reply(
+        #we do this here to encourage choosing the best audio_clip room, while leaving the other good ones for other users
+        prevent_events_from_queuing_twice_for_reply(
             self.request.user,
-            event_rooms
+            events
         )
 
         return True
 
 
-    #excludes event_room started by user
-    #excludes event_room that user has talked in before, e.g. talked and banned, etc.
+    #excludes event started by user
+    #excludes event that user has talked in before, e.g. talked and banned, etc.
     #excludes those that blocked user, as well as those that the user has blocked, i.e. goes both ways
-    def get_event_rooms_by_random_incomplete(self, event_tone_slug:str=''):
+    def get_events_by_random_incomplete(self, audio_clip_tone_slug:str=''):
 
         datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
         datetime_now = datetime_now.strftime('%Y-%m-%d %H:%M:%S %z')
 
         #start
-        #do not get event_rooms where this user has been involved in before
-        #we select only event_rooms.id in selected_event_rooms, followed by event_rooms JOIN
-        #because if we do event_rooms.* in selected_event_rooms, we'll have to write all columns in GROUP BY clause
-        events = Events.objects.select_for_update(of=("event_room",)).prefetch_related(
-            'event_role',
-            'event_room__generic_status',
-            'event_room__created_by',
-            'event_room',
-            'event_tone',
+        #do not get events where this user has been involved in before
+        #we select only events.id in selected_events, followed by events JOIN
+        #because if we do events.* in selected_events, we'll have to write all columns in GROUP BY clause
+        audio_clips = AudioClips.objects.select_for_update(of=("event",)).prefetch_related(
+            'audio_clip_role',
+            'event__generic_status',
+            'event__created_by',
+            'event',
+            'audio_clip_tone',
             'generic_status',
             'user',
         ).raw(
             '''
             WITH
-                selected_event_tones AS (
-                    SELECT id FROM get_id_of_one_or_all_event_tones_via_slug(%s)
+                selected_audio_clip_tones AS (
+                    SELECT id FROM get_id_of_one_or_all_audio_clip_tones_via_slug(%s)
                 ),
-                past_involved_event_rooms_1 AS (
-                    SELECT event_room_id FROM events
+                past_involved_events_1 AS (
+                    SELECT event_id FROM audio_clips
                     WHERE user_id = %s
                 ),
-                past_involved_event_rooms_2 AS (
-                    SELECT event_room_id FROM user_event_rooms
+                past_involved_events_2 AS (
+                    SELECT event_id FROM user_events
                     WHERE user_id = %s
                     AND when_excluded_for_reply IS NOT NULL
                 ),
@@ -1205,107 +1204,107 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                     SELECT user_id AS id FROM user_blocks
                     WHERE blocked_user_id = %s
                 ),
-                selected_event_rooms AS (
-                    SELECT event_rooms.id AS id FROM event_rooms
-                    INNER JOIN generic_statuses ON event_rooms.generic_status_id = generic_statuses.id
-                    LEFT JOIN past_involved_event_rooms_1 ON event_rooms.id = past_involved_event_rooms_1.event_room_id
-                    LEFT JOIN past_involved_event_rooms_2 ON event_rooms.id = past_involved_event_rooms_2.event_room_id
-                    LEFT JOIN excluded_users_1 ON event_rooms.created_by_id = excluded_users_1.id
-                    LEFT JOIN excluded_users_2 ON event_rooms.created_by_id = excluded_users_2.id
+                selected_events AS (
+                    SELECT events.id AS id FROM events
+                    INNER JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
+                    LEFT JOIN past_involved_events_1 ON events.id = past_involved_events_1.event_id
+                    LEFT JOIN past_involved_events_2 ON events.id = past_involved_events_2.event_id
+                    LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
+                    LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
                     WHERE generic_statuses.generic_status_name = %s
-                    AND past_involved_event_rooms_1.event_room_id IS NULL
-                    AND past_involved_event_rooms_2.event_room_id IS NULL
+                    AND past_involved_events_1.event_id IS NULL
+                    AND past_involved_events_2.event_id IS NULL
                     AND excluded_users_1.id IS NULL
                     AND excluded_users_2.id IS NULL
                     AND locked_for_user_id IS NULL
                     AND created_by_id != %s
-                    ORDER BY event_rooms.when_created DESC
+                    ORDER BY events.when_created DESC
                     LIMIT %s
                 )
             SELECT
-                events.*,
-                selected_event_rooms.*,
-                event_tones.*,
+                audio_clips.*,
+                selected_events.*,
+                audio_clip_tones.*,
                 generic_statuses.*,
-                event_likes_dislikes.is_liked AS is_liked_by_user
-            FROM events
-            RIGHT JOIN selected_event_rooms ON events.event_room_id = selected_event_rooms.id
-            RIGHT JOIN selected_event_tones ON events.event_tone_id = selected_event_tones.id
-            LEFT JOIN event_roles ON events.event_role_id = event_roles.id
-            LEFT JOIN event_rooms ON selected_event_rooms.id = event_rooms.id
-            LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
-            LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
+                audio_clip_likes_dislikes.is_liked AS is_liked_by_user
+            FROM audio_clips
+            RIGHT JOIN selected_events ON audio_clips.event_id = selected_events.id
+            RIGHT JOIN selected_audio_clip_tones ON audio_clips.audio_clip_tone_id = selected_audio_clip_tones.id
+            LEFT JOIN audio_clip_roles ON audio_clips.audio_clip_role_id = audio_clip_roles.id
+            LEFT JOIN events ON selected_events.id = events.id
+            LEFT JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
+            LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id AND audio_clip_likes_dislikes.user_id = %s
+            LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
             WHERE generic_statuses.generic_status_name = %s
-            AND events.is_banned IS FALSE
-            AND event_roles.event_role_name = %s
+            AND audio_clips.is_banned IS FALSE
+            AND audio_clip_roles.audio_clip_role_name = %s
             ''',
             params=(
-                event_tone_slug,
+                audio_clip_tone_slug,
                 self.request.user.id,
                 self.request.user.id,
                 self.request.user.id,
                 self.request.user.id,
                 'incomplete',
                 self.request.user.id,
-                settings.EVENT_ROOM_INCOMPLETE_ROLL_QUANTITY,
+                settings.EVENT_INCOMPLETE_ROLL_QUANTITY,
                 self.request.user.id,
                 'ok',
                 'originator'
             )
         )
 
-        return events
+        return audio_clips
 
 
-    def unlock_event_rooms_from_past_reply_choices(self):
+    def unlock_events_from_past_reply_choices(self):
 
         User = get_user_model()
         datetime_now = get_datetime_now()
 
-        event_rooms = EventRooms.objects.select_for_update().filter(
+        events = Events.objects.select_for_update().filter(
             locked_for_user=self.request.user
         )
         
-        for event_room in event_rooms:
+        for event in events:
 
             #unlock
-            event_room.when_locked = None
-            event_room.locked_for_user = None
-            event_room.is_replying = None
-            event_room.last_modified = datetime_now
+            event.when_locked = None
+            event.locked_for_user = None
+            event.is_replying = None
+            event.last_modified = datetime_now
 
-        EventRooms.objects.bulk_update(event_rooms, ['when_locked', 'locked_for_user', 'is_replying', 'last_modified'])
+        Events.objects.bulk_update(events, ['when_locked', 'locked_for_user', 'is_replying', 'last_modified'])
 
 
-    def get_event_rooms_by_is_replying(self):
+    def get_events_by_is_replying(self):
 
-        events = Events.objects.prefetch_related(
-            'event_role',
-            'event_room__generic_status',
-            'event_room__created_by',
-            'event_room',
-            'event_tone',
+        audio_clips = AudioClips.objects.prefetch_related(
+            'audio_clip_role',
+            'event__generic_status',
+            'event__created_by',
+            'event',
+            'audio_clip_tone',
             'generic_status',
             'user',
         ).raw(
             '''
             SELECT
+                audio_clips.*,
                 events.*,
-                event_rooms.*,
-                event_tones.*,
+                audio_clip_tones.*,
                 generic_statuses.*,
-                event_likes_dislikes.is_liked AS is_liked_by_user
-            FROM events
-            LEFT JOIN event_rooms ON events.event_room_id = event_rooms.id
-            LEFT JOIN event_tones ON events.event_tone_id = event_tones.id
-            LEFT JOIN event_likes_dislikes ON events.id = event_likes_dislikes.event_id AND event_likes_dislikes.user_id = %s
-            LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
-            LEFT JOIN generic_statuses AS event_rooms_generic_statuses ON event_rooms.generic_status_id = event_rooms_generic_statuses.id
-            WHERE event_rooms.locked_for_user_id = %s
-            AND event_rooms_generic_statuses.generic_status_name = %s
-            AND event_rooms.is_replying = %s
-            AND events.is_banned IS FALSE
+                audio_clip_likes_dislikes.is_liked AS is_liked_by_user
+            FROM audio_clips
+            LEFT JOIN events ON audio_clips.event_id = events.id
+            LEFT JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
+            LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id AND audio_clip_likes_dislikes.user_id = %s
+            LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
+            LEFT JOIN generic_statuses AS events_generic_statuses ON events.generic_status_id = events_generic_statuses.id
+            WHERE events.locked_for_user_id = %s
+            AND events_generic_statuses.generic_status_name = %s
+            AND events.is_replying = %s
+            AND audio_clips.is_banned IS FALSE
             AND generic_statuses.generic_status_name = %s
             ''',
             params=(
@@ -1317,10 +1316,10 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
             )
         )
 
-        return events
+        return audio_clips
 
 
-    #queue event room reply choices for user
+    #queue audio_clip room reply choices for user
     @method_decorator([
         app_decorators.deny_if_no_username("response"),
         app_decorators.deny_if_banned("response"),
@@ -1330,24 +1329,24 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
         if self.current_context == "list":
 
             #get possible is_replying
-            is_replying_events = self.get_event_rooms_by_is_replying()
+            is_replying_audio_clips = self.get_events_by_is_replying()
 
             #check if user is replying to anything
-            #we want event_room.id if there is any
-            if len(is_replying_events) > 0:
+            #we want event.id if there is any
+            if len(is_replying_audio_clips) > 0:
 
                 return Response(
                     data={
                         'message': '',
-                        'data': GroupedEventsSerializer(
-                            group_events_into_event_rooms(is_replying_events),
+                        'data': GroupedAudioClipsSerializer(
+                            group_audio_clips_into_events(is_replying_audio_clips),
                             many=True
                         ).data,
                     },
                 )
             
-        #check if user has specified event_tones
-        serializer = HandleEventRoomReplyChoicesAPISerializer(data=request.data, many=False)
+        #check if user has specified audio_clip_tones
+        serializer = HandleEventReplyChoicesAPISerializer(data=request.data, many=False)
 
         if serializer.is_valid() is False:
 
@@ -1360,19 +1359,19 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
         
         new_data = serializer.validated_data
 
-        specified_event_tone = None
+        specified_audio_clip_tone = None
 
         try:
 
-            if 'event_tone_id' in new_data:
+            if 'audio_clip_tone_id' in new_data:
 
-                specified_event_tone = EventTones.objects.get(pk=new_data['event_tone_id'])
+                specified_audio_clip_tone = AudioClipTones.objects.get(pk=new_data['audio_clip_tone_id'])
 
-        except EventTones.DoesNotExist:
+        except AudioClipTones.DoesNotExist:
 
             return Response(
                 data={
-                    'message': 'Specified event_tone_id does not exist.'
+                    'message': 'Specified audio_clip_tone_id does not exist.'
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
@@ -1385,25 +1384,25 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                 if self.current_context == "list":
 
                     #not replying, can unlock previous choices if any
-                    self.unlock_event_rooms_from_past_reply_choices()
+                    self.unlock_events_from_past_reply_choices()
 
                     #maybe don't unlock on every search
                     #only unlock on skip
 
-                    #get events
-                    events = None
+                    #get audio_clips
+                    audio_clips = None
 
-                    if specified_event_tone is None:
-                        events = self.get_event_rooms_by_random_incomplete()
+                    if specified_audio_clip_tone is None:
+                        audio_clips = self.get_events_by_random_incomplete()
                     else:
-                        events = self.get_event_rooms_by_random_incomplete(event_tone_slug=specified_event_tone.event_tone_slug)
+                        audio_clips = self.get_events_by_random_incomplete(audio_clip_tone_slug=specified_audio_clip_tone.audio_clip_tone_slug)
 
-                    if len(events) == 0:
+                    if len(audio_clips) == 0:
 
                         return Response(
                             data={
                                 'message': '',
-                                'data': GroupedEventsSerializer(
+                                'data': GroupedAudioClipsSerializer(
                                     [],
                                     many=True
                                 ).data,
@@ -1411,15 +1410,15 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                             status=status.HTTP_200_OK
                         )
 
-                    #lock events
-                    self.lock_event_rooms_for_reply_choices(events)
+                    #lock audio_clips
+                    self.lock_events_for_reply_choices(audio_clips)
 
-                    #return events sorted by event_rooms
+                    #return audio_clips sorted by events
                     return Response(
                         data={
                             'message': '',
-                            'data': GroupedEventsSerializer(
-                                group_events_into_event_rooms(events),
+                            'data': GroupedAudioClipsSerializer(
+                                group_audio_clips_into_events(audio_clips),
                                 many=True
                             ).data,
                         },
@@ -1429,11 +1428,11 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                 elif self.current_context == "expire":
 
                     #has expired, so unlock
-                    self.unlock_event_rooms_from_past_reply_choices()
+                    self.unlock_events_from_past_reply_choices()
 
                     return Response(
                         data={
-                            'message': 'The event choice has expired. Feel free to search again!'
+                            'message': 'The audio_clip choice has expired. Feel free to search again!'
                         },
                         status=status.HTTP_205_RESET_CONTENT
                     )
@@ -1458,9 +1457,9 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
 
 
 
-class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
+class HandleReplyingEventsAPI(generics.GenericAPIView):
 
-    serializer_class = HandleReplyingEventRoomsAPISerializer
+    serializer_class = HandleReplyingEventsAPISerializer
     permission_classes = [IsAuthenticated]
     current_context = ""
 
@@ -1474,20 +1473,20 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
         super().__init__(*args, **kwargs)
 
 
-    #if user is already locked for event_room, do is_replying=True and update when_locked
+    #if user is already locked for event, do is_replying=True and update when_locked
     #for actual replying to start
     #202 success, 205 reset due to user inactivity
-    def start_replying_to_event_room(self, event_room_id):
+    def start_replying_to_event(self, event_id):
 
         User = get_user_model()
         datetime_now = get_datetime_now()
 
-        #check if user is replying to any other event_room
-        if check_user_is_replying(request=self.request, excluded_event_room_id=event_room_id) is True:
+        #check if user is replying to any other event
+        if check_user_is_replying(request=self.request, excluded_event_id=event_id) is True:
 
             return Response(
                 data={
-                    'message': 'You are already replying in a different event.',
+                    'message': 'You are already replying in a different audio_clip.',
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -1496,31 +1495,31 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
             with transaction.atomic():
 
-                #get event_room
+                #get event
                 #we want to do select_for_update(), but it's not allowed for nullable joins, so we do exclude()
                 #also, you must add coma (,) to of=("self",), else it gets unpacked into "s","e","l","f"
-                target_event_room = EventRooms.objects.select_related(
+                target_event = Events.objects.select_related(
                     'generic_status', 'locked_for_user'
                 ).select_for_update(
                     of=("self",)
                 ).exclude(
                     locked_for_user=None
                 ).get(
-                    pk=event_room_id
+                    pk=event_id
                 )
 
                 user = User(self.request.user.id)
 
-                #check if target_event_room is already locked for user beforehand
-                #check if target_event_room is not yet expired as a choice
-                #check if target_event_room is locked for the correct user
-                #if you want to do "extend when_locked", handle target_event_room.is_replying=True
+                #check if target_event is already locked for user beforehand
+                #check if target_event is not yet expired as a choice
+                #check if target_event is locked for the correct user
+                #if you want to do "extend when_locked", handle target_event.is_replying=True
                 if\
-                    target_event_room.generic_status.generic_status_name == 'incomplete' and\
-                    target_event_room.when_locked is not None and\
-                    (get_datetime_now() - target_event_room.when_locked).total_seconds() <= settings.EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS and\
-                    target_event_room.locked_for_user is not None and target_event_room.locked_for_user.id == self.request.user.id and\
-                    target_event_room.is_replying is False\
+                    target_event.generic_status.generic_status_name == 'incomplete' and\
+                    target_event.when_locked is not None and\
+                    (get_datetime_now() - target_event.when_locked).total_seconds() <= settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS and\
+                    target_event.locked_for_user is not None and target_event.locked_for_user.id == self.request.user.id and\
+                    target_event.is_replying is False\
                 :
 
                     pass
@@ -1529,56 +1528,56 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
                     if settings.DEBUG is True:
 
-                        print(target_event_room.generic_status.generic_status_name == 'incomplete')
-                        print(target_event_room.when_locked is not None)
-                        print((datetime_now - target_event_room.when_locked).total_seconds() <= settings.EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS)
-                        print(target_event_room.locked_for_user is not None and target_event_room.locked_for_user.id == self.request.user.id)
-                        print(target_event_room.is_replying)
+                        print(target_event.generic_status.generic_status_name == 'incomplete')
+                        print(target_event.when_locked is not None)
+                        print((datetime_now - target_event.when_locked).total_seconds() <= settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS)
+                        print(target_event.locked_for_user is not None and target_event.locked_for_user.id == self.request.user.id)
+                        print(target_event.is_replying)
 
                     raise custom_error(
                         ValueError,
-                        user_message="You cannot start replying to this event."
+                        user_message="You cannot start replying to this audio_clip."
                     )
 
                 #can reply, proceed
 
-                #unlock any other event rooms that were locked for reply choices
-                #also save to user_event_rooms to prevent unlocked event_rooms from being queued twice
-                event_rooms = EventRooms.objects.filter(
+                #unlock any other audio_clip rooms that were locked for reply choices
+                #also save to user_events to prevent unlocked events from being queued twice
+                events = Events.objects.filter(
                     locked_for_user=user
                 ).select_for_update(
                     of=("self",)
                 ).exclude(
-                    pk=event_room_id
+                    pk=event_id
                 )
 
-                for event_room in event_rooms:
+                for event in events:
 
-                    event_room.when_locked = None
-                    event_room.locked_for_user = None
-                    event_room.is_replying = None
-                    event_room.last_modified = datetime_now
+                    event.when_locked = None
+                    event.locked_for_user = None
+                    event.is_replying = None
+                    event.last_modified = datetime_now
 
                 #unlock
-                EventRooms.objects.bulk_update(event_rooms, ['when_locked', 'locked_for_user', 'is_replying', 'last_modified'])
+                Events.objects.bulk_update(events, ['when_locked', 'locked_for_user', 'is_replying', 'last_modified'])
 
                 #confirm reply, start over when_locked
-                target_event_room.when_locked = get_datetime_now()
-                target_event_room.is_replying = True
-                target_event_room.save()
+                target_event.when_locked = get_datetime_now()
+                target_event.is_replying = True
+                target_event.save()
 
                 return Response(
                     data={
-                        'message': 'Success! You are now replying to this event.',
+                        'message': 'Success! You are now replying to this audio_clip.',
                     },
                     status=status.HTTP_202_ACCEPTED
                 )
             
-        except EventRooms.DoesNotExist:
+        except Events.DoesNotExist:
 
             return Response(
                 data={
-                    'message': 'This event either no longer exists, or is unavailable.',
+                    'message': 'This audio_clip either no longer exists, or is unavailable.',
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
@@ -1597,27 +1596,27 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
     #if user has already selected a reply choice and is now replying, allow to cancel
     #401 not allowed to cancel or has already cancelled
-    def delete_replying_to_event_room(self, event_room_id):
+    def delete_replying_to_event(self, event_id):
 
         try:
 
             with transaction.atomic():
 
-                #get event_room
-                event_room = EventRooms.objects.select_related(
+                #get event
+                event = Events.objects.select_related(
                     'generic_status', 'locked_for_user'
                 ).select_for_update(
                     of=("self",)
                 ).get(
-                    pk=event_room_id
+                    pk=event_id
                 )
 
                 #check if user is already replying
                 #we don't check for time limit, as cancellation can occur beyond it
                 if\
-                    event_room.when_locked is not None and\
-                    event_room.is_replying is True and\
-                    event_room.locked_for_user is not None and event_room.locked_for_user.id == self.request.user.id\
+                    event.when_locked is not None and\
+                    event.is_replying is True and\
+                    event.locked_for_user is not None and event.locked_for_user.id == self.request.user.id\
                 :
 
                     pass
@@ -1628,17 +1627,17 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
                     #UI being removed is of higher priority than status_code
                     return Response(
                         data={
-                            'message': 'You are not replying to this event.',
+                            'message': 'You are not replying to this audio_clip.',
                         },
                         status=status.HTTP_401_UNAUTHORIZED
                     )
 
                 #cancel replying
-                event_room.locked_for_user = None
-                event_room.is_replying = None
-                event_room.when_locked = None
+                event.locked_for_user = None
+                event.is_replying = None
+                event.when_locked = None
 
-                event_room.save()
+                event.save()
 
                 return Response(
                     data={
@@ -1647,11 +1646,11 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
                     status=status.HTTP_200_OK
                 )
             
-        except EventRooms.DoesNotExist:
+        except Events.DoesNotExist:
 
             return Response(
                 data={
-                    'message': 'This event either no longer exists, or is unavailable.',
+                    'message': 'This audio_clip either no longer exists, or is unavailable.',
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
@@ -1673,7 +1672,7 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
     ])
     def post(self, request, *args, **kwargs):
 
-        serializer = HandleReplyingEventRoomsAPISerializer(data=request.data, many=False)
+        serializer = HandleReplyingEventsAPISerializer(data=request.data, many=False)
 
         #validate
         if serializer.is_valid() is False:
@@ -1699,21 +1698,21 @@ class HandleReplyingEventRoomsAPI(generics.GenericAPIView):
 
         if self.current_context == "start":
 
-            return self.start_replying_to_event_room(new_data['event_room_id'])
+            return self.start_replying_to_event(new_data['event_id'])
         
         elif self.current_context == "delete":
 
-            return self.delete_replying_to_event_room(new_data['event_room_id'])
+            return self.delete_replying_to_event(new_data['event_id'])
 
 
 
-#does not have own get(), since viewing events always involves parent event_rooms
-#handle creating events
-    #if event_role_name='originator', create event_room
-    #if event_role_name='responder', link to event_room and reset lock
-class EventsAPI(generics.GenericAPIView):
+#does not have own get(), since viewing audio_clips always involves parent events
+#handle creating audio_clips
+    #if audio_clip_role_name='originator', create event
+    #if audio_clip_role_name='responder', link to event and reset lock
+class AudioClipsAPI(generics.GenericAPIView):
 
-    serializer_class = CreateEventsSerializer
+    serializer_class = CreateAudioClipsSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
     queryset = None
     current_context = ""
@@ -1728,49 +1727,49 @@ class EventsAPI(generics.GenericAPIView):
         super().__init__(*args, **kwargs)
 
 
-    def check_user_create_event_room_daily_limit(self, user):
+    def check_user_create_event_daily_limit(self, user):
 
-        #this is for "X max new event rooms every __", which in this case is every 24h
+        #this is for "X max new audio_clip rooms every __", which in this case is every 24h
         datetime_checkpoint = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
         datetime_checkpoint = datetime.strptime(datetime_checkpoint, '%Y-%m-%d %H:%M:%S %z')
 
-        the_count = EventRooms.objects.filter(
+        the_count = Events.objects.filter(
             created_by=user,
             when_created__gte=datetime_checkpoint
         ).count()
 
-        if the_count < settings.EVENT_ROOM_CREATE_DAILY_LIMIT:
+        if the_count < settings.EVENT_CREATE_DAILY_LIMIT:
 
             return False
 
         return True
 
 
-    def check_user_create_reply_event_daily_limit(self, user):
+    def check_user_create_reply_audio_clip_daily_limit(self, user):
 
         #this is for "X max new posts every __", which in this case is every 24h
         datetime_checkpoint = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
         datetime_checkpoint = datetime.strptime(datetime_checkpoint, '%Y-%m-%d %H:%M:%S %z')
 
-        the_count = Events.objects.filter(
+        the_count = AudioClips.objects.filter(
             user=user,
             when_created__gte=datetime_checkpoint
         ).count()
 
-        if the_count < settings.EVENT_ROOM_REPLY_DAILY_LIMIT:
+        if the_count < settings.EVENT_REPLY_DAILY_LIMIT:
 
             return False
 
         return True
 
 
-    def check_user_can_reply_event_room(self, event_room):
+    def check_user_can_reply_event(self, event):
 
         #check if user is replying
         if\
-            event_room.locked_for_user is not None and\
-            event_room.locked_for_user.id == self.request.user.id and\
-            event_room.is_replying is True\
+            event.locked_for_user is not None and\
+            event.locked_for_user.id == self.request.user.id and\
+            event.is_replying is True\
         :
 
             return True
@@ -1778,11 +1777,11 @@ class EventsAPI(generics.GenericAPIView):
         return False
 
 
-    def check_user_exceeded_reply_time_window(self, event_room):
+    def check_user_exceeded_reply_time_window(self, event):
 
-        minutes_passed = (get_datetime_now() - event_room.when_locked).total_seconds()
+        minutes_passed = (get_datetime_now() - event.when_locked).total_seconds()
 
-        if minutes_passed > settings.EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS:
+        if minutes_passed > settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS:
 
             return True
         
@@ -1796,7 +1795,7 @@ class EventsAPI(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
 
         #deserialize
-        serializer = CreateEventsSerializer(data=request.data, many=False)
+        serializer = CreateAudioClipsSerializer(data=request.data, many=False)
 
         #validate
         if serializer.is_valid() is False:
@@ -1823,74 +1822,74 @@ class EventsAPI(generics.GenericAPIView):
 
             with transaction.atomic():
 
-                #event_tone
-                event_tone = EventTones.objects.get(pk=new_data['event_tone_id'])
+                #audio_clip_tone
+                audio_clip_tone = AudioClipTones.objects.get(pk=new_data['audio_clip_tone_id'])
 
-                #determine if originator/responder, then create/get event_room
+                #determine if originator/responder, then create/get event
                 #generic_status is handled by default, so it is skipped here
                 if self.current_context == "create_new":
 
-                    #check if created event_room limit is not yet reached
-                    if self.check_user_create_event_room_daily_limit(request.user) is True:
+                    #check if created event limit is not yet reached
+                    if self.check_user_create_event_daily_limit(request.user) is True:
 
                         raise custom_error(
                             TimeoutError,
-                            user_message="You have reached your daily limit for creating events."
+                            user_message="You have reached your daily limit for creating audio_clips."
                         )
 
                     #proceed
-                    event_role = EventRoles.objects.get(event_role_name='originator')
+                    audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='originator')
 
-                    event_room = EventRooms.objects.create(
-                        event_room_name=new_data['event_room_name'],
+                    event = Events.objects.create(
+                        event_name=new_data['event_name'],
                         generic_status=GenericStatuses.objects.get(generic_status_name='incomplete'),
                         created_by=request.user
                     )
 
                 elif self.current_context == "reply":
 
-                    #check if reply event limit is not yet reached
-                    if self.check_user_create_reply_event_daily_limit(request.user) is True:
+                    #check if reply audio_clip limit is not yet reached
+                    if self.check_user_create_reply_audio_clip_daily_limit(request.user) is True:
 
                         raise custom_error(
                             ValueError,
                             user_message="You have reached your daily limit of replies."
                         )
 
-                    #get event_room
-                    event_room = EventRooms.objects.select_for_update().get(pk=new_data['event_room_id'])
+                    #get event
+                    event = Events.objects.select_for_update().get(pk=new_data['event_id'])
 
                     #check if this user is already attached beforehand
-                    if self.check_user_can_reply_event_room(event_room) is False:
+                    if self.check_user_can_reply_event(event) is False:
 
                         raise custom_error(
                             ValueError,
-                            user_message="This event is no longer available for reply."
+                            user_message="This audio_clip is no longer available for reply."
                         )
                     
                     #check if user exceeded reply time window but automated script has not detected yet
-                    if self.check_user_exceeded_reply_time_window(event_room) is True:
+                    if self.check_user_exceeded_reply_time_window(event) is True:
 
                         #reset
-                        event_room.locked_for_user = None
-                        event_room.when_locked = None
-                        event_room.is_replying = None
-                        event_room.save()
+                        event.locked_for_user = None
+                        event.when_locked = None
+                        event.is_replying = None
+                        event.save()
 
                         raise custom_error(
                             TimeoutError,
                             user_message="Reply was not successful. You had reached the time limit."
                         )
 
-                    #mark event_room as completed, remove lock
-                    event_room.generic_status = GenericStatuses.objects.get(generic_status_name='completed')
-                    event_room.when_locked = None
-                    event_room.locked_for_user = None
-                    event_room.is_replying = None
-                    event_room.save()
+                    #mark event as completed, remove lock
+                    event.generic_status = GenericStatuses.objects.get(generic_status_name='completed')
+                    event.when_locked = None
+                    event.locked_for_user = None
+                    event.is_replying = None
+                    event.save()
 
                     #can proceed
-                    event_role = EventRoles.objects.get(event_role_name='responder')
+                    audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='responder')
                 
                 #proceed
 
@@ -1908,20 +1907,20 @@ class EventsAPI(generics.GenericAPIView):
                 #get peaks
                 handle_audio_file_class.get_peaks_by_buckets()
 
-                #create event, excluding audio_file and event_room
+                #create audio_clip, excluding audio_file and event
                 #generic_status is handled by default, so it is skipped here
-                new_event = Events.objects.create(
+                new_audio_clip = AudioClips.objects.create(
                     user=request.user,
-                    event_role=event_role,
-                    event_tone=event_tone,
-                    event_room=event_room,
+                    audio_clip_role=audio_clip_role,
+                    audio_clip_tone=audio_clip_tone,
+                    event=event,
                     audio_volume_peaks=handle_audio_file_class.peak_buckets,
                     audio_duration_s=handle_audio_file_class.audio_file_duration_s
                 )
 
                 #we delay saving audio_file, as we want when_created for audio_file's path
-                new_event.audio_file = handle_audio_file_class.audio_file
-                new_event.save()
+                new_audio_clip.audio_file = handle_audio_file_class.audio_file
+                new_audio_clip.save()
 
                 #close just in case it's no longer a reference, i.e. Django won't auto-close
                 handle_audio_file_class.close_audio_file()
@@ -1929,14 +1928,14 @@ class EventsAPI(generics.GenericAPIView):
                 return Response(
                     {
                         'data': {
-                            'event_room_id': event_room.id
+                            'event_id': event.id
                         },
                         'message': 'Success!',
                     },
                     status.HTTP_201_CREATED
                 )
         
-        except EventTones.DoesNotExist:
+        except AudioClipTones.DoesNotExist:
 
             return Response(
                 data={
@@ -1945,11 +1944,11 @@ class EventsAPI(generics.GenericAPIView):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        except EventRooms.DoesNotExist:
+        except Events.DoesNotExist:
 
             return Response(
                 data={
-                    'message': 'This event no longer exists.',
+                    'message': 'This audio_clip no longer exists.',
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
@@ -1998,12 +1997,12 @@ class EventsAPI(generics.GenericAPIView):
 
 #to submit likes/dislikes
 #is_liked=True/False, or destroy when undone
-class EventLikesDislikesAPI(generics.GenericAPIView):
+class AudioClipLikesDislikesAPI(generics.GenericAPIView):
 
-    serializer_class = EventLikesDislikesSerializer
+    serializer_class = AudioClipLikesDislikesSerializer
     permission_classes = [IsAuthenticated]
 
-    #no get() needed, since likes/dislikes are tied directly to events
+    #no get() needed, since likes/dislikes are tied directly to audio_clips
 
     #create
     @method_decorator([
@@ -2012,7 +2011,7 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
     ])
     def post(self, request, *args, **kwargs):
 
-        serializer = CreateEventLikesDislikesSerializer(data=request.data, many=False)
+        serializer = CreateAudioClipLikesDislikesSerializer(data=request.data, many=False)
 
         #validate
         if serializer.is_valid() is False:
@@ -2036,10 +2035,10 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
 
         try:
 
-            target_event = Events.objects.get(pk=new_data['event_id'])
+            target_audio_clip = AudioClips.objects.get(pk=new_data['audio_clip_id'])
 
-            #check if event is banned
-            if target_event.is_banned is True:
+            #check if audio_clip is banned
+            if target_audio_clip.is_banned is True:
 
                 return Response(
                     data={
@@ -2048,7 +2047,7 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        except Events.DoesNotExist:
+        except AudioClips.DoesNotExist:
 
             return Response(
                 data={
@@ -2072,17 +2071,17 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
             if new_data['is_liked'] is None:
 
                 #this is safe from "performing deletion but no rows found"
-                EventLikesDislikes.objects.filter(
+                AudioClipLikesDislikes.objects.filter(
                     user_id=request.user.id,
-                    event_id=new_data['event_id']
+                    audio_clip_id=new_data['audio_clip_id']
                 ).delete()
 
             else:
 
                 #for value changes, use defaults arg
-                EventLikesDislikes.objects.update_or_create(
+                AudioClipLikesDislikes.objects.update_or_create(
                     user_id=request.user.id,
-                    event_id=new_data['event_id'],
+                    audio_clip_id=new_data['audio_clip_id'],
                     defaults={'is_liked': new_data['is_liked']}
                 )
 
@@ -2099,7 +2098,7 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
 
                 return Response(
                     data={
-                        'message': 'Unable to like/dislike this event.',
+                        'message': 'Unable to like/dislike this audio_clip.',
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
@@ -2110,7 +2109,7 @@ class EventLikesDislikesAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'message': 'Unable to like/dislike this event.',
+                    'message': 'Unable to like/dislike this audio_clip.',
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )

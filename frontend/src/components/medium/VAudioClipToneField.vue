@@ -1,10 +1,10 @@
 <template>
     <div>
-        <VInputLabel for="event-tone-picker">
+        <VInputLabel for="audio-clip-tone-picker">
             {{propLabel}}
         </VInputLabel>
         <button
-            id="event-tone-picker"
+            id="audio-clip-tone-picker"
             @click.stop="[toggleMenu(), emitIsOpen()]"
             :class="[
                 is_open ? 'border-theme-black      focus-visible:outline-offset-0' : 'border-theme-medium-gray shade-border-when-hover   focus-visible:-outline-offset-2',
@@ -13,11 +13,11 @@
             type="button"
         >
             <span
-                v-if="propEventToneChoice !== null"
+                v-if="propAudioClipToneChoice !== null"
                 class="absolute w-fit h-fit left-0 right-0 top-0 bottom-0.5 m-auto has-emoji"
             >
-                <span aria-hidden="true">{{propEventToneChoice.event_tone_symbol}}</span>
-                <span class="sr-only">{{propEventToneChoice.event_tone_name}}</span>
+                <span aria-hidden="true">{{propAudioClipToneChoice.audio_clip_tone_symbol}}</span>
+                <span class="sr-only">{{propAudioClipToneChoice.audio_clip_tone_name}}</span>
             </span>
             <span v-else class="sr-only">No emoji selected</span>
             <span v-if="propIsOpen" class="sr-only">
@@ -35,9 +35,9 @@
 </script>
 
 <script lang="ts">
-    //we don't keep VEventToneMenu in this component due to the inflexibility of button size =/= menu size
+    //we don't keep VAudioClipToneMenu in this component due to the inflexibility of button size =/= menu size
     import { defineComponent, PropType } from 'vue';
-    import EventToneTypes from '@/types/EventTones.interface';
+    import AudioClipToneTypes from '@/types/AudioClipTones.interface';
 
     export default defineComponent({
         data(){
@@ -48,8 +48,8 @@
         emits: ['isOpen'],
         props: {
             propLabel: String,
-            propEventToneChoice: {
-                type: Object as PropType<EventToneTypes> | null,
+            propAudioClipToneChoice: {
+                type: Object as PropType<AudioClipToneTypes> | null,
                 default: null,
             },
             propIsOpen: {
@@ -67,7 +67,7 @@
         },
         methods: {
             toggleMenu() : void {
-                //this dictates whether VEventToneMenu is open
+                //this dictates whether VAudioClipToneMenu is open
                 this.is_open = !this.is_open;
                 
             },

@@ -47,7 +47,42 @@ class Users_TestCase(TestCase):
     def setUpTestData(cls):
 
         cls.email = 'user1@gmail.com'
+        cls.unused_email = 'abc0123456789@gmail.com'
         cls.expected_mail_outbox_count = 0
+
+
+    def test_sign_up_but_missing_otp(self):
+
+        #generate OTP
+        response = self.client.post(reverse('users_sign_up_api'), data={
+            'email': self.email,
+            'is_requesting_new_otp': True
+        })
+
+        #has email sent
+        self.expected_mail_outbox_count += 1
+        self.assertEqual(len(mail.outbox), self.expected_mail_outbox_count)
+
+        user_instance = get_user_model().objects.get(
+            email_lowercase=self.email.lower()
+        )
+
+        #sign up, with recorded email
+        response = self.client.post(reverse('users_sign_up_api'), data={
+            'email': self.email,
+        })
+
+        self.assertTrue(response.status_code, 400)
+
+        #sign up, with unrecorded email
+        response = self.client.post(reverse('users_sign_up_api'), data={
+            'email': self.unused_email,
+        })
+
+        self.assertTrue(response.status_code, 400)
+
+        #expect
+        self.assertEqual(response.wsgi_request.user.is_authenticated, False)
 
 
     def test_sign_up_correctly(self, another_email=''):
@@ -75,7 +110,13 @@ class Users_TestCase(TestCase):
         )
 
         #get OTP
-        new_otp = UserOTP.objects.get(user=user_instance).otp
+        handle_user_otp_class = HandleUserOTP(
+            user_instance,
+            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
+            0, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+        )
+        handle_user_otp_class.get_or_create_user_otp_instance()
+        new_otp = handle_user_otp_class.generate_otp()
 
         #create and log in
         response = self.client.post(reverse('users_sign_up_api'), data={
@@ -129,9 +170,45 @@ class Users_TestCase(TestCase):
         print(response.data)
 
 
+    def test_log_in_but_missing_otp(self):
+
+        self.test_sign_up_log_out()
+
+        #generate OTP
+        response = self.client.post(reverse('users_log_in_api'), data={
+            'email': self.email,
+            'is_requesting_new_otp': True
+        })
+
+        #has email sent
+        self.expected_mail_outbox_count += 1
+        self.assertEqual(len(mail.outbox), self.expected_mail_outbox_count)
+
+        user_instance = get_user_model().objects.get(
+            email_lowercase=self.email.lower()
+        )
+
+        #log in with account that exists
+        response = self.client.post(reverse('users_log_in_api'), data={
+            'email': self.email,
+        })
+
+        self.assertTrue(response.status_code, 400)
+
+        #log in with account that doesn't exist
+        response = self.client.post(reverse('users_log_in_api'), data={
+            'email': self.unused_email,
+        })
+
+        self.assertTrue(response.status_code, 400)
+
+        #expect
+        self.assertEqual(response.wsgi_request.user.is_authenticated, False)
+
+
     def test_log_in_correctly(self):
 
-        self.test_sign_up_correctly()
+        self.test_sign_up_log_out()
 
         #generate OTP
         response = self.client.post(reverse('users_log_in_api'), data={
@@ -148,9 +225,13 @@ class Users_TestCase(TestCase):
         )
 
         #get correct OTP
-        #should exist even after logging in from creating account,
-        #because HandleUserOTP.verify_otp() deletes UserOTP row on success
-        new_otp = UserOTP.objects.get(user=user_instance).otp
+        handle_user_otp_class = HandleUserOTP(
+            user_instance,
+            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
+            0, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+        )
+        handle_user_otp_class.get_or_create_user_otp_instance()
+        new_otp = handle_user_otp_class.generate_otp()
 
         #log in
         response = self.client.post(reverse('users_log_in_api'), data={
@@ -292,7 +373,7 @@ class Users_TestCase(TestCase):
 
 
 
-class Events_TestCase(TestCase):
+class AudioClips_TestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
@@ -313,7 +394,7 @@ class Events_TestCase(TestCase):
         #webm/opus works
         #https://dirask.com/posts/JavaScript-supported-Audio-Video-MIME-Types-by-MediaRecorder-Chrome-and-Firefox-jERn81
 
-        # audio_file = 'events/year_2023/month_7/day_21/user_id_1/e_13.webm'
+        # audio_file = 'audio-clips/year_2023/month_7/day_21/user_id_1/e_13.webm'
         # process_audio_file_class = HandleAudioFile(audio_file)
 
         #example file
@@ -338,7 +419,7 @@ class Events_TestCase(TestCase):
         )
 
         #check size, not included in HandleAudioFile
-        self.assertLessEqual(audio_file_in_memory.size, settings.EVENT_MAX_FILE_SIZE_BYTES)
+        self.assertLessEqual(audio_file_in_memory.size, settings.AUDIO_CLIP_MAX_FILE_SIZE_BYTES)
 
         #proceed
         handle_audio_file_class = HandleAudioFile(audio_file_in_memory, True)
@@ -364,17 +445,6 @@ class Events_TestCase(TestCase):
         handle_audio_file_class.audio_file.seek(0)
 
         handle_audio_file_class.close_audio_file()
-
-
-    def test_custom_functions(self):
-
-        #pass in event_tone_slug
-        #fetches the row if exists, else fetches all rows
-        yolo = Events.objects.raw("SELECT * FROM get_id_of_one_or_all_event_tones_via_slug(%s)", params=('',))
-
-        #check
-        print(len(yolo))
-        self.assertGreater(len(yolo), 0)
 
 
 
@@ -435,17 +505,29 @@ class System_TestCase(TestCase):
         self.client.force_login(user_instance)
 
 
-    def test_like_dislike(self):
+    def test_like_dislike_and_trigger(self):
 
-        self.login()
+        self.login(self.user_1_instance)
 
-        def do_like_dislike(event_id, is_liked):
+        #create user2 audio_clip
+        prepare_test_data_class = PrepareTestData(for_test=True)
+        prepare_test_data_class.prepare_test_data_events(
+            self.user_1_username,
+            self.user_2_username,
+            0,
+            1
+        )
+
+        def do_like_dislike(audio_clip_id, is_liked, previous_is_liked=None):
+
+            #get initial audio_clip to evaluate trigger on like_count and dislike_count
+            target_audio_clip = AudioClips.objects.get(pk=audio_clip_id)
 
             #submit
             request = self.client.post(
-                path=reverse('event_likes_dislikes_api'),
+                path=reverse('audio_clip_likes_dislikes_api'),
                 data={
-                    'event_id': event_id,
+                    'audio_clip_id': audio_clip_id,
                     'is_liked': is_liked
                 },
                 content_type='application/json'
@@ -456,85 +538,139 @@ class System_TestCase(TestCase):
 
             #check db
             try:
-                event_like_dislike = EventLikesDislikes.objects.get(event_id=first_event.id, user_id=self.user_instance.id)
-                self.assertEqual(event_like_dislike.is_liked, is_liked)
-            except EventLikesDislikes.DoesNotExist:
-                print('event_likes_dislikes record removed')
 
-        #get any event
-        first_event = Events.objects.first()
+                audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(audio_clip_id=audio_clip_id, user_id=self.user_1_instance.id)
+                self.assertEqual(audio_clip_like_dislike.is_liked, is_liked)
+
+            except AudioClipLikesDislikes.DoesNotExist:
+
+                self.assertEqual(is_liked, None)
+
+            expected_like_count = target_audio_clip.like_count
+            expected_dislike_count = target_audio_clip.dislike_count
+
+            #check count trigger
+            updated_target_audio_clip = AudioClips.objects.get(pk=audio_clip_id)
+
+            if is_liked == previous_is_liked:
+
+                #do nothing if identical
+                pass
+
+            elif previous_is_liked is True:
+
+                #is_liked will not be True
+                expected_like_count -= 1
+                if is_liked is False:
+                    expected_dislike_count += 1
+
+            elif previous_is_liked is False:
+
+                #is_liked will not be False
+                expected_dislike_count -= 1
+                if is_liked is True:
+                    expected_like_count += 1
+
+            else:
+                
+                #is_liked will not be None
+                if is_liked is True:
+                    expected_like_count += 1
+                else:
+                    expected_dislike_count += 1
+
+            #evaluate
+            self.assertEqual(updated_target_audio_clip.like_count, expected_like_count)
+            self.assertEqual(updated_target_audio_clip.dislike_count, expected_dislike_count)
+
+
+        #get any audio_clip
+        first_audio_clip = AudioClips.objects.first()
 
         #check like/dislike doesn't exist for current user
         self.assertFalse(
-            EventLikesDislikes.objects.filter(
-                event_id=first_event.id, user_id=self.user_instance.id
+            AudioClipLikesDislikes.objects.filter(
+                audio_clip_id=first_audio_clip.id, user_id=self.user_1_instance.id
             ).exists()
         )
 
         #do request, and try repeating for resiliency
-        do_like_dislike(event_id=first_event.id, is_liked=True)
-        do_like_dislike(event_id=first_event.id, is_liked=True)
+        do_like_dislike(audio_clip_id=first_audio_clip.id, is_liked=True, previous_is_liked=None)
+        do_like_dislike(audio_clip_id=first_audio_clip.id, is_liked=True, previous_is_liked=True)
 
         #switch to dislike, also repeat
-        do_like_dislike(event_id=first_event.id, is_liked=False)
-        do_like_dislike(event_id=first_event.id, is_liked=False)
+        do_like_dislike(audio_clip_id=first_audio_clip.id, is_liked=False, previous_is_liked=True)
+        do_like_dislike(audio_clip_id=first_audio_clip.id, is_liked=False, previous_is_liked=False)
 
         #remove, and repeat
-        do_like_dislike(event_id=first_event.id, is_liked=None)
-        do_like_dislike(event_id=first_event.id, is_liked=None)
+        do_like_dislike(audio_clip_id=first_audio_clip.id, is_liked=None, previous_is_liked=False)
+        do_like_dislike(audio_clip_id=first_audio_clip.id, is_liked=None, previous_is_liked=None)
 
 
     def test_user_block(self):
 
         self.login(self.user_1_instance)
 
-        self.client.post(
-            path=reverse('users_block_users_api'),
-            data={
-                'blocked_user_id': self.user_2_instance.id,
-                'to_block': True
-            }
-        )
+        def do_block(to_block:bool):
 
-        self.assertTrue(UserBlocks.objects.filter(user_id=self.user_1_instance, blocked_user_id=self.user_2_instance).exists())
+            #block
+            request = self.client.post(
+                path=reverse('user_blocks_api'),
+                data={
+                    'username': self.user_2_username,
+                    'to_block': to_block
+                }
+            )
 
-        #here, you run event_rooms querysets to validate that blocked users don't show up
+            #expect success
+            self.assertEqual(request.status_code, 200)
+
+            self.assertEqual(UserBlocks.objects.filter(user=self.user_1_instance, blocked_user=self.user_2_instance).exists(), to_block)
+
+        #block
+        do_block(True)
+
+        #block again, expect no change
+        do_block(True)
+
+        #unblock, expect no row
+        do_block(False)
 
 
-    def test_event_report(self):
+    def test_audio_clip_report(self):
 
         self.login(self.user_1_instance)
 
-        #create user2 event
+        #create user2 audio_clip
         prepare_test_data_class = PrepareTestData(for_test=True)
-        prepare_test_data_class.prepare_test_data_event_rooms(
+        prepare_test_data_class.prepare_test_data_events(
             self.user_1_username,
             self.user_2_username,
             0,
             1
         )
 
-        #get events from event_rooms that both users are involved in
-        linked_events = Events.objects.raw(
+        #get audio_clips from events that both users are involved in
+        linked_audio_clips = AudioClips.objects.raw(
             '''
                 WITH
-                    user_1_event_rooms AS (
-                        SELECT event_rooms.id FROM event_rooms
-                        INNER JOIN events ON event_rooms.id = events.event_room_id
-                        WHERE events.user_id = %s
+                    user_1_events AS (
+                        SELECT events.id FROM events
+                        INNER JOIN audio_clips ON events.id = audio_clips.event_id
+                        WHERE audio_clips.user_id = %s
                     ),
-                    user_2_event_rooms AS (
-                        SELECT event_rooms.id FROM event_rooms
-                        INNER JOIN events ON event_rooms.id = events.event_room_id
-                        WHERE events.user_id = %s
+                    user_2_events AS (
+                        SELECT events.id FROM events
+                        INNER JOIN audio_clips ON events.id = audio_clips.event_id
+                        WHERE audio_clips.user_id = %s
                     ),
-                    shared_event_rooms AS (
-                        SELECT event_rooms.id FROM event_rooms
-                        RIGHT JOIN user_1_event_rooms ON event_rooms.id = user_1_event_rooms.id
-                        RIGHT JOIN user_2_event_rooms ON event_rooms.id = user_2_event_rooms.id
+                    shared_events AS (
+                        SELECT events.id FROM events
+                        RIGHT JOIN user_1_events ON events.id = user_1_events.id
+                        RIGHT JOIN user_2_events ON events.id = user_2_events.id
                     )
-                    SELECT events.* FROM events
-                    RIGHT JOIN shared_event_rooms ON events.event_room_id = shared_event_rooms.id
+                    SELECT audio_clips.* FROM audio_clips
+                    RIGHT JOIN shared_events ON audio_clips.event_id = shared_events.id
             ''',
             params=(
                 self.user_1_instance.id,
@@ -542,48 +678,48 @@ class System_TestCase(TestCase):
             )
         )
 
-        #report the other event that does not belong to this signed in user
-        event_to_report = None
+        #report the other audio_clip that does not belong to this signed in user
+        audio_clip_to_report = None
 
-        for row in linked_events:
+        for row in linked_audio_clips:
 
             if row.user_id != self.user_1_instance.id:
 
-                event_to_report = row
+                audio_clip_to_report = row
                 break
 
-        #we change event's values to meet ban conditions
-        event_to_report.like_count = 25
-        event_to_report.dislike_count = settings.BAN_EVENT_DISLIKE_COUNT * 2
-        event_to_report.when_created = get_datetime_now() - timedelta(seconds=settings.BAN_EVENT_AGE_SECONDS * 2)
-        event_to_report.save()
+        #we change audio_clip's values to meet ban conditions
+        audio_clip_to_report.like_count = 25
+        audio_clip_to_report.dislike_count = settings.BAN_AUDIO_CLIP_DISLIKE_COUNT * 2
+        audio_clip_to_report.when_created = get_datetime_now() - timedelta(seconds=settings.BAN_AUDIO_CLIP_AGE_SECONDS * 2)
+        audio_clip_to_report.save()
 
         #no reports initially
-        self.assertEqual(EventReports.objects.count(), 0)
+        self.assertEqual(AudioClipReports.objects.count(), 0)
 
         #report
         result = self.client.post(
-            path=reverse('create_event_reports_api'),
+            path=reverse('create_audio_clip_reports_api'),
             data={
-                'reported_event_id': event_to_report.id
+                'reported_audio_clip_id': audio_clip_to_report.id
             }
         )
         self.assertEqual(result.status_code, 200)
 
         #check whether report now exists
-        self.assertTrue(EventReports.objects.filter(user_id=self.user_1_instance.id, reported_event_id=event_to_report.id).exists())
+        self.assertTrue(AudioClipReports.objects.filter(user_id=self.user_1_instance.id, reported_audio_clip_id=audio_clip_to_report.id).exists())
 
         #try report again, expect to be fine but not accept duplicates
         result = self.client.post(
-            path=reverse('create_event_reports_api'),
+            path=reverse('create_audio_clip_reports_api'),
             data={
-                'reported_event_id': event_to_report.id
+                'reported_audio_clip_id': audio_clip_to_report.id
             }
         )
         self.assertEqual(result.status_code, 200)
 
         #check whether report now exists
-        self.assertTrue(EventReports.objects.filter(user_id=self.user_1_instance.id, reported_event_id=event_to_report.id).exists())
+        self.assertTrue(AudioClipReports.objects.filter(user_id=self.user_1_instance.id, reported_audio_clip_id=audio_clip_to_report.id).exists())
 
 
     def test_ban(self):
@@ -591,16 +727,33 @@ class System_TestCase(TestCase):
         self.prepare_test_data_class.prepare_test_data_for_bans(
             target_username=self.user_1_username,
             backup_username=self.user_2_username,
-            events_to_ban_quantity=10,
-            events_not_to_ban_quantity=6,
+            audio_clips_to_ban_quantity=10,
+            audio_clips_not_to_ban_quantity=6,
             reporting_user_quantity=10
         )
 
         #do ban
-        cronjob_ban_events()
+        cronjob_ban_audio_clips()
 
-        self.assertEqual(Events.objects.filter(is_banned=True).count(), 10)
-        self.assertEqual(EventReports.objects.count(), 0)
+        self.assertEqual(AudioClips.objects.filter(is_banned=True).count(), 10)
+        self.assertEqual(AudioClipReports.objects.count(), 0)
+
+
+    def test_audio_clip_tone_trigger(self):
+
+        #pass in audio_clip_tone_slug
+        #fetches the row if exists, else fetches all rows
+        yolo = AudioClips.objects.raw("SELECT * FROM get_id_of_one_or_all_audio_clip_tones_via_slug(%s)", params=('',))
+
+        #check
+        print(str(len(yolo)) + " audio_clip_tones found")
+        self.assertGreater(len(yolo), 1)
+
+        yolo = AudioClips.objects.raw("SELECT * FROM get_id_of_one_or_all_audio_clip_tones_via_slug(%s)", params=('smile',))
+
+        #check
+        print(str(len(yolo)) + " audio_clip_tones found")
+        self.assertEqual(len(yolo), 1)
 
 
 

@@ -54,7 +54,7 @@
                         >
                             <!--search-->
                             <VActionSpecial
-                                @click.stop="getEventRooms()"
+                                @click.stop="getEvents()"
                                 :propIsEnabled="canSearch"
                                 propElement="button"
                                 type="button"
@@ -76,7 +76,7 @@
                                     :propHasAbsolute="true"
                                 >
 
-                                    <!--no new events-->
+                                    <!--no new audio-clips-->
                                     <VDialogPlain
                                         v-show="current_simple_dialog === simple_dialogs[0]"
                                         :prop-has-border="false"
@@ -186,10 +186,10 @@
                                     <div class="w-24 h-24 rounded-full skeleton"></div>
                                 </div>
                             </div>
-                            <!--event room skeleton-->
-                            <EventRoomCardSkeleton
+                            <!--audio_clip room skeleton-->
+                            <EventCardSkeleton
                                 :prop-has-border="true"
-                                :prop-event-quantity="1"
+                                :prop-audio-clip-quantity="1"
                             />
                         </div>
 
@@ -294,7 +294,7 @@
                         <!--reply-->
                         <div class="col-span-1 justify-self-end">
                             <VActionSpecial
-                                @click.stop="confirmReplyChoice(getMainEventRoom)"
+                                @click.stop="confirmReplyChoice(getMainEvent)"
                                 :propIsEnabled="!is_new_reply_choice_confirming"
                                 propElement="button"
                                 type="button"
@@ -310,7 +310,7 @@
                         <!--skip-->
                         <div class="col-span-1">
                             <VAction
-                                @click.stop="getEventRooms()"
+                                @click.stop="getEvents()"
                                 :propIsEnabled="canSearch"
                                 propElement="button"
                                 type="button"
@@ -324,12 +324,12 @@
                         </div>
                     </div>
 
-                    <!--event_room preview-->
-                    <!--must use v-if since EventRoomCard cannot exist with null-->
+                    <!--event preview-->
+                    <!--must use v-if since EventCard cannot exist with null-->
                     <TransitionFade>
-                        <EventRoomCard
+                        <EventCard
                             v-if="canChooseReplyChoices"
-                            :propEventRoom="getMainEventRoom"
+                            :propEvent="getMainEvent"
                             :propShowTitle="true"
                             :propHasBorder="true"
                         />
@@ -343,8 +343,8 @@
 
 <script setup lang="ts">
     import VTitle from '/src/components/small/VTitle.vue';
-    import EventRoomCard from '/src/components/main/EventRoomCard.vue';
-    import EventRoomCardSkeleton from '@/components/skeleton/EventRoomCardSkeleton.vue';
+    import EventCard from '/src/components/main/EventCard.vue';
+    import EventCardSkeleton from '@/components/skeleton/EventCardSkeleton.vue';
     import VActionSpecial from '@/components/small/VActionSpecial.vue';
     import VAction from '@/components/small/VAction.vue';
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
@@ -357,25 +357,25 @@
     import { defineComponent } from 'vue';
     import { timeFromNowMS, prettyTimeRemaining } from '@/helper_functions';
     import { notify } from 'notiwind';
-    import GroupedEventsTypes from '@/types/GroupedEvents.interface';
+    import GroupedAudioClipsTypes from '@/types/GroupedAudioClips.interface';
     import StatusValues from '@/types/values/StatusValues';
     import { useUnfinishedReplyStore } from '@/stores/UnfinishedReplyStore';
-    import EventTonesTypes from '@/types/EventTones.interface';
+    import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
 
     const axios = require('axios');
 
     export default defineComponent({
-        name: "ListEventRoomChoicesApp",
+        name: "ListEventChoicesApp",
         data() {
             return {
                 unfinished_reply_store: useUnfinishedReplyStore(),
 
-                new_reply_choice_event_rooms: [] as GroupedEventsTypes[] | [],
-                unfinished_reply_event_room: null as GroupedEventsTypes | null,
+                new_reply_choice_events: [] as GroupedAudioClipsTypes[] | [],
+                unfinished_reply_event: null as GroupedAudioClipsTypes | null,
                 redirect_url: "",
 
                 is_sort_menu_open: false,
-                selected_event_tone: null as EventTonesTypes|null,
+                selected_audio_clip_tone: null as AudioClipTonesTypes|null,
 
                 expiry_interval: null as number | null,
                 expiry_string: "",
@@ -390,23 +390,23 @@
                 is_expiry_loading: false,
                 is_new_reply_choice_confirming: false,
 
-                simple_dialogs: ["no_reply_choices", "choosing_event_choice_expired", "reply_deleted"] as StatusValues[],
+                simple_dialogs: ["no_reply_choices", "choosing_audio_clip_choice_expired", "reply_deleted"] as StatusValues[],
                 current_simple_dialog: "",
             };
         },
         computed: {
-            getMainEventRoom() : GroupedEventsTypes|null {
+            getMainEvent() : GroupedAudioClipsTypes|null {
 
-                //only useful for current 1-event-room-per-instance
+                //only useful for current 1-event-per-instance
                 //use v-for when > 1 in the future
 
-                if(this.new_reply_choice_event_rooms.length === 0){
+                if(this.new_reply_choice_events.length === 0){
 
                     return null;
 
                 }else{
 
-                    return this.new_reply_choice_event_rooms[0];
+                    return this.new_reply_choice_events[0];
                 }
             },
             isLoading() : boolean {
@@ -415,24 +415,24 @@
             },
             hasUnfinishedReply() : boolean {
 
-                return this.unfinished_reply_event_room !== null && this.isLoading === false;
+                return this.unfinished_reply_event !== null && this.isLoading === false;
             },
             canChooseReplyChoices() : boolean {
 
-                return this.new_reply_choice_event_rooms.length > 0 && this.hasUnfinishedReply === false &&
+                return this.new_reply_choice_events.length > 0 && this.hasUnfinishedReply === false &&
                     this.isLoading === false;
             },
             canSearch() : boolean {
 
-                return this.unfinished_reply_event_room === null && this.isLoading === false;
+                return this.unfinished_reply_event === null && this.isLoading === false;
             },
         },
         methods: {
-            async handleNewSelectedEventTone(new_value:EventTonesTypes|null) : Promise<void> {
+            async handleNewSelectedAudioClipTone(new_value:AudioClipTonesTypes|null) : Promise<void> {
 
-                this.selected_event_tone = new_value;
+                this.selected_audio_clip_tone = new_value;
 
-                this.getEventRooms();
+                this.getEvents();
             },
             toggleSortMenu() : void {
 
@@ -456,13 +456,13 @@
 
                 switch(store_status){
 
-                    case 'choosing_event_choice_expired':
+                    case 'choosing_audio_clip_choice_expired':
 
                         this.current_simple_dialog = store_status;
                         this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                         this.expiry_interval = null;
-                        this.new_reply_choice_event_rooms = [];
-                        this.unfinished_reply_event_room = null;
+                        this.new_reply_choice_events = [];
+                        this.unfinished_reply_event = null;
                         break;
 
                     case 'replying_deleted':
@@ -470,8 +470,8 @@
                         this.current_simple_dialog = store_status;
                         this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                         this.expiry_interval = null;
-                        this.new_reply_choice_event_rooms = [];
-                        this.unfinished_reply_event_room = null;
+                        this.new_reply_choice_events = [];
+                        this.unfinished_reply_event = null;
                         break;
 
                     case 'replying_expired':
@@ -479,14 +479,14 @@
                         this.current_simple_dialog = "";
                         this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                         this.expiry_interval = null;
-                        this.new_reply_choice_event_rooms = [];
-                        this.unfinished_reply_event_room = null;
+                        this.new_reply_choice_events = [];
+                        this.unfinished_reply_event = null;
                         break;
 
                     case 'replying':
 
                         this.current_simple_dialog = "";
-                        this.new_reply_choice_event_rooms = [];
+                        this.new_reply_choice_events = [];
                         break;
 
                     case 'replying_successful':
@@ -494,8 +494,8 @@
                         this.current_simple_dialog = "";
                         this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                         this.expiry_interval = null;
-                        this.new_reply_choice_event_rooms = [];
-                        this.unfinished_reply_event_room = null;
+                        this.new_reply_choice_events = [];
+                        this.unfinished_reply_event = null;
                         break;
 
                     default:
@@ -515,19 +515,19 @@
                 let data = new FormData();
                 const specific_url = context === "unfinished_reply" ? "reply/cancel" : "reply-choices/expire";
 
-                if(context === "unfinished_reply" && this.unfinished_reply_event_room !== null){
+                if(context === "unfinished_reply" && this.unfinished_reply_event !== null){
 
-                    data.append("event_room_id", JSON.stringify(this.unfinished_reply_event_room.event_room.id));
+                    data.append("event_id", JSON.stringify(this.unfinished_reply_event.event.id));
                 }
 
 
-                await axios.post(window.location.origin + "/api/event-rooms/" + specific_url, data)
+                await axios.post(window.location.origin + "/api/events/" + specific_url, data)
                 .then(() => {
 
                     this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                     this.expiry_string = "";
                     this.current_simple_dialog = this.simple_dialogs[1];
-                    this.new_reply_choice_event_rooms = [];
+                    this.new_reply_choice_events = [];
                     this.is_expiry_loading = false;
 
                     //patch store
@@ -540,8 +540,8 @@
                     }else{
 
                         this.unfinished_reply_store.$patch({
-                            event_room: null,
-                            status: "choosing_event_choice_expired"
+                            event: null,
+                            status: "choosing_audio_clip_choice_expired"
                         });
                     }
                 })
@@ -552,7 +552,7 @@
                     this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                     this.expiry_string = "";
                     this.current_simple_dialog = this.simple_dialogs[1];
-                    this.new_reply_choice_event_rooms = [];
+                    this.new_reply_choice_events = [];
                     this.is_expiry_loading = false;
 
                     //patch store
@@ -565,14 +565,14 @@
                     }else{
 
                         this.unfinished_reply_store.$patch({
-                            event_room: null,
-                            status: "choosing_event_choice_expired"
+                            event: null,
+                            status: "choosing_audio_clip_choice_expired"
                         });
                     }
                 });
             },
             //you can call this for new reply choices, the API will remove previous reply choices for us
-            async getEventRooms(): Promise<void> {
+            async getEvents(): Promise<void> {
 
                 if(this.canSearch === false){
 
@@ -581,7 +581,7 @@
 
                 //reset
                 this.current_simple_dialog = "";
-                this.new_reply_choice_event_rooms = [];
+                this.new_reply_choice_events = [];
                 this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                 this.expiry_string = "";
 
@@ -589,49 +589,49 @@
 
                 let data = new FormData();
 
-                if(this.selected_event_tone !== null){
+                if(this.selected_audio_clip_tone !== null){
 
-                    data.append('event_tone_id', JSON.stringify(this.selected_event_tone.id));
+                    data.append('audio_clip_tone_id', JSON.stringify(this.selected_audio_clip_tone.id));
                 }
 
-                await axios.post(window.location.origin + "/api/event-rooms/reply-choices/list", data)
+                await axios.post(window.location.origin + "/api/events/reply-choices/list", data)
                 .then((results: any) => {
 
                     if(results.data["data"].length === 0){
 
-                        //no events
+                        //no audio_clips
                         this.current_simple_dialog = this.simple_dialogs[0];
 
                         //reset
                         //patch store
                         this.unfinished_reply_store.$patch({
-                            event_room: null,
+                            event: null,
                             status: "no_reply_choices"
                         });
 
-                    }else if(results.data["data"].length > 0 && results.data["data"][0]["event_room"]["is_replying"] === true){
+                    }else if(results.data["data"].length > 0 && results.data["data"][0]["event"]["is_replying"] === true){
 
                         //user has unfinished reply
-                        this.unfinished_reply_event_room = results.data["data"][0];
-                        this.redirect_url = "hear/" + this.unfinished_reply_event_room!.event_room.id.toString();
+                        this.unfinished_reply_event = results.data["data"][0];
+                        this.redirect_url = "hear/" + this.unfinished_reply_event!.event.id.toString();
                         this.startExpiryInterval("unfinished_reply");
 
                         //patch store
                         this.unfinished_reply_store.$patch({
-                            event_room: results.data["data"][0],
+                            event: results.data["data"][0],
                             status: "replying"
                         });
 
                     }else{
 
                         //user has new reply choices
-                        this.new_reply_choice_event_rooms = results.data["data"];
+                        this.new_reply_choice_events = results.data["data"];
                         this.startExpiryInterval("new_reply_choices");
 
                         //patch store
                         this.unfinished_reply_store.$patch({
-                            event_room: null,
-                            status: "choosing_event_choice"
+                            event: null,
+                            status: "choosing_audio_clip_choice"
                         });
                     }
 
@@ -642,15 +642,15 @@
                     this.is_searching = false;
 
                     notify({
-                        title: "Event search failed",
-                        text: "Unable to search for events. " + error.response.data['message'],
+                        title: "AudioClip search failed",
+                        text: "Unable to search for audio_clips. " + error.response.data['message'],
                         type: "error"
                     }, 3000);
                 });
             },
             async deleteUnfinishedReply(): Promise<void> {
 
-                if(this.unfinished_reply_event_room === null || this.is_unfinished_reply_deleting === true){
+                if(this.unfinished_reply_event === null || this.is_unfinished_reply_deleting === true){
                     return;
                 }
 
@@ -661,7 +661,7 @@
                 const handler = ()=>{
 
                     this.is_unfinished_reply_deleting = false;
-                    this.unfinished_reply_event_room = null;
+                    this.unfinished_reply_event = null;
 
                     //patch store
                     this.unfinished_reply_store.$patch({
@@ -671,15 +671,15 @@
 
                 //cancel previous reply choice
                 let data = new FormData();
-                data.append("event_room_id", JSON.stringify(this.unfinished_reply_event_room.event_room.id));
+                data.append("event_id", JSON.stringify(this.unfinished_reply_event.event.id));
 
-                await axios.post(window.location.origin + "/api/event-rooms/reply/delete", data)
+                await axios.post(window.location.origin + "/api/events/reply/delete", data)
                 .then(() => {
 
                     handler();
 
                     //auto-search
-                    this.getEventRooms();
+                    this.getEvents();
                 })
                 .catch((error:any) => {
 
@@ -699,9 +699,9 @@
                     }
                 });
             },
-            async confirmReplyChoice(event_room: GroupedEventsTypes|null): Promise<void> {
+            async confirmReplyChoice(event: GroupedAudioClipsTypes|null): Promise<void> {
 
-                if (event_room === null || this.is_new_reply_choice_confirming === true){
+                if (event === null || this.is_new_reply_choice_confirming === true){
 
                     return;
                 }
@@ -711,9 +711,9 @@
                 this.expiry_string = "";
 
                 let data = new FormData();
-                data.append("event_room_id", JSON.stringify(event_room.event_room.id));
+                data.append("event_id", JSON.stringify(event.event.id));
 
-                await axios.post(window.location.origin + "/api/event-rooms/reply/start", data)
+                await axios.post(window.location.origin + "/api/events/reply/start", data)
                 .then((results: any) => {
 
                     if(results.status === 202){
@@ -723,12 +723,12 @@
                         //so we just override the store when user confirms reply choice, only possible without unfinished reply
                         //patch store
                         this.unfinished_reply_store.$patch({
-                            event_room: this.getMainEventRoom,
+                            event: this.getMainEvent,
                             status: "replying"
                         });
 
                         //redirect
-                        window.location.href = window.location.origin + "/event/" + event_room.event_room.id.toString();
+                        window.location.href = window.location.origin + "/audio-clip/" + event.event.id.toString();
 
                     }else{
 
@@ -750,7 +750,7 @@
 
                         //either no longer exists or unavailable
                         //auto-skip
-                        this.getEventRooms();
+                        this.getEvents();
 
                     }else{
 
@@ -767,20 +767,20 @@
             },
             startExpiryInterval(context:"new_reply_choices"|"unfinished_reply"): void {
 
-                let target_event_room: GroupedEventsTypes | null = null;
+                let target_event: GroupedAudioClipsTypes | null = null;
                 let target_max_ms = 0;
 
                 if(
                     context === "unfinished_reply" &&
-                    this.unfinished_reply_event_room !== null
+                    this.unfinished_reply_event !== null
                 ){
 
-                    target_event_room = this.unfinished_reply_event_room;
+                    target_event = this.unfinished_reply_event;
                     target_max_ms = this.unfinished_reply_expiry_max_ms;
 
-                }else if(context === "new_reply_choices" && this.new_reply_choice_event_rooms.length > 0){
+                }else if(context === "new_reply_choices" && this.new_reply_choice_events.length > 0){
 
-                    target_event_room = this.new_reply_choice_event_rooms[0];
+                    target_event = this.new_reply_choice_events[0];
                     target_max_ms = this.new_reply_choice_expiry_max_ms;
 
                 }else{
@@ -792,18 +792,18 @@
                 this.expiry_interval = null;
 
                 //check when_locked
-                if(target_event_room.event_room.when_locked === null){
+                if(target_event.event.when_locked === null){
 
                     return;
                 }
 
-                const when_locked_ms = new Date(target_event_room.event_room.when_locked);
+                const when_locked_ms = new Date(target_event.event.when_locked);
                 const time_elapsed_ms = timeFromNowMS(when_locked_ms);
 
                 //time is up
                 if (time_elapsed_ms >= target_max_ms) {
 
-                    this.unfinished_reply_event_room === null ? this.doExpire(context) : this.deleteUnfinishedReply();
+                    this.unfinished_reply_event === null ? this.doExpire(context) : this.deleteUnfinishedReply();
                     return;
                 }
 
@@ -829,7 +829,7 @@
                     //time is up
                     if (time_elapsed_ms >= target_max_ms) {
 
-                        this.unfinished_reply_event_room === null ? this.doExpire(context) : this.deleteUnfinishedReply();
+                        this.unfinished_reply_event === null ? this.doExpire(context) : this.deleteUnfinishedReply();
                     }
 
                     //if interval started with >1000, reinitialise itself for new interval with shorter time
@@ -857,13 +857,13 @@
         },
         beforeMount(){
 
-            const container = (document.getElementById('data-container-list-event-room-choices') as HTMLElement);
+            const container = (document.getElementById('data-container-list-event-choices') as HTMLElement);
 
             //get essential data first, where we don't proceed if they don't exist
-            const event_choice_expiry_seconds = (container.getAttribute('data-event-room-reply-choice-expiry-seconds') as string);
-            const event_reply_expiry_seconds = (container.getAttribute('data-event-room-reply-expiry-seconds') as string);
+            const audio_clip_choice_expiry_seconds = (container.getAttribute('data-event-reply-choice-expiry-seconds') as string);
+            const audio_clip_reply_expiry_seconds = (container.getAttribute('data-event-reply-expiry-seconds') as string);
 
-            if(event_choice_expiry_seconds === null || event_reply_expiry_seconds === null){
+            if(audio_clip_choice_expiry_seconds === null || audio_clip_reply_expiry_seconds === null){
 
                 //don't proceed because we lack essential data
                 console.log('Essential data was not passed into template.');
@@ -871,8 +871,8 @@
             }
 
             //get data from SSR template
-            this.new_reply_choice_expiry_max_ms = parseInt(event_choice_expiry_seconds) * 1000;
-            this.unfinished_reply_expiry_max_ms = parseInt(event_reply_expiry_seconds) * 1000;
+            this.new_reply_choice_expiry_max_ms = parseInt(audio_clip_choice_expiry_seconds) * 1000;
+            this.unfinished_reply_expiry_max_ms = parseInt(audio_clip_reply_expiry_seconds) * 1000;
 
             //handle unfinished reply being cancelled/expired from elsewhere
             this.unfinished_reply_store.$subscribe(()=>{

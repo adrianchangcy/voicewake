@@ -25,7 +25,7 @@
     import { defineComponent } from 'vue';
 
     export default defineComponent({
-        name: 'GetEventRoomsApp',
+        name: 'GetEventsApp',
         data() {
             return {
                 is_toggled: false,

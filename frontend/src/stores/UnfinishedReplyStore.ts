@@ -1,17 +1,17 @@
 import { defineStore } from 'pinia';
-import GroupedEventsTypes from '@/types/GroupedEvents.interface';
+import GroupedAudioClipsTypes from '@/types/GroupedAudioClips.interface';
 import StatusValues from '@/types/values/StatusValues';
 
 
 export const useUnfinishedReplyStore = defineStore('unfinished_reply', {
     state: ()=>({
-        event_room: null as GroupedEventsTypes|null,
+        event: null as GroupedAudioClipsTypes|null,
         status: "" as StatusValues,
     }),    
     getters: {
         getUnfinishedReply: (state)=>{
 
-            return state.event_room;
+            return state.event;
         },
         getStatus: (state)=>{
 
@@ -23,13 +23,13 @@ export const useUnfinishedReplyStore = defineStore('unfinished_reply', {
 
             this.status = status;
         },
-        async updateUnfinishedReply(event_room:GroupedEventsTypes) : Promise<void> {
+        async updateUnfinishedReply(event:GroupedAudioClipsTypes) : Promise<void> {
 
-            this.event_room = event_room;
+            this.event = event;
         },
         async removeUnfinishedReply() : Promise<void> {
 
-            this.event_room = null;
+            this.event = null;
         },
     },
     persist: true,

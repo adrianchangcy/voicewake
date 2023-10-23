@@ -31,18 +31,22 @@ SECRET_KEY = 'django-insecure-hdgs8@4nxkx0du^2n-gdss(!eo6i0kj6vk=gx1mddc@g=6h_^1
 DEBUG = True
 
 
+MAINTENANCE_MODE = False
+
+
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 
 #if you want to hide Django Debug Toolbar, put False
+SHOW_DJANGO_DEBUG_TOOLBAR = True
 DEBUG_TOOLBAR_CONFIG = {
-    'SHOW_TOOLBAR_CALLBACK': lambda r: True,
+    'SHOW_TOOLBAR_CALLBACK': lambda r: DEBUG is True and SHOW_DJANGO_DEBUG_TOOLBAR is True,
 }
 
 
+#middleware
 MIDDLEWARE = []
 
-#development
 if DEBUG is True:
 
     REQUEST_TIME_DELAY = 0  #seconds
@@ -53,8 +57,26 @@ if DEBUG is True:
     ]
 
 
-# Application definition
+if MAINTENANCE_MODE is True:
 
+    MIDDLEWARE += [
+        'voicewake.middleware.under_maintenance_middleware.UnderMaintenanceMiddleware',
+    ]
+
+
+#standard middlewares
+MIDDLEWARE += [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+
+# Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -126,20 +148,6 @@ SESSION_SAVE_EVERY_REQUEST = True
 # CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
 # CRISPY_TEMPLATE_PACK = 'bootstrap5'
 
-
-#standard
-MIDDLEWARE += [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-
-    #own middleware
-    # 'voicewake.middleware.redirect_middleware.RedirectMiddleware',
-]
 
 ROOT_URLCONF = 'voicewake.urls'
 
@@ -277,23 +285,23 @@ MEDIA_URL = '/media/'
 #MEDIA SIZES
 #in bytes, so when x/(1024*1024), is 3mb
 FILE_UPLOAD_MAX_MEMORY_SIZE = 3072000   #threshold for processing files in memory instead, i.e. much faster
-EVENT_MAX_FILE_SIZE_BYTES = 3072000
+AUDIO_CLIP_MAX_FILE_SIZE_BYTES = 3072000
 
 
 GENERAL_ROW_QUANTITY_PER_PAGE = 20
 
 
-EVENT_TONE_CACHE_AGE_SECONDS = 1209600  #2 weeks
+AUDIO_CLIP_TONE_CACHE_AGE_SECONDS = 1209600  #2 weeks
 
 
-#EVENT_ROOM
-EVENT_ROOM_CREATE_DAILY_LIMIT = 10      #compares from 00:00:00 UTC
-EVENT_ROOM_REPLY_DAILY_LIMIT = 10       #compares from 00:00:00 UTC
-EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS = 1200      #20 mins, when locked but is_replying=False
-EVENT_ROOM_REPLY_EXPIRY_SECONDS = 3600       #60 mins, when locked and is_replying=True
-EVENT_ROOM_QUANTITY_PER_PAGE = 4
-EVENT_ROOM_INCOMPLETE_ROLL_QUANTITY = 1
-EVENT_ROOM_UNDO_REPLY_QUANTITY_PER_CRON = 100
+#EVENT
+EVENT_CREATE_DAILY_LIMIT = 10      #compares from 00:00:00 UTC
+EVENT_REPLY_DAILY_LIMIT = 10       #compares from 00:00:00 UTC
+EVENT_REPLY_CHOICE_EXPIRY_SECONDS = 1200      #20 mins, when locked but is_replying=False
+EVENT_REPLY_EXPIRY_SECONDS = 3600       #60 mins, when locked and is_replying=True
+EVENT_QUANTITY_PER_PAGE = 4
+EVENT_INCOMPLETE_ROLL_QUANTITY = 1
+EVENT_UNDO_REPLY_QUANTITY_PER_CRON = 100
 
 
 #EMAIL
@@ -322,14 +330,14 @@ OTP_MAX_ATTEMPTS = 6            #times someone can try before being timed out
 OTP_MAX_ATTEMPT_TIMEOUT_SECONDS = 600
 
 
-#values used to evaluate event_reports and banning the events
+#values used to evaluate audio_clip_reports and banning the audio_clips
 #keeping it simple
-BAN_EVENT_DISLIKE_RATIO = 0.75   #0 to 1
-BAN_EVENT_DISLIKE_COUNT = 100
-BAN_EVENT_AGE_SECONDS = 3600    #1 hour
-BAN_EVENT_QUANTITY_PER_CRON = 100
-BAN_EVENT_DURATION_PER_BAN_DAYS = 2     #multiply this with ban count
-BAN_EVENT_QUANTITY_PER_PAGE = 20
+BAN_AUDIO_CLIP_DISLIKE_RATIO = 0.75   #0 to 1
+BAN_AUDIO_CLIP_DISLIKE_COUNT = 100
+BAN_AUDIO_CLIP_AGE_SECONDS = 3600    #1 hour
+BAN_AUDIO_CLIP_QUANTITY_PER_CRON = 100
+BAN_AUDIO_CLIP_DURATION_PER_BAN_DAYS = 2     #multiply this with ban count
+BAN_AUDIO_CLIP_QUANTITY_PER_PAGE = 20
 
 
 USER_BLOCK_QUANTITY_PER_PAGE = 50

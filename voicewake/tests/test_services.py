@@ -107,7 +107,7 @@ class UserOTP_TestCase(TestCase):
         self.assertEqual(self.handle_user_otp_class.get_max_attempts_timed_out_seconds_left(), 0)
 
         #create OTP and also save to db
-        new_otp = self.handle_user_otp_class.generate_and_save_otp()
+        new_otp = self.handle_user_otp_class.generate_otp()
         print(new_otp)
 
         #expected data
@@ -117,7 +117,7 @@ class UserOTP_TestCase(TestCase):
         self.assertEqual(self.handle_user_otp_class.get_max_attempts_timed_out_seconds_left(), 0)
 
         #since we are still timed out from creating new OTP, we attempt and expect failure
-        self.assertEqual(self.handle_user_otp_class.generate_and_save_otp(), '')
+        self.assertEqual(self.handle_user_otp_class.generate_otp(), '')
         self.assertTrue(self.handle_user_otp_class.is_creating_otp_timed_out())
         self.assertFalse(self.handle_user_otp_class.is_max_attempts_timed_out())
         self.assertGreater(self.handle_user_otp_class.get_creating_otp_timed_out_seconds_left(), 0)
@@ -162,7 +162,7 @@ class UserOTP_TestCase(TestCase):
         )
 
         self.handle_user_otp_class.get_or_create_user_otp_instance()
-        self.handle_user_otp_class.generate_and_save_otp()
+        self.handle_user_otp_class.generate_otp()
 
         self.assertEqual(len(self.handle_user_otp_class.otp), settings.TOTP_NUMBER_OF_DIGITS)
 
@@ -183,7 +183,7 @@ class UserOTP_TestCase(TestCase):
 
                 #should be able to create new OTP, and they will not match
                 current_otp = self.handle_user_otp_class.otp
-                new_otp = self.handle_user_otp_class.generate_and_save_otp()
+                new_otp = self.handle_user_otp_class.generate_otp()
                 self.assertEqual(len(new_otp), settings.TOTP_NUMBER_OF_DIGITS)
                 self.assertNotEqual(current_otp, new_otp)
 
@@ -222,7 +222,7 @@ class UserOTP_TestCase(TestCase):
         self.assertEqual(self.handle_user_otp_class.get_user_otp_instance().otp_attempts, 0)
 
         #should be able to create new OTP now
-        self.assertEqual(len(self.handle_user_otp_class.generate_and_save_otp()), settings.TOTP_NUMBER_OF_DIGITS)
+        self.assertEqual(len(self.handle_user_otp_class.generate_otp()), settings.TOTP_NUMBER_OF_DIGITS)
         self.assertEqual(len(self.handle_user_otp_class.otp), settings.TOTP_NUMBER_OF_DIGITS)
 
 
@@ -238,7 +238,7 @@ class UserOTP_TestCase(TestCase):
         )
 
         self.handle_user_otp_class.get_or_create_user_otp_instance()
-        self.handle_user_otp_class.generate_and_save_otp()
+        self.handle_user_otp_class.generate_otp()
 
         self.assertEqual(len(self.handle_user_otp_class.otp), settings.TOTP_NUMBER_OF_DIGITS)
 
@@ -275,7 +275,7 @@ class UserOTP_TestCase(TestCase):
         self.assertEqual(self.handle_user_otp_class.get_user_otp_instance().otp_attempts, 0)
 
         #should be able to create new OTP now
-        self.assertEqual(len(self.handle_user_otp_class.generate_and_save_otp()), settings.TOTP_NUMBER_OF_DIGITS)
+        self.assertEqual(len(self.handle_user_otp_class.generate_otp()), settings.TOTP_NUMBER_OF_DIGITS)
         self.assertEqual(self.handle_user_otp_class.get_user_otp_instance().otp_attempts, 0)
         self.assertEqual(len(self.handle_user_otp_class.otp), settings.TOTP_NUMBER_OF_DIGITS)
 

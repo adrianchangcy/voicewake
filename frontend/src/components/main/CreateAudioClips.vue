@@ -7,13 +7,13 @@
         <VTextArea
             v-if="propIsOriginator === true"
             :propIsRequired="true"
-            propElementId="event-name"
+            propElementId="audio-clip-name"
             propLabel="Title"
             propPlaceholder=""
             :propMaxLength="40"
             :propHasTextCounter="true"
             :propHasStatusText="false"
-            @newValue="handleNewEventName($event)"
+            @newValue="handleNewAudioClipName($event)"
             @wasInteracted="closeAllMenu()"
         />
 
@@ -32,13 +32,13 @@
                 />
             </div>
 
-            <!--open/close VEventToneMenu-->
-            <div ref="event_tone_field" class="col-span-2">
-                <VEventToneField
+            <!--open/close VAudioClipToneMenu-->
+            <div ref="audio_clip_tone_field" class="col-span-2">
+                <VAudioClipToneField
                     propLabel="Tag"
-                    :propEventToneChoice="event_tone_choice"
-                    :propIsOpen="is_event_tone_menu_open"
-                    @isOpen="handleIsEventToneMenuOpen($event)"
+                    :propAudioClipToneChoice="audio_clip_tone_choice"
+                    :propIsOpen="is_audio_clip_tone_menu_open"
+                    @isOpen="handleIsAudioClipToneMenuOpen($event)"
                 />
             </div>
         </div>
@@ -55,10 +55,10 @@
         <!--uses padding to represent gap above, because there is always only one element, so gap wouldn't work-->
         <div class="w-full h-0 grid grid-cols-8">
             <div
-                v-show="is_recorder_menu_open || is_event_tone_menu_open"
+                v-show="is_recorder_menu_open || is_audio_clip_tone_menu_open"
                 :class="[
                     is_recorder_menu_open ? 'col-span-6 col-start-1 pr-2' : '',
-                    is_event_tone_menu_open ? 'col-span-2 col-start-7 pl-2' : '',
+                    is_audio_clip_tone_menu_open ? 'col-span-2 col-start-7 pl-2' : '',
                     'relative'
                 ]"
             >
@@ -79,11 +79,11 @@
             />
         </div>
 
-        <!--event_tone menu-->
+        <!--audio_clip_tone menu-->
         <div>
-            <VEventToneMenu
-                :propIsOpen="is_event_tone_menu_open"
-                @eventToneSelected="handleEventToneSelected($event)"
+            <VAudioClipToneMenu
+                :propIsOpen="is_audio_clip_tone_menu_open"
+                @audio_clipToneSelected="handleAudioClipToneSelected($event)"
                 class="border-2 border-theme-black rounded-lg p-4"
             />
         </div>
@@ -108,11 +108,11 @@
                         v-if="is_submitting"
                         propElementSize="l"
                     >
-                        <span class="pl-2">Starting event...</span>
+                        <span class="pl-2">Starting audio_clip...</span>
                     </VLoading>
 
                     <span v-else>
-                        Start event
+                        Start audio_clip
                     </span>
                 </div>
 
@@ -139,8 +139,8 @@
 
     import VActionSpecial from '../small/VActionSpecial.vue';
     import VTextArea from '/src/components/small/VTextArea.vue';
-    import VEventToneField from '/src/components/medium/VEventToneField.vue';
-    import VEventToneMenu from '/src/components/medium/VEventToneMenu.vue';
+    import VAudioClipToneField from '/src/components/medium/VAudioClipToneField.vue';
+    import VAudioClipToneMenu from '/src/components/medium/VAudioClipToneMenu.vue';
     import VRecorderField from '/src/components/medium/VRecorderField.vue';
     import VRecorderMenu from '/src/components/medium/VRecorderMenu.vue';
     import VLoading from '../small/VLoading.vue';
@@ -148,17 +148,17 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import EventToneTypes from '@/types/EventTones.interface';
+    import AudioClipToneTypes from '@/types/AudioClipTones.interface';
     import { notify } from 'notiwind';
     const axios = require('axios');
 
     export default defineComponent({
         data() {
             return {
-                event_name: "",
+                audio_clip_name: "",
 
-                is_event_tone_menu_open: false, //updates only from VEventToneField to VEventToneMenu, maybe use vuex
-                event_tone_choice: null as EventToneTypes|null,
+                is_audio_clip_tone_menu_open: false, //updates only from VAudioClipToneField to VAudioClipToneMenu, maybe use vuex
+                audio_clip_tone_choice: null as AudioClipToneTypes|null,
                 is_submitting: false,
 
                 is_recorder_menu_open: false,
@@ -176,7 +176,7 @@
                 required: true,
                 default: true
             },
-            propEventRoomId: {
+            propEventId: {
                 type: Number,
                 required: false,
                 default: null
@@ -192,7 +192,7 @@
 
                 this.$emit('isSubmitting', new_value);
             },
-            is_event_tone_menu_open(new_value){
+            is_audio_clip_tone_menu_open(new_value){
 
                 if(new_value === true && this.is_recorder_menu_open === true){
 
@@ -201,16 +201,16 @@
             },
             is_recorder_menu_open(new_value){
                 
-                if(new_value === true && this.is_event_tone_menu_open === true){
+                if(new_value === true && this.is_audio_clip_tone_menu_open === true){
 
-                    this.is_event_tone_menu_open = false;
+                    this.is_audio_clip_tone_menu_open = false;
                 }
             },
         },
         computed: {
             hasExtraGap() : boolean {
 
-                return this.is_recorder_menu_open === true || this.is_event_tone_menu_open === true;
+                return this.is_recorder_menu_open === true || this.is_audio_clip_tone_menu_open === true;
             },
             canSubmit() : boolean {
 
@@ -218,10 +218,10 @@
                     this.propCanSubmit === true &&
                     this.is_submitting === false &&
                     (
-                        (this.propIsOriginator === true && this.event_name.trim() !== '') ||
-                        (this.propIsOriginator === false && this.propEventRoomId !== null)
+                        (this.propIsOriginator === true && this.audio_clip_name.trim() !== '') ||
+                        (this.propIsOriginator === false && this.propEventId !== null)
                     ) &&
-                    this.event_tone_choice !== null &&
+                    this.audio_clip_tone_choice !== null &&
                     this.final_blob !== null &&
                     this.blob_volume_peaks.length === this.bucket_quantity &&
                     this.blob_duration > 0
@@ -238,7 +238,7 @@
             closeAllMenu() : void {
 
                 this.is_recorder_menu_open = false;
-                this.is_event_tone_menu_open = false;
+                this.is_audio_clip_tone_menu_open = false;
             },
             async submitForm() : Promise<void> {
 
@@ -254,18 +254,18 @@
                 
                 //prepare data
                 //webm follows VRecorder
-                data.append('event_tone_id', JSON.stringify((this.event_tone_choice as EventToneTypes)['id']));
+                data.append('audio_clip_tone_id', JSON.stringify((this.audio_clip_tone_choice as AudioClipToneTypes)['id']));
                 data.append('audio_file', this.getPreparedFileForSubmit());
 
-                if(this.propIsOriginator === true && this.event_name.trim() !== ''){
+                if(this.propIsOriginator === true && this.audio_clip_name.trim() !== ''){
 
                     //originator, paired data
-                    data.append('event_room_name', this.event_name);
+                    data.append('event_name', this.audio_clip_name);
 
-                }else if(this.propIsOriginator === false && this.propEventRoomId !== null){
+                }else if(this.propIsOriginator === false && this.propEventId !== null){
 
                     //responder, paired data
-                    data.append('event_room_id', JSON.stringify(this.propEventRoomId));
+                    data.append('event_id', JSON.stringify(this.propEventId));
 
                 }else{
 
@@ -273,15 +273,15 @@
                     return;
                 }
 
-                await axios.post(window.location.origin + '/api/event-rooms/' + specific_url, data)
+                await axios.post(window.location.origin + '/api/events/' + specific_url, data)
                 .then((response:any) => {
 
-                    if(response.status === 201 && 'event_room_id' in response.data['data']){
+                    if(response.status === 201 && 'event_id' in response.data['data']){
 
                         this.$emit('isSubmitSuccessful', true);
 
                         //redirect to this page without storing current URL, so it is only shown once in history
-                        window.location.replace(window.location.origin + "/event/" + response.data['data']['event_room_id'].toString());
+                        window.location.replace(window.location.origin + "/audio-clip/" + response.data['data']['event_id'].toString());
 
                     }else{
 
@@ -296,7 +296,7 @@
                     this.is_submitting = false;
 
                     notify({
-                        title: this.propIsOriginator === true ? 'Creating event failed' : 'Creating reply failed',
+                        title: this.propIsOriginator === true ? 'Creating audio_clip failed' : 'Creating reply failed',
                         text: error.response.data['message'],
                         type: "error"
                     }, 4000);
@@ -321,18 +321,18 @@
 
                 this.is_recorder_menu_open = new_value;
             },
-            handleEventToneSelected(new_value:EventToneTypes|null) : void {
+            handleAudioClipToneSelected(new_value:AudioClipToneTypes|null) : void {
 
-                this.is_event_tone_menu_open = false;
-                this.event_tone_choice = new_value;
+                this.is_audio_clip_tone_menu_open = false;
+                this.audio_clip_tone_choice = new_value;
             },
-            handleIsEventToneMenuOpen(new_value:boolean) : void {
+            handleIsAudioClipToneMenuOpen(new_value:boolean) : void {
 
-                this.is_event_tone_menu_open = new_value;
+                this.is_audio_clip_tone_menu_open = new_value;
             },
-            handleNewEventName(new_value:string) : void {
+            handleNewAudioClipName(new_value:string) : void {
 
-                this.event_name = new_value;
+                this.audio_clip_name = new_value;
             },
         },
         mounted(){

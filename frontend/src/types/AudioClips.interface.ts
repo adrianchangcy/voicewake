@@ -1,20 +1,20 @@
-interface EventsTypes{
+interface AudioClipsTypes{
     id: number,
     user: {
         id: number,
         username: string
     },
-    event_role: {
+    audio_clip_role: {
         id: number,
-        event_role_name: string
+        audio_clip_role_name: string
     },
-    event_tone: {
+    audio_clip_tone: {
         id: number,
-        event_tone_name: string,
-        event_tone_slug: string,
-        event_tone_symbol: string
+        audio_clip_tone_name: string,
+        audio_clip_tone_slug: string,
+        audio_clip_tone_symbol: string
     },
-    event_room_id: number,
+    event_id: number,
     generic_status: {
         id: number,
         generic_status_name: string
@@ -25,4 +25,4 @@ interface EventsTypes{
     is_banned: boolean,
 }
 
-export default EventsTypes;
+export default AudioClipsTypes;

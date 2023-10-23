@@ -63,7 +63,7 @@
                         <!--filter type-->
                         <div class="w-fit flex flex-row items-center border rounded-lg border-theme-light-gray px-2">
                             <VActionTextOnly
-                                v-for="(filter_type, index) in filtered_grouped_events_store.getFilterTypes" :key="index"
+                                v-for="(filter_type, index) in filtered_events_store.getFilterTypes" :key="index"
                                 @click="updateCurrentFilterTypeIndex(index)"
                                 prop-element="button"
                                 prop-element-size="s"
@@ -78,55 +78,55 @@
                             </VActionTextOnly>
                         </div>
         
-                        <!--event tones-->
-                        <VEventToneMenu
+                        <!--audio_clip tones-->
+                        <VAudioClipToneMenu
                             :prop-is-open="true"
                             :prop-close-when-selected="false"
                             :prop-has-deselect-option="true"
                             :prop-must-track-selected-option="true"
-                            :prop-initial-event-tone="filtered_grouped_events_store.getSelectedEventTone"
-                            :prop-filtered-grouped-events-store="filtered_grouped_events_store"
-                            @eventToneSelected="handleNewSelectedEventTone($event)"
+                            :prop-initial-audio-clip-tone="filtered_events_store.getSelectedAudioClipTone"
+                            :prop-filtered-grouped-audio-clips-store="filtered_events_store"
+                            @audio_clipToneSelected="handleNewSelectedAudioClipTone($event)"
                             class="border rounded-l-lg border-theme-light-gray"
                         />
                     </div>
                 </div>
             </div>
 
-            <!--event roles-->
+            <!--audio_clip roles-->
             <div v-if="propIsUserProfilePage" class="w-full grid grid-cols-2 px-4">
                 <VActionTextOnly
-                    @click="updateCurrentEventRoleNameIndex(0)"
+                    @click="updateCurrentAudioClipRoleNameIndex(0)"
                     prop-element="button"
                     prop-element-size="s"
                     prop-font-size="s"
                     :prop-is-icon-only="true"
                     :class="[
-                        isSelectedEventRoleName(0) ? 'border-b-theme-black' : 'border-b-theme-medium-gray',
+                        isSelectedAudioClipRoleName(0) ? 'border-b-theme-black' : 'border-b-theme-medium-gray',
                         'col-span-1 border-b-2 rounded-b-none p-2'
                     ]"
                 >
                     <span class="mx-auto">
                         <i class="fas fa-comment"></i>
                         <span class="pl-2">Started</span>
-                        <span v-show="isSelectedEventRoleName(0)" class="sr-only">selected</span>
+                        <span v-show="isSelectedAudioClipRoleName(0)" class="sr-only">selected</span>
                     </span>
                 </VActionTextOnly>
                 <VActionTextOnly
-                    @click="updateCurrentEventRoleNameIndex(1)"
+                    @click="updateCurrentAudioClipRoleNameIndex(1)"
                     prop-element="button"
                     prop-element-size="s"
                     prop-font-size="s"
                     :prop-is-icon-only="true"
                     :class="[
-                        isSelectedEventRoleName(1) ? 'border-b-theme-black' : 'border-b-theme-medium-gray',
+                        isSelectedAudioClipRoleName(1) ? 'border-b-theme-black' : 'border-b-theme-medium-gray',
                         'col-span-1 border-b-2 rounded-b-none p-2'
                     ]"
                 >
                     <span class="mx-auto">
                         <i class="fas fa-comments"></i>
                         <span class="pl-2">Replied</span>
-                        <span v-show="isSelectedEventRoleName(1)" class="sr-only">selected</span>
+                        <span v-show="isSelectedAudioClipRoleName(1)" class="sr-only">selected</span>
                     </span>
                 </VActionTextOnly>
             </div>
@@ -140,41 +140,41 @@
         -->
         <!--as long as data persists, backward and close-reopen navigations accurately continue to where the user had left off-->
         <DynamicScroller
-            v-show="filtered_grouped_events_store.getEventRoomsForBrowsing.length > 0"
-            :items="filtered_grouped_events_store.getEventRoomsForBrowsing"
+            v-show="filtered_events_store.getEventsForBrowsing.length > 0"
+            :items="filtered_events_store.getEventsForBrowsing"
             :min-item-size="2"
             :buffer="dynamic_scroller_buffer"
             :page-mode="true"
-            key-field="event_room_id"
+            key-field="event_id"
             class="scroller"
         >
 
             <template #default="{ item, index, active }">
 
-                <!--event_rooms-->
+                <!--events-->
                 <DynamicScrollerItem
                     :item="item"
                     :index="index"
                     :active="active"
                 >
                     <div class="pb-4">
-                        <EventRoomCard
+                        <EventCard
                             :prop-show-title="true"
-                            :prop-event-room="item"
+                            :prop-event="item"
                             :prop-has-border="true"
-                            :prop-load-v-event-cards-only="true"
+                            :prop-load-v-audio-clip-cards-only="true"
                         />
                     </div>
                 </DynamicScrollerItem>
             </template>
         </DynamicScroller>
 
-        <!--loading event_rooms-->
+        <!--loading events-->
         <TransitionFade>
-            <EventRoomCardSkeleton
+            <EventCardSkeleton
                 v-show="is_fetching"
                 :prop-has-border="true"
-                :prop-event-quantity="2"
+                :prop-audio-clip-quantity="2"
             />
         </TransitionFade>
 
@@ -183,9 +183,9 @@
 
             <TransitionGroupFade :prop-has-absolute="true">
 
-                <!--no event_rooms-->
+                <!--no events-->
                 <VDialogPlain
-                    v-show="canShowEventRoomsEmptyMessage || canShowNoNewEventRoomsMessage"
+                    v-show="canShowEventsEmptyMessage || canShowNoNewEventsMessage"
                     :prop-has-border="false"
                     :prop-has-auto-spacing="false"
                     class="w-full"
@@ -194,15 +194,15 @@
                         <i class="far fa-face-meh-blank" aria-hidden="true"></i>
                     </template>
                     <template #title>
-                        <span v-show="canShowEventRoomsEmptyMessage">No events found.</span>
-                        <span v-show="canShowNoNewEventRoomsMessage">You've reached the end.</span>
+                        <span v-show="canShowEventsEmptyMessage">No audio_clips found.</span>
+                        <span v-show="canShowNoNewEventsMessage">You've reached the end.</span>
                     </template>
                     <template #content>
                         <span>The filters can be changed to explore other content!</span>
                     </template>
                 </VDialogPlain>
 
-                <!--reconsider loading more events -->
+                <!--reconsider loading more audio_clips -->
                 <VDialogPlain
                     v-show="canPauseScrolling"
                     :prop-has-auto-spacing="true"
@@ -211,7 +211,7 @@
                 >
                     <template #title>
                         <span>
-                            {{ getPlayedEventsLength }} recordings played.
+                            {{ getPlayedAudioClipsLength }} recordings played.
                         </span>
                     </template>
                     <template #content>
@@ -236,19 +236,19 @@
             </TransitionGroupFade>
         </div>
 
-        <div id="load-more-event-rooms-observer-target"></div>
+        <div id="load-more-events-observer-target"></div>
 
-        <!--VEventCard emits selection, which triggers :to, thus teleporting-->
-        <!--presence of VEventCard depends on VEventRoomCard-->
+        <!--VAudioClipCard emits selection, which triggers :to, thus teleporting-->
+        <!--presence of VAudioClipCard depends on VEventCard-->
         <!--we don't use :disabled because it will still attempt to teleport to :to-->
         <Teleport
             :to="getVPlaybackTeleportId"
         >
             <VPlayback
-                v-show="selected_event !== null"
-                :propEvent="selected_event"
+                v-show="selected_audio_clip !== null"
+                :propAudioClip="selected_audio_clip"
                 :propIsOpen="true"
-                :propAudioVolumePeaks="getSelectedEventAudioVolumePeaks"
+                :propAudioVolumePeaks="getSelectedAudioClipAudioVolumePeaks"
                 :propBucketQuantity="20"
                 :propAutoPlayOnSourceChange="can_autoplay"
                 :propPauseTrigger="filter_change_trigger"
@@ -259,12 +259,12 @@
 
 
 <script setup lang="ts">
-    import EventRoomCard from '@/components/main/EventRoomCard.vue';
-    import EventRoomCardSkeleton from '@/components/skeleton/EventRoomCardSkeleton.vue';
+    import EventCard from '@/components/main/EventCard.vue';
+    import EventCardSkeleton from '@/components/skeleton/EventCardSkeleton.vue';
     import VPlayback from '@/components/medium/VPlayback.vue';
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
-    import VEventToneMenu from '@/components/medium/VEventToneMenu.vue';
+    import VAudioClipToneMenu from '@/components/medium/VAudioClipToneMenu.vue';
     import VAction from '@/components/small/VAction.vue';
     import VActionSpecial from '@/components/small/VActionSpecial.vue';
     import VActionTextOnly from '@/components/small/VActionTextOnly.vue';
@@ -277,25 +277,25 @@
 <script lang="ts">
     import { defineComponent, } from 'vue';
     import { notify } from 'notiwind';
-    import EventsAndLikeDetailsTypes from '@/types/EventsAndLikeDetails.interface';
-    import EventTonesTypes from '@/types/EventTones.interface';
-    import { useCurrentlyPlayingEventStore } from '@/stores/CurrentlyPlayingEventStore';
-    import { useFilteredGroupedEventsStore } from '@/stores/FilteredGroupedEventsStore';
+    import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
+    import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
+    import { useCurrentlyPlayingAudioClipStore } from '@/stores/CurrentlyPlayingAudioClipStore';
+    import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
     import { useCurrentLikesDislikesStore } from '@/stores/CurrentLikesDislikesStore';
     import { isPageAccessedByReload } from '@/helper_functions';
     const axios = require('axios');
 
     //TODO:
-        //#1: clear FilteredGroupedEventsStore on least recent
-            //follow through with CurrentLikesDislikesStore and CurrentlyPlayingEventStore
+        //#1: clear FilteredEventsStore on least recent
+            //follow through with CurrentLikesDislikesStore and CurrentlyPlayingAudioClipStore
 
 
     export default defineComponent({
-        name: 'BrowseEventRoomsApp',
+        name: 'BrowseEventsApp',
         data(){
             return {
-                currently_playing_event_store: useCurrentlyPlayingEventStore(),
-                filtered_grouped_events_store: useFilteredGroupedEventsStore(this.propIsUserProfilePage),
+                currently_playing_audio_clip_store: useCurrentlyPlayingAudioClipStore(),
+                filtered_events_store: useFilteredEventsStore(this.propIsUserProfilePage),
                 current_likes_dislikes_store: useCurrentLikesDislikesStore(this.propIsUserProfilePage),
 
                 user_profile_username: "",  //only used at profile page
@@ -304,13 +304,14 @@
                 can_filter_menu_teleport: false,
 
                 dynamic_scroller_buffer: 1000, //px, larger means rendered earlier, needed for proper tabbing
+                window_resize_timeout: window.setTimeout(()=>{}, 0),
 
-                selected_event: null as EventsAndLikeDetailsTypes|null,
+                selected_audio_clip: null as AudioClipsAndLikeDetailsTypes|null,
                 filter_change_trigger: false,  //switch between true/false to trigger pause
                 can_autoplay: true,
 
-                played_events_by_id: [] as number[],
-                played_events_quantity_to_pause_scrolling: 10,
+                played_audio_clips_by_id: [] as number[],
+                played_audio_clips_quantity_to_pause_scrolling: 10,
                 can_pause_scrolling: false,
                 scrolling_timeout: window.setTimeout(()=>{}, 0),
                 scrolling_checkpoint_px: 0,
@@ -328,43 +329,43 @@
             },
         },
         computed: {
-            getPlayedEventsLength() : number {
+            getPlayedAudioClipsLength() : number {
 
-                return this.played_events_by_id.length;
+                return this.played_audio_clips_by_id.length;
             },
             canPauseScrolling() : boolean {
 
                 return this.is_fetching === false && this.can_pause_scrolling === true;
             },
-            canShowEventRoomsEmptyMessage() : boolean {
+            canShowEventsEmptyMessage() : boolean {
 
-                return this.is_fetching === false && this.filtered_grouped_events_store.getEventRoomsForBrowsing.length === 0;
+                return this.is_fetching === false && this.filtered_events_store.getEventsForBrowsing.length === 0;
             },
-            canShowNoNewEventRoomsMessage() : boolean {
+            canShowNoNewEventsMessage() : boolean {
 
                 return (
                     this.is_fetching === false &&
-                    this.filtered_grouped_events_store.getEventRoomsForBrowsing.length > 0 &&
+                    this.filtered_events_store.getEventsForBrowsing.length > 0 &&
                     this.is_observer_on_cooldown === true
                 );
             },
             getVPlaybackTeleportId() : string {
 
-                if(this.selected_event === null){
+                if(this.selected_audio_clip === null){
 
                     return '#temporary-teleport-target';
                 }
 
-                return '#playback-teleport-event-id-' + this.selected_event.id;
+                return '#playback-teleport-audio-clip-id-' + this.selected_audio_clip.id;
             },
-            getSelectedEventAudioVolumePeaks() : number[] {
+            getSelectedAudioClipAudioVolumePeaks() : number[] {
 
-                if(this.selected_event === null){
+                if(this.selected_audio_clip === null){
 
                     return [];
                 }
 
-                return this.selected_event.audio_volume_peaks;
+                return this.selected_audio_clip.audio_volume_peaks;
             },
         },
         methods: {
@@ -372,24 +373,24 @@
 
                 this.filter_change_trigger = !this.filter_change_trigger;
             },
-            isSelectedEventRoleName(index:number) : boolean {
+            isSelectedAudioClipRoleName(index:number) : boolean {
 
-                return index === this.filtered_grouped_events_store.getCurrentEventRoleNameIndex;
+                return index === this.filtered_events_store.getCurrentAudioClipRoleNameIndex;
             },
             isSelectedFilterType(index:number) : boolean {
 
-                return index === this.filtered_grouped_events_store.getCurrentFilterTypeIndex;
+                return index === this.filtered_events_store.getCurrentFilterTypeIndex;
             },
             async continueScrolling() : Promise<void> {
 
-                const is_first_page = this.filtered_grouped_events_store.getEventRoomsForBrowsing.length === 0;
+                const is_first_page = this.filtered_events_store.getEventsForBrowsing.length === 0;
 
                 this.can_pause_scrolling = false;
 
-                await this.getEventRooms(
-                    this.filtered_grouped_events_store.getSelectedEventTone,
-                    this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
-                    this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
+                await this.getEvents(
+                    this.filtered_events_store.getSelectedAudioClipTone,
+                    this.filtered_events_store.getCurrentAudioClipRoleNameIndex,
+                    this.filtered_events_store.getCurrentFilterTypeIndex,
                     is_first_page,
                 );
             },
@@ -397,42 +398,42 @@
 
                 this.is_filter_menu_open = !this.is_filter_menu_open;
             },
-            async updateCurrentEventRoleNameIndex(index:number) : Promise<void> {
+            async updateCurrentAudioClipRoleNameIndex(index:number) : Promise<void> {
 
-                await this.filtered_grouped_events_store.updateCurrentEventRoleNameIndex(index);
+                await this.filtered_events_store.updateCurrentAudioClipRoleNameIndex(index);
 
-                this.getEventRooms(
-                    this.filtered_grouped_events_store.getSelectedEventTone,
+                this.getEvents(
+                    this.filtered_events_store.getSelectedAudioClipTone,
                     index,
-                    this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
+                    this.filtered_events_store.getCurrentFilterTypeIndex,
                     true,
                 );
             },
             async updateCurrentFilterTypeIndex(index:number) : Promise<void> {
 
-                await this.filtered_grouped_events_store.updateCurrentFilterTypeIndex(index);
+                await this.filtered_events_store.updateCurrentFilterTypeIndex(index);
                 
-                this.getEventRooms(
-                    this.filtered_grouped_events_store.getSelectedEventTone,
-                    this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
+                this.getEvents(
+                    this.filtered_events_store.getSelectedAudioClipTone,
+                    this.filtered_events_store.getCurrentAudioClipRoleNameIndex,
                     index,
                     true,
                 );
             },
-            async handleNewSelectedEventTone(event_tone:EventTonesTypes|null) : Promise<void> {
+            async handleNewSelectedAudioClipTone(audio_clip_tone:AudioClipTonesTypes|null) : Promise<void> {
 
-                await this.filtered_grouped_events_store.updateSelectedEventTone(event_tone);
+                await this.filtered_events_store.updateSelectedAudioClipTone(audio_clip_tone);
 
-                this.getEventRooms(
-                    event_tone,
-                    this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
-                    this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
+                this.getEvents(
+                    audio_clip_tone,
+                    this.filtered_events_store.getCurrentAudioClipRoleNameIndex,
+                    this.filtered_events_store.getCurrentFilterTypeIndex,
                     true,
                 );
             },
-            async getEventRooms(
-                event_tone:EventTonesTypes|null,
-                current_event_role_name_index:number,
+            async getEvents(
+                audio_clip_tone:AudioClipTonesTypes|null,
+                current_audio_clip_role_name_index:number,
                 current_filter_type_index:number,
                 is_first_page:boolean
             ): Promise<void> {
@@ -443,14 +444,14 @@
                 //will only do so when no data exists
                 if(is_first_page === true){
 
-                    await this.filtered_grouped_events_store.initialiseDataOnFirstPageAfterFilterChange(event_tone);
+                    await this.filtered_events_store.initialiseDataOnFirstPageAfterFilterChange(audio_clip_tone);
                 }
 
                 //check if we already have data
                 if(
                     is_first_page === true &&
-                    await this.filtered_grouped_events_store.hasDataOnFirstPageAfterFilterChange(
-                        event_tone, current_event_role_name_index, current_filter_type_index,
+                    await this.filtered_events_store.hasDataOnFirstPageAfterFilterChange(
+                        audio_clip_tone, current_audio_clip_role_name_index, current_filter_type_index,
                     ) === true
                 ){
 
@@ -459,7 +460,7 @@
                     return;
                 }
 
-                const check_can_fetch = await this.filtered_grouped_events_store.checkCanFetch(event_tone, current_event_role_name_index, current_filter_type_index);
+                const check_can_fetch = await this.filtered_events_store.checkCanFetch(audio_clip_tone, current_audio_clip_role_name_index, current_filter_type_index);
 
                 if(check_can_fetch === false){
 
@@ -469,7 +470,7 @@
 
                 //no existing data, proceed
 
-                const full_url = await this.constructURL(event_tone, current_event_role_name_index, current_filter_type_index);
+                const full_url = await this.constructURL(audio_clip_tone, current_audio_clip_role_name_index, current_filter_type_index);
 
                 console.log(full_url);
 
@@ -481,7 +482,7 @@
                         this.is_observer_on_cooldown = true;
                     }
 
-                    await this.filtered_grouped_events_store.insertEventRooms(event_tone, current_event_role_name_index, current_filter_type_index, results.data['data']);
+                    await this.filtered_events_store.insertEvents(audio_clip_tone, current_audio_clip_role_name_index, current_filter_type_index, results.data['data']);
 
                 }).catch(() => {
 
@@ -497,13 +498,13 @@
                 });
             },
             async constructURL(
-                event_tone:EventTonesTypes|null,
-                current_event_role_name_index:number,
+                audio_clip_tone:AudioClipTonesTypes|null,
+                current_audio_clip_role_name_index:number,
                 current_filter_type_index:number,
             ) : Promise<string> {
 
                 //construct URL
-                let full_url = window.location.origin + "/api/event-rooms/list";
+                let full_url = window.location.origin + "/api/events/list";
 
                 if(this.propIsUserProfilePage === true){
 
@@ -515,58 +516,58 @@
                 }
 
                 //latest/best
-                full_url += "/" + this.filtered_grouped_events_store.getFilterTypes[current_filter_type_index].toLowerCase();
+                full_url += "/" + this.filtered_events_store.getFilterTypes[current_filter_type_index].toLowerCase();
 
                 //timeframe
                 full_url += "/all";
 
                 if(this.propIsUserProfilePage === true){
 
-                    full_url += "/" + this.filtered_grouped_events_store.getEventRoleNames[current_event_role_name_index].toLowerCase();
+                    full_url += "/" + this.filtered_events_store.getAudioClipRoleNames[current_audio_clip_role_name_index].toLowerCase();
                 }
 
-                //event_tone
-                if(event_tone !== null){
+                //audio_clip_tone
+                if(audio_clip_tone !== null){
 
-                    full_url += "/" + event_tone.event_tone_slug;
+                    full_url += "/" + audio_clip_tone.audio_clip_tone_slug;
                 }
 
                 //get next page
-                if(event_tone === null){
+                if(audio_clip_tone === null){
 
                     full_url += "/" + (
-                        this.filtered_grouped_events_store.getNoEventToneEventRooms[current_event_role_name_index][current_filter_type_index]['current_page']
+                        this.filtered_events_store.getNoAudioClipToneEvents[current_audio_clip_role_name_index][current_filter_type_index]['current_page']
                     ).toString();
 
                 }else{
 
                     full_url += "/" + (
-                        this.filtered_grouped_events_store.getSelectedEventToneEventRooms[event_tone.id][current_event_role_name_index][current_filter_type_index]['current_page']
+                        this.filtered_events_store.getSelectedAudioClipToneEvents[audio_clip_tone.id][current_audio_clip_role_name_index][current_filter_type_index]['current_page']
                     ).toString();
                 }
 
                 return full_url;
             },
-            async handleNewSelectedEvent(event:EventsAndLikeDetailsTypes|null, can_autoplay:boolean) : Promise<void> {
+            async handleNewSelectedAudioClip(audio_clip:AudioClipsAndLikeDetailsTypes|null, can_autoplay:boolean) : Promise<void> {
 
                 this.can_autoplay = can_autoplay;
-                this.selected_event = event;
+                this.selected_audio_clip = audio_clip;
 
-                if(event === null){
+                if(audio_clip === null){
 
                     return;
                 }
 
-                //record how many unique events have been played
-                if(this.played_events_by_id.includes(event.id) === false){
+                //record how many unique audio_clips have been played
+                if(this.played_audio_clips_by_id.includes(audio_clip.id) === false){
 
-                    this.played_events_by_id.push(event.id);
+                    this.played_audio_clips_by_id.push(audio_clip.id);
                 }
 
                 //check whether can stop scrolling
                 if(
                     this.can_pause_scrolling === false &&
-                    (this.played_events_by_id.length % this.played_events_quantity_to_pause_scrolling) === 0
+                    (this.played_audio_clips_by_id.length % this.played_audio_clips_quantity_to_pause_scrolling) === 0
                 ){
 
                     this.can_pause_scrolling = true;
@@ -578,7 +579,7 @@
                     if(
                         this.is_fetching === true ||
                         this.can_pause_scrolling === true ||
-                        this.filtered_grouped_events_store.getEventRoomsForBrowsing.length === 0
+                        this.filtered_events_store.getEventsForBrowsing.length === 0
                     ){
 
                         return;
@@ -591,10 +592,10 @@
                         return;
                     }
 
-                    const can_fetch = await this.filtered_grouped_events_store.checkCanFetch(
-                        this.filtered_grouped_events_store.getSelectedEventTone,
-                        this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
-                        this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
+                    const can_fetch = await this.filtered_events_store.checkCanFetch(
+                        this.filtered_events_store.getSelectedAudioClipTone,
+                        this.filtered_events_store.getCurrentAudioClipRoleNameIndex,
+                        this.filtered_events_store.getCurrentFilterTypeIndex,
                     );
 
                     if(can_fetch === false){
@@ -604,12 +605,12 @@
 
                     this.is_observer_on_cooldown = false;
 
-                    //on filter change, we already run getEventRooms()
+                    //on filter change, we already run getEvents()
                     //upon reaching here, that first page fetch is already done
-                    this.getEventRooms(
-                        this.filtered_grouped_events_store.getSelectedEventTone,
-                        this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
-                        this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
+                    this.getEvents(
+                        this.filtered_events_store.getSelectedAudioClipTone,
+                        this.filtered_events_store.getCurrentAudioClipRoleNameIndex,
+                        this.filtered_events_store.getCurrentFilterTypeIndex,
                         false,
                     );
                 }
@@ -649,13 +650,25 @@
 
                 if(
                     this.propIsUserProfilePage === false &&
-                    (localStorage.getItem('reset_home_page_event_stores') !== null || isPageAccessedByReload() === true)
+                    (localStorage.getItem('reset_home_page_audio_clip_stores') !== null || isPageAccessedByReload() === true)
                 ){
 
-                    await this.filtered_grouped_events_store.partialResetStore();
+                    await this.filtered_events_store.partialResetStore();
                     this.current_likes_dislikes_store.$reset();
-                    localStorage.removeItem('reset_home_page_event_stores');
+                    localStorage.removeItem('reset_home_page_audio_clip_stores');
                 }
+            },
+            async handleWindowResize() : Promise<void> {
+
+                //we do our best to cater to user's viewport height to ensure sufficient buffer size
+                //else elements are late to render, causing tab focus and whitespace issues
+
+                this.window_resize_timeout !== null ? clearTimeout(this.window_resize_timeout) : null;
+
+                //run this delayed one next, in case immediate call had fired before dimension is fixed
+                this.window_resize_timeout = window.setTimeout(async ()=>{
+                    this.dynamic_scroller_buffer = window.innerHeight * 2;
+                }, 200);
             },
         },
         beforeMount(){
@@ -673,54 +686,54 @@
                 await this.resetStores();
             })();
 
-            //listen from EventRoomCard
-            this.currently_playing_event_store.$subscribe((mutation, state)=>{
+            //listen from EventCard
+            this.currently_playing_audio_clip_store.$subscribe((mutation, state)=>{
 
-                //if playing_event is identical to selected_event,
+                //if playing_audio_clip is identical to selected_audio_clip,
                 //it means that this $patch is fired from filter change
 
-                const playing_event = (state.playing_event as EventsAndLikeDetailsTypes|null);
+                const playing_audio_clip = (state.playing_audio_clip as AudioClipsAndLikeDetailsTypes|null);
 
                 if(
-                    playing_event !== null && this.selected_event !== null &&
-                    playing_event.id === this.selected_event.id
+                    playing_audio_clip !== null && this.selected_audio_clip !== null &&
+                    playing_audio_clip.id === this.selected_audio_clip.id
                 ){
 
                     return;
                 }
 
-                //selected_event from here is fired when user has just manually selected event
+                //selected_audio_clip from here is fired when user has just manually selected audio_clip
 
-                this.handleNewSelectedEvent(playing_event, true);
+                this.handleNewSelectedAudioClip(playing_audio_clip, true);
 
-                if(playing_event !== null){
+                if(playing_audio_clip !== null){
 
-                    this.filtered_grouped_events_store.updateLastSelectedEvent(playing_event);
+                    this.filtered_events_store.updateLastSelectedAudioClip(playing_audio_clip);
                 }
             });
 
             //handle things on filter change
-            this.filtered_grouped_events_store.$onAction(({
+            this.filtered_events_store.$onAction(({
                 name,
                 after,
             })=>{
 
                 if(
-                    name === 'updateSelectedEventTone' ||
-                    name === 'updateCurrentEventRoleNameIndex' ||
+                    name === 'updateSelectedAudioClipTone' ||
+                    name === 'updateCurrentAudioClipRoleNameIndex' ||
                     name === 'updateCurrentFilterTypeIndex'
                 ){
                     after(()=>{
 
-                        //last selected event to be currently selected event
+                        //last selected audio_clip to be currently selected audio_clip
 
                         this.switchTriggerOnFilterChange();
 
-                        const last_selected_event = this.filtered_grouped_events_store.getLastSelectedEvent;
-                        this.handleNewSelectedEvent(last_selected_event, false);
+                        const last_selected_audio_clip = this.filtered_events_store.getLastSelectedAudioClip;
+                        this.handleNewSelectedAudioClip(last_selected_audio_clip, false);
 
-                        this.currently_playing_event_store.$patch({
-                            playing_event: last_selected_event
+                        this.currently_playing_audio_clip_store.$patch({
+                            playing_audio_clip: last_selected_audio_clip
                         });
 
                         this.must_skip_observer_once = true;
@@ -728,13 +741,13 @@
                 }
             });
 
-            if(this.filtered_grouped_events_store.getEventRoomsForBrowsing.length === 0){
+            if(this.filtered_events_store.getEventsForBrowsing.length === 0){
 
                 (async ()=>{
-                    await this.getEventRooms(
-                        this.filtered_grouped_events_store.getSelectedEventTone,
-                        this.filtered_grouped_events_store.getCurrentEventRoleNameIndex,
-                        this.filtered_grouped_events_store.getCurrentFilterTypeIndex,
+                    await this.getEvents(
+                        this.filtered_events_store.getSelectedAudioClipTone,
+                        this.filtered_events_store.getCurrentAudioClipRoleNameIndex,
+                        this.filtered_events_store.getCurrentFilterTypeIndex,
                         true,
                     ).then(()=>{
 
@@ -750,16 +763,20 @@
             this.dynamic_scroller_buffer = window.innerHeight * 2;
 
             //set up observer for infinite scroll
-            const observer_target = document.querySelector('#load-more-event-rooms-observer-target');
+            const observer_target = document.querySelector('#load-more-events-observer-target');
 
             if(observer_target !== null){
 
                 this.infinite_scroll_observer.observe(observer_target);
             }
+
+            window.addEventListener('resize', this.handleWindowResize);
         },
         beforeUnmount(){
 
             this.infinite_scroll_observer.disconnect();
+
+            window.removeEventListener('resize', this.handleWindowResize);
         }
     });
 </script>

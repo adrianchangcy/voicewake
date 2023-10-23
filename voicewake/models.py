@@ -23,7 +23,7 @@ def get_current_datetime_with_tz():
 
 
 #determine appropriate file path
-def determine_event_audio_file_path_and_name(instance, filename):
+def determine_audio_clip_audio_file_path_and_name(instance, filename):
     
     #FYI, no need to have separate audio and video directory
     #will always have only one or the other, not both
@@ -32,7 +32,7 @@ def determine_event_audio_file_path_and_name(instance, filename):
     #MEDIA_ROOT/recordings/year_2022/month_8/day_1/user_id_1
     #no need to type out MEDIA_ROOT here, as it is determined in settings.py
     #.format() converts args into str for us
-    file_path = 'events/year_{0}/month_{1}/day_{2}/user_id_{3}'.format(
+    file_path = 'audio-clips/year_{0}/month_{1}/day_{2}/user_id_{3}'.format(
         int(instance.when_created.strftime('%Y')),
         int(instance.when_created.strftime('%m')),
         int(instance.when_created.strftime('%d')),
@@ -201,28 +201,28 @@ class UserBlocks(models.Model):
         ]
 
 
-#on ban_decision becoming from None to True/False, delete all other rows with the same reported_event
-#a user can only be banned once per event
-class EventReports(models.Model):
+#on ban_decision becoming from None to True/False, delete all other rows with the same reported_audio_clip
+#a user can only be banned once per audio_clip
+class AudioClipReports(models.Model):
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    reported_event = models.ForeignKey('Events', on_delete=models.CASCADE)
+    reported_audio_clip = models.ForeignKey('AudioClips', on_delete=models.CASCADE)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
     class Meta:
         app_label = 'voicewake'
         managed = True
-        db_table = 'event_reports'
+        db_table = 'audio_clip_reports'
         constraints = [
-            models.UniqueConstraint(fields=["user", "reported_event"], name="unique_user_reported_event")
+            models.UniqueConstraint(fields=["user", "reported_audio_clip"], name="unique_user_reported_audio_clip")
         ]
 
 
-class EventLikesDislikes(models.Model):
+class AudioClipLikesDislikes(models.Model):
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    event = models.ForeignKey('Events', on_delete=models.CASCADE)
+    audio_clip = models.ForeignKey('AudioClips', on_delete=models.CASCADE)
     is_liked = models.BooleanField()
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
@@ -230,70 +230,70 @@ class EventLikesDislikes(models.Model):
     class Meta:
         app_label = 'voicewake'
         managed = True
-        db_table = 'event_likes_dislikes'
+        db_table = 'audio_clip_likes_dislikes'
         constraints = [
-            models.UniqueConstraint(fields=["user", "event"], name="unique_event_likes_dislikes_1")
+            models.UniqueConstraint(fields=["user", "audio_clip"], name="unique_audio_clip_likes_dislikes_1")
         ]
 
-class EventRequestStatuses(models.Model):
+class AudioClipRequestStatuses(models.Model):
     id = models.BigAutoField(primary_key=True)
-    event_request_status_name = models.TextField(max_length=30, unique=True)
+    audio_clip_request_status_name = models.TextField(max_length=30, unique=True)
     description = models.TextField(blank=True)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         app_label = 'voicewake'
         managed = True
-        db_table = 'event_request_statuses'
+        db_table = 'audio_clip_request_statuses'
 
 
-class EventRequests(models.Model):
+class AudioClipRequests(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, default=None, related_name='event_requests_user_1')
-    requested_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, default=None, related_name='event_requests_user_2')
-    event_room = models.ForeignKey('EventRooms', on_delete=models.PROTECT, blank=True, null=True, default=None)
-    event_request_status = models.ForeignKey('EventRequestStatuses', on_delete=models.PROTECT, blank=True, null=True, default=None)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, default=None, related_name='audio_clip_requests_user_1')
+    requested_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, default=None, related_name='audio_clip_requests_user_2')
+    event = models.ForeignKey('Events', on_delete=models.PROTECT, blank=True, null=True, default=None)
+    audio_clip_request_status = models.ForeignKey('AudioClipRequestStatuses', on_delete=models.PROTECT, blank=True, null=True, default=None)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
     class Meta:
         app_label = 'voicewake'
         managed = True
-        db_table = 'event_requests'
+        db_table = 'audio_clip_requests'
 
 
-class EventRoles(models.Model):
+class AudioClipRoles(models.Model):
     id = models.BigAutoField(primary_key=True)
-    event_role_name = models.TextField(max_length=20, unique=True)
+    audio_clip_role_name = models.TextField(max_length=20, unique=True)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         app_label = 'voicewake'
         managed = True
-        db_table = 'event_roles'
+        db_table = 'audio_clip_roles'
 
 
-class EventRooms(models.Model):
+class Events(models.Model):
     #is_replying: None when not replying, False when locked for choice, True when replying
     id = models.BigAutoField(primary_key=True)
-    event_room_name = models.TextField(max_length=200, default='-') #ensure default is never used
+    event_name = models.TextField(max_length=200, default='-') #ensure default is never used
     generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)
     when_locked = models.DateTimeField(blank=True, null=True, default=None)
-    locked_for_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, blank=True, null=True, default=None, related_name='event_rooms_user_1')
+    locked_for_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, blank=True, null=True, default=None, related_name='events_user_1')
     is_replying = models.BooleanField(blank=True, null=True, default=None)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, blank=True, null=True, default=None, related_name='event_rooms_user_2')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, blank=True, null=True, default=None, related_name='events_user_2')
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
     class Meta:
         app_label = 'voicewake'
         managed = True
-        db_table = 'event_rooms'
+        db_table = 'events'
 
 
-class EventToneTranslations(models.Model):
+class AudioClipToneTranslations(models.Model):
     id = models.BigAutoField(primary_key=True)
-    event_tone = models.ForeignKey('EventTones', on_delete=models.CASCADE, blank=True, null=True, default=None)
+    audio_clip_tone = models.ForeignKey('AudioClipTones', on_delete=models.CASCADE, blank=True, null=True, default=None)
     translation = models.TextField()
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
@@ -301,34 +301,34 @@ class EventToneTranslations(models.Model):
     class Meta:
         app_label = 'voicewake'
         managed = True
-        db_table = 'event_tone_translations'
+        db_table = 'audio_clip_tone_translations'
 
 
-class EventTones(models.Model):
+class AudioClipTones(models.Model):
     #must use default=None because of unique=True, so that you can still have multiple None rows
     #normal scenario is to do default='' for strings, but it is considered unique
     id = models.BigAutoField(primary_key=True)
-    event_tone_slug = models.TextField(max_length=50, default=None, unique=True)  #with underscore
-    event_tone_name = models.TextField(max_length=50, default=None, unique=True)  #without underscore
-    event_tone_symbol = models.TextField(max_length=50, default=None, unique=True)
+    audio_clip_tone_slug = models.TextField(max_length=50, default=None, unique=True)  #with underscore
+    audio_clip_tone_name = models.TextField(max_length=50, default=None, unique=True)  #without underscore
+    audio_clip_tone_symbol = models.TextField(max_length=50, default=None, unique=True)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         app_label = 'voicewake'
         managed = True
-        db_table = 'event_tones'
+        db_table = 'audio_clip_tones'
 
 
-class Events(models.Model):
+class AudioClips(models.Model):
     #we need to denormalise via like_count and dislike_count
     #because otherwise, read operation scales horribly (260ms to 700ms vs. 40ms)
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, default=None)
-    event_role = models.ForeignKey('EventRoles', on_delete=models.PROTECT, blank=True, null=True, default=None)
-    event_tone = models.ForeignKey('EventTones', on_delete=models.SET_NULL, blank=True, null=True, default=None)
-    event_room = models.ForeignKey('EventRooms', on_delete=models.CASCADE, null=True, default=None)
+    audio_clip_role = models.ForeignKey('AudioClipRoles', on_delete=models.PROTECT, blank=True, null=True, default=None)
+    audio_clip_tone = models.ForeignKey('AudioClipTones', on_delete=models.SET_NULL, blank=True, null=True, default=None)
+    event = models.ForeignKey('Events', on_delete=models.CASCADE, null=True, default=None)
     generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)
-    audio_file = models.FileField(blank=True, null=True, upload_to=determine_event_audio_file_path_and_name)
+    audio_file = models.FileField(blank=True, null=True, upload_to=determine_audio_clip_audio_file_path_and_name)
     audio_duration_s = models.IntegerField(default=0)  #seconds, is not used for VPlayback functionality
     audio_volume_peaks = ArrayField(
         models.DecimalField(default=0, max_digits=3, decimal_places=2), #0 to 0.49 to 1
@@ -345,7 +345,7 @@ class Events(models.Model):
     class Meta:
         app_label = 'voicewake'
         managed = True
-        db_table = 'events'
+        db_table = 'audio_clips'
 
 
 class GenericStatuses(models.Model):
@@ -363,10 +363,10 @@ class GenericStatuses(models.Model):
 #if we delete older rows for storage space, we may have different criteria for when_seen_at_front_page and when_excluded_for_reply
 #e.g. time span
 #in that case, simply separate them into separate tables
-class UserEventRooms(models.Model):
+class UserEvents(models.Model):
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, default=None)
-    event_room = models.ForeignKey('EventRooms', on_delete=models.CASCADE, null=True, default=None)
+    event = models.ForeignKey('Events', on_delete=models.CASCADE, null=True, default=None)
     when_seen_at_front_page = models.DateTimeField(blank=True, null=True, default=None)
     when_excluded_for_reply = models.DateTimeField(blank=True, null=True, default=None)
     when_created = models.DateTimeField(auto_now_add=True)
@@ -374,9 +374,9 @@ class UserEventRooms(models.Model):
     class Meta:
         app_label = 'voicewake'
         managed = True
-        db_table = 'user_event_rooms'
+        db_table = 'user_events'
         constraints = [
-            models.UniqueConstraint(fields=["user", "event_room"], name="unique_user_event_room")
+            models.UniqueConstraint(fields=["user", "event"], name="unique_user_event")
         ]
 
 

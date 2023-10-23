@@ -36,11 +36,11 @@
 #             }
 #         )
 
-#     def chat_message(self, event):
+#     def chat_message(self, audio_clip):
         
 #         #every user who has a channel in the intended group will receive msg
 #         #how does it determine the group???
-#         message = event['message']
+#         message = audio_clip['message']
 
 #         self.send(text_data=json.dumps({
 #             'type': 'chat',

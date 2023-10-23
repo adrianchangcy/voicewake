@@ -7,7 +7,7 @@
         </div>
         <!--card-->
         <div class="w-full h-20 rounded-lg skeleton"></div>
-        <!--VEventTools-->
+        <!--VAudioClipTools-->
         <div class="w-full h-10 grid grid-cols-6 gap-1">
             <div class="col-span-4 h-full rounded-full skeleton"></div>
             <div class="col-span-1 h-full rounded-full skeleton"></div>

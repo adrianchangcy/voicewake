@@ -4,9 +4,9 @@
 
         <!--on overflow, it overflows to the right while never going past left side-->
         <!--so pr-10 is ensuring that it doesn't go too far to the right-->
-        <!--our event_tone_elements being absolute helps auto-adjust-->
+        <!--our audio_clip_tone_elements being absolute helps auto-adjust-->
         <div
-            ref="event_tones_container"
+            ref="audio_clip_tones_container"
             class="h-full flex flex-row justify-between pl-5 pr-10 overflow-x-clip"
         >
 
@@ -20,14 +20,14 @@
 
                 <!--need ? else we get undefined, since this v-for starts before API call-->
                 <!--using v-if outside v-for did not fix the issue-->
-                <!--must also use absolute, as event_tones have different sizes, causing shifting otherwise-->
+                <!--must also use absolute, as audio_clip_tones have different sizes, causing shifting otherwise-->
                 <span
-                    ref="event_tones_elements"
+                    ref="audio_clip_tones_elements"
                     aria-hidden="true"
                     class="text-base w-fit h-fit block absolute left-0 right-0 top-0 m-auto select-none"
                     style="opacity: 0;"
                 >
-                    {{ event_tones[randomised_event_tones_indexes[n - 1]]?.event_tone_symbol }}
+                    {{ audio_clip_tones[randomised_audio_clip_tones_indexes[n - 1]]?.audio_clip_tone_symbol }}
                 </span>
             </div>
         </div>
@@ -44,36 +44,36 @@
     // import { notify } from 'notiwind';
     import anime from 'animejs';
     // import VPlayback from '../medium/VPlayback.vue';
-    import EventTonesTypes from '@/types/EventTones.interface';
+    import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
     import { getRandomNumber } from '@/helper_functions';
     const axios = require('axios');
 
     export default defineComponent({
         data(){
             return {
-                event_tones: [] as EventTonesTypes[],
-                randomised_event_tones_indexes: [] as number[],
+                audio_clip_tones: [] as AudioClipTonesTypes[],
+                randomised_audio_clip_tones_indexes: [] as number[],
                 quantity_used: 20,
             };
         },
         methods: {
-            async getEventTones() : Promise<void> {
+            async getAudioClipTones() : Promise<void> {
 
-                await axios.get(window.location.origin + '/api/event-tones/list')
+                await axios.get(window.location.origin + '/api/audio-clip-tones/list')
                 .then((results:any) => {
 
-                    //get our event_tones
-                    //wasn't able to store event_tone_symbol directly here in this file, so we do this
-                    //ensures we use accurate emojis too, since our event_tones in db are after skimming
+                    //get our audio_clip_tones
+                    //wasn't able to store audio_clip_tone_symbol directly here in this file, so we do this
+                    //ensures we use accurate emojis too, since our audio_clip_tones in db are after skimming
                     if(results.data['data'].length < this.quantity_used){
 
                         throw new Error(
-                            'Expected ' + this.quantity_used.toString() + ' event_tones, got ' +
+                            'Expected ' + this.quantity_used.toString() + ' audio_clip_tones, got ' +
                             results.data['data'].length.toString() + '.'
                         );
                     }
 
-                    this.event_tones = results.data['data'];
+                    this.audio_clip_tones = results.data['data'];
 
                 }).then(() => {
 
@@ -81,8 +81,8 @@
                     for(let x=0; x < this.quantity_used; x++){
 
                         //random array index
-                        this.randomised_event_tones_indexes.push(
-                            Math.floor(getRandomNumber(0, this.event_tones.length))
+                        this.randomised_audio_clip_tones_indexes.push(
+                            Math.floor(getRandomNumber(0, this.audio_clip_tones.length))
                         );
                     }
 
@@ -98,14 +98,14 @@
             },
             async startAnime() : Promise<void> {
 
-                if(this.randomised_event_tones_indexes.length < this.quantity_used){
+                if(this.randomised_audio_clip_tones_indexes.length < this.quantity_used){
 
                     return;
                 }
 
                 //get height
                 //does not change on zoom
-                const y_px = (this.$refs.event_tones_container as HTMLElement).getBoundingClientRect().height;
+                const y_px = (this.$refs.audio_clip_tones_container as HTMLElement).getBoundingClientRect().height;
 
                 //minimum distance to travel
                 //if too little, it will look stuttery
@@ -131,14 +131,14 @@
                     const translate_y_end = Math.floor(getRandomNumber((translate_y_start + minimum_translate_y_distance), y_px));
 
                     //set random scale
-                    (this.$refs.event_tones_elements as HTMLElement[])[x].style.transform =
+                    (this.$refs.audio_clip_tones_elements as HTMLElement[])[x].style.transform =
                         'scale(' + getRandomNumber(1, 1.5).toString() + ')';
 
                     //use completed as sort of an infinite loop
                     //we specify more opacity values so we can reach 0 to 1 as early as possible
                     //otherwise, reaching opacity 1 too slowly causes undesired gap above
                     anime({
-                        targets: (this.$refs.event_tones_elements as HTMLElement[])[x],
+                        targets: (this.$refs.audio_clip_tones_elements as HTMLElement[])[x],
                         translateY: [translate_y_start.toString() + 'px', translate_y_end.toString() + 'px'],
                         opacity: ['0', '1', '0.6', '0.4', '0.2', '0'],
                         delay: random_delay,
@@ -148,8 +148,8 @@
                         loop: true,
                         loopComplete: ()=>{
 
-                            //replace event_tone_symbol randomly
-                            this.randomised_event_tones_indexes[x] = Math.floor(getRandomNumber(0, this.event_tones.length));
+                            //replace audio_clip_tone_symbol randomly
+                            this.randomised_audio_clip_tones_indexes[x] = Math.floor(getRandomNumber(0, this.audio_clip_tones.length));
                         }
                     });
                 }
@@ -173,7 +173,7 @@
         },
         mounted(){
 
-            this.getEventTones();
+            this.getAudioClipTones();
 
 
 

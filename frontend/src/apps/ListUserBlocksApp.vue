@@ -249,7 +249,7 @@
             setUpObserver() : void {
 
                 //set up observer for infinite scroll
-                const observer_target = document.querySelector('#load-more-user-banned-events-observer-target');
+                const observer_target = document.querySelector('#load-more-user-banned-audio-clips-observer-target');
 
                 const observer = new IntersectionObserver(()=>{
 

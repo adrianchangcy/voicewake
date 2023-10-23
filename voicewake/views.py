@@ -66,7 +66,7 @@ def sign_up(request):
 
 
 
-def user_banned_events(request):
+def user_banned_audio_clips(request):
 
     if\
         request.user.is_authenticated is True and\
@@ -77,7 +77,7 @@ def user_banned_events(request):
 
             return render(
                 request,
-                template_name='voicewake/user_banned_events.html',
+                template_name='voicewake/user_banned_audio_clips.html',
                 context={
                     'banned_until': request.user.banned_until
                 }
@@ -149,8 +149,8 @@ class GetUserProfile(TemplateView):
 
 
 
-#create main events, but actual creation is via EventsAPI
-#handles originator events
+#create main audio_clips, but actual creation is via AudioClipsAPI
+#handles originator audio_clips
 @method_decorator(
     [
         app_decorators.deny_if_not_logged_in("redirect"),
@@ -159,13 +159,13 @@ class GetUserProfile(TemplateView):
     ],
     name='get'
 )
-class CreateEventRooms(TemplateView):
+class CreateEvents(TemplateView):
 
-    template_name = 'voicewake/event_rooms/create_event_rooms.html'
+    template_name = 'voicewake/events/create_events.html'
 
 
 
-#view specific event_room and its events
+#view specific event and its audio_clips
 @method_decorator(
     [
         app_decorators.deny_if_no_username("redirect"),
@@ -173,53 +173,53 @@ class CreateEventRooms(TemplateView):
     ],
     name='get'
 )
-class GetEventRooms(TemplateView):
+class GetEvents(TemplateView):
 
-    template_name = 'voicewake/event_rooms/get_event_rooms.html'
+    template_name = 'voicewake/events/get_events.html'
 
     def get(self, request, *args, **kwargs):
 
-        #get event_room
+        #get event
         try:
 
-            event_room = EventRooms.objects.select_related('locked_for_user', 'generic_status').get(pk=kwargs['event_room_id'])
+            event = Events.objects.select_related('locked_for_user', 'generic_status').get(pk=kwargs['event_id'])
 
-        except EventRooms.DoesNotExist:
+        except Events.DoesNotExist:
 
             return JsonResponse(
                 data={
-                    'message':'Event room does not exist.'
+                    'message':'AudioClip room does not exist.'
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        #count how many events exist for frontend skeleton
-        event_count = Events.objects.filter(
-            event_room=event_room,
+        #count how many audio_clips exist for frontend skeleton
+        audio_clip_count = AudioClips.objects.filter(
+            event=event,
             generic_status__generic_status_name='ok'
         ).count()
 
         #check if this user is already supposed to reply
         is_this_user_replying = (
             self.request.user.is_authenticated and
-            event_room.locked_for_user is not None and
-            request.user.id == event_room.locked_for_user.id and
-            event_room.is_replying is True
+            event.locked_for_user is not None and
+            request.user.id == event.locked_for_user.id and
+            event.is_replying is True
         )
 
-        #is event_room deleted
-        is_deleted = event_room.generic_status.generic_status_name == 'deleted'
+        #is event deleted
+        is_deleted = event.generic_status.generic_status_name == 'deleted'
 
         response = render(
             request,
             template_name=self.template_name,
             context={
-            'event_room_reply_choice_expiry_seconds': settings.EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS,
-            'event_room_reply_expiry_seconds': settings.EVENT_ROOM_REPLY_EXPIRY_SECONDS,
-            'event_room': event_room,
+            'event_reply_choice_expiry_seconds': settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS,
+            'event_reply_expiry_seconds': settings.EVENT_REPLY_EXPIRY_SECONDS,
+            'event': event,
             'is_deleted': is_deleted,
             'is_deleted_json': json.dumps(is_deleted),
-            'event_count': json.dumps(event_count),
+            'audio_clip_count': json.dumps(audio_clip_count),
             'is_this_user_replying': is_this_user_replying,
             'is_this_user_replying_json': json.dumps(is_this_user_replying),
             }
@@ -245,9 +245,9 @@ class GetEventRooms(TemplateView):
     ],
     name='get'
 )
-class ListEventRoomChoices(TemplateView):
+class ListEventChoices(TemplateView):
 
-    template_name = 'voicewake/event_rooms/list_event_room_choices.html'
+    template_name = 'voicewake/events/list_event_choices.html'
 
     def get(self, request, *args, **kwargs):
 
@@ -255,8 +255,8 @@ class ListEventRoomChoices(TemplateView):
             request,
             template_name=self.template_name,
             context={
-            'event_room_reply_choice_expiry_seconds': settings.EVENT_ROOM_REPLY_CHOICE_EXPIRY_SECONDS,
-            'event_room_reply_expiry_seconds': settings.EVENT_ROOM_REPLY_EXPIRY_SECONDS,
+            'event_reply_choice_expiry_seconds': settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS,
+            'event_reply_expiry_seconds': settings.EVENT_REPLY_EXPIRY_SECONDS,
             }
         )
 
@@ -285,6 +285,26 @@ class SetUsername(TemplateView):
             )
 
         raise Http404()
+
+
+
+class UnderMaintenance(TemplateView):
+
+    template_name = '503.html'
+
+    def get(self, request, *args, **kwargs):
+
+        if settings.MAINTENANCE_MODE is True:
+
+            return render(
+                request,
+                template_name=self.template_name,
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        
+        return redirect(reverse('home'))
+
+
 
 
 

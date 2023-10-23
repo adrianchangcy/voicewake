@@ -106,7 +106,7 @@
         methods: {
             toggleMenu() : void {
 
-                //this dictates whether VEventToneMenu is open
+                //this dictates whether VAudioClipToneMenu is open
                 this.is_open = !this.is_open;
                 
             },
