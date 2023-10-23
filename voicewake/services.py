@@ -214,7 +214,7 @@ def prevent_event_room_from_queuing_twice_for_reply(user, event_rooms:list):
         user=user,
         event_room_id__in=event_room_ids
     ).update(
-        is_excluded_for_reply=True
+        when_excluded_for_reply=datetime_now
     )
 
 
@@ -249,7 +249,7 @@ def prevent_event_room_from_showing_twice_at_front_page(user, event_rooms:list):
         user=user,
         event_room_id__in=event_room_ids
     ).update(
-        is_seen_at_front_page=True
+        when_seen_at_front_page=datetime_now
     )
 
 

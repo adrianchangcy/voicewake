@@ -360,12 +360,15 @@ class GenericStatuses(models.Model):
         db_table = 'generic_statuses'
 
 
+#if we delete older rows for storage space, we may have different criteria for when_seen_at_front_page and when_excluded_for_reply
+#e.g. time span
+#in that case, simply separate them into separate tables
 class UserEventRooms(models.Model):
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, default=None)
     event_room = models.ForeignKey('EventRooms', on_delete=models.CASCADE, null=True, default=None)
-    is_seen_at_front_page = models.BooleanField(default=False)
-    is_excluded_for_reply = models.BooleanField(default=False)
+    when_seen_at_front_page = models.DateTimeField(blank=True, null=True, default=None)
+    when_excluded_for_reply = models.DateTimeField(blank=True, null=True, default=None)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:

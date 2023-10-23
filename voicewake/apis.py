@@ -763,7 +763,7 @@ class EventRoomsAPI(generics.GenericAPIView):
                 previously_shown_event_room_ids AS (
                     SELECT event_room_id AS id FROM user_event_rooms
                     WHERE user_id = %s
-                    AND is_seen_at_front_page IS TRUE
+                    AND when_seen_at_front_page IS NOT NULL
                 ),
                 excluded_users AS (
                     SELECT blocked_user_id AS id FROM user_blocks
@@ -1195,7 +1195,7 @@ class HandleEventRoomReplyChoicesAPI(generics.GenericAPIView):
                 past_involved_event_rooms_2 AS (
                     SELECT event_room_id FROM user_event_rooms
                     WHERE user_id = %s
-                    AND is_excluded_for_reply IS TRUE
+                    AND when_excluded_for_reply IS NOT NULL
                 ),
                 excluded_users_1 AS (
                     SELECT blocked_user_id AS id FROM user_blocks
