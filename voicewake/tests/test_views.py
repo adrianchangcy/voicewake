@@ -113,7 +113,8 @@ class Users_TestCase(TestCase):
         handle_user_otp_class = HandleUserOTP(
             user_instance,
             settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-            0, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+            0, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
+            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
         )
         handle_user_otp_class.get_or_create_user_otp_instance()
         new_otp = handle_user_otp_class.generate_otp()
@@ -228,7 +229,8 @@ class Users_TestCase(TestCase):
         handle_user_otp_class = HandleUserOTP(
             user_instance,
             settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-            0, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+            0, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
+            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
         )
         handle_user_otp_class.get_or_create_user_otp_instance()
         new_otp = handle_user_otp_class.generate_otp()

@@ -169,6 +169,13 @@
                 this.$emit('hasNewValue', input_field.value);
                 this.input_value = input_field.value;
             },
+            async inputHandler(e:Event) : Promise<void> {
+
+                const input_field = this.$refs.v_input_field as HTMLInputElement;
+
+                e.stopPropagation();
+                this.handleNewInput(e as InputEvent, input_field as HTMLInputElement);
+            },
         },
         mounted(){
 
@@ -176,13 +183,10 @@
 
             //we need input listener to validate before the input actually shows up
             //using watcher will not be as capable as this
-            input_field.addEventListener("input", (e) => {
-                e.stopPropagation();
-                this.handleNewInput(e as InputEvent, input_field as HTMLInputElement);
-            });
+            input_field.addEventListener("input", this.inputHandler);
 
             //since browser saves copy of page on close, it will autocomplete on page reopen
-            //we can reliably get autocompleted values via window.onload = (audio_clip)=>{}
+            //we can reliably get autocompleted values via window.onload = (event)=>{}
             window.onload = ()=>{
 
                 //update Vue from autocompleted value
@@ -196,10 +200,7 @@
 
             const input_field = this.$refs.v_input_field as HTMLInputElement;
 
-            input_field.removeEventListener("input", (e) => {
-                e.stopPropagation();
-                this.handleNewInput(e as InputEvent, input_field as HTMLInputElement);
-            });
+            input_field.removeEventListener("input", this.inputHandler);
         }
     });
 </script>

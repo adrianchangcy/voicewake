@@ -206,10 +206,10 @@
                     'starting_ms': this.current_duration
                 });
 
-                this.recording_interval_worker.onmessage = (audio_clip)=>{
+                this.recording_interval_worker.onmessage = (event:MessageEvent)=>{
 
                     //can do ===, but feels safer with >=
-                    if(audio_clip.data >= this.propMaxDurationMs){
+                    if(event.data >= this.propMaxDurationMs){
 
                         this.recorderStopByUserOrWebWorker(false);
                     }

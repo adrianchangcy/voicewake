@@ -271,7 +271,7 @@
 
                     this.is_username_check_loading = false;
                 })
-                .catch((error: any) => {
+                .catch((error:any) => {
 
                     if(axios.isCancel(error)){
 
@@ -285,14 +285,18 @@
 
                     this.is_username_check_loading = false;
 
-                    if('response' in error){
+                    let error_text = '';
 
-                        notify({
-                            title: "Username check failed",
-                            text: error.response.data['message'],
-                            type: "error"
-                        }, 3000);
+                    if('request' in error && 'response' in error){
+
+                        error_text = error.response.data['message'];
                     }
+
+                    notify({
+                        title: "Username check failed",
+                        text: error_text,
+                        type: "error"
+                    }, 3000);
                 });
             },
             async submitUsernameChange() : Promise<void> {
@@ -346,9 +350,16 @@
 
                     this.is_submitting = false;
 
+                    let error_text = '';
+
+                    if('request' in error && 'response' in error){
+
+                        error_text = error.response.data['message'];
+                    }
+
                     notify({
                         title: "Setting username failed",
-                        text: error.response.data['message'],
+                        text: error_text,
                         type: "error"
                     }, 3000);
                 });

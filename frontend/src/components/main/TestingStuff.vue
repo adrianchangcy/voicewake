@@ -46,30 +46,43 @@
                 data.append('email', 'user1@gmail.com');
                 data.append('is_requesting_otp', JSON.stringify(true));
 
-                await axios.post(window.location.origin + '/api/test', data)
-                .then((results:any) => {
-                    console.log(results.data);
+                await axios.get(window.location.origin + '/api/test', data)
+                .then((result:any) => {
+                    console.log(result.data);                      //native {data:{},message:"testo"}
+                    console.log(result.request.status);            //number 200
+                }).catch((error:any) => {
+                    if('response' in error === true && 'request' in error === true){
+                        console.log(error.response.data);               //native {data:{},message:"testo"}
+                        console.log(error.request.status);              //number 418
+                    }
                 });
             },
             async getEvent(event_id:number) : Promise<void> {
 
                 //prepare audio_clips, then separate
                 await axios.get(window.location.origin + '/api/audio_clips/get/event/' + event_id.toString())
-                .then((results:any) => {
+                .then((result:any) => {
 
-                    if(results.data['data'].length === 0){
+                    if(result.data['data'].length === 0){
 
                         return;
                     }
 
                     //API always returns list, even if there is only one event
-                    this.event = results.data['data'][0];
+                    this.event = result.data['data'][0];
                 })
                 .catch((error:any) => {
 
+                    let error_text = '';
+
+                    if('request' in error && 'response' in error){
+
+                        error_text = error.response.data['message'];
+                    }
+
                     notify({
                         title: "AudioClip search failed",
-                        text: error.response.data['message'],
+                        text: error_text,
                         type: "error"
                     }, 3000);
                 });
@@ -78,7 +91,7 @@
 
         mounted(){
 
-            // this.callTest();
+            this.callTest();
 
             notify({
                 title: "Keep it up!",

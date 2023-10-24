@@ -281,7 +281,7 @@
                         this.$emit('isSubmitSuccessful', true);
 
                         //redirect to this page without storing current URL, so it is only shown once in history
-                        window.location.replace(window.location.origin + "/audio-clip/" + response.data['data']['event_id'].toString());
+                        window.location.replace(window.location.origin + "/event/" + response.data['data']['event_id'].toString());
 
                     }else{
 
@@ -295,9 +295,16 @@
                     this.$emit('isSubmitSuccessful', false);
                     this.is_submitting = false;
 
+                    let error_text = '';
+
+                    if('request' in error && 'response' in error){
+
+                        error_text = error.response.data['message'];
+                    }
+
                     notify({
-                        title: this.propIsOriginator === true ? 'Creating audio_clip failed' : 'Creating reply failed',
-                        text: error.response.data['message'],
+                        title: this.propIsOriginator === true ? 'Starting event failed' : 'Creating reply failed',
+                        text: error_text,
                         type: "error"
                     }, 4000);
                 });

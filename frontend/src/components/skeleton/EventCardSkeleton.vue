@@ -5,7 +5,7 @@
             'flex flex-col'
         ]"
     >
-        <span class="sr-only">loading audio_clips</span>
+        <span class="sr-only">loading audio clips</span>
         <!--title and datetime-->
         <!--<div> seems to have bigger height than the inner <span>, and doing it all in <span> didn't work-->
         <div class="flex flex-col pb-10">

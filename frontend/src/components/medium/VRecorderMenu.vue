@@ -119,7 +119,7 @@
                             'blob_volume_peaks' : volume_peaks
                         });
                     })
-                    .catch((error:any|Error) => {
+                    .catch((error:any) => {
                         console.log(error);
                     });
             },

@@ -12,7 +12,7 @@
                 v-if="is_loading === true"
                 class="items-center place-items-center grid grid-flow-row grid-cols-4 gap-y-1 relative"
             >
-                <span class="sr-only">tags are loading</span>
+                <span class="sr-only">audio tones are loading</span>
                 <div
                     class="col-span-1 w-10 h-10 flex items-center"
                     v-for="x in 24" :key="x"
@@ -22,9 +22,9 @@
                 </div>
             </div>
 
-            <!--could not get tags-->
+            <!--could not get tones-->
             <div
-                v-else-if="hasAudioClipTones === false || has_error === true"
+                v-else-if="hasAudioClipTones === false && has_error === true"
                 class="h-full flex items-center"
             >
                 <VDialogPlain
@@ -32,7 +32,7 @@
                     class="mx-auto"
                 >
                     <template #title>
-                        Oops, unable to load the tags!
+                        Oops, unable to load the audio tones!
                     </template>
                     <template #content>
                         Try refreshing this page.
@@ -40,7 +40,7 @@
                 </VDialogPlain>
             </div>
 
-            <!--has tags-->
+            <!--has tones-->
             <div
                 v-else-if="hasAudioClipTones === true"
                 class="items-center place-items-center grid grid-flow-row grid-cols-4 gap-y-1 relative"
@@ -63,7 +63,7 @@
                     </button>
                 </div>
 
-                <!--tags-->
+                <!--tones-->
                 <div
                     class="col-span-1"
                     v-for="(audio_clip_tone, index) in audio_clip_tones" :key="audio_clip_tone.id"
@@ -154,9 +154,9 @@
                 this.is_loading = true;
 
                 await axios.get(window.location.origin + '/api/audio-clip-tones/list')
-                .then((results) => {
+                .then((result:any) => {
 
-                    this.audio_clip_tones = results.data['data'];
+                    this.audio_clip_tones = result.data['data'];
                     this.is_loading = false;
 
                 }).catch(() => {

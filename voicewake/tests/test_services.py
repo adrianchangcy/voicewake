@@ -63,7 +63,8 @@ class UserOTP_TestCase(TestCase):
         self.handle_user_otp_class = HandleUserOTP(
             user_instance,
             settings.TOTP_NUMBER_OF_DIGITS, 2, 1,
-            settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+            settings.OTP_CREATED_TIMEOUT_SECONDS, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
+            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
         )
 
         #create UserOTP instance
@@ -93,7 +94,8 @@ class UserOTP_TestCase(TestCase):
         self.handle_user_otp_class = HandleUserOTP(
             user_instance,
             settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-            settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+            settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
+            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
         )
 
         #create UserOTP instance
@@ -101,27 +103,24 @@ class UserOTP_TestCase(TestCase):
 
         self.assertNotEqual(self.handle_user_otp_class.get_user_otp_instance(), None)
         self.assertEqual(self.handle_user_otp_class.get_user_otp_instance().otp_attempts, 0)
-        self.assertFalse(self.handle_user_otp_class.is_creating_otp_timed_out())
-        self.assertFalse(self.handle_user_otp_class.is_max_attempts_timed_out())
-        self.assertEqual(self.handle_user_otp_class.get_creating_otp_timed_out_seconds_left(), 0)
-        self.assertEqual(self.handle_user_otp_class.get_max_attempts_timed_out_seconds_left(), 0)
+        self.assertEqual(self.handle_user_otp_class.get_otp_creation_timeout_seconds_left(), 0)
+        self.assertEqual(self.handle_user_otp_class.get_otp_attempt_timeout_seconds_left(), 0)
+        self.assertEqual(self.handle_user_otp_class.get_otp_attempt_timeout_seconds_left(), 0)
 
         #create OTP and also save to db
         new_otp = self.handle_user_otp_class.generate_otp()
         print(new_otp)
 
         #expected data
-        self.assertTrue(self.handle_user_otp_class.is_creating_otp_timed_out())
-        self.assertFalse(self.handle_user_otp_class.is_max_attempts_timed_out())
-        self.assertGreater(self.handle_user_otp_class.get_creating_otp_timed_out_seconds_left(), 0)
-        self.assertEqual(self.handle_user_otp_class.get_max_attempts_timed_out_seconds_left(), 0)
+        self.assertGreater(self.handle_user_otp_class.get_otp_creation_timeout_seconds_left(), 0)
+        self.assertEqual(self.handle_user_otp_class.get_otp_attempt_timeout_seconds_left(), 0)
+        self.assertEqual(self.handle_user_otp_class.get_otp_attempt_timeout_seconds_left(), 0)
 
         #since we are still timed out from creating new OTP, we attempt and expect failure
         self.assertEqual(self.handle_user_otp_class.generate_otp(), '')
-        self.assertTrue(self.handle_user_otp_class.is_creating_otp_timed_out())
-        self.assertFalse(self.handle_user_otp_class.is_max_attempts_timed_out())
-        self.assertGreater(self.handle_user_otp_class.get_creating_otp_timed_out_seconds_left(), 0)
-        self.assertEqual(self.handle_user_otp_class.get_max_attempts_timed_out_seconds_left(), 0)
+        self.assertGreater(self.handle_user_otp_class.get_otp_creation_timeout_seconds_left(), 0)
+        self.assertEqual(self.handle_user_otp_class.get_otp_attempt_timeout_seconds_left(), 0)
+        self.assertEqual(self.handle_user_otp_class.get_otp_attempt_timeout_seconds_left(), 0)
 
         return new_otp
 
@@ -136,7 +135,8 @@ class UserOTP_TestCase(TestCase):
         self.handle_user_otp_class = HandleUserOTP(
             user_instance,
             settings.TOTP_NUMBER_OF_DIGITS, 1, 1,
-            settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+            settings.OTP_CREATED_TIMEOUT_SECONDS, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
+            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
         )
 
         self.handle_user_otp_class.get_or_create_user_otp_instance()
@@ -158,7 +158,8 @@ class UserOTP_TestCase(TestCase):
         self.handle_user_otp_class = HandleUserOTP(
             user_instance,
             settings.TOTP_NUMBER_OF_DIGITS, 2, 2,
-            1, settings.OTP_MAX_ATTEMPTS, 1
+            1, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
+            settings.OTP_MAX_ATTEMPTS, 1
         )
 
         self.handle_user_otp_class.get_or_create_user_otp_instance()
@@ -178,8 +179,8 @@ class UserOTP_TestCase(TestCase):
 
                 #wait until creating OTP is no longer timed out
                 time.sleep(3)
-                self.assertFalse(self.handle_user_otp_class.is_creating_otp_timed_out())
-                self.assertFalse(self.handle_user_otp_class.is_max_attempts_timed_out())
+                self.assertEqual(self.handle_user_otp_class.get_otp_creation_timeout_seconds_left(), 0)
+                self.assertEqual(self.handle_user_otp_class.get_otp_attempt_timeout_seconds_left(), 0)
 
                 #should be able to create new OTP, and they will not match
                 current_otp = self.handle_user_otp_class.otp
@@ -199,13 +200,13 @@ class UserOTP_TestCase(TestCase):
 
             if self.handle_user_otp_class.get_user_otp_instance().otp_attempts < settings.OTP_MAX_ATTEMPTS:
 
-                self.assertFalse(self.handle_user_otp_class.is_max_attempts_timed_out())
-                self.assertEqual(self.handle_user_otp_class.get_max_attempts_timed_out_seconds_left(), 0)
+                self.assertEqual(self.handle_user_otp_class.get_otp_attempt_timeout_seconds_left(), 0)
+                self.assertEqual(self.handle_user_otp_class.get_otp_attempt_timeout_seconds_left(), 0)
 
             else:
 
-                self.assertTrue(self.handle_user_otp_class.is_max_attempts_timed_out())
-                self.assertGreater(self.handle_user_otp_class.get_max_attempts_timed_out_seconds_left(), 0)
+                self.assertGreater(self.handle_user_otp_class.get_otp_attempt_timeout_seconds_left(), 0)
+                self.assertGreater(self.handle_user_otp_class.get_otp_attempt_timeout_seconds_left(), 0)
 
         #now that we are timed out, correct/incorrect attempts shall fail
         self.assertFalse(self.handle_user_otp_class.verify_otp(otp_to_submit))
@@ -214,7 +215,7 @@ class UserOTP_TestCase(TestCase):
 
         time.sleep(3)
 
-        #when is_max_attempts_timed_out() is called after timeout in verify_otp(), it resets everything
+        #when get_otp_attempt_timeout_seconds_left() is called after timeout in verify_otp(), it resets everything
 
         #verify will fail
         self.assertFalse(self.handle_user_otp_class.verify_otp(otp_to_submit))
@@ -234,7 +235,8 @@ class UserOTP_TestCase(TestCase):
         self.handle_user_otp_class = HandleUserOTP(
             user_instance,
             settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-            1, settings.OTP_MAX_ATTEMPTS, 1
+            1, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
+            settings.OTP_MAX_ATTEMPTS, 1
         )
 
         self.handle_user_otp_class.get_or_create_user_otp_instance()
@@ -254,13 +256,13 @@ class UserOTP_TestCase(TestCase):
 
             if self.handle_user_otp_class.get_user_otp_instance().otp_attempts < settings.OTP_MAX_ATTEMPTS:
 
-                self.assertFalse(self.handle_user_otp_class.is_max_attempts_timed_out())
-                self.assertEqual(self.handle_user_otp_class.get_max_attempts_timed_out_seconds_left(), 0)
+                self.assertEqual(self.handle_user_otp_class.get_otp_attempt_timeout_seconds_left(), 0)
+                self.assertEqual(self.handle_user_otp_class.get_otp_attempt_timeout_seconds_left(), 0)
 
             else:
 
-                self.assertTrue(self.handle_user_otp_class.is_max_attempts_timed_out())
-                self.assertGreater(self.handle_user_otp_class.get_max_attempts_timed_out_seconds_left(), 0)
+                self.assertGreater(self.handle_user_otp_class.get_otp_attempt_timeout_seconds_left(), 0)
+                self.assertGreater(self.handle_user_otp_class.get_otp_attempt_timeout_seconds_left(), 0)
 
         #while timed out, attempts shall fail
         self.assertFalse(self.handle_user_otp_class.verify_otp(otp_to_submit))
@@ -269,7 +271,7 @@ class UserOTP_TestCase(TestCase):
 
         time.sleep(3)
 
-        #when is_max_attempts_timed_out() is called after timeout, it resets OTP and attempts in instance
+        #when get_otp_attempt_timeout_seconds_left() is called after timeout, it resets OTP and attempts in instance
         self.assertEqual(self.handle_user_otp_class.get_user_otp_instance().otp_attempts, settings.OTP_MAX_ATTEMPTS)
         self.assertFalse(self.handle_user_otp_class.verify_otp(otp_to_submit))
         self.assertEqual(self.handle_user_otp_class.get_user_otp_instance().otp_attempts, 0)
@@ -289,7 +291,8 @@ class UserOTP_TestCase(TestCase):
         self.handle_user_otp_class = HandleUserOTP(
             user_instance,
             settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-            settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+            settings.OTP_CREATED_TIMEOUT_SECONDS, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
+            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
         )
 
         self.handle_user_otp_class.get_or_create_user_otp_instance()
@@ -311,7 +314,8 @@ class UserOTP_TestCase(TestCase):
         self.handle_user_otp_class = HandleUserOTP(
             user_instance,
             settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-            settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+            settings.OTP_CREATED_TIMEOUT_SECONDS, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
+            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
         )
 
         self.handle_user_otp_class.get_or_create_user_otp_instance()
