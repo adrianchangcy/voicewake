@@ -60,20 +60,20 @@
             async getAudioClipTones() : Promise<void> {
 
                 await axios.get(window.location.origin + '/api/audio-clip-tones/list')
-                .then((results:any) => {
+                .then((result:any) => {
 
                     //get our audio_clip_tones
                     //wasn't able to store audio_clip_tone_symbol directly here in this file, so we do this
                     //ensures we use accurate emojis too, since our audio_clip_tones in db are after skimming
-                    if(results.data['data'].length < this.quantity_used){
+                    if(result.data['data'].length < this.quantity_used){
 
                         throw new Error(
                             'Expected ' + this.quantity_used.toString() + ' audio_clip_tones, got ' +
-                            results.data['data'].length.toString() + '.'
+                            result.data['data'].length.toString() + '.'
                         );
                     }
 
-                    this.audio_clip_tones = results.data['data'];
+                    this.audio_clip_tones = result.data['data'];
 
                 }).then(() => {
 
@@ -89,11 +89,9 @@
                     //start anime
                     this.startAnime();
 
-                }).catch((error:any)=>{
+                }).catch(()=>{
 
                     //fail silently, since this component is not important
-                    console.log('Could not get tags.');
-                    console.log(error);
                 });
             },
             async startAnime() : Promise<void> {

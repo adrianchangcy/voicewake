@@ -2,7 +2,7 @@
     <div>
 
         <AudioClipsCard
-            :prop-audio_clips="audio_clips"
+            :prop-audio-clips="audio_clips"
             :prop-is-fetching="is_fetching"
         />
 

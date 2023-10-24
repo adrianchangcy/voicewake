@@ -272,6 +272,11 @@
         },
         mounted(){
 
+            //TODO:
+                //refactor to not use anonymous functions, else the listeners cannot be removed, causing memory leak
+                    //tried with .bind() and .apply(), wasn't successful
+                    //complexity lies in requiring outside values for inner procedures
+
             //add listeners
             //not declaring as NodeListOf<HTMLInputElement> due to unfixable no-undef warning
             const input_fields = document.querySelectorAll(".number-slot-field > input");

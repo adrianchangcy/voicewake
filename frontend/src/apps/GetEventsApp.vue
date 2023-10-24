@@ -76,46 +76,40 @@
                 </div>
 
                 <!--just deleted while replying-->
-                <span
+                <div
                     v-else-if="reply_is_deleted"
-                    class="w-full h-fit mt-10 flex flex-col text-xl font-medium text-center text-theme-black"
+                    class="w-full h-fit pt-10 flex flex-col text-xl font-medium text-center text-theme-black"
                 >
                     <i class="fas fa-eraser block w-full" aria-hidden="true"></i>
                     <span class="block w-full">Your reply has been deleted.</span>
-                    <VActionTextOnly
-                        propElement="a"
-                        href="/reply"
-                        propElementSize="s"
-                        propFontSize="s"
-                        class="w-fit mx-auto"
-                    >
-                        <span class="flex items-center">
-                            <span class="font-bold block">More audio_clip choices</span>
-                            <i class="fas fa-arrow-right block text-lg pl-2" aria-hidden="true"></i>
-                        </span>
-                    </VActionTextOnly>
-                </span>
+                </div>
 
                 <!--just expired while replying-->
-                <span
+                <div
                     v-else-if="reply_is_expired"
-                    class="w-full h-fit mt-10 flex flex-col text-xl font-medium text-center text-theme-black"
+                    class="w-full h-fit pt-10 flex flex-col text-xl font-medium text-center text-theme-black"
                 >
                     <i class="fas fa-hourglass-end block w-full" aria-hidden="true"></i>
                     <span class="block w-full">Your reply has expired.</span>
-                    <VActionTextOnly
+                </div>
+            </TransitionFadeSlow>
+
+            <TransitionFadeSlow>
+                <!--URL back to more reply choices-->
+                <div v-if="reply_is_deleted || reply_is_expired" class="pt-2">
+                    <VActionSimplest
                         propElement="a"
                         href="/reply"
                         propElementSize="s"
                         propFontSize="s"
                         class="w-fit mx-auto"
                     >
-                        <span class="flex items-center">
-                            <span class="font-bold block">More audio_clip choices</span>
+                        <span class="flex items-center px-4">
+                            <span class="block">More reply choices</span>
                             <i class="fas fa-arrow-right block text-lg pl-2" aria-hidden="true"></i>
                         </span>
-                    </VActionTextOnly>
-                </span>
+                    </VActionSimplest>
+                </div>
             </TransitionFadeSlow>
 
             <!--VAudioClipCard emits selection, which triggers :to, thus teleporting-->
@@ -139,7 +133,7 @@
 <script setup lang="ts">
     import EventCard from '@/components/main/EventCard.vue';
     import VActionButtonDangerS from '@/components/small/VActionButtonDangerS.vue';
-    import VActionTextOnly from '@/components/small/VActionTextOnly.vue';
+    import VActionSimplest from '@/components/small/VActionSimplest.vue';
     import CreateAudioClips from '@/components/main/CreateAudioClips.vue';
     import VTitle from '@/components/small/VTitle.vue';
     import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
@@ -218,7 +212,7 @@
         watch: {
         },
         methods: {
-            handleUnfinishedReplyStoreChange() : void {
+            async handleUnfinishedReplyStoreChange() : Promise<void> {
 
                 const store_status = this.unfinished_reply_store.getStatus;
                 const relevant_statuses:StatusValues[] = [
@@ -276,7 +270,7 @@
                         break;
                 }
             },
-            checkUserIsReplying(event:GroupedAudioClipsTypes){
+            async checkUserIsReplying(event:GroupedAudioClipsTypes) : Promise<void> {
 
                 //check if user is supposed to reply to this
                 //might not seem important to do this much if journey is standard reply --> open
@@ -300,7 +294,7 @@
 
                     //is replying
                     this.is_this_user_replying = true;
-                    this.startReplyExpiryInterval();
+                    await this.startReplyExpiryInterval();
                     this.scrollToReplyArea();
 
                     //patch store
@@ -364,33 +358,39 @@
                 await axios.post(window.location.origin + '/api/events/reply/delete', data)
                 .then(() => {
 
-                    handler();
-
                 })
                 .catch((error:any) => {
 
-                    handler();
+                    let notify_title = 'Error';
+                    let notify_text = '';
 
                     //401 is when you cannot cancel because you are no longer replying
-                    //happens when cronjob cancels first
-                    if(error.request.status !== 401 && 'response' in error.request){
+                    //can happen when cronjob cancels first
+                    if('request' in error && 'response' in error){
 
-                        const response = JSON.parse(error.request.response);
-                        let notify_title = 'Error';
+                        if(error.request.status === 401){
 
-                        if(context === "deleted"){
-                            notify_title = "Reply deletion failed";
-                        }else if(context === "expired"){
-                            notify_title = "Reply expiry failed";
+                            return;
                         }
 
-                        notify({
-                            title: notify_title,
-                            text: 'message' in response ? response['message'] : '',
-                            type: 'error'
-                        }, 4000);
+                        notify_text = error.response.data['message'];
                     }
 
+                    if(context === "deleted"){
+                        notify_title = "Reply deletion failed";
+                    }else if(context === "expired"){
+                        notify_title = "Reply expiry failed";
+                    }
+
+                    notify({
+                        title: notify_title,
+                        text: notify_text,
+                        type: 'error'
+                    }, 4000);
+
+                }).finally(()=>{
+
+                    handler();
                 });
             },
             async getEvent() : Promise<void> {
@@ -400,37 +400,45 @@
                     return;
                 }
 
-                this.is_searching = true;
                 this.event = null;
 
                 //prepare audio_clips, then separate
                 await axios.get(window.location.origin + '/api/events/get/' + this.event_id.toString())
-                .then((results:any) => {
+                .then((result:any) => {
 
-                    if(results.data['data'].length === 0){
+                    if(result.data['data'].length === 0){
 
-                        this.is_searching = false;
                         return;
                     }
 
                     //API always returns list, even if there is only one event
-                    this.event = results.data['data'][0];
+                    this.event = result.data['data'][0];
 
                     //if user is replying, auto-handles everything else
-                    this.checkUserIsReplying(results.data['data'][0]);
-                    this.is_searching = false;
+                    this.checkUserIsReplying(result.data['data'][0]);
+
                 })
                 .catch((error:any) => {
 
+                    let error_text = '';
+
+                    if('request' in error && 'response' in error){
+
+                        error_text = error.response.data['message'];
+                    }
+
                     notify({
-                        title: "AudioClip search failed",
-                        text: error.response.data['message'],
+                        title: "Error",
+                        text: error_text,
                         type: "error"
                     }, 4000);
+
+                }).finally(()=>{
+
                     this.is_searching = false;
                 });
             },
-            handleIsSubmitSuccessful(new_value:boolean) : void {
+            async handleIsSubmitSuccessful(new_value:boolean) : Promise<void> {
 
                 if(new_value === true){
 
@@ -448,11 +456,11 @@
                     //redirect is taken care of by CreateAudioClips
                 }
             },
-            handleIsSubmitting(new_value:boolean) : void {
+            async handleIsSubmitting(new_value:boolean) : Promise<void> {
 
                 this.is_submitting = new_value;
             },
-            scrollToReplyArea() : void {
+            async scrollToReplyArea() : Promise<void> {
 
                 const target = document.getElementById('is-replying-area');
                 const nav_bar = document.getElementById('nav-bar-app');
@@ -467,11 +475,11 @@
                     left: target.offsetLeft,
                 });
             },
-            handleNewSelectedAudioClip(audio_clip:AudioClipsAndLikeDetailsTypes|null) : void {
+            async handleNewSelectedAudioClip(audio_clip:AudioClipsAndLikeDetailsTypes|null) : Promise<void> {
 
                 this.selected_audio_clip = audio_clip;
             },
-            startReplyExpiryInterval() : void {
+            async startReplyExpiryInterval() : Promise<void> {
 
                 if(
                     this.is_this_user_replying === false ||
@@ -570,12 +578,15 @@
             this.audio_clip_count = JSON.parse(container.getAttribute('data-audio-clip-count') as string);
             this.is_this_user_replying = JSON.parse(container.getAttribute('data-is-this-user-replying') as string);
 
-            this.getEvent();
+            (async ()=>{
+                await this.getEvent().then(()=>{
 
-            if(this.is_this_user_replying === true){
+                    if(this.is_this_user_replying === true){
 
-                this.startReplyExpiryInterval();
-            }
+                        this.startReplyExpiryInterval();
+                    }
+                });
+            })();
 
             //change '1 Jan 2023' to '1 century ago'
             //we are passing 'YYYY-MM-DD HH:mm:ss' from template
@@ -588,9 +599,9 @@
             }
 
             //handle deletion/expiry from elsewhere
-            this.unfinished_reply_store.$subscribe(()=>{
+            this.unfinished_reply_store.$subscribe(async ()=>{
 
-                this.handleUnfinishedReplyStoreChange();
+                await this.handleUnfinishedReplyStoreChange();
             });
 
             //listen to store

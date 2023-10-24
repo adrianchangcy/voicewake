@@ -35,7 +35,7 @@
                         <i class="fas fa-comment" aria-hidden="true"></i>
                         <!-- <span class="hidden font-normal sm:inline sm:pl-2">Start</span> -->
                     </span>
-                    <span class="sr-only sm:hidden">start audio_clip</span>
+                    <span class="sr-only sm:hidden">start event</span>
                 </VActionTextOnly>
             </div>
 
@@ -55,7 +55,7 @@
                         <i class="fas fa-comments" aria-hidden="true"></i>
                         <!-- <span class="hidden font-normal sm:inline sm:pl-2">Reply</span> -->
                     </span>
-                    <span class="sr-only sm:hidden">reply to audio_clips</span>
+                    <span class="sr-only sm:hidden">reply to events</span>
                 </VActionTextOnly>
             </div>
 
@@ -439,8 +439,9 @@
                     this.page_refresh_trigger_store.$patch({
                         refresh_context: "logging_out"
                     });
+
                 })
-                .catch((error: any) => {
+                .catch((error:any) => {
 
                     console.log(error);
 

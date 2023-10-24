@@ -64,9 +64,9 @@ class TestAPI(generics.GenericAPIView):
                 'data': {
                 
                 },
-                'message': ''
+                'message': 'testo'
             },
-            status=status.HTTP_200_OK
+            status=status.HTTP_418_IM_A_TEAPOT
         )
 
 
@@ -475,8 +475,14 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
         #reminder that verify_otp() does all the checks for us
         if handle_user_otp_class.verify_otp(otp) is False:
 
-            #do not let users know about max attempts reached
-            #this protects against email probing during login
+            #wanted to not tell users when max attempts have been reached, to prevent email probing
+            #but pros and cons conclude that without at least telling when to try again, UX will be frustrating
+            verify_otp_timeout_s = handle_user_otp_class.get_otp_attempt_timeout_seconds_left()
+
+            if verify_otp_timeout_s > 0:
+
+                return get_default_verify_otp_timed_out_response(verify_otp_timeout_s)
+
             return get_default_verify_otp_response()
 
         #OTP verified, continue
@@ -571,7 +577,8 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
             handle_user_otp_class = HandleUserOTP(
                 user_instance,
                 settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-                settings.OTP_CREATE_TIMEOUT_SECONDS, settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPT_TIMEOUT_SECONDS
+                settings.OTP_CREATED_TIMEOUT_SECONDS, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
+                settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
             )
             handle_user_otp_class.get_or_create_user_otp_instance()
 
@@ -1257,6 +1264,7 @@ class HandleEventReplyChoicesAPI(generics.GenericAPIView):
         return audio_clips
 
 
+    #does not validate when events were locked, to allow for guaranteed unlocking
     def unlock_events_from_past_reply_choices(self):
 
         User = get_user_model()
@@ -1380,7 +1388,7 @@ class HandleEventReplyChoicesAPI(generics.GenericAPIView):
 
             with transaction.atomic():
 
-                #user is not replying, continue
+                #user wants new choices, continue
                 if self.current_context == "list":
 
                     #not replying, can unlock previous choices if any
@@ -1388,6 +1396,16 @@ class HandleEventReplyChoicesAPI(generics.GenericAPIView):
 
                     #maybe don't unlock on every search
                     #only unlock on skip
+
+                    #check if user has reached reply limit to prevent searching
+                    cooldown_s = get_user_create_events_and_replies_cooldown_s(request.user, 'create_reply')
+
+                    if cooldown_s > 0:
+
+                        raise custom_error(
+                            TimeoutError,
+                            user_message="Daily reply limit reached. Come back in " + get_pretty_datetime(cooldown_s) + "."
+                        )
 
                     #get audio_clips
                     audio_clips = None
@@ -1443,7 +1461,16 @@ class HandleEventReplyChoicesAPI(generics.GenericAPIView):
                         AttributeError,
                         dev_message="Invalid user_context arg from urls.py."
                     )
-                
+
+        except TimeoutError as e:
+
+            return Response(
+                data={
+                    'message': get_user_message_from_custom_error(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         except Exception as e:
 
             traceback.print_exc()
@@ -1473,7 +1500,8 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
         super().__init__(*args, **kwargs)
 
 
-    #if user is already locked for event, do is_replying=True and update when_locked
+    #if user is already locked for event, change (is_replying=False) to (is_replying=True, when_locked!=None)
+    #no need to check for daily reply limit here
     #for actual replying to start
     #202 success, 205 reset due to user inactivity
     def start_replying_to_event(self, event_id):
@@ -1727,42 +1755,6 @@ class AudioClipsAPI(generics.GenericAPIView):
         super().__init__(*args, **kwargs)
 
 
-    def check_user_create_event_daily_limit(self, user):
-
-        #this is for "X max new audio_clip rooms every __", which in this case is every 24h
-        datetime_checkpoint = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
-        datetime_checkpoint = datetime.strptime(datetime_checkpoint, '%Y-%m-%d %H:%M:%S %z')
-
-        the_count = Events.objects.filter(
-            created_by=user,
-            when_created__gte=datetime_checkpoint
-        ).count()
-
-        if the_count < settings.EVENT_CREATE_DAILY_LIMIT:
-
-            return False
-
-        return True
-
-
-    def check_user_create_reply_audio_clip_daily_limit(self, user):
-
-        #this is for "X max new posts every __", which in this case is every 24h
-        datetime_checkpoint = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
-        datetime_checkpoint = datetime.strptime(datetime_checkpoint, '%Y-%m-%d %H:%M:%S %z')
-
-        the_count = AudioClips.objects.filter(
-            user=user,
-            when_created__gte=datetime_checkpoint
-        ).count()
-
-        if the_count < settings.EVENT_REPLY_DAILY_LIMIT:
-
-            return False
-
-        return True
-
-
     def check_user_can_reply_event(self, event):
 
         #check if user is replying
@@ -1829,12 +1821,14 @@ class AudioClipsAPI(generics.GenericAPIView):
                 #generic_status is handled by default, so it is skipped here
                 if self.current_context == "create_new":
 
-                    #check if created event limit is not yet reached
-                    if self.check_user_create_event_daily_limit(request.user) is True:
+                    #check if create event limit is not yet reached
+                    cooldown_s = get_user_create_events_and_replies_cooldown_s(request.user, 'create_event')
+
+                    if cooldown_s > 0:
 
                         raise custom_error(
                             TimeoutError,
-                            user_message="You have reached your daily limit for creating audio_clips."
+                            user_message="Daily event creation limit reached. Come back in " + get_pretty_datetime(cooldown_s) + "."
                         )
 
                     #proceed
@@ -1849,11 +1843,13 @@ class AudioClipsAPI(generics.GenericAPIView):
                 elif self.current_context == "reply":
 
                     #check if reply audio_clip limit is not yet reached
-                    if self.check_user_create_reply_audio_clip_daily_limit(request.user) is True:
+                    cooldown_s = get_user_create_events_and_replies_cooldown_s(request.user, 'create_reply')
+
+                    if cooldown_s > 0:
 
                         raise custom_error(
-                            ValueError,
-                            user_message="You have reached your daily limit of replies."
+                            TimeoutError,
+                            user_message="Daily reply limit reached. Come back in " + get_pretty_datetime(cooldown_s) + "."
                         )
 
                     #get event

@@ -325,9 +325,11 @@ TOTP_TOLERANCE_SECONDS = 120    #allow early/late by x seconds until truly not a
 
 
 #UserOTP-related arguments
-OTP_CREATE_TIMEOUT_SECONDS = 30    #for creating new OTP
-OTP_MAX_ATTEMPTS = 6            #times someone can try before being timed out
-OTP_MAX_ATTEMPT_TIMEOUT_SECONDS = 600
+OTP_CREATED_TIMEOUT_SECONDS = 30         #for each resend, before max is reached
+OTP_MAX_CREATIONS = 4                     #max resends
+OTP_MAX_CREATIONS_TIMEOUT_SECONDS = 600
+OTP_MAX_ATTEMPTS = 8                    #times someone can try before being timed out
+OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS = 600
 
 
 #values used to evaluate audio_clip_reports and banning the audio_clips

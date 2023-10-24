@@ -36,7 +36,7 @@
                         class="top-2 p-2 absolute z-10 w-full left-0 right-0 mx-auto"
                     >
                         <VInputLabel>Pick one!</VInputLabel>
-                        <div class="h-40 box-content emojis-container overflow-x-hidden overflow-y-auto text-2xl">
+                        <div class="h-40 box-content has-emoji overflow-x-hidden overflow-y-auto text-2xl">
                             <div class="items-center place-items-center grid grid-flow-row grid-cols-4">
                                 <div
                                     class="col-span-1"
@@ -90,14 +90,14 @@
         watch: {
         },
         methods: {
-            async getAudioClipTonesData(){
+            async getAudioClipTonesData() : Promise<void> {
 
                 await axios.get(window.location.origin + '/api/audio-clip-tones')
-                .then((results) => {
-                    this.audio_clip_tones = results.data;
+                .then((result:any) => {
+                    this.audio_clip_tones = result.data['data'];
                 })
-                .catch((errors:any) => {
-                    console.log(errors);
+                .catch((error:any) => {
+                    console.log(error);
                 });
             },
             toggleAudioClipTonePicker(){
@@ -117,18 +117,3 @@
         },
     });
 </script>
-
-
-<style scoped>
-
-    /*
-    use these fonts for emojis themselves to ensure proper rendering
-    https://github.com/joeattardi/picmo/issues/242
-    */
-    .emojis-container{
-        font-family: "Segoe UI Emoji", "Segoe UI Symbol", "Segoe UI", "Apple Color Emoji", "Twemoji Mozilla",
-        "Noto Color Emoji", "EmojiOne Color", "Android Emoji"
-    }
-
-
-</style>

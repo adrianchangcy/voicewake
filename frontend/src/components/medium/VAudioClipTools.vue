@@ -281,7 +281,7 @@
                     return;
                 }
 
-                const url = window.origin + "/audio-clip/" + this.propEventId;
+                const url = window.location.origin + "/event/" + this.propEventId;
                 navigator.clipboard.writeText(url);
 
                 notify({

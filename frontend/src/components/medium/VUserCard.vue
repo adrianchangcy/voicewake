@@ -120,13 +120,13 @@
                 data.append('to_block', JSON.stringify((!this.is_blocked)));
 
                 await axios.post(window.location.origin + '/api/users/blocks', data)
-                .then((results:any) => {
+                .then((result:any) => {
 
                     this.is_blocked = !this.is_blocked;
 
                     notify({
                         title: this.is_blocked === true ? 'Blocked user' : 'Unblocked user',
-                        text: results.data['message'],
+                        text: result.data['message'],
                         type: 'ok'
                     }, 2000);
 

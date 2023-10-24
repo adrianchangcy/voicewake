@@ -270,7 +270,7 @@
 
                 instance_id: "",    //uuid, to identify between multiple VPlayback instances
                 vplayback_store: useVPlaybackStore(),
-                instance_has_focus: false,  //enables keyboard audio_clips inside VPlayback that need e.preventDefault()
+                instance_has_focus: false,  //enables keyboard events inside VPlayback that need e.preventDefault()
                 previous_audio_clip: null as AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null,  //store triggers on new audio_clip, but needs previous audio_clip
 
                 pretty_current_playback_time: '00:00',
@@ -712,7 +712,7 @@
             },
             handleKeyboardEvent(event:KeyboardEvent) : void {
 
-                //FYI, some keyup audio_clips are too late for .preventDefault(), so they use keydown
+                //FYI, some keyup events are too late for .preventDefault(), so they use keydown
                 
                 //these keys affect only playback, so no point if there's no file
                 if(this.isPlaybackReady === false || this.isInstanceLastInteracted === false){

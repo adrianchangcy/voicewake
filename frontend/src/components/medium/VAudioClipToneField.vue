@@ -19,12 +19,12 @@
                 <span aria-hidden="true">{{propAudioClipToneChoice.audio_clip_tone_symbol}}</span>
                 <span class="sr-only">{{propAudioClipToneChoice.audio_clip_tone_name}}</span>
             </span>
-            <span v-else class="sr-only">No emoji selected</span>
+            <span v-else class="sr-only">No audio tone selected</span>
             <span v-if="propIsOpen" class="sr-only">
-                Close emoji menu
+                Close audio tone menu
             </span>
             <span v-else class="sr-only">
-                Open emoji menu
+                Open audio tone menu
             </span>
         </button>
     </div>

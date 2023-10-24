@@ -235,7 +235,7 @@
                                 prop-element-id="log-in-otp"
                                 prop-label-text="Login code"
                                 :prop-extra-slots="calcExtraVNumberSlots"
-                                :prop-trigger-reset="email_has_change"
+                                :prop-trigger-reset="otp_fields_reset_trigger"
                                 :prop-is-error="otp_validation_has_error"
                                 :prop-status-text="otp_validation_status_text"
                                 class="mt-6"
@@ -509,7 +509,7 @@
                                 prop-element-id="sign-up-otp"
                                 prop-label-text="Sign-up code"
                                 :prop-extra-slots="calcExtraVNumberSlots"
-                                :prop-trigger-reset="email_has_change"
+                                :prop-trigger-reset="otp_fields_reset_trigger"
                                 :prop-is-error="otp_validation_has_error"
                                 :prop-status-text="otp_validation_status_text"
                                 class="mt-6"
@@ -657,13 +657,14 @@
                 otp_validation_has_error: false,
                 otp_validation_status_text: "",
                 otp_can_auto_submit: true,  //auto-submit when OTP is fully entered, is false on error, true on code resend
+                otp_fields_reset_trigger: false,    //toggle to trigger VNumberSlots reset
 
                 otp_request_cooldown_interval: null as number|null,
                 otp_request_cooldown_duration_s: 30,
                 otp_request_cooldown_s: 0,
                 otp_request_status_text: "",
                 otp_request_is_first_time: true,
-                email_has_change: false,    //used to determine whether otp resets
+                email_has_change: false,
 
                 //handle loading
                 is_otp_request_loading: false,
@@ -719,16 +720,16 @@
             }
         },
         methods: {
-            submitStep2(section_type:'log-in'|'sign-up') : void {
+            async submitStep2(section_type:'log-in'|'sign-up') : Promise<void> {
 
-                this.validateOTP(this.otp_string);
+                await this.validateOTP(this.otp_string);
 
                 if(this.otp_is_ok === true){
 
                     this.submitOTPToGetNewSession(section_type);
                 }
             },
-            submitStep1(section_type:'log-in'|'sign-up') : void {
+            async submitStep1(section_type:'log-in'|'sign-up') : Promise<void> {
 
                 //we need this because we no longer disable submit button on invalid
                 //we let users freely click, and when trying to submit an invalid form, say what is wrong
@@ -736,7 +737,7 @@
                 if(this.email_string.length === 0){
 
                     //use validateEmail() to raise empty email error
-                    this.validateEmail(this.email_string);
+                    await this.validateEmail(this.email_string);
                     return;
 
                 }else if(this.email_is_ok === false){
@@ -751,11 +752,11 @@
                 );
                 this.submitEmailAndRequestOTP(section_type);
             },
-            forceClose() : void {
+            async forceClose() : Promise<void> {
 
                 this.pop_up_manager_store.toggleIsUserLogInSignUpOpen(false);
             },
-            resetOTPRelatedValues() : void {
+            async resetOTPRelatedValues() : Promise<void> {
 
                 this.otp_string = "";
                 this.otp_is_ok = false;
@@ -768,14 +769,18 @@
                 this.otp_request_cooldown_s = 0;
                 this.otp_request_status_text = "";
                 this.email_has_change = false;
+
+                this.resetOTPFields();
             },
-            resetEmailRelatedValues() : void {
+            async resetEmailRelatedValues() : Promise<void> {
 
                 this.email_string = "";
                 this.email_check_timeout !== null ? window.clearTimeout(this.email_check_timeout) : null;
                 this.email_is_ok = false;
                 this.email_validation_has_error = false;
                 this.email_validation_status_text = "";
+
+                this.resetOTPFields();
             },
             doNavigation(section:string="", step:string="", transition_slide_is_forward=true) : void {
 
@@ -796,7 +801,7 @@
                     this.current_step = (this.steps as StepsType)[section_index][steps_value_index];
                 }
             },
-            startRequestOTPCooldown() : void {
+            async startRequestOTPCooldown() : Promise<void> {
 
                 //reset
                 this.otp_request_cooldown_interval !== null ? window.clearTimeout(this.otp_request_cooldown_interval) : null;
@@ -853,10 +858,7 @@
                 data.append("otp", this.otp_string);
 
                 await axios.post(window.location.origin + "/api/users/" + procedure_url, data)
-                .then((response:any) => {
-
-                    //200 when ok
-                    console.log(response.data['message']);
+                .then(() => {
 
                     //doing this will refresh all open tabs/pages for us
                     this.page_refresh_trigger_store.$patch({
@@ -864,14 +866,21 @@
                     });
 
                 })
-                .catch((error: any) => {
+                .catch((error:any) => {
 
                     //400 when invalid
                     this.is_main_action_loading = false;
 
+                    let error_text = '';
+
+                    if('request' in error && 'response' in error){
+
+                        error_text = error.response.data['message'];
+                    }
+
                     notify({
                         title: procedure_url === "log-in" ? 'Login failed' : 'Sign-up failed',
-                        text: error.response.data['message'],
+                        text: error_text,
                         type: "error"
                     }, 8000);
 
@@ -889,7 +898,7 @@
                 }
 
                 //reset step 2 if handleNewEmail() detects email change
-                this.resetOTPRelatedValues();
+                await this.resetOTPRelatedValues();
 
                 this.is_otp_request_loading = true;
 
@@ -898,14 +907,12 @@
                 data.append("is_requesting_new_otp", JSON.stringify(true));
 
                 await axios.post(window.location.origin + "/api/users/" + procedure_url, data)
-                .then(() => {
-
-                    //no need to toast
+                .then(async () => {
 
                     this.is_otp_request_loading = false;
-                    this.startRequestOTPCooldown();
+                    await this.startRequestOTPCooldown();
                 })
-                .catch((error: any) => {
+                .catch((error:any) => {
 
                     console.log(error);
 
@@ -919,14 +926,21 @@
                     this.otp_request_status_text = "Oops! Could not send code.";
                     this.is_otp_request_loading = false;
 
+                    let error_text = '';
+
+                    if('request' in error && 'response' in error){
+
+                        error_text = error.response.data['message'];
+                    }
+
                     notify({
                         title: "OTP request failed",
-                        text: error.response.data['message'],
+                        text: error_text,
                         type: "error"
                     }, 3000);
                 });
             },
-            validateOTP(new_value:string) : void {
+            async validateOTP(new_value:string) : Promise<void> {
 
                 //VNumberSlots only returns full string when successful and valid
                 if(new_value.length < this.otp_length){
@@ -942,7 +956,7 @@
                     this.otp_validation_status_text = "";
                 }
             },
-            handleNewOTP(new_value:string) : void {
+            async handleNewOTP(new_value:string) : Promise<void> {
 
                 //no on-the-spot validation needed
                 this.otp_string = new_value;
@@ -958,11 +972,11 @@
 
                     if(section_type === "log-in" || section_type === "sign-up"){
 
-                        this.submitStep2(section_type);
+                        await this.submitStep2(section_type);
                     }
                 }
             },
-            validateEmail(new_value:string) : void {
+            async validateEmail(new_value:string) : Promise<void> {
 
                     //must not have any whitespace, must have "@" and ".", must have char before "@"
                     //do not make this too complicated, it is easier to just send email and see if user receives it
@@ -995,10 +1009,10 @@
                     //since email path has 256 limit and needs to add "<" and ">"
                     //https://stackoverflow.com/questions/386294/what-is-the-maximum-length-of-a-valid-email-address
             },
-            handleNewEmail(new_value:string) : void {
+            async handleNewEmail(new_value:string) : Promise<void> {
 
                 //reset everything on any change
-                this.resetEmailRelatedValues();
+                await this.resetEmailRelatedValues();
 
                 this.email_has_change = true;
                 this.email_string = new_value;
@@ -1020,6 +1034,10 @@
                     this.is_email_loading = false;
                 }, 400);
             },
+            resetOTPFields() : void {
+
+                this.otp_fields_reset_trigger = !this.otp_fields_reset_trigger;
+            }
         },
         beforeMount(){
 

@@ -194,7 +194,7 @@
                         <i class="far fa-face-meh-blank" aria-hidden="true"></i>
                     </template>
                     <template #title>
-                        <span v-show="canShowEventsEmptyMessage">No audio_clips found.</span>
+                        <span v-show="canShowEventsEmptyMessage">No recordings found.</span>
                         <span v-show="canShowNoNewEventsMessage">You've reached the end.</span>
                     </template>
                     <template #content>

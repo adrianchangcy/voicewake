@@ -595,9 +595,9 @@
                 }
 
                 await axios.post(window.location.origin + "/api/events/reply-choices/list", data)
-                .then((results: any) => {
+                .then((result:any) => {
 
-                    if(results.data["data"].length === 0){
+                    if(result.data["data"].length === 0){
 
                         //no audio_clips
                         this.current_simple_dialog = this.simple_dialogs[0];
@@ -609,23 +609,23 @@
                             status: "no_reply_choices"
                         });
 
-                    }else if(results.data["data"].length > 0 && results.data["data"][0]["event"]["is_replying"] === true){
+                    }else if(result.data["data"].length > 0 && result.data["data"][0]["event"]["is_replying"] === true){
 
                         //user has unfinished reply
-                        this.unfinished_reply_event = results.data["data"][0];
+                        this.unfinished_reply_event = result.data["data"][0];
                         this.redirect_url = "hear/" + this.unfinished_reply_event!.event.id.toString();
                         this.startExpiryInterval("unfinished_reply");
 
                         //patch store
                         this.unfinished_reply_store.$patch({
-                            event: results.data["data"][0],
+                            event: result.data["data"][0],
                             status: "replying"
                         });
 
                     }else{
 
                         //user has new reply choices
-                        this.new_reply_choice_events = results.data["data"];
+                        this.new_reply_choice_events = result.data["data"];
                         this.startExpiryInterval("new_reply_choices");
 
                         //patch store
@@ -635,17 +635,25 @@
                         });
                     }
 
-                    this.is_searching = false;
                 })
-                .catch((error: any) => {
+                .catch((error:any) => {
 
-                    this.is_searching = false;
+                    let error_text = '';
+
+                    if('request' in error && 'response' in error){
+
+                        error_text = error.response.data['message'];
+                    }
 
                     notify({
-                        title: "AudioClip search failed",
-                        text: "Unable to search for audio_clips. " + error.response.data['message'],
+                        title: "Event search failed",
+                        text: error_text,
                         type: "error"
                     }, 3000);
+
+                }).finally(()=>{
+
+                    this.is_searching = false;
                 });
             },
             async deleteUnfinishedReply(): Promise<void> {
@@ -676,27 +684,34 @@
                 await axios.post(window.location.origin + "/api/events/reply/delete", data)
                 .then(() => {
 
-                    handler();
-
                     //auto-search
                     this.getEvents();
                 })
                 .catch((error:any) => {
 
-                    handler();
+                    let error_text = '';
 
-                    //401 is when you cannot cancel because you are no longer replying
-                    //happens when cronjob cancels first
-                    if(error.request.status !== 401 && 'response' in error.request){
+                    if('request' in error && 'response' in error){
 
-                        const response = JSON.parse(error.request.response);
+                        //401 is when you cannot cancel because you are no longer replying
+                        //happens when cronjob cancels first
+                        if(error.request.status === 401){
 
-                        notify({
-                            title: 'Reply deletion failed',
-                            text: 'message' in response ? response['message'] : '',
-                            type: 'error'
-                        }, 4000);
+                            return;
+                        }
+
+                        error_text = error.response.data['message'];
                     }
+
+                    notify({
+                        title: 'Reply deletion failed',
+                        text: error_text,
+                        type: 'error'
+                    }, 4000);
+
+                }).then(()=>{
+
+                    handler();
                 });
             },
             async confirmReplyChoice(event: GroupedAudioClipsTypes|null): Promise<void> {
@@ -714,9 +729,9 @@
                 data.append("event_id", JSON.stringify(event.event.id));
 
                 await axios.post(window.location.origin + "/api/events/reply/start", data)
-                .then((results: any) => {
+                .then((result:any) => {
 
-                    if(results.status === 202){
+                    if(result.request.status === 202){
 
                         //store unfinished reply
                         //we have no backend<-->store relation to trigger reset when server deems it expired
@@ -728,7 +743,7 @@
                         });
 
                         //redirect
-                        window.location.href = window.location.origin + "/audio-clip/" + event.event.id.toString();
+                        window.location.href = window.location.origin + "/event/" + event.event.id.toString();
 
                     }else{
 
@@ -736,31 +751,38 @@
 
                         notify({
                             title: "Reply selection failed",
-                            text: "Unable to select for reply. " + results.data['message'],
+                            text: "Unable to select for reply. " + result.data['message'],
                             type: "error"
                         }, 3000);
                     }
 
                 })
-                .catch((error: any) => {
+                .catch((error:any) => {
 
                     this.is_new_reply_choice_confirming = false;
 
-                    if(error.request.status === 404){
+                    let error_text = '';
 
-                        //either no longer exists or unavailable
-                        //auto-skip
-                        this.getEvents();
+                    if('request' in error && 'response' in error){
 
-                    }else{
+                        error_text = error.response.data['message'];
 
-                        //restart expiry interval
-                        this.startExpiryInterval("new_reply_choices");
+                        if(error.request.status === 404){
+
+                            //either no longer exists or unavailable
+                            //auto-skip
+                            this.getEvents();
+
+                        }else{
+
+                            //restart expiry interval
+                            this.startExpiryInterval("new_reply_choices");
+                        }
                     }
 
                     notify({
                         title: "Reply selection failed",
-                        text: error.response.data['message'],
+                        text: error_text,
                         type: "error"
                     }, 3000);
                 });

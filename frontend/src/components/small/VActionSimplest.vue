@@ -13,7 +13,7 @@
             propElementSize === 'm' ? 'h-20' : '',
             propElementSize === 's' ? 'h-10' : '',
             propIsEnabled ? '' : 'opacity-30',
-            'block     shade-border-when-hover transition-colors      bg-theme-light       border border-theme-light-gray rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline'
+            'block     shade-border-when-hover active:bg-theme-lightest-gray transition-colors      bg-theme-light       border border-theme-light-gray rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline'
         ]"
         :disabled="!propIsEnabled"
     >

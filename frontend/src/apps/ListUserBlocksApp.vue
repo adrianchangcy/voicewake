@@ -179,13 +179,13 @@
                 data.append('to_block', JSON.stringify(!this.user_blocks[user_block_index].is_blocked));
 
                 await axios.post(url, data)
-                .then((results:any)=>{
+                .then((result:any)=>{
 
                     this.user_blocks[user_block_index].is_blocked = !this.user_blocks[user_block_index].is_blocked;
 
                     notify({
                         title: this.user_blocks[user_block_index].is_blocked === true ? 'Blocked user' : 'Unblocked user',
-                        text: results.data['message'],
+                        text: result.data['message'],
                         type: 'ok'
                     }, 2000);
 

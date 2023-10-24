@@ -40,20 +40,20 @@ pinia.use(
 const clickOutside = {
 
     //PROBLEM: make anything with v-click-outside to treat other v-click-outside like any other elements
-    //FIX: don't use audio_clip.stopPropagation(), else your audio_clips cannot reach here
+    //FIX: don't use event.stopPropagation(), else your events cannot reach here
 
     beforeMount: (element:any, binding:any) => {
 
         //2022-12-28
-        //QUESTION: where did audio_clip come from?
-        element.clickOutsideAudioClip = (audio_clip:any) => {
+        //QUESTION: where did event come from?
+        element.clickOutsideAudioClip = (event:any) => {
 
             //unpack passed arguments
             //var_name_for_element_bool_status, string, is the bool status variable, in charge of your element
             //refs_to_exclude, [], means elements that already handle the same var_name_for_element_bool_status variable on their own
             const {var_name_for_element_bool_status, refs_to_exclude} = binding.value;
 
-            //contains() on this ref element always returns true when audio_clip.target refers to ref child or itself
+            //contains() on this ref element always returns true when event.target refers to ref child or itself
             //if true, we don't do anything, because excluded element already runs handler at @click
             let is_clicked_element_excluded = false;
 
@@ -61,7 +61,7 @@ const clickOutside = {
 
                 try{
 
-                    if(binding.instance.$refs[ref_name].contains(audio_clip.target)){
+                    if(binding.instance.$refs[ref_name].contains(event.target)){
                         
                         is_clicked_element_excluded = true;
                     }
@@ -78,11 +78,11 @@ const clickOutside = {
                 }
             });
 
-            //finally, also check if audio_clip.target is outside of our element with this directive attached
+            //finally, also check if event.target is outside of our element with this directive attached
             if(
                 is_clicked_element_excluded === false &&
-                element !== audio_clip.target &&
-                element.contains(audio_clip.target) === false
+                element !== event.target &&
+                element.contains(event.target) === false
             ){
                 
                 //change element's is_open to false manually, because no other way to run methods without binding.value()
