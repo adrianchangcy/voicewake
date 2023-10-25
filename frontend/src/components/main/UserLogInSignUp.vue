@@ -909,12 +909,9 @@
                 await axios.post(window.location.origin + "/api/users/" + procedure_url, data)
                 .then(async () => {
 
-                    this.is_otp_request_loading = false;
                     await this.startRequestOTPCooldown();
                 })
                 .catch((error:any) => {
-
-                    console.log(error);
 
                     //unexpected error
                     if(this.otp_request_cooldown_interval !== null){
@@ -924,7 +921,6 @@
                     }
                     
                     this.otp_request_status_text = "Oops! Could not send code.";
-                    this.is_otp_request_loading = false;
 
                     let error_text = '';
 
@@ -934,10 +930,14 @@
                     }
 
                     notify({
-                        title: "OTP request failed",
+                        title: "Code request failed",
                         text: error_text,
                         type: "error"
                     }, 3000);
+
+                }).finally(()=>{
+
+                    this.is_otp_request_loading = false;
                 });
             },
             async validateOTP(new_value:string) : Promise<void> {

@@ -38,7 +38,7 @@ ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 
 #if you want to hide Django Debug Toolbar, put False
-SHOW_DJANGO_DEBUG_TOOLBAR = True
+SHOW_DJANGO_DEBUG_TOOLBAR = False
 DEBUG_TOOLBAR_CONFIG = {
     'SHOW_TOOLBAR_CALLBACK': lambda r: DEBUG is True and SHOW_DJANGO_DEBUG_TOOLBAR is True,
 }
@@ -325,11 +325,12 @@ TOTP_TOLERANCE_SECONDS = 120    #allow early/late by x seconds until truly not a
 
 
 #UserOTP-related arguments
-OTP_CREATED_TIMEOUT_SECONDS = 30         #for each resend, before max is reached
-OTP_MAX_CREATIONS = 4                     #max resends
-OTP_MAX_CREATIONS_TIMEOUT_SECONDS = 600
-OTP_MAX_ATTEMPTS = 8                    #times someone can try before being timed out
-OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS = 600
+#we make max values harder to reach but more punishing
+OTP_CREATION_TIMEOUT_SECONDS = 30            #for each resend, before max is reached
+OTP_MAX_CREATIONS = 4                       #max resends
+OTP_MAX_CREATIONS_TIMEOUT_SECONDS = 1800
+OTP_MAX_ATTEMPTS = 8                        #times someone can try before being timed out
+OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS = 1800
 
 
 #values used to evaluate audio_clip_reports and banning the audio_clips

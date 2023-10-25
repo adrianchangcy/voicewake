@@ -184,9 +184,9 @@
 
                 choice_expiry_max_ms: 0,   //will be replaced with SSR data on beforeMount()
                 reply_expiry_max_ms: 0, //will be replaced with SSR data on beforeMount()
-                minimum_ms_to_speed_up_interval: 80000, //transitions from minute to seconds smoothly
-                slowest_interval_ms: 10000,
-                fastest_interval_ms: 1000,
+                expiry_interval_checkpoint_ms: 80000, //transitions from minute to seconds smoothly
+                slowest_expiry_interval_ms: 10000,
+                fastest_expiry_interval_ms: 1000,
             };
         },
         computed: {
@@ -509,8 +509,8 @@
                 //run every 1s if <120s remaining, else run every 60s
                 //change this again once sped up
                 let interval_ms:number = (
-                    (this.reply_expiry_max_ms - time_elapsed_ms) <= this.minimum_ms_to_speed_up_interval ?
-                    this.fastest_interval_ms : this.slowest_interval_ms
+                    (this.reply_expiry_max_ms - time_elapsed_ms) <= this.expiry_interval_checkpoint_ms ?
+                    this.fastest_expiry_interval_ms : this.slowest_expiry_interval_ms
                 );
 
                 //set possible first time expiry string
@@ -531,16 +531,16 @@
 
                     //if interval started with >1000, be prepared for reinitialisation for new interval with shorter time
                     if(
-                        interval_ms === this.slowest_interval_ms &&
-                        (this.reply_expiry_max_ms - time_elapsed_ms) <= this.minimum_ms_to_speed_up_interval
+                        interval_ms === this.slowest_expiry_interval_ms &&
+                        (this.reply_expiry_max_ms - time_elapsed_ms) <= this.expiry_interval_checkpoint_ms
                     ){
 
                         clearInterval(this.reply_expiry_interval!);
 
-                        this.reply_expiry_interval = window.setInterval(interval_function, this.fastest_interval_ms);
+                        this.reply_expiry_interval = window.setInterval(interval_function, this.fastest_expiry_interval_ms);
 
                         //change interval_ms as lazy way to skip this part after the first time
-                        interval_ms = this.fastest_interval_ms;
+                        interval_ms = this.fastest_expiry_interval_ms;
                     }
 
                     //set string

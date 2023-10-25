@@ -116,7 +116,7 @@ class Users_TestCase(TestCase):
             0, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
             settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
         )
-        handle_user_otp_class.get_or_create_user_otp_instance()
+        handle_user_otp_class.guarantee_user_otp_instance()
         new_otp = handle_user_otp_class.generate_otp()
 
         #create and log in
@@ -158,14 +158,14 @@ class Users_TestCase(TestCase):
         })
 
         #has email sent
-        self.assertEqual(len(mail.outbox), 0)
+        self.assertEqual(len(mail.outbox), 1)
 
         user_exists = get_user_model().objects.filter(
             email_lowercase=self.email.lower()
         ).exists()
 
-        #user should not be created
-        self.assertFalse(user_exists)
+        #user should be created with only email
+        self.assertTrue(user_exists)
 
         print(response.status_code)
         print(response.data)
@@ -232,7 +232,7 @@ class Users_TestCase(TestCase):
             0, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
             settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
         )
-        handle_user_otp_class.get_or_create_user_otp_instance()
+        handle_user_otp_class.guarantee_user_otp_instance()
         new_otp = handle_user_otp_class.generate_otp()
 
         #log in
@@ -240,10 +240,6 @@ class Users_TestCase(TestCase):
             'email': self.email,
             'otp': new_otp
         })
-
-        print(response.status_code)
-        print(response.data)
-        print(response.cookies)
 
         #expect
         self.assertEqual(response.wsgi_request.user.is_authenticated, True)
@@ -486,8 +482,6 @@ class System_TestCase(TestCase):
         get_user_model().objects.create_user(cls.user_1_email, cls.user_1_username)
         get_user_model().objects.create_user(cls.user_2_email, cls.user_2_username)
 
-        #we do set_unusable_password() for normal users
-        #but we need username + password to sign in here, so we set normal password
         cls.user_1_instance = get_user_model().objects.get(email=cls.user_1_email)
         cls.user_2_instance = get_user_model().objects.get(email=cls.user_2_email)
 

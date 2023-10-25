@@ -105,27 +105,25 @@
                 <div v-if="propIsOriginator === true">
 
                     <VLoading
-                        v-if="is_submitting"
+                        v-show="is_submitting"
                         propElementSize="l"
                     >
-                        <span class="pl-2">Starting audio_clip...</span>
+                        <span class="pl-2">Starting event...</span>
                     </VLoading>
-
-                    <span v-else>
-                        Start audio_clip
+                    <span v-show="!is_submitting">
+                        Start event
                     </span>
                 </div>
 
                 <div v-else-if="propIsOriginator === false">
 
                     <VLoading
-                        v-if="is_submitting"
+                        v-show="is_submitting"
                         propElementSize="l"
                     >
                         <span class="pl-2">Creating reply...</span>
                     </VLoading>
-
-                    <span v-else>
+                    <span v-show="!is_submitting">
                         Create reply
                     </span>
                 </div>
@@ -155,7 +153,7 @@
     export default defineComponent({
         data() {
             return {
-                audio_clip_name: "",
+                event_name: "",
 
                 is_audio_clip_tone_menu_open: false, //updates only from VAudioClipToneField to VAudioClipToneMenu, maybe use vuex
                 audio_clip_tone_choice: null as AudioClipToneTypes|null,
@@ -218,7 +216,7 @@
                     this.propCanSubmit === true &&
                     this.is_submitting === false &&
                     (
-                        (this.propIsOriginator === true && this.audio_clip_name.trim() !== '') ||
+                        (this.propIsOriginator === true && this.event_name.trim() !== '') ||
                         (this.propIsOriginator === false && this.propEventId !== null)
                     ) &&
                     this.audio_clip_tone_choice !== null &&
@@ -257,10 +255,10 @@
                 data.append('audio_clip_tone_id', JSON.stringify((this.audio_clip_tone_choice as AudioClipToneTypes)['id']));
                 data.append('audio_file', this.getPreparedFileForSubmit());
 
-                if(this.propIsOriginator === true && this.audio_clip_name.trim() !== ''){
+                if(this.propIsOriginator === true && this.event_name.trim() !== ''){
 
                     //originator, paired data
-                    data.append('event_name', this.audio_clip_name);
+                    data.append('event_name', this.event_name);
 
                 }else if(this.propIsOriginator === false && this.propEventId !== null){
 
@@ -339,7 +337,7 @@
             },
             handleNewAudioClipName(new_value:string) : void {
 
-                this.audio_clip_name = new_value;
+                this.event_name = new_value;
             },
         },
         mounted(){
