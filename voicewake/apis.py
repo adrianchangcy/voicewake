@@ -66,7 +66,7 @@ class TestAPI(generics.GenericAPIView):
                 },
                 'message': 'testo'
             },
-            status=status.HTTP_418_IM_A_TEAPOT
+            status=status.HTTP_200_OK
         )
 
 
@@ -458,7 +458,7 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
 
     serializer_class = None
     permission_classes = []
-    current_context = ""
+    current_context:Literal['log_in', 'sign_up'] = "log_in"
 
 
     def __init__(self, *args, **kwargs):
@@ -472,6 +472,9 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
 
     def verify_and_log_in(self, request, user_instance, handle_user_otp_class:HandleUserOTP, otp):
 
+        #random delay to mitigate single-threaded brute force attack
+        time.sleep(random.uniform(0.7, 3.5))
+
         #reminder that verify_otp() does all the checks for us
         if handle_user_otp_class.verify_otp(otp) is False:
 
@@ -481,9 +484,37 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
 
             if verify_otp_timeout_s > 0:
 
-                return get_default_verify_otp_timed_out_response(verify_otp_timeout_s)
+                #timed out and wrong OTP
+                message = "Timed out from too many %s attempts. Try again in " + get_pretty_datetime(verify_otp_timeout_s) + "."
 
-            return get_default_verify_otp_response()
+                if self.current_context == 'log_in':
+                    message = message % ("login")
+                elif self.current_context == 'sign_up':
+                    message = message % ("sign-up")
+
+                return Response(
+                    data={
+                        'message': message,
+                        'verify_otp_success': False
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            #not timed out but wrong OTP
+            message = "Incorrect %s code."
+
+            if self.current_context == 'log_in':
+                message = message % ("login")
+            elif self.current_context == 'sign_up':
+                message = message % ("sign-up")
+
+            return Response(
+                data={
+                    'message': message,
+                    'verify_otp_success': False
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         #OTP verified, continue
 
@@ -540,34 +571,14 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
         user_instance = None
 
         #get user
-        #reminder that user shall always exist if following through account creation
+
         try:
 
             user_instance = get_user_model().objects.get(email_lowercase=new_data['email'].lower())
 
         except get_user_model().DoesNotExist:
 
-            if self.current_context == "log_in":
-
-                #we do this to obscure clues that a user may or may not exist
-                if new_data['is_requesting_new_otp'] is True:
-                
-                    #no need to notify non-registered emails on login attempts
-                    #prevents the attack where our website is used as the source of DDOS (towards Gmail in this case)
-    
-                    #fake delay
-                    #during testing, send_mail() takes quite long, around 2+ secs
-                    time.sleep(random.uniform(0.7, 3.5))
-    
-                    return get_default_create_otp_response(email=new_data['email'])
-                
-                else:
-
-                    return get_default_verify_otp_response()
-                
-            elif self.current_context == "sign_up":
-
-                user_instance = get_user_model().objects.create_user(email=new_data['email'])
+            user_instance = get_user_model().objects.create_user(email=new_data['email'])
 
         #proceed with valid user_instance
         
@@ -577,10 +588,10 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
             handle_user_otp_class = HandleUserOTP(
                 user_instance,
                 settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-                settings.OTP_CREATED_TIMEOUT_SECONDS, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
+                settings.OTP_CREATION_TIMEOUT_SECONDS, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
                 settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
             )
-            handle_user_otp_class.get_or_create_user_otp_instance()
+            handle_user_otp_class.guarantee_user_otp_instance()
 
             #handle request for new OTP
             if new_data['is_requesting_new_otp'] is True:
@@ -607,15 +618,49 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
                         new_otp
                     )
 
+                    #email sent
+                    message = "%s code has been sent to " + new_data['email'] + "."
+
+                    if self.current_context == 'log_in':
+                        message = message % ("Login")
+                    elif self.current_context == 'sign_up':
+                        message = message % ("Sign-up")
+
+                    return Response(
+                        data={
+                            'message': message,
+                        },
+                        status=status.HTTP_200_OK
+                    )
+
                 else:
 
-                    #fake delay
-                    time.sleep(random.uniform(0.7, 3.5))
+                    #could not generate OTP
 
-                return get_default_create_otp_response(new_data['email'])
+                    otp_creation_timeout_s = handle_user_otp_class.get_otp_creation_timeout_seconds_left()
 
-            #continue to verifying OTP and logging in
-            #will always return Response()
+                    if otp_creation_timeout_s > 0:
+
+                        #timed out from creating otp
+                        message = "Timed out from too many codes sent. Try again in " + get_pretty_datetime(otp_creation_timeout_s) + "."
+
+                        return Response(
+                            data={
+                                'message': message,
+                            },
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    
+                    else:
+
+                        #not supposed to reach here
+                        raise custom_error(
+                            IntegrityError,
+                            dev_message="Could not generate OTP for user, but user is unexpectedly not timed out."
+                        )
+
+            #not requesting for OTP, continue
+
             return self.verify_and_log_in(request, user_instance, handle_user_otp_class, new_data['otp'])
 
 

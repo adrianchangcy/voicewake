@@ -1537,8 +1537,6 @@
         },
         mounted(){
 
-            localStorage.removeItem('playback_volume');
-
             if(this.is_debug === true){
 
                 console.log(

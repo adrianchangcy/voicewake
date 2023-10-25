@@ -132,13 +132,6 @@
             </div>
         </div>
 
-        <!--item-size seems to work like gap size in px, not sure, but it's not needed for DynamicScroller-->
-        <!--page-mode is needed here, else it behaves like flex, i.e. DynamicScroller doesn't know when to reuse components-->
-        <!--arbitrarily large buffer value solves:
-            -whitespace before render that is the same size as "previous elements' height combined" after going past 1st/2nd item
-            -no item for keyboard focus, due to being unrendered
-        -->
-        <!--as long as data persists, backward and close-reopen navigations accurately continue to where the user had left off-->
         <DynamicScroller
             v-show="filtered_events_store.getEventsForBrowsing.length > 0"
             :items="filtered_events_store.getEventsForBrowsing"
@@ -152,12 +145,14 @@
             <template #default="{ item, index, active }">
 
                 <!--events-->
+                <!--DynamicScrollerItem has weird right side overflow clip-->
+                <!--px-1 is used to fix it, so other outer elements will require px-1 too-->
                 <DynamicScrollerItem
                     :item="item"
                     :index="index"
                     :active="active"
                 >
-                    <div class="pb-4">
+                    <div class="px-1 pb-4">
                         <EventCard
                             :prop-show-title="true"
                             :prop-event="item"
@@ -169,71 +164,73 @@
             </template>
         </DynamicScroller>
 
-        <!--loading events-->
-        <TransitionFade>
-            <EventCardSkeleton
-                v-show="is_fetching"
-                :prop-has-border="true"
-                :prop-audio-clip-quantity="2"
-            />
-        </TransitionFade>
-
-        <!--dialogs-->
-        <div class="pt-8 relative">
-
-            <TransitionGroupFade :prop-has-absolute="true">
-
-                <!--no events-->
-                <VDialogPlain
-                    v-show="canShowEventsEmptyMessage || canShowNoNewEventsMessage"
-                    :prop-has-border="false"
-                    :prop-has-auto-spacing="false"
-                    class="w-full"
-                >
-                    <template #logo>
-                        <i class="far fa-face-meh-blank" aria-hidden="true"></i>
-                    </template>
-                    <template #title>
-                        <span v-show="canShowEventsEmptyMessage">No recordings found.</span>
-                        <span v-show="canShowNoNewEventsMessage">You've reached the end.</span>
-                    </template>
-                    <template #content>
-                        <span>The filters can be changed to explore other content!</span>
-                    </template>
-                </VDialogPlain>
-
-                <!--reconsider loading more audio_clips -->
-                <VDialogPlain
-                    v-show="canPauseScrolling"
-                    :prop-has-auto-spacing="true"
+        <div class="px-1">
+            <!--loading events-->
+            <TransitionFade>
+                <EventCardSkeleton
+                    v-show="is_fetching"
                     :prop-has-border="true"
-                    class="w-full"
-                >
-                    <template #title>
-                        <span>
-                            {{ getPlayedAudioClipsLength }} recordings played.
-                        </span>
-                    </template>
-                    <template #content>
-                        <div class="flex flex-col gap-4">
+                    :prop-audio-clip-quantity="2"
+                />
+            </TransitionFade>
+
+            <!--dialogs-->
+            <div class="pt-8 relative">
+
+                <TransitionGroupFade :prop-has-absolute="true">
+
+                    <!--no events-->
+                    <VDialogPlain
+                        v-show="canShowEventsEmptyMessage || canShowNoNewEventsMessage"
+                        :prop-has-border="false"
+                        :prop-has-auto-spacing="false"
+                        class="w-full"
+                    >
+                        <template #logo>
+                            <i class="far fa-face-meh-blank" aria-hidden="true"></i>
+                        </template>
+                        <template #title>
+                            <span v-show="canShowEventsEmptyMessage">No recordings found.</span>
+                            <span v-show="canShowNoNewEventsMessage">You've reached the end.</span>
+                        </template>
+                        <template #content>
+                            <span>The filters can be changed to explore other content!</span>
+                        </template>
+                    </VDialogPlain>
+
+                    <!--reconsider loading more audio_clips -->
+                    <VDialogPlain
+                        v-show="canPauseScrolling"
+                        :prop-has-auto-spacing="true"
+                        :prop-has-border="true"
+                        class="w-full"
+                    >
+                        <template #title>
                             <span>
-                                Don't forget to take a break!
+                                {{ getPlayedAudioClipsLength }} recordings played.
                             </span>
-                            <VActionSpecial
-                                @click="continueScrolling()"
-                                prop-element="button"
-                                prop-element-size="s"
-                                prop-font-size="s"
-                                :prop-is-icon-only="false"
-                                type="button"
-                                class="w-full"
-                            >
-                                <span class="mx-auto">Load more recordings</span>
-                            </VActionSpecial>
-                        </div>
-                    </template>
-                </VDialogPlain>
-            </TransitionGroupFade>
+                        </template>
+                        <template #content>
+                            <div class="flex flex-col gap-4">
+                                <span>
+                                    Don't forget to take a break!
+                                </span>
+                                <VActionSpecial
+                                    @click="continueScrolling()"
+                                    prop-element="button"
+                                    prop-element-size="s"
+                                    prop-font-size="s"
+                                    :prop-is-icon-only="false"
+                                    type="button"
+                                    class="w-full"
+                                >
+                                    <span class="mx-auto">Load more recordings</span>
+                                </VActionSpecial>
+                            </div>
+                        </template>
+                    </VDialogPlain>
+                </TransitionGroupFade>
+            </div>
         </div>
 
         <div id="load-more-events-observer-target"></div>
@@ -672,6 +669,11 @@
             },
         },
         beforeMount(){
+
+            //prevents auto-scroll
+            //DynamicScroller handles "auto" well, provided that store data is the same
+            //however, since store always changes/resets for latest content, "auto" is terrible
+            history.scrollRestoration = "manual";
 
             //get username
             if(this.propIsUserProfilePage === true){
