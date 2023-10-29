@@ -98,46 +98,108 @@ custom_function_handle_audio_clip_likes_dislikes_count = '''
     CREATE OR REPLACE FUNCTION handle_audio_clip_likes_dislikes_count() RETURNS TRIGGER AS $$
         BEGIN
             IF (TG_OP = 'INSERT') THEN
+
                 IF (NEW.is_liked IS TRUE) THEN
+
                     UPDATE audio_clips
                     SET like_count = like_count + 1
                     WHERE id = NEW.audio_clip_id
                     ;
+
+                    UPDATE event_likes_dislikes
+                    SET like_count = event_likes_dislikes.like_count + 1
+					FROM audio_clips
+                    WHERE audio_clips.id = NEW.audio_clip_id
+					AND event_likes_dislikes.event_id = audio_clips.event_id
+                    ;
+
                 ELSIF (NEW.is_liked IS FALSE) THEN
+
                     UPDATE audio_clips
                     SET dislike_count = dislike_count + 1
                     WHERE id = NEW.audio_clip_id
                     ;
+
+                    UPDATE event_likes_dislikes
+                    SET dislike_count = event_likes_dislikes.dislike_count + 1
+					FROM audio_clips
+                    WHERE audio_clips.id = NEW.audio_clip_id
+					AND event_likes_dislikes.event_id = audio_clips.event_id
+                    ;
+
                 END IF;
                 RETURN NEW;
+
             ELSIF (TG_OP = 'UPDATE') THEN
+
                 IF (OLD.is_liked IS FALSE AND NEW.is_liked IS TRUE) THEN
+
                     UPDATE audio_clips
                     SET like_count = like_count + 1,
                     dislike_count = dislike_count - 1
                     WHERE id = NEW.audio_clip_id
                     ;
+
+                    UPDATE event_likes_dislikes
+                    SET like_count = event_likes_dislikes.like_count + 1,
+					dislike_count = event_likes_dislikes.dislike_count - 1
+					FROM audio_clips
+                    WHERE audio_clips.id = NEW.audio_clip_id
+					AND event_likes_dislikes.event_id = audio_clips.event_id
+                    ;
+
                 ELSIF (OLD.is_liked IS TRUE AND NEW.is_liked IS FALSE) THEN
+
                     UPDATE audio_clips
                     SET like_count = like_count - 1,
                     dislike_count = dislike_count + 1
                     WHERE id = NEW.audio_clip_id
                     ;
+
+                    UPDATE event_likes_dislikes
+                    SET like_count = event_likes_dislikes.like_count - 1,
+					dislike_count = event_likes_dislikes.dislike_count + 1
+					FROM audio_clips
+                    WHERE audio_clips.id = NEW.audio_clip_id
+					AND event_likes_dislikes.event_id = audio_clips.event_id
+                    ;
+
                 END IF;
                 RETURN NEW;
+
             ELSIF (TG_OP = 'DELETE') THEN
+
                 IF (OLD.is_liked IS TRUE) THEN
+
                     UPDATE audio_clips
                     SET like_count = like_count - 1
                     WHERE id = OLD.audio_clip_id
                     ;
+
+                    UPDATE event_likes_dislikes
+                    SET like_count = event_likes_dislikes.like_count - 1
+					FROM audio_clips
+                    WHERE audio_clips.id = OLD.audio_clip_id
+					AND event_likes_dislikes.event_id = audio_clips.event_id
+                    ;
+
                 ELSIF (OLD.is_liked IS FALSE) THEN
+
                     UPDATE audio_clips
                     SET dislike_count = dislike_count - 1
                     WHERE id = OLD.audio_clip_id
                     ;
+
+                    UPDATE event_likes_dislikes
+                    SET dislike_count = event_likes_dislikes.dislike_count - 1
+					FROM audio_clips
+                    WHERE audio_clips.id = OLD.audio_clip_id
+					AND event_likes_dislikes.event_id = audio_clips.event_id
+                    ;
+
                 END IF;
                 RETURN OLD;
+
             END IF;
             RETURN NULL;
         END;

@@ -13,6 +13,7 @@ from django.template.loader import get_template
 from django.core.mail import send_mail
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.core.files.base import ContentFile
+from django.db import connection
 
 #Python libraries
 from datetime import datetime, timezone, timedelta, tzinfo
@@ -28,6 +29,9 @@ import json
 from typing import Union
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 from typing import Literal
+import base64
+from urllib.parse import quote, unquote
+import random
 
 #app files
 from .models import *
@@ -236,12 +240,14 @@ def prevent_events_from_showing_twice_at_front_page(user, events:list):
             user_events.append(user_event)
 
     #create rows if they don't yet exist
-    UserEvents.objects.bulk_create(
+    #ignore_conflicts=True to skip if row already exists
+    bulk_user_events = UserEvents.objects.bulk_create(
         user_events,
         ignore_conflicts=True
     )
+    list(bulk_user_events)
 
-    #do extra update just in case row already existed during bulk_create
+    #update
     UserEvents.objects.filter(
         user=user,
         event_id__in=event_ids
@@ -287,6 +293,57 @@ def get_user_create_events_and_replies_cooldown_s(user, context:Literal['create_
     difference_s = ((datetime_checkpoint + timedelta(days=1)) - datetime.now().astimezone(tz=ZoneInfo('UTC'))).total_seconds()
 
     return math.ceil(difference_s)
+
+
+def get_datetime_between(timeframe:Literal['day', 'week', 'month', 'all']='all'):
+
+    datetime_checkpoint_timedelta = {
+        'day': timedelta(days=1),
+        'week': timedelta(days=7),
+        'month': timedelta(days=31)
+    }
+
+    #calculate time range
+    #leave datetime_from as '' if you want "of all time"
+    datetime_from = ''
+    datetime_to = get_datetime_now(True)
+
+    #determine earliest possible datetime
+    if timeframe in datetime_checkpoint_timedelta:
+
+        datetime_from = (get_datetime_now() - datetime_checkpoint_timedelta[timeframe]).strftime('%Y-%m-%d %H:%M:%S %z')
+
+    else:
+
+        #getting earliest audio_clips.when_created adds 5-10ms
+        #using custom function get_id_of_events_by_when_created() adds 40ms+
+        #arbitrary datetime that is guaranteed beyond earliest audio_clips row is the best so far
+        datetime_from = '2020-01-01 01:01:01 +00'
+
+    return {
+        'datetime_from': datetime_from,
+        'datetime_to': datetime_to
+    }
+
+
+def encodeURLData(token_data)->str:
+
+    token_data = json.dumps(token_data)
+    token_data = bytes(token_data, 'utf8')
+    token_data = base64.urlsafe_b64encode(token_data)
+    token_data = quote(token_data)
+
+    return token_data
+
+
+def decodeURLData(token_data:str):
+
+    token_data = unquote(token_data)
+    token_data = base64.urlsafe_b64decode(token_data)
+    token_data = bytes.decode(token_data, 'utf8')
+    token_data = json.loads(token_data)
+
+    return token_data
 
 
 #not advisable to group functions via class,
@@ -336,610 +393,341 @@ class PrepareTestData:
 
             raise RuntimeError('You cannot use PrepareTestData when settings.DEBUG is not True.')
 
+        #ensure minimum 10 users
 
-    def prepare_users(self, user_quantity:int, offset:int=0):
+        user_count = get_user_model().objects.all().count()
 
-        #offset is for when you add more users on top of existing users made with this same function
+        if user_count < 10:
 
-        for x in range(offset, offset + user_quantity):
+            for x in range(user_count, 10):
 
-            get_user_model().objects.create_user(email="user"+str(x)+"@gmail.com", username="user"+str(x))
+                email = 'user' + str(x) + '@gmail.com'
+                username = 'useR' + str(x)
 
+                get_user_model().objects.create_user(
+                    email=email,
+                    username=username
+                )
 
-    def prepare_test_data_events(
-        self,
-        originator_username, responder_username='',
-        incomplete_count=0, completed_count=0,
-    ):
-        
-        if completed_count > 0 and len(responder_username) == 0:
+        self.bulk_users = get_user_model().objects.all()[0:10]
+        self.default_originator = self.bulk_users[0]
+        self.default_responder = self.bulk_users[1]
 
-            raise ValueError('Requested completed events but missing responder_username.')
-
-        #prepare fake audio column values
-        audio_file = "/audio_test.mp3"
-        audio_volume_peaks = [
+        self.audio_file = "/audio_test.mp3"
+        self.audio_volume_peaks = [
             0.32, 0.47, 0.76, 0.75, 0.79, 0.59, 0.78, 0.83, 0.85, 0.77,
             0.62, 0.69, 0.97, 0.96, 0.97, 0.96, 0.96, 0.63, 0.47, 0.0
         ]
-        audio_duration_s = 26
-
-        #prepare relevant values
-        datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
-        audio_clip_role_originator = AudioClipRoles.objects.get(audio_clip_role_name='originator')
-        audio_clip_role_responder = AudioClipRoles.objects.get(audio_clip_role_name='responder')
-        originator_user = get_user_model().objects.get(username_lowercase=originator_username.lower())
-        responder_user = None
-        generic_status_ok = GenericStatuses.objects.get(generic_status_name='ok')
-        generic_status_incomplete = GenericStatuses.objects.get(generic_status_name='incomplete')
-        generic_status_completed = GenericStatuses.objects.get(generic_status_name='completed')
-        audio_clip_tone = AudioClipTones.objects.first()
-
-        if len(responder_username) > 0:
-
-            responder_user = get_user_model().objects.get(username_lowercase=responder_username.lower())
+        self.audio_duration_s = 26
+        self.datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
+        self.audio_clip_role_originator = AudioClipRoles.objects.get(audio_clip_role_name='originator')
+        self.audio_clip_role_responder = AudioClipRoles.objects.get(audio_clip_role_name='responder')
+        self.generic_status_ok = GenericStatuses.objects.get(generic_status_name='ok')
+        self.generic_status_incomplete = GenericStatuses.objects.get(generic_status_name='incomplete')
+        self.generic_status_completed = GenericStatuses.objects.get(generic_status_name='completed')
+        self.audio_clip_tone = AudioClipTones.objects.first()
 
 
-        #create incomplete audio_clip rooms
+    def create_incomplete_events(self, originator, multiplier=0):
+
+        #incomplete
+
+        incomplete_count = 10 * multiplier
+
+        if incomplete_count % 10 != 0:
+
+            raise ValueError('Incomplete_count must be divisible by 10.')
+
+        
         bulk_events = []
+        bulk_originator_audio_clips = []
+        bulk_event_likes_dislikes = []
+
+        #events
 
         for x in range(0, incomplete_count):
 
-            event_name = "incomplete #" + str(x) + " by " + originator_username
+            event_name = "incomplete #" + str(x) + " by " + originator.username
 
             bulk_events.append(Events(
                 event_name=event_name,
-                created_by=originator_user,
-                generic_status=generic_status_incomplete,
+                created_by=originator,
+                generic_status=self.generic_status_incomplete,
             ))
 
+            print('Processing #' + str(x) + ' bulk_events')
+        
         bulk_events = Events.objects.bulk_create(bulk_events)
 
-        #create incomplete audio_clips
-        bulk_audio_clips = []
-
-        for x in range(0, incomplete_count):
-
-            bulk_audio_clips.append(AudioClips(
-                user=originator_user,
-                audio_clip_role=audio_clip_role_originator,
-                audio_file=audio_file,
-                audio_volume_peaks=audio_volume_peaks,
-                audio_duration_s=audio_duration_s,
-                generic_status=generic_status_ok,
-                event=bulk_events[x],
-                audio_clip_tone=audio_clip_tone
-            ))
-
-        AudioClips.objects.bulk_create(bulk_audio_clips)
-
-        #create completed audio_clip rooms
-        bulk_events = []
-
-        for x in range(0, completed_count):
-
-            event_name = "completed #" + str(x) + " by " + originator_username
-
-            bulk_events.append(Events(
-                event_name=event_name,
-                created_by=originator_user,
-                generic_status=generic_status_completed,
-            ))
-
-        bulk_events = Events.objects.bulk_create(bulk_events)
-
-        #create completed audio_clips
-        bulk_audio_clips = []
-
-        for x in range(0, completed_count):
-
-            bulk_audio_clips.append(AudioClips(
-                user=originator_user,
-                audio_clip_role=audio_clip_role_originator,
-                audio_file=audio_file,
-                audio_volume_peaks=audio_volume_peaks,
-                audio_duration_s=audio_duration_s,
-                generic_status=generic_status_ok,
-                event=bulk_events[x],
-                audio_clip_tone=audio_clip_tone
-            ))
-
-            bulk_audio_clips.append(AudioClips(
-                user=responder_user,
-                audio_clip_role=audio_clip_role_responder,
-                audio_file=audio_file,
-                audio_volume_peaks=audio_volume_peaks,
-                audio_duration_s=audio_duration_s,
-                generic_status=generic_status_ok,
-                event=bulk_events[x],
-                audio_clip_tone=audio_clip_tone
-            ))
-
-        AudioClips.objects.bulk_create(bulk_audio_clips)
-
-        #create user_events to prevent responders from queuing the same originators twice
-        bulk_user_events = []
+        #event_likes_dislikes
 
         for event in bulk_events:
 
-            bulk_user_events.append(
-                UserEvents(
-                    event=event,
-                    user=responder_user
-                )
-            )
-
-        bulk_user_events = UserEvents.objects.bulk_create(bulk_user_events)
-
-
-    def prepare_test_data_one_user_likes_dislikes(
-        self, action_username, username_of_audio_clips, like_percentage, dislike_percentage
-    ):
-        
-        if (like_percentage + dislike_percentage) > 1:
-
-            raise ValueError('like_percentage and dislike_percentage can only total from 0 to 1')
-        
-        action_user = get_user_model().objects.get(username_lowercase=action_username)
-        user_of_audio_clips = get_user_model().objects.get(username_lowercase=username_of_audio_clips)
-        datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
-
-        #get audio_clips
-        audio_clips = AudioClips.objects.filter(user=user_of_audio_clips)
-
-        if len(audio_clips) == 0:
-
-            raise AudioClips.DoesNotExist
-
-        #create likes
-        bulk_likes = []
-        likes_floor = math.floor(like_percentage * len(audio_clips))
-
-        for x in range(0, likes_floor):
-
-            bulk_likes.append(
-                AudioClipLikesDislikes(
-                    audio_clip=audio_clips[x],
-                    user=action_user,
-                    is_liked=True,
-                )
-            )
-
-            #update count
-            audio_clips[x].like_count += 1
-
-        AudioClipLikesDislikes.objects.bulk_create(bulk_likes)
-
-        #create dislikes
-        bulk_dislikes = []
-
-        for x in range(likes_floor, len(audio_clips)):
-
-            bulk_dislikes.append(
-                AudioClipLikesDislikes(
-                    audio_clip=audio_clips[x],
-                    user=action_user,
-                    is_liked=False,
-                )
-            )
-
-            #update count
-            audio_clips[x].dislike_count += 1
-
-        AudioClipLikesDislikes.objects.bulk_create(bulk_dislikes)
-
-        #update count
-        AudioClips.objects.bulk_update(audio_clips, ["like_count", "dislike_count"])
-
-
-    #your target user should not have existing audio_clips
-    def prepare_test_data_for_bans(
-        self, target_username:str='', backup_username:str='',
-        audio_clips_to_ban_quantity:int=10, audio_clips_not_to_ban_quantity:int=6,
-        reporting_user_quantity:int=1
-    ):
-
-        if (audio_clips_to_ban_quantity % 2) != 0 or (audio_clips_not_to_ban_quantity % 2) != 0:
-
-            raise ValueError('Make sure audio_clips_to_ban_quantity and audio_clips_not_to_ban_quantity are even numbers for consistency.')
-
-        expected_audio_clips_count = audio_clips_to_ban_quantity + audio_clips_not_to_ban_quantity
-
-        self.prepare_test_data_events(
-            originator_username=target_username,
-            incomplete_count=int(expected_audio_clips_count/2),
-            completed_count=0,
-        )
-
-        self.prepare_test_data_events(
-            originator_username=backup_username,
-            responder_username=target_username,
-            incomplete_count=0,
-            completed_count=int(expected_audio_clips_count/2),
-        )
-
-        #get audio_clips
-        audio_clips = AudioClips.objects.filter(user__username_lowercase=target_username.lower())
-
-        #excluding this causes bug
-        #i.e. audio_clips is treated as subquery in delete(), and for-loop executes audio_clips only after deletion
-        #hence AudioClipLikesDislikes violating unique constraint
-        print(str(len(audio_clips)) + ' audio_clips ready to evaluate')
-
-        #reset likes dislikes for these audio_clips
-        AudioClipLikesDislikes.objects.filter(audio_clip__in=audio_clips).delete()
-
-        #prepare to achieve like dislike ratio
-        bulk_audio_clip_likes_dislikes = []
-        bulk_audio_clip_reports = []
-        expected_like_count = math.floor((settings.BAN_AUDIO_CLIP_DISLIKE_COUNT / settings.BAN_AUDIO_CLIP_DISLIKE_RATIO) - settings.BAN_AUDIO_CLIP_DISLIKE_COUNT)
-        expected_dislike_count = settings.BAN_AUDIO_CLIP_DISLIKE_COUNT
-
-        #make sure we have sufficient users for dislike count
-        user_count = get_user_model().objects.all().count()
-
-        if user_count < (expected_like_count + expected_dislike_count + reporting_user_quantity):
-
-            self.prepare_users(
-                user_quantity=(expected_like_count + expected_dislike_count + reporting_user_quantity - user_count),
-                offset=user_count
-            )
-
-        #get users
-        users = get_user_model().objects.all().order_by('id')[:(expected_like_count + expected_dislike_count + reporting_user_quantity)]
-
-        #update AudioClips.when_created
-        when_created = get_datetime_now() - timedelta(seconds=(settings.BAN_AUDIO_CLIP_AGE_SECONDS * 2))
-
-        for x in range(audio_clips_to_ban_quantity):
-
-            #create likes
-            for xx in range(expected_like_count):
-
-                bulk_audio_clip_likes_dislikes.append(
-                    AudioClipLikesDislikes(
-                        user=users[xx],
-                        is_liked=True,
-                        audio_clip=audio_clips[x]
-                    )
-                )
-
-            #create dislikes
-            for xx in range(expected_like_count, (expected_like_count + expected_dislike_count)):
-
-                bulk_audio_clip_likes_dislikes.append(
-                    AudioClipLikesDislikes(
-                        user=users[xx],
-                        is_liked=False,
-                        audio_clip=audio_clips[x]
-                    )
-                )
-
-            #update audio_clips
-            audio_clips[x].when_created = when_created
-            audio_clips[x].is_banned = False
-
-            #create audio_clip_reports
-            for xx in range(
-                (expected_like_count + expected_dislike_count),
-                (expected_like_count + expected_dislike_count + reporting_user_quantity)
-            ):
-
-                bulk_audio_clip_reports.append(AudioClipReports(
-                    reported_audio_clip=audio_clips[x],
-                    user=users[xx]
-                ))
-
-        #update db
-        AudioClipLikesDislikes.objects.bulk_create(bulk_audio_clip_likes_dislikes)
-        AudioClips.objects.bulk_update(audio_clips, ('when_created', 'is_banned',))
-        AudioClipReports.objects.bulk_create(bulk_audio_clip_reports)
-
-        #to clear these data
-        '''
-            UPDATE audio_clips SET event_id=NULL WHERE is_banned IS TRUE;
-            DELETE FROM user_events WHERE event_id IN (SELECT event_id FROM audio_clips WHERE is_banned IS TRUE);
-            DELETE FROM events WHERE id NOT IN (SELECT event_id FROM audio_clips WHERE event_id IS NOT NULL);
-            DELETE FROM audio_clip_likes_dislikes WHERE audio_clip_id IN (SELECT id FROM audio_clips WHERE is_banned IS TRUE);
-            DELETE FROM audio_clips WHERE event_id IS NULL;
-            UPDATE voicewake_user SET banned_until=NULL WHERE username_lowercase='oompa';
-        '''
-
-        #to clear all data related to specific user in this context
-        '''
-            UPDATE audio_clips SET event_id=NULL WHERE event_id IN (
-                SELECT event_id FROM audio_clips WHERE user_id = (
-                    SELECT id FROM voicewake_user WHERE username_lowercase='oompa'
-                )
-            );
-            DELETE FROM user_events WHERE event_id NOT IN (SELECT event_id FROM audio_clips WHERE event_id IS NOT NULL);
-            DELETE FROM audio_clip_likes_dislikes WHERE audio_clip_id IN (SELECT id FROM audio_clips WHERE event_id IS NULL);
-            DELETE FROM events WHERE id NOT IN (SELECT event_id FROM audio_clips WHERE event_id IS NOT NULL);
-            DELETE FROM audio_clips WHERE event_id IS NULL;
-        '''
-
-
-    def prepare_test_data_for_blocking_users(self, username:str='', user_quantity:int=10):
-
-        #check if we have enough users, excluding the user blocking other users
-        if (get_user_model().objects.all().count() - 1) < user_quantity:
-
-            raise ValueError('Insufficient users.')
-        
-        #main user
-        main_user = get_user_model().objects.get(username_lowercase=username.lower())
-
-        #get users
-        users = get_user_model().objects.all().order_by('id')[:user_quantity]
-
-        blocked_users = []
-
-        for user in users:
-
-            blocked_users.append(UserBlocks(
-                user=main_user,
-                blocked_user=user
+            bulk_event_likes_dislikes.append(EventLikesDislikes(
+                event=event
             ))
 
-        UserBlocks.objects.bulk_create(blocked_users)
+        bulk_event_likes_dislikes = EventLikesDislikes.objects.bulk_create(bulk_event_likes_dislikes)
+
+        #audio_clips
+
+        for x in range(0, incomplete_count):
+
+            bulk_originator_audio_clips.append(AudioClips(
+                user=originator,
+                audio_clip_role=self.audio_clip_role_originator,
+                audio_file=self.audio_file,
+                audio_volume_peaks=self.audio_volume_peaks,
+                audio_duration_s=self.audio_duration_s,
+                generic_status=self.generic_status_ok,
+                event=bulk_events[x],
+                audio_clip_tone=self.audio_clip_tone
+            ))
+
+            print('Processing #' + str(x) + ' bulk_originator_audio_clips')
+
+        bulk_originator_audio_clips = AudioClips.objects.bulk_create(bulk_originator_audio_clips)
+
+        #update when_created
+
+        random_days = random.randrange(0, 30)
+        target_datetime = get_datetime_now() - timedelta(days=random_days)
+
+        for x in range(0, incomplete_count):
+
+            if x % 10 == 0:
+
+                random_days = random.randrange(0, 30)
+                target_datetime = get_datetime_now() - timedelta(days=random_days)
+
+            bulk_events[x].when_created = target_datetime
+            bulk_events[x].last_modified = target_datetime
+
+            bulk_originator_audio_clips[x].when_created = target_datetime
+            bulk_originator_audio_clips[x].last_modified = target_datetime
+
+            print('Processing #' + str(x) + ' bulk_events, bulk_originator_audio_clips')
+
+        Events.objects.bulk_update(bulk_events, ['when_created', 'last_modified'])
+        AudioClips.objects.bulk_update(bulk_originator_audio_clips, ['when_created', 'last_modified'])
+
+        #likes/dislikes
+
+        is_liked_options = [True, False]
+        bulk_audio_clip_likes_dislikes = []
+
+        for x in range(0, incomplete_count):
+
+            for user in self.bulk_users:
+
+                is_liked_roll = random.randrange(0, 3)
+
+                if is_liked_roll == 2:
+
+                    #skip if out of range for is_liked_options, i.e. null, no point inserting
+                    continue
+
+                bulk_audio_clip_likes_dislikes.append(
+                    AudioClipLikesDislikes(
+                        user=user,
+                        audio_clip=bulk_originator_audio_clips[x],
+                        is_liked=is_liked_options[is_liked_roll]
+                    )
+                )
+
+            print('Processing #' + str(x) + ' bulk_audio_clip_likes_dislikes')
+
+        AudioClipLikesDislikes.objects.bulk_create(bulk_audio_clip_likes_dislikes)
 
 
-    def prepare_test_data_for_frontend_browse(self):
+    def create_completed_events(self, originator, responder, multiplier=0):
 
-        #target user
-            #originator: 2 incomplete, 2 completed, 2 banned
-            #responder: 2 incomplete, 2 completed, 2 banned
+        #completed
 
-        #get users
-        target_user = get_user_model().objects.get(username_lowercase='user0')
-        backup_user = get_user_model().objects.get(username_lowercase='user1')
-        backup_user_2 = get_user_model().objects.get(username_lowercase='user2')
-        backup_user_3 = get_user_model().objects.get(username_lowercase='user3')
+        completed_count = 10 * multiplier
 
-        #prepare info for audio_clips
-        #prepare fake audio column values
-        audio_file = "/audio_test.mp3"
-        audio_volume_peaks = [
-            0.32, 0.47, 0.76, 0.75, 0.79, 0.59, 0.78, 0.83, 0.85, 0.77,
-            0.62, 0.69, 0.97, 0.96, 0.97, 0.96, 0.96, 0.63, 0.47, 0.0
-        ]
-        audio_duration_s = 26
+        if completed_count % 10 != 0:
 
-        #prepare relevant values
-        datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
-        audio_clip_role_originator = AudioClipRoles.objects.get(audio_clip_role_name='originator')
-        audio_clip_role_responder = AudioClipRoles.objects.get(audio_clip_role_name='responder')
-        generic_status_ok = GenericStatuses.objects.get(generic_status_name='ok')
-        generic_status_incomplete = GenericStatuses.objects.get(generic_status_name='incomplete')
-        generic_status_completed = GenericStatuses.objects.get(generic_status_name='completed')
-        generic_status_deleted = GenericStatuses.objects.get(generic_status_name='deleted')
-        audio_clip_tone = AudioClipTones.objects.first()
+            raise ValueError('Completed_count must be divisible by 10.')
 
-        def bulk_create_audio_clips(audio_clip_details):
+        bulk_events = []
+        bulk_originator_audio_clips = []
+        bulk_responder_audio_clips = []
+        bulk_event_likes_dislikes = []
 
-            bulk_audio_clips = []
+        #events
 
-            for row in audio_clip_details:
+        for x in range(0, completed_count):
 
-                bulk_audio_clips.append(AudioClips(
-                    user=row['user'],
-                    audio_clip_role=row['audio_clip_role'],
-                    audio_file=audio_file,
-                    audio_volume_peaks=audio_volume_peaks,
-                    audio_duration_s=audio_duration_s,
-                    event=row['event'],
-                    generic_status=row['generic_status'],
-                    is_banned=row['is_banned'],
-                    audio_clip_tone=audio_clip_tone
-                ))
+            event_name = "completed #" + str(x) + " by " + originator.username
 
-            list(AudioClips.objects.bulk_create(bulk_audio_clips))
+            bulk_events.append(Events(
+                event_name=event_name,
+                created_by=originator,
+                generic_status=self.generic_status_completed,
+            ))
 
-        audio_clip_details = []
+            print('Processing #' + str(x) + ' bulk_events')
+        
+        bulk_events = Events.objects.bulk_create(bulk_events)
 
-        #create 2 incomplete originator for target user
+        #event_likes_dislikes
 
-        event_1 = Events.objects.create(
-            event_name='target_user incomplete #1',
-            created_by=target_user,
-            generic_status=generic_status_incomplete,
-        )
-        event_2 = Events.objects.create(
-            event_name='target_user incomplete #2',
-            created_by=target_user,
-            generic_status=generic_status_incomplete,
-        )
+        for x, event in enumerate(bulk_events):
 
-        audio_clip_details = [
-            {'event': event_1, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event': event_2, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
-        ]
+            bulk_event_likes_dislikes.append(EventLikesDislikes(
+                event=event
+            ))
 
-        bulk_create_audio_clips(audio_clip_details)
+            print('Processing #' + str(x) + ' bulk_event_likes_dislikes')
 
-        #create 2 originator completed for target user
+        bulk_event_likes_dislikes = EventLikesDislikes.objects.bulk_create(bulk_event_likes_dislikes)
 
-        event_1 = Events.objects.create(
-            event_name='target_user completed #1',
-            created_by=target_user,
-            generic_status=generic_status_completed,
-        )
-        event_2 = Events.objects.create(
-            event_name='target_user completed #2',
-            created_by=target_user,
-            generic_status=generic_status_completed,
-        )
+        #audio_clips
 
-        audio_clip_details = [
-            {'event': event_1, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event': event_1, 'user': backup_user, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event': event_2, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event': event_2, 'user': backup_user, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
-        ]
+        for x in range(0, completed_count):
 
-        bulk_create_audio_clips(audio_clip_details)
+            bulk_originator_audio_clips.append(AudioClips(
+                user=originator,
+                audio_clip_role=self.audio_clip_role_originator,
+                audio_file=self.audio_file,
+                audio_volume_peaks=self.audio_volume_peaks,
+                audio_duration_s=self.audio_duration_s,
+                generic_status=self.generic_status_ok,
+                event=bulk_events[x],
+                audio_clip_tone=self.audio_clip_tone
+            ))
 
-        #create 2 completed, but originator is banned
+            bulk_responder_audio_clips.append(AudioClips(
+                user=responder,
+                audio_clip_role=self.audio_clip_role_originator,
+                audio_file=self.audio_file,
+                audio_volume_peaks=self.audio_volume_peaks,
+                audio_duration_s=self.audio_duration_s,
+                generic_status=self.generic_status_ok,
+                event=bulk_events[x],
+                audio_clip_tone=self.audio_clip_tone
+            ))
 
-        event_1 = Events.objects.create(
-            event_name='target_user completed, target_user banned #1',
-            created_by=target_user,
-            generic_status=generic_status_deleted,
-        )
-        event_2 = Events.objects.create(
-            event_name='target_user completed, target_user banned #2',
-            created_by=target_user,
-            generic_status=generic_status_deleted,
-        )
+            print('Processing #' + str(x) + ' bulk_originator_audio_clips, bulk_responder_audio_clips')
 
-        audio_clip_details = [
-            {'event': event_1, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event': event_1, 'user': backup_user, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event': event_2, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event': event_2, 'user': backup_user, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
-        ]
+        bulk_originator_audio_clips = AudioClips.objects.bulk_create(bulk_originator_audio_clips)
+        bulk_responder_audio_clips = AudioClips.objects.bulk_create(bulk_responder_audio_clips)
 
-        bulk_create_audio_clips(audio_clip_details)
+        #update when_created
 
-        #create 2 completed, but responder is banned
+        random_days = random.randrange(0, 30)
+        target_datetime = get_datetime_now() - timedelta(days=random_days)
 
-        event_1 = Events.objects.create(
-            event_name='target_user completed, backup_user banned #1',
-            created_by=target_user,
-            generic_status=generic_status_incomplete,
-        )
-        event_2 = Events.objects.create(
-            event_name='target_user completed, backup_user banned #2',
-            created_by=target_user,
-            generic_status=generic_status_incomplete,
-        )
+        for x in range(0, completed_count):
 
-        audio_clip_details = [
-            {'event': event_1, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event': event_1, 'user': backup_user, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event': event_2, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event': event_2, 'user': backup_user, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
-        ]
+            if x % 10 == 0:
 
-        bulk_create_audio_clips(audio_clip_details)
+                random_days = random.randrange(0, 30)
+                target_datetime = get_datetime_now() - timedelta(days=random_days)
 
-        #create 2 completed, each has 2 banned responders previously, then 1 responder
+            bulk_events[x].when_created = target_datetime
+            bulk_events[x].last_modified = target_datetime
 
-        event_1 = Events.objects.create(
-            event_name='target_user completed, 2 banned responses, backup_user responded #1',
-            created_by=target_user,
-            generic_status=generic_status_completed,
-        )
-        event_2 = Events.objects.create(
-            event_name='target_user completed, 2 banned responses, backup_user responded #2',
-            created_by=target_user,
-            generic_status=generic_status_completed,
-        )
+            bulk_originator_audio_clips[x].when_created = target_datetime
+            bulk_originator_audio_clips[x].last_modified = target_datetime
 
-        audio_clip_details = [
-            {'event': event_1, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event': event_1, 'user': backup_user_2, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event': event_1, 'user': backup_user_3, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event': event_1, 'user': backup_user, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event': event_2, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event': event_2, 'user': backup_user_2, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event': event_2, 'user': backup_user_3, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event': event_2, 'user': backup_user, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_ok, 'is_banned': False},
-        ]
+            bulk_responder_audio_clips[x].when_created = target_datetime
+            bulk_responder_audio_clips[x].last_modified = target_datetime
 
-        bulk_create_audio_clips(audio_clip_details)
+            print('Processing #' + str(x) + ' bulk_events, bulk_originator_audio_clips, bulk_responder_audio_clips')
 
-        #create 2 incomplete, each has 2 banned responders previously
+        Events.objects.bulk_update(bulk_events, ['when_created', 'last_modified'])
+        AudioClips.objects.bulk_update(bulk_originator_audio_clips, ['when_created', 'last_modified'])
+        AudioClips.objects.bulk_update(bulk_responder_audio_clips, ['when_created', 'last_modified'])
 
-        event_1 = Events.objects.create(
-            event_name='target_user incomplete, 2 responses banned #1',
-            created_by=target_user,
-            generic_status=generic_status_incomplete,
-        )
-        event_2 = Events.objects.create(
-            event_name='target_user incomplete, 2 responses banned #2',
-            created_by=target_user,
-            generic_status=generic_status_incomplete,
-        )
+        #likes/dislikes
 
-        audio_clip_details = [
-            {'event': event_1, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event': event_1, 'user': backup_user_2, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event': event_1, 'user': backup_user_3, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event': event_2, 'user': target_user, 'audio_clip_role': audio_clip_role_originator, 'generic_status': generic_status_ok, 'is_banned': False},
-            {'event': event_2, 'user': backup_user_2, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
-            {'event': event_2, 'user': backup_user_3, 'audio_clip_role': audio_clip_role_responder, 'generic_status': generic_status_deleted, 'is_banned': True},
-        ]
+        is_liked_options = [True, False]
+        bulk_audio_clip_likes_dislikes = []
 
-        bulk_create_audio_clips(audio_clip_details)
+        for x in range(0, completed_count):
+
+            for user in self.bulk_users:
+
+                is_liked_roll = random.randrange(0, 3)
+
+                if is_liked_roll == 2:
+
+                    #skip if out of range for is_liked_options, i.e. null, no point inserting
+                    continue
+
+                bulk_audio_clip_likes_dislikes.append(
+                    AudioClipLikesDislikes(
+                        user=user,
+                        audio_clip=bulk_originator_audio_clips[x],
+                        is_liked=is_liked_options[is_liked_roll]
+                    )
+                )
+
+            print('Processing #' + str(x) + ' bulk_audio_clip_likes_dislikes')
+
+        AudioClipLikesDislikes.objects.bulk_create(bulk_audio_clip_likes_dislikes)
 
 
-    def do_quick_start(self, quantity_scale:int=1):
+    def with_existing_events_queue_reply_choices(self, multiplier=0):
 
-        if type(quantity_scale) != int:
+        target_count = 10 * multiplier
 
-            raise ValueError('quantity_scale must be int.')
+        bulk_incomplete_events = Events.objects.filter(
+            when_replied__isnull=True,
+            generic_status__generic_status_name='incomplete'
+        )[0:target_count]
 
-        #quantity_scale=1 is smallest
-        #100 can cause unresponsiveness
+        list(bulk_incomplete_events)
 
-        #create users
-        self.prepare_users(20*quantity_scale)
+        datetime_now = get_datetime_now()
+        bulk_event_reply_queues = []
 
-        #create incomplete/completed events
-        self.prepare_test_data_events(
-            originator_username="user0",
-            responder_username="user1",
-            incomplete_count=100*quantity_scale,
-            completed_count=50*quantity_scale,
-        )
-        self.prepare_test_data_events(
-            originator_username="user2",
-            responder_username="user3",
-            incomplete_count=20*quantity_scale,
-            completed_count=10*quantity_scale,
-        )
-        self.prepare_test_data_events(
-            originator_username="user4",
-            responder_username="user5",
-            incomplete_count=20*quantity_scale,
-            completed_count=10*quantity_scale,
-        )
+        for x, event in enumerate(bulk_incomplete_events):
 
-        #get users for bulk_create
-        bulk_users = get_user_model().objects.all()
+            when_locked = datetime_now - timedelta(minutes=random.randrange(1, settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS*2))
 
-        #apply likes/dislikes to audio_clips by only user0 and user1
-        bulk_audio_clip_like_dislikes = []
-        bulk_user_events = []
+            #ensure full datetime logic consistency
+            if when_locked < event.when_created:
 
-        for user in bulk_users:
+                when_locked = event.when_created
 
-            #create likes/dislikes
-            self.prepare_test_data_one_user_likes_dislikes(
-                action_username=user.username,
-                username_of_audio_clips="user0",
-                like_percentage=0.6,
-                dislike_percentage=0.4,
+            #ensure that users don't reply to their own events
+            random_responder = self.bulk_users[random.randrange(0, len(self.bulk_users))]
+
+            while random_responder.id == event.created_by.id:
+
+                random_responder = self.bulk_users[random.randrange(0, len(self.bulk_users))]
+
+            bulk_event_reply_queues.append(
+                EventReplyQueues(
+                    event=event,
+                    when_locked=when_locked,
+                    locked_for_user=random_responder,
+                    is_replying=False
+                )
             )
-            self.prepare_test_data_one_user_likes_dislikes(
-                action_username=user.username,
-                username_of_audio_clips="user1",
-                like_percentage=0.7,
-                dislike_percentage=0.3,
-            )
-            self.prepare_test_data_one_user_likes_dislikes(
-                action_username=user.username,
-                username_of_audio_clips="user2",
-                like_percentage=0.8,
-                dislike_percentage=0.2,
-            )
-            self.prepare_test_data_one_user_likes_dislikes(
-                action_username=user.username,
-                username_of_audio_clips="user3",
-                like_percentage=0.9,
-                dislike_percentage=0.1,
-            )
+
+            print('Processing #' + str(x) + ' bulk_event_reply_queues')
+
+        EventReplyQueues.objects.bulk_create(bulk_event_reply_queues)
+
+
+    def with_existing_events_confirm_reply_choice(self):
+
+        #must first queue from with_existing_events_queue_reply_choice()
+        EventReplyQueues.objects.update(is_replying=True)
+
+
+    def delete_all_event_reply_queues(self):
+
+        #does not affect Events
+        #provide this so that next with_existing_events_queue_reply_choices() call has no conflicts
+        EventReplyQueues.objects.all().delete()
+
+
+
 
 
 

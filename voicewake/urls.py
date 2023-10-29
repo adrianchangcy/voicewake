@@ -38,6 +38,8 @@ if settings.DEBUG is True:
         path('admin', admin.site.urls),
         path('__debug__/', include('debug_toolbar.urls')),
         path('api/test', apis.TestAPI.as_view(), name='test_api'),
+        path('api/test/<str:next_or_back>/<str:cursor_token>', apis.TestAPI.as_view(), name='test_next_or_back_and_token'),
+        path('api/test/<str:next_or_back>', apis.TestAPI.as_view(), name='test_next_or_back_no_token'),
         path('test', views.test_page, name='test_page'),
     ]
 

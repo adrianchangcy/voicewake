@@ -38,7 +38,7 @@ ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 
 #if you want to hide Django Debug Toolbar, put False
-SHOW_DJANGO_DEBUG_TOOLBAR = False
+SHOW_DJANGO_DEBUG_TOOLBAR = True
 DEBUG_TOOLBAR_CONFIG = {
     'SHOW_TOOLBAR_CALLBACK': lambda r: DEBUG is True and SHOW_DJANGO_DEBUG_TOOLBAR is True,
 }

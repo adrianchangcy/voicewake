@@ -134,6 +134,7 @@
 
         <DynamicScroller
             v-show="filtered_events_store.getEventsForBrowsing.length > 0"
+            @visible="restoreScrollY()"
             :items="filtered_events_store.getEventsForBrowsing"
             :min-item-size="2"
             :buffer="dynamic_scroller_buffer"
@@ -312,6 +313,9 @@
                 can_pause_scrolling: false,
                 scrolling_timeout: window.setTimeout(()=>{}, 0),
                 scrolling_checkpoint_px: 0,
+
+                store_scroll_position_timeout: window.setTimeout(()=>{}, 0),
+                has_restored_scroll_once: false,
 
                 infinite_scroll_observer: new IntersectionObserver(this.getInfiniteScrollCallback(), {threshold: 1}),
                 is_fetching: false,
@@ -667,13 +671,32 @@
                     this.dynamic_scroller_buffer = window.innerHeight * 2;
                 }, 200);
             },
+            async storeScrollPosition() : Promise<void> {
+
+                window.clearTimeout(this.store_scroll_position_timeout);
+
+                this.store_scroll_position_timeout = window.setTimeout(()=>{
+
+                    this.filtered_events_store.setLastScrollY(window.scrollY);
+
+                }, 250);
+            },
+            async restoreScrollY() : Promise<void> {
+
+                if(this.has_restored_scroll_once === false){
+
+                    //since stored scrollY is default 0, no need to check
+                    window.scroll(0, this.filtered_events_store.getLastScrollY);
+                    this.has_restored_scroll_once = true;
+                }
+            },
         },
         beforeMount(){
 
             //prevents auto-scroll
             //DynamicScroller handles "auto" well, provided that store data is the same
             //however, since store always changes/resets for latest content, "auto" is terrible
-            history.scrollRestoration = "manual";
+            history.scrollRestoration = 'manual';
 
             //get username
             if(this.propIsUserProfilePage === true){
@@ -773,12 +796,14 @@
             }
 
             window.addEventListener('resize', this.handleWindowResize);
+            window.addEventListener('scroll', this.storeScrollPosition);
         },
         beforeUnmount(){
 
             this.infinite_scroll_observer.disconnect();
 
             window.removeEventListener('resize', this.handleWindowResize);
+            window.removeEventListener('scroll', this.storeScrollPosition);
         }
     });
 </script>

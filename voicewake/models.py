@@ -32,7 +32,7 @@ def determine_audio_clip_audio_file_path_and_name(instance, filename):
     #MEDIA_ROOT/recordings/year_2022/month_8/day_1/user_id_1
     #no need to type out MEDIA_ROOT here, as it is determined in settings.py
     #.format() converts args into str for us
-    file_path = 'audio-clips/year_{0}/month_{1}/day_{2}/user_id_{3}'.format(
+    file_path = 'audio_clips/year_{0}/month_{1}/day_{2}/user_id_{3}'.format(
         int(instance.when_created.strftime('%Y')),
         int(instance.when_created.strftime('%m')),
         int(instance.when_created.strftime('%d')),
@@ -208,6 +208,7 @@ class AudioClipReports(models.Model):
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     reported_audio_clip = models.ForeignKey('AudioClips', on_delete=models.CASCADE)
+    when_evaluated = models.DateTimeField(blank=True, null=True, default=None)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
@@ -279,10 +280,8 @@ class Events(models.Model):
     id = models.BigAutoField(primary_key=True)
     event_name = models.TextField(max_length=200, default='-') #ensure default is never used
     generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)
-    when_locked = models.DateTimeField(blank=True, null=True, default=None)
-    locked_for_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, blank=True, null=True, default=None, related_name='events_user_1')
-    is_replying = models.BooleanField(blank=True, null=True, default=None)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, blank=True, null=True, default=None, related_name='events_user_2')
+    when_replied = models.DateTimeField(blank=True, null=True, default=None)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
@@ -292,17 +291,29 @@ class Events(models.Model):
         db_table = 'events'
 
 
-class AudioClipToneTranslations(models.Model):
+class EventReplyQueues(models.Model):
     id = models.BigAutoField(primary_key=True)
-    audio_clip_tone = models.ForeignKey('AudioClipTones', on_delete=models.CASCADE, blank=True, null=True, default=None)
-    translation = models.TextField()
-    when_created = models.DateTimeField(auto_now_add=True)
-    last_modified = models.DateTimeField(auto_now=True)
+    event = models.OneToOneField('Events', on_delete=models.CASCADE)
+    when_locked = models.DateTimeField(blank=True, null=True, default=None)
+    locked_for_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='event_reply_queues_user_1')
+    is_replying = models.BooleanField(blank=True, null=True, default=None)
 
     class Meta:
         app_label = 'voicewake'
         managed = True
-        db_table = 'audio_clip_tone_translations'
+        db_table = 'event_reply_queues'
+
+
+class EventLikesDislikes(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    event = models.OneToOneField('Events', on_delete=models.CASCADE)
+    like_count = models.IntegerField(default=0)
+    dislike_count = models.IntegerField(default=0)
+
+    class Meta:
+        app_label = 'voicewake'
+        managed = True
+        db_table = 'event_likes_dislikes'
 
 
 class AudioClipTones(models.Model):
