@@ -54,7 +54,7 @@ class GenericStatusesSerializer(serializers.ModelSerializer):
 
 class EventsSerializer(serializers.ModelSerializer):
     generic_status = GenericStatusesSerializer()
-    locked_for_user = UsersSerializer()
+    when_replied = serializers.DateTimeField()
     created_by = UsersSerializer()
     class Meta:
         model = Events

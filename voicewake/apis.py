@@ -52,12 +52,775 @@ class TestAPI(generics.GenericAPIView):
     permission_classes = []
 
 
+    def get_latest_completed_events(
+        self,
+        audio_clip_tone_slug:str='',
+        timeframe:Literal['day', 'week', 'month', 'all']='all',
+        next_or_back:Literal['next', 'back']='next',
+        cursor_token:str='',
+    ):
+
+        #handle cursor token
+
+        cursor_params = []
+
+        if cursor_token != '':
+
+            try:
+
+                cursor_params = decodeURLData(cursor_token)
+                cursor_params = [
+                    cursor_params[0], cursor_params[1],
+                    cursor_params[0],
+                ]
+
+            except:
+
+                raise custom_error(
+                    ValueError,
+                    user_message="Unable to fetch content due to faulty URL.",
+                    dev_message="Token could not be decoded: " + cursor_token
+                )
+
+        #prepare timeframe
+        #different checkpoints for different time range
+
+        datetime_between = get_datetime_between(timeframe)
+
+        #ran out of time to properly implement user blocks
+        #i.e. prevent content from showing when blocking/blocked, either one-way or two-way
+        #last checkpoint is getting excluded_event_ids the joining, but 1 blocked user with 100k events took 150+ms
+
+        #prepare adjustments based on cursor direction
+
+        cursor_sql = ''
+        cursor_order_sql = ''
+        order_sql = ''
+
+        if next_or_back == 'next':
+
+            if len(cursor_params) > 0:
+
+                cursor_sql = '''
+                    AND (
+                        (events.when_replied = %s AND events.id < %s)
+                        OR events.when_replied < %s
+                    )
+                '''
+            cursor_order_sql = '''ORDER BY events.when_replied DESC, events.id DESC'''
+            order_sql = '''ORDER BY target_events.when_replied DESC, target_events.id DESC'''
+
+        elif next_or_back == 'back':
+
+            if len(cursor_params) > 0:
+
+                cursor_sql = '''
+                    AND (
+                        (events.when_replied = %s AND events.id > %s)
+                        OR events.when_replied > %s
+                    )
+                '''
+            cursor_order_sql = '''ORDER BY events.when_replied ASC, events.id ASC'''
+            order_sql = '''ORDER BY target_events.when_replied ASC, target_events.id ASC'''
+
+        #get audio clips
+
+        full_sql = '''
+            WITH
+            selected_audio_clip_tones AS (
+                SELECT id FROM get_id_of_one_or_all_audio_clip_tones_via_slug(%s)
+            ),
+            target_events AS (
+                SELECT events.id, events.when_replied FROM events
+                LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
+                WHERE
+                generic_statuses.generic_status_name = %s
+                AND events.when_replied BETWEEN %s AND %s
+                ''' + cursor_sql + '''
+                ''' + cursor_order_sql + '''
+                LIMIT %s
+            )
+            SELECT * FROM audio_clips
+            LEFT JOIN target_events ON audio_clips.event_id = target_events.id
+            LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
+            WHERE target_events.id IS NOT NULL
+            AND audio_clips.is_banned IS FALSE
+            AND generic_statuses.generic_status_name = %s
+            ''' + order_sql + '''
+        '''
+
+        full_params = [
+            audio_clip_tone_slug,
+            'completed',
+            datetime_between['datetime_from'],
+            datetime_between['datetime_to'],
+        ] + cursor_params + [
+            settings.EVENT_QUANTITY_PER_PAGE,
+            'ok',
+        ]
+
+        #execute
+
+        audio_clips = AudioClips.objects.prefetch_related(
+            'audio_clip_role',
+            'event__generic_status',
+            'event__created_by',
+            'event',
+            'audio_clip_tone',
+            'generic_status',
+            'user',
+        ).raw(
+            full_sql,
+            params=full_params
+        )
+
+        print(audio_clips.query)
+
+        list(audio_clips)
+
+        #prepare to return
+
+        #we can reuse passed tokens as default on 0 rows fetched
+        result = {
+            'rows': [],
+            'cursor_token': cursor_token,
+            'extra_keys': [],
+        }
+
+        if len(audio_clips) == 0:
+
+            return result
+
+        #store appropriate return values
+
+        result['rows'] = audio_clips
+
+        target_index = -1
+
+        if next_or_back == 'back':
+
+            target_index = 0
+
+        result['cursor_token'] = encodeURLData([
+            audio_clips[target_index].event.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+            audio_clips[target_index].event_id,
+        ])
+
+        for row in audio_clips:
+            if row.id not in result['extra_keys']:
+                result['extra_keys'].append(row.event.id)
+
+        return result
+
+
+    def get_best_completed_events(
+        self,
+        audio_clip_tone_slug:str='',
+        timeframe:Literal['day', 'week', 'month', 'all']='all',
+        next_or_back:Literal['next', 'back']='next',
+        cursor_token:str='',
+    ):
+
+        #"best"
+        #currently evaluating on "best audio_clips"
+        #it should really be "best events", more rewarding
+        #i.e. events with best originator + responder
+
+        #handle cursor token
+
+        cursor_params = []
+
+        if cursor_token != '':
+
+            try:
+
+                cursor_params = decodeURLData(cursor_token)
+                cursor_params = [
+                    cursor_params[0], cursor_params[1], cursor_params[2],
+                    cursor_params[0], cursor_params[1],
+                ]
+
+            except:
+
+                raise custom_error(
+                    ValueError,
+                    user_message="Unable to fetch content due to faulty URL.",
+                    dev_message="Token could not be decoded: " + cursor_token
+                )
+
+        #prepare timeframe
+        #different checkpoints for different time range
+
+        datetime_between = get_datetime_between(timeframe)
+
+        #prepare adjustments based on cursor direction
+
+        cursor_sql = ''
+        cursor_order_sql = ''
+        order_sql = ''
+
+        if next_or_back == 'next':
+
+            if len(cursor_params) > 0:
+
+                cursor_sql = '''
+                    AND (
+                        (
+                            event_likes_dislikes.like_count = %s
+                            AND event_likes_dislikes.dislike_count = %s
+                            AND event_likes_dislikes.event_id < %s
+                        )
+                        OR (
+                            event_likes_dislikes.like_count < %s
+                            AND event_likes_dislikes.dislike_count > %s
+                        )
+                    )
+                '''
+            cursor_order_sql = '''
+                ORDER BY
+                event_likes_dislikes.like_count DESC,
+                event_likes_dislikes.dislike_count ASC,
+                event_likes_dislikes.event_id DESC
+            '''
+            order_sql = '''
+                ORDER BY
+                target_events.like_count DESC,
+                target_events.dislike_count ASC,
+                target_events.event_id DESC
+            '''
+
+        elif next_or_back == 'back':
+
+            if len(cursor_params) > 0:
+
+                cursor_sql = '''
+                    AND (
+                        (
+                            event_likes_dislikes.like_count = %s
+                            AND event_likes_dislikes.dislike_count = %s
+                            AND event_likes_dislikes.event_id > %s
+                        )
+                        OR (
+                            event_likes_dislikes.like_count > %s
+                            AND event_likes_dislikes.dislike_count < %s
+                        )
+                    )
+                '''
+            cursor_order_sql = '''
+                ORDER BY
+                event_likes_dislikes.like_count ASC,
+                event_likes_dislikes.dislike_count DESC,
+                event_likes_dislikes.event_id ASC
+            '''
+            order_sql = '''
+                ORDER BY
+                taget_events.like_count ASC,
+                taget_events.dislike_count DESC,
+                taget_events.event_id ASC
+            '''
+
+        #get audio clips
+
+        full_sql = '''
+            WITH
+            selected_audio_clip_tones AS (
+                SELECT id FROM get_id_of_one_or_all_audio_clip_tones_via_slug(%s)
+            ),
+            target_events AS (
+                SELECT * FROM event_likes_dislikes
+                INNER JOIN events ON event_likes_dislikes.event_id = events.id
+                LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
+                WHERE events.when_replied IS NOT NULL
+                AND generic_statuses.generic_status_name = %s
+                AND events.when_replied BETWEEN %s AND %s
+                ''' + cursor_sql + '''
+                ''' + cursor_order_sql + '''
+                LIMIT %s
+            )
+            SELECT * FROM audio_clips
+            RIGHT JOIN target_events ON audio_clips.event_id = target_events.id
+            LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
+            WHERE audio_clips.is_banned IS FALSE
+            AND generic_statuses.generic_status_name = %s
+            ''' + order_sql + '''
+        '''
+
+        full_params = [
+            audio_clip_tone_slug,
+            'completed',
+            datetime_between['datetime_from'],
+            datetime_between['datetime_to'],
+            settings.EVENT_QUANTITY_PER_PAGE,
+        ] + cursor_params + [
+            'ok',
+        ]
+
+        #execute
+
+        audio_clips = AudioClips.objects.prefetch_related(
+            'audio_clip_role',
+            'event_likes_dislikes',
+            'event__generic_status',
+            'event__created_by',
+            'event',
+            'audio_clip_tone',
+            'generic_status',
+            'user',
+        ).raw(
+            full_sql,
+            params=full_params
+        )
+
+        print(audio_clips.query)
+
+        list(audio_clips)
+
+        #prepare to return
+
+        #we can reuse passed tokens as default on 0 rows fetched
+        result = {
+            'rows': [],
+            'cursor_token': cursor_token,
+            'extra_keys': [],
+        }
+
+        if len(audio_clips) == 0:
+
+            return result
+
+        #store appropriate return values
+
+        result['rows'] = audio_clips
+
+        target_index = -1
+
+        if next_or_back == 'back':
+
+            target_index = 0
+
+        result['cursor_token'] = encodeURLData([
+            audio_clips[target_index].target_events.like_count,
+            audio_clips[target_index].target_events.dislike_count,
+            audio_clips[target_index].target_events.event_id,
+        ])
+
+        for row in audio_clips:
+            if row.id not in result['extra_keys']:
+                result['extra_keys'].append(row.target_events.event_id)
+
+        return result
+
+
+    def get_latest_events_by_user_and_event_role(
+        self,
+        username:str, audio_clip_role_name:str,
+        audio_clip_tone_slug:str='',
+        timeframe:Literal['day', 'week', 'month', 'all']='all',
+        next_or_back:Literal['next', 'back']='next',
+        cursor_token:str='',
+    ):
+
+        #handle cursor token
+
+        cursor_params = []
+
+        if cursor_token != '':
+
+            try:
+
+                cursor_params = decodeURLData(cursor_token)
+                cursor_params = [
+                    cursor_params[0], cursor_params[1],
+                    cursor_params[0],
+                ]
+
+            except:
+
+                raise custom_error(
+                    ValueError,
+                    user_message="Unable to fetch content due to faulty URL.",
+                    dev_message="Token could not be decoded: " + cursor_token
+                )
+
+        #prepare timeframe
+        #different checkpoints for different time range
+
+        datetime_between = get_datetime_between(timeframe)
+
+        #ran out of time to properly implement user blocks
+        #i.e. prevent content from showing when blocking/blocked, either one-way or two-way
+        #last checkpoint is getting excluded_event_ids the joining, but 1 blocked user with 100k events took 150+ms
+
+        #prepare adjustments based on cursor direction
+
+        cursor_sql = ''
+        cursor_order_sql = ''
+        order_sql = ''
+
+        if next_or_back == 'next':
+
+            if len(cursor_params) > 0:
+
+                cursor_sql = '''
+                    AND (
+                        (audio_clips.when_created = %s AND audio_clips.id < %s)
+                        OR audio_clips.when_created < %s
+                    )
+                '''
+            cursor_order_sql = '''ORDER BY audio_clips.when_created DESC, audio_clips.id DESC'''
+            order_sql = '''ORDER BY target_events.when_replied DESC, target_events.id DESC'''
+
+        elif next_or_back == 'back':
+
+            if len(cursor_params) > 0:
+
+                cursor_sql = '''
+                    AND (
+                        (audio_clips.when_created = %s AND audio_clips.id > %s)
+                        OR audio_clips.when_created > %s
+                    )
+                '''
+            cursor_order_sql = '''ORDER BY audio_clips.when_created ASC, audio_clips.id ASC'''
+            order_sql = '''ORDER BY target_events.when_replied ASC, target_events.id ASC'''
+
+        #get audio clips
+
+        full_sql = '''
+            WITH
+            selected_audio_clip_tones AS (
+                SELECT id FROM get_id_of_one_or_all_audio_clip_tones_via_slug(%s)
+            ),
+            target_audio_clips AS (
+                SELECT audio_clips.event_id, audio_clips.when_created, audio_clips.id
+                FROM audio_clips
+                RIGHT JOIN voicewake_user ON audio_clips.user_id = voicewake_user.id
+                LEFT JOIN audio_clip_roles ON audio_clips.audio_clip_role_id = audio_clip_roles.id
+                RIGHT JOIN selected_audio_clip_tones ON audio_clips.audio_clip_tone.id = audio_clip_tones.id
+                LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
+                WHERE voicewake_user.username_lowercase = %s
+                AND audio_clips.is_banned IS FALSE
+                AND audio_clip_roles.audio_clip_role_name = %s
+                AND generic_statuses.generic_status_name = %s
+                AND audio_clips.when_created BETWEEN %s AND %s
+                ''' + cursor_sql + '''
+                ''' + cursor_order_sql + '''
+                LIMIT %s
+            )
+            SELECT * FROM audio_clips
+            RIGHT JOIN target_events ON audio_clips.event_id = target_events.event_id
+            LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
+            WHERE audio_clips.is_banned IS FALSE
+            AND generic_statuses.generic_status_name = %s
+            ''' + order_sql + '''
+            ;
+        '''
+
+        full_params = [
+            audio_clip_tone_slug,
+            username.lower(),
+            audio_clip_role_name,
+            'ok',
+            datetime_between['datetime_from'],
+            datetime_between['datetime_to'],
+        ] + cursor_params + [
+            settings.EVENT_QUANTITY_PER_PAGE,
+            'ok',
+        ]
+
+        #execute
+
+        audio_clips = AudioClips.objects.prefetch_related(
+            'audio_clip_role',
+            'event__generic_status',
+            'event__created_by',
+            'event',
+            'audio_clip_tone',
+            'generic_status',
+            'user',
+        ).raw(
+            full_sql,
+            params=full_params
+        )
+
+        print(audio_clips.query)
+
+        list(audio_clips)
+
+        #prepare to return
+
+        #we can reuse passed tokens as default on 0 rows fetched
+        result = {
+            'rows': [],
+            'cursor_token': cursor_token,
+            'extra_keys': [],
+        }
+
+        if len(audio_clips) == 0:
+
+            return result
+
+        #store appropriate return values
+
+        result['rows'] = audio_clips
+
+        target_index = -1
+
+        if next_or_back == 'back':
+
+            target_index = 0
+
+        result['cursor_token'] = encodeURLData([
+            audio_clips[target_index].when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+            audio_clips[target_index].id,
+        ])
+
+        for row in audio_clips:
+            if row.id not in result['extra_keys']:
+                result['extra_keys'].append(row.id)
+
+        return result
+
+
+    def get_best_events_by_user_and_event_role(
+        self,
+        username:str, audio_clip_role_name:str,
+        audio_clip_tone_slug:str='',
+        timeframe:Literal['day', 'week', 'month', 'all']='all',
+        next_or_back:Literal['next', 'back']='next',
+        cursor_token:str='',
+    ):
+
+        #handle cursor token
+
+        cursor_params = []
+
+        if cursor_token != '':
+
+            try:
+
+                cursor_params = decodeURLData(cursor_token)
+                cursor_params = [
+                    cursor_params[0], cursor_params[1], cursor_params[2],
+                    cursor_params[0], cursor_params[1],
+                ]
+
+            except:
+
+                raise custom_error(
+                    ValueError,
+                    user_message="Unable to fetch content due to faulty URL.",
+                    dev_message="Token could not be decoded: " + cursor_token
+                )
+
+        #prepare timeframe
+        #different checkpoints for different time range
+
+        datetime_between = get_datetime_between(timeframe)
+
+        #ran out of time to properly implement user blocks
+        #i.e. prevent content from showing when blocking/blocked, either one-way or two-way
+        #last checkpoint is getting excluded_event_ids the joining, but 1 blocked user with 100k events took 150+ms
+
+        #prepare adjustments based on cursor direction
+
+        cursor_sql = ''
+        cursor_order_sql = ''
+        order_sql = ''
+
+        if next_or_back == 'next':
+
+            if len(cursor_params) > 0:
+
+                cursor_sql = '''
+                    AND (
+                        (
+                            audio_clips.like_count = %s
+                            AND audio_clips.dislike_count = %s
+                            AND audio_clips.event_id < %s
+                        )
+                        OR (
+                            audio_clips.like_count < %s
+                            AND audio_clips.dislike_count > %s
+                        )
+                    )
+                '''
+            cursor_order_sql = '''ORDER BY audio_clips.like_count DESC, audio_clips.dislike_count ASC, audio_clips.id DESC'''
+            order_sql = '''
+                ORDER BY
+                    CASE
+                        WHEN target_audio_clips.username_lowercase = %s THEN 1
+                        ELSE 2
+                    END
+                    DESC,
+                    target_audio_clips.like_count DESC,
+                    target_audio_clips.dislike_count ASC,
+                    target_audio_clips.id DESC
+            '''
+
+        elif next_or_back == 'back':
+
+            if len(cursor_params) > 0:
+
+                cursor_sql = '''
+                    AND (
+                        (
+                            audio_clips.like_count = %s
+                            AND audio_clips.dislike_count = %s
+                            AND audio_clips.event_id > %s
+                        )
+                        OR (
+                            audio_clips.like_count > %s
+                            AND audio_clips.dislike_count < %s
+                        )
+                    )
+                '''
+            cursor_order_sql = '''ORDER BY audio_clips.like_count ASC, audio_clips.dislike_count DESC, audio_clips.id ASC'''
+            order_sql = '''
+                ORDER BY
+                    CASE
+                        WHEN target_audio_clips.username_lowercase = %s THEN 2
+                        ELSE 1
+                    END
+                    DESC,
+                    target_audio_clips.like_count ASC,
+                    target_audio_clips.dislike_count DESC,
+                    target_audio_clips.id ASC
+            '''
+
+        #get audio clips
+
+        full_sql = '''
+            WITH
+            selected_audio_clip_tones AS (
+                SELECT id FROM get_id_of_one_or_all_audio_clip_tones_via_slug(%s)
+            ),
+            target_audio_clips AS (
+                SELECT audio_clips.event_id, audio_clips.when_created, audio_clips.id, voicewake_user.username_lowercase
+                FROM audio_clips
+                RIGHT JOIN voicewake_user ON audio_clips.user_id = voicewake_user.id
+                LEFT JOIN audio_clip_roles ON audio_clips.audio_clip_role_id = audio_clip_roles.id
+                RIGHT JOIN selected_audio_clip_tones ON audio_clips.audio_clip_tone.id = audio_clip_tones.id
+                LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
+                WHERE voicewake_user.username_lowercase = %s
+                AND audio_clips.is_banned IS FALSE
+                AND audio_clip_roles.audio_clip_role_name = %s
+                AND generic_statuses.generic_status_name = %s
+                AND audio_clips.when_created BETWEEN %s AND %s
+                ''' + cursor_sql + '''
+                ''' + cursor_order_sql + '''
+                LIMIT %s
+            )
+            SELECT * FROM audio_clips
+            UNION target_audio_clips 
+            RIGHT JOIN target_audio_clips ON audio_clips.event_id = target_audio_clips.event_id
+            LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
+            WHERE audio_clips.is_banned IS FALSE
+            AND generic_statuses.generic_status_name = %s
+            ''' + order_sql + '''
+            ;
+        '''
+
+        full_params = [
+            audio_clip_tone_slug,
+            username.lower(),
+            audio_clip_role_name,
+            'ok',
+            datetime_between['datetime_from'],
+            datetime_between['datetime_to'],
+        ] + cursor_params + [
+            settings.EVENT_QUANTITY_PER_PAGE,
+            'ok',
+            username.lower(),
+        ]
+
+        #execute
+
+        audio_clips = AudioClips.objects.prefetch_related(
+            'audio_clip_role',
+            'event__generic_status',
+            'event__created_by',
+            'event',
+            'audio_clip_tone',
+            'generic_status',
+            'user',
+        ).raw(
+            full_sql,
+            params=full_params
+        )
+
+        print(audio_clips.query)
+
+        list(audio_clips)
+
+        #prepare to return
+
+        #we can reuse passed tokens as default on 0 rows fetched
+        result = {
+            'rows': [],
+            'cursor_token': cursor_token,
+            'extra_keys': [],
+        }
+
+        if len(audio_clips) == 0:
+
+            return result
+
+        #store appropriate return values
+
+        result['rows'] = audio_clips
+
+        target_index = -1
+
+        if next_or_back == 'back':
+
+            target_index = 0
+
+        result['cursor_token'] = encodeURLData([
+            audio_clips[target_index].like_count,
+            audio_clips[target_index].dislike_count,
+            audio_clips[target_index].id,
+        ])
+
+        for row in audio_clips:
+            if row.id not in result['extra_keys']:
+                result['extra_keys'].append(row.id)
+
+        return result
+
+
+
+
     def get(self, request, *args, **kwargs):
 
+        cursor_token = ''
 
+        if 'cursor_token' in kwargs:
 
+            cursor_token = kwargs['cursor_token']
 
+        if 'next_or_back' in kwargs:
 
+            result = self.get_latest_completed_events(
+                next_or_back=kwargs['next_or_back'],
+                timeframe='week',
+                cursor_token=cursor_token
+            )
+
+            if len(result['rows']) > 0:
+
+                yolo = GroupedAudioClipsSerializer(
+                    group_audio_clips_into_events(result['rows']),
+                    many=True
+                )
+
+                return Response(
+                    data={
+                        'next': result['cursor_token'],
+                        'extra_keys': result['extra_keys'],
+                        'message': '',
+                        'data': yolo.data,
+                    },
+                )
 
         return Response(
             data={
@@ -152,7 +915,7 @@ class AudioClipReportsAPI(generics.GenericAPIView):
 
         return Response(
             data={
-                'message': 'We will evaluate the report soon. Thank you for helping to make this a better place.',
+                'message': 'System notified. We will evaluate the report soon.',
             },
             status=status.HTTP_200_OK
         )
@@ -606,10 +1369,10 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
 
                     if self.current_context == 'log_in':
                         template_title = "Code for login"
-                        template_title_description = "Log in with this code:"
+                        template_title_description = "Login code:"
                     elif self.current_context == 'sign_up':
                         template_title = "Code for sign-up"
-                        template_title_description = "Sign up with this code:"
+                        template_title_description = "Sign-up code:"
 
                     handle_user_otp_class.send_otp_email(
                         new_data['email'],

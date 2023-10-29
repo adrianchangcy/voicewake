@@ -42,6 +42,7 @@ export function useFilteredEventsStore(is_user_page:boolean){
             selected_audio_clip_tone_events: {} as SelectedAudioClipToneEventsType,
 
             stop_searching_duration_s: 10,
+            last_scroll_y: 0,
         }),    
         getters: {
             getAudioClipRoleNames: (state) => {
@@ -129,13 +130,22 @@ export function useFilteredEventsStore(is_user_page:boolean){
                     }
                 }
             },
+            getLastScrollY: (state) => {
+
+                return state.last_scroll_y;
+            },
         },
         actions: {
+            async setLastScrollY(scrollY_value:number) : Promise<void> {
+
+                this.last_scroll_y = scrollY_value;
+            },
             async partialResetStore() : Promise<void> {
 
                 //resetting only these allows us to maintain user's filter preferences
                 this.no_audio_clip_tone_events = {};
                 this.selected_audio_clip_tone_events = {};
+                this.last_scroll_y = 0;
             },
             async destroySelectedAudioClipToneData(new_value:AudioClipTonesTypes) : Promise<void> {
 
