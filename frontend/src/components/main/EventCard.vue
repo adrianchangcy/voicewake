@@ -163,7 +163,7 @@
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
     import { prettyTimePassed } from '@/helper_functions';
-    import GroupedAudioClipsTypes from '@/types/GroupedAudioClips.interface';
+    import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
     import { useCurrentlyPlayingAudioClipStore } from '@/stores/CurrentlyPlayingAudioClipStore';
 
@@ -176,7 +176,7 @@
         },
         props: {
             propEvent: {
-                type: Object as PropType<GroupedAudioClipsTypes>,
+                type: Object as PropType<EventsAndAudioClipsTypes>,
                 required: true,
             },
             propShowTitle: {

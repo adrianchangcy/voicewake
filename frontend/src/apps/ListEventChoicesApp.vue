@@ -357,7 +357,7 @@
     import { defineComponent } from 'vue';
     import { timeFromNowMS, prettyTimeRemaining } from '@/helper_functions';
     import { notify } from 'notiwind';
-    import GroupedAudioClipsTypes from '@/types/GroupedAudioClips.interface';
+    import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
     import StatusValues from '@/types/values/StatusValues';
     import { useUnfinishedReplyStore } from '@/stores/UnfinishedReplyStore';
     import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
@@ -370,8 +370,8 @@
             return {
                 unfinished_reply_store: useUnfinishedReplyStore(),
 
-                new_reply_choice_events: [] as GroupedAudioClipsTypes[] | [],
-                unfinished_reply_event: null as GroupedAudioClipsTypes | null,
+                new_reply_choice_events: [] as EventsAndAudioClipsTypes[] | [],
+                unfinished_reply_event: null as EventsAndAudioClipsTypes | null,
                 redirect_url: "",
 
                 is_sort_menu_open: false,
@@ -395,7 +395,7 @@
             };
         },
         computed: {
-            getMainEvent() : GroupedAudioClipsTypes|null {
+            getMainEvent() : EventsAndAudioClipsTypes|null {
 
                 //only useful for current 1-event-per-instance
                 //use v-for when > 1 in the future
@@ -714,7 +714,7 @@
                     handler();
                 });
             },
-            async confirmReplyChoice(event: GroupedAudioClipsTypes|null): Promise<void> {
+            async confirmReplyChoice(event: EventsAndAudioClipsTypes|null): Promise<void> {
 
                 if (event === null || this.is_new_reply_choice_confirming === true){
 
@@ -789,7 +789,7 @@
             },
             startExpiryInterval(context:"new_reply_choices"|"unfinished_reply"): void {
 
-                let target_event: GroupedAudioClipsTypes | null = null;
+                let target_event: EventsAndAudioClipsTypes | null = null;
                 let target_max_ms = 0;
 
                 if(

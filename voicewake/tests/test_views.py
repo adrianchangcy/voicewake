@@ -446,7 +446,7 @@ class AudioClips_TestCase(TestCase):
 
 
 
-class RandomTests_TestCase(TestCase):
+class Random_TestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
@@ -457,6 +457,7 @@ class RandomTests_TestCase(TestCase):
     def test_random(self):
 
         pass
+
 
 
 class System_TestCase(TestCase):

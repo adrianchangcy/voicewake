@@ -281,7 +281,6 @@ class Events(models.Model):
     event_name = models.TextField(max_length=200, default='-') #ensure default is never used
     generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, blank=True, null=True, default=None, related_name='events_user_2')
-    when_replied = models.DateTimeField(blank=True, null=True, default=None)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
@@ -303,17 +302,6 @@ class EventReplyQueues(models.Model):
         managed = True
         db_table = 'event_reply_queues'
 
-
-class EventLikesDislikes(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    event = models.OneToOneField('Events', on_delete=models.CASCADE)
-    like_count = models.IntegerField(default=0)
-    dislike_count = models.IntegerField(default=0)
-
-    class Meta:
-        app_label = 'voicewake'
-        managed = True
-        db_table = 'event_likes_dislikes'
 
 
 class AudioClipTones(models.Model):

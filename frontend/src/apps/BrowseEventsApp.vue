@@ -63,14 +63,14 @@
                         <!--filter type-->
                         <div class="w-fit flex flex-row items-center border rounded-lg border-theme-light-gray px-2">
                             <VActionTextOnly
-                                v-for="(filter_type, index) in filtered_events_store.getFilterTypes" :key="index"
-                                @click="updateCurrentFilterTypeIndex(index)"
+                                v-for="(filter_type, index) in filtered_events_store.getMainFilters" :key="index"
+                                @click="filtered_events_store.updateCurrentMainFilterIndex(index)"
                                 prop-element="button"
                                 prop-element-size="s"
                                 prop-font-size="s"
                                 :prop-is-icon-only="true"
                                 :class="[
-                                    isSelectedFilterType(index) ? 'border-b-theme-black' : 'border-b-transparent',
+                                    filtered_events_store.isSameCurrentMainFilterIndex(index) ? 'border-b-theme-black' : 'border-b-transparent',
                                     'border-b-2 rounded-b-none p-2'
                                 ]"
                             >
@@ -84,9 +84,9 @@
                             :prop-close-when-selected="false"
                             :prop-has-deselect-option="true"
                             :prop-must-track-selected-option="true"
-                            :prop-initial-audio-clip-tone="filtered_events_store.getSelectedAudioClipTone"
+                            :prop-initial-audio-clip-tone="filtered_events_store.getCurrentAudioClipTone"
                             :prop-filtered-grouped-audio-clips-store="filtered_events_store"
-                            @audio_clipToneSelected="handleNewSelectedAudioClipTone($event)"
+                            @audioClipToneSelected="filtered_events_store.updateCurrentAudioClipTone($event)"
                             class="border rounded-l-lg border-theme-light-gray"
                         />
                     </div>
@@ -96,37 +96,27 @@
             <!--audio_clip roles-->
             <div v-if="propIsUserProfilePage" class="w-full grid grid-cols-2 px-4">
                 <VActionTextOnly
-                    @click="updateCurrentAudioClipRoleNameIndex(0)"
+                    v-for="(pretty_audio_clip_role_name, index) in filtered_events_store.getPrettyAudioClipRoleNames"
+                    :key="index"
+                    @click="filtered_events_store.updateCurrentAudioClipRoleNameIndex(index)"
                     prop-element="button"
                     prop-element-size="s"
                     prop-font-size="s"
                     :prop-is-icon-only="true"
                     :class="[
-                        isSelectedAudioClipRoleName(0) ? 'border-b-theme-black' : 'border-b-theme-medium-gray',
+                        filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index) ? 'border-b-theme-black' : 'border-b-theme-medium-gray',
                         'col-span-1 border-b-2 rounded-b-none p-2'
                     ]"
                 >
                     <span class="mx-auto">
                         <i class="fas fa-comment"></i>
-                        <span class="pl-2">Started</span>
-                        <span v-show="isSelectedAudioClipRoleName(0)" class="sr-only">selected</span>
-                    </span>
-                </VActionTextOnly>
-                <VActionTextOnly
-                    @click="updateCurrentAudioClipRoleNameIndex(1)"
-                    prop-element="button"
-                    prop-element-size="s"
-                    prop-font-size="s"
-                    :prop-is-icon-only="true"
-                    :class="[
-                        isSelectedAudioClipRoleName(1) ? 'border-b-theme-black' : 'border-b-theme-medium-gray',
-                        'col-span-1 border-b-2 rounded-b-none p-2'
-                    ]"
-                >
-                    <span class="mx-auto">
-                        <i class="fas fa-comments"></i>
-                        <span class="pl-2">Replied</span>
-                        <span v-show="isSelectedAudioClipRoleName(1)" class="sr-only">selected</span>
+                        <span class="pl-2">{{ pretty_audio_clip_role_name }}</span>
+                        <span
+                            v-show="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
+                            class="sr-only"
+                        >
+                            selected
+                        </span>
                     </span>
                 </VActionTextOnly>
             </div>
@@ -139,7 +129,7 @@
             :min-item-size="2"
             :buffer="dynamic_scroller_buffer"
             :page-mode="true"
-            key-field="event_id"
+            key-field="event_id_as_scroller_index"
             class="scroller"
         >
 
@@ -276,16 +266,11 @@
     import { defineComponent, } from 'vue';
     import { notify } from 'notiwind';
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
-    import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
     import { useCurrentlyPlayingAudioClipStore } from '@/stores/CurrentlyPlayingAudioClipStore';
     import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
     import { useCurrentLikesDislikesStore } from '@/stores/CurrentLikesDislikesStore';
     import { isPageAccessedByReload } from '@/helper_functions';
     const axios = require('axios');
-
-    //TODO:
-        //#1: clear FilteredEventsStore on least recent
-            //follow through with CurrentLikesDislikesStore and CurrentlyPlayingAudioClipStore
 
 
     export default defineComponent({
@@ -370,98 +355,57 @@
             },
         },
         methods: {
-            switchTriggerOnFilterChange() : void {
-
-                this.filter_change_trigger = !this.filter_change_trigger;
-            },
-            isSelectedAudioClipRoleName(index:number) : boolean {
-
-                return index === this.filtered_events_store.getCurrentAudioClipRoleNameIndex;
-            },
-            isSelectedFilterType(index:number) : boolean {
-
-                return index === this.filtered_events_store.getCurrentFilterTypeIndex;
-            },
-            async continueScrolling() : Promise<void> {
-
-                const is_first_page = this.filtered_events_store.getEventsForBrowsing.length === 0;
-
-                this.can_pause_scrolling = false;
-
-                await this.getEvents(
-                    this.filtered_events_store.getSelectedAudioClipTone,
-                    this.filtered_events_store.getCurrentAudioClipRoleNameIndex,
-                    this.filtered_events_store.getCurrentFilterTypeIndex,
-                    is_first_page,
-                );
-            },
-            toggleFilterMenu() : void {
-
-                this.is_filter_menu_open = !this.is_filter_menu_open;
-            },
-            async updateCurrentAudioClipRoleNameIndex(index:number) : Promise<void> {
-
-                await this.filtered_events_store.updateCurrentAudioClipRoleNameIndex(index);
-
-                this.getEvents(
-                    this.filtered_events_store.getSelectedAudioClipTone,
-                    index,
-                    this.filtered_events_store.getCurrentFilterTypeIndex,
-                    true,
-                );
-            },
-            async updateCurrentFilterTypeIndex(index:number) : Promise<void> {
-
-                await this.filtered_events_store.updateCurrentFilterTypeIndex(index);
-                
-                this.getEvents(
-                    this.filtered_events_store.getSelectedAudioClipTone,
-                    this.filtered_events_store.getCurrentAudioClipRoleNameIndex,
-                    index,
-                    true,
-                );
-            },
-            async handleNewSelectedAudioClipTone(audio_clip_tone:AudioClipTonesTypes|null) : Promise<void> {
-
-                await this.filtered_events_store.updateSelectedAudioClipTone(audio_clip_tone);
-
-                this.getEvents(
-                    audio_clip_tone,
-                    this.filtered_events_store.getCurrentAudioClipRoleNameIndex,
-                    this.filtered_events_store.getCurrentFilterTypeIndex,
-                    true,
-                );
-            },
             async getEvents(
-                audio_clip_tone:AudioClipTonesTypes|null,
+                current_event_generic_status_name_index:number,
+                current_main_filter_index:number,
+                current_timeframe_index:number,
                 current_audio_clip_role_name_index:number,
-                current_filter_type_index:number,
-                is_first_page:boolean
+                current_audio_clip_tone_id:number,
+                is_first_page:boolean,
+                next_or_back:"next"|"back"="next",
             ): Promise<void> {
 
                 this.is_fetching = true;
 
-                //initialise to have all necessary keys available
-                //will only do so when no data exists
+                //initialise to ensure object is ready
                 if(is_first_page === true){
 
-                    await this.filtered_events_store.initialiseDataOnFirstPageAfterFilterChange(audio_clip_tone);
+                    await this.filtered_events_store.initialiseFilteredEventsStructure(
+                        current_event_generic_status_name_index,
+                        current_main_filter_index,
+                        current_timeframe_index,
+                        current_audio_clip_role_name_index,
+                        current_audio_clip_tone_id,
+                    );
                 }
 
-                //check if we already have data
-                if(
+                //for first page, i.e. after filter change, check if we already have data
+                const can_skip_fetching = (
                     is_first_page === true &&
-                    await this.filtered_events_store.hasDataOnFirstPageAfterFilterChange(
-                        audio_clip_tone, current_audio_clip_role_name_index, current_filter_type_index,
+                    await this.filtered_events_store.hasExistingDataAfterFilterChange(
+                        current_event_generic_status_name_index,
+                        current_main_filter_index,
+                        current_timeframe_index,
+                        current_audio_clip_role_name_index,
+                        current_audio_clip_tone_id,
                     ) === true
-                ){
+                );
+
+                if(can_skip_fetching === true){
 
                     //do nothing else, as template uses getter, which auto-retrieves for us
                     this.is_fetching = false;
                     return;
                 }
 
-                const check_can_fetch = await this.filtered_events_store.checkCanFetch(audio_clip_tone, current_audio_clip_role_name_index, current_filter_type_index);
+                //check if can fetch, e.g. if timed out from previous search that yielded no results
+                const check_can_fetch = await this.filtered_events_store.checkCanFetch(
+                    current_event_generic_status_name_index,
+                    current_main_filter_index,
+                    current_timeframe_index,
+                    current_audio_clip_role_name_index,
+                    current_audio_clip_tone_id,
+                );
 
                 if(check_can_fetch === false){
 
@@ -469,9 +413,39 @@
                     return;
                 }
 
-                //no existing data, proceed
+                //determine URL
+                let full_url = "";
 
-                const full_url = await this.constructURL(audio_clip_tone, current_audio_clip_role_name_index, current_filter_type_index);
+                if(is_first_page === true){
+
+                    //get first time URL
+                    full_url = await this.constructFirstPageURL(
+                        current_event_generic_status_name_index,
+                        current_main_filter_index,
+                        current_timeframe_index,
+                        current_audio_clip_role_name_index,
+                        current_audio_clip_tone_id,
+                        next_or_back,
+                    );
+
+                }else{
+
+                    const url_key = next_or_back === "next" ? "next_url" : "back_url";
+
+                    full_url = this.filtered_events_store.getFilteredEventsStructure[
+                        current_event_generic_status_name_index
+                    ][
+                        current_main_filter_index
+                    ][
+                        current_timeframe_index
+                    ][
+                        current_audio_clip_role_name_index
+                    ][
+                        current_audio_clip_tone_id
+                    ][
+                        url_key
+                    ];
+                }
 
                 console.log(full_url);
 
@@ -483,7 +457,17 @@
                         this.is_observer_on_cooldown = true;
                     }
 
-                    await this.filtered_events_store.insertEvents(audio_clip_tone, current_audio_clip_role_name_index, current_filter_type_index, results.data['data']);
+                    await this.filtered_events_store.insertEvents(
+                        current_event_generic_status_name_index,
+                        current_main_filter_index,
+                        current_timeframe_index,
+                        current_audio_clip_role_name_index,
+                        current_audio_clip_tone_id,
+                        next_or_back,
+                        results.data['data'],
+                        results.data['next_url'],
+                        results.data['back_url'],
+                    );
 
                 }).catch(() => {
 
@@ -498,58 +482,78 @@
                     this.is_fetching = false;
                 });
             },
-            async constructURL(
-                audio_clip_tone:AudioClipTonesTypes|null,
+            async constructFirstPageURL(
+                current_event_generic_status_name_index:number,
+                current_main_filter_index:number,
+                current_timeframe_index:number,
                 current_audio_clip_role_name_index:number,
-                current_filter_type_index:number,
+                current_audio_clip_tone_id:number,
+                next_or_back:"next"|"back"="next",
             ) : Promise<string> {
+
+                //this is only used for first page
+                //API will send us next_url and back_url to directly use after that
 
                 //construct URL
                 let full_url = window.location.origin + "/api/events/list";
+
+                //event.generic_status.generic_status_name
+                full_url += "/" + this.filtered_events_store.getEventGenericStatusNames[current_event_generic_status_name_index];
 
                 if(this.propIsUserProfilePage === true){
 
                     full_url += "/user/" + this.user_profile_username;
 
-                }else{
-
-                    full_url += "/completed";
                 }
 
                 //latest/best
-                full_url += "/" + this.filtered_events_store.getFilterTypes[current_filter_type_index].toLowerCase();
+                full_url += "/" + this.filtered_events_store.getMainFilters[current_main_filter_index].toLowerCase();
 
                 //timeframe
-                full_url += "/all";
+                full_url += "/" + this.filtered_events_store.getTimeframes[current_timeframe_index].toLowerCase();
 
-                if(this.propIsUserProfilePage === true){
-
-                    full_url += "/" + this.filtered_events_store.getAudioClipRoleNames[current_audio_clip_role_name_index].toLowerCase();
-                }
+                //audio_clip_role.audio_clip_role_name
+                full_url += "/" + this.filtered_events_store.getAudioClipRoleNames[current_audio_clip_role_name_index];
 
                 //audio_clip_tone
-                if(audio_clip_tone !== null){
+                if(current_audio_clip_tone_id > 0){
 
-                    full_url += "/" + audio_clip_tone.audio_clip_tone_slug;
+                    full_url += "/" + current_audio_clip_tone_id.toString();
                 }
 
-                //get next page
-                if(audio_clip_tone === null){
-
-                    full_url += "/" + (
-                        this.filtered_events_store.getNoAudioClipToneEvents[current_audio_clip_role_name_index][current_filter_type_index]['current_page']
-                    ).toString();
-
-                }else{
-
-                    full_url += "/" + (
-                        this.filtered_events_store.getSelectedAudioClipToneEvents[audio_clip_tone.id][current_audio_clip_role_name_index][current_filter_type_index]['current_page']
-                    ).toString();
-                }
+                //next or back
+                full_url += "/" + next_or_back;
 
                 return full_url;
             },
-            async handleNewSelectedAudioClip(audio_clip:AudioClipsAndLikeDetailsTypes|null, can_autoplay:boolean) : Promise<void> {
+            async continueScrolling() : Promise<void> {
+
+                const is_first_page = this.filtered_events_store.getEventsForBrowsing.length === 0;
+
+                this.can_pause_scrolling = false;
+
+                await this.getEvents(
+                    this.filtered_events_store.getCurrentEventGenericStatusNameIndex,
+                    this.filtered_events_store.getCurrentMainFilterIndex,
+                    this.filtered_events_store.getCurrentTimeframeIndex,
+                    this.filtered_events_store.getCurrentAudioClipRoleNameIndex,
+                    this.filtered_events_store.getCurrentAudioClipToneId,
+                    is_first_page,
+                    "next",
+                );
+            },
+            toggleFilterMenu() : void {
+
+                this.is_filter_menu_open = !this.is_filter_menu_open;
+            },
+            switchTriggerOnFilterChange() : void {
+
+                this.filter_change_trigger = !this.filter_change_trigger;
+            },
+            async handleNewSelectedAudioClip(
+                audio_clip:AudioClipsAndLikeDetailsTypes|null,
+                can_autoplay:boolean,
+            ) : Promise<void> {
 
                 this.can_autoplay = can_autoplay;
                 this.selected_audio_clip = audio_clip;
@@ -594,9 +598,11 @@
                     }
 
                     const can_fetch = await this.filtered_events_store.checkCanFetch(
-                        this.filtered_events_store.getSelectedAudioClipTone,
+                        this.filtered_events_store.getCurrentEventGenericStatusNameIndex,
+                        this.filtered_events_store.getCurrentMainFilterIndex,
+                        this.filtered_events_store.getCurrentTimeframeIndex,
                         this.filtered_events_store.getCurrentAudioClipRoleNameIndex,
-                        this.filtered_events_store.getCurrentFilterTypeIndex,
+                        this.filtered_events_store.getCurrentAudioClipToneId,
                     );
 
                     if(can_fetch === false){
@@ -609,11 +615,57 @@
                     //on filter change, we already run getEvents()
                     //upon reaching here, that first page fetch is already done
                     this.getEvents(
-                        this.filtered_events_store.getSelectedAudioClipTone,
+                        this.filtered_events_store.getCurrentEventGenericStatusNameIndex,
+                        this.filtered_events_store.getCurrentMainFilterIndex,
+                        this.filtered_events_store.getCurrentTimeframeIndex,
                         this.filtered_events_store.getCurrentAudioClipRoleNameIndex,
-                        this.filtered_events_store.getCurrentFilterTypeIndex,
+                        this.filtered_events_store.getCurrentAudioClipToneId,
                         false,
+                        "next",
                     );
+                };
+            },
+            async resetStores() : Promise<void> {
+
+                if(
+                    this.propIsUserProfilePage === false &&
+                    (localStorage.getItem('reset_home_page_audio_clip_stores') !== null || isPageAccessedByReload() === true)
+                ){
+
+                    await this.filtered_events_store.partialResetStore();
+                    this.current_likes_dislikes_store.$reset();
+                    localStorage.removeItem('reset_home_page_audio_clip_stores');
+                }
+            },
+            async handleWindowResize() : Promise<void> {
+
+                //we do our best to cater to user's viewport height to ensure sufficient buffer size
+                //else elements are late to render, causing tab focus and whitespace issues
+
+                this.window_resize_timeout !== null ? clearTimeout(this.window_resize_timeout) : null;
+
+                //run this delayed one next, in case immediate call had fired before dimension is fixed
+                this.window_resize_timeout = window.setTimeout(async ()=>{
+                    this.dynamic_scroller_buffer = window.innerHeight * 2;
+                }, 200);
+            },
+            async storeScrollY() : Promise<void> {
+
+                window.clearTimeout(this.store_scroll_position_timeout);
+
+                this.store_scroll_position_timeout = window.setTimeout(()=>{
+
+                    this.filtered_events_store.setLastScrollY(window.scrollY);
+
+                }, 250);
+            },
+            async restoreScrollY() : Promise<void> {
+
+                if(this.has_restored_scroll_once === false){
+
+                    //since stored scrollY is default 0, no need to check
+                    window.scroll(0, this.filtered_events_store.getLastScrollY);
+                    this.has_restored_scroll_once = true;
                 }
             },
             async canShowFilterOptionBelowNavBar() : Promise<void> {
@@ -646,49 +698,6 @@
                     this.scrolling_checkpoint_px = window.scrollY;
 
                 }, 250);
-            },
-            async resetStores() : Promise<void> {
-
-                if(
-                    this.propIsUserProfilePage === false &&
-                    (localStorage.getItem('reset_home_page_audio_clip_stores') !== null || isPageAccessedByReload() === true)
-                ){
-
-                    await this.filtered_events_store.partialResetStore();
-                    this.current_likes_dislikes_store.$reset();
-                    localStorage.removeItem('reset_home_page_audio_clip_stores');
-                }
-            },
-            async handleWindowResize() : Promise<void> {
-
-                //we do our best to cater to user's viewport height to ensure sufficient buffer size
-                //else elements are late to render, causing tab focus and whitespace issues
-
-                this.window_resize_timeout !== null ? clearTimeout(this.window_resize_timeout) : null;
-
-                //run this delayed one next, in case immediate call had fired before dimension is fixed
-                this.window_resize_timeout = window.setTimeout(async ()=>{
-                    this.dynamic_scroller_buffer = window.innerHeight * 2;
-                }, 200);
-            },
-            async storeScrollPosition() : Promise<void> {
-
-                window.clearTimeout(this.store_scroll_position_timeout);
-
-                this.store_scroll_position_timeout = window.setTimeout(()=>{
-
-                    this.filtered_events_store.setLastScrollY(window.scrollY);
-
-                }, 250);
-            },
-            async restoreScrollY() : Promise<void> {
-
-                if(this.has_restored_scroll_once === false){
-
-                    //since stored scrollY is default 0, no need to check
-                    window.scroll(0, this.filtered_events_store.getLastScrollY);
-                    this.has_restored_scroll_once = true;
-                }
             },
         },
         beforeMount(){
@@ -744,9 +753,11 @@
             })=>{
 
                 if(
-                    name === 'updateSelectedAudioClipTone' ||
+                    name === 'updateCurrentEventGenericStatusNameIndex' ||
+                    name === 'updateCurrentMainFilterIndex' ||
+                    name === 'updateCurrentTimeframeIndex' ||
                     name === 'updateCurrentAudioClipRoleNameIndex' ||
-                    name === 'updateCurrentFilterTypeIndex'
+                    name === 'updateCurrentAudioClipTone'
                 ){
                     after(()=>{
 
@@ -769,12 +780,16 @@
             if(this.filtered_events_store.getEventsForBrowsing.length === 0){
 
                 (async ()=>{
+
                     await this.getEvents(
-                        this.filtered_events_store.getSelectedAudioClipTone,
+                        this.filtered_events_store.getCurrentEventGenericStatusNameIndex,
+                        this.filtered_events_store.getCurrentMainFilterIndex,
+                        this.filtered_events_store.getCurrentTimeframeIndex,
                         this.filtered_events_store.getCurrentAudioClipRoleNameIndex,
-                        this.filtered_events_store.getCurrentFilterTypeIndex,
+                        this.filtered_events_store.getCurrentAudioClipToneId,
                         true,
-                    ).then(()=>{
+                        "next",
+                    ).finally(()=>{
 
                         this.must_skip_observer_once = false;
                     });
@@ -796,14 +811,14 @@
             }
 
             window.addEventListener('resize', this.handleWindowResize);
-            window.addEventListener('scroll', this.storeScrollPosition);
+            window.addEventListener('scroll', this.storeScrollY);
         },
         beforeUnmount(){
 
             this.infinite_scroll_observer.disconnect();
 
             window.removeEventListener('resize', this.handleWindowResize);
-            window.removeEventListener('scroll', this.storeScrollPosition);
-        }
+            window.removeEventListener('scroll', this.storeScrollY);
+        },
     });
 </script>

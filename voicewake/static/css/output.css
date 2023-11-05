@@ -1376,10 +1376,6 @@ video {
   overflow-x: hidden;
 }
 
-.overflow-y-hidden {
-  overflow-y: hidden;
-}
-
 .overflow-x-clip {
   overflow-x: clip;
 }
@@ -1641,6 +1637,11 @@ video {
   padding: 1rem;
 }
 
+.px-1 {
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+}
+
 .px-2 {
   padding-left: 0.5rem;
   padding-right: 0.5rem;
@@ -1654,11 +1655,6 @@ video {
 .px-6 {
   padding-left: 1.5rem;
   padding-right: 1.5rem;
-}
-
-.px-\[2px\] {
-  padding-left: 2px;
-  padding-right: 2px;
 }
 
 .py-1 {
@@ -1689,11 +1685,6 @@ video {
 .py-8 {
   padding-top: 2rem;
   padding-bottom: 2rem;
-}
-
-.px-1 {
-  padding-left: 0.25rem;
-  padding-right: 0.25rem;
 }
 
 .pb-0 {
@@ -2141,6 +2132,46 @@ video {
 
 .\[key\:string\] {
   key: string;
+}
+
+.\[audio_clip_role_names\:string\] {
+  audio_clip_role_names: string;
+}
+
+.\[audio_clip_tone_ids\:string\] {
+  audio_clip_tone_ids: string;
+}
+
+.\[event_statuses\:string\] {
+  event_statuses: string;
+}
+
+.\[main_filters\:string\] {
+  main_filters: string;
+}
+
+.\[timeframes\:string\] {
+  timeframes: string;
+}
+
+.\[audio_clip_tone_id\:number\] {
+  audio_clip_tone_id: number;
+}
+
+.\[current_audio_clip_role_name_index\:number\] {
+  current_audio_clip_role_name_index: number;
+}
+
+.\[current_event_generic_status_name_index\:number\] {
+  current_event_generic_status_name_index: number;
+}
+
+.\[current_main_filter_index\:number\] {
+  current_main_filter_index: number;
+}
+
+.\[current_timeframe_index\:number\] {
+  current_timeframe_index: number;
 }
 
 /*enable this to troubleshoot css errors*/

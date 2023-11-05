@@ -27,14 +27,14 @@
     // import anime from 'animejs';
     // import VPlayback from '../medium/VPlayback.vue';
     // import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
-    import GroupedAudioClipsTypes from '@/types/GroupedAudioClips.interface';
+    import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
     const axios = require('axios');
 
     export default defineComponent({
         data(){
             return {
                 notifications: [] as any[],
-                event: null as GroupedAudioClipsTypes|null,
+                event: null as EventsAndAudioClipsTypes|null,
             };
         },
         watch: {

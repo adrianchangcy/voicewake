@@ -143,6 +143,8 @@ export function prettyTimeRemaining(current_ms:number, max_ms:number) : string {
 
 export function timeFromNowMS(date:Date) : number {
 
+    //to use, simply pass as date arg: new Date(my_datetime_str_from_API)
+    //we don't do this automatically to enable better reusability
     return Math.floor(new Date().getTime() - date.getTime());
 }
 

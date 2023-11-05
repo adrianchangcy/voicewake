@@ -1,30 +1,32 @@
 import { defineStore } from 'pinia';
 import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
-import GroupedAudioClipsTypes from '@/types/GroupedAudioClips.interface';
+import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
 import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
 
 
-//need this because RecycleScroller's keyField is not flexible for nested values
-interface GroupedAudioClipsWithScrollerIndexTypes extends GroupedAudioClipsTypes{
-    event_id: number
+//reminder, Pinia does not rehydrate Date() as Date(), but string
+
+interface DefaultPageTypes {
+    events: EventsAndAudioClipsTypes[],
+    stop_searching: boolean,
+    when_stopped_searching: string|null,
+    last_selected_audio_clip: AudioClipsAndLikeDetailsTypes|null,
+    next_url: string,
+    back_url: string,
 }
 
-//stated edge case, Pinia does not rehydrate Date() as Date(), but string
-interface NoAudioClipToneEventsType{
-    [audio_clip_role_name_index:number] : {
-        [filter_type_index: number] : {
-            events: GroupedAudioClipsWithScrollerIndexTypes[],
-            current_page: number,
-            stop_searching: boolean,
-            when_stopped_searching: string|null,
-            last_selected_audio_clip: AudioClipsAndLikeDetailsTypes|null,
+interface FilteredEventsStructure {
+    [current_event_generic_status_name_index:number]: {
+        [current_main_filter_index:number]: {
+            [current_timeframe_index:number]: {
+                [current_audio_clip_role_name_index:number]: {
+                    [audio_clip_tone_id:number]: DefaultPageTypes
+                }
+            }
         }
     }
 }
 
-interface SelectedAudioClipToneEventsType{
-    [audio_clip_tone_id: number]: NoAudioClipToneEventsType
-}
 
 export function useFilteredEventsStore(is_user_page:boolean){
 
@@ -32,373 +34,383 @@ export function useFilteredEventsStore(is_user_page:boolean){
 
     return defineStore(store_id, {
         state: ()=>({
+            filtered_events_structure: {} as FilteredEventsStructure,
+
+            current_event_generic_status_name_index: 0,
+            event_generic_status_names: ["completed"],
+
+            current_main_filter_index: 0,
+            main_filters: ["Latest", "Best"],
+
+            current_timeframe_index: 0,
+            timeframes: ["All", "Year", "Month", "Day"],
+
             current_audio_clip_role_name_index: 0,
             audio_clip_role_names: ["originator", "responder"],
-            current_filter_type_index: 0,
-            filter_types: ["Latest", "Best"],
+            pretty_audio_clip_role_names: ["Started", "Replied"],
 
-            selected_audio_clip_tone: null as AudioClipTonesTypes|null,
-            no_audio_clip_tone_events: {} as NoAudioClipToneEventsType,
-            selected_audio_clip_tone_events: {} as SelectedAudioClipToneEventsType,
+            //when null, i.e. "any", our index is 0, which is fine, since audio_clip_tones.id in db starts from 1
+            current_audio_clip_tone_id: 0,
+            current_audio_clip_tone: null as AudioClipTonesTypes|null,
 
             stop_searching_duration_s: 10,
             last_scroll_y: 0,
-        }),    
+        }),
         getters: {
-            getAudioClipRoleNames: (state) => {
+            getFilteredEventsStructure: (state):FilteredEventsStructure => {
 
-                return state.audio_clip_role_names;
+                return state.filtered_events_structure;
             },
-            getNoAudioClipToneEvents: (state) => {
+            getEventsForBrowsing: (state):EventsAndAudioClipsTypes[] => {
 
-                return state.no_audio_clip_tone_events;
-            },
-            getSelectedAudioClipToneEvents: (state) => {
+                const args_list = [
+                    state.current_event_generic_status_name_index,
+                    state.current_main_filter_index,
+                    state.current_timeframe_index,
+                    state.current_audio_clip_role_name_index,
+                    state.current_audio_clip_tone_id,
+                ];
 
-                return state.selected_audio_clip_tone_events;
-            },
-            getCurrentAudioClipRoleNameIndex: (state) => {
-
-                return state.current_audio_clip_role_name_index;
-            },
-            getCurrentFilterTypeIndex: (state) => {
-
-                return state.current_filter_type_index;
-            },
-            getFilterTypes: (state) => {
-
-                return state.filter_types;
-            },
-            getSelectedFilterType: (state) => {
-
-                return state.filter_types[state.current_filter_type_index];
-            },
-            getSelectedAudioClipTone: (state) => {
-
-                return state.selected_audio_clip_tone;
-            },
-            getEventsForBrowsing: (state):GroupedAudioClipsTypes[] => {
-
-                //only have to check first layer key to know whether everything else exists
-                //we can do this because of the way we initialise
-
-                if(state.selected_audio_clip_tone === null){
-
-                    if(Object.keys(state.no_audio_clip_tone_events).length === 0){
-
-                        return [];
-
-                    }else{
-
-                        return state.no_audio_clip_tone_events[state.current_audio_clip_role_name_index][state.current_filter_type_index]['events'];
-                    }
-
-                }else{
-
-                    if(state.selected_audio_clip_tone.id in state.selected_audio_clip_tone_events === false){
-
-                        return [];
-
-                    }else{
-
-                        return state.selected_audio_clip_tone_events[state.selected_audio_clip_tone.id][state.current_audio_clip_role_name_index][state.current_filter_type_index]['events'];
-                    }
+                if(args_list[0] in Object.keys(state.filtered_events_structure) === false){
+                    return [];
+                }else if(args_list[1] in Object.keys(state.filtered_events_structure[args_list[0]]) === false){
+                    return [];
+                }else if(args_list[2] in Object.keys(state.filtered_events_structure[args_list[0]][args_list[1]]) === false){
+                    return [];
+                }else if(args_list[3] in Object.keys(state.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]]) === false){
+                    return [];
+                }else if(args_list[4] in Object.keys(state.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]]) === false){
+                    return [];
                 }
+
+                return state.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]].events;
             },
             getLastSelectedAudioClip: (state):AudioClipsAndLikeDetailsTypes|null => {
 
-                if(state.selected_audio_clip_tone === null){
+                try{
 
-                    if(Object.keys(state.no_audio_clip_tone_events).length === 0){
+                    return state.filtered_events_structure[state.current_event_generic_status_name_index][state.current_main_filter_index][state.current_timeframe_index][state.current_audio_clip_role_name_index][state.current_audio_clip_tone_id].last_selected_audio_clip;
 
-                        return null;
+                }catch(error){
 
-                    }else{
-
-                        return state.no_audio_clip_tone_events[state.current_audio_clip_role_name_index][state.current_filter_type_index].last_selected_audio_clip;
-                    }
-
-                }else{
-
-                    if(state.selected_audio_clip_tone.id in state.selected_audio_clip_tone_events === false){
-
-                        return null;
-
-                    }else{
-
-                        return state.selected_audio_clip_tone_events[state.selected_audio_clip_tone.id][state.current_audio_clip_role_name_index][state.current_filter_type_index].last_selected_audio_clip;
-                    }
+                    return null;
                 }
             },
-            getLastScrollY: (state) => {
+            getLastScrollY: (state):number => {
 
                 return state.last_scroll_y;
             },
+            getCurrentEventGenericStatusNameIndex: (state):number => {
+
+                return state.current_event_generic_status_name_index;
+            },
+            getEventGenericStatusNames: (state):string[] => {
+
+                return state.event_generic_status_names;
+            },
+            getCurrentMainFilterIndex: (state):number => {
+
+                return state.current_main_filter_index;
+            },
+            getMainFilters: (state):string[] => {
+
+                return state.main_filters;
+            },
+            getCurrentTimeframeIndex: (state):number => {
+
+                return state.current_timeframe_index;
+            },
+            getTimeframes: (state):string[] => {
+
+                return state.timeframes;
+            },
+            getCurrentAudioClipRoleNameIndex: (state):number => {
+
+                return state.current_audio_clip_role_name_index;
+            },
+            getAudioClipRoleNames: (state):string[] => {
+
+                return state.audio_clip_role_names;
+            },
+            getPrettyAudioClipRoleNames: (state):string[] => {
+
+                return state.pretty_audio_clip_role_names;
+            },
+            getCurrentAudioClipToneId: (state):number => {
+
+                return state.current_audio_clip_tone_id;
+            },
+            getCurrentAudioClipTone: (state):AudioClipTonesTypes|null => {
+
+                return state.current_audio_clip_tone;
+            },
         },
         actions: {
-            async setLastScrollY(scrollY_value:number) : Promise<void> {
+            async updateCurrentEventGenericStatusNameIndex(new_index:number) : Promise<void> {
 
-                this.last_scroll_y = scrollY_value;
-            },
-            async partialResetStore() : Promise<void> {
+                if(new_index >= this.event_generic_status_names.length){
 
-                //resetting only these allows us to maintain user's filter preferences
-                this.no_audio_clip_tone_events = {};
-                this.selected_audio_clip_tone_events = {};
-                this.last_scroll_y = 0;
-            },
-            async destroySelectedAudioClipToneData(new_value:AudioClipTonesTypes) : Promise<void> {
-
-                if(new_value.id in this.selected_audio_clip_tone_events === false){
-
-                    return;
+                    throw new Error('Index out of range.');
                 }
 
-                delete this.selected_audio_clip_tone_events[new_value.id];
+                this.current_event_generic_status_name_index = new_index;
             },
-            async updateSelectedAudioClipTone(new_value:AudioClipTonesTypes|null) : Promise<void> {
+            isSameCurrentEventGenericStatusNameIndex(index:number) : boolean {
 
-                this.selected_audio_clip_tone = new_value;
+                return this.current_event_generic_status_name_index === index;
             },
-            async updateCurrentAudioClipRoleNameIndex(new_value:number) : Promise<void> {
+            async updateCurrentMainFilterIndex(new_index:number) : Promise<void> {
 
-                if(new_value >= this.audio_clip_role_names.length){
+                if(new_index >= this.main_filters.length){
 
-                    throw new Error('Invalid current_audio_clip_role_name_index value passed.');
+                    throw new Error('Index out of range.');
                 }
 
-                this.current_audio_clip_role_name_index = new_value;
+                this.current_main_filter_index = new_index;
             },
-            async updateCurrentFilterTypeIndex(new_value:number) : Promise<void> {
+            isSameCurrentMainFilterIndex(index:number) : boolean {
 
-                if(new_value >= this.filter_types.length){
+                return this.current_main_filter_index === index;
+            },
+            async updateCurrentTimeframeIndex(new_index:number) : Promise<void> {
 
-                    throw new Error('Invalid current_filter_type_index value passed.');
+                if(new_index >= this.timeframes.length){
+
+                    throw new Error('Index out of range.');
                 }
 
-                this.current_filter_type_index = new_value;
+                this.current_timeframe_index = new_index;
             },
-            async updateLastSelectedAudioClip(audio_clip:AudioClipsAndLikeDetailsTypes) : Promise<void> {
+            isSameCurrentTimeframeIndex(index:number) : boolean {
 
-                if(this.selected_audio_clip_tone === null){
+                return this.current_timeframe_index === index;
+            },
+            async updateCurrentAudioClipRoleNameIndex(new_index:number) : Promise<void> {
 
-                    this.no_audio_clip_tone_events[this.current_audio_clip_role_name_index][this.current_filter_type_index].last_selected_audio_clip = audio_clip;
+                if(new_index >= this.audio_clip_role_names.length){
 
-                }else{
-
-                    this.selected_audio_clip_tone_events[this.selected_audio_clip_tone.id][this.current_audio_clip_role_name_index][this.current_filter_type_index].last_selected_audio_clip = audio_clip;
+                    throw new Error('Index out of range.');
                 }
-            },
-            async incrementPage(
-                audio_clip_tone:AudioClipTonesTypes|null,
-                current_audio_clip_role_name_index:number,
-                current_filter_type_index:number,
-            ) : Promise<void> {
 
-                //a bit worried about race condition on API request, where we get duplicate same-page data
-                //but perhaps this worry is unjustified
-                //hence, this is placed back into insertEvents()
+                this.current_audio_clip_role_name_index = new_index;
+            },
+            isSameCurrentAudioClipRoleNameIndex(index:number) : boolean {
+
+                return this.current_audio_clip_role_name_index === index;
+            },
+            async updateCurrentAudioClipTone(audio_clip_tone:AudioClipTonesTypes|null) : Promise<void> {
+
+                this.current_audio_clip_tone = audio_clip_tone;
+                this.current_audio_clip_tone_id = audio_clip_tone === null ? 0 : audio_clip_tone.id;
+            },
+            isSameCurrentAudioClipTone(audio_clip_tone:AudioClipTonesTypes|null) : boolean {
 
                 if(audio_clip_tone === null){
 
-                    this.no_audio_clip_tone_events[current_audio_clip_role_name_index][current_filter_type_index]['current_page'] += 1;
+                    return this.current_audio_clip_tone_id === 0;
 
                 }else{
 
-                    this.selected_audio_clip_tone_events[audio_clip_tone.id][current_audio_clip_role_name_index][current_filter_type_index]['current_page'] += 1;
+                    return this.current_audio_clip_tone_id === audio_clip_tone.id;
                 }
             },
+            async updateLastSelectedAudioClip(audio_clip:AudioClipsAndLikeDetailsTypes) : Promise<void> {
+
+                this.filtered_events_structure[
+                    this.current_event_generic_status_name_index
+                ][
+                    this.current_main_filter_index
+                ][
+                    this.current_timeframe_index
+                ][
+                    this.current_audio_clip_role_name_index
+                ][
+                    this.current_audio_clip_tone_id
+                ][
+                    'last_selected_audio_clip'
+                ] = audio_clip;
+            },
             async checkCanFetch(
-                audio_clip_tone:AudioClipTonesTypes|null,
+                current_event_generic_status_name_index:number,
+                current_main_filter_index:number,
+                current_timeframe_index:number,
                 current_audio_clip_role_name_index:number,
-                current_filter_type_index:number,
+                current_audio_clip_tone_id:number,
             ) : Promise<boolean> {
 
-                //if never stopped searching, return true
-                if(
-                    audio_clip_tone === null &&
-                    this.no_audio_clip_tone_events[current_audio_clip_role_name_index][current_filter_type_index]['stop_searching'] === false
-                ){
+                const args_list = [
+                    current_event_generic_status_name_index,
+                    current_main_filter_index,
+                    current_timeframe_index,
+                    current_audio_clip_role_name_index,
+                    current_audio_clip_tone_id,
+                ];
 
-                    return true;
+                await this.initialiseFilteredEventsStructure(
+                    current_event_generic_status_name_index,
+                    current_main_filter_index,
+                    current_timeframe_index,
+                    current_audio_clip_role_name_index,
+                    current_audio_clip_tone_id,
+                );
 
-                }else if(
-                    audio_clip_tone !== null &&
-                    this.selected_audio_clip_tone_events[audio_clip_tone.id][current_audio_clip_role_name_index][current_filter_type_index]['stop_searching'] === false
-                ){
+                const target_level = this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]];
 
+                if(target_level.stop_searching === false){
+
+                    //can search
                     return true;
                 }
 
                 //has stopped searching before
-                //if when_stopped_searching is too in the past, reset and return true
+                //if when_stopped_searching is too far in the past, reset and return true
+
                 const datetime_object = new Date();
                 let when_stopped_searching_difference_s = 0;
 
-                if(
-                    audio_clip_tone === null &&
-                    this.no_audio_clip_tone_events[current_audio_clip_role_name_index][current_filter_type_index]['stop_searching'] === true &&
-                    this.no_audio_clip_tone_events[current_audio_clip_role_name_index][current_filter_type_index]['when_stopped_searching'] !== null
-                ){
+                const datetime_now = new Date(target_level.when_stopped_searching!);
 
-                    const datetime_now = new Date(this.no_audio_clip_tone_events[current_audio_clip_role_name_index][current_filter_type_index]['when_stopped_searching']!);
+                when_stopped_searching_difference_s = datetime_object.getTime() - datetime_now.getTime();
 
-                    when_stopped_searching_difference_s = datetime_object.getTime() - datetime_now.getTime();
+                when_stopped_searching_difference_s = when_stopped_searching_difference_s / 1000;
 
-                    when_stopped_searching_difference_s = when_stopped_searching_difference_s / 1000;
+                if(when_stopped_searching_difference_s >= this.stop_searching_duration_s){
 
-                    if(when_stopped_searching_difference_s >= this.stop_searching_duration_s){
-        
-                        this.no_audio_clip_tone_events[current_audio_clip_role_name_index][current_filter_type_index]['stop_searching'] = false;
-                        this.no_audio_clip_tone_events[current_audio_clip_role_name_index][current_filter_type_index]['when_stopped_searching'] = null;
+                    //time has passed, can search
+                    this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]]['stop_searching'] = false;
+                    this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]]['when_stopped_searching'] = null;
 
-                        return true;
-                    }
-
-                }else if(
-                    audio_clip_tone !== null &&
-                    this.selected_audio_clip_tone_events[audio_clip_tone.id][current_audio_clip_role_name_index][current_filter_type_index]['stop_searching'] === true &&
-                    this.selected_audio_clip_tone_events[audio_clip_tone.id][current_audio_clip_role_name_index][current_filter_type_index]['when_stopped_searching'] !== null
-                ){
-
-                    const datetime_now = new Date(this.selected_audio_clip_tone_events[audio_clip_tone.id][current_audio_clip_role_name_index][current_filter_type_index]['when_stopped_searching']!);
-
-                    when_stopped_searching_difference_s = datetime_object.getTime() - datetime_now.getTime();
-
-                    when_stopped_searching_difference_s = when_stopped_searching_difference_s / 1000;
-
-                    if(when_stopped_searching_difference_s >= this.stop_searching_duration_s){
-        
-                        this.selected_audio_clip_tone_events[audio_clip_tone.id][current_audio_clip_role_name_index][current_filter_type_index]['stop_searching'] = false;
-                        this.selected_audio_clip_tone_events[audio_clip_tone.id][current_audio_clip_role_name_index][current_filter_type_index]['when_stopped_searching'] = null;
-
-                        return true;
-                    }
+                    return true;
                 }
 
+                //time has not yet passed
                 return false;
             },
             async insertEvents(
-                audio_clip_tone:AudioClipTonesTypes|null,
+                current_event_generic_status_name_index:number,
+                current_main_filter_index:number,
+                current_timeframe_index:number,
                 current_audio_clip_role_name_index:number,
-                current_filter_type_index:number,
-                data:GroupedAudioClipsTypes[],
+                current_audio_clip_tone_id:number,
+                next_or_back:"next"|"back"="next",
+                new_events:EventsAndAudioClipsTypes[]=[],
+                next_url:string='',
+                back_url:string='',
             ) : Promise<void> {
 
                 //need to use params to prevent inaccuracy from race condition
                 //i.e. data from filter choices previously but new choices were selected
 
                 //stop searching if received no events
-                if(data.length === 0){
+                if(new_events.length === 0){
 
                     const datetime_now = new Date().toISOString();
 
-                    if(audio_clip_tone === null){
-
-                        this.no_audio_clip_tone_events[current_audio_clip_role_name_index][current_filter_type_index]['stop_searching'] = true;
-                        this.no_audio_clip_tone_events[current_audio_clip_role_name_index][current_filter_type_index]['when_stopped_searching'] = datetime_now;
-
-                    }else{
-
-                        this.selected_audio_clip_tone_events[audio_clip_tone.id][current_audio_clip_role_name_index][current_filter_type_index]['stop_searching'] = true;
-                        this.selected_audio_clip_tone_events[audio_clip_tone.id][current_audio_clip_role_name_index][current_filter_type_index]['when_stopped_searching'] = datetime_now;
-                    }
+                    //update "stop_searching", "when_stopped_searching"
+                    this.filtered_events_structure[current_event_generic_status_name_index][current_main_filter_index][current_timeframe_index][current_audio_clip_role_name_index][current_audio_clip_tone_id]['stop_searching'] = true;
+                    this.filtered_events_structure[current_event_generic_status_name_index][current_main_filter_index][current_timeframe_index][current_audio_clip_role_name_index][current_audio_clip_tone_id]['when_stopped_searching'] = datetime_now;
 
                     return;
                 }
 
-                //handle edge case where data is fetched but audio_clip_tone no longer exists
-                //i.e. removed by VAudioClipToneMenu
-                if(audio_clip_tone !== null && audio_clip_tone.id in this.selected_audio_clip_tone_events === false){
+                if(next_or_back === "next"){
 
-                    return;
+                    new_events.forEach((event:EventsAndAudioClipsTypes)=>{
+
+                        //add "event_id_as_scroller_index" to every event for Vue Virtual Scroller, then store
+                        event.event_id_as_scroller_index = event.event.id;
+
+                        this.filtered_events_structure[current_event_generic_status_name_index][current_main_filter_index][current_timeframe_index][current_audio_clip_role_name_index][current_audio_clip_tone_id]['events'].push(event);
+                    });
+                
+                }else if(next_or_back === "back"){
+
+                    //backwards
+                    for(let x = (new_events.length - 1); x >= 0; x--){
+
+                        //add "event_id_as_scroller_index" to every event for Vue Virtual Scroller, then store
+                        new_events[x].event_id_as_scroller_index = new_events[x].event.id;
+
+                        this.filtered_events_structure[current_event_generic_status_name_index][current_main_filter_index][current_timeframe_index][current_audio_clip_role_name_index][current_audio_clip_tone_id]['events'].splice(0, 0, new_events[x]);
+                    }
                 }
 
-                await this.incrementPage(audio_clip_tone, current_audio_clip_role_name_index, current_filter_type_index);
+                //update URLs
 
-                //insertion below adds 'event_id' for VirtualScroller's keyField indexing
-                //it accepts only literal string, i.e. nested values in objects won't work
+                if(next_url !== ''){
 
-                if(audio_clip_tone === null){
+                    this.filtered_events_structure[current_event_generic_status_name_index][current_main_filter_index][current_timeframe_index][current_audio_clip_role_name_index][current_audio_clip_tone_id]['next_url'] = next_url;
+                }
 
-                    //handle events retrieved from query with no audio_clip_tone specified
+                if(back_url !== ''){
 
-                    //add data
-                    for(let x=0; x < data.length; x++){
-
-                        (data[x] as GroupedAudioClipsWithScrollerIndexTypes)['event_id'] = data[x].event.id;
-
-                        this.no_audio_clip_tone_events[current_audio_clip_role_name_index][current_filter_type_index]['events'].push(data[x] as GroupedAudioClipsWithScrollerIndexTypes);
-                    }
-
-                }else{
-
-                    //handle events retrieved from query with audio_clip_tone specified
-
-                    //add data
-                    for(let x=0; x < data.length; x++){
-
-                        (data[x] as GroupedAudioClipsWithScrollerIndexTypes)['event_id'] = data[x].event.id;
-
-                        this.selected_audio_clip_tone_events[audio_clip_tone.id][current_audio_clip_role_name_index][current_filter_type_index]['events'].push(data[x] as GroupedAudioClipsWithScrollerIndexTypes);
-                    }
+                    this.filtered_events_structure[current_event_generic_status_name_index][current_main_filter_index][current_timeframe_index][current_audio_clip_role_name_index][current_audio_clip_tone_id]['back_url'] = back_url;
                 }
             },
-            async initialiseDataOnFirstPageAfterFilterChange(
-                audio_clip_tone:AudioClipTonesTypes|null,
+            async initialiseFilteredEventsStructure(
+                current_event_generic_status_name_index:number,
+                current_main_filter_index:number,
+                current_timeframe_index:number,
+                current_audio_clip_role_name_index:number,
+                current_audio_clip_tone_id:number,
             ) : Promise<void> {
 
-                if(audio_clip_tone === null && Object.keys(this.no_audio_clip_tone_events).length === 0){
+                //on-demand initialisation
+                //does nothing if there is already our desired structure
 
-                    for(let x=0; x < this.audio_clip_role_names.length; x++){
+                const args_list = [
+                    current_event_generic_status_name_index,
+                    current_main_filter_index,
+                    current_timeframe_index,
+                    current_audio_clip_role_name_index,
+                    current_audio_clip_tone_id,
+                ];
 
-                        this.no_audio_clip_tone_events[x] = {};
+                //start initialising
+                args_list[0] in Object.keys(this.filtered_events_structure) === false ? this.filtered_events_structure[args_list[0]] = {} : null;
+                args_list[1] in Object.keys(this.filtered_events_structure[args_list[0]]) === false ? this.filtered_events_structure[args_list[0]][args_list[1]] = {} : null;
+                args_list[2] in Object.keys(this.filtered_events_structure[args_list[0]][args_list[1]]) === false ? this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]] = {} : null;
+                args_list[3] in Object.keys(this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]]) === false ? this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]] = {} : null;
 
-                        for(let xx=0; xx < this.filter_types.length; xx++){
+                //final initialisation
+                if(args_list[4] in Object.keys(this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]]) === false){
 
-                            this.no_audio_clip_tone_events[x][xx] = {
-                                'events': [],
-                                'current_page': 1,
-                                'stop_searching': false,
-                                'when_stopped_searching': null,
-                                'last_selected_audio_clip': null,
-                            };
-                        }
-                    }
-
-                }else if(audio_clip_tone !== null && audio_clip_tone.id in this.selected_audio_clip_tone_events === false){
-
-                    this.selected_audio_clip_tone_events[audio_clip_tone.id] = {};
-
-                    for(let x=0; x < this.audio_clip_role_names.length; x++){
-
-                        this.selected_audio_clip_tone_events[audio_clip_tone.id][x] = {};
-
-                        for(let xx=0; xx < this.filter_types.length; xx++){
-
-                            this.selected_audio_clip_tone_events[audio_clip_tone.id][x][xx] = {
-                                'events': [],
-                                'current_page': 1,
-                                'stop_searching': false,
-                                'when_stopped_searching': null,
-                                'last_selected_audio_clip': null,
-                            };
-                        }
-                    }
+                    this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]] = {
+                        'events': [],
+                        'stop_searching': false,
+                        'when_stopped_searching': null,
+                        'last_selected_audio_clip': null,
+                        'next_url': '',
+                        'back_url': '',
+                    };
                 }
             },
-            async hasDataOnFirstPageAfterFilterChange(
-                audio_clip_tone:AudioClipTonesTypes|null,
+            async hasExistingDataAfterFilterChange(
+                current_event_generic_status_name_index:number,
+                current_main_filter_index:number,
+                current_timeframe_index:number,
                 current_audio_clip_role_name_index:number,
-                current_filter_type_index:number,
+                current_audio_clip_tone_id:number,
             ) : Promise<boolean> {
 
-                //if is first page, check if we already have data
-                //simply return, as our computed getEventsForBrowsing handles retrieval for us
-                return (
-                    (audio_clip_tone === null && this.no_audio_clip_tone_events[current_audio_clip_role_name_index][current_filter_type_index]['events'].length > 0) ||
-                    (audio_clip_tone !== null && this.selected_audio_clip_tone_events[audio_clip_tone.id][current_audio_clip_role_name_index][current_filter_type_index]['events'].length > 0)
-                );
+                const args_list = [
+                    current_event_generic_status_name_index,
+                    current_main_filter_index,
+                    current_timeframe_index,
+                    current_audio_clip_role_name_index,
+                    current_audio_clip_tone_id,
+                ];
+
+                return this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]]['events'].length > 0;
+            },
+            async partialResetStore() : Promise<void> {
+
+                this.filtered_events_structure = {};
+                this.last_scroll_y = 0;
+            },
+            async setLastScrollY(scrollY_value:number) : Promise<void> {
+
+                this.last_scroll_y = scrollY_value;
             },
         },
         persist: !is_user_page,
