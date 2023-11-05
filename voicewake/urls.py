@@ -38,8 +38,6 @@ if settings.DEBUG is True:
         path('admin', admin.site.urls),
         path('__debug__/', include('debug_toolbar.urls')),
         path('api/test', apis.TestAPI.as_view(), name='test_api'),
-        path('api/test/<str:next_or_back>/<str:cursor_token>', apis.TestAPI.as_view(), name='test_next_or_back_and_token'),
-        path('api/test/<str:next_or_back>', apis.TestAPI.as_view(), name='test_next_or_back_no_token'),
         path('test', views.test_page, name='test_page'),
     ]
 
@@ -48,12 +46,18 @@ urlpatterns += [
     #we don't need default URLs
     # path('', include(router.urls)),
 
-    path('api/events/get/<int:event_id>', apis.EventsAPI.as_view(), name='get_events_by_event_id_api'),
+    path('api/events/get/<int:event_id>', apis.GetEventsAPI.as_view(), name='get_events_api'),
 
-    path('api/events/list/completed/<str:latest_or_best>/<str:timeframe>/<int:page>', apis.EventsAPI.as_view(), name='get_events_by_best_or_new_paged_api'),
-    path('api/events/list/completed/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_tone_slug>/<int:page>', apis.EventsAPI.as_view(), name='get_events_api'),
-    path('api/events/list/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<int:page>', apis.EventsAPI.as_view(), name='get_events_api'),
-    path('api/events/list/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<str:audio_clip_tone_slug>/<int:page>', apis.EventsAPI.as_view(), name='get_events_api'),
+
+    path('api/events/list/completed/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<int:audio_clip_tone_id>/<str:next_or_back>/<str:cursor_token>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
+    path('api/events/list/completed/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<int:audio_clip_tone_id>/<str:next_or_back>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
+    path('api/events/list/completed/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<str:next_or_back>/<str:cursor_token>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
+    path('api/events/list/completed/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<str:next_or_back>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
+
+    path('api/events/list/completed/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<int:audio_clip_tone_id>/<str:next_or_back>/<str:cursor_token>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
+    path('api/events/list/completed/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<int:audio_clip_tone_id>/<str:next_or_back>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
+    path('api/events/list/completed/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<str:next_or_back>/<str:cursor_token>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
+    path('api/events/list/completed/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<str:next_or_back>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
 
     path('api/events/reply-choices/list', apis.HandleEventReplyChoicesAPI.as_view(current_context="list"), name="list_event_choices_api"),
     path('api/events/reply-choices/expire', apis.HandleEventReplyChoicesAPI.as_view(current_context="expire"), name="expire_event_choices_api"),

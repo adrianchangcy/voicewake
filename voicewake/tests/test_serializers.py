@@ -23,6 +23,25 @@ import math
 
 
 
+class Random_TestCase(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+
+        pass
+
+    def test_random(self):
+
+        vals = {
+            'val_1': 0,
+        }
+
+        ser = TestApiSerializer(data=vals, many=False)
+        ser.is_valid()
+        print(ser.validated_data)
+
+
+
 class RegExp_TestCase(TestCase):
 
     @classmethod

@@ -147,7 +147,7 @@
 <script lang="ts">
     import { defineComponent, } from 'vue';
     import { prettyTimePassed, prettyTimeRemaining, getDataFromTemplateJSONScript, timeFromNowMS } from '@/helper_functions';
-    import GroupedAudioClipsTypes from '@/types/GroupedAudioClips.interface';
+    import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
     import StatusValues from '@/types/values/StatusValues';
     import { notify } from 'notiwind';
@@ -171,7 +171,7 @@
                 reply_is_deleted: false,    //set True once, only to show message
                 reply_is_expired: false,  //set True once, only to show message
 
-                event: null as GroupedAudioClipsTypes|null,
+                event: null as EventsAndAudioClipsTypes|null,
 
                 is_searching: false,
                 is_deleting: false,
@@ -270,7 +270,7 @@
                         break;
                 }
             },
-            async checkUserIsReplying(event:GroupedAudioClipsTypes) : Promise<void> {
+            async checkUserIsReplying(event:EventsAndAudioClipsTypes) : Promise<void> {
 
                 //check if user is supposed to reply to this
                 //might not seem important to do this much if journey is standard reply --> open
@@ -278,22 +278,21 @@
 
                 //basic validation
                 if(
+                    this.user_id === null ||
                     event.event.id !== this.event_id ||
-                    this.user_id === null
+                    'when_locked' in event.event === false ||
+                    'is_replying' in event.event === false
                 ){
 
                     return;
                 }
 
                 //validate whether user is replying
-                if(
-                    event.event.is_replying === true &&
-                    event.event.locked_for_user !== null &&
-                    event.event.locked_for_user.id === this.user_id
-                ){
+                if(event.event.is_replying! === true){
 
                     //is replying
                     this.is_this_user_replying = true;
+
                     await this.startReplyExpiryInterval();
                     this.scrollToReplyArea();
 
@@ -484,7 +483,8 @@
                 if(
                     this.is_this_user_replying === false ||
                     this.event === null ||
-                    this.event.event.when_locked === null
+                    'when_locked' in this.event.event === false ||
+                    'is_replying' in this.event.event === false
                 ){
 
                     return;
@@ -493,8 +493,8 @@
                 //reset interval, just in case
                 this.reply_expiry_interval !== null ? clearInterval(this.reply_expiry_interval) : null;
                 this.reply_expiry_interval = null;
-
-                const when_locked_ms = new Date(this.event.event.when_locked);
+                
+                const when_locked_ms = new Date(this.event.event.when_locked!);
                 const time_elapsed_ms = timeFromNowMS(when_locked_ms);
 
                 //time is up

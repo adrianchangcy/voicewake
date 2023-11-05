@@ -106,25 +106,11 @@ custom_function_handle_audio_clip_likes_dislikes_count = '''
                     WHERE id = NEW.audio_clip_id
                     ;
 
-                    UPDATE event_likes_dislikes
-                    SET like_count = event_likes_dislikes.like_count + 1
-					FROM audio_clips
-                    WHERE audio_clips.id = NEW.audio_clip_id
-					AND event_likes_dislikes.event_id = audio_clips.event_id
-                    ;
-
                 ELSIF (NEW.is_liked IS FALSE) THEN
 
                     UPDATE audio_clips
                     SET dislike_count = dislike_count + 1
                     WHERE id = NEW.audio_clip_id
-                    ;
-
-                    UPDATE event_likes_dislikes
-                    SET dislike_count = event_likes_dislikes.dislike_count + 1
-					FROM audio_clips
-                    WHERE audio_clips.id = NEW.audio_clip_id
-					AND event_likes_dislikes.event_id = audio_clips.event_id
                     ;
 
                 END IF;
@@ -140,28 +126,12 @@ custom_function_handle_audio_clip_likes_dislikes_count = '''
                     WHERE id = NEW.audio_clip_id
                     ;
 
-                    UPDATE event_likes_dislikes
-                    SET like_count = event_likes_dislikes.like_count + 1,
-					dislike_count = event_likes_dislikes.dislike_count - 1
-					FROM audio_clips
-                    WHERE audio_clips.id = NEW.audio_clip_id
-					AND event_likes_dislikes.event_id = audio_clips.event_id
-                    ;
-
                 ELSIF (OLD.is_liked IS TRUE AND NEW.is_liked IS FALSE) THEN
 
                     UPDATE audio_clips
                     SET like_count = like_count - 1,
                     dislike_count = dislike_count + 1
                     WHERE id = NEW.audio_clip_id
-                    ;
-
-                    UPDATE event_likes_dislikes
-                    SET like_count = event_likes_dislikes.like_count - 1,
-					dislike_count = event_likes_dislikes.dislike_count + 1
-					FROM audio_clips
-                    WHERE audio_clips.id = NEW.audio_clip_id
-					AND event_likes_dislikes.event_id = audio_clips.event_id
                     ;
 
                 END IF;
@@ -176,25 +146,11 @@ custom_function_handle_audio_clip_likes_dislikes_count = '''
                     WHERE id = OLD.audio_clip_id
                     ;
 
-                    UPDATE event_likes_dislikes
-                    SET like_count = event_likes_dislikes.like_count - 1
-					FROM audio_clips
-                    WHERE audio_clips.id = OLD.audio_clip_id
-					AND event_likes_dislikes.event_id = audio_clips.event_id
-                    ;
-
                 ELSIF (OLD.is_liked IS FALSE) THEN
 
                     UPDATE audio_clips
                     SET dislike_count = dislike_count - 1
                     WHERE id = OLD.audio_clip_id
-                    ;
-
-                    UPDATE event_likes_dislikes
-                    SET dislike_count = event_likes_dislikes.dislike_count - 1
-					FROM audio_clips
-                    WHERE audio_clips.id = OLD.audio_clip_id
-					AND event_likes_dislikes.event_id = audio_clips.event_id
                     ;
 
                 END IF;
@@ -216,6 +172,12 @@ custom_trigger_audio_clip_likes_dislikes = '''
     EXECUTE FUNCTION handle_audio_clip_likes_dislikes_count();
 '''
 
+#ASC not needed, since plan can use index scan backward
+#the id should start to matter when one specific when_created has many ids
+#currently indexing extra id has no effect, but we always order by these two columns this way, so might as well
+audio_clips_when_created_id_1 = '''
+    CREATE INDEX audio_clips_when_created_id_1 ON audio_clips(when_created DESC, id DESC);
+'''
 
 
 class Migration(migrations.Migration):
@@ -228,5 +190,6 @@ class Migration(migrations.Migration):
         migrations.RunSQL(custom_function_get_id_of_one_or_all_audio_clip_tones_via_slug),
         migrations.RunSQL(custom_function_handle_audio_clip_likes_dislikes_count),
         migrations.RunSQL(custom_trigger_audio_clip_likes_dislikes),
+        migrations.RunSQL(audio_clips_when_created_id_1),
         migrations.RunPython(fill_necessary_data),
     ]

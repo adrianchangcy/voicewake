@@ -146,7 +146,7 @@
             },
         },
         emits: [
-            'audio_clipToneSelected',
+            'audioClipToneSelected',
         ],
         methods: {
             async getAudioClipTonesData(){
@@ -197,7 +197,7 @@
 
                 //emit
                 this.$emit(
-                    'audio_clipToneSelected',
+                    'audioClipToneSelected',
                     audio_clip_tone_index === null ? null : this.audio_clip_tones![audio_clip_tone_index]
                 );
             },

@@ -32,6 +32,7 @@ from typing import Literal
 import base64
 from urllib.parse import quote, unquote
 import random
+from django.db import connection
 
 #app files
 from .models import *
@@ -165,6 +166,7 @@ def group_audio_clips_into_events(audio_clips:AudioClips)->list:
 
         if row.event.id not in event_id:
 
+            #this is what frontend expects
             sorted_audio_clips.append({
                 'event': row.event,
                 'originator': None,
@@ -326,7 +328,7 @@ def get_datetime_between(timeframe:Literal['day', 'week', 'month', 'all']='all')
     }
 
 
-def encodeURLData(token_data)->str:
+def encode_cursor_token(token_data)->str:
 
     token_data = json.dumps(token_data)
     token_data = bytes(token_data, 'utf8')
@@ -336,7 +338,7 @@ def encodeURLData(token_data)->str:
     return token_data
 
 
-def decodeURLData(token_data:str):
+def decode_cursor_token(token_data:str):
 
     token_data = unquote(token_data)
     token_data = base64.urlsafe_b64decode(token_data)
@@ -344,6 +346,29 @@ def decodeURLData(token_data:str):
     token_data = json.loads(token_data)
 
     return token_data
+
+
+def get_serializer_error_message(serializer)->str:
+
+    error_message = "Invalid data."
+
+    for key in serializer.errors:
+        for first_error in serializer.errors[key]:
+            return first_error
+
+    return error_message
+
+
+def output_testable_sql(full_sql, full_params):
+
+    with connection.cursor() as cursor:
+
+        print(
+            cursor.mogrify(
+                full_sql,
+                full_params
+            )
+        )
 
 
 #not advisable to group functions via class,
@@ -382,7 +407,7 @@ class PrepareTestData:
     #we don't use hours_ago parameter
     #because our models use auto_now_add, which cannot be overriden
     #too lazy to replace auto_now_add=True with default=get_datetime_now(), since only tests would currently justify this
-    def __init__(self, for_test:bool=True):
+    def __init__(self, for_test:bool=True, audio_clip_tone_slug=''):
 
         #FYI, when running tests, settings.DEBUG is False
         if settings.DEBUG is True or for_test is True:
@@ -425,23 +450,24 @@ class PrepareTestData:
         self.generic_status_ok = GenericStatuses.objects.get(generic_status_name='ok')
         self.generic_status_incomplete = GenericStatuses.objects.get(generic_status_name='incomplete')
         self.generic_status_completed = GenericStatuses.objects.get(generic_status_name='completed')
-        self.audio_clip_tone = AudioClipTones.objects.first()
+
+        if audio_clip_tone_slug != '':
+
+            self.audio_clip_tone = AudioClipTones.objects.get(audio_clip_tone_slug=audio_clip_tone_slug)
+
+        else:
+
+            self.audio_clip_tone = AudioClipTones.objects.first()
 
 
-    def create_incomplete_events(self, originator, multiplier=0):
+    def create_incomplete_events(self, originator, quantity=0):
 
         #incomplete
 
-        incomplete_count = 10 * multiplier
+        incomplete_count = quantity
 
-        if incomplete_count % 10 != 0:
-
-            raise ValueError('Incomplete_count must be divisible by 10.')
-
-        
         bulk_events = []
         bulk_originator_audio_clips = []
-        bulk_event_likes_dislikes = []
 
         #events
 
@@ -458,16 +484,6 @@ class PrepareTestData:
             print('Processing #' + str(x) + ' bulk_events')
         
         bulk_events = Events.objects.bulk_create(bulk_events)
-
-        #event_likes_dislikes
-
-        for event in bulk_events:
-
-            bulk_event_likes_dislikes.append(EventLikesDislikes(
-                event=event
-            ))
-
-        bulk_event_likes_dislikes = EventLikesDislikes.objects.bulk_create(bulk_event_likes_dislikes)
 
         #audio_clips
 
@@ -540,20 +556,15 @@ class PrepareTestData:
         AudioClipLikesDislikes.objects.bulk_create(bulk_audio_clip_likes_dislikes)
 
 
-    def create_completed_events(self, originator, responder, multiplier=0):
+    def create_completed_events(self, originator, responder, quantity=0):
 
         #completed
 
-        completed_count = 10 * multiplier
-
-        if completed_count % 10 != 0:
-
-            raise ValueError('Completed_count must be divisible by 10.')
+        completed_count = quantity
 
         bulk_events = []
         bulk_originator_audio_clips = []
         bulk_responder_audio_clips = []
-        bulk_event_likes_dislikes = []
 
         #events
 
@@ -570,18 +581,6 @@ class PrepareTestData:
             print('Processing #' + str(x) + ' bulk_events')
         
         bulk_events = Events.objects.bulk_create(bulk_events)
-
-        #event_likes_dislikes
-
-        for x, event in enumerate(bulk_events):
-
-            bulk_event_likes_dislikes.append(EventLikesDislikes(
-                event=event
-            ))
-
-            print('Processing #' + str(x) + ' bulk_event_likes_dislikes')
-
-        bulk_event_likes_dislikes = EventLikesDislikes.objects.bulk_create(bulk_event_likes_dislikes)
 
         #audio_clips
 
@@ -600,7 +599,7 @@ class PrepareTestData:
 
             bulk_responder_audio_clips.append(AudioClips(
                 user=responder,
-                audio_clip_role=self.audio_clip_role_originator,
+                audio_clip_role=self.audio_clip_role_responder,
                 audio_file=self.audio_file,
                 audio_volume_peaks=self.audio_volume_peaks,
                 audio_duration_s=self.audio_duration_s,
@@ -670,12 +669,11 @@ class PrepareTestData:
         AudioClipLikesDislikes.objects.bulk_create(bulk_audio_clip_likes_dislikes)
 
 
-    def with_existing_events_queue_reply_choices(self, multiplier=0):
+    def with_existing_events_queue_reply_choices(self, quantity=0):
 
-        target_count = 10 * multiplier
+        target_count = quantity
 
         bulk_incomplete_events = Events.objects.filter(
-            when_replied__isnull=True,
             generic_status__generic_status_name='incomplete'
         )[0:target_count]
 
@@ -727,9 +725,24 @@ class PrepareTestData:
         EventReplyQueues.objects.all().delete()
 
 
+    def quick_start(self):
 
+        for x in range(0, len(self.bulk_users)):
 
+            self.create_incomplete_events(
+                self.bulk_users[x],
+                random.randrange(400, 800)
+            )
 
+            if x == len(self.bulk_users) - 1:
+
+                break
+
+            self.create_completed_events(
+                self.bulk_users[x],
+                self.bulk_users[x+1],
+                random.randrange(700, 1400)
+            )
 
 #for OTP
 class TOTPVerification:

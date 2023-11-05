@@ -50,28 +50,68 @@ class TestAPI(generics.GenericAPIView):
 
     serializer_class = None
     permission_classes = []
+    current_context = ""
 
 
-    def get_latest_completed_events(
+    def get_latest_grouped_audio_clips(
         self,
-        audio_clip_tone_slug:str='',
+        username_lowercase:str='',
+        audio_clip_tone_id:int=0,
+        audio_clip_role_name:Literal['originator', 'responder']='originator',
         timeframe:Literal['day', 'week', 'month', 'all']='all',
         next_or_back:Literal['next', 'back']='next',
         cursor_token:str='',
     ):
 
+        #we can reuse passed tokens as default on 0 rows fetched
+        result = {
+            'rows': [],
+            'back_cursor_token': cursor_token,
+            'next_cursor_token': cursor_token
+        }
+
+        #handle profile page, if it is
+
+        #do quick check
+        #it's also good to return quietly if user doesn't exist, to keep things ambiguous
+        if (
+            username_lowercase == '' or
+            (
+                get_user_model().objects.filter(
+                    username_lowercase=username_lowercase,
+                    banned_until__isnull=True
+                ).exists() is True and
+                AudioClips.objects.filter(
+                    user__username_lowercase=username_lowercase,
+                    is_banned=False,
+                    generic_status__generic_status_name='ok'
+                ).count() > 0
+            )
+        ):
+
+            pass
+
+        else:
+
+            return result
+
+        #sql below handles non-existent event_clip_tone_id well
+
         #handle cursor token
 
+        decoded_cursor_token = {}
         cursor_params = []
 
         if cursor_token != '':
 
             try:
 
-                cursor_params = decodeURLData(cursor_token)
+                #get audio_clips.when_created, audio_clips.id
+                decoded_cursor_token = decode_cursor_token(cursor_token)
+
                 cursor_params = [
-                    cursor_params[0], cursor_params[1],
-                    cursor_params[0],
+                    decoded_cursor_token['when_created'],
+                    decoded_cursor_token['id'], decoded_cursor_token['when_created'],
                 ]
 
             except:
@@ -81,6 +121,24 @@ class TestAPI(generics.GenericAPIView):
                     user_message="Unable to fetch content due to faulty URL.",
                     dev_message="Token could not be decoded: " + cursor_token
                 )
+
+        #handle whether to display all audio_clip_tones, or specific
+
+        audio_clip_tones_sql = ''
+        audio_clip_tones_params = []
+
+        if audio_clip_tone_id == 0:
+
+            audio_clip_tones_sql = '''
+                AND audio_clip_tones.id IS NOT NULL
+            '''
+
+        else:
+
+            audio_clip_tones_sql = '''
+                AND audio_clip_tones.id = %s
+            '''
+            audio_clip_tones_params = [audio_clip_tone_id]
 
         #prepare timeframe
         #different checkpoints for different time range
@@ -95,643 +153,217 @@ class TestAPI(generics.GenericAPIView):
 
         cursor_sql = ''
         cursor_order_sql = ''
-        order_sql = ''
 
         if next_or_back == 'next':
 
-            if len(cursor_params) > 0:
+            if len(decoded_cursor_token) > 0:
 
                 cursor_sql = '''
                     AND (
-                        (events.when_replied = %s AND events.id < %s)
-                        OR events.when_replied < %s
+                        audio_clips.when_created <= %s
+                        AND
+                        (audio_clips.id < %s OR audio_clips.when_created < %s)
                     )
                 '''
-            cursor_order_sql = '''ORDER BY events.when_replied DESC, events.id DESC'''
-            order_sql = '''ORDER BY target_events.when_replied DESC, target_events.id DESC'''
+
+            if username_lowercase != '':
+
+                cursor_order_sql = '''ORDER BY audio_clips.is_banned DESC, audio_clips.when_created DESC, audio_clips.id DESC'''
+
+            else:
+
+                cursor_order_sql = '''ORDER BY audio_clips.when_created DESC, audio_clips.id DESC'''
 
         elif next_or_back == 'back':
 
-            if len(cursor_params) > 0:
+            if len(decoded_cursor_token) > 0:
 
                 cursor_sql = '''
                     AND (
-                        (events.when_replied = %s AND events.id > %s)
-                        OR events.when_replied > %s
+                        audio_clips.when_created >= %s
+                        AND
+                        (audio_clips.id > %s OR audio_clips.when_created > %s)
                     )
                 '''
-            cursor_order_sql = '''ORDER BY events.when_replied ASC, events.id ASC'''
-            order_sql = '''ORDER BY target_events.when_replied ASC, target_events.id ASC'''
 
-        #get audio clips
+            if username_lowercase != '':
 
-        full_sql = '''
-            WITH
-            selected_audio_clip_tones AS (
-                SELECT id FROM get_id_of_one_or_all_audio_clip_tones_via_slug(%s)
-            ),
-            target_events AS (
-                SELECT events.id, events.when_replied FROM events
-                LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
-                WHERE
-                generic_statuses.generic_status_name = %s
-                AND events.when_replied BETWEEN %s AND %s
-                ''' + cursor_sql + '''
-                ''' + cursor_order_sql + '''
-                LIMIT %s
-            )
-            SELECT * FROM audio_clips
-            LEFT JOIN target_events ON audio_clips.event_id = target_events.id
-            LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
-            WHERE target_events.id IS NOT NULL
-            AND audio_clips.is_banned IS FALSE
-            AND generic_statuses.generic_status_name = %s
-            ''' + order_sql + '''
+                cursor_order_sql = '''ORDER BY audio_clips.is_banned DESC, audio_clips.when_created ASC, audio_clips.id ASC'''
+
+            else:
+
+                cursor_order_sql = '''ORDER BY audio_clips.when_created ASC, audio_clips.id ASC'''
+
+        #main order, ensures cursor consistency
+        #since our cursor goes from latest to earliest, our when_created and id must always be DESC here
+
+        #it can be hard to guess where our priority rows end
+        #e.g. incomplete or completed, or more than 1 originator/responder
+        #so we sort our priority rows to "one half", then decide on cursor here in Py
+
+        order_sql = '''
+            ORDER BY
+        '''
+        order_params = []
+
+        order_sql += '''
+            CASE WHEN audio_clip_roles.audio_clip_role_name = %s
+            THEN 1
+            ELSE 2
+            END,
+        '''
+        order_params.append(audio_clip_role_name)
+
+        if username_lowercase != '':
+
+            order_sql += '''
+                CASE WHEN voicewake_user.username_lowercase = %s
+                THEN 1
+                ELSE 2
+                END,
+            '''
+            order_params.append(username_lowercase)
+
+        order_sql += '''
+            audio_clips.when_created DESC, audio_clips.id DESC
         '''
 
-        full_params = [
-            audio_clip_tone_slug,
-            'completed',
-            datetime_between['datetime_from'],
-            datetime_between['datetime_to'],
-        ] + cursor_params + [
-            settings.EVENT_QUANTITY_PER_PAGE,
-            'ok',
-        ]
+        #adjust to being user-specific
 
-        #execute
-
-        audio_clips = AudioClips.objects.prefetch_related(
-            'audio_clip_role',
-            'event__generic_status',
-            'event__created_by',
-            'event',
-            'audio_clip_tone',
-            'generic_status',
-            'user',
-        ).raw(
-            full_sql,
-            params=full_params
-        )
-
-        print(audio_clips.query)
-
-        list(audio_clips)
-
-        #prepare to return
-
-        #we can reuse passed tokens as default on 0 rows fetched
-        result = {
-            'rows': [],
-            'cursor_token': cursor_token,
-            'extra_keys': [],
+        user_sql = {
+            'target_audio_clips__join': '',
+            'target_audio_clips__and': '',
+            'join': '',
+        }
+        user_params = {
+            'target_audio_clips__and': [],
         }
 
-        if len(audio_clips) == 0:
+        if username_lowercase != '':
 
-            return result
-
-        #store appropriate return values
-
-        result['rows'] = audio_clips
-
-        target_index = -1
-
-        if next_or_back == 'back':
-
-            target_index = 0
-
-        result['cursor_token'] = encodeURLData([
-            audio_clips[target_index].event.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-            audio_clips[target_index].event_id,
-        ])
-
-        for row in audio_clips:
-            if row.id not in result['extra_keys']:
-                result['extra_keys'].append(row.event.id)
-
-        return result
-
-
-    def get_best_completed_events(
-        self,
-        audio_clip_tone_slug:str='',
-        timeframe:Literal['day', 'week', 'month', 'all']='all',
-        next_or_back:Literal['next', 'back']='next',
-        cursor_token:str='',
-    ):
-
-        #"best"
-        #currently evaluating on "best audio_clips"
-        #it should really be "best events", more rewarding
-        #i.e. events with best originator + responder
-
-        #handle cursor token
-
-        cursor_params = []
-
-        if cursor_token != '':
-
-            try:
-
-                cursor_params = decodeURLData(cursor_token)
-                cursor_params = [
-                    cursor_params[0], cursor_params[1], cursor_params[2],
-                    cursor_params[0], cursor_params[1],
-                ]
-
-            except:
-
-                raise custom_error(
-                    ValueError,
-                    user_message="Unable to fetch content due to faulty URL.",
-                    dev_message="Token could not be decoded: " + cursor_token
-                )
-
-        #prepare timeframe
-        #different checkpoints for different time range
-
-        datetime_between = get_datetime_between(timeframe)
-
-        #prepare adjustments based on cursor direction
-
-        cursor_sql = ''
-        cursor_order_sql = ''
-        order_sql = ''
-
-        if next_or_back == 'next':
-
-            if len(cursor_params) > 0:
-
-                cursor_sql = '''
-                    AND (
-                        (
-                            event_likes_dislikes.like_count = %s
-                            AND event_likes_dislikes.dislike_count = %s
-                            AND event_likes_dislikes.event_id < %s
-                        )
-                        OR (
-                            event_likes_dislikes.like_count < %s
-                            AND event_likes_dislikes.dislike_count > %s
-                        )
-                    )
-                '''
-            cursor_order_sql = '''
-                ORDER BY
-                event_likes_dislikes.like_count DESC,
-                event_likes_dislikes.dislike_count ASC,
-                event_likes_dislikes.event_id DESC
+            user_sql['target_audio_clips__join'] = '''
+                INNER JOIN voicewake_user ON audio_clips.user_id = voicewake_user.id
             '''
-            order_sql = '''
-                ORDER BY
-                target_events.like_count DESC,
-                target_events.dislike_count ASC,
-                target_events.event_id DESC
+            user_sql['target_audio_clips__and'] = '''
+                AND voicewake_user.username_lowercase = %s
             '''
-
-        elif next_or_back == 'back':
-
-            if len(cursor_params) > 0:
-
-                cursor_sql = '''
-                    AND (
-                        (
-                            event_likes_dislikes.like_count = %s
-                            AND event_likes_dislikes.dislike_count = %s
-                            AND event_likes_dislikes.event_id > %s
-                        )
-                        OR (
-                            event_likes_dislikes.like_count > %s
-                            AND event_likes_dislikes.dislike_count < %s
-                        )
-                    )
-                '''
-            cursor_order_sql = '''
-                ORDER BY
-                event_likes_dislikes.like_count ASC,
-                event_likes_dislikes.dislike_count DESC,
-                event_likes_dislikes.event_id ASC
+            user_sql['join'] = '''
+                INNER JOIN voicewake_user ON audio_clips.user_id = voicewake_user.id
             '''
-            order_sql = '''
-                ORDER BY
-                taget_events.like_count ASC,
-                taget_events.dislike_count DESC,
-                taget_events.event_id ASC
-            '''
+            user_params['target_audio_clips__and'] = [username_lowercase]
 
-        #get audio clips
+        #handle event generic_status
 
-        full_sql = '''
-            WITH
-            selected_audio_clip_tones AS (
-                SELECT id FROM get_id_of_one_or_all_audio_clip_tones_via_slug(%s)
-            ),
-            target_events AS (
-                SELECT * FROM event_likes_dislikes
-                INNER JOIN events ON event_likes_dislikes.event_id = events.id
-                LEFT JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
-                WHERE events.when_replied IS NOT NULL
-                AND generic_statuses.generic_status_name = %s
-                AND events.when_replied BETWEEN %s AND %s
-                ''' + cursor_sql + '''
-                ''' + cursor_order_sql + '''
-                LIMIT %s
-            )
-            SELECT * FROM audio_clips
-            RIGHT JOIN target_events ON audio_clips.event_id = target_events.id
-            LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
-            WHERE audio_clips.is_banned IS FALSE
-            AND generic_statuses.generic_status_name = %s
-            ''' + order_sql + '''
+        event_generic_status_name_sql = '''
+            AND e_gs.generic_status_name = 'completed'
         '''
 
-        full_params = [
-            audio_clip_tone_slug,
-            'completed',
-            datetime_between['datetime_from'],
-            datetime_between['datetime_to'],
-            settings.EVENT_QUANTITY_PER_PAGE,
-        ] + cursor_params + [
-            'ok',
-        ]
+        if audio_clip_role_name == 'originator':
 
-        #execute
+            if username_lowercase != '':
 
-        audio_clips = AudioClips.objects.prefetch_related(
-            'audio_clip_role',
-            'event_likes_dislikes',
-            'event__generic_status',
-            'event__created_by',
-            'event',
-            'audio_clip_tone',
-            'generic_status',
-            'user',
-        ).raw(
-            full_sql,
-            params=full_params
-        )
+                #for originator, show incomplete and completed for profile page
+                event_generic_status_name_sql = '''
+                    AND e_gs.generic_status_name IN ('incomplete', 'completed')
+                '''
 
-        print(audio_clips.query)
+        elif audio_clip_role_name == 'responder':
 
-        list(audio_clips)
+            #show completed, but also deleted
+            event_generic_status_name_sql = '''
+                AND e_gs.generic_status_name IN ('completed', 'deleted')
+            '''
 
-        #prepare to return
+        #handle extra info request.user is logged in
+        #maybe this can be separately done to allow for caching in the future
 
-        #we can reuse passed tokens as default on 0 rows fetched
-        result = {
-            'rows': [],
-            'cursor_token': cursor_token,
-            'extra_keys': [],
+        is_liked_by_user_sql = {
+            'col': '',
+            'join': ''
         }
+        is_liked_by_user_params = []
 
-        if len(audio_clips) == 0:
+        if self.request.user.is_authenticated is True:
 
-            return result
+            is_liked_by_user_sql['col'] = '''
+                audio_clip_likes_dislikes.is_liked AS is_liked_by_user
+            '''
+            is_liked_by_user_sql['join'] = '''
+                LEFT JOIN audio_clip_likes_dislikes
+                    ON audio_clip_likes_dislikes.user_id = %s
+                    AND audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
+            '''
+            is_liked_by_user_params = [self.request.user.id]
 
-        #store appropriate return values
+        else:
 
-        result['rows'] = audio_clips
-
-        target_index = -1
-
-        if next_or_back == 'back':
-
-            target_index = 0
-
-        result['cursor_token'] = encodeURLData([
-            audio_clips[target_index].target_events.like_count,
-            audio_clips[target_index].target_events.dislike_count,
-            audio_clips[target_index].target_events.event_id,
-        ])
-
-        for row in audio_clips:
-            if row.id not in result['extra_keys']:
-                result['extra_keys'].append(row.target_events.event_id)
-
-        return result
-
-
-    def get_latest_events_by_user_and_event_role(
-        self,
-        username:str, audio_clip_role_name:str,
-        audio_clip_tone_slug:str='',
-        timeframe:Literal['day', 'week', 'month', 'all']='all',
-        next_or_back:Literal['next', 'back']='next',
-        cursor_token:str='',
-    ):
-
-        #handle cursor token
-
-        cursor_params = []
-
-        if cursor_token != '':
-
-            try:
-
-                cursor_params = decodeURLData(cursor_token)
-                cursor_params = [
-                    cursor_params[0], cursor_params[1],
-                    cursor_params[0],
-                ]
-
-            except:
-
-                raise custom_error(
-                    ValueError,
-                    user_message="Unable to fetch content due to faulty URL.",
-                    dev_message="Token could not be decoded: " + cursor_token
-                )
-
-        #prepare timeframe
-        #different checkpoints for different time range
-
-        datetime_between = get_datetime_between(timeframe)
-
-        #ran out of time to properly implement user blocks
-        #i.e. prevent content from showing when blocking/blocked, either one-way or two-way
-        #last checkpoint is getting excluded_event_ids the joining, but 1 blocked user with 100k events took 150+ms
-
-        #prepare adjustments based on cursor direction
-
-        cursor_sql = ''
-        cursor_order_sql = ''
-        order_sql = ''
-
-        if next_or_back == 'next':
-
-            if len(cursor_params) > 0:
-
-                cursor_sql = '''
-                    AND (
-                        (audio_clips.when_created = %s AND audio_clips.id < %s)
-                        OR audio_clips.when_created < %s
-                    )
-                '''
-            cursor_order_sql = '''ORDER BY audio_clips.when_created DESC, audio_clips.id DESC'''
-            order_sql = '''ORDER BY target_events.when_replied DESC, target_events.id DESC'''
-
-        elif next_or_back == 'back':
-
-            if len(cursor_params) > 0:
-
-                cursor_sql = '''
-                    AND (
-                        (audio_clips.when_created = %s AND audio_clips.id > %s)
-                        OR audio_clips.when_created > %s
-                    )
-                '''
-            cursor_order_sql = '''ORDER BY audio_clips.when_created ASC, audio_clips.id ASC'''
-            order_sql = '''ORDER BY target_events.when_replied ASC, target_events.id ASC'''
+            is_liked_by_user_sql['col'] = '''
+                CAST(NULL AS bool) AS is_liked_by_user
+            '''
 
         #get audio clips
 
         full_sql = '''
             WITH
-            selected_audio_clip_tones AS (
-                SELECT id FROM get_id_of_one_or_all_audio_clip_tones_via_slug(%s)
-            ),
             target_audio_clips AS (
-                SELECT audio_clips.event_id, audio_clips.when_created, audio_clips.id
+                SELECT
+                    audio_clips.event_id, audio_clips.when_created, audio_clips.id
                 FROM audio_clips
-                RIGHT JOIN voicewake_user ON audio_clips.user_id = voicewake_user.id
-                LEFT JOIN audio_clip_roles ON audio_clips.audio_clip_role_id = audio_clip_roles.id
-                RIGHT JOIN selected_audio_clip_tones ON audio_clips.audio_clip_tone.id = audio_clip_tones.id
-                LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
-                WHERE voicewake_user.username_lowercase = %s
-                AND audio_clips.is_banned IS FALSE
+				INNER JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
+                INNER JOIN audio_clip_roles ON audio_clips.audio_clip_role_id = audio_clip_roles.id
+                INNER JOIN events ON audio_clips.event_id = events.id
+                INNER JOIN generic_statuses AS ac_gs ON audio_clips.generic_status_id = ac_gs.id
+                INNER JOIN generic_statuses AS e_gs ON events.generic_status_id = e_gs.id
+
+                ''' + user_sql['target_audio_clips__join'] + '''
+
+                WHERE audio_clips.is_banned IS FALSE
+
+                ''' + audio_clip_tones_sql + '''
+
+                AND ac_gs.generic_status_name = %s
                 AND audio_clip_roles.audio_clip_role_name = %s
-                AND generic_statuses.generic_status_name = %s
+
+                ''' + event_generic_status_name_sql + '''
+                ''' + user_sql['target_audio_clips__and'] + '''
+
                 AND audio_clips.when_created BETWEEN %s AND %s
+
                 ''' + cursor_sql + '''
                 ''' + cursor_order_sql + '''
+
                 LIMIT %s
             )
-            SELECT * FROM audio_clips
-            RIGHT JOIN target_events ON audio_clips.event_id = target_events.event_id
-            LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
-            WHERE audio_clips.is_banned IS FALSE
-            AND generic_statuses.generic_status_name = %s
-            ''' + order_sql + '''
-            ;
-        '''
+            SELECT audio_clips.*,
+            CAST(NULL AS timestamptz) AS when_locked_for_this_user,
 
-        full_params = [
-            audio_clip_tone_slug,
-            username.lower(),
-            audio_clip_role_name,
-            'ok',
-            datetime_between['datetime_from'],
-            datetime_between['datetime_to'],
-        ] + cursor_params + [
-            settings.EVENT_QUANTITY_PER_PAGE,
-            'ok',
-        ]
+            ''' + is_liked_by_user_sql['col'] + '''
 
-        #execute
-
-        audio_clips = AudioClips.objects.prefetch_related(
-            'audio_clip_role',
-            'event__generic_status',
-            'event__created_by',
-            'event',
-            'audio_clip_tone',
-            'generic_status',
-            'user',
-        ).raw(
-            full_sql,
-            params=full_params
-        )
-
-        print(audio_clips.query)
-
-        list(audio_clips)
-
-        #prepare to return
-
-        #we can reuse passed tokens as default on 0 rows fetched
-        result = {
-            'rows': [],
-            'cursor_token': cursor_token,
-            'extra_keys': [],
-        }
-
-        if len(audio_clips) == 0:
-
-            return result
-
-        #store appropriate return values
-
-        result['rows'] = audio_clips
-
-        target_index = -1
-
-        if next_or_back == 'back':
-
-            target_index = 0
-
-        result['cursor_token'] = encodeURLData([
-            audio_clips[target_index].when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-            audio_clips[target_index].id,
-        ])
-
-        for row in audio_clips:
-            if row.id not in result['extra_keys']:
-                result['extra_keys'].append(row.id)
-
-        return result
-
-
-    def get_best_events_by_user_and_event_role(
-        self,
-        username:str, audio_clip_role_name:str,
-        audio_clip_tone_slug:str='',
-        timeframe:Literal['day', 'week', 'month', 'all']='all',
-        next_or_back:Literal['next', 'back']='next',
-        cursor_token:str='',
-    ):
-
-        #handle cursor token
-
-        cursor_params = []
-
-        if cursor_token != '':
-
-            try:
-
-                cursor_params = decodeURLData(cursor_token)
-                cursor_params = [
-                    cursor_params[0], cursor_params[1], cursor_params[2],
-                    cursor_params[0], cursor_params[1],
-                ]
-
-            except:
-
-                raise custom_error(
-                    ValueError,
-                    user_message="Unable to fetch content due to faulty URL.",
-                    dev_message="Token could not be decoded: " + cursor_token
-                )
-
-        #prepare timeframe
-        #different checkpoints for different time range
-
-        datetime_between = get_datetime_between(timeframe)
-
-        #ran out of time to properly implement user blocks
-        #i.e. prevent content from showing when blocking/blocked, either one-way or two-way
-        #last checkpoint is getting excluded_event_ids the joining, but 1 blocked user with 100k events took 150+ms
-
-        #prepare adjustments based on cursor direction
-
-        cursor_sql = ''
-        cursor_order_sql = ''
-        order_sql = ''
-
-        if next_or_back == 'next':
-
-            if len(cursor_params) > 0:
-
-                cursor_sql = '''
-                    AND (
-                        (
-                            audio_clips.like_count = %s
-                            AND audio_clips.dislike_count = %s
-                            AND audio_clips.event_id < %s
-                        )
-                        OR (
-                            audio_clips.like_count < %s
-                            AND audio_clips.dislike_count > %s
-                        )
-                    )
-                '''
-            cursor_order_sql = '''ORDER BY audio_clips.like_count DESC, audio_clips.dislike_count ASC, audio_clips.id DESC'''
-            order_sql = '''
-                ORDER BY
-                    CASE
-                        WHEN target_audio_clips.username_lowercase = %s THEN 1
-                        ELSE 2
-                    END
-                    DESC,
-                    target_audio_clips.like_count DESC,
-                    target_audio_clips.dislike_count ASC,
-                    target_audio_clips.id DESC
-            '''
-
-        elif next_or_back == 'back':
-
-            if len(cursor_params) > 0:
-
-                cursor_sql = '''
-                    AND (
-                        (
-                            audio_clips.like_count = %s
-                            AND audio_clips.dislike_count = %s
-                            AND audio_clips.event_id > %s
-                        )
-                        OR (
-                            audio_clips.like_count > %s
-                            AND audio_clips.dislike_count < %s
-                        )
-                    )
-                '''
-            cursor_order_sql = '''ORDER BY audio_clips.like_count ASC, audio_clips.dislike_count DESC, audio_clips.id ASC'''
-            order_sql = '''
-                ORDER BY
-                    CASE
-                        WHEN target_audio_clips.username_lowercase = %s THEN 2
-                        ELSE 1
-                    END
-                    DESC,
-                    target_audio_clips.like_count ASC,
-                    target_audio_clips.dislike_count DESC,
-                    target_audio_clips.id ASC
-            '''
-
-        #get audio clips
-
-        full_sql = '''
-            WITH
-            selected_audio_clip_tones AS (
-                SELECT id FROM get_id_of_one_or_all_audio_clip_tones_via_slug(%s)
-            ),
-            target_audio_clips AS (
-                SELECT audio_clips.event_id, audio_clips.when_created, audio_clips.id, voicewake_user.username_lowercase
-                FROM audio_clips
-                RIGHT JOIN voicewake_user ON audio_clips.user_id = voicewake_user.id
-                LEFT JOIN audio_clip_roles ON audio_clips.audio_clip_role_id = audio_clip_roles.id
-                RIGHT JOIN selected_audio_clip_tones ON audio_clips.audio_clip_tone.id = audio_clip_tones.id
-                LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
-                WHERE voicewake_user.username_lowercase = %s
-                AND audio_clips.is_banned IS FALSE
-                AND audio_clip_roles.audio_clip_role_name = %s
-                AND generic_statuses.generic_status_name = %s
-                AND audio_clips.when_created BETWEEN %s AND %s
-                ''' + cursor_sql + '''
-                ''' + cursor_order_sql + '''
-                LIMIT %s
-            )
-            SELECT * FROM audio_clips
-            UNION target_audio_clips 
+            FROM audio_clips
             RIGHT JOIN target_audio_clips ON audio_clips.event_id = target_audio_clips.event_id
-            LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
+            INNER JOIN generic_statuses AS ac_gs ON audio_clips.generic_status_id = ac_gs.id
+            INNER JOIN audio_clip_roles ON audio_clips.audio_clip_role_id = audio_clip_roles.id
+
+            ''' + user_sql['join'] + '''
+            ''' + is_liked_by_user_sql['join'] + '''
+
             WHERE audio_clips.is_banned IS FALSE
-            AND generic_statuses.generic_status_name = %s
+
+            AND ac_gs.generic_status_name = %s
             ''' + order_sql + '''
-            ;
         '''
 
-        full_params = [
-            audio_clip_tone_slug,
-            username.lower(),
-            audio_clip_role_name,
+        full_params = audio_clip_tones_params + [
             'ok',
+            audio_clip_role_name,
+        ] + user_params['target_audio_clips__and'] + [
             datetime_between['datetime_from'],
             datetime_between['datetime_to'],
         ] + cursor_params + [
             settings.EVENT_QUANTITY_PER_PAGE,
+        ] + is_liked_by_user_params + [
             'ok',
-            username.lower(),
-        ]
+        ] + order_params
 
         #execute
 
@@ -748,79 +380,87 @@ class TestAPI(generics.GenericAPIView):
             params=full_params
         )
 
-        print(audio_clips.query)
+        output_testable_sql(full_sql, full_params)
 
         list(audio_clips)
-
-        #prepare to return
-
-        #we can reuse passed tokens as default on 0 rows fetched
-        result = {
-            'rows': [],
-            'cursor_token': cursor_token,
-            'extra_keys': [],
-        }
 
         if len(audio_clips) == 0:
 
             return result
-
-        #store appropriate return values
-
+        
         result['rows'] = audio_clips
 
-        target_index = -1
+        #start preparing our cursor tokens
+        #our desired audio_clip_role_name + username is always grouped to the first half
 
-        if next_or_back == 'back':
+        result['back_cursor_token'] = encode_cursor_token({
+            'when_created': audio_clips[0].when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+            'id': audio_clips[0].id,
+        })
 
-            target_index = 0
+        last_relevant_index = 0
 
-        result['cursor_token'] = encodeURLData([
-            audio_clips[target_index].like_count,
-            audio_clips[target_index].dislike_count,
-            audio_clips[target_index].id,
-        ])
+        for x in range(0, len(audio_clips)):
 
-        for row in audio_clips:
-            if row.id not in result['extra_keys']:
-                result['extra_keys'].append(row.id)
+            if audio_clips[x].audio_clip_role.audio_clip_role_name != audio_clip_role_name:
+
+                result['next_cursor_token'] = encode_cursor_token({
+                    'when_created': audio_clips[last_relevant_index].when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+                    'id': audio_clips[last_relevant_index].id,
+                })
+
+                break
+
+            last_relevant_index = x
 
         return result
 
+        #fixed: cursor goes through entire table, even with the correct index
+            #for background, indexes work best when using/starting with "=" operator, or given a >= <= range
+            #planner did not pick up on first "=" here:
+                #AND (when_created = %s AND id < %s) OR (when_created < %s)
+            #planner did pick up on first "=" here:
+                #AND (when_created <= %s AND (id < %s OR when_created < %s))
+
+        #fixed: cursor ORDER BY goes through entire table when no records are found for user
+            #problem:
+                #when no user selected, ok
+                #when has user selected and guaranteed has rows, ok
+                #when has user selected, many originator rows but 0 responder rows, query on responder scans entire table
+            #solution:
+                #index audio_clips on (when_created DESC, id DESC)
+                    #index on id in composite index has no effect, but maybe it will when table gets much bigger
+                #use dummy ORDER BY to discourage planner from using (when_created DESC) when no rows found
+                    #settled with non-null is_banned DESC, while we always want False, so order is guaranteed
+
+        #fixed:
+            #problem:
+                #selecting from audio_clips where specified audio_clip_tones.audio_clip_tone_slug does not match
+                #causes entire audio_clips index scan
+            #solution:
+                #search by id, which handles fine when not exist, which also isn't confidential
+                #compared to search by audio_clip_tone_slug, which we must do EXISTS() on every call otherwise
+                #then when user doesn't want specific audio_clip_tones, change query to "IS NOT NULL"
+            #extra context:
+                #this issue persists when user is specified, but is also fixed using dummy ORDER BY is_banned
+
+        #good:
+            #user-audio_clips scales nicely when querying for a user
+            #higher % of is_banned=True rows does not slow down query
+            #currently at 150ms+- when user has 45k audio_clips rows, which is impossible to reach in reality
 
 
 
     def get(self, request, *args, **kwargs):
 
-        cursor_token = ''
+        current_url = self.request.build_absolute_uri()
+        current_url = current_url.split(kwargs['cursor_token'])[0]
 
-        if 'cursor_token' in kwargs:
 
-            cursor_token = kwargs['cursor_token']
 
-        if 'next_or_back' in kwargs:
 
-            result = self.get_latest_completed_events(
-                next_or_back=kwargs['next_or_back'],
-                timeframe='week',
-                cursor_token=cursor_token
-            )
 
-            if len(result['rows']) > 0:
 
-                yolo = GroupedAudioClipsSerializer(
-                    group_audio_clips_into_events(result['rows']),
-                    many=True
-                )
-
-                return Response(
-                    data={
-                        'next': result['cursor_token'],
-                        'extra_keys': result['extra_keys'],
-                        'message': '',
-                        'data': yolo.data,
-                    },
-                )
 
         return Response(
             data={
@@ -856,17 +496,9 @@ class AudioClipReportsAPI(generics.GenericAPIView):
         #validate
         if serializer.is_valid() is False:
 
-            #return any first error message
-            error_message = "Invalid data."
-
-            for key in serializer.errors:
-                for first_error in serializer.errors[key]:
-                    error_message = first_error
-                    break
-
             return Response(
                 data={
-                    'message': error_message,
+                    'message': get_serializer_error_message(serializer),
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -1035,17 +667,9 @@ class UserBlocksAPI(generics.GenericAPIView):
         #validate
         if serializer.is_valid() is False:
 
-            #return any first error message
-            error_message = "Invalid data."
-
-            for key in serializer.errors:
-                for first_error in serializer.errors[key]:
-                    error_message = first_error
-                    break
-
             return Response(
                 data={
-                    'message': error_message,
+                    'message': get_serializer_error_message(serializer),
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -1109,17 +733,9 @@ class UsersUsernameAPI(generics.GenericAPIView):
         #validate
         if serializer.is_valid() is False:
 
-            #return any first error message
-            error_message = "Invalid data."
-
-            for key in serializer.errors:
-                for first_error in serializer.errors[key]:
-                    error_message = first_error
-                    break
-
             return Response(
                 data={
-                    'message': error_message,
+                    'message': get_serializer_error_message(serializer),
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -1164,17 +780,9 @@ class UsersUsernameAPI(generics.GenericAPIView):
         #validate
         if serializer.is_valid() is False:
 
-            #return any first error message
-            error_message = "Invalid data."
-
-            for key in serializer.errors:
-                for first_error in serializer.errors[key]:
-                    error_message = first_error
-                    break
-
             return Response(
                 data={
-                    'message': error_message,
+                    'message': get_serializer_error_message(serializer),
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -1315,17 +923,9 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
         #validate
         if serializer.is_valid() is False:
 
-            #return any first error message
-            error_message = "Invalid data."
-
-            for key in serializer.errors:
-                for first_error in serializer.errors[key]:
-                    error_message = first_error
-                    break
-
             return Response(
                 data={
-                    'message': error_message,
+                    'message': get_serializer_error_message(serializer),
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -1477,288 +1077,10 @@ class AudioClipTonesAPI(generics.GenericAPIView):
 
 
 
-class EventsAPI(generics.GenericAPIView):
+class GetEventsAPI(generics.GenericAPIView):
 
-    serializer_class = GroupedAudioClipsSerializer
+    serializer_class = EventsAndAudioClipsAPISerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
-
-
-    def get_events_by_completed(
-        self, latest_or_best:Literal['latest', 'best']='latest',
-        audio_clip_tone_slug:str='',
-        timeframe:Literal['day', 'week', 'month', 'all']='all',
-        page=1
-    ):
-
-        #when audio_clip_tone_slug is '', will just get entire audio_clip_tones
-        #when timeframe is 'all_time', leaving datetime_from as '' is sufficient
-        #since this is non-user page, i.e. front page, show "latest" events once only
-        #page starts from 1
-
-        if page < 1:
-
-            raise ValueError("'page' parameter must be >= 1.")
-
-        #different checkpoints for different time range
-        datetime_checkpoint_timedelta = {
-            'day': timedelta(days=1),
-            'week': timedelta(days=7),
-            'month': timedelta(days=31)
-        }
-
-        #calculate time range
-        #leave datetime_from as '' if you want "of all time"
-        datetime_from = ''
-        datetime_to = get_datetime_now(True)
-
-        #determine earliest possible datetime
-        if timeframe in datetime_checkpoint_timedelta:
-
-            datetime_from = (get_datetime_now() - datetime_checkpoint_timedelta[timeframe]).strftime('%Y-%m-%d %H:%M:%S %z')
-
-        else:
-
-            #getting earliest audio_clips.when_created adds 5-10ms
-            #using custom function get_id_of_events_by_when_created() adds 40ms+
-
-            #random datetime that is guaranteed beyond earliest audio_clips row is the best so far
-            #here are the risks where this may/would break things:
-                #new audio_clips.when_created can start using past datetime
-                #audio_clips.when_created is no longer secured by auto_now_add
-                #suddenly no longer uses time zone
-            datetime_from = '2020-01-01 01:01:01 +00'
-
-        #calculate offset for pagination
-        pagination_offset = (page - 1) * settings.EVENT_QUANTITY_PER_PAGE
-
-        #prevent showing twice
-        previously_shown_events_sql = {'join': '', 'and': ''}
-
-        if latest_or_best == 'latest':
-
-            previously_shown_events_sql['join'] = 'LEFT JOIN previously_shown_event_ids ON audio_clips.event_id = previously_shown_event_ids.id'
-            previously_shown_events_sql['and'] = 'AND previously_shown_event_ids.id IS NULL'
-
-        #determine order
-        order_sql = ''
-
-        if latest_or_best == 'best':
-            order_sql = 'ORDER BY audio_clips.like_count DESC, audio_clips.dislike_count ASC'
-        else:
-            order_sql = 'ORDER BY audio_clips.when_created DESC'
-
-        #some notes on compromise
-            #desired
-                #userA blocks userB, userA won't see userB content, vice versa
-                #however, if userB is in same event as userA, then show
-            #issue
-                #desired situation requires another excluded_users, and "audio_clips.user_id=userA OR ..."
-                #the OR condition brings query time from 10ms+ to 40ms+
-            #current
-                #userA blocks userB, userA won't see any content from userB at all
-
-        #start
-        #we get by completed events, i.e. guaranteed ok audio_clips
-        #then, since banned audio_clips are still associated with events, get only ok audio_clips
-        audio_clips = AudioClips.objects.prefetch_related(
-            'audio_clip_role',
-            'event__generic_status',
-            'event__created_by',
-            'event',
-            'audio_clip_tone',
-            'generic_status',
-            'user',
-        ).raw(
-            '''		
-            WITH
-                selected_audio_clip_tones AS (
-                    SELECT id FROM get_id_of_one_or_all_audio_clip_tones_via_slug(%s)
-                ),
-                previously_shown_event_ids AS (
-                    SELECT event_id AS id FROM user_events
-                    WHERE user_id = %s
-                    AND when_seen_at_front_page IS NOT NULL
-                ),
-                excluded_users AS (
-                    SELECT blocked_user_id AS id FROM user_blocks
-                    WHERE user_id = %s
-                ),
-                excluded_event_ids AS (
-                    SELECT event_id AS id FROM audio_clips
-                    RIGHT JOIN excluded_users ON audio_clips.user_id = excluded_users.id
-                ),
-                selected_event_ids AS (
-                    SELECT DISTINCT event_id AS id FROM (
-                        SELECT audio_clips.event_id FROM audio_clips
-                        RIGHT JOIN selected_audio_clip_tones ON audio_clips.audio_clip_tone_id = selected_audio_clip_tones.id
-                        LEFT JOIN excluded_event_ids ON audio_clips.event_id = excluded_event_ids.id
-                        ''' + previously_shown_events_sql['join'] + '''
-                        LEFT JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
-                        LEFT JOIN events ON audio_clips.event_id = events.id
-                        LEFT JOIN generic_statuses AS events_generic_statuses ON events.generic_status_id = events_generic_statuses.id
-                        WHERE events_generic_statuses.generic_status_name = %s
-                        AND excluded_event_ids.id IS NULL
-                        ''' + previously_shown_events_sql['and'] + '''
-                        AND audio_clips.when_created BETWEEN %s AND %s
-                        ''' + order_sql + '''
-                    )
-                    AS distinct_event_ids
-                    OFFSET %s LIMIT %s
-                )
-            SELECT
-                audio_clips.*,
-                events.*,
-                audio_clip_tones.*,
-                generic_statuses.*,
-                audio_clip_likes_dislikes.is_liked AS is_liked_by_user
-            FROM audio_clips
-            RIGHT JOIN selected_event_ids ON audio_clips.event_id = selected_event_ids.id
-            LEFT JOIN events ON audio_clips.event_id = events.id
-            LEFT JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
-            LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id AND audio_clip_likes_dislikes.user_id = %s
-            LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
-            WHERE audio_clips.is_banned IS FALSE
-            AND generic_statuses.generic_status_name = %s
-            ''',
-            params=(
-                audio_clip_tone_slug,
-                self.request.user.id,
-                self.request.user.id,
-                'completed',
-                datetime_from,
-                datetime_to,
-                pagination_offset,
-                settings.EVENT_QUANTITY_PER_PAGE,
-                self.request.user.id,
-                'ok'
-            )
-        )
-
-        return audio_clips
-
-
-    def get_events_by_user_and_audio_clip_role(
-        self, username:str, audio_clip_role_name:str,
-        latest_or_best:Literal['latest', 'best']='latest',
-        audio_clip_tone_slug:str='',
-        timeframe:Literal['day', 'week', 'month', 'all']='all',
-        page=1
-    ):
-
-        #when audio_clip_tone_slug is '', will just get entire audio_clip_tones
-        #when timeframe is 'all_time', leaving datetime_from as '' is sufficient
-        #page starts from 1
-
-        if page < 1 or len(username) == 0 or len(audio_clip_role_name) == 0:
-
-            raise ValueError("One or more required parameters are missing.")
-
-        #different checkpoints for different time range
-        datetime_checkpoint_timedelta = {
-            'day': timedelta(days=1),
-            'week': timedelta(days=7),
-            'month': timedelta(days=31)
-        }
-
-        #calculate time range
-        #leave datetime_from as '' if you want "of all time"
-        datetime_from = ''
-        datetime_to = get_datetime_now(True)
-
-        #determine earliest possible datetime
-        if timeframe in datetime_checkpoint_timedelta:
-
-            datetime_from = (get_datetime_now() - datetime_checkpoint_timedelta[timeframe]).strftime('%Y-%m-%d %H:%M:%S %z')
-
-        else:
-
-            #getting earliest audio_clips.when_created adds 5-10ms
-            #using custom function get_id_of_events_by_when_created() adds 40ms+
-
-            #random datetime that is guaranteed beyond earliest audio_clips row is the best so far
-            #here are the risks where this may/would break things:
-                #new audio_clips.when_created can start using past datetime
-                #audio_clips.when_created is no longer secured by auto_now_add
-                #suddenly no longer uses time zone
-            datetime_from = '2020-01-01 01:01:01 +00'
-
-        #calculate offset for pagination
-        pagination_offset = (page - 1) * settings.EVENT_QUANTITY_PER_PAGE
-
-        #determine order
-        order_sql = ''
-
-        if latest_or_best == 'best':
-            order_sql = 'ORDER BY audio_clips.like_count DESC, audio_clips.dislike_count ASC'
-        else:
-            order_sql = 'ORDER BY audio_clips.when_created DESC'
-
-        #start
-        #get events from role-specific audio_clips where audio_clips are ok, i.e. as long as one audio_clip is ok
-        #then, we get only ok audio_clips
-        audio_clips = AudioClips.objects.prefetch_related(
-            'audio_clip_role',
-            'event__generic_status',
-            'event__created_by',
-            'event',
-            'audio_clip_tone',
-            'generic_status',
-            'user',
-        ).raw(
-            '''		
-            WITH
-                selected_audio_clip_tones AS (
-                    SELECT id FROM get_id_of_one_or_all_audio_clip_tones_via_slug(%s)
-                ),
-                selected_event_ids AS (
-                    SELECT DISTINCT event_id AS id FROM (
-                        SELECT audio_clips.event_id FROM audio_clips
-                        RIGHT JOIN selected_audio_clip_tones ON audio_clips.audio_clip_tone_id = selected_audio_clip_tones.id
-                        LEFT JOIN voicewake_user ON audio_clips.user_id = voicewake_user.id
-                        LEFT JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
-                        LEFT JOIN events ON audio_clips.event_id = events.id
-                        LEFT JOIN audio_clip_roles ON audio_clips.audio_clip_role_id = audio_clip_roles.id
-                        LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
-                        WHERE voicewake_user.username_lowercase = %s
-                        AND audio_clips.is_banned IS FALSE
-                        AND generic_statuses.generic_status_name = %s
-                        AND audio_clip_roles.audio_clip_role_name = %s
-                        AND audio_clips.when_created BETWEEN %s AND %s
-                        ''' + order_sql + '''
-                    )
-                    AS distinct_event_ids
-                    OFFSET %s LIMIT %s
-                )
-            SELECT
-                audio_clips.*,
-                events.*,
-                audio_clip_tones.*,
-                generic_statuses.*,
-                audio_clip_likes_dislikes.is_liked AS is_liked_by_user
-            FROM audio_clips
-            RIGHT JOIN selected_event_ids ON audio_clips.event_id = selected_event_ids.id
-            LEFT JOIN events ON audio_clips.event_id = events.id
-            LEFT JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
-            LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id AND audio_clip_likes_dislikes.user_id = %s
-            LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
-            WHERE audio_clips.is_banned IS FALSE
-            AND generic_statuses.generic_status_name = %s
-            ''',
-            params=(
-                audio_clip_tone_slug,
-                username.lower(),
-                'ok',
-                audio_clip_role_name,
-                datetime_from,
-                datetime_to,
-                pagination_offset,
-                settings.EVENT_QUANTITY_PER_PAGE,
-                self.request.user.id,
-                'ok',
-            )
-        )
-
-        return audio_clips
 
 
     def get_events_by_id(self, event_id):
@@ -1782,7 +1104,8 @@ class EventsAPI(generics.GenericAPIView):
             FROM audio_clips
             LEFT JOIN events ON audio_clips.event_id = events.id
             LEFT JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
-            LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id AND audio_clip_likes_dislikes.user_id = %s
+            LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
+                AND audio_clip_likes_dislikes.user_id = %s
             LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
             WHERE audio_clips.event_id = %s
             AND audio_clips.is_banned IS FALSE
@@ -1798,130 +1121,524 @@ class EventsAPI(generics.GenericAPIView):
         return audio_clips
 
 
-    #get event.id to simply view
     def get(self, request, *args, **kwargs):
 
         #handle singular events view
-        if 'event_id' in kwargs:
 
-            #user simply wants to check the post for an event
-            response = Response(
-                data={
-                    'message': '',
-                    'data': GroupedAudioClipsSerializer(
-                        group_audio_clips_into_events(self.get_events_by_id(self.kwargs['event_id'])),
-                        many=True
-                    ).data,
-                },
+        #user simply wants to check the post for an event
+        response = Response(
+            data={
+                'message': '',
+                'data': EventsAndAudioClipsAPISerializer(
+                    group_audio_clips_into_events(self.get_events_by_id(kwargs['event_id'])),
+                    many=True
+                ).data,
+            },
+        )
+
+        #previously, if user is replying, we don't cache the request
+        #in regards to replying UI not disappearing when user revisits
+        #we just disable cache all the time to ensure likes/dislikes consistency
+        patch_cache_control(
+            response,
+            no_cache=True, no_store=True, must_revalidate=True, max_age=0
+        )
+
+        return response
+
+
+
+class BrowseEventsAPI(generics.GenericAPIView):
+
+    serializer_class = EventsAndAudioClipsAPISerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+
+    def get_latest_grouped_audio_clips(
+        self,
+        username:str='',
+        timeframe:Literal['all', 'month', 'week', 'day']='all',
+        audio_clip_role_name:Literal['originator', 'responder']='originator',
+        audio_clip_tone_id:int=None,
+        next_or_back:Literal['next', 'back']='next',
+        cursor_token:str='',
+    ):
+
+        #we can reuse passed tokens as default on 0 rows fetched
+        result = {
+            'rows': [],
+            'next_cursor_token': cursor_token,
+            'back_cursor_token': cursor_token,
+        }
+
+        username_lowercase = username.lower()
+
+        #handle profile page, if it is
+
+        #do quick check
+        #it's also good to return quietly if user doesn't exist, to keep things ambiguous
+        if (
+            username_lowercase == '' or
+            (
+                get_user_model().objects.filter(
+                    username_lowercase=username_lowercase,
+                    banned_until__isnull=True
+                ).exists() is True and
+                AudioClips.objects.filter(
+                    user__username_lowercase=username_lowercase,
+                    is_banned=False,
+                    generic_status__generic_status_name='ok'
+                ).count() > 0
             )
-
-            #previously, if user is replying, we don't cache the request
-            #in regards to replying UI not disappearing when user revisits
-            #we just disable cache all the time to ensure likes/dislikes consistency
-            patch_cache_control(
-                response,
-                no_cache=True, no_store=True, must_revalidate=True, max_age=0
-            )
-
-            return response
-        
-        #proceed to handling multiple events
-        
-        #pagination
-        url_page = 1
-        if 'page' in kwargs and kwargs['page'] > 1:
-            #URL page starts from 1
-            #>1 above allows us to ensure 0 is not used
-            url_page = kwargs['page']
-
-        #audio_clip_tone
-        #leave empty to get all
-        url_audio_clip_tone_slug = ''
-        if 'audio_clip_tone_slug' in kwargs:
-            url_audio_clip_tone_slug = kwargs['audio_clip_tone_slug']
-
-        #determine the appropriate results
-        response = None
-
-        if(
-            'username' in kwargs and 'latest_or_best' in kwargs and
-            'timeframe' in kwargs and 'audio_clip_role_name' in kwargs
         ):
 
-            response = Response(
-                data={
-                    'message': '',
-                    'data': GroupedAudioClipsSerializer(
-                        group_audio_clips_into_events(
-                            self.get_events_by_user_and_audio_clip_role(
-                                kwargs['username'],
-                                kwargs['audio_clip_role_name'],
-                                kwargs['latest_or_best'],
-                                url_audio_clip_tone_slug,
-                                kwargs['timeframe'],
-                                url_page,
-                            )
-                        ),
-                        many=True
-                    ).data,
-                },
-                status=status.HTTP_200_OK
-            )
-        
-        elif 'latest_or_best' in kwargs and 'timeframe' in kwargs and 'page':
+            pass
 
-            grouped_events = group_audio_clips_into_events(
-                self.get_events_by_completed(
-                    kwargs['latest_or_best'],
-                    url_audio_clip_tone_slug,
-                    kwargs['timeframe'],
-                    url_page,
+        else:
+
+            return result
+
+        #sql below handles non-existent event_clip_tone_id well
+        #url ensures int is passed
+
+        #handle cursor token
+
+        decoded_cursor_token = {}
+        cursor_params = []
+
+        if cursor_token != '':
+
+            try:
+
+                #get audio_clips.when_created, audio_clips.id
+                decoded_cursor_token = decode_cursor_token(cursor_token)
+
+                cursor_params = [
+                    decoded_cursor_token['when_created'],
+                    decoded_cursor_token['id'], decoded_cursor_token['when_created'],
+                ]
+
+            except:
+
+                raise custom_error(
+                    ValueError,
+                    user_message="Unable to fetch content due to faulty cursor token.",
+                    dev_message="Token could not be decoded: " + cursor_token
                 )
+
+        #handle whether to display all audio_clip_tones, or specific
+
+        audio_clip_tones_sql = ''
+        audio_clip_tones_params = []
+
+        if audio_clip_tone_id is None:
+
+            audio_clip_tones_sql = '''
+                AND audio_clip_tones.id IS NOT NULL
+            '''
+
+        else:
+
+            audio_clip_tones_sql = '''
+                AND audio_clip_tones.id = %s
+            '''
+            audio_clip_tones_params = [audio_clip_tone_id]
+
+        #prepare timeframe
+        #different checkpoints for different time range
+
+        datetime_between = get_datetime_between(timeframe)
+
+        #ran out of time to properly implement user blocks
+        #i.e. prevent content from showing when blocking/blocked, either one-way or two-way
+        #last checkpoint is getting excluded_event_ids the joining, but 1 blocked user with 100k events took 150+ms
+
+        #prepare adjustments based on cursor direction
+
+        cursor_sql = ''
+        cursor_order_sql = ''
+
+        if next_or_back == 'next':
+
+            if len(decoded_cursor_token) > 0:
+
+                cursor_sql = '''
+                    AND (
+                        audio_clips.when_created <= %s
+                        AND
+                        (audio_clips.id < %s OR audio_clips.when_created < %s)
+                    )
+                '''
+
+            if username_lowercase != '':
+
+                cursor_order_sql = '''ORDER BY audio_clips.is_banned DESC, audio_clips.when_created DESC, audio_clips.id DESC'''
+
+            else:
+
+                cursor_order_sql = '''ORDER BY audio_clips.when_created DESC, audio_clips.id DESC'''
+
+        elif next_or_back == 'back':
+
+            if len(decoded_cursor_token) > 0:
+
+                cursor_sql = '''
+                    AND (
+                        audio_clips.when_created >= %s
+                        AND
+                        (audio_clips.id > %s OR audio_clips.when_created > %s)
+                    )
+                '''
+
+            if username_lowercase != '':
+
+                cursor_order_sql = '''ORDER BY audio_clips.is_banned DESC, audio_clips.when_created ASC, audio_clips.id ASC'''
+
+            else:
+
+                cursor_order_sql = '''ORDER BY audio_clips.when_created ASC, audio_clips.id ASC'''
+
+        #main order, ensures cursor consistency
+        #since our cursor goes from latest to earliest, our when_created and id must always be DESC here
+
+        #it can be hard to guess where our priority rows end
+        #e.g. incomplete or completed, or more than 1 originator/responder
+        #so we sort our priority rows to "one half", then decide on cursor here in Py
+
+        order_sql = '''
+            ORDER BY
+        '''
+        order_params = []
+
+        order_sql += '''
+            CASE WHEN audio_clip_roles.audio_clip_role_name = %s
+            THEN 1
+            ELSE 2
+            END,
+        '''
+        order_params.append(audio_clip_role_name)
+
+        if username_lowercase != '':
+
+            order_sql += '''
+                CASE WHEN voicewake_user.username_lowercase = %s
+                THEN 1
+                ELSE 2
+                END,
+            '''
+            order_params.append(username_lowercase)
+
+        order_sql += '''
+            audio_clips.when_created DESC, audio_clips.id DESC
+        '''
+
+        #adjust to being user-specific
+
+        user_sql = {
+            'target_audio_clips__join': '',
+            'target_audio_clips__and': '',
+            'join': '',
+        }
+        user_params = {
+            'target_audio_clips__and': [],
+        }
+
+        if username_lowercase != '':
+
+            user_sql['target_audio_clips__join'] = '''
+                INNER JOIN voicewake_user ON audio_clips.user_id = voicewake_user.id
+            '''
+            user_sql['target_audio_clips__and'] = '''
+                AND voicewake_user.username_lowercase = %s
+            '''
+            user_sql['join'] = '''
+                INNER JOIN voicewake_user ON audio_clips.user_id = voicewake_user.id
+            '''
+            user_params['target_audio_clips__and'] = [username_lowercase]
+
+        #handle event generic_status
+
+        event_generic_status_name_sql = '''
+            AND e_gs.generic_status_name = 'completed'
+        '''
+
+        if audio_clip_role_name == 'originator':
+
+            if username_lowercase != '':
+
+                #for originator, show incomplete and completed for profile page
+                event_generic_status_name_sql = '''
+                    AND e_gs.generic_status_name IN ('incomplete', 'completed')
+                '''
+
+        elif audio_clip_role_name == 'responder':
+
+            #show completed, but also deleted
+            event_generic_status_name_sql = '''
+                AND e_gs.generic_status_name IN ('completed', 'deleted')
+            '''
+
+        #handle extra info request.user is logged in
+        #maybe this can be separately done to allow for caching in the future
+
+        is_liked_by_user_sql = {
+            'col': '',
+            'join': ''
+        }
+        is_liked_by_user_params = []
+
+        if self.request.user.is_authenticated is True:
+
+            is_liked_by_user_sql['col'] = '''
+                audio_clip_likes_dislikes.is_liked AS is_liked_by_user
+            '''
+            is_liked_by_user_sql['join'] = '''
+                LEFT JOIN audio_clip_likes_dislikes
+                    ON audio_clip_likes_dislikes.user_id = %s
+                    AND audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
+            '''
+            is_liked_by_user_params = [self.request.user.id]
+
+        else:
+
+            is_liked_by_user_sql['col'] = '''
+                CAST(NULL AS bool) AS is_liked_by_user
+            '''
+
+        #get audio clips
+
+        full_sql = '''
+            WITH
+            target_audio_clips AS (
+                SELECT
+                    audio_clips.event_id, audio_clips.when_created, audio_clips.id
+                FROM audio_clips
+				INNER JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
+                INNER JOIN audio_clip_roles ON audio_clips.audio_clip_role_id = audio_clip_roles.id
+                INNER JOIN events ON audio_clips.event_id = events.id
+                INNER JOIN generic_statuses AS ac_gs ON audio_clips.generic_status_id = ac_gs.id
+                INNER JOIN generic_statuses AS e_gs ON events.generic_status_id = e_gs.id
+
+                ''' + user_sql['target_audio_clips__join'] + '''
+
+                WHERE audio_clips.is_banned IS FALSE
+
+                ''' + audio_clip_tones_sql + '''
+
+                AND ac_gs.generic_status_name = %s
+                AND audio_clip_roles.audio_clip_role_name = %s
+
+                ''' + event_generic_status_name_sql + '''
+                ''' + user_sql['target_audio_clips__and'] + '''
+
+                AND audio_clips.when_created BETWEEN %s AND %s
+
+                ''' + cursor_sql + '''
+                ''' + cursor_order_sql + '''
+
+                LIMIT %s
             )
+            SELECT audio_clips.*,
 
-            #for non-user page, i.e. front page, only show once for latest
-            if request.user.is_authenticated is True and kwargs['latest_or_best'] == 'latest':
+            ''' + is_liked_by_user_sql['col'] + '''
 
-                events = []
+            FROM audio_clips
+            RIGHT JOIN target_audio_clips ON audio_clips.event_id = target_audio_clips.event_id
+            INNER JOIN generic_statuses AS ac_gs ON audio_clips.generic_status_id = ac_gs.id
+            INNER JOIN audio_clip_roles ON audio_clips.audio_clip_role_id = audio_clip_roles.id
 
-                for row in grouped_events:
+            ''' + user_sql['join'] + '''
+            ''' + is_liked_by_user_sql['join'] + '''
 
-                    events.append(row['event'])
+            WHERE audio_clips.is_banned IS FALSE
 
-                prevent_events_from_showing_twice_at_front_page(request.user, events)
+            AND ac_gs.generic_status_name = %s
+            ''' + order_sql + '''
+        '''
 
-            response = Response(
-                data={
-                    'message': '',
-                    'data': GroupedAudioClipsSerializer(
-                        grouped_events,
-                        many=True
-                    ).data,
-                },
-                status=status.HTTP_200_OK
-            )
+        full_params = audio_clip_tones_params + [
+            'ok',
+            audio_clip_role_name,
+        ] + user_params['target_audio_clips__and'] + [
+            datetime_between['datetime_from'],
+            datetime_between['datetime_to'],
+        ] + cursor_params + [
+            settings.EVENT_QUANTITY_PER_PAGE,
+        ] + is_liked_by_user_params + [
+            'ok',
+        ] + order_params
 
-        #ok
-        if response is not None:
+        #execute
 
-            #we would preferrably cache the response
-            #but because likes/dislikes are fetched together with it, caching interferes with likes/dislikes
-            #we just disable cache all the time to ensure likes/dislikes consistency
-            patch_cache_control(
-                response,
-                no_cache=True, no_store=True, must_revalidate=True, max_age=0
-            )
-
-            return response
-
-        #invalid URL
-        return Response(
-            data={
-                'message': 'Invalid URL.',
-                'data': []
-            },
-            status=status.HTTP_400_BAD_REQUEST
+        audio_clips = AudioClips.objects.prefetch_related(
+            'audio_clip_role',
+            'event__generic_status',
+            'event__created_by',
+            'event',
+            'audio_clip_tone',
+            'generic_status',
+            'user',
+        ).raw(
+            full_sql,
+            params=full_params
         )
+
+        output_testable_sql(full_sql, full_params)
+
+        list(audio_clips)
+
+        if len(audio_clips) == 0:
+
+            return result
+        
+        result['rows'] = audio_clips
+
+        #start preparing our cursor tokens
+        #our desired audio_clip_role_name + username is always grouped to the first half
+
+        result['back_cursor_token'] = encode_cursor_token({
+            'when_created': audio_clips[0].when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+            'id': audio_clips[0].id,
+        })
+
+        last_relevant_index = 0
+
+        for x in range(0, len(audio_clips)):
+
+            if audio_clips[x].audio_clip_role.audio_clip_role_name != audio_clip_role_name:
+
+                result['next_cursor_token'] = encode_cursor_token({
+                    'when_created': audio_clips[last_relevant_index].when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+                    'id': audio_clips[last_relevant_index].id,
+                })
+
+                break
+
+            last_relevant_index = x
+
+        return result
+
+        #fixed: cursor goes through entire table, even with the correct index
+            #for background, indexes work best when using/starting with "=" operator, or given a >= <= range
+            #planner did not pick up on first "=" here:
+                #AND (when_created = %s AND id < %s) OR (when_created < %s)
+            #planner did pick up on first "=" here:
+                #AND (when_created <= %s AND (id < %s OR when_created < %s))
+
+        #fixed: cursor ORDER BY goes through entire table when no records are found for user
+            #problem:
+                #when no user selected, ok
+                #when has user selected and guaranteed has rows, ok
+                #when has user selected, many originator rows but 0 responder rows, query on responder scans entire table
+            #solution:
+                #index audio_clips on (when_created DESC, id DESC)
+                    #index on id in composite index has no effect, but maybe it will when table gets much bigger
+                #use dummy ORDER BY to discourage planner from using (when_created DESC) when no rows found
+                    #settled with non-null is_banned DESC, while we always want False, so order is guaranteed
+
+        #fixed:
+            #problem:
+                #selecting from audio_clips where specified audio_clip_tones.audio_clip_tone_slug does not match
+                #causes entire audio_clips index scan
+            #solution:
+                #search by id, which handles fine when not exist, which also isn't confidential
+                #compared to search by audio_clip_tone_slug, which we must do EXISTS() on every call otherwise
+                #then when user doesn't want specific audio_clip_tones, change query to "IS NOT NULL"
+            #extra context:
+                #this issue persists when user is specified, but is also fixed using dummy ORDER BY is_banned
+
+        #good:
+            #user-audio_clips scales nicely when querying for a user
+            #higher % of is_banned=True rows does not slow down query
+            #currently at 150ms+- when user has 45k audio_clips rows, which is impossible to reach in reality
+
+
+    #get event.id to simply view
+    def get(self, request, *args, **kwargs):
+
+        #validate, as a lot of our params accept only specific values
+        serializer = BrowseEventsAPISerializer(data=kwargs, many=False)
+
+        if serializer.is_valid() is False:
+
+            return Response(
+                data={
+                    'message': get_serializer_error_message(serializer),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        new_data = serializer.validated_data
+
+        #get rows and cursor
+        #currently only handling latest
+
+        result = None
+
+        try:
+
+            result = self.get_latest_grouped_audio_clips(
+                username=new_data['username'],
+                timeframe=new_data['timeframe'],
+                audio_clip_role_name=new_data['audio_clip_role_name'],
+                audio_clip_tone_id=new_data['audio_clip_tone_id'],
+                next_or_back=new_data['next_or_back'],
+                cursor_token=new_data['cursor_token'],
+            )
+
+        except Exception as e:
+
+            return Response(
+                data={
+                    'message': get_user_message_from_custom_error(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        #prepare next and back URLs
+
+        #get split url after removing next_or_back
+        current_url_splits = self.request.build_absolute_uri().split(new_data['next_or_back'], 1)
+
+        next_url = current_url_splits[0] + "next"
+        back_url = current_url_splits[0] + "back"
+
+        if len(result['rows']) > 0:
+
+            #if we have > 0 rows, it means we also have new cursor tokens
+            next_url = next_url + "/" + result['next_cursor_token']
+            back_url = back_url + "/" + result['back_cursor_token']
+
+        elif new_data['cursor_token'] != '':
+
+            #reuse passed cursor token, if any
+            next_url = next_url + "/" + new_data['cursor_token']
+            back_url = back_url + "/" + new_data['cursor_token']
+
+        #build the response
+
+        response_data = group_audio_clips_into_events(result['rows'])
+        response_data = EventsAndAudioClipsAPISerializer(response_data, many=True).data
+
+        response = Response(
+            data={
+                'next_url': next_url,
+                'back_url': back_url,
+                'message': '',
+                'data': response_data,
+            },
+            status=status.HTTP_200_OK
+        )
+
+        #we would preferrably cache the response
+        #but because likes/dislikes are fetched together with it, caching interferes with likes/dislikes
+        #we just disable cache all the time to ensure likes/dislikes consistency
+        patch_cache_control(
+            response,
+            no_cache=True, no_store=True, must_revalidate=True, max_age=0
+        )
+
+        return response
 
 
 
@@ -1973,7 +1690,7 @@ class HandleEventReplyChoicesAPI(generics.GenericAPIView):
             events
         )
 
-        return True
+        return audio_clips
 
 
     #excludes event started by user
@@ -2154,7 +1871,7 @@ class HandleEventReplyChoicesAPI(generics.GenericAPIView):
                 return Response(
                     data={
                         'message': '',
-                        'data': GroupedAudioClipsSerializer(
+                        'data': EventsAndAudioClipsAPISerializer(
                             group_audio_clips_into_events(is_replying_audio_clips),
                             many=True
                         ).data,
@@ -2221,29 +1938,28 @@ class HandleEventReplyChoicesAPI(generics.GenericAPIView):
                     if specified_audio_clip_tone is None:
                         audio_clips = self.get_events_by_random_incomplete()
                     else:
-                        audio_clips = self.get_events_by_random_incomplete(audio_clip_tone_slug=specified_audio_clip_tone.audio_clip_tone_slug)
+                        audio_clips = self.get_events_by_random_incomplete(
+                            audio_clip_tone_slug=specified_audio_clip_tone.audio_clip_tone_slug
+                        )
 
                     if len(audio_clips) == 0:
 
                         return Response(
                             data={
                                 'message': '',
-                                'data': GroupedAudioClipsSerializer(
-                                    [],
-                                    many=True
-                                ).data,
+                                'data': [],
                             },
                             status=status.HTTP_200_OK
                         )
 
                     #lock audio_clips
-                    self.lock_events_for_reply_choices(audio_clips)
+                    audio_clips = self.lock_events_for_reply_choices(audio_clips)
 
                     #return audio_clips sorted by events
                     return Response(
                         data={
                             'message': '',
-                            'data': GroupedAudioClipsSerializer(
+                            'data': LockedEventsAndAudioClipsAPISerializer(
                                 group_audio_clips_into_events(audio_clips),
                                 many=True
                             ).data,
@@ -2513,17 +2229,9 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
         #validate
         if serializer.is_valid() is False:
 
-            #return any first error message
-            error_message = "Invalid data."
-
-            for key in serializer.errors:
-                for first_error in serializer.errors[key]:
-                    error_message = first_error
-                    break
-
             return Response(
                 data={
-                    'message': error_message,
+                    'message': get_serializer_error_message(serializer),
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -2600,17 +2308,9 @@ class AudioClipsAPI(generics.GenericAPIView):
         #validate
         if serializer.is_valid() is False:
 
-            #return any first error message
-            error_message = "Invalid data."
-
-            for key in serializer.errors:
-                for first_error in serializer.errors[key]:
-                    error_message = first_error
-                    break
-
             return Response(
                 data={
-                    'message': error_message,
+                    'message': get_serializer_error_message(serializer),
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -2820,17 +2520,9 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
         #validate
         if serializer.is_valid() is False:
 
-            #return any first error message
-            error_message = "Invalid data."
-
-            for key in serializer.errors:
-                for first_error in serializer.errors[key]:
-                    error_message = first_error
-                    break
-
             return Response(
                 data={
-                    'message': error_message,
+                    'message': get_serializer_error_message(serializer),
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )

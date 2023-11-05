@@ -52,13 +52,16 @@ class GenericStatusesSerializer(serializers.ModelSerializer):
 
 
 
-class EventsSerializer(serializers.ModelSerializer):
+#instead of when_locked, do when_locked_for_this_user on request.user basis for obscurity
+class EventsSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
     generic_status = GenericStatusesSerializer()
-    when_replied = serializers.DateTimeField()
-    created_by = UsersSerializer()
-    class Meta:
-        model = Events
-        fields = '__all__'
+
+
+
+class LockedEventsSerializer(EventsSerializer):
+    when_locked = serializers.DateTimeField(allow_null=True, default=None)
+    is_replying = serializers.BooleanField()
 
 
 
@@ -80,9 +83,60 @@ class AudioClipsSerializer(serializers.ModelSerializer):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#===============APIs=================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class TestAPISerializer(serializers.Serializer):
+
+    val_1 = serializers.IntegerField()
+    val_2 = serializers.IntegerField(required=False, default=None)
+
+
+
 #no need event=EventsSerializer
 #because we will use store into SortedAudioClipsIntoEventsSerializer.event, once for all related audio_clips
-class AudioClipsAndLikeDetailsSerializer(serializers.ModelSerializer):
+class AudioClipsAndLikeDetailsAPISerializer(serializers.ModelSerializer):
     user = UsersSerializer()
     audio_clip_role = AudioClipRolesSerializer()
     audio_clip_tone = AudioClipTonesSerializer()
@@ -103,11 +157,20 @@ class AudioClipsAndLikeDetailsSerializer(serializers.ModelSerializer):
 
 
 
-class GroupedAudioClipsSerializer(serializers.Serializer):
+class EventsAndAudioClipsAPISerializer(serializers.Serializer):
     event = EventsSerializer()
-    originator = AudioClipsAndLikeDetailsSerializer()
+    originator = AudioClipsAndLikeDetailsAPISerializer()
     responder = serializers.ListField(
-        child=AudioClipsAndLikeDetailsSerializer()
+        child=AudioClipsAndLikeDetailsAPISerializer()
+    )
+
+
+
+class LockedEventsAndAudioClipsAPISerializer(serializers.Serializer):
+    event = LockedEventsSerializer()
+    originator = AudioClipsAndLikeDetailsAPISerializer()
+    responder = serializers.ListField(
+        child=AudioClipsAndLikeDetailsAPISerializer()
     )
 
 
@@ -250,7 +313,7 @@ class UsersLogInSignUpAPISerializer(serializers.Serializer):
             raise serializers.ValidationError('Invalid OTP.')
 
         return value
-    
+
 
     def validate(self, data):
 
@@ -287,6 +350,56 @@ class UserBlocksAPISerializer(serializers.Serializer):
 class AudioClipReportsAPISerializer(serializers.Serializer):
 
     reported_audio_clip_id = serializers.IntegerField()
+
+
+
+class BrowseEventsAPISerializer(serializers.Serializer):
+
+    #cursor_token max_length is double of usual
+    username = serializers.CharField(required=False, default='', max_length=30)
+    latest_or_best = serializers.CharField()
+    timeframe = serializers.CharField()
+    audio_clip_role_name = serializers.CharField()
+    audio_clip_tone_id = serializers.IntegerField(required=False, default=None, min_value=1)
+    next_or_back = serializers.CharField()
+    cursor_token = serializers.CharField(required=False, default='', max_length=200)
+
+
+    def validate_latest_or_best(self, value):
+
+        if value in ['latest']:
+
+            return value
+
+        raise serializers.ValidationError("Accepted values not specified: latest.")
+
+
+    def validate_timeframe(self, value):
+
+        if value in ['all', 'month', 'week', 'day']:
+
+            return value
+
+        raise serializers.ValidationError("Accepted values not specified: all/month/week/day.")
+
+
+    def validate_audio_clip_role_name(self, value):
+
+        if value in ['originator', 'responder']:
+
+            return value
+
+        raise serializers.ValidationError("Accepted values not specified: originator/responder.")
+
+
+    def validate_next_or_back(self, value):
+
+        if value in ['next', 'back']:
+
+            return value
+
+        raise serializers.ValidationError("Accepted values not specified: next/back.")
+
 
 
 

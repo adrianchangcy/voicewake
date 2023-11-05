@@ -83,7 +83,7 @@
         <div>
             <VAudioClipToneMenu
                 :propIsOpen="is_audio_clip_tone_menu_open"
-                @audio_clipToneSelected="handleAudioClipToneSelected($event)"
+                @audioClipToneSelected="handleAudioClipToneSelected($event)"
                 class="border-2 border-theme-black rounded-lg p-4"
             />
         </div>

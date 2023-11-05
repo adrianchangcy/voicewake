@@ -108,7 +108,7 @@
 
                 this.toggleAudioClipTonePicker();
                 this.audio_clip_tone_choice = audio_clip_tone_choice;
-                this.$emit('audio_clipToneSelected', this.audio_clip_tone_choice);
+                this.$emit('audioClipToneSelected', this.audio_clip_tone_choice);
             },
         },
         mounted(){
