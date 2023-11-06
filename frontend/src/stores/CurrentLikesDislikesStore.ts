@@ -31,7 +31,7 @@ export function useCurrentLikesDislikesStore(is_user_page:boolean){
 
                 let old_is_liked = null;
 
-                if(audio_clip_id in this.current_likes_dislikes){
+                if(Object.hasOwn(this.current_likes_dislikes, audio_clip_id) === true){
 
                     old_is_liked = this.current_likes_dislikes[audio_clip_id]['current_value'];
                 }
@@ -46,7 +46,7 @@ export function useCurrentLikesDislikesStore(is_user_page:boolean){
             },
             async revertLikeDislike(audio_clip_id:number) : Promise<boolean|null> {
 
-                if(audio_clip_id in this.current_likes_dislikes === false){
+                if(Object.hasOwn(this.current_likes_dislikes, audio_clip_id) === false){
 
                     return null;
                 }

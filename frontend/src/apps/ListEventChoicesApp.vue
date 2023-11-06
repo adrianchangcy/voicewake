@@ -640,7 +640,7 @@
 
                     let error_text = '';
 
-                    if('request' in error && 'response' in error){
+                    if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
 
                         error_text = error.response.data['message'];
                     }
@@ -691,7 +691,7 @@
 
                     let error_text = '';
 
-                    if('request' in error && 'response' in error){
+                    if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
 
                         //401 is when you cannot cancel because you are no longer replying
                         //happens when cronjob cancels first
@@ -763,7 +763,7 @@
 
                     let error_text = '';
 
-                    if('request' in error && 'response' in error){
+                    if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
 
                         error_text = error.response.data['message'];
 

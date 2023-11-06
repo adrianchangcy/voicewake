@@ -274,7 +274,7 @@
                 await axios.post(window.location.origin + '/api/events/' + specific_url, data)
                 .then((response:any) => {
 
-                    if(response.status === 201 && 'event_id' in response.data['data']){
+                    if(response.status === 201 && Object.hasOwn(response.data['data'], 'event_id') === true){
 
                         this.$emit('isSubmitSuccessful', true);
 
@@ -295,7 +295,7 @@
 
                     let error_text = '';
 
-                    if('request' in error && 'response' in error){
+                    if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
 
                         error_text = error.response.data['message'];
                     }

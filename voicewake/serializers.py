@@ -55,6 +55,8 @@ class GenericStatusesSerializer(serializers.ModelSerializer):
 #instead of when_locked, do when_locked_for_this_user on request.user basis for obscurity
 class EventsSerializer(serializers.Serializer):
     id = serializers.IntegerField()
+    event_name = serializers.CharField()
+    when_created = serializers.DateTimeField()
     generic_status = GenericStatusesSerializer()
 
 

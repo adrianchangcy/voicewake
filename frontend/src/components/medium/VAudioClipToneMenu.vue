@@ -221,12 +221,6 @@
                     if(audio_clip_tone_index !== -1){
 
                         this.selected_audio_clip_tone_index = audio_clip_tone_index;
-
-                    }else if(this.propFilteredEventsStore !== null && audio_clip_tone_index === -1){
-
-                        //remove data from store if audio_clip_tone no longer exists
-                        this.propFilteredEventsStore.destroySelectedAudioClipToneData(this.propInitialAudioClipTone);
-                        this.propFilteredEventsStore.updateSelectedAudioClipTone(null);
                     }
                 }
             })();
