@@ -453,8 +453,6 @@ class TestAPI(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
 
-        current_url = self.request.build_absolute_uri()
-        current_url = current_url.split(kwargs['cursor_token'])[0]
 
 
 

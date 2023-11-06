@@ -487,7 +487,7 @@
                 //we use the store because it is always updated, while API results are not updated when user changes is_liked
                 const likes_dislikes_store = this.current_likes_dislikes_store.getCurrentLikesDislikes;
 
-                if(this.propAudioClip.id in likes_dislikes_store)
+                if(Object.hasOwn(likes_dislikes_store, this.propAudioClip.id) === true)
 
                     this.is_liked = likes_dislikes_store[this.propAudioClip.id].current_value;
 

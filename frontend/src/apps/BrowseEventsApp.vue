@@ -60,25 +60,65 @@
                         class="absolute w-full h-fit top-4 z-20 flex flex-col p-4 gap-4 rounded-lg border-2 border-theme-black bg-theme-light"
                     >
         
-                        <!--filter type-->
+                        <!--main filters-->
                         <div class="w-fit flex flex-row items-center border rounded-lg border-theme-light-gray px-2">
                             <VActionTextOnly
-                                v-for="(filter_type, index) in filtered_events_store.getMainFilters" :key="index"
+                                v-for="(filter_type, index) in filtered_events_store.getMainFilters"
+                                :key="index"
                                 @click="filtered_events_store.updateCurrentMainFilterIndex(index)"
+                                :disabled="filtered_events_store.isSameCurrentMainFilterIndex(index)"
                                 prop-element="button"
                                 prop-element-size="s"
                                 prop-font-size="s"
                                 :prop-is-icon-only="true"
-                                :class="[
-                                    filtered_events_store.isSameCurrentMainFilterIndex(index) ? 'border-b-theme-black' : 'border-b-transparent',
-                                    'border-b-2 rounded-b-none p-2'
-                                ]"
+                                class="p-2 relative"
                             >
                                 <span>{{ filter_type }}</span>
+                                <span
+                                    v-show="filtered_events_store.isSameCurrentMainFilterIndex(index)"
+                                    class="sr-only"
+                                >
+                                    selected
+                                </span>
+                                <TransitionFade>
+                                    <div
+                                        v-show="filtered_events_store.isSameCurrentMainFilterIndex(index)"
+                                        class="absolute w-full h-0.5 bg-theme-black left-0 right-0 bottom-0"
+                                    ></div>
+                                </TransitionFade>
+                            </VActionTextOnly>
+                        </div>
+
+                        <!--audio_clip_roles-->
+                        <div class="w-fit flex flex-row items-center border rounded-lg border-theme-light-gray px-2">
+                            <VActionTextOnly
+                                v-for="(pretty_audio_clip_role_name, index) in filtered_events_store.getPrettyAudioClipRoleNames"
+                                :key="index"
+                                @click="filtered_events_store.updateCurrentAudioClipRoleNameIndex(index)"
+                                :disabled="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
+                                prop-element="button"
+                                prop-element-size="s"
+                                prop-font-size="s"
+                                :prop-is-icon-only="true"
+                                class="p-2 relative"
+                            >
+                                <span>{{ pretty_audio_clip_role_name }}</span>
+                                <span
+                                    v-show="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
+                                    class="sr-only"
+                                >
+                                    selected
+                                </span>
+                                <TransitionFade>
+                                    <div
+                                        v-show="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
+                                        class="absolute w-full h-0.5 bg-theme-black left-0 right-0 bottom-0"
+                                    ></div>
+                                </TransitionFade>
                             </VActionTextOnly>
                         </div>
         
-                        <!--audio_clip tones-->
+                        <!--audio_clip_tones-->
                         <VAudioClipToneMenu
                             :prop-is-open="true"
                             :prop-close-when-selected="false"
@@ -91,34 +131,6 @@
                         />
                     </div>
                 </div>
-            </div>
-
-            <!--audio_clip roles-->
-            <div v-if="propIsUserProfilePage" class="w-full grid grid-cols-2 px-4">
-                <VActionTextOnly
-                    v-for="(pretty_audio_clip_role_name, index) in filtered_events_store.getPrettyAudioClipRoleNames"
-                    :key="index"
-                    @click="filtered_events_store.updateCurrentAudioClipRoleNameIndex(index)"
-                    prop-element="button"
-                    prop-element-size="s"
-                    prop-font-size="s"
-                    :prop-is-icon-only="true"
-                    :class="[
-                        filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index) ? 'border-b-theme-black' : 'border-b-theme-medium-gray',
-                        'col-span-1 border-b-2 rounded-b-none p-2'
-                    ]"
-                >
-                    <span class="mx-auto">
-                        <i class="fas fa-comment"></i>
-                        <span class="pl-2">{{ pretty_audio_clip_role_name }}</span>
-                        <span
-                            v-show="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
-                            class="sr-only"
-                        >
-                            selected
-                        </span>
-                    </span>
-                </VActionTextOnly>
             </div>
         </div>
 
@@ -447,8 +459,6 @@
                     ];
                 }
 
-                console.log(full_url);
-
                 await axios.get(full_url)
                 .then(async (results: any) => {
 
@@ -716,9 +726,7 @@
             }
 
             //reset store if scheduled by home button click at NavBar
-            (async ()=>{
-                await this.resetStores();
-            })();
+            this.resetStores();
 
             //listen from EventCard
             this.currently_playing_audio_clip_store.$subscribe((mutation, state)=>{
@@ -761,10 +769,9 @@
                 ){
                     after(()=>{
 
-                        //last selected audio_clip to be currently selected audio_clip
-
                         this.switchTriggerOnFilterChange();
-
+                        
+                        //last selected audio_clip to be currently selected audio_clip
                         const last_selected_audio_clip = this.filtered_events_store.getLastSelectedAudioClip;
                         this.handleNewSelectedAudioClip(last_selected_audio_clip, false);
 
@@ -773,6 +780,16 @@
                         });
 
                         this.must_skip_observer_once = true;
+
+                        this.getEvents(
+                            this.filtered_events_store.getCurrentEventGenericStatusNameIndex,
+                            this.filtered_events_store.getCurrentMainFilterIndex,
+                            this.filtered_events_store.getCurrentTimeframeIndex,
+                            this.filtered_events_store.getCurrentAudioClipRoleNameIndex,
+                            this.filtered_events_store.getCurrentAudioClipToneId,
+                            true,
+                            "next",
+                        );
                     });
                 }
             });

@@ -287,7 +287,7 @@
 
                     let error_text = '';
 
-                    if('request' in error && 'response' in error){
+                    if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
 
                         error_text = error.response.data['message'];
                     }
@@ -352,7 +352,7 @@
 
                     let error_text = '';
 
-                    if('request' in error && 'response' in error){
+                    if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
 
                         error_text = error.response.data['message'];
                     }

@@ -51,7 +51,7 @@
                     console.log(result.data);                      //native {data:{},message:"testo"}
                     console.log(result.request.status);            //number 200
                 }).catch((error:any) => {
-                    if('response' in error === true && 'request' in error === true){
+                    if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true === true){
                         console.log(error.response.data);               //native {data:{},message:"testo"}
                         console.log(error.request.status);              //number 418
                     }
@@ -75,7 +75,7 @@
 
                     let error_text = '';
 
-                    if('request' in error && 'response' in error){
+                    if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
 
                         error_text = error.response.data['message'];
                     }
@@ -88,7 +88,6 @@
                 });
             },
         },
-
         mounted(){
 
             this.callTest();
@@ -98,6 +97,11 @@
                 text: "You'll finish this project soon. You can do this!",
                 type: "ok"
             }, 3000);
+
+            let yolo = {'ho': 1};
+            console.log(Object.hasOwn(yolo, 'ho'));
+            console.log('ho' in yolo);
+            console.log(Object.hasOwn(Object.keys(yolo), 'ho'));
         },
     });
 </script>

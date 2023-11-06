@@ -280,8 +280,8 @@
                 if(
                     this.user_id === null ||
                     event.event.id !== this.event_id ||
-                    'when_locked' in event.event === false ||
-                    'is_replying' in event.event === false
+                    Object.hasOwn(event.event, 'when_locked') === false ||
+                    Object.hasOwn(event.event, 'is_replying') === false
                 ){
 
                     return;
@@ -365,7 +365,7 @@
 
                     //401 is when you cannot cancel because you are no longer replying
                     //can happen when cronjob cancels first
-                    if('request' in error && 'response' in error){
+                    if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
 
                         if(error.request.status === 401){
 
@@ -421,7 +421,7 @@
 
                     let error_text = '';
 
-                    if('request' in error && 'response' in error){
+                    if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
 
                         error_text = error.response.data['message'];
                     }
@@ -483,8 +483,8 @@
                 if(
                     this.is_this_user_replying === false ||
                     this.event === null ||
-                    'when_locked' in this.event.event === false ||
-                    'is_replying' in this.event.event === false
+                    Object.hasOwn(this.event.event, 'when_locked') === false ||
+                    Object.hasOwn(this.event.event, 'is_replying') === false
                 ){
 
                     return;

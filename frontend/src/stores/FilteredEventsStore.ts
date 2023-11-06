@@ -40,10 +40,12 @@ export function useFilteredEventsStore(is_user_page:boolean){
             event_generic_status_names: ["completed"],
 
             current_main_filter_index: 0,
-            main_filters: ["Latest", "Best"],
+            // main_filters: ["Latest", "Best"],
+            main_filters: ["Latest"],
 
             current_timeframe_index: 0,
-            timeframes: ["All", "Year", "Month", "Day"],
+            // timeframes: ["All", "Year", "Month", "Day"],
+            timeframes: ["All"],
 
             current_audio_clip_role_name_index: 0,
             audio_clip_role_names: ["originator", "responder"],
@@ -71,19 +73,17 @@ export function useFilteredEventsStore(is_user_page:boolean){
                     state.current_audio_clip_tone_id,
                 ];
 
-                if(args_list[0] in Object.keys(state.filtered_events_structure) === false){
-                    return [];
-                }else if(args_list[1] in Object.keys(state.filtered_events_structure[args_list[0]]) === false){
-                    return [];
-                }else if(args_list[2] in Object.keys(state.filtered_events_structure[args_list[0]][args_list[1]]) === false){
-                    return [];
-                }else if(args_list[3] in Object.keys(state.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]]) === false){
-                    return [];
-                }else if(args_list[4] in Object.keys(state.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]]) === false){
+                //tried checking using the proper way, i.e. manual 'if' checks going deeper and deeper
+                //that seemed to ruin reactivity
+                //beware that this solution here may hide errors
+                try{
+
+                    return state.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]].events;
+
+                }catch(error){
+
                     return [];
                 }
-
-                return state.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]].events;
             },
             getLastSelectedAudioClip: (state):AudioClipsAndLikeDetailsTypes|null => {
 
@@ -367,13 +367,13 @@ export function useFilteredEventsStore(is_user_page:boolean){
                 ];
 
                 //start initialising
-                args_list[0] in Object.keys(this.filtered_events_structure) === false ? this.filtered_events_structure[args_list[0]] = {} : null;
-                args_list[1] in Object.keys(this.filtered_events_structure[args_list[0]]) === false ? this.filtered_events_structure[args_list[0]][args_list[1]] = {} : null;
-                args_list[2] in Object.keys(this.filtered_events_structure[args_list[0]][args_list[1]]) === false ? this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]] = {} : null;
-                args_list[3] in Object.keys(this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]]) === false ? this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]] = {} : null;
+                Object.hasOwn(this.filtered_events_structure, args_list[0]) === false ? this.filtered_events_structure[args_list[0]] = {} : null;
+                Object.hasOwn(this.filtered_events_structure[args_list[0]], args_list[1]) === false ? this.filtered_events_structure[args_list[0]][args_list[1]] = {} : null;
+                Object.hasOwn(this.filtered_events_structure[args_list[0]][args_list[1]], args_list[2]) === false ? this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]] = {} : null;
+                Object.hasOwn(this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]], args_list[3]) === false ? this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]] = {} : null;
 
                 //final initialisation
-                if(args_list[4] in Object.keys(this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]]) === false){
+                if(Object.hasOwn(this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]], args_list[4]) === false){
 
                     this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]] = {
                         'events': [],
