@@ -13,7 +13,7 @@
                 <!--like-->
                 <button
                     ref="like_button"
-                    @click.stop="handleLiked()"
+                    @click="handleLikeDislike(true)"
                     class="col-span-1 h-full     shade-border-when-hover active:bg-theme-lightest-gray transition-colors      bg-theme-light       border border-r-0 border-theme-light-gray rounded-full rounded-r-none    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                     type="button"
                 >
@@ -49,7 +49,7 @@
                 <!--dislike-->
                 <button
                     ref="dislike_button"
-                    @click.stop="handleDisliked()"
+                    @click="handleLikeDislike(false)"
                     class="col-span-1 h-full     shade-border-when-hover active:bg-theme-lightest-gray transition-colors      bg-theme-light       border border-l-0 border-theme-light-gray rounded-full rounded-l-none     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                     type="button"
                 >
@@ -137,7 +137,7 @@
             >
                 <VActionTextOnly
                     @click="submitReport()"
-                    :prop-is-enabled="!has_reported && !is_reporting"
+                    :prop-is-enabled="!is_reporting"
                     propElement="button"
                     type="button"
                     propFontSize="s"
@@ -153,8 +153,7 @@
                     </span>
                     <span v-else>
                         <i class="fas fa-flag w-fit h-fit text-sm"></i>
-                        <span v-show="!has_reported" class="pl-2">Report</span>
-                        <span v-show="has_reported" class="pl-2">Reported</span>
+                        <span class="pl-2">Report</span>
                     </span>
                 </VActionTextOnly>
             </div>
@@ -176,7 +175,6 @@
     import { prettyCount } from '@/helper_functions';
     import { notify } from 'notiwind';
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
-    import { useCurrentLikesDislikesStore } from '@/stores/CurrentLikesDislikesStore';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     const axios = require('axios');
 
@@ -184,22 +182,19 @@
         data(){
             return {
                 pop_up_manager_store: usePopUpManagerStore(),
-                current_likes_dislikes_store: (()=>{
-                    return useCurrentLikesDislikesStore(usePopUpManagerStore().getIsLoggedIn);
-                })(),
 
                 is_liked: null as boolean|null,
+                previous_is_liked: null as boolean|null,
                 like_count: 0,
                 dislike_count: 0,
                 minimum_dislike_count_for_display: 10,
                 minimum_dislike_percentage_for_display: 0.2,
-                submit_interval: null as number|null,
+                submit_timeout: null as number|null,
 
                 has_shared: false,
                 has_shared_timeout: null as number|null,
 
                 is_reporting: false,
-                has_reported: false,
 
                 is_extra_options_menu_open: false,
             };
@@ -217,50 +212,34 @@
         computed: {
             prettyLikeCount() : string {
                 
-                if(this.is_liked === true){
+                if(this.like_count === 0){
 
-                    return prettyCount(this.like_count + 1);
-
-                }else{
-
-                    if(this.like_count > 0){
-
-                        return prettyCount(this.like_count);
-                    }
-
-                    return "";
+                    return '';
                 }
+
+                return prettyCount(this.like_count);
             },
             prettyDislikeCount() : string {
 
-                if(this.is_liked === false){
+                if(this.dislike_count === 0){
 
-                    const final_dislike_count = this.dislike_count + 1;
-
-                    //only show dislikes if it passes percentage
-                    if(
-                        final_dislike_count >= this.minimum_dislike_count_for_display &&
-                        (final_dislike_count / (this.like_count + final_dislike_count) > this.minimum_dislike_percentage_for_display)
-                    ){
-
-                        return prettyCount(final_dislike_count);
-                    }
-
-                    return "";
-
-                }else{
-
-                    //only show dislikes if it passes percentage
-                    if(
-                        this.dislike_count >= this.minimum_dislike_count_for_display &&
-                        this.dislike_count / (this.like_count + this.dislike_count) > this.minimum_dislike_percentage_for_display
-                    ){
-
-                        return prettyCount(this.dislike_count);
-                    }
-
-                    return "";
+                    return '';
                 }
+
+                return prettyCount(this.dislike_count);
+            },
+            canShowDislikeCount() : boolean {
+
+                const is_percentage_ok = (
+                    (
+                        this.dislike_count /
+                        (this.like_count + this.dislike_count)
+                    ) > this.minimum_dislike_percentage_for_display
+                );
+
+                const is_count_ok = this.dislike_count >= this.minimum_dislike_count_for_display;
+
+                return (is_percentage_ok === true && is_count_ok === true);
             },
         },
         watch: {
@@ -269,6 +248,9 @@
                 this.syncLikesDislikes();
             },
         },
+        emits: [
+            'newIsLiked',
+        ],
         methods: {
             toggleExtraOptionsMenu() : void {
 
@@ -299,34 +281,50 @@
             },
             async submitLikeDislike() : Promise<void> {
 
-                this.submit_interval !== null ? clearTimeout(this.submit_interval) : null;
+                this.submit_timeout !== null ? clearTimeout(this.submit_timeout) : null;
+
+                const audio_clip = this.propAudioClip;
+                const is_liked = this.is_liked;
 
                 //we use this to counter spam-clicking
-                this.submit_interval = window.setTimeout(()=>{
-
-                    const audio_clip_id = this.propAudioClip.id;
-                    const is_liked = this.is_liked;
+                this.submit_timeout = window.setTimeout(async ()=>{
 
                     let data = new FormData();
                 
-                    data.append('audio_clip_id', JSON.stringify(audio_clip_id));
+                    data.append('audio_clip_id', JSON.stringify(audio_clip.id));
                     data.append('is_liked', JSON.stringify(is_liked));
-
-                    this.current_likes_dislikes_store.updateLikeDislike(audio_clip_id, is_liked);
 
                     axios.post(window.location.origin + '/api/audio-clip-likes-dislikes', data)
                     .then(() => {
 
-                    })
-                    .catch(async (error:any) => {
+                        //update store
+                        this.emitNewIsLiked(audio_clip, is_liked);
+
+                    }).catch(async (error:any)=>{
 
                         //revert
-                        this.is_liked = await this.current_likes_dislikes_store.revertLikeDislike(audio_clip_id);
+                        //store acts as a source of truth, until user closes tab before request completes
+                        //nonetheless, server has the ultimate truth
+
+                        if(audio_clip === this.propAudioClip){
+
+                            this.is_liked = audio_clip.is_liked_by_user;
+                            this.like_count = audio_clip.like_count;
+                            this.dislike_count = audio_clip.dislike_count;
+                        }
+
+                        let error_text = 'Oops! Something went wrong.';
+
+                        if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
+
+                            error_text = error.response.data['message'];
+                        }
 
                         notify({
-                            title: "Error",
-                            text: JSON.parse(error.request.response)['message'],
-                            type: "error"
+                            icon: 'fas fa-check',
+                            title: 'Action failed',
+                            text: error_text,
+                            type: 'error',
                         }, 3000);
                     });
                 }, 500);
@@ -341,44 +339,78 @@
 
                 return true;
             },
-            async handleLiked() : Promise<void> {
+            async handleLikeDislike(is_liked_action:boolean) : Promise<void> {
 
                 if(await this.isLoggedIn() === false){
 
                     return;
                 }
 
-                if(this.is_liked === null || this.is_liked === false){
+                let is_liked:boolean|null = is_liked_action;
 
-                    this.is_liked = true;
-                    this.animeLikeDislike('like', true);
+                if(is_liked_action === this.is_liked){
 
-                }else{
-
-                    this.is_liked = null;
-                    this.animeLikeDislike('like', false);
+                    is_liked = null;
                 }
 
-                this.submitLikeDislike();
-            },
-            async handleDisliked() : Promise<void> {
+                switch(is_liked){
 
-                if(await this.isLoggedIn() === false){
+                    case true:
 
-                    return;
+                        if(this.is_liked === false){
+
+                            this.dislike_count -= 1;
+                        }
+
+                        if(this.is_liked !== true){
+
+                            this.like_count += 1;
+                        }
+
+                        break;
+
+                    case null:
+
+                        switch(this.is_liked){
+                            case true:
+                                this.like_count -= 1;
+                                break;
+                            case false:
+                                this.dislike_count -= 1;
+                                break;
+                            default:
+                                break;
+                        }
+
+                        break;
+                    
+                    case false:
+                    
+                        if(this.is_liked === true){
+                        
+                            this.like_count -= 1;
+                        }
+                    
+                        if(this.is_liked !== false){
+                        
+                            this.dislike_count += 1;
+                        }
+                    
+                        break;
+                    
+                    default:
+                    
+                        break;
                 }
 
-                if(this.is_liked === null || this.is_liked === true){
+                //do anime
+                this.animeLikeDislike(is_liked_action, (is_liked !== null));
 
-                    this.is_liked = false;
-                    this.animeLikeDislike('dislike', true);
+                //save
+                this.previous_is_liked = this.is_liked;
+                this.is_liked = is_liked;
 
-                }else{
-
-                    this.is_liked = null;
-                    this.animeLikeDislike('dislike', false);
-                }
-
+                //submit
                 this.submitLikeDislike();
             },
             async submitReport() : Promise<void> {
@@ -397,30 +429,35 @@
                 axios.post(window.location.origin + '/api/audio-clip-reports/create', data)
                 .then(() => {
 
-                    this.has_reported = true;
-
                     notify({
                         icon: 'fas fa-flag',
                         title: 'Recording reported',
-                        text: 'Thank you for bringing this to our attention. We will review it shortly.',
+                        text: 'Thank you for bringing this to our attention.',
                         type: 'generic',
-                    }, 6000);
+                    }, 3000);
 
-                }).catch(() => {
+                }).catch((error:any) => {
+
+                    let error_text = 'Oops! Unable to report this recording.';
+
+                    if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
+
+                        error_text = error.response.data['message'];
+                    }
 
                     notify({
                         icon: 'fas fa-check',
                         title: 'Report failed',
-                        text: 'Oops! Unable to report this recording.',
+                        text: error_text,
                         type: 'error',
-                    }, 2000);
+                    }, 3000);
 
                 }).finally(() => {
 
                     this.is_reporting = false;
                 });
             },
-            animeLikeDislike(like_or_dislike:'like'|'dislike', is_adding:boolean) : void {
+            animeLikeDislike(is_liked:boolean, is_adding:boolean) : void {
 
                 const like_element = this.$refs.like_logo as HTMLElement;
                 const dislike_element = this.$refs.dislike_logo as HTMLElement;
@@ -437,18 +474,13 @@
                 //determine target
                 let target;
 
-                if(like_or_dislike === 'like'){
+                if(is_liked === true){
 
                     target = like_element;
 
-                }else if(like_or_dislike === 'dislike'){
+                }else if(is_liked === false){
 
                     target = dislike_element;
-
-                }else{
-
-                    console.log('Implementation error on like/dislike.');
-                    return;
                 }
 
                 if(is_adding){
@@ -479,23 +511,22 @@
             },
             async syncLikesDislikes() : Promise<void> {
 
-                //accurately deduct user's own is_liked from count
-                this.like_count = this.propAudioClip.like_count - (this.propAudioClip.is_liked_by_user === true ? 1 : 0);
-                this.dislike_count = this.propAudioClip.dislike_count - (this.propAudioClip.is_liked_by_user === false ? 1 : 0);
+                this.like_count = this.propAudioClip.like_count;
+                this.dislike_count = this.propAudioClip.dislike_count;
+                this.is_liked = this.propAudioClip.is_liked_by_user;
 
-                //check if store has latest is_liked, and is different from API results' is_liked
-                //we use the store because it is always updated, while API results are not updated when user changes is_liked
-                const likes_dislikes_store = this.current_likes_dislikes_store.getCurrentLikesDislikes;
+                if(Object.hasOwn(this.propAudioClip, 'previous_is_liked_by_user') === true){
 
-                if(Object.hasOwn(likes_dislikes_store, this.propAudioClip.id) === true)
-
-                    this.is_liked = likes_dislikes_store[this.propAudioClip.id].current_value;
-
-                else{
-
-                    this.is_liked = this.propAudioClip.is_liked_by_user;
+                    this.previous_is_liked = this.propAudioClip.previous_is_liked_by_user!;
                 }
-            }
+            },
+            async emitNewIsLiked(audio_clip:AudioClipsAndLikeDetailsTypes, new_is_liked:boolean|null) : Promise<void> {
+
+                this.$emit('newIsLiked', {
+                    'audio_clip': audio_clip,
+                    'new_is_liked': new_is_liked,
+                });
+            },
         },
         beforeMount(){
 

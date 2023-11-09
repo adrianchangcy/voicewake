@@ -71,8 +71,8 @@ def get_datetime_now(to_string:bool=False):
     return datetime_now
 
     #to get difference
-    #minutes_passed = (get_datetime_now() - event.when_locked).total_seconds() / 60
-    #hours_passed = (get_datetime_now() - event.when_locked).total_seconds() / 60 / 60
+    #minutes_passed = (get_datetime_now() - event_reply_queue.when_locked).total_seconds() / 60
+    #hours_passed = (get_datetime_now() - event_reply_queue.when_locked).total_seconds() / 60 / 60
 
     #to format into queryset and/or sql-friendly format:
     #get_datetime_now().strftime('%Y-%m-%d %H:%M:%S %z')
@@ -129,59 +129,40 @@ def has_numbers_only(string_value):
     return re.match(r'^[0-9]+$', string_value) is not None
 
 
-def check_user_is_replying(request, excluded_event_id=None):
-
-    User = get_user_model()
-
-    #check if user is replying to anything
-    if excluded_event_id is None:
-
-        the_count = Events.objects.filter(
-            locked_for_user=User(pk=request.user.id),
-            is_replying=True
-        ).count()
-
-    else:
-
-        the_count = Events.objects.filter(
-            locked_for_user=User(pk=request.user.id),
-            is_replying=True
-        ).exclude(
-            pk=excluded_event_id
-        ).count()
-
-    return the_count > 0
-
-
-def group_audio_clips_into_events(audio_clips:AudioClips)->list:
+def group_audio_clips_into_events(audio_clips:list[AudioClips], event_reply_queues:list[EventReplyQueues]=[])->list:
 
     if len(audio_clips) == 0 or audio_clips is None:
 
         return []
 
     sorted_audio_clips = []
-    event_id = []  #simpler way to check and get element position in sorted_audio_clips
+    event_ids = []  #simpler way to check and get element position in sorted_audio_clips
 
     for row in audio_clips:
 
-        if row.event.id not in event_id:
+        if row.event.id not in event_ids:
 
             #this is what frontend expects
             sorted_audio_clips.append({
                 'event': row.event,
                 'originator': None,
-                'responder': []
+                'responder': [],
+                'event_reply_queue': None,
             })
 
-            event_id.append(row.event.id)
+            if len(event_reply_queues) > 0:
+
+                sorted_audio_clips[len(event_ids)]['event_reply_queue'] = event_reply_queues[len(event_ids)]
+
+            event_ids.append(row.event.id)
 
         if row.audio_clip_role.audio_clip_role_name == 'originator':
 
-            sorted_audio_clips[event_id.index(row.event.id)]['originator'] = row
+            sorted_audio_clips[event_ids.index(row.event.id)]['originator'] = row
 
         else:
 
-            sorted_audio_clips[event_id.index(row.event.id)]['responder'].append(row)
+            sorted_audio_clips[event_ids.index(row.event.id)]['responder'].append(row)
 
     return sorted_audio_clips
 
@@ -189,30 +170,32 @@ def group_audio_clips_into_events(audio_clips:AudioClips)->list:
 def prevent_events_from_queuing_twice_for_reply(user, events:list):
 
     datetime_now = get_datetime_now()
-    user_events = []
+    bulk_user_events = []
+    user_ids = []
     event_ids = []
 
     for event in events:
 
-        event_ids.append(event.id)
+        if user.id not in user_ids and event not in event_ids:
 
-        user_event = UserEvents(
-            user=user,
-            event=event,
-            when_created=datetime_now
-        )
+            bulk_user_events.append(
+                UserEvents(
+                    user=user,
+                    event=event,
+                )
+            )
 
-        if user_event not in user_events:
-
-            user_events.append(user_event)
+            user_ids.append(user.id)
+            event_ids.append(event.id)
 
     #create rows if they don't yet exist
+    #ignore conflict because there's a decent chance that rows already exist, which is fine
     UserEvents.objects.bulk_create(
-        user_events,
+        bulk_user_events,
         ignore_conflicts=True
     )
 
-    #do extra update just in case row already existed during bulk_create
+    #do extra update for rows that already exist during bulk_create
     UserEvents.objects.filter(
         user=user,
         event_id__in=event_ids
@@ -224,32 +207,32 @@ def prevent_events_from_queuing_twice_for_reply(user, events:list):
 def prevent_events_from_showing_twice_at_front_page(user, events:list):
 
     datetime_now = get_datetime_now()
-    user_events = []
+    bulk_user_events = []
+    user_ids = []
     event_ids = []
 
     for event in events:
 
-        event_ids.append(event.id)
+        if user.id not in user_ids and event not in event_ids:
 
-        user_event = UserEvents(
-            user=user,
-            event=event,
-            when_created=datetime_now
-        )
+            bulk_user_events.append(
+                UserEvents(
+                    user=user,
+                    event=event,
+                )
+            )
 
-        if user_event not in user_events:
-
-            user_events.append(user_event)
+            user_ids.append(user.id)
+            event_ids.append(event.id)
 
     #create rows if they don't yet exist
-    #ignore_conflicts=True to skip if row already exists
-    bulk_user_events = UserEvents.objects.bulk_create(
-        user_events,
+    #ignore conflict because there's a decent chance that rows already exist, which is fine
+    UserEvents.objects.bulk_create(
+        bulk_user_events,
         ignore_conflicts=True
     )
-    list(bulk_user_events)
 
-    #update
+    #do extra update for rows that already exist during bulk_create
     UserEvents.objects.filter(
         user=user,
         event_id__in=event_ids
@@ -265,8 +248,9 @@ def get_user_create_events_and_replies_cooldown_s(user, context:Literal['create_
         raise ValueError('Invalid context.')
 
     #this is for "X max new posts every __", which in this case is every 24h
-    datetime_checkpoint = datetime.now().astimezone(tz=ZoneInfo('UTC')).strftime('%Y-%m-%d 00:00:00 %z')
-    datetime_checkpoint = datetime.strptime(datetime_checkpoint, '%Y-%m-%d %H:%M:%S %z')
+    datetime_now = get_datetime_now()
+    datetime_checkpoint = datetime_now.strftime('%Y-%m-%d 00:00:00.%f %z')
+    datetime_checkpoint_raw = datetime.strptime(datetime_checkpoint, '%Y-%m-%d %H:%M:%S.%f %z')
 
     audio_clip_role_name = ''
     count_limit = 0
@@ -284,7 +268,7 @@ def get_user_create_events_and_replies_cooldown_s(user, context:Literal['create_
     the_count = AudioClips.objects.filter(
         user=user,
         when_created__gte=datetime_checkpoint,
-        audio_clip_role=AudioClipRoles(audio_clip_role_name=audio_clip_role_name)
+        audio_clip_role__audio_clip_role_name=audio_clip_role_name
     ).count()
 
     if the_count < count_limit:
@@ -292,7 +276,7 @@ def get_user_create_events_and_replies_cooldown_s(user, context:Literal['create_
         return 0
 
     #get next 00:00:00 day, and get difference from now
-    difference_s = ((datetime_checkpoint + timedelta(days=1)) - datetime.now().astimezone(tz=ZoneInfo('UTC'))).total_seconds()
+    difference_s = ((datetime_checkpoint_raw + timedelta(days=1)) - datetime_now).total_seconds()
 
     return math.ceil(difference_s)
 
@@ -326,6 +310,11 @@ def get_datetime_between(timeframe:Literal['day', 'week', 'month', 'all']='all')
         'datetime_from': datetime_from,
         'datetime_to': datetime_to
     }
+
+
+def get_datetime_difference_s(main_datetime, deducting_datetime)->int:
+
+    return math.ceil((main_datetime - deducting_datetime).total_seconds())
 
 
 def encode_cursor_token(token_data)->str:
@@ -1441,6 +1430,269 @@ class HandleAudioFile:
         #must call this when you're done with .open()
         #other types will be auto-closed by Django at end of request
         self.audio_file.close()
+
+
+class CreateAudioClips:
+
+    def __init__(
+        self, user, current_context:Literal["create_event", "create_reply"],
+        event_create_daily_limit:int, event_reply_daily_limit:int,
+        event_reply_expiry_seconds:int,
+    ):
+
+        if current_context not in ["create_event", "create_reply"]:
+
+            raise ValueError('Invalid context.')
+
+        if user.is_authenticated is False:
+
+            raise ValueError('User must be logged in.')
+
+        self.user = user
+        self.current_context:Literal["create_event", "create_reply"] = current_context
+        self.event_create_daily_limit = event_create_daily_limit
+        self.event_reply_daily_limit = event_reply_daily_limit
+        self.event_reply_expiry_seconds = event_reply_expiry_seconds
+
+        self.datetime_now = get_datetime_now()
+
+        self.generic_status_incomplete = None
+        self.generic_status_completed = None
+
+        self.event_reply_queue = None
+
+
+    def _check_cooldown_on_audio_clip_create_limit(self):
+
+        #this is for "X max new posts every __", which in this case is every 24h
+
+        datetime_checkpoint = self.datetime_now.strftime('%Y-%m-%d 00:00:00.%f %z')
+        datetime_checkpoint_raw = datetime.strptime(datetime_checkpoint, '%Y-%m-%d %H:%M:%S.%f %z')
+
+        audio_clip_role_name = ''
+        count_limit = 0
+
+        if self.current_context == 'create_event':
+
+            audio_clip_role_name = 'originator'
+            count_limit = self.event_create_daily_limit
+
+        elif self.current_context == 'create_reply':
+
+            audio_clip_role_name = 'responder'
+            count_limit = self.event_reply_daily_limit
+
+        the_count = AudioClips.objects.filter(
+            user=self.user,
+            when_created__gte=datetime_checkpoint,
+            audio_clip_role__audio_clip_role_name=audio_clip_role_name
+        ).count()
+
+        if the_count < count_limit:
+
+            return
+
+        #get next 00:00:00 day, and get difference from now
+        pretty_difference_s = ((datetime_checkpoint_raw + timedelta(days=1)) - self.datetime_now).total_seconds()
+        pretty_difference_s = math.ceil(pretty_difference_s)
+        pretty_difference_s = get_pretty_datetime(pretty_difference_s)
+
+        raise custom_error(
+            TimeoutError,
+            user_message="Daily event creation limit reached. Come back in " + pretty_difference_s + "."
+        )
+
+
+    def _check_user_can_create_reply(self):
+
+        if self.event_reply_queue is None:
+
+            raise custom_error(
+                ValueError,
+                dev_message="EventReplyQueue not yet retrieved. Call self._get_event_reply_queue()."
+            )
+
+        #deny if not yet replying
+        if self.event_reply_queue.is_replying is False:
+
+            raise custom_error(
+                ValueError,
+                user_message="You have not selected this event to reply in."
+            )
+
+        #is replying, proceed
+
+        #check for expiry
+        if(
+            self.event_reply_queue.when_locked <
+            (self.datetime_now - timedelta(seconds=self.event_reply_expiry_seconds))
+        ):
+
+            #remove expired reply choice
+            self.event_reply_queue.delete()
+            self.event_reply_queue = None
+
+            raise custom_error(
+                TimeoutError,
+                user_message="Reply was not successful. You had reached the time limit."
+            )
+
+
+    def _create_event(self, event_name:str):
+
+        if self.current_context != "create_event":
+
+            raise custom_error(
+                ValueError,
+                dev_message="Cannot create events with current_context."
+            )
+
+        if self.generic_status_incomplete is None:
+
+            self.generic_status_incomplete = GenericStatuses.objects.get(generic_status_name='incomplete')
+
+        self.event = Events.objects.create(
+            event_name=event_name,
+            generic_status=self.generic_status_incomplete,
+            created_by=self.user,
+        )
+
+
+    def _get_event_reply_queue(self, event_id:int):
+
+        self.event_reply_queue = EventReplyQueues.objects.select_for_update(
+            of=("self",)
+        ).get(
+            event_id=event_id,
+            locked_for_user=self.user
+        )
+
+
+    def create_event_and_audio_clip_as_originator(self, event_name:str, audio_clip_tone_id:int, audio_file):
+
+        if self.current_context != "create_event":
+
+            raise custom_error(
+                ValueError,
+                dev_message="Invalid current_context."
+            )
+
+        #perform checks
+        self._check_cooldown_on_audio_clip_create_limit()
+
+        audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='originator')
+        audio_clip_tone = AudioClipTones.objects.get(pk=audio_clip_tone_id)
+
+        #audio_file, further validation
+        #on error, will raise by themselves
+        handle_audio_file_class = HandleAudioFile(audio_file, True)
+
+        #prepare audio file info, which also self-validates
+        #reminder that .size check should be done at form/serializer
+        handle_audio_file_class.prepare_audio_file_info()
+
+        #normalize
+        handle_audio_file_class.do_normalisation()
+
+        #get peaks
+        handle_audio_file_class.get_peaks_by_buckets()
+
+        #if it reaches here with no problems, then audio_file is fine
+        #create event
+        self._create_event(event_name)
+
+        #create audio_clip, excluding audio_file and event
+        #generic_status is handled by default, so it is skipped here
+        new_audio_clip = AudioClips.objects.create(
+            user=self.user,
+            audio_clip_role=audio_clip_role,
+            audio_clip_tone=audio_clip_tone,
+            event=self.event,
+            audio_volume_peaks=handle_audio_file_class.peak_buckets,
+            audio_duration_s=handle_audio_file_class.audio_file_duration_s
+        )
+
+        #we delay saving audio_file, as we want when_created for audio_file's path
+        new_audio_clip.audio_file = handle_audio_file_class.audio_file
+        new_audio_clip.save()
+
+        #close just in case it's no longer a reference, i.e. Django won't auto-close
+        handle_audio_file_class.close_audio_file()
+
+
+    def create_audio_clip_as_responder(self, event_id:int, audio_clip_tone_id:int, audio_file):
+
+        if self.current_context != "create_reply":
+
+            raise custom_error(
+                ValueError,
+                dev_message="Invalid current_context."
+            )
+
+        #perform checks
+        self._get_event_reply_queue(event_id)
+        self._check_cooldown_on_audio_clip_create_limit()
+        self._check_user_can_create_reply()
+
+        audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='responder')
+        audio_clip_tone = AudioClipTones.objects.get(pk=audio_clip_tone_id)
+
+        #audio_file, further validation
+        #on error, will raise by themselves
+        handle_audio_file_class = HandleAudioFile(audio_file, True)
+
+        #prepare audio file info, which also self-validates
+        #reminder that .size check should be done at form/serializer
+        handle_audio_file_class.prepare_audio_file_info()
+
+        #normalize
+        handle_audio_file_class.do_normalisation()
+
+        #get peaks
+        handle_audio_file_class.get_peaks_by_buckets()
+
+        #create audio_clip, excluding audio_file and event
+        #generic_status is handled by default, so it is skipped here
+        new_audio_clip = AudioClips.objects.create(
+            user=self.user,
+            audio_clip_role=audio_clip_role,
+            audio_clip_tone=audio_clip_tone,
+            event_id=self.event_reply_queue.event_id,
+            audio_volume_peaks=handle_audio_file_class.peak_buckets,
+            audio_duration_s=handle_audio_file_class.audio_file_duration_s
+        )
+
+        #we delay saving audio_file, as we want when_created for audio_file's path
+        new_audio_clip.audio_file = handle_audio_file_class.audio_file
+        new_audio_clip.save()
+
+        #close just in case it's no longer a reference, i.e. Django won't auto-close
+        handle_audio_file_class.close_audio_file()
+
+
+        if self.generic_status_completed is None:
+
+            self.generic_status_completed = GenericStatuses.objects.get(generic_status_name='completed')
+
+        #update event as completed
+        Events.objects.filter(
+            pk=self.event_reply_queue.event_id
+        ).update(
+            generic_status=self.generic_status_completed,
+            last_modified=self.datetime_now
+        )
+
+        #remove event_reply_queue
+        self.event_reply_queue.delete()
+        self.event_reply_queue = None
+
+
+
+
+
+
+
+
 
 
 

@@ -61,12 +61,6 @@ class EventsSerializer(serializers.Serializer):
 
 
 
-class LockedEventsSerializer(EventsSerializer):
-    when_locked = serializers.DateTimeField(allow_null=True, default=None)
-    is_replying = serializers.BooleanField()
-
-
-
 class AudioClipsSerializer(serializers.ModelSerializer):
     user = UsersSerializer()
     audio_clip_role = AudioClipRolesSerializer()
@@ -82,6 +76,14 @@ class AudioClipsSerializer(serializers.ModelSerializer):
     class Meta:
         model = AudioClips
         fields = '__all__'
+
+
+
+class EventReplyQueuesSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = EventReplyQueues
+        fields = ['when_locked', 'is_replying']
 
 
 
@@ -169,11 +171,12 @@ class EventsAndAudioClipsAPISerializer(serializers.Serializer):
 
 
 class LockedEventsAndAudioClipsAPISerializer(serializers.Serializer):
-    event = LockedEventsSerializer()
+    event = EventsSerializer()
     originator = AudioClipsAndLikeDetailsAPISerializer()
     responder = serializers.ListField(
         child=AudioClipsAndLikeDetailsAPISerializer()
     )
+    event_reply_queue = EventReplyQueuesSerializer()
 
 
 
@@ -183,22 +186,19 @@ class CreateAudioClipLikesDislikesSerializer(serializers.Serializer):
 
 
 
-class CreateAudioClipsSerializer(serializers.Serializer):
+class CreateAudioClipsAPISerializer(serializers.Serializer):
 
     #pass only when is_originator=False
     event_id = serializers.IntegerField(
         required=False
     )
-
     #pass only when is_originator=True
     event_name = serializers.CharField(
         required=False,
         min_length=1,
         max_length=200, #follow Events.event_name
     )
-
     audio_clip_tone_id = serializers.IntegerField()
-
     audio_file = serializers.FileField(
         allow_empty_file=False
     )
@@ -225,9 +225,10 @@ class CreateAudioClipsSerializer(serializers.Serializer):
 
 
 
-class HandleEventReplyChoicesAPISerializer(serializers.Serializer):
+class ListEventReplyChoicesAPISerializer(serializers.Serializer):
 
-    audio_clip_tone_id = serializers.IntegerField(required=False)
+    audio_clip_tone_id = serializers.IntegerField(required=False, default=0)
+    unlock_all_locked_events = serializers.BooleanField()
 
 
 

@@ -182,33 +182,49 @@ class GetEvents(TemplateView):
         #get event
         try:
 
-            event = Events.objects.select_related('locked_for_user', 'generic_status').get(pk=kwargs['event_id'])
+            event = Events.objects.select_related('generic_status').get(pk=kwargs['event_id'])
 
         except Events.DoesNotExist:
 
             return JsonResponse(
                 data={
-                    'message':'AudioClip room does not exist.'
+                    'message':'Event does not exist.'
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
-        
+
         #count how many audio_clips exist for frontend skeleton
         audio_clip_count = AudioClips.objects.filter(
             event=event,
             generic_status__generic_status_name='ok'
         ).count()
 
+        #prepare info
+        is_this_user_replying = False
+        is_deleted = event.generic_status.generic_status_name == 'deleted'
+
         #check if this user is already supposed to reply
-        is_this_user_replying = (
-            self.request.user.is_authenticated and
-            event.locked_for_user is not None and
-            request.user.id == event.locked_for_user.id and
-            event.is_replying is True
-        )
+        if event.generic_status.generic_status_name == 'incomplete' and self.request.user.is_authenticated is True:
+
+            try:
+
+                event_reply_queue = EventReplyQueues.objects.get(
+                    event=event,
+                    locked_for_user=self.request.user,
+                )
+
+                #only when row exists and is_replying=True then is user truly replying
+                #is_replying=False is for choices
+                is_this_user_replying = (
+                    event_reply_queue.is_replying is True and
+                    get_datetime_difference_s(event_reply_queue.when_locked, get_datetime_now()) > 0
+                )
+
+            except EventReplyQueues.DoesNotExist:
+
+                pass
 
         #is event deleted
-        is_deleted = event.generic_status.generic_status_name == 'deleted'
 
         response = render(
             request,

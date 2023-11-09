@@ -313,12 +313,30 @@ export function useFilteredEventsStore(is_user_page:boolean){
                     return;
                 }
 
+                //add extra needed data for all events and audio_clips
+
+                for(let x = 0; x < new_events.length; x++){
+
+                    //add "event_id_as_scroller_index" to every event for Vue Virtual Scroller, then store
+
+                    new_events[x].event_id_as_scroller_index = new_events[x].event.id;
+
+                    //add previous_is_liked_by_user, useful for revert on API failure
+
+                    if(new_events[x].originator !== null){
+
+                        new_events[x].originator!.previous_is_liked_by_user = null;
+                    }
+
+                    for(let xx = 0; xx < new_events[x].responder.length; xx++){
+
+                        new_events[x].responder[xx].previous_is_liked_by_user = null;
+                    }
+                }
+
                 if(next_or_back === "next"){
 
                     new_events.forEach((event:EventsAndAudioClipsTypes)=>{
-
-                        //add "event_id_as_scroller_index" to every event for Vue Virtual Scroller, then store
-                        event.event_id_as_scroller_index = event.event.id;
 
                         this.filtered_events_structure[current_event_generic_status_name_index][current_main_filter_index][current_timeframe_index][current_audio_clip_role_name_index][current_audio_clip_tone_id]['events'].push(event);
                     });
@@ -327,9 +345,6 @@ export function useFilteredEventsStore(is_user_page:boolean){
 
                     //backwards
                     for(let x = (new_events.length - 1); x >= 0; x--){
-
-                        //add "event_id_as_scroller_index" to every event for Vue Virtual Scroller, then store
-                        new_events[x].event_id_as_scroller_index = new_events[x].event.id;
 
                         this.filtered_events_structure[current_event_generic_status_name_index][current_main_filter_index][current_timeframe_index][current_audio_clip_role_name_index][current_audio_clip_tone_id]['events'].splice(0, 0, new_events[x]);
                     }
@@ -411,6 +426,69 @@ export function useFilteredEventsStore(is_user_page:boolean){
             async setLastScrollY(scrollY_value:number) : Promise<void> {
 
                 this.last_scroll_y = scrollY_value;
+            },
+            async newAudioClipIsLiked(
+                new_value:{audio_clip:AudioClipsAndLikeDetailsTypes, new_is_liked:boolean|null}
+            ) : Promise<void> {
+
+                //since objects are passed by reference, just pass the audio_clip here
+
+                //only call this on API success, instead of following user's spam clicks
+                //because on failure, this will be the source of truth, while server is the ultimate source
+                //if you'd like to ensure 100% accuracy, maybe a log-and-retry-request at storage can do
+
+                switch(new_value.new_is_liked){
+
+                    case true:
+            
+                        if(new_value.audio_clip.is_liked_by_user === false){
+            
+                            new_value.audio_clip.dislike_count -= 1;
+                        }
+            
+                        if(new_value.audio_clip.is_liked_by_user !== true){
+            
+                            new_value.audio_clip.like_count += 1;
+                        }
+            
+                        break;
+            
+                    case null:
+            
+                        switch(new_value.audio_clip.is_liked_by_user){
+                            case true:
+                                new_value.audio_clip.like_count -= 1;
+                                break;
+                            case false:
+                                new_value.audio_clip.dislike_count -= 1;
+                                break;
+                            default:
+                                break;
+                        }
+            
+                        break;
+            
+                    case false:
+            
+                        if(new_value.audio_clip.is_liked_by_user === true){
+            
+                            new_value.audio_clip.like_count -= 1;
+                        }
+            
+                        if(new_value.audio_clip.is_liked_by_user !== false){
+            
+                            new_value.audio_clip.dislike_count += 1;
+                        }
+            
+                        break;
+            
+                    default:
+            
+                        break;
+                }
+            
+                new_value.audio_clip.previous_is_liked_by_user = new_value.audio_clip.is_liked_by_user;
+                new_value.audio_clip.is_liked_by_user = new_value.new_is_liked;
             },
         },
         persist: !is_user_page,

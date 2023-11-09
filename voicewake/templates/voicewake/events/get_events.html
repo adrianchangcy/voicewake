@@ -37,7 +37,7 @@
         <h1 class="h-fit py-10">
             {% if is_deleted %}
                 <p class="text-lg italic">
-                    AudioClip and original recording deleted.
+                    Event and original recording deleted.
                 </p>
             {% else %}
                 <!--title-->
@@ -46,7 +46,7 @@
                 </p>
                 <!--last updated-->
                 <p class="when-created      text-sm">
-                    {{when_created|date:"j M Y"}}
+                    {{event.when_created|date:"j M Y"}}
                 </p>
             {% endif %}
         </h1>

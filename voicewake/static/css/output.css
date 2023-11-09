@@ -1412,11 +1412,6 @@ video {
   border-radius: 0.375rem;
 }
 
-.rounded-b-none {
-  border-bottom-right-radius: 0px;
-  border-bottom-left-radius: 0px;
-}
-
 .rounded-l-lg {
   border-top-left-radius: 0.5rem;
   border-bottom-left-radius: 0.5rem;
@@ -1442,10 +1437,6 @@ video {
 
 .border-b {
   border-bottom-width: 1px;
-}
-
-.border-b-2 {
-  border-bottom-width: 2px;
 }
 
 .border-l {
@@ -1518,20 +1509,6 @@ video {
 
 .border-transparent {
   border-color: transparent;
-}
-
-.border-b-theme-black {
-  --tw-border-opacity: 1;
-  border-bottom-color: rgb(68 68 68 / var(--tw-border-opacity));
-}
-
-.border-b-theme-medium-gray {
-  --tw-border-opacity: 1;
-  border-bottom-color: rgb(214 211 209 / var(--tw-border-opacity));
-}
-
-.border-b-transparent {
-  border-bottom-color: transparent;
 }
 
 .border-l-transparent {
@@ -1701,10 +1678,6 @@ video {
 
 .pb-10 {
   padding-bottom: 2.5rem;
-}
-
-.pb-12 {
-  padding-bottom: 3rem;
 }
 
 .pb-14 {
@@ -2126,34 +2099,6 @@ video {
   transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
 }
 
-.\[audio_clip_role_name_index\:number\] {
-  audio_clip_role_name_index: number;
-}
-
-.\[key\:string\] {
-  key: string;
-}
-
-.\[audio_clip_role_names\:string\] {
-  audio_clip_role_names: string;
-}
-
-.\[audio_clip_tone_ids\:string\] {
-  audio_clip_tone_ids: string;
-}
-
-.\[event_statuses\:string\] {
-  event_statuses: string;
-}
-
-.\[main_filters\:string\] {
-  main_filters: string;
-}
-
-.\[timeframes\:string\] {
-  timeframes: string;
-}
-
 .\[audio_clip_tone_id\:number\] {
   audio_clip_tone_id: number;
 }
@@ -2172,6 +2117,10 @@ video {
 
 .\[current_timeframe_index\:number\] {
   current_timeframe_index: number;
+}
+
+.\[key\:string\] {
+  key: string;
 }
 
 /*enable this to troubleshoot css errors*/
@@ -2704,6 +2653,21 @@ textarea {
 
   .lg\:w-2\/6 {
     width: 33.333333%;
+  }
+
+  .lg\:px-8 {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+
+  .lg\:px-10 {
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+  }
+
+  .lg\:px-6 {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
   }
 
   .lg\:pl-2 {

@@ -161,6 +161,7 @@
                             :prop-event="item"
                             :prop-has-border="true"
                             :prop-load-v-audio-clip-cards-only="true"
+                            @newIsLiked="filtered_events_store.newAudioClipIsLiked($event)"
                         />
                     </div>
                 </DynamicScrollerItem>
@@ -280,7 +281,6 @@
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
     import { useCurrentlyPlayingAudioClipStore } from '@/stores/CurrentlyPlayingAudioClipStore';
     import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
-    import { useCurrentLikesDislikesStore } from '@/stores/CurrentLikesDislikesStore';
     import { isPageAccessedByReload } from '@/helper_functions';
     const axios = require('axios');
 
@@ -291,7 +291,6 @@
             return {
                 currently_playing_audio_clip_store: useCurrentlyPlayingAudioClipStore(),
                 filtered_events_store: useFilteredEventsStore(this.propIsUserProfilePage),
-                current_likes_dislikes_store: useCurrentLikesDislikesStore(this.propIsUserProfilePage),
 
                 user_profile_username: "",  //only used at profile page
 
@@ -643,7 +642,6 @@
                 ){
 
                     await this.filtered_events_store.partialResetStore();
-                    this.current_likes_dislikes_store.$reset();
                     localStorage.removeItem('reset_home_page_audio_clip_stores');
                 }
             },

@@ -296,6 +296,8 @@ class EventReplyQueues(models.Model):
     when_locked = models.DateTimeField(blank=True, null=True, default=None)
     locked_for_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='event_reply_queues_user_1')
     is_replying = models.BooleanField(blank=True, null=True, default=None)
+    when_created = models.DateTimeField(auto_now_add=True)
+    last_modified = models.DateTimeField(auto_now=True)
 
     class Meta:
         app_label = 'voicewake'

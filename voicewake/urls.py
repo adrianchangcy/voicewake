@@ -46,8 +46,6 @@ urlpatterns += [
     #we don't need default URLs
     # path('', include(router.urls)),
 
-    path('api/events/get/<int:event_id>', apis.GetEventsAPI.as_view(), name='get_events_api'),
-
 
     path('api/events/list/completed/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<int:audio_clip_tone_id>/<str:next_or_back>/<str:cursor_token>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
     path('api/events/list/completed/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<int:audio_clip_tone_id>/<str:next_or_back>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
@@ -59,13 +57,12 @@ urlpatterns += [
     path('api/events/list/completed/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<str:next_or_back>/<str:cursor_token>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
     path('api/events/list/completed/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<str:next_or_back>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
 
-    path('api/events/reply-choices/list', apis.HandleEventReplyChoicesAPI.as_view(current_context="list"), name="list_event_choices_api"),
-    path('api/events/reply-choices/expire', apis.HandleEventReplyChoicesAPI.as_view(current_context="expire"), name="expire_event_choices_api"),
-
-    path('api/events/create-new', apis.AudioClipsAPI.as_view(current_context="create_new"), name='create_new_events_api'),
+    path('api/events/create/new', apis.CreateEventsAPI.as_view(), name='create_events_api'),
+    path('api/events/reply/choices/list', apis.ListEventReplyChoicesAPI.as_view(), name="list_event_reply_choices_api"),
     path('api/events/reply/start', apis.HandleReplyingEventsAPI.as_view(current_context="start"), name="start_reply_events_api"),
-    path('api/events/reply', apis.AudioClipsAPI.as_view(current_context="reply"), name="reply_events_api"),
+    path('api/events/create/reply', apis.HandleReplyingEventsAPI.as_view(current_context="reply"), name="create_replies_api"),
     path('api/events/reply/delete', apis.HandleReplyingEventsAPI.as_view(current_context="delete"), name="delete_reply_events_api"),
+    path('api/events/get/<int:event_id>', apis.GetEventsAPI.as_view(), name='get_events_api'),
 
     path('api/audio-clip-reports/create', apis.AudioClipReportsAPI.as_view(), name="create_audio_clip_reports_api"),
 
