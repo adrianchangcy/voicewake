@@ -24,7 +24,9 @@ interface AudioClipsAndLikeDetailsTypes{
     like_count: number,
     dislike_count: number,
     is_banned: boolean,
-    is_liked_by_user: boolean|null
+    is_liked_by_user: boolean|null,
+
+    previous_is_liked_by_user?: boolean|null,
 }
 
 export default AudioClipsAndLikeDetailsTypes;

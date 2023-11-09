@@ -4,6 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
 from django.utils.cache import patch_cache_control
 from django.utils.decorators import method_decorator
+from django.db.models import Prefetch
 
 #auth
 from django.contrib.auth import get_user_model, login, logout
@@ -53,418 +54,12 @@ class TestAPI(generics.GenericAPIView):
     current_context = ""
 
 
-    def get_latest_grouped_audio_clips(
-        self,
-        username_lowercase:str='',
-        audio_clip_tone_id:int=0,
-        audio_clip_role_name:Literal['originator', 'responder']='originator',
-        timeframe:Literal['day', 'week', 'month', 'all']='all',
-        next_or_back:Literal['next', 'back']='next',
-        cursor_token:str='',
-    ):
-
-        #we can reuse passed tokens as default on 0 rows fetched
-        result = {
-            'rows': [],
-            'back_cursor_token': cursor_token,
-            'next_cursor_token': cursor_token
-        }
-
-        #handle profile page, if it is
-
-        #do quick check
-        #it's also good to return quietly if user doesn't exist, to keep things ambiguous
-        if (
-            username_lowercase == '' or
-            (
-                get_user_model().objects.filter(
-                    username_lowercase=username_lowercase,
-                    banned_until__isnull=True
-                ).exists() is True and
-                AudioClips.objects.filter(
-                    user__username_lowercase=username_lowercase,
-                    is_banned=False,
-                    generic_status__generic_status_name='ok'
-                ).count() > 0
-            )
-        ):
-
-            pass
-
-        else:
-
-            return result
-
-        #sql below handles non-existent event_clip_tone_id well
-
-        #handle cursor token
-
-        decoded_cursor_token = {}
-        cursor_params = []
-
-        if cursor_token != '':
-
-            try:
-
-                #get audio_clips.when_created, audio_clips.id
-                decoded_cursor_token = decode_cursor_token(cursor_token)
-
-                cursor_params = [
-                    decoded_cursor_token['when_created'],
-                    decoded_cursor_token['id'], decoded_cursor_token['when_created'],
-                ]
-
-            except:
-
-                raise custom_error(
-                    ValueError,
-                    user_message="Unable to fetch content due to faulty URL.",
-                    dev_message="Token could not be decoded: " + cursor_token
-                )
-
-        #handle whether to display all audio_clip_tones, or specific
-
-        audio_clip_tones_sql = ''
-        audio_clip_tones_params = []
-
-        if audio_clip_tone_id == 0:
-
-            audio_clip_tones_sql = '''
-                AND audio_clip_tones.id IS NOT NULL
-            '''
-
-        else:
-
-            audio_clip_tones_sql = '''
-                AND audio_clip_tones.id = %s
-            '''
-            audio_clip_tones_params = [audio_clip_tone_id]
-
-        #prepare timeframe
-        #different checkpoints for different time range
-
-        datetime_between = get_datetime_between(timeframe)
-
-        #ran out of time to properly implement user blocks
-        #i.e. prevent content from showing when blocking/blocked, either one-way or two-way
-        #last checkpoint is getting excluded_event_ids the joining, but 1 blocked user with 100k events took 150+ms
-
-        #prepare adjustments based on cursor direction
-
-        cursor_sql = ''
-        cursor_order_sql = ''
-
-        if next_or_back == 'next':
-
-            if len(decoded_cursor_token) > 0:
-
-                cursor_sql = '''
-                    AND (
-                        audio_clips.when_created <= %s
-                        AND
-                        (audio_clips.id < %s OR audio_clips.when_created < %s)
-                    )
-                '''
-
-            if username_lowercase != '':
-
-                cursor_order_sql = '''ORDER BY audio_clips.is_banned DESC, audio_clips.when_created DESC, audio_clips.id DESC'''
-
-            else:
-
-                cursor_order_sql = '''ORDER BY audio_clips.when_created DESC, audio_clips.id DESC'''
-
-        elif next_or_back == 'back':
-
-            if len(decoded_cursor_token) > 0:
-
-                cursor_sql = '''
-                    AND (
-                        audio_clips.when_created >= %s
-                        AND
-                        (audio_clips.id > %s OR audio_clips.when_created > %s)
-                    )
-                '''
-
-            if username_lowercase != '':
-
-                cursor_order_sql = '''ORDER BY audio_clips.is_banned DESC, audio_clips.when_created ASC, audio_clips.id ASC'''
-
-            else:
-
-                cursor_order_sql = '''ORDER BY audio_clips.when_created ASC, audio_clips.id ASC'''
-
-        #main order, ensures cursor consistency
-        #since our cursor goes from latest to earliest, our when_created and id must always be DESC here
-
-        #it can be hard to guess where our priority rows end
-        #e.g. incomplete or completed, or more than 1 originator/responder
-        #so we sort our priority rows to "one half", then decide on cursor here in Py
-
-        order_sql = '''
-            ORDER BY
-        '''
-        order_params = []
-
-        order_sql += '''
-            CASE WHEN audio_clip_roles.audio_clip_role_name = %s
-            THEN 1
-            ELSE 2
-            END,
-        '''
-        order_params.append(audio_clip_role_name)
-
-        if username_lowercase != '':
-
-            order_sql += '''
-                CASE WHEN voicewake_user.username_lowercase = %s
-                THEN 1
-                ELSE 2
-                END,
-            '''
-            order_params.append(username_lowercase)
-
-        order_sql += '''
-            audio_clips.when_created DESC, audio_clips.id DESC
-        '''
-
-        #adjust to being user-specific
-
-        user_sql = {
-            'target_audio_clips__join': '',
-            'target_audio_clips__and': '',
-            'join': '',
-        }
-        user_params = {
-            'target_audio_clips__and': [],
-        }
-
-        if username_lowercase != '':
-
-            user_sql['target_audio_clips__join'] = '''
-                INNER JOIN voicewake_user ON audio_clips.user_id = voicewake_user.id
-            '''
-            user_sql['target_audio_clips__and'] = '''
-                AND voicewake_user.username_lowercase = %s
-            '''
-            user_sql['join'] = '''
-                INNER JOIN voicewake_user ON audio_clips.user_id = voicewake_user.id
-            '''
-            user_params['target_audio_clips__and'] = [username_lowercase]
-
-        #handle event generic_status
-
-        event_generic_status_name_sql = '''
-            AND e_gs.generic_status_name = 'completed'
-        '''
-
-        if audio_clip_role_name == 'originator':
-
-            if username_lowercase != '':
-
-                #for originator, show incomplete and completed for profile page
-                event_generic_status_name_sql = '''
-                    AND e_gs.generic_status_name IN ('incomplete', 'completed')
-                '''
-
-        elif audio_clip_role_name == 'responder':
-
-            #show completed, but also deleted
-            event_generic_status_name_sql = '''
-                AND e_gs.generic_status_name IN ('completed', 'deleted')
-            '''
-
-        #handle extra info request.user is logged in
-        #maybe this can be separately done to allow for caching in the future
-
-        is_liked_by_user_sql = {
-            'col': '',
-            'join': ''
-        }
-        is_liked_by_user_params = []
-
-        if self.request.user.is_authenticated is True:
-
-            is_liked_by_user_sql['col'] = '''
-                audio_clip_likes_dislikes.is_liked AS is_liked_by_user
-            '''
-            is_liked_by_user_sql['join'] = '''
-                LEFT JOIN audio_clip_likes_dislikes
-                    ON audio_clip_likes_dislikes.user_id = %s
-                    AND audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
-            '''
-            is_liked_by_user_params = [self.request.user.id]
-
-        else:
-
-            is_liked_by_user_sql['col'] = '''
-                CAST(NULL AS bool) AS is_liked_by_user
-            '''
-
-        #get audio clips
-
-        full_sql = '''
-            WITH
-            target_audio_clips AS (
-                SELECT
-                    audio_clips.event_id, audio_clips.when_created, audio_clips.id
-                FROM audio_clips
-				INNER JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
-                INNER JOIN audio_clip_roles ON audio_clips.audio_clip_role_id = audio_clip_roles.id
-                INNER JOIN events ON audio_clips.event_id = events.id
-                INNER JOIN generic_statuses AS ac_gs ON audio_clips.generic_status_id = ac_gs.id
-                INNER JOIN generic_statuses AS e_gs ON events.generic_status_id = e_gs.id
-
-                ''' + user_sql['target_audio_clips__join'] + '''
-
-                WHERE audio_clips.is_banned IS FALSE
-
-                ''' + audio_clip_tones_sql + '''
-
-                AND ac_gs.generic_status_name = %s
-                AND audio_clip_roles.audio_clip_role_name = %s
-
-                ''' + event_generic_status_name_sql + '''
-                ''' + user_sql['target_audio_clips__and'] + '''
-
-                AND audio_clips.when_created BETWEEN %s AND %s
-
-                ''' + cursor_sql + '''
-                ''' + cursor_order_sql + '''
-
-                LIMIT %s
-            )
-            SELECT audio_clips.*,
-            CAST(NULL AS timestamptz) AS when_locked_for_this_user,
-
-            ''' + is_liked_by_user_sql['col'] + '''
-
-            FROM audio_clips
-            RIGHT JOIN target_audio_clips ON audio_clips.event_id = target_audio_clips.event_id
-            INNER JOIN generic_statuses AS ac_gs ON audio_clips.generic_status_id = ac_gs.id
-            INNER JOIN audio_clip_roles ON audio_clips.audio_clip_role_id = audio_clip_roles.id
-
-            ''' + user_sql['join'] + '''
-            ''' + is_liked_by_user_sql['join'] + '''
-
-            WHERE audio_clips.is_banned IS FALSE
-
-            AND ac_gs.generic_status_name = %s
-            ''' + order_sql + '''
-        '''
-
-        full_params = audio_clip_tones_params + [
-            'ok',
-            audio_clip_role_name,
-        ] + user_params['target_audio_clips__and'] + [
-            datetime_between['datetime_from'],
-            datetime_between['datetime_to'],
-        ] + cursor_params + [
-            settings.EVENT_QUANTITY_PER_PAGE,
-        ] + is_liked_by_user_params + [
-            'ok',
-        ] + order_params
-
-        #execute
-
-        audio_clips = AudioClips.objects.prefetch_related(
-            'audio_clip_role',
-            'event__generic_status',
-            'event__created_by',
-            'event',
-            'audio_clip_tone',
-            'generic_status',
-            'user',
-        ).raw(
-            full_sql,
-            params=full_params
-        )
-
-        output_testable_sql(full_sql, full_params)
-
-        list(audio_clips)
-
-        if len(audio_clips) == 0:
-
-            return result
-        
-        result['rows'] = audio_clips
-
-        #start preparing our cursor tokens
-        #our desired audio_clip_role_name + username is always grouped to the first half
-
-        result['back_cursor_token'] = encode_cursor_token({
-            'when_created': audio_clips[0].when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-            'id': audio_clips[0].id,
-        })
-
-        last_relevant_index = 0
-
-        for x in range(0, len(audio_clips)):
-
-            if audio_clips[x].audio_clip_role.audio_clip_role_name != audio_clip_role_name:
-
-                result['next_cursor_token'] = encode_cursor_token({
-                    'when_created': audio_clips[last_relevant_index].when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-                    'id': audio_clips[last_relevant_index].id,
-                })
-
-                break
-
-            last_relevant_index = x
-
-        return result
-
-        #fixed: cursor goes through entire table, even with the correct index
-            #for background, indexes work best when using/starting with "=" operator, or given a >= <= range
-            #planner did not pick up on first "=" here:
-                #AND (when_created = %s AND id < %s) OR (when_created < %s)
-            #planner did pick up on first "=" here:
-                #AND (when_created <= %s AND (id < %s OR when_created < %s))
-
-        #fixed: cursor ORDER BY goes through entire table when no records are found for user
-            #problem:
-                #when no user selected, ok
-                #when has user selected and guaranteed has rows, ok
-                #when has user selected, many originator rows but 0 responder rows, query on responder scans entire table
-            #solution:
-                #index audio_clips on (when_created DESC, id DESC)
-                    #index on id in composite index has no effect, but maybe it will when table gets much bigger
-                #use dummy ORDER BY to discourage planner from using (when_created DESC) when no rows found
-                    #settled with non-null is_banned DESC, while we always want False, so order is guaranteed
-
-        #fixed:
-            #problem:
-                #selecting from audio_clips where specified audio_clip_tones.audio_clip_tone_slug does not match
-                #causes entire audio_clips index scan
-            #solution:
-                #search by id, which handles fine when not exist, which also isn't confidential
-                #compared to search by audio_clip_tone_slug, which we must do EXISTS() on every call otherwise
-                #then when user doesn't want specific audio_clip_tones, change query to "IS NOT NULL"
-            #extra context:
-                #this issue persists when user is specified, but is also fixed using dummy ORDER BY is_banned
-
-        #good:
-            #user-audio_clips scales nicely when querying for a user
-            #higher % of is_banned=True rows does not slow down query
-            #currently at 150ms+- when user has 45k audio_clips rows, which is impossible to reach in reality
-
-
 
     def get(self, request, *args, **kwargs):
 
-
-
-
-
-
-
-
         return Response(
             data={
-                'data': {
-                
-                },
+                'data': {},
                 'message': 'testo'
             },
             status=status.HTTP_200_OK
@@ -517,15 +112,7 @@ class AudioClipReportsAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        #check if audio_clip belongs to user
-        if target_audio_clip.user.id == request.user.id:
-
-            return Response(
-                data={
-                    'message': 'You cannot report your own recording.',
-                },
-                status=status.HTTP_200_OK
-            )
+        #no need to check whether audio_clip belongs to user
 
         #check if already banned
         if target_audio_clip.is_banned is True:
@@ -542,6 +129,9 @@ class AudioClipReportsAPI(generics.GenericAPIView):
             user_id=request.user.id,
             reported_audio_clip_id=new_data['reported_audio_clip_id']
         )
+
+        #for edge case where same user reports --> evaluated --> reports again,
+        #no need to do anything, otherwise our cronjob can get overwhelmed
 
         return Response(
             data={
@@ -1481,8 +1071,6 @@ class BrowseEventsAPI(generics.GenericAPIView):
             params=full_params
         )
 
-        output_testable_sql(full_sql, full_params)
-
         list(audio_clips)
 
         if len(audio_clips) == 0:
@@ -1643,67 +1231,99 @@ class BrowseEventsAPI(generics.GenericAPIView):
 #user can generate new event reply choice
     #will unlock previous is_replying=False event
     #will add to UserEvents when locking for is_replying=False
-class HandleEventReplyChoicesAPI(generics.GenericAPIView):
+class ListEventReplyChoicesAPI(generics.GenericAPIView):
 
     serializer_class = None
     permission_classes = [IsAuthenticated]
-    current_context = ""
-
-
-    def __init__(self, *args, **kwargs):
-
-        if 'current_context' not in kwargs or kwargs['current_context'] not in ['list', 'expire']:
-
-            raise custom_error(ValueError, dev_message="Incorrect current_context passed. Check .as_view() at urls.py.")
-
-        super().__init__(*args, **kwargs)
-
-
-    def lock_events_for_reply_choices(self, audio_clips):
-
-        event_ids = []
-        events = []
-        datetime_now = get_datetime_now()
-
-        for audio_clip in audio_clips:
-
-            if audio_clip.event.id not in event_ids:
-
-                event_ids.append(audio_clip.event.id)
-
-                #lock for reply choices
-                audio_clip.event.when_locked = datetime_now
-                audio_clip.event.locked_for_user = self.request.user
-                audio_clip.event.is_replying = False
-                audio_clip.event.last_modified = datetime_now
-
-                events.append(audio_clip.event)
-
-        Events.objects.bulk_update(events, ['when_locked', 'locked_for_user', 'is_replying', 'last_modified'])
-
-        #prevent repeated queue
-        #we do this here to encourage choosing the best audio_clip room, while leaving the other good ones for other users
-        prevent_events_from_queuing_twice_for_reply(
-            self.request.user,
-            events
-        )
-
-        return audio_clips
-
 
     #excludes event started by user
     #excludes event that user has talked in before, e.g. talked and banned, etc.
     #excludes those that blocked user, as well as those that the user has blocked, i.e. goes both ways
-    def get_events_by_random_incomplete(self, audio_clip_tone_slug:str=''):
+    def get_audio_clips_by_incomplete_events(self, audio_clip_tone_id:int=0):
 
-        datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
-        datetime_now = datetime_now.strftime('%Y-%m-%d %H:%M:%S %z')
+        max_when_created = (get_datetime_now() - timedelta(seconds=settings.EVENT_INCOMPLETE_MAX_AGE))
+        max_when_created = max_when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z')
 
-        #start
         #do not get events where this user has been involved in before
         #we select only events.id in selected_events, followed by events JOIN
         #because if we do events.* in selected_events, we'll have to write all columns in GROUP BY clause
-        audio_clips = AudioClips.objects.select_for_update(of=("event",)).prefetch_related(
+
+        audio_clip_tone_sql = ''
+        audio_clip_tone_params = []
+
+        if audio_clip_tone_id == 0:
+
+            audio_clip_tone_sql = '''
+                AND audio_clips.audio_clip_tone_id IS NOT NULL
+            '''
+
+        else:
+
+            audio_clip_tone_sql = '''
+                AND audio_clips.audio_clip_tone_id = %s
+            '''
+            audio_clip_tone_params.append(audio_clip_tone_id)
+
+        full_sql = '''
+            WITH
+				excluded_events_1 AS (
+                    SELECT event_id FROM audio_clips
+                    WHERE user_id = %s
+				),
+				excluded_events_2 AS (
+                    SELECT event_id FROM user_events
+                    WHERE user_id = %s
+                    AND when_excluded_for_reply IS NOT NULL
+				),
+                excluded_users_1 AS (
+                    SELECT blocked_user_id AS id FROM user_blocks
+                    WHERE user_id = %s
+                ),
+                excluded_users_2 AS (
+                    SELECT user_id AS id FROM user_blocks
+                    WHERE blocked_user_id = %s
+                )
+				SELECT audio_clips.*,
+                audio_clip_likes_dislikes.is_liked AS is_liked_by_user
+                FROM audio_clips
+				INNER JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
+					AND generic_statuses.generic_status_name = %s
+				INNER JOIN audio_clip_roles ON audio_clips.audio_clip_role_id = audio_clip_roles.id
+					AND audio_clip_roles.audio_clip_role_name = %s
+				LEFT JOIN event_reply_queues ON audio_clips.event_id = event_reply_queues.event_id
+				LEFT JOIN excluded_events_1 ON audio_clips.event_id = excluded_events_1.event_id
+				LEFT JOIN excluded_events_2 ON audio_clips.event_id = excluded_events_2.event_id
+				LEFT JOIN excluded_users_1 ON audio_clips.user_id = excluded_users_1.id
+				LEFT JOIN excluded_users_2 ON audio_clips.user_id = excluded_users_2.id
+                LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
+                    AND audio_clip_likes_dislikes.user_id = %s
+				WHERE audio_clips.is_banned IS FALSE
+				''' + audio_clip_tone_sql + '''
+				AND event_reply_queues.id IS NULL
+				AND excluded_events_1.event_id IS NULL
+				AND excluded_events_2.event_id IS NULL
+				AND excluded_users_1.id IS NULL
+				AND excluded_users_2.id IS NULL
+				AND audio_clips.when_created >= %s
+				ORDER BY audio_clips.when_created ASC
+				LIMIT %s
+        '''
+
+        full_params = [
+            self.request.user.id,
+            self.request.user.id,
+            self.request.user.id,
+            self.request.user.id,
+            'ok',
+            'originator',
+            self.request.user.id,
+        ] + audio_clip_tone_params + [
+            max_when_created,
+            settings.EVENT_INCOMPLETE_ROLL_QUANTITY,
+        ]
+
+        #start
+        audio_clips = AudioClips.objects.select_for_update(of=("self",)).prefetch_related(
             'audio_clip_role',
             'event__generic_status',
             'event__created_by',
@@ -1712,103 +1332,88 @@ class HandleEventReplyChoicesAPI(generics.GenericAPIView):
             'generic_status',
             'user',
         ).raw(
-            '''
-            WITH
-                selected_audio_clip_tones AS (
-                    SELECT id FROM get_id_of_one_or_all_audio_clip_tones_via_slug(%s)
-                ),
-                past_involved_events_1 AS (
-                    SELECT event_id FROM audio_clips
-                    WHERE user_id = %s
-                ),
-                past_involved_events_2 AS (
-                    SELECT event_id FROM user_events
-                    WHERE user_id = %s
-                    AND when_excluded_for_reply IS NOT NULL
-                ),
-                excluded_users_1 AS (
-                    SELECT blocked_user_id AS id FROM user_blocks
-                    WHERE user_id = %s
-                ),
-                excluded_users_2 AS (
-                    SELECT user_id AS id FROM user_blocks
-                    WHERE blocked_user_id = %s
-                ),
-                selected_events AS (
-                    SELECT events.id AS id FROM events
-                    INNER JOIN generic_statuses ON events.generic_status_id = generic_statuses.id
-                    LEFT JOIN past_involved_events_1 ON events.id = past_involved_events_1.event_id
-                    LEFT JOIN past_involved_events_2 ON events.id = past_involved_events_2.event_id
-                    LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
-                    LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
-                    WHERE generic_statuses.generic_status_name = %s
-                    AND past_involved_events_1.event_id IS NULL
-                    AND past_involved_events_2.event_id IS NULL
-                    AND excluded_users_1.id IS NULL
-                    AND excluded_users_2.id IS NULL
-                    AND locked_for_user_id IS NULL
-                    AND created_by_id != %s
-                    ORDER BY events.when_created DESC
-                    LIMIT %s
-                )
-            SELECT
-                audio_clips.*,
-                selected_events.*,
-                audio_clip_tones.*,
-                generic_statuses.*,
-                audio_clip_likes_dislikes.is_liked AS is_liked_by_user
-            FROM audio_clips
-            RIGHT JOIN selected_events ON audio_clips.event_id = selected_events.id
-            RIGHT JOIN selected_audio_clip_tones ON audio_clips.audio_clip_tone_id = selected_audio_clip_tones.id
-            LEFT JOIN audio_clip_roles ON audio_clips.audio_clip_role_id = audio_clip_roles.id
-            LEFT JOIN events ON selected_events.id = events.id
-            LEFT JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
-            LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id AND audio_clip_likes_dislikes.user_id = %s
-            LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
-            WHERE generic_statuses.generic_status_name = %s
-            AND audio_clips.is_banned IS FALSE
-            AND audio_clip_roles.audio_clip_role_name = %s
-            ''',
-            params=(
-                audio_clip_tone_slug,
-                self.request.user.id,
-                self.request.user.id,
-                self.request.user.id,
-                self.request.user.id,
-                'incomplete',
-                self.request.user.id,
-                settings.EVENT_INCOMPLETE_ROLL_QUANTITY,
-                self.request.user.id,
-                'ok',
-                'originator'
-            )
+            full_sql,
+            full_params
         )
 
         return audio_clips
 
 
-    #does not validate when events were locked, to allow for guaranteed unlocking
-    def unlock_events_from_past_reply_choices(self):
+    def lock_events_for_reply_choices(self, audio_clips)->list[EventReplyQueues]:
 
-        User = get_user_model()
+        #this is to lock events to show to users as reply choices
+        #not yet for replying
+
+        event_ids = []
+        bulk_events = []
+        bulk_event_reply_queues = []
         datetime_now = get_datetime_now()
 
-        events = Events.objects.select_for_update().filter(
-            locked_for_user=self.request.user
+        for audio_clip in audio_clips:
+
+            if audio_clip.event.id not in event_ids:
+
+                bulk_event_reply_queues.append(
+                    EventReplyQueues(
+                        event=audio_clip.event,
+                        when_locked = datetime_now,
+                        locked_for_user = self.request.user,
+                        is_replying = False,
+                    )
+                )
+                event_ids.append(audio_clip.event.id)
+                bulk_events = audio_clip.event
+
+        #store
+        #at docs, bulk_create "returns created objects as a list, in the same order as provided"
+        bulk_event_reply_queues = EventReplyQueues.objects.bulk_create(bulk_event_reply_queues)
+
+        #prevent repeated queue
+        #we do this here to encourage choosing the best audio_clip room, while leaving the other good ones for other users
+        prevent_events_from_queuing_twice_for_reply(
+            self.request.user,
+            bulk_events
         )
-        
-        for event in events:
 
-            #unlock
-            event.when_locked = None
-            event.locked_for_user = None
-            event.is_replying = None
-            event.last_modified = datetime_now
+        #Events and EventReplyQueues are 1-to-1
+        #originators and Events are also 1-to-1
+        if len(audio_clips) != len(bulk_event_reply_queues):
 
-        Events.objects.bulk_update(events, ['when_locked', 'locked_for_user', 'is_replying', 'last_modified'])
+            raise ValueError('Ratio of originators and EventReplyQueues is not 1-to-1 as expected.')
+
+        return bulk_event_reply_queues
 
 
-    def get_events_by_is_replying(self):
+    #unlocks all
+    def unlock_events_from_reply_choices(self):
+
+        EventReplyQueues.objects.filter(
+            locked_for_user=self.request.user
+        ).delete()
+
+
+    #only unlocks expired events
+    def unlock_expired_events_from_reply_choices(self):
+
+        datetime_now = get_datetime_now()
+
+        #is_replying=False, a.k.a. reply choice
+        EventReplyQueues.objects.filter(
+            locked_for_user=self.request.user,
+            is_replying=False,
+            when_locked__lte=(datetime_now - timedelta(seconds=settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS))
+        ).delete()
+
+        #is_replying=True, a.k.a. replying
+        EventReplyQueues.objects.filter(
+            locked_for_user=self.request.user,
+            is_replying=True,
+            when_locked__lte=(datetime_now - timedelta(seconds=settings.EVENT_REPLY_EXPIRY_SECONDS))
+        ).delete()
+
+
+    #gets both is_replying=True/False events
+    def get_audio_clips_from_locked_events(self)->tuple[list[AudioClips], list[EventReplyQueues]]:
 
         audio_clips = AudioClips.objects.prefetch_related(
             'audio_clip_role',
@@ -1818,36 +1423,55 @@ class HandleEventReplyChoicesAPI(generics.GenericAPIView):
             'audio_clip_tone',
             'generic_status',
             'user',
+            Prefetch(
+                'event__eventreplyqueues',
+                queryset=EventReplyQueues.objects.filter(locked_for_user=self.request.user),
+            ),
         ).raw(
             '''
-            SELECT
-                audio_clips.*,
-                events.*,
-                audio_clip_tones.*,
-                generic_statuses.*,
+            SELECT audio_clips.*,
                 audio_clip_likes_dislikes.is_liked AS is_liked_by_user
             FROM audio_clips
-            LEFT JOIN events ON audio_clips.event_id = events.id
-            LEFT JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
-            LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id AND audio_clip_likes_dislikes.user_id = %s
-            LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
-            LEFT JOIN generic_statuses AS events_generic_statuses ON events.generic_status_id = events_generic_statuses.id
-            WHERE events.locked_for_user_id = %s
-            AND events_generic_statuses.generic_status_name = %s
-            AND events.is_replying = %s
-            AND audio_clips.is_banned IS FALSE
+            INNER JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
+			INNER JOIN event_reply_queues ON audio_clips.event_id = event_reply_queues.event_id
+				AND event_reply_queues.locked_for_user_id = %s
+            LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
+                AND audio_clip_likes_dislikes.user_id = %s
+			WHERE audio_clips.is_banned IS FALSE
             AND generic_statuses.generic_status_name = %s
             ''',
             params=(
                 self.request.user.id,
                 self.request.user.id,
-                'incomplete',
-                True,
                 'ok'
             )
         )
 
-        return audio_clips
+        #we take out event_reply_queues first
+        #so that we don't have to change anything at group_audio_clips_into_events() and at serializer
+        event_reply_queues = []
+        event_ids = []
+
+        for x in range(len(audio_clips)):
+
+            if audio_clips[x].event.id in event_ids:
+
+                #maybe deleting will help serializer be more efficient
+                #no side effects expected
+                audio_clips[x].event.pop('eventreplyqueues')
+                continue
+
+            if hasattr(audio_clips[x].event, 'eventreplyqueues') is False:
+
+                raise ValueError('No event__eventreplyqueues prefetched for this row.')
+
+            event_reply_queues.append(audio_clips[x].event.eventreplyqueues)
+            event_ids.append(audio_clips[x].event.id)
+
+            #remove
+            audio_clips[x].event.pop('eventreplyqueues')
+
+        return (audio_clips, event_reply_queues)
 
 
     #queue audio_clip room reply choices for user
@@ -1857,141 +1481,81 @@ class HandleEventReplyChoicesAPI(generics.GenericAPIView):
     ])
     def post(self, request, *args, **kwargs):
 
-        if self.current_context == "list":
-
-            #get possible is_replying
-            is_replying_audio_clips = self.get_events_by_is_replying()
-
-            #check if user is replying to anything
-            #we want event.id if there is any
-            if len(is_replying_audio_clips) > 0:
-
-                return Response(
-                    data={
-                        'message': '',
-                        'data': EventsAndAudioClipsAPISerializer(
-                            group_audio_clips_into_events(is_replying_audio_clips),
-                            many=True
-                        ).data,
-                    },
-                )
-            
-        #check if user has specified audio_clip_tones
-        serializer = HandleEventReplyChoicesAPISerializer(data=request.data, many=False)
+        serializer = ListEventReplyChoicesAPISerializer(data=request.data, many=False)
 
         if serializer.is_valid() is False:
 
             return Response(
                 data={
-                    'message': 'Invalid data.'
+                    'message': get_serializer_error_message(serializer)
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         new_data = serializer.validated_data
 
-        specified_audio_clip_tone = None
+        #check whether user wants to auto-skip current choices and get new ones
 
-        try:
+        if new_data['unlock_all_locked_events'] is True:
 
-            if 'audio_clip_tone_id' in new_data:
+            #auto-remove all reply choices
+            self.unlock_events_from_reply_choices()
 
-                specified_audio_clip_tone = AudioClipTones.objects.get(pk=new_data['audio_clip_tone_id'])
+        elif new_data['unlock_all_locked_events'] is False:
 
-        except AudioClipTones.DoesNotExist:
+            #auto-remove expired reply choices only
+            self.unlock_expired_events_from_reply_choices()
 
-            return Response(
-                data={
-                    'message': 'Specified audio_clip_tone_id does not exist.'
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
+            #since user still wants non-expired reply choices, we get, if any
+            audio_clips, event_reply_queues = self.get_audio_clips_from_locked_events()
+
+            if len(audio_clips) > 0:
+
+                #return non-expired reply choices
+                result = group_audio_clips_into_events(audio_clips, event_reply_queues)
+                serializer = LockedEventsAndAudioClipsAPISerializer(result, many=True)
+
+                return Response(
+                    data={
+                        'data': serializer.data,
+                        'message': '',
+                    },
+                    status=status.HTTP_200_OK
+                )
+
+        #no existing reply choices, proceed with new ones
 
         try:
 
             with transaction.atomic():
 
-                #user wants new choices, continue
-                if self.current_context == "list":
+                audio_clips = self.get_audio_clips_by_incomplete_events(audio_clip_tone_id=new_data['audio_clip_tone_id'])
 
-                    #not replying, can unlock previous choices if any
-                    self.unlock_events_from_past_reply_choices()
+                if len(audio_clips) == 0:
 
-                    #maybe don't unlock on every search
-                    #only unlock on skip
-
-                    #check if user has reached reply limit to prevent searching
-                    cooldown_s = get_user_create_events_and_replies_cooldown_s(request.user, 'create_reply')
-
-                    if cooldown_s > 0:
-
-                        raise custom_error(
-                            TimeoutError,
-                            user_message="Daily reply limit reached. Come back in " + get_pretty_datetime(cooldown_s) + "."
-                        )
-
-                    #get audio_clips
-                    audio_clips = None
-
-                    if specified_audio_clip_tone is None:
-                        audio_clips = self.get_events_by_random_incomplete()
-                    else:
-                        audio_clips = self.get_events_by_random_incomplete(
-                            audio_clip_tone_slug=specified_audio_clip_tone.audio_clip_tone_slug
-                        )
-
-                    if len(audio_clips) == 0:
-
-                        return Response(
-                            data={
-                                'message': '',
-                                'data': [],
-                            },
-                            status=status.HTTP_200_OK
-                        )
-
-                    #lock audio_clips
-                    audio_clips = self.lock_events_for_reply_choices(audio_clips)
-
-                    #return audio_clips sorted by events
+                    #no eligible events
                     return Response(
                         data={
+                            'data': [],
                             'message': '',
-                            'data': LockedEventsAndAudioClipsAPISerializer(
-                                group_audio_clips_into_events(audio_clips),
-                                many=True
-                            ).data,
                         },
                         status=status.HTTP_200_OK
                     )
-        
-                elif self.current_context == "expire":
 
-                    #has expired, so unlock
-                    self.unlock_events_from_past_reply_choices()
+                #lock events and get event_reply_queues
+                event_reply_queues = self.lock_events_for_reply_choices(audio_clips)
 
-                    return Response(
-                        data={
-                            'message': 'The audio_clip choice has expired. Feel free to search again!'
-                        },
-                        status=status.HTTP_205_RESET_CONTENT
-                    )
+                #return
+                result = group_audio_clips_into_events(audio_clips, event_reply_queues)
+                serializer = LockedEventsAndAudioClipsAPISerializer(result, many=True)
 
-                else:
-
-                    raise custom_error(
-                        AttributeError,
-                        dev_message="Invalid user_context arg from urls.py."
-                    )
-
-        except TimeoutError as e:
-
-            return Response(
-                data={
-                    'message': get_user_message_from_custom_error(e),
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
+                return Response(
+                    data={
+                        'data': serializer.data,
+                        'message': '',
+                    },
+                    status=status.HTTP_200_OK
+                )
 
         except Exception as e:
 
@@ -2010,209 +1574,161 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
     serializer_class = HandleReplyingEventsAPISerializer
     permission_classes = [IsAuthenticated]
-    current_context = ""
+    current_context:Literal['start', 'reply', 'delete'] = "start"
 
 
     def __init__(self, *args, **kwargs):
 
-        if 'current_context' not in kwargs or kwargs['current_context'] not in ['start', 'delete']:
+        if 'current_context' not in kwargs or kwargs['current_context'] not in ['start', 'reply', 'delete']:
 
             raise custom_error(ValueError, dev_message="Incorrect current_context. Check .as_view() at urls.py.")
     
         super().__init__(*args, **kwargs)
 
 
+    def check_user_is_replying_in_other_events(self, excluded_event_id:int=None)->bool:
+
+        if excluded_event_id is not None:
+
+            #check if user is replying to anything, besides excluded event_id
+            the_count = EventReplyQueues.objects.filter(
+                locked_for_user=self.request.user,
+                is_replying=True
+            ).exclude(
+                pk=excluded_event_id
+            ).count()
+
+        else:
+
+            #check if user is replying to anything at all
+            the_count = EventReplyQueues.objects.filter(
+                locked_for_user=self.request.user,
+                is_replying=True
+            ).count()
+
+        return the_count > 0
+
+
+    def unlock_reply_choices(self, excluded_event_id:int=None):
+
+        if excluded_event_id is not None:
+
+            EventReplyQueues.objects.filter(
+                locked_for_user=self.request.user
+            ).exclude(
+                pk=excluded_event_id
+            ).delete()
+
+        else:
+
+            EventReplyQueues.objects.filter(
+                locked_for_user=self.request.user
+            ).delete()
+
+
     #if user is already locked for event, change (is_replying=False) to (is_replying=True, when_locked!=None)
     #no need to check for daily reply limit here
     #for actual replying to start
     #202 success, 205 reset due to user inactivity
-    def start_replying_to_event(self, event_id):
-
-        User = get_user_model()
-        datetime_now = get_datetime_now()
+    def start_replying_in_event(self, event_id:int):
 
         #check if user is replying to any other event
-        if check_user_is_replying(request=self.request, excluded_event_id=event_id) is True:
+        if self.check_user_is_replying_in_other_events(excluded_event_id=event_id) is True:
 
             return Response(
                 data={
-                    'message': 'You are already replying in a different audio_clip.',
+                    'message': 'You are already replying in a different event.',
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        try:
+        datetime_now = get_datetime_now()
 
-            with transaction.atomic():
+        target_event_reply_queue = EventReplyQueues.objects.select_for_update(of=("self",)).get(
+            locked_for_user=self.request.user,
+            event_id=event_id,
+        )
 
-                #get event
-                #we want to do select_for_update(), but it's not allowed for nullable joins, so we do exclude()
-                #also, you must add coma (,) to of=("self",), else it gets unpacked into "s","e","l","f"
-                target_event = Events.objects.select_related(
-                    'generic_status', 'locked_for_user'
-                ).select_for_update(
-                    of=("self",)
-                ).exclude(
-                    locked_for_user=None
-                ).get(
-                    pk=event_id
-                )
+        #deny if already replying
+        if target_event_reply_queue.is_replying is True:
 
-                user = User(self.request.user.id)
-
-                #check if target_event is already locked for user beforehand
-                #check if target_event is not yet expired as a choice
-                #check if target_event is locked for the correct user
-                #if you want to do "extend when_locked", handle target_event.is_replying=True
-                if\
-                    target_event.generic_status.generic_status_name == 'incomplete' and\
-                    target_event.when_locked is not None and\
-                    (get_datetime_now() - target_event.when_locked).total_seconds() <= settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS and\
-                    target_event.locked_for_user is not None and target_event.locked_for_user.id == self.request.user.id and\
-                    target_event.is_replying is False\
-                :
-
-                    pass
-
-                else:
-
-                    if settings.DEBUG is True:
-
-                        print(target_event.generic_status.generic_status_name == 'incomplete')
-                        print(target_event.when_locked is not None)
-                        print((datetime_now - target_event.when_locked).total_seconds() <= settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS)
-                        print(target_event.locked_for_user is not None and target_event.locked_for_user.id == self.request.user.id)
-                        print(target_event.is_replying)
-
-                    raise custom_error(
-                        ValueError,
-                        user_message="You cannot start replying to this audio_clip."
-                    )
-
-                #can reply, proceed
-
-                #unlock any other audio_clip rooms that were locked for reply choices
-                #also save to user_events to prevent unlocked events from being queued twice
-                events = Events.objects.filter(
-                    locked_for_user=user
-                ).select_for_update(
-                    of=("self",)
-                ).exclude(
-                    pk=event_id
-                )
-
-                for event in events:
-
-                    event.when_locked = None
-                    event.locked_for_user = None
-                    event.is_replying = None
-                    event.last_modified = datetime_now
-
-                #unlock
-                Events.objects.bulk_update(events, ['when_locked', 'locked_for_user', 'is_replying', 'last_modified'])
-
-                #confirm reply, start over when_locked
-                target_event.when_locked = get_datetime_now()
-                target_event.is_replying = True
-                target_event.save()
-
-                return Response(
-                    data={
-                        'message': 'Success! You are now replying to this audio_clip.',
-                    },
-                    status=status.HTTP_202_ACCEPTED
-                )
-            
-        except Events.DoesNotExist:
-
-            return Response(
-                data={
-                    'message': 'This audio_clip either no longer exists, or is unavailable.',
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        except Exception as e:
-
-            traceback.print_exc()
-
-            return Response(
-                data={
-                    'message': get_user_message_from_custom_error(e),
-                },
-                status=status.HTTP_400_BAD_REQUEST
+            raise custom_error(
+                ValueError,
+                user_message="You are already replying in this event."
             )
 
+        #not yet replying, proceed
 
-    #if user has already selected a reply choice and is now replying, allow to cancel
-    #401 not allowed to cancel or has already cancelled
-    def delete_replying_to_event(self, event_id):
+        #check for expiry
+        if(
+            target_event_reply_queue.when_locked <
+            (datetime_now - timedelta(seconds=settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS))
+        ):
 
-        try:
+            #remove expired reply choice
+            target_event_reply_queue.delete()
 
-            with transaction.atomic():
-
-                #get event
-                event = Events.objects.select_related(
-                    'generic_status', 'locked_for_user'
-                ).select_for_update(
-                    of=("self",)
-                ).get(
-                    pk=event_id
-                )
-
-                #check if user is already replying
-                #we don't check for time limit, as cancellation can occur beyond it
-                if\
-                    event.when_locked is not None and\
-                    event.is_replying is True and\
-                    event.locked_for_user is not None and event.locked_for_user.id == self.request.user.id\
-                :
-
-                    pass
-
-                else:
-
-                    #under these conditions, we want to allow cancellation without error
-                    #UI being removed is of higher priority than status_code
-                    return Response(
-                        data={
-                            'message': 'You are not replying to this audio_clip.',
-                        },
-                        status=status.HTTP_401_UNAUTHORIZED
-                    )
-
-                #cancel replying
-                event.locked_for_user = None
-                event.is_replying = None
-                event.when_locked = None
-
-                event.save()
-
-                return Response(
-                    data={
-                        'message': 'Reply has been deleted.',
-                    },
-                    status=status.HTTP_200_OK
-                )
-            
-        except Events.DoesNotExist:
-
-            return Response(
-                data={
-                    'message': 'This audio_clip either no longer exists, or is unavailable.',
-                },
-                status=status.HTTP_404_NOT_FOUND
+            raise custom_error(
+                ValueError,
+                user_message="The choice to reply in this event has expired."
             )
-        
-        except Exception as e:
 
-            return Response(
-                data={
-                    'message': get_user_message_from_custom_error(e),
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        #not yet expired, proceed
+
+        #unlock other reply choices
+        self.unlock_reply_choices(excluded_event_id=target_event_reply_queue.event_id)
+
+        #user is officially replying
+        target_event_reply_queue.when_locked = datetime_now
+        target_event_reply_queue.is_replying = True
+        target_event_reply_queue.save()
+
+        return Response(
+            data={
+                'message': 'You are now replying in this event.',
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+    def create_reply_in_event(self, event_id:int, audio_clip_tone_id:int, audio_file):
+
+        create_audio_clips_class = CreateAudioClips(
+            self.request.user, "create_reply",
+            settings.EVENT_CREATE_DAILY_LIMIT, settings.EVENT_REPLY_DAILY_LIMIT,
+            settings.EVENT_REPLY_EXPIRY_SECONDS,
+        )
+
+        create_audio_clips_class.create_audio_clip_as_responder(
+            event_id, audio_clip_tone_id, audio_file
+        )
+
+        return Response(
+            data={
+                'message': 'Reply successful!',
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+
+    #as long as EventReplyQueue for correct locked_for_user and event_id exists, delete
+    #not checking for further details makes this more versatile
+    def delete_event_reply_queue(self, event_id:int):
+
+        #directly delete, i.e. no get() necessary
+        EventReplyQueues.objects.filter(
+            locked_for_user=self.request.user,
+            event_id=event_id
+        ).delete()
+
+        #intentionally have no message
+        #UI does not need it
+        return Response(
+            data={
+                'message': '',
+            },
+            status=status.HTTP_200_OK
+        )
 
 
     #start/cancel reply after reply choice has already been locked for the user
@@ -2222,7 +1738,15 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
     ])
     def post(self, request, *args, **kwargs):
 
-        serializer = HandleReplyingEventsAPISerializer(data=request.data, many=False)
+        serializer = None
+
+        if self.current_context == 'start' or self.current_context == 'delete':
+
+            serializer = HandleReplyingEventsAPISerializer(data=request.data, many=False)
+
+        elif self.current_context == 'reply':
+
+            serializer = CreateAudioClipsAPISerializer(data=request.data, many=False)
 
         #validate
         if serializer.is_valid() is False:
@@ -2238,13 +1762,86 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
         #proceed
 
-        if self.current_context == "start":
+        try:
 
-            return self.start_replying_to_event(new_data['event_id'])
+            with transaction.atomic():
+
+                if self.current_context == "start":
+
+                    #start replying
+                    return self.start_replying_in_event(new_data['event_id'])
+
+                elif self.current_context == "reply":
+
+                    #reply
+                    return self.create_reply_in_event(
+                        new_data['event_id'],
+                        new_data['audio_clip_tone_id'],
+                        new_data['audio_file'],
+                    )
+
+                elif self.current_context == "delete":
+
+                    #delete event_reply_queue
+                    return self.delete_event_reply_queue(new_data['event_id'])
+
+        except AudioClipTones.DoesNotExist:
+
+            return Response(
+                data={
+                    'message': 'Your selected tag was not found. Try a different one.',
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
         
-        elif self.current_context == "delete":
+        except Events.DoesNotExist:
 
-            return self.delete_replying_to_event(new_data['event_id'])
+            return Response(
+                data={
+                    'message': 'This event no longer exists.',
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        except TimeoutError as e:
+
+            return Response(
+                data={
+                    'message': get_user_message_from_custom_error(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        except ValueError as e:
+
+            return Response(
+                data={
+                    'message': get_user_message_from_custom_error(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        except subprocess.CalledProcessError as e:
+
+            return Response(
+                data={
+                    'message': 'Make sure your recording is not completely silent.',
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        except Exception as e:
+
+            traceback.print_exc()
+
+            print(get_dev_message_from_custom_error(e))
+
+            return Response(
+                data={
+                    'message': get_user_message_from_custom_error(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 
@@ -2252,46 +1849,11 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 #handle creating audio_clips
     #if audio_clip_role_name='originator', create event
     #if audio_clip_role_name='responder', link to event and reset lock
-class AudioClipsAPI(generics.GenericAPIView):
+class CreateEventsAPI(generics.GenericAPIView):
 
-    serializer_class = CreateAudioClipsSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    serializer_class = CreateAudioClipsAPISerializer
+    permission_classes = [IsAuthenticated]
     queryset = None
-    current_context = ""
-
-
-    def __init__(self, *args, **kwargs):
-
-        if 'current_context' not in kwargs or kwargs['current_context'] not in ['create_new', 'reply']:
-
-            raise custom_error(ValueError, dev_message="Incorrect current_context passed. Check .as_view() at urls.py.")
-    
-        super().__init__(*args, **kwargs)
-
-
-    def check_user_can_reply_event(self, event):
-
-        #check if user is replying
-        if\
-            event.locked_for_user is not None and\
-            event.locked_for_user.id == self.request.user.id and\
-            event.is_replying is True\
-        :
-
-            return True
-
-        return False
-
-
-    def check_user_exceeded_reply_time_window(self, event):
-
-        minutes_passed = (get_datetime_now() - event.when_locked).total_seconds()
-
-        if minutes_passed > settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS:
-
-            return True
-        
-        return False
 
 
     @method_decorator([
@@ -2301,7 +1863,7 @@ class AudioClipsAPI(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
 
         #deserialize
-        serializer = CreateAudioClipsSerializer(data=request.data, many=False)
+        serializer = CreateAudioClipsAPISerializer(data=request.data, many=False)
 
         #validate
         if serializer.is_valid() is False:
@@ -2320,123 +1882,25 @@ class AudioClipsAPI(generics.GenericAPIView):
 
             with transaction.atomic():
 
-                #audio_clip_tone
-                audio_clip_tone = AudioClipTones.objects.get(pk=new_data['audio_clip_tone_id'])
-
-                #determine if originator/responder, then create/get event
-                #generic_status is handled by default, so it is skipped here
-                if self.current_context == "create_new":
-
-                    #check if create event limit is not yet reached
-                    cooldown_s = get_user_create_events_and_replies_cooldown_s(request.user, 'create_event')
-
-                    if cooldown_s > 0:
-
-                        raise custom_error(
-                            TimeoutError,
-                            user_message="Daily event creation limit reached. Come back in " + get_pretty_datetime(cooldown_s) + "."
-                        )
-
-                    #proceed
-                    audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='originator')
-
-                    event = Events.objects.create(
-                        event_name=new_data['event_name'],
-                        generic_status=GenericStatuses.objects.get(generic_status_name='incomplete'),
-                        created_by=request.user
-                    )
-
-                elif self.current_context == "reply":
-
-                    #check if reply audio_clip limit is not yet reached
-                    cooldown_s = get_user_create_events_and_replies_cooldown_s(request.user, 'create_reply')
-
-                    if cooldown_s > 0:
-
-                        raise custom_error(
-                            TimeoutError,
-                            user_message="Daily reply limit reached. Come back in " + get_pretty_datetime(cooldown_s) + "."
-                        )
-
-                    #get event
-                    event = Events.objects.select_for_update().get(pk=new_data['event_id'])
-
-                    #check if this user is already attached beforehand
-                    if self.check_user_can_reply_event(event) is False:
-
-                        raise custom_error(
-                            ValueError,
-                            user_message="This audio_clip is no longer available for reply."
-                        )
-                    
-                    #check if user exceeded reply time window but automated script has not detected yet
-                    if self.check_user_exceeded_reply_time_window(event) is True:
-
-                        #reset
-                        event.locked_for_user = None
-                        event.when_locked = None
-                        event.is_replying = None
-                        event.save()
-
-                        raise custom_error(
-                            TimeoutError,
-                            user_message="Reply was not successful. You had reached the time limit."
-                        )
-
-                    #mark event as completed, remove lock
-                    event.generic_status = GenericStatuses.objects.get(generic_status_name='completed')
-                    event.when_locked = None
-                    event.locked_for_user = None
-                    event.is_replying = None
-                    event.save()
-
-                    #can proceed
-                    audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='responder')
-                
-                #proceed
-
-                #audio_file, further validation
-                #on error, will raise by themselves
-                handle_audio_file_class = HandleAudioFile(new_data['audio_file'], True)
-
-                #prepare audio file info, which also self-validates
-                #reminder that .size check should be done at form/serializer
-                handle_audio_file_class.prepare_audio_file_info()
-
-                #normalize
-                handle_audio_file_class.do_normalisation()
-
-                #get peaks
-                handle_audio_file_class.get_peaks_by_buckets()
-
-                #create audio_clip, excluding audio_file and event
-                #generic_status is handled by default, so it is skipped here
-                new_audio_clip = AudioClips.objects.create(
-                    user=request.user,
-                    audio_clip_role=audio_clip_role,
-                    audio_clip_tone=audio_clip_tone,
-                    event=event,
-                    audio_volume_peaks=handle_audio_file_class.peak_buckets,
-                    audio_duration_s=handle_audio_file_class.audio_file_duration_s
+                create_audio_clips_class = CreateAudioClips(
+                    self.request.user, "create_event",
+                    settings.EVENT_CREATE_DAILY_LIMIT, settings.EVENT_REPLY_DAILY_LIMIT,
+                    settings.EVENT_REPLY_EXPIRY_SECONDS,
                 )
 
-                #we delay saving audio_file, as we want when_created for audio_file's path
-                new_audio_clip.audio_file = handle_audio_file_class.audio_file
-                new_audio_clip.save()
-
-                #close just in case it's no longer a reference, i.e. Django won't auto-close
-                handle_audio_file_class.close_audio_file()
+                create_audio_clips_class.create_event_and_audio_clip_as_originator(
+                    new_data["event_name"],
+                    new_data["audio_clip_tone_id"],
+                    new_data["audio_file"],
+                )
 
                 return Response(
-                    {
-                        'data': {
-                            'event_id': event.id
-                        },
-                        'message': 'Success!',
+                    data={
+                        'message': 'Event was successfully created!',
                     },
-                    status.HTTP_201_CREATED
+                    status=status.HTTP_201_CREATED
                 )
-        
+
         except AudioClipTones.DoesNotExist:
 
             return Response(
@@ -2450,7 +1914,7 @@ class AudioClipsAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'message': 'This audio_clip no longer exists.',
+                    'message': 'This event no longer exists.',
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
@@ -2592,7 +2056,7 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
 
                 return Response(
                     data={
-                        'message': 'Unable to like/dislike this audio_clip.',
+                        'message': 'Unable to like and dislike this recording.',
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
@@ -2603,7 +2067,7 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'message': 'Unable to like/dislike this audio_clip.',
+                    'message': 'Unable to like and dislike this recording.',
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )

@@ -51,7 +51,7 @@
                     console.log(result.data);                      //native {data:{},message:"testo"}
                     console.log(result.request.status);            //number 200
                 }).catch((error:any) => {
-                    if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true === true){
+                    if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
                         console.log(error.response.data);               //native {data:{},message:"testo"}
                         console.log(error.request.status);              //number 418
                     }

@@ -513,7 +513,7 @@
                 this.is_expiry_loading = true;
 
                 let data = new FormData();
-                const specific_url = context === "unfinished_reply" ? "reply/cancel" : "reply-choices/expire";
+                const specific_url = context === "unfinished_reply" ? "reply/cancel" : "reply/delete";
 
                 if(context === "unfinished_reply" && this.unfinished_reply_event !== null){
 
@@ -594,7 +594,7 @@
                     data.append('audio_clip_tone_id', JSON.stringify(this.selected_audio_clip_tone.id));
                 }
 
-                await axios.post(window.location.origin + "/api/events/reply-choices/list", data)
+                await axios.post(window.location.origin + "/api/events/reply/choices/list", data)
                 .then((result:any) => {
 
                     if(result.data["data"].length === 0){
@@ -813,13 +813,12 @@
                 this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                 this.expiry_interval = null;
 
-                //check when_locked
                 if(target_event.event.when_locked === null){
 
                     return;
                 }
 
-                const when_locked_ms = new Date(target_event.event.when_locked);
+                const when_locked_ms = new Date(target_event.event.when_locked!);
                 const time_elapsed_ms = timeFromNowMS(when_locked_ms);
 
                 //time is up

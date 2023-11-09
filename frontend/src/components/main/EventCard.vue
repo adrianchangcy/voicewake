@@ -11,27 +11,34 @@
             v-if="propShowTitle === true"
             class="pb-10"
         >
-
-            <VTitle
-                propFontSize="s"
-                class="w-full"
+            <!--ugc tells crawlers that it is user-generated content-->
+            <VActionTextOnly
+                prop-element="a"
+                :href="getEventURL"
+                rel="ugc"
+                class="w-full h-fit"
             >
-
-                <template #title>
-                    <span
-                        v-if="propEvent.event.generic_status.generic_status_name === 'deleted'"
-                        class="italic"
-                    >
-                        AudioClip and original recording deleted.
-                    </span>
-                    <span v-else>
-                        {{ propEvent.event.event_name }}
-                    </span>
-                </template>
-                <template v-if="propEvent.event.generic_status.generic_status_name !== 'deleted'" #titleDescription>
-                    <span>{{ pretty_when_created }}</span>
-                </template>
-            </VTitle>
+                <VTitle
+                    propFontSize="s"
+                    class="w-full shade-text-when-hover transition-colors"
+                >
+                    <template #title>
+                        <span
+                            v-if="propEvent.event.generic_status.generic_status_name !== 'deleted'"
+                        >
+                            {{ propEvent.event.event_name }}
+                        </span>
+                        <span v-else
+                            class="italic"
+                        >
+                            Event and original recording deleted.
+                        </span>
+                    </template>
+                    <template v-if="propEvent.event.generic_status.generic_status_name !== 'deleted'" #titleDescription>
+                        <span>{{ prettyWhenCreated }}</span>
+                    </template>
+                </VTitle>
+            </VActionTextOnly>
         </div>
 
         <!--more than 1 audio_clip each-->
@@ -53,6 +60,7 @@
                 <VAudioClipTools
                     :propAudioClip="propEvent.originator"
                     :propEventId="propEvent.event.id"
+                    @newIsLiked="emitNewIsLiked($event)"
                 />
             </div>
 
@@ -72,6 +80,7 @@
                 <VAudioClipTools
                     :propAudioClip="audio_clip"
                     :propEventId="propEvent.event.id"
+                    @newIsLiked="emitNewIsLiked($event)"
                 />
             </div>
         </div>
@@ -103,6 +112,7 @@
                 <VAudioClipTools
                     :propAudioClip="propEvent.originator"
                     :propEventId="propEvent.event.id"
+                    @newIsLiked="emitNewIsLiked($event)"
                 />
             </div>
 
@@ -124,6 +134,7 @@
                         <VAudioClipTools
                             :propAudioClip="audio_clip"
                             :propEventId="propEvent.event.id"
+                            @newIsLiked="emitNewIsLiked($event)"
                         />
                     </div>
                 </div>
@@ -143,6 +154,7 @@
                         <VAudioClipTools
                             :propAudioClip="audio_clip"
                             :propEventId="propEvent.event.id"
+                            @newIsLiked="emitNewIsLiked($event)"
                         />
                     </div>
                 </div>
@@ -157,6 +169,7 @@
     import VAudioClipCard from '/src/components/medium/VAudioClipCard.vue';
     import VAudioClipTools from '/src/components/medium/VAudioClipTools.vue';
     import VUsernameURL from '/src/components/small/VUsernameURL.vue';
+    import VActionTextOnly from '/src/components/small/VActionTextOnly.vue';
 </script>
 
 
@@ -171,7 +184,6 @@
         data() {
             return {
                 currently_playing_audio_clip_store: useCurrentlyPlayingAudioClipStore(),
-                pretty_when_created: '',
             };
         },
         props: {
@@ -211,10 +223,18 @@
 
                 return this.propEvent.responder.length;
             },
-        },
-        watch: {
+            getEventURL() : string {
 
+                return window.location.origin + "/event/" + this.propEvent.event.id;
+            },
+            prettyWhenCreated() : string {
+
+                return prettyTimePassed(new Date(this.propEvent.event.when_created));
+            },
         },
+        emits: [
+            'newIsLiked',
+        ],
         methods: {
             checkIsSelected(audio_clip_id:number) : boolean {
 
@@ -231,10 +251,15 @@
                     playing_audio_clip: audio_clip
                 });
             },
+            async emitNewIsLiked(
+                new_value:{audio_clip:AudioClipsAndLikeDetailsTypes, new_is_liked:boolean|null}
+            ) : Promise<void> {
+
+                this.$emit('newIsLiked', new_value);
+            },
         },
         beforeMount(){
 
-            this.pretty_when_created = prettyTimePassed(new Date(this.propEvent.event.when_created));
         },
     });
 </script>
