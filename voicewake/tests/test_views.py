@@ -803,6 +803,14 @@ class CoreProcess_TestCase(TestCase):
         cls.audio_duration_s = 26
 
 
+    @classmethod
+    def tearDownClass(cls):
+
+        shutil.rmtree(os.path.join(settings.MEDIA_ROOT, 'audio_clips'))
+
+        super().tearDownClass()
+
+
     def login(self, user_instance):
 
         #need this here because @classmethod does not have .client attribute
