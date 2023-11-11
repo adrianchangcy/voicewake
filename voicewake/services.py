@@ -33,6 +33,7 @@ import base64
 from urllib.parse import quote, unquote
 import random
 from django.db import connection
+import inspect
 
 #app files
 from .models import *
@@ -343,7 +344,7 @@ def get_serializer_error_message(serializer)->str:
 
     for key in serializer.errors:
         for first_error in serializer.errors[key]:
-            return first_error
+            return key + ": " + first_error
 
     return error_message
 
@@ -368,7 +369,7 @@ def custom_error(error_class:Exception, dev_message="", user_message="")->Except
     # try:
     #     raise custom_error(ValueError, "yo fix this", "hehe oops")
     # except ValueError as e:
-    #     print(e.args[0]['dev_message'])
+    #     print(get_user_message_from_custom_error(e))
 
     return error_class({
         "dev_message": dev_message,
@@ -388,6 +389,14 @@ def get_dev_message_from_custom_error(new_error:Exception)->str:
         return new_error.args[0]['dev_message']
     except:
         return ""
+
+
+def print_function_name(extra_stuff_to_print)->str:
+
+    #this gives you outer function's name, i.e. not print_function_name()
+    cframe = inspect.currentframe()
+    calling_function_name = inspect.getframeinfo(cframe.f_back).function + "()"
+    print("\n" + calling_function_name + ": " + str(extra_stuff_to_print) + "\n")
 
 
 
@@ -1462,7 +1471,7 @@ class CreateAudioClips:
         self.event_reply_queue = None
 
 
-    def _check_cooldown_on_audio_clip_create_limit(self):
+    def get_cooldown_on_audio_clip_create_limit_s(self)->int:
 
         #this is for "X max new posts every __", which in this case is every 24h
 
@@ -1490,20 +1499,15 @@ class CreateAudioClips:
 
         if the_count < count_limit:
 
-            return
+            return 0
 
         #get next 00:00:00 day, and get difference from now
         pretty_difference_s = ((datetime_checkpoint_raw + timedelta(days=1)) - self.datetime_now).total_seconds()
-        pretty_difference_s = math.ceil(pretty_difference_s)
-        pretty_difference_s = get_pretty_datetime(pretty_difference_s)
 
-        raise custom_error(
-            TimeoutError,
-            user_message="Daily event creation limit reached. Come back in " + pretty_difference_s + "."
-        )
+        return math.ceil(pretty_difference_s)
 
 
-    def _check_user_can_create_reply(self):
+    def _check_user_can_create_reply(self)->tuple[bool, str]:
 
         if self.event_reply_queue is None:
 
@@ -1515,9 +1519,9 @@ class CreateAudioClips:
         #deny if not yet replying
         if self.event_reply_queue.is_replying is False:
 
-            raise custom_error(
-                ValueError,
-                user_message="You have not selected this event to reply in."
+            return (
+                False,
+                "You have not selected this event to reply in."
             )
 
         #is replying, proceed
@@ -1532,10 +1536,15 @@ class CreateAudioClips:
             self.event_reply_queue.delete()
             self.event_reply_queue = None
 
-            raise custom_error(
-                TimeoutError,
-                user_message="Reply was not successful. You had reached the time limit."
+            return (
+                False,
+                "Reply was not successful. You had reached the time limit."
             )
+
+        return (
+            True,
+            ""
+        )
 
 
     def _create_event(self, event_name:str):
@@ -1578,7 +1587,19 @@ class CreateAudioClips:
             )
 
         #perform checks
-        self._check_cooldown_on_audio_clip_create_limit()
+
+        cooldown_s = self.get_cooldown_on_audio_clip_create_limit_s()
+
+        if cooldown_s > 0:
+
+            return Response(
+                data={
+                    "message": "Daily event creation limit reached. Come back in " + get_pretty_datetime(cooldown_s) + ".",
+                },
+                status=status.HTTP_405_METHOD_NOT_ALLOWED
+            )
+
+        #proceed
 
         audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='originator')
         audio_clip_tone = AudioClipTones.objects.get(pk=audio_clip_tone_id)
@@ -1619,6 +1640,13 @@ class CreateAudioClips:
         #close just in case it's no longer a reference, i.e. Django won't auto-close
         handle_audio_file_class.close_audio_file()
 
+        return Response(
+            data={
+                "message": "Event was successfully created!",
+            },
+            status=status.HTTP_201_CREATED
+        )
+
 
     def create_audio_clip_as_responder(self, event_id:int, audio_clip_tone_id:int, audio_file):
 
@@ -1629,10 +1657,32 @@ class CreateAudioClips:
                 dev_message="Invalid current_context."
             )
 
-        #perform checks
+        #get queue
         self._get_event_reply_queue(event_id)
-        self._check_cooldown_on_audio_clip_create_limit()
-        self._check_user_can_create_reply()
+
+        #perform checks
+
+        cooldown_s = self.get_cooldown_on_audio_clip_create_limit_s()
+
+        if cooldown_s > 0:
+
+            return Response(
+                data={
+                    "message": "Daily event creation limit reached. Come back in " + get_pretty_datetime(cooldown_s) + ".",
+                },
+                status=status.HTTP_405_METHOD_NOT_ALLOWED
+            )
+
+        can_create_reply, user_message = self._check_user_can_create_reply()
+
+        if can_create_reply is False:
+
+            return Response(
+                data={
+                    "message": user_message,
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='responder')
         audio_clip_tone = AudioClipTones.objects.get(pk=audio_clip_tone_id)
@@ -1685,6 +1735,13 @@ class CreateAudioClips:
         #remove event_reply_queue
         self.event_reply_queue.delete()
         self.event_reply_queue = None
+
+        return Response(
+            data={
+                "message": "Reply was successfully created!",
+            },
+            status=status.HTTP_201_CREATED
+        )
 
 
 

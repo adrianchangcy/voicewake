@@ -179,6 +179,10 @@ audio_clips_when_created_id_1 = '''
     CREATE INDEX audio_clips_when_created_id_1 ON audio_clips(when_created DESC, id DESC);
 '''
 
+events_when_created_1 = '''
+    CREATE INDEX events_when_created_1 ON events (when_created);
+'''
+
 
 class Migration(migrations.Migration):
 
@@ -191,5 +195,6 @@ class Migration(migrations.Migration):
         migrations.RunSQL(custom_function_handle_audio_clip_likes_dislikes_count),
         migrations.RunSQL(custom_trigger_audio_clip_likes_dislikes),
         migrations.RunSQL(audio_clips_when_created_id_1),
+        migrations.RunSQL(events_when_created_1),
         migrations.RunPython(fill_necessary_data),
     ]

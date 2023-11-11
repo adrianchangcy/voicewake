@@ -2,7 +2,7 @@
 #proper ways coming soon
 #Django
 from time import sleep
-from django.test import TestCase, Client
+from django.test import TestCase, Client, TransactionTestCase, override_settings
 from django.urls import reverse
 from rest_framework import status
 from django.core.files import File
@@ -11,6 +11,7 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.db.models import Count
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 #apps
 from voicewake.services import *
@@ -28,6 +29,7 @@ import shutil
 import math
 import subprocess
 import traceback
+import inspect, sys
 
 
 def ensure_otp_is_always_wrong(otp):
@@ -38,6 +40,20 @@ def ensure_otp_is_always_wrong(otp):
         otp = str(int(otp[0]) - 1) + otp[1:]
 
     return otp
+
+
+
+class Random_TestCase(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+
+        pass
+
+
+    def test_random(self):
+
+        pass
 
 
 
@@ -446,21 +462,6 @@ class AudioClips_TestCase(TestCase):
 
 
 
-class Random_TestCase(TestCase):
-
-    @classmethod
-    def setUpTestData(cls):
-
-        pass
-
-
-    def test_random(self):
-
-        pass
-
-
-
-
 
 class System_TestCase(TestCase):
 
@@ -753,6 +754,1250 @@ class System_TestCase(TestCase):
         #check
         print(str(len(yolo)) + " audio_clip_tones found")
         self.assertEqual(len(yolo), 1)
+
+
+@override_settings(
+    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    MEDIA_ROOT = os.path.join(settings.BASE_DIR, 'voicewake/tests'),
+)
+class CoreProcess_TestCase(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+
+        cls.user0 = get_user_model().objects.create_user(username='user0', email='user0@gmail.com')
+        cls.user1 = get_user_model().objects.create_user(username='user1', email='user1@gmail.com')
+        cls.user2 = get_user_model().objects.create_user(username='user2', email='user2@gmail.com')
+
+        cls.user0 = get_user_model().objects.get(username_lowercase="user0")
+        cls.user1 = get_user_model().objects.get(username_lowercase="user1")
+        cls.user2 = get_user_model().objects.get(username_lowercase="user2")
+
+        cls.user0.is_active = True
+        cls.user1.is_active = True
+        cls.user2.is_active = True
+
+        cls.user0.save()
+        cls.user1.save()
+        cls.user2.save()
+
+        cls.user0.refresh_from_db()
+        cls.user1.refresh_from_db()
+        cls.user2.refresh_from_db()
+
+        #audio file
+        cls.audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/audio_can_overwrite.mp3')
+        cls.audio_file = open(cls.audio_file_full_path, 'rb')
+        cls.audio_file = SimpleUploadedFile(cls.audio_file.name, cls.audio_file.read(), 'audio/mp3')
+
+        #dummy file
+        cls.dummy_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/dummy_file.txt')
+        cls.dummy_file = open(cls.dummy_file_full_path, 'rb')
+        cls.dummy_file = SimpleUploadedFile(cls.dummy_file.name, cls.dummy_file.read(), 'audio/mp3')
+
+        cls.audio_file_path = "/audio_test.mp3"
+        cls.audio_volume_peaks = [
+            0.32, 0.47, 0.76, 0.75, 0.79, 0.59, 0.78, 0.83, 0.85, 0.77,
+            0.62, 0.69, 0.97, 0.96, 0.97, 0.96, 0.96, 0.63, 0.47, 0.0
+        ]
+        cls.audio_duration_s = 26
+
+
+    def login(self, user_instance):
+
+        #need this here because @classmethod does not have .client attribute
+        self.client.force_login(user_instance)
+
+
+    def get_audio_file(self):
+
+        #need this to auto-reset via seek(0)
+        self.audio_file.seek(0)
+        return self.audio_file
+
+
+    def get_dummy_file(self):
+
+        #need this to auto-reset via seek(0)
+        self.dummy_file.seek(0)
+        return self.dummy_file
+
+
+    def create_event(self, created_by, generic_status_name="incomplete"):
+
+        return Events.objects.create(
+            event_name="yolo",
+            created_by=created_by,
+            generic_status=GenericStatuses.objects.get(generic_status_name=generic_status_name)
+        )
+
+
+    def create_audio_clip(
+        self,
+        user_id:int, event_id:int, audio_clip_role_name:Literal['originator', 'responder'],
+        audio_clip_tone_id:int=1,
+        generic_status_name:str="ok", is_banned:bool=False,
+    ):
+
+        return AudioClips.objects.create(
+            user_id=user_id,
+            event_id=event_id,
+            audio_clip_role=AudioClipRoles.objects.get(audio_clip_role_name=audio_clip_role_name),
+            audio_clip_tone_id=audio_clip_tone_id,
+            generic_status=GenericStatuses.objects.get(generic_status_name=generic_status_name),
+            audio_duration_s=self.audio_duration_s,
+            audio_volume_peaks=self.audio_volume_peaks,
+            audio_file=self.audio_file_path,
+            is_banned=is_banned
+        )
+
+
+    def create_event_reply_queue(self, event_id:int, locked_for_user_id:int, is_replying:bool, when_locked:datetime):
+
+        return EventReplyQueues.objects.create(
+            event_id=event_id,
+            locked_for_user_id=locked_for_user_id,
+            is_replying=is_replying,
+            when_locked=when_locked
+        )
+
+
+    def create_user_event(self, user_id:int, event_id:int, when_excluded_for_reply:datetime):
+
+        return UserEvents.objects.create(
+            user_id=user_id,
+            event_id=event_id,
+            when_excluded_for_reply=when_excluded_for_reply
+        )
+
+
+    def create_user_block(self, user_id:int, blocked_user_id:int):
+
+        return UserBlocks.objects.create(
+            user_id=user_id,
+            blocked_user_id=blocked_user_id
+        )
+
+
+    def test_create_event_ok(self):
+
+        self.login(self.user0)
+
+        data={
+            'event_name': 'yolo',
+            'audio_clip_tone_id': 1,
+            'audio_file': self.get_audio_file(),
+        }
+
+        request = self.client.post(reverse('create_events_api'), data)
+
+        self.assertEqual(request.status_code, 201)
+        print_function_name(request.content)
+
+        #check data
+
+        self.assertEqual(Events.objects.all().count(), 1)
+        self.assertEqual(AudioClips.objects.all().count(), 1)
+        self.assertEqual(EventReplyQueues.objects.all().count(), 0)
+
+        event = Events.objects.first()
+        self.assertEqual(event.created_by_id, self.user0.id)
+        self.assertEqual(event.event_name, data['event_name'])
+
+        audio_clip = AudioClips.objects.first()
+        self.assertEqual(audio_clip.user_id, self.user0.id)
+        self.assertEqual(audio_clip.audio_clip_tone_id, data['audio_clip_tone_id'])
+        self.assertTrue(len(audio_clip.audio_file) > 0)
+
+
+    def test_create_event_missing_args(self):
+
+        self.login(self.user0)
+
+        data={
+            'audio_clip_tone_id': 1,
+            'audio_file': self.get_audio_file(),
+        }
+
+        request = self.client.post(reverse('create_events_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        data={
+            'event_name': 'yolo',
+            'audio_file': self.get_audio_file(),
+        }
+
+        request = self.client.post(reverse('create_events_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        data={
+            'event_name': 'yolo',
+            'audio_clip_tone_id': 1,
+        }
+
+        request = self.client.post(reverse('create_events_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        #no remnants on failure
+        self.assertEqual(Events.objects.all().count(), 0)
+        self.assertEqual(AudioClips.objects.all().count(), 0)
+
+
+    def test_create_event_faulty_args(self):
+
+        self.login(self.user0)
+
+        data={
+            'event_name': 'yolo',
+            'audio_clip_tone_id': 9999999,
+            'audio_file': self.get_audio_file(),
+        }
+
+        request = self.client.post(reverse('create_events_api'), data)
+
+        self.assertEqual(request.status_code, 404)
+        print_function_name(request.content)
+
+        data={
+            'event_name': 'yolo',
+            'audio_clip_tone_id': 1,
+            'audio_file': self.get_dummy_file(),
+        }
+
+        request = self.client.post(reverse('create_events_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        #no remnants on failure
+        self.assertEqual(Events.objects.all().count(), 0)
+        self.assertEqual(AudioClips.objects.all().count(), 0)
+
+
+    def test_create_event_daily_limit_reached(self):
+
+        self.login(self.user0)
+
+        with self.settings(EVENT_CREATE_DAILY_LIMIT=1):
+
+            data={
+                'event_name': 'yolo',
+                'audio_clip_tone_id': 1,
+                'audio_file': self.get_audio_file(),
+            }
+
+            request = self.client.post(reverse('create_events_api'), data)
+            self.assertEqual(request.status_code, 201)
+            print_function_name(request.content)
+
+            data={
+                'event_name': 'yolo',
+                'audio_clip_tone_id': 1,
+                'audio_file': self.get_audio_file(),
+            }
+
+            request = self.client.post(reverse('create_events_api'), data)
+            self.assertEqual(request.status_code, 405)
+            print_function_name(request.content)
+
+
+    def test_list_reply_choices_first_time_no_unlock(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {'unlock_all_locked_events': False}
+
+        request = self.client.post(reverse('list_event_reply_choices_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check data
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+        result_data = result_data['data'][0]
+
+        self.assertTrue('event' in result_data and type(result_data['event']) == dict)
+        self.assertTrue('originator' in result_data and type(result_data['originator']) == dict)
+        self.assertTrue('responder' in result_data and result_data['responder'] == [])
+        self.assertTrue('event_reply_queue' in result_data and type(result_data['event_reply_queue']) == dict)
+
+        event_reply_queue = EventReplyQueues.objects.first()
+        user_event = UserEvents.objects.first()
+
+        self.assertTrue(result_data['event_reply_queue']['when_locked'] is not None)
+        self.assertEqual(result_data['event_reply_queue']['is_replying'], event_reply_queue.is_replying)
+        self.assertEqual(result_data['event']['id'], event_reply_queue.event_id)
+        self.assertEqual(event_reply_queue.locked_for_user_id, self.user1.id)
+        self.assertEqual(UserEvents.objects.all().count(), 1)
+        self.assertEqual(user_event.event_id, sample_event_0.id)
+        self.assertEqual(user_event.user_id, self.user1.id)
+        self.assertIsNotNone(user_event.when_excluded_for_reply)
+
+
+    def test_list_reply_choices_first_time_has_unlock(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {'unlock_all_locked_events': True}
+
+        request = self.client.post(reverse('list_event_reply_choices_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check data
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+        result_data = result_data['data'][0]
+
+        self.assertTrue('event' in result_data and type(result_data['event']) == dict)
+        self.assertTrue('originator' in result_data and type(result_data['originator']) == dict)
+        self.assertTrue('responder' in result_data and result_data['responder'] == [])
+        self.assertTrue('event_reply_queue' in result_data and type(result_data['event_reply_queue']) == dict)
+
+        event_reply_queue = EventReplyQueues.objects.first()
+        user_event = UserEvents.objects.first()
+
+        self.assertTrue(result_data['event_reply_queue']['when_locked'] is not None)
+        self.assertEqual(result_data['event_reply_queue']['is_replying'], event_reply_queue.is_replying)
+        self.assertEqual(result_data['event']['id'], event_reply_queue.event_id)
+        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
+        self.assertEqual(event_reply_queue.locked_for_user_id, self.user1.id)
+        self.assertEqual(UserEvents.objects.all().count(), 1)
+        self.assertEqual(user_event.event_id, sample_event_0.id)
+        self.assertEqual(user_event.user_id, self.user1.id)
+        self.assertIsNotNone(user_event.when_excluded_for_reply)
+
+
+    def test_list_reply_choices_ensure_own_events_not_listed(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        #start
+
+        self.login(self.user0)
+
+        data = {'unlock_all_locked_events': True}
+
+        request = self.client.post(reverse('list_event_reply_choices_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+        result_data = result_data['data']
+
+        self.assertEqual(result_data, [])
+        self.assertEqual(EventReplyQueues.objects.all().count(), 0)
+        self.assertEqual(UserEvents.objects.all().count(), 0)
+
+
+    def test_list_reply_choices_where_originator_is_blocked(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        user_block_0 = self.create_user_block(user_id=self.user1.id, blocked_user_id=self.user0.id)
+
+        #start
+
+        #list event
+
+        self.login(self.user1)
+
+        request = self.client.post(reverse('list_event_reply_choices_api'))
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check data
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+        result_data = result_data['data']
+
+        self.assertEqual(result_data, [])
+        self.assertEqual(EventReplyQueues.objects.all().count(), 0)
+        self.assertEqual(UserEvents.objects.all().count(), 0)
+
+
+    def test_list_reply_choices_where_responder_is_blocked(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        user_block_0 = self.create_user_block(user_id=self.user0.id, blocked_user_id=self.user1.id)
+
+        #start
+
+        #list event
+
+        self.login(self.user1)
+
+        request = self.client.post(reverse('list_event_reply_choices_api'))
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check data
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+        result_data = result_data['data']
+
+        self.assertEqual(len(result_data), 0)
+        self.assertEqual(EventReplyQueues.objects.all().count(), 0)
+        self.assertEqual(UserEvents.objects.all().count(), 0)
+
+
+    def test_list_reply_choices_has_something_locked_no_unlock(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        #ensure when_locked does not change
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.user1.id,
+            is_replying=False,
+            when_locked=(get_datetime_now() - timedelta(seconds=10))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.user1.id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_event_1 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_1 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_1.id,
+            "originator",
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {'unlock_all_locked_events': False}
+
+        request = self.client.post(reverse('list_event_reply_choices_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        self.assertEqual(sample_event_0.id, result_data['data'][0]['event']['id'])
+        self.assertEqual(UserEvents.objects.all().count(), 1)
+        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
+        self.assertEqual(EventReplyQueues.objects.first().id, sample_event_reply_queue_0.id)
+        self.assertEqual(EventReplyQueues.objects.first().when_locked, sample_event_reply_queue_0.when_locked)
+
+
+    def test_list_reply_choices_has_something_locked_has_unlock(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        #simply ensure when_locked changes
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.user1.id,
+            is_replying=False,
+            when_locked=(get_datetime_now() - timedelta(seconds=10))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.user1.id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_event_1 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_1 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_1.id,
+            "originator",
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {'unlock_all_locked_events': True}
+
+        request = self.client.post(reverse('list_event_reply_choices_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        new_user_event = UserEvents.objects.get(user=self.user1, event_id=result_data['data'][0]['event']['id'])
+
+        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
+        self.assertNotEqual(EventReplyQueues.objects.first().id, result_data['data'][0]['event']['id'])
+        self.assertEqual(UserEvents.objects.all().count(), 2)
+        self.assertEqual(new_user_event.event_id, sample_event_1.id)
+        self.assertIsNotNone(new_user_event.when_excluded_for_reply)
+        self.assertNotEqual(EventReplyQueues.objects.first().when_locked, sample_event_reply_queue_0.when_locked)
+
+
+    def test_list_reply_choices_has_something_locked_but_expired_no_unlock(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.user1.id,
+            is_replying=False,
+            when_locked=(get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS * 2)))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.user1.id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_event_1 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_1 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_1.id,
+            "originator",
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {'unlock_all_locked_events': False}
+
+        request = self.client.post(reverse('list_event_reply_choices_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        new_user_event = UserEvents.objects.get(user=self.user1, event_id=result_data['data'][0]['event']['id'])
+
+        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
+        self.assertNotEqual(EventReplyQueues.objects.first().id, result_data['data'][0]['event']['id'])
+        self.assertEqual(UserEvents.objects.all().count(), 2)
+        self.assertEqual(new_user_event.event_id, sample_event_1.id)
+        self.assertIsNotNone(new_user_event.when_excluded_for_reply)
+
+
+    def test_list_reply_choices_has_something_locked_but_expired_has_unlock(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.user1.id,
+            is_replying=False,
+            when_locked=(get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS * 2)))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.user1.id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_event_1 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_1 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_1.id,
+            "originator",
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {'unlock_all_locked_events': False}
+
+        request = self.client.post(reverse('list_event_reply_choices_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        new_user_event = UserEvents.objects.get(user=self.user1, event_id=result_data['data'][0]['event']['id'])
+
+        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
+        self.assertNotEqual(EventReplyQueues.objects.first().id, result_data['data'][0]['event']['id'])
+        self.assertEqual(UserEvents.objects.all().count(), 2)
+        self.assertEqual(new_user_event.event_id, sample_event_1.id)
+        self.assertIsNotNone(new_user_event.when_excluded_for_reply)
+
+
+    def test_start_reply_ok(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.user1.id,
+            is_replying=False,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.user1.id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {'event_id': sample_event_0.id}
+
+        request = self.client.post(reverse('start_replies_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.user1, event_id=sample_event_0.id)
+
+        self.assertTrue(event_reply_queue.is_replying)
+
+
+    def test_start_reply_with_missing_args(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.user1.id,
+            is_replying=False,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.user1.id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {}
+
+        request = self.client.post(reverse('start_replies_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.user1, event_id=sample_event_0.id)
+
+        self.assertFalse(event_reply_queue.is_replying)
+
+
+    def test_start_reply_with_faulty_args(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.user1.id,
+            is_replying=False,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.user1.id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {'event_id': 9999}
+
+        request = self.client.post(reverse('start_replies_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.user1, event_id=sample_event_0.id)
+
+        self.assertFalse(event_reply_queue.is_replying)
+
+
+    def test_list_new_event_with_started_reply_no_unlock(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.user1.id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.user1.id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {'unlock_all_locked_events': False}
+
+        request = self.client.post(reverse('list_event_reply_choices_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        self.assertEqual(sample_event_0.id, result_data['data'][0]['event']['id'])
+        self.assertEqual(UserEvents.objects.all().count(), 1)
+        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
+        self.assertEqual(EventReplyQueues.objects.first().id, sample_event_reply_queue_0.id)
+
+
+    def test_list_new_event_with_started_reply_has_unlock(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.user1.id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.user1.id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_event_1 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_1 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_1.id,
+            "originator",
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {'unlock_all_locked_events': True}
+
+        request = self.client.post(reverse('list_event_reply_choices_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        self.assertNotEqual(sample_event_0.id, result_data['data'][0]['event']['id'])
+        self.assertEqual(UserEvents.objects.all().count(), 2)
+        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
+        self.assertNotEqual(EventReplyQueues.objects.first().id, sample_event_reply_queue_0.id)
+
+
+    def test_start_reply_but_never_queued(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {'event_id': sample_event_0.id}
+
+        request = self.client.post(reverse('start_replies_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+
+    def test_start_reply_but_expired(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.user1.id,
+            is_replying=False,
+            when_locked=(get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS) * 2))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.user1.id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {'event_id': sample_event_0.id}
+
+        request = self.client.post(reverse('start_replies_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        self.assertEqual(EventReplyQueues.objects.all().count(), 0)
+        self.assertEqual(
+            UserEvents.objects.filter(
+                user=self.user1,
+                event_id=sample_event_0,
+                when_excluded_for_reply__isnull=False
+            ).count(),
+            1
+        )
+
+
+    def test_start_reply_but_event_is_banned(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "deleted"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+            generic_status_name="deleted",
+            is_banned=True
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.user1.id,
+            is_replying=False,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.user1.id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {'event_id': sample_event_0.id}
+
+        request = self.client.post(reverse('start_replies_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        self.assertEqual(EventReplyQueues.objects.all().count(), 0)
+        self.assertEqual(
+            UserEvents.objects.filter(
+                user=self.user1,
+                event_id=sample_event_0,
+                when_excluded_for_reply__isnull=False
+            ).count(),
+            1
+        )
+
+
+    def test_start_reply_for_someone_else(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.user2.id,
+            is_replying=False,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.user2.id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {'event_id': sample_event_0.id}
+
+        request = self.client.post(reverse('start_replies_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        event_reply_queue = EventReplyQueues.objects.get(event_id=sample_event_0.id, locked_for_user=self.user2)
+
+        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
+        self.assertEqual(
+            UserEvents.objects.filter(
+                user=self.user2,
+                event_id=sample_event_0,
+                when_excluded_for_reply__isnull=False
+            ).count(),
+            1
+        )
+        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.user1).exists())
+        self.assertFalse(UserEvents.objects.filter(user=self.user1).exists())
+
+
+    def test_create_reply_ok(self):
+        pass
+
+
+    def test_create_reply_with_missing_args(self):
+        pass
+
+
+    def test_create_reply_with_faulty_args(self):
+        pass
+
+
+    def test_create_reply_but_never_queued_for_it(self):
+        pass
+
+
+    def test_create_reply_for_someone_else(self):
+        pass
+
+
+    def test_create_reply_but_expired(self):
+        pass
+
+
+    def test_create_reply_but_event_is_banned(self):
+        pass
+
+
+    def test_cancel_reply_ok(self):
+        pass
+
+
+    def test_cancel_reply_with_missing_args(self):
+        pass
+
+
+    def test_cancel_reply_with_faulty_args(self):
+        pass
+
+
+    def test_cancel_reply_but_never_queued_for_it(self):
+        pass
+
+
+    def test_cancel_reply_for_someone_else(self):
+        pass
+
+
+    def test_create_reply_but_expired(self):
+        pass
+
+
+    def test_cancel_reply_but_event_is_banned(self):
+        pass
+
+
+
 
 
 
