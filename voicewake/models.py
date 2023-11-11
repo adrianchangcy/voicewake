@@ -29,7 +29,7 @@ def determine_audio_clip_audio_file_path_and_name(instance, filename):
     #will always have only one or the other, not both
 
     #e.g.:
-    #MEDIA_ROOT/recordings/year_2022/month_8/day_1/user_id_1
+    #MEDIA_ROOT/audio_clips/year_2022/month_8/day_1/user_id_1
     #no need to type out MEDIA_ROOT here, as it is determined in settings.py
     #.format() converts args into str for us
     file_path = 'audio_clips/year_{0}/month_{1}/day_{2}/user_id_{3}'.format(
