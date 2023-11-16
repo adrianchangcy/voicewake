@@ -1,7 +1,7 @@
 <template>
     <div
         :class="[
-            propHasBorder === true ? 'px-4 pt-8 pb-10      border border-theme-light-gray rounded-lg' : '',
+            propHasBorder === true ? 'px-4 pt-8 pb-10      border border-theme-light-gray rounded-lg shade-border-when-hover transition-colors' : '',
             'flex flex-col'
         ]"
     >
@@ -24,17 +24,17 @@
                 >
                     <template #title>
                         <span
-                            v-if="propEvent.event.generic_status.generic_status_name !== 'deleted'"
+                            v-if="propEvent.event.generic_status.generic_status_name !== 'cancelled'"
                         >
                             {{ propEvent.event.event_name }}
                         </span>
                         <span v-else
                             class="italic"
                         >
-                            Event and original recording deleted.
+                            Event and original recording cancelled.
                         </span>
                     </template>
-                    <template v-if="propEvent.event.generic_status.generic_status_name !== 'deleted'" #titleDescription>
+                    <template v-if="propEvent.event.generic_status.generic_status_name !== 'cancelled'" #titleDescription>
                         <span>{{ prettyWhenCreated }}</span>
                     </template>
                 </VTitle>

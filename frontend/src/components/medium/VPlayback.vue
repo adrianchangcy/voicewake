@@ -1459,6 +1459,14 @@
 
                 const audio_element = (this.$refs.audio_element as HTMLAudioElement);
 
+                //most often is just a hot reload issue
+                //but audio_element can be null and throw error
+                //i.e. this code runs but element is no longer at DOM
+                if(audio_element === null){
+
+                    return;
+                }
+
                 //there's a bug that gives us 'Infinity', had we not used fixWebmDuration
                 //this is because the browser does not insert duration metadata into our webm
                 //this is how we fix it, which still applies after the fixWebmDuration solution

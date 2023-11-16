@@ -76,7 +76,9 @@
             <VDialogPlain
                 v-show="canShowEmptyMessage || canShowEndOfPageMessage"
                 :prop-has-border="false"
-                :prop-has-auto-spacing="false"
+                :prop-has-auto-space-logo="false"
+                :prop-has-auto-space-title="false"
+                :prop-has-auto-space-content="false"
                 class="w-full py-8"
             >
                 <template #title>

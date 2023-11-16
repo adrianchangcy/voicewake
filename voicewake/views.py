@@ -200,29 +200,7 @@ class GetEvents(TemplateView):
         ).count()
 
         #prepare info
-        is_this_user_replying = False
         is_deleted = event.generic_status.generic_status_name == 'deleted'
-
-        #check if this user is already supposed to reply
-        if event.generic_status.generic_status_name == 'incomplete' and self.request.user.is_authenticated is True:
-
-            try:
-
-                event_reply_queue = EventReplyQueues.objects.get(
-                    event=event,
-                    locked_for_user=self.request.user,
-                )
-
-                #only when row exists and is_replying=True then is user truly replying
-                #is_replying=False is for choices
-                is_this_user_replying = (
-                    event_reply_queue.is_replying is True and
-                    get_datetime_difference_s(event_reply_queue.when_locked, get_datetime_now()) > 0
-                )
-
-            except EventReplyQueues.DoesNotExist:
-
-                pass
 
         #is event deleted
 
@@ -236,17 +214,13 @@ class GetEvents(TemplateView):
             'is_deleted': is_deleted,
             'is_deleted_json': json.dumps(is_deleted),
             'audio_clip_count': json.dumps(audio_clip_count),
-            'is_this_user_replying': is_this_user_replying,
-            'is_this_user_replying_json': json.dumps(is_this_user_replying),
             }
         )
 
-        if is_this_user_replying is True:
-
-            patch_cache_control(
-                response,
-                no_cache=True, no_store=True, must_revalidate=True, max_age=0
-            )
+        # patch_cache_control(
+        #     response,
+        #     no_cache=True, no_store=True, must_revalidate=True, max_age=0
+        # )
 
         return response
 
@@ -261,9 +235,9 @@ class GetEvents(TemplateView):
     ],
     name='get'
 )
-class ListEventChoices(TemplateView):
+class ListEventReplyChoices(TemplateView):
 
-    template_name = 'voicewake/events/list_event_choices.html'
+    template_name = 'voicewake/events/list_event_reply_choices.html'
 
     def get(self, request, *args, **kwargs):
 

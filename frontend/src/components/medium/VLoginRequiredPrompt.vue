@@ -3,7 +3,7 @@
 
         <div class="relative h-10">
             <VActionTextOnly
-                @click="emitIsOpen()"
+                @click="emitForceClose()"
                 prop-element="button"
                 type="button"
                 prop-element-size="s"
@@ -18,7 +18,7 @@
         <div class="pt-4 flex flex-col gap-1">
             <VTitle propFontSize="l" class="text-center">
                 <template #titleDescription>
-                    <span>Log in to perform that action.</span>
+                    <span>{{ propPromptText }}</span>
                 </template>
             </VTitle>
             <VAction
@@ -70,7 +70,7 @@
             return{
             };
         },
-        emits: ['isOpen'],
+        emits: ['forceClose'],
         props: {
             propLabel: String,
             propAudioClipToneChoice: {
@@ -81,6 +81,10 @@
                 type: Boolean,
                 default: false
             },
+            propPromptText: {
+                type: String,
+                default: ""
+            },
         },
         computed: {
 
@@ -89,8 +93,8 @@
 
         },
         methods: {
-            emitIsOpen() : void {
-                this.$emit('isOpen', false);
+            emitForceClose() : void {
+                this.$emit('forceClose', true);
             },
         },
     });

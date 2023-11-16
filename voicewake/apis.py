@@ -674,9 +674,9 @@ class GetEventsAPI(generics.GenericAPIView):
 
         audio_clips = AudioClips.objects.prefetch_related(
             'audio_clip_role',
-            'event__generic_status',
-            'event__created_by',
             'event',
+            'event__generic_status',
+            'event__eventreplyqueues',
             'audio_clip_tone',
             'generic_status',
             'user',
@@ -690,6 +690,7 @@ class GetEventsAPI(generics.GenericAPIView):
                 audio_clip_likes_dislikes.is_liked AS is_liked_by_user
             FROM audio_clips
             LEFT JOIN events ON audio_clips.event_id = events.id
+            LEFT JOIN event_reply_queues ON events.id = event_reply_queues.event_id
             LEFT JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
             LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
                 AND audio_clip_likes_dislikes.user_id = %s
@@ -712,14 +713,31 @@ class GetEventsAPI(generics.GenericAPIView):
 
         #handle singular events view
 
+        audio_clips = self.get_events_by_id(kwargs['event_id'])
+        event_reply_queues = extract_event_reply_queues_once_per_event(audio_clips)
+
+        events_and_audio_clips = []
+
+        #since we get by event, we can lazily check one to see whether user is replying
+        if len(audio_clips) > 0 and hasattr(audio_clips[0].event, 'eventreplyqueues') is True:
+
+            events_and_audio_clips = LockedEventsAndAudioClipsAPISerializer(
+                group_audio_clips_into_events_and_event_reply_queues(audio_clips, event_reply_queues),
+                many=True
+            ).data
+
+        else:
+
+            events_and_audio_clips = EventsAndAudioClipsAPISerializer(
+                group_audio_clips_into_events(audio_clips),
+                many=True
+            ).data
+
         #user simply wants to check the post for an event
         response = Response(
             data={
+                'data': events_and_audio_clips,
                 'message': '',
-                'data': EventsAndAudioClipsAPISerializer(
-                    group_audio_clips_into_events(self.get_events_by_id(kwargs['event_id'])),
-                    many=True
-                ).data,
             },
         )
 
@@ -945,24 +963,28 @@ class BrowseEventsAPI(generics.GenericAPIView):
 
         #handle event generic_status
 
-        event_generic_status_name_sql = '''
-            AND e_gs.generic_status_name = 'completed'
-        '''
+        event_generic_status_name_sql = ''
 
-        if audio_clip_role_name == 'originator':
+        if username_lowercase != '':
 
-            if username_lowercase != '':
+            if audio_clip_role_name == 'originator':
 
                 #for originator, show incomplete and completed for profile page
                 event_generic_status_name_sql = '''
                     AND e_gs.generic_status_name IN ('incomplete', 'completed')
                 '''
 
-        elif audio_clip_role_name == 'responder':
+            elif audio_clip_role_name == 'responder':
 
-            #show completed, but also deleted
+                #show completed, but also deleted
+                event_generic_status_name_sql = '''
+                    AND e_gs.generic_status_name IN ('completed', 'deleted')
+                '''
+
+        else:
+
             event_generic_status_name_sql = '''
-                AND e_gs.generic_status_name IN ('completed', 'deleted')
+                AND e_gs.generic_status_name = 'completed'
             '''
 
         #handle extra info request.user is logged in
@@ -1060,7 +1082,6 @@ class BrowseEventsAPI(generics.GenericAPIView):
         audio_clips = AudioClips.objects.prefetch_related(
             'audio_clip_role',
             'event__generic_status',
-            'event__created_by',
             'event',
             'audio_clip_tone',
             'generic_status',
@@ -1285,11 +1306,13 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
 				SELECT audio_clips.*,
                 audio_clip_likes_dislikes.is_liked AS is_liked_by_user
                 FROM audio_clips
-				INNER JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
-					AND generic_statuses.generic_status_name = %s
+                INNER JOIN events ON audio_clips.event_id = events.id
 				INNER JOIN audio_clip_roles ON audio_clips.audio_clip_role_id = audio_clip_roles.id
 					AND audio_clip_roles.audio_clip_role_name = %s
-                INNER JOIN events ON audio_clips.event_id = events.id
+				INNER JOIN generic_statuses AS ac_gs ON audio_clips.generic_status_id = ac_gs.id
+					AND ac_gs.generic_status_name = %s
+                INNER JOIN generic_statuses AS e_gs ON events.generic_status_id = e_gs.id
+                    AND e_gs.generic_status_name = %s
 				LEFT JOIN event_reply_queues ON audio_clips.event_id = event_reply_queues.event_id
 				LEFT JOIN excluded_events_1 ON audio_clips.event_id = excluded_events_1.event_id
 				LEFT JOIN excluded_events_2 ON audio_clips.event_id = excluded_events_2.event_id
@@ -1314,8 +1337,9 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
             self.request.user.id,
             self.request.user.id,
             self.request.user.id,
-            'ok',
             'originator',
+            'ok',
+            'incomplete',
             self.request.user.id,
         ] + audio_clip_tone_params + [
             max_when_created,
@@ -1326,7 +1350,6 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
         audio_clips = AudioClips.objects.select_for_update(of=("self",)).prefetch_related(
             'audio_clip_role',
             'event__generic_status',
-            'event__created_by',
             'event',
             'audio_clip_tone',
             'generic_status',
@@ -1413,12 +1436,11 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
 
 
     #gets both is_replying=True/False events
-    def get_audio_clips_from_locked_events(self)->tuple[list[AudioClips], list[EventReplyQueues]]:
+    def get_audio_clips_from_locked_events(self)->list[AudioClips]:
 
         audio_clips = AudioClips.objects.prefetch_related(
             'audio_clip_role',
             'event__generic_status',
-            'event__created_by',
             'event',
             'audio_clip_tone',
             'generic_status',
@@ -1447,24 +1469,7 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
             )
         )
 
-        #we take out event_reply_queues first
-        #so that we don't have to change anything at group_audio_clips_into_events() and at serializer
-        event_reply_queues = []
-        event_ids = []
-
-        for x in range(len(audio_clips)):
-
-            if hasattr(audio_clips[x].event, 'eventreplyqueues') is False:
-
-                raise custom_error(
-                    ValueError,
-                    dev_message='No event__eventreplyqueues prefetched for this row.'
-                )
-
-            event_reply_queues.append(audio_clips[x].event.eventreplyqueues)
-            event_ids.append(audio_clips[x].event.id)
-
-        return (audio_clips, event_reply_queues)
+        return audio_clips
 
 
     #queue audio_clip room reply choices for user
@@ -1500,12 +1505,13 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
             self.unlock_expired_events_from_reply_choices()
 
             #since user still wants non-expired reply choices, we get, if any
-            audio_clips, event_reply_queues = self.get_audio_clips_from_locked_events()
+            audio_clips = self.get_audio_clips_from_locked_events()
+            event_reply_queues = extract_event_reply_queues_once_per_event(audio_clips)
 
             if len(audio_clips) > 0:
 
                 #return non-expired reply choices
-                result = group_audio_clips_into_events(audio_clips, event_reply_queues)
+                result = group_audio_clips_into_events_and_event_reply_queues(audio_clips, event_reply_queues)
                 serializer = LockedEventsAndAudioClipsAPISerializer(result, many=True)
 
                 return Response(
@@ -1516,7 +1522,29 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
                     status=status.HTTP_200_OK
                 )
 
-        #no existing reply choices, proceed with new ones
+        #no existing reply choices, so check reply daily limit
+        #borrow the check from CreateAudioClips
+
+        create_audio_clips_class = CreateAudioClips(
+            self.request.user, "create_reply",
+            settings.EVENT_CREATE_DAILY_LIMIT, settings.EVENT_REPLY_DAILY_LIMIT,
+            settings.EVENT_REPLY_EXPIRY_SECONDS,
+        )
+
+        cooldown_s = create_audio_clips_class.get_cooldown_on_audio_clip_create_limit_s()
+
+        if cooldown_s > 0:
+
+            return Response(
+                data={
+                    'data': [],
+                    'message': "Daily reply limit reached. Come back in " + get_pretty_datetime(cooldown_s) + ".",
+                    'daily_reply_limit_reached': True,
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        #proceed with getting new reply choices
 
         try:
 
@@ -1539,7 +1567,7 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
                 event_reply_queues = self.lock_events_for_reply_choices(audio_clips)
 
                 #return
-                result = group_audio_clips_into_events(audio_clips, event_reply_queues)
+                result = group_audio_clips_into_events_and_event_reply_queues(audio_clips, event_reply_queues)
                 serializer = LockedEventsAndAudioClipsAPISerializer(result, many=True)
 
                 return Response(
@@ -1563,6 +1591,8 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
 
 
 
+#purposely not check UserBlocks here
+#else a few unnecessary edge cases must be dealt with, since blocking someone is spammable
 class HandleReplyingEventsAPI(generics.GenericAPIView):
 
     serializer_class = HandleReplyingEventsAPISerializer
@@ -1621,8 +1651,6 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
     #if user is already locked for event, change (is_replying=False) to (is_replying=True, when_locked!=None)
     #no need to check for daily reply limit here
-    #for actual replying to start
-    #202 success, 205 reset due to user inactivity
     def start_reply_in_event(self, event_id:int):
 
         #check if user is replying to any other event
@@ -1634,6 +1662,8 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        #not yet replying to anything, proceed
 
         datetime_now = get_datetime_now()
 
@@ -1658,6 +1688,20 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
         #not yet replying, proceed
 
+        #check and ensure event availability
+        if target_event_reply_queue.event.generic_status.generic_status_name != 'incomplete':
+
+            #remove expired reply choice
+            target_event_reply_queue.delete()
+
+            return Response(
+                data={
+                    'message': 'This event is no longer available for reply.',
+                    'can_retry': False,
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         #check for expiry
         if(
             target_event_reply_queue.when_locked <
@@ -1670,24 +1714,12 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
             return Response(
                 data={
                     'message': 'The choice to reply in this event has expired.',
+                    'can_retry': False,
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         #not yet expired, proceed
-
-        #check and ensure availability
-        if target_event_reply_queue.event.generic_status.generic_status_name != 'incomplete':
-
-            #remove expired reply choice
-            target_event_reply_queue.delete()
-
-            return Response(
-                data={
-                    'message': 'This event is no longer available for reply.',
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
 
         #unlock other reply choices
         self.unlock_reply_choices(excluded_event_id=target_event_reply_queue.event_id)
@@ -1697,8 +1729,14 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
         target_event_reply_queue.is_replying = True
         target_event_reply_queue.save()
 
+        serializer = EventReplyQueuesSerializer(
+            [target_event_reply_queue],
+            many=True
+        )
+
         return Response(
             data={
+                'data': serializer.data,
                 'message': 'You are now replying in this event.',
             },
             status=status.HTTP_200_OK
@@ -1719,14 +1757,18 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
 
     #as long as EventReplyQueue for correct locked_for_user and event_id exists, delete
-    #not checking for further details makes this more versatile
+    #no need to check for further details
     def cancel_reply_in_event(self, event_id:int):
 
         #directly delete, i.e. no get() necessary
-        EventReplyQueues.objects.filter(
+        deleted_count, deleted_rows = EventReplyQueues.objects.filter(
             locked_for_user=self.request.user,
             event_id=event_id
         ).delete()
+
+        if deleted_count == 0:
+
+            raise EventReplyQueues.DoesNotExist
 
         #intentionally have no message
         #UI does not need it
@@ -1797,7 +1839,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                         new_data['audio_file'],
                     )
 
-                elif self.current_context == "delete":
+                elif self.current_context == "cancel":
 
                     #delete event_reply_queue
                     return self.cancel_reply_in_event(new_data['event_id'])
@@ -1825,6 +1867,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
             return Response(
                 data={
                     'message': 'That action is no longer allowed for this event.',
+                    'can_retry': False,
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -1885,6 +1928,7 @@ class CreateEventsAPI(generics.GenericAPIView):
         app_decorators.deny_if_banned("response"),
     ])
     def post(self, request, *args, **kwargs):
+
         #deserialize
         serializer = CreateAudioClipsAPISerializer(data=request.data, many=False)
 
@@ -1933,15 +1977,6 @@ class CreateEventsAPI(generics.GenericAPIView):
             return Response(
                 data={
                     'message': 'Your selected tag was not found. Try a different one.',
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        except Events.DoesNotExist:
-
-            return Response(
-                data={
-                    'message': 'This event no longer exists.',
                 },
                 status=status.HTTP_404_NOT_FOUND
             )

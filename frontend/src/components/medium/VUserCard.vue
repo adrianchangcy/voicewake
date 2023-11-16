@@ -99,7 +99,7 @@
             canBlockUnblock() : boolean {
 
                 return (
-                    this.pop_up_manager_store.getIsLoggedIn === true &&
+                    this.pop_up_manager_store.isLoggedIn === true &&
                     this.is_own_profile === false
                 );
             },

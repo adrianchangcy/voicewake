@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 
-type IsOpenType = {
+type IsOpenTypes = {
     [key:string]: boolean
 }
 
@@ -17,15 +17,17 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
             is_login_required_prompt_open: false,
             is_nav_menu_open: false,
             is_user_log_in_sign_up_open: false,
-        } as IsOpenType,
+        } as IsOpenTypes,
+
+        login_required_prompt_text: "",
 
     }),    
     getters: {
-        getIsLoggedIn: (state)=>{
+        isLoggedIn: (state)=>{
 
             return state.is_logged_in;
         },
-        getHasPopUpOpen: (state)=>{
+        hasPopUpOpen: (state)=>{
 
             return (
                 state.is_open.is_login_required_prompt_open === true ||
@@ -33,21 +35,25 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
                 state.is_open.is_user_log_in_sign_up_open === true
             );
         },
-        getIsUserLogInSignUpOpen: (state)=>{
+        isUserLogInSignUpOpen: (state)=>{
 
             return state.is_open.is_user_log_in_sign_up_open;
         },
-        getIsLoginRequiredPromptOpen: (state)=>{
+        isLoginRequiredPromptOpen: (state)=>{
 
             return state.is_open.is_login_required_prompt_open;
         },
-        getIsNavMenuOpen: (state)=>{
+        isNavMenuOpen: (state)=>{
 
             return state.is_open.is_nav_menu_open;
         },
         getRequestedSection: (state)=>{
             
             return state.requested_section;
+        },
+        getLoginRequiredPromptText: (state)=>{
+
+            return state.login_required_prompt_text;
         },
     },
     actions: {
@@ -77,7 +83,10 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
                 }
             }
         },
-        async toggleIsUserLogInSignUpOpen(new_value:boolean|null=null, section:"log-in-section"|"sign-up-section"|null=null) : Promise<void> {
+        async toggleIsUserLogInSignUpOpen(
+            new_value:boolean|null=null,
+            section:"log-in-section"|"sign-up-section"|null=null
+        ) : Promise<void> {
 
             const new_store_value = new_value === null ? !this.is_open.is_user_log_in_sign_up_open : new_value;
 
@@ -93,9 +102,12 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
                 this.requested_section = section;
             }
         },
-        async toggleIsLoginRequiredPromptOpen(new_value:boolean|null=null) : Promise<void> {
+        async toggleIsLoginRequiredPromptOpen(
+            forced_state:boolean|null=null,
+            prompt_text:string="",
+        ) : Promise<void> {
 
-            const new_store_value = new_value === null ? !this.is_open.is_login_required_prompt_open : new_value;
+            const new_store_value = forced_state === null ? !this.is_open.is_login_required_prompt_open : forced_state;
 
             if(new_store_value === true){
 
@@ -103,10 +115,19 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
             }
 
             this.is_open.is_login_required_prompt_open = new_store_value;
-        },
-        async toggleIsNavMenuOpen(new_value:boolean|null=null) : Promise<void> {
 
-            const new_store_value = new_value === null ? !this.is_open.is_nav_menu_open : new_value;
+            if(prompt_text === ""){
+
+                this.login_required_prompt_text = "Log in to perform that action.";
+
+            }else{
+
+                this.login_required_prompt_text = prompt_text;
+            }
+        },
+        async toggleIsNavMenuOpen(forced_state:boolean|null=null) : Promise<void> {
+
+            const new_store_value = forced_state === null ? !this.is_open.is_nav_menu_open : forced_state;
 
             //this is bad at scaling
             if(new_store_value === true){
