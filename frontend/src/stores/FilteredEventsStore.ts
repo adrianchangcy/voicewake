@@ -435,7 +435,7 @@ export function useFilteredEventsStore(is_user_page:boolean){
 
                 //only call this on API success, instead of following user's spam clicks
                 //because on failure, this will be the source of truth, while server is the ultimate source
-                //if you'd like to ensure 100% accuracy, maybe a log-and-retry-request at storage can do
+                //if you'd like to ensure 100% accuracy, maybe a log-and-retry request at storage can do
 
                 switch(new_value.new_is_liked){
 

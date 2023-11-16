@@ -2,7 +2,7 @@
     <div class="h-full text-theme-black text-center">
 
         <!--main nav-->
-        <nav class="h-full grid grid-cols-4 sm:grid-cols-8 p-2 gap-x-2 backdrop-blur bg-theme-light/60 border-b border-theme-light-gray/50">
+        <nav class="h-full grid grid-cols-4 sm:grid-cols-8 p-2 gap-x-2      backdrop-blur bg-theme-light/60 border-b border-theme-light-gray/50">
 
             <!--home-->
             <div class="col-start-1 col-span-1">
@@ -20,11 +20,12 @@
             </div>
 
             <!--start-->
+            <!--intentional propIsIconOnly="false"-->
             <div
-                v-if="pop_up_manager_store.getIsLoggedIn === true"
                 class="col-start-2 col-span-1 sm:col-start-3 sm:col-span-2 lg:col-start-4 lg:col-span-1"
             >
                 <VActionTextOnly
+                    v-if="pop_up_manager_store.isLoggedIn === true"
                     propElement="a"
                     propFontSize="m"
                     href="/start"
@@ -33,18 +34,40 @@
                 >
                     <span class="block mx-auto">
                         <i class="fas fa-comment" aria-hidden="true"></i>
-                        <!-- <span class="hidden font-normal sm:inline sm:pl-2">Start</span> -->
                     </span>
-                    <span class="sr-only sm:hidden">start event</span>
+                    <span class="sr-only">start event</span>
                 </VActionTextOnly>
+
+                <div
+                    v-else
+                    class="w-full h-full"
+                >
+                    <TransitionFade>
+                        <VActionTextOnly
+                            v-show="!pop_up_manager_store.hasPopUpOpen"
+                            @click="pop_up_manager_store.toggleIsLoginRequiredPromptOpen(true, 'Log in to reply in events.')"
+                            propElement="button"
+                            type="button"
+                            propFontSize="m"
+                            :propIsIconOnly="false"
+                            class="w-full h-full pb-0.5"
+                        >
+                            <span class="block mx-auto">
+                                <i class="fas fa-comment" aria-hidden="true"></i>
+                            </span>
+                            <span class="sr-only">start event</span>
+                        </VActionTextOnly>
+                    </TransitionFade>
+                </div>
             </div>
 
             <!--reply-->
+            <!--intentional propIsIconOnly="false"-->
             <div
-                v-if="pop_up_manager_store.getIsLoggedIn === true"
                 class="col-start-3 col-span-1 sm:col-start-5 sm:col-span-2 lg:col-start-5 lg:col-span-1"
             >
                 <VActionTextOnly
+                    v-if="pop_up_manager_store.isLoggedIn === true"
                     propElement="a"
                     propFontSize="m"
                     href="/reply"
@@ -53,10 +76,31 @@
                 >
                     <span class="block mx-auto">
                         <i class="fas fa-comments" aria-hidden="true"></i>
-                        <!-- <span class="hidden font-normal sm:inline sm:pl-2">Reply</span> -->
                     </span>
-                    <span class="sr-only sm:hidden">reply to events</span>
+                    <span class="sr-only">reply in events</span>
                 </VActionTextOnly>
+
+                <div
+                    v-else
+                    class="w-full h-full"
+                >
+                    <TransitionFade>
+                        <VActionTextOnly
+                            v-show="!pop_up_manager_store.hasPopUpOpen"
+                            @click="pop_up_manager_store.toggleIsLoginRequiredPromptOpen(true, 'Log in to reply in events.')"
+                            propElement="button"
+                            type="button"
+                            propFontSize="m"
+                            :propIsIconOnly="false"
+                            class="w-full h-full pb-0.5"
+                        >
+                            <span class="block mx-auto">
+                                <i class="fas fa-comments" aria-hidden="true"></i>
+                            </span>
+                            <span class="sr-only">reply in events</span>
+                        </VActionTextOnly>
+                    </TransitionFade>
+                </div>
             </div>
 
             <!--mobile, always show-->
@@ -75,21 +119,21 @@
                     <div class="w-full h-full grid grid-rows-3 grid-flow-row      justify-items-center place-items-center">
                         <div
                             :class="[
-                                pop_up_manager_store.getIsNavMenuOpen ? 'mb-0 rotate-45' : 'mb-4 rotate-0',
+                                pop_up_manager_store.isNavMenuOpen ? 'mb-0 rotate-45' : 'mb-4 rotate-0',
                                 'nav-burger-line row-span-1 bg-theme-black absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
                             ]"
                         >
                         </div>
                         <div
                             :class="[
-                                pop_up_manager_store.getIsNavMenuOpen ? 'opacity-0' : 'opacity-100',
+                                pop_up_manager_store.isNavMenuOpen ? 'opacity-0' : 'opacity-100',
                                 'nav-burger-line row-span-1 bg-theme-black absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
                             ]"
                         >
                         </div>
                         <div
                             :class="[
-                                pop_up_manager_store.getIsNavMenuOpen ? 'mt-0 -rotate-45' : 'mt-4 rotate-0',
+                                pop_up_manager_store.isNavMenuOpen ? 'mt-0 -rotate-45' : 'mt-4 rotate-0',
                                 'nav-burger-line row-span-1 bg-theme-black absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
                             ]"
                         >
@@ -104,7 +148,7 @@
             <div
                 ref="nav_menu_button_2"
                 :class="[
-                    pop_up_manager_store.getIsLoggedIn === true ? 'hidden lg:block lg:col-start-8 lg:col-span-1' : 'hidden'
+                    pop_up_manager_store.isLoggedIn === true ? 'hidden lg:block lg:col-start-8 lg:col-span-1' : 'hidden'
                 ]"
             >
                 <VActionTextOnly
@@ -120,7 +164,7 @@
                         <span class="relative w-0">
                             <i
                                 :class="[
-                                    pop_up_manager_store.getIsNavMenuOpen ? '-rotate-180' : 'rotate-0',
+                                    pop_up_manager_store.isNavMenuOpen ? '-rotate-180' : 'rotate-0',
                                     'fas fa-chevron-down text-xs transition-transform h-fit absolute top-0 bottom-0 left-2 m-auto'
                                 ]"
                                 aria-hidden="true"
@@ -133,7 +177,7 @@
 
             <!--desktop, if not logged in, show log in option-->
             <div
-                v-if="pop_up_manager_store.getIsLoggedIn === false"
+                v-if="pop_up_manager_store.isLoggedIn === false"
                 class="hidden lg:block lg:col-start-7 lg:col-span-1"
             >
                 <TransitionFade>
@@ -155,7 +199,7 @@
 
             <!--desktop, if not logged in, show sign up option-->
             <div
-                v-if="pop_up_manager_store.getIsLoggedIn === false"
+                v-if="pop_up_manager_store.isLoggedIn === false"
                 class="hidden lg:block lg:col-start-8 col-span-1"
             >
                 <TransitionFade>
@@ -180,12 +224,12 @@
 
             <!--extra area to click when nav menu is open-->
             <div
-                :class="pop_up_manager_store.getIsLoggedIn === false ? 'lg:hidden' : ''"
+                :class="pop_up_manager_store.isLoggedIn === false ? 'lg:hidden' : ''"
                 class="relative col-start-1 col-span-1 sm:col-span-5 xl:col-span-6"
             >
                 <TransitionFade>
                     <div
-                        v-show="pop_up_manager_store.getIsNavMenuOpen"
+                        v-show="pop_up_manager_store.isNavMenuOpen"
                         class="absolute w-full h-[calc(100vh-4.5rem)] bg-theme-light/60 backdrop-blur"
                     >
                     </div>
@@ -193,15 +237,15 @@
             </div>
 
             <!--nav menu-->
-            <!--don't show when lg and pop_up_manager_store.getIsLoggedIn, because the button to open will become a URL-->
+            <!--don't show when lg and pop_up_manager_store.isLoggedIn, because the button to open will become a URL-->
             <div
-                :class="pop_up_manager_store.getIsLoggedIn === false ? 'lg:hidden' : ''"
+                :class="pop_up_manager_store.isLoggedIn === false ? 'lg:hidden' : ''"
                 class="relative col-start-2 col-span-3 sm:col-start-6 sm:col-span-3 xl:col-start-7 xl:col-span-2"
             >
                 <TransitionFade>
                     <!--uses calc to minus fixed height of navbar at base.html-->
                     <div
-                        v-show="pop_up_manager_store.getIsNavMenuOpen"
+                        v-show="pop_up_manager_store.isNavMenuOpen"
                         v-click-outside="{
                             var_name_for_element_bool_status: forceCloseNavMenu,
                             refs_to_exclude: ['nav_menu_button_1', 'nav_menu_button_2']
@@ -214,7 +258,7 @@
 
                             <!--logged in, can click to view profile-->
                             <VActionTextOnly
-                                v-if="pop_up_manager_store.getIsLoggedIn"
+                                v-if="pop_up_manager_store.isLoggedIn"
                                 prop-element="a"
                                 :href="getProfileURL()"
                             >
@@ -245,7 +289,7 @@
 
                         <!--log in / sign up-->
                         <div
-                            v-if="pop_up_manager_store.getIsLoggedIn === false"
+                            v-if="pop_up_manager_store.isLoggedIn === false"
                             class="h-fit grid"
                         >
 
@@ -292,7 +336,7 @@
 
                         <!--block list-->
                         <div
-                            v-if="pop_up_manager_store.getIsLoggedIn === true"
+                            v-if="pop_up_manager_store.isLoggedIn === true"
                             class="h-fit grid"
                         >
                             <!--block list-->
@@ -318,7 +362,7 @@
 
                         <!--divider-->
                         <div
-                            v-if="pop_up_manager_store.getIsLoggedIn === true"
+                            v-if="pop_up_manager_store.isLoggedIn === true"
                             class="py-4"
                         >
                             <div class="w-[75%] h-[1px] bg-theme-light-gray mx-auto"></div>
@@ -326,12 +370,12 @@
 
                         <!--log out-->
                         <div
-                            v-if="pop_up_manager_store.getIsLoggedIn === true"
+                            v-if="pop_up_manager_store.isLoggedIn === true"
                             class="h-fit grid gap-2"
                         >
                             <!--log out-->
                             <VActionTextOnly
-                                v-if="pop_up_manager_store.getIsLoggedIn === true"
+                                v-if="pop_up_manager_store.isLoggedIn === true"
                                 :propIsEnabled="!is_log_out_loading"
                                 @click.stop="logOut()"
                                 propElement="button"
@@ -384,6 +428,7 @@
     import { defineComponent } from 'vue';
     import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
+    import { useEventReplyChoicesStore } from '@/stores/EventReplyChoicesStore';
     const axios = require('axios');
 
     export default defineComponent({
@@ -407,8 +452,8 @@
             canShowLogInSignUpAtNav() : boolean {
                 return (
                     this.is_currently_log_in_sign_up_static_page === false &&
-                    this.pop_up_manager_store.getIsUserLogInSignUpOpen === false &&
-                    this.pop_up_manager_store.getIsLoginRequiredPromptOpen === false
+                    this.pop_up_manager_store.isUserLogInSignUpOpen === false &&
+                    this.pop_up_manager_store.isLoginRequiredPromptOpen === false
                 );
             },
         },
@@ -434,6 +479,12 @@
 
                 await axios.post(window.location.origin + "/api/users/log-out")
                 .then(() => {
+
+                    //reset user-specific stores
+
+                    //since this is not used in NavBar, maybe only calling here is more performant
+                    const event_reply_choices_store = useEventReplyChoicesStore();
+                    event_reply_choices_store.$reset();
 
                     //doing this will refresh all open tabs/pages for us
                     this.page_refresh_trigger_store.$patch({

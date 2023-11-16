@@ -75,23 +75,6 @@ def fill_necessary_data(apps, schema_editor):
     print("\nFinished populating db with necessary data.")
 
 
-custom_function_get_id_of_one_or_all_audio_clip_tones_via_slug = '''
-    CREATE OR REPLACE FUNCTION get_id_of_one_or_all_audio_clip_tones_via_slug(slug VARCHAR)
-        RETURNS TABLE (
-            id BIGINT
-        ) AS
-        $$
-        BEGIN
-            IF EXISTS(SELECT * FROM audio_clip_tones WHERE audio_clip_tones.audio_clip_tone_slug = slug) THEN
-                RETURN QUERY(SELECT audio_clip_tones.id FROM audio_clip_tones WHERE audio_clip_tones.audio_clip_tone_slug = slug);
-            ELSE
-                RETURN QUERY(SELECT audio_clip_tones.id FROM audio_clip_tones);
-            END IF;
-        END;
-        $$
-        LANGUAGE plpgsql;
-'''
-
 #the "OLD.is_liked IS FALSE AND NEW.is_liked IS TRUE" and vice versa part is important
 #to protect against race condition redundancy, i.e. multiple requests with same action
 custom_function_handle_audio_clip_likes_dislikes_count = '''
@@ -191,7 +174,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunSQL(custom_function_get_id_of_one_or_all_audio_clip_tones_via_slug),
         migrations.RunSQL(custom_function_handle_audio_clip_likes_dislikes_count),
         migrations.RunSQL(custom_trigger_audio_clip_likes_dislikes),
         migrations.RunSQL(audio_clips_when_created_id_1),

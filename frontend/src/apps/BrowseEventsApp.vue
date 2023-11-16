@@ -187,7 +187,9 @@
                     <VDialogPlain
                         v-show="canShowEventsEmptyMessage || canShowNoNewEventsMessage"
                         :prop-has-border="false"
-                        :prop-has-auto-spacing="false"
+                        :prop-has-auto-space-logo="false"
+                        :prop-has-auto-space-title="false"
+                        :prop-has-auto-space-content="false"
                         class="w-full"
                     >
                         <template #logo>
@@ -205,8 +207,10 @@
                     <!--reconsider loading more audio_clips -->
                     <VDialogPlain
                         v-show="canPauseScrolling"
-                        :prop-has-auto-spacing="true"
                         :prop-has-border="true"
+                        :prop-has-auto-space-logo="false"
+                        :prop-has-auto-space-title="true"
+                        :prop-has-auto-space-content="true"
                         class="w-full"
                     >
                         <template #title>

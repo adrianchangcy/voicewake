@@ -7,7 +7,7 @@ import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 
 import BaseApp from '/src/apps/BaseApp.vue';
 import CreateEventsApp from '/src/apps/CreateEventsApp.vue';
-import ListEventChoicesApp from '/src/apps/ListEventChoicesApp.vue';
+import ListEventReplyChoicesApp from '/src/apps/ListEventReplyChoicesApp.vue';
 import ListUserBannedAudioClipsApp from '/src/apps/ListUserBannedAudioClipsApp.vue';
 import ListUserBlocksApp from '/src/apps/ListUserBlocksApp.vue';
 import GetEventsApp from '/src/apps/GetEventsApp.vue';
@@ -118,7 +118,7 @@ if(document.querySelector('#base-app')){
         .mount('#base-app');
 }
 
-//if-else for all # might or might not be the most efficient fix
+//'if' statements for all # might or might not be the most efficient fix
 //https://vuejs.org/guide/essentials/application.html#the-root-component
 
 if(document.querySelector('#testing-stuff')){
@@ -135,7 +135,7 @@ if(document.querySelector('#create-events-app')){
 
 if(document.querySelector('#list-event-choices-app')){
 
-    createApp(ListEventChoicesApp)
+    createApp(ListEventReplyChoicesApp)
         .directive('click-outside', clickOutside)
         .mount('#list-event-choices-app');
 }

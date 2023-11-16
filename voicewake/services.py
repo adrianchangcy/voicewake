@@ -130,11 +130,7 @@ def has_numbers_only(string_value):
     return re.match(r'^[0-9]+$', string_value) is not None
 
 
-def group_audio_clips_into_events(audio_clips:list[AudioClips], event_reply_queues:list[EventReplyQueues]=[])->list:
-
-    if len(audio_clips) == 0 or audio_clips is None:
-
-        return []
+def group_audio_clips_into_events(audio_clips:list[AudioClips])->list:
 
     sorted_audio_clips = []
     event_ids = []  #simpler way to check and get element position in sorted_audio_clips
@@ -148,13 +144,65 @@ def group_audio_clips_into_events(audio_clips:list[AudioClips], event_reply_queu
                 'event': row.event,
                 'originator': None,
                 'responder': [],
-                'event_reply_queue': None,
             })
 
-            if len(event_reply_queues) > 0:
+            #skip this event for next audio clips
+            event_ids.append(row.event.id)
 
-                sorted_audio_clips[len(event_ids)]['event_reply_queue'] = event_reply_queues[len(event_ids)]
+        if row.audio_clip_role.audio_clip_role_name == 'originator':
 
+            sorted_audio_clips[event_ids.index(row.event.id)]['originator'] = row
+
+        else:
+
+            sorted_audio_clips[event_ids.index(row.event.id)]['responder'].append(row)
+
+    return sorted_audio_clips
+
+
+def extract_event_reply_queues_once_per_event(audio_clips:list[AudioClips])->list:
+
+    #we sometimes have EventReplyQueues on an each-audio-clip basis, while sometimes on each-event basis
+    #we choose each-event basis
+
+    event_ids = []
+    event_reply_queues = []
+
+    for row in audio_clips:
+
+        if row.event.id in event_ids:
+
+            continue
+
+        event_reply_queues.append(
+            getattr(row.event, 'eventreplyqueues', None)
+        )
+
+    return event_reply_queues
+
+
+def group_audio_clips_into_events_and_event_reply_queues(audio_clips:list[AudioClips], event_reply_queues:list=[])->list:
+
+    #separate this into its own function to have assurance on separated efficiency
+    #we sometimes have EventReplyQueues on an each-audio-clip basis, while sometimes on each-event basis
+    #we choose each-event basis
+
+    sorted_audio_clips = []
+    event_ids = []  #simpler way to check and get element position in sorted_audio_clips
+
+    for index, row in enumerate(audio_clips):
+
+        if row.event.id not in event_ids:
+
+            #this is what frontend expects
+            sorted_audio_clips.append({
+                'event': row.event,
+                'originator': None,
+                'responder': [],
+                'event_reply_queue': event_reply_queues[len(event_ids)],
+            })
+
+            #prevent any future audio_clips from relooping same events
             event_ids.append(row.event.id)
 
         if row.audio_clip_role.audio_clip_role_name == 'originator':
@@ -1507,7 +1555,7 @@ class CreateAudioClips:
         return math.ceil(pretty_difference_s)
 
 
-    def _check_user_can_create_reply(self)->tuple[bool, str]:
+    def _check_user_can_create_reply(self)->tuple[bool, None|Response]:
 
         if self.event_reply_queue is None:
 
@@ -1521,10 +1569,33 @@ class CreateAudioClips:
 
             return (
                 False,
-                "You have not selected this event to reply in."
+                Response(
+                    data={
+                        'message': "You have not selected this event to reply in.",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             )
 
         #is replying, proceed
+
+        #check that event is still ok
+        if self.event_reply_queue.event.generic_status.generic_status_name != 'incomplete':
+
+            #remove expired reply choice
+            self.event_reply_queue.delete()
+            self.event_reply_queue = None
+
+            return (
+                False,
+                Response(
+                    data={
+                        'message': "This event is no longer available.",
+                        'can_retry': False,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            )
 
         #check for expiry
         if(
@@ -1538,12 +1609,18 @@ class CreateAudioClips:
 
             return (
                 False,
-                "Reply was not successful. You had reached the time limit."
+                Response(
+                    data={
+                        'message': "Reply was not successful. Time limit was reached.",
+                        'can_retry': False,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             )
 
         return (
             True,
-            ""
+            None
         )
 
 
@@ -1571,6 +1648,8 @@ class CreateAudioClips:
 
         self.event_reply_queue = EventReplyQueues.objects.select_for_update(
             of=("self",)
+        ).select_related(
+            'event__generic_status'
         ).get(
             event_id=event_id,
             locked_for_user=self.user
@@ -1596,7 +1675,7 @@ class CreateAudioClips:
                 data={
                     "message": "Daily event creation limit reached. Come back in " + get_pretty_datetime(cooldown_s) + ".",
                 },
-                status=status.HTTP_405_METHOD_NOT_ALLOWED
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         #proceed
@@ -1643,6 +1722,7 @@ class CreateAudioClips:
         return Response(
             data={
                 "message": "Event was successfully created!",
+                "event_id": new_audio_clip.event_id,
             },
             status=status.HTTP_201_CREATED
         )
@@ -1662,27 +1742,16 @@ class CreateAudioClips:
 
         #perform checks
 
-        cooldown_s = self.get_cooldown_on_audio_clip_create_limit_s()
-
-        if cooldown_s > 0:
-
-            return Response(
-                data={
-                    "message": "Daily event creation limit reached. Come back in " + get_pretty_datetime(cooldown_s) + ".",
-                },
-                status=status.HTTP_405_METHOD_NOT_ALLOWED
-            )
-
-        can_create_reply, user_message = self._check_user_can_create_reply()
+        can_create_reply, response = self._check_user_can_create_reply()
 
         if can_create_reply is False:
 
-            return Response(
-                data={
-                    "message": user_message,
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return response
+
+        #no need to check for daily reply limit here
+        #as that is enforced when listing choices
+
+        #can reply, proceed
 
         audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='responder')
         audio_clip_tone = AudioClipTones.objects.get(pk=audio_clip_tone_id)

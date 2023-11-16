@@ -148,6 +148,8 @@
     import { defineComponent } from 'vue';
     import AudioClipToneTypes from '@/types/AudioClipTones.interface';
     import { notify } from 'notiwind';
+    import { CreateAudioClips__isSubmitSuccessfulTypes } from '@/types/General.interface';
+
     const axios = require('axios');
 
     export default defineComponent({
@@ -248,7 +250,7 @@
                 this.is_submitting = true;
 
                 let data = new FormData();
-                const specific_url = this.propIsOriginator === true ? 'create/new' : 'create/reply';
+                const specific_url = this.propIsOriginator === true ? 'create' : 'reply/create';
                 
                 //prepare data
                 //webm follows VRecorder
@@ -272,25 +274,41 @@
                 }
 
                 await axios.post(window.location.origin + '/api/events/' + specific_url, data)
-                .then((response:any) => {
+                .then((result:any) => {
 
-                    if(response.status === 201 && Object.hasOwn(response.data['data'], 'event_id') === true){
+                    if(result.status === 201){
 
-                        this.$emit('isSubmitSuccessful', true);
+                        //only originators have event_id passed back
+                        let emit_event_id = null;
 
-                        //redirect to this page without storing current URL, so it is only shown once in history
-                        window.location.replace(window.location.origin + "/event/" + response.data['data']['event_id'].toString());
+                        if(Object.hasOwn(result.data, 'event_id') === true){
+
+                            emit_event_id = result.data['event_id'];
+                        }
+
+                        this.$emit(
+                            'isSubmitSuccessful',
+                            {is_successful: true, event_id: emit_event_id} as CreateAudioClips__isSubmitSuccessfulTypes,
+                        );
+
+                        //always redirected, so don't do is_submitting=false here
 
                     }else{
 
-                        this.$emit('isSubmitSuccessful', false);
+                        this.$emit(
+                            'isSubmitSuccessful',
+                            {is_successful: false, event_id: null} as CreateAudioClips__isSubmitSuccessfulTypes,
+                        );
                         this.is_submitting = false;
                     }
 
                 })
                 .catch((error:any) => {
 
-                    this.$emit('isSubmitSuccessful', false);
+                    this.$emit(
+                        'isSubmitSuccessful',
+                        {is_successful: false, event_id: null} as CreateAudioClips__isSubmitSuccessfulTypes,
+                    );
                     this.is_submitting = false;
 
                     let error_text = '';

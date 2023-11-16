@@ -10,7 +10,11 @@ from django.conf import settings
 
 def cronjob_ban_audio_clips():
 
-    #as long as quantity of audio_clip_reports rows is not a factor, we delete all of them after cron
+    #evaluate audio_clip_reports
+    #to ban
+        #set Events.generic_status.generic_status_name to 'deleted'
+        #set AudioClips.generic_status.generic_status_name to 'deleted'
+        #set AudioClips.is_banned to True
 
     #ensure not to select audio_clips that are too new
     maximum_when_created = get_datetime_now() - timedelta(seconds=settings.BAN_AUDIO_CLIP_AGE_SECONDS)

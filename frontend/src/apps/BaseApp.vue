@@ -11,10 +11,16 @@
     <div class="w-full h-0 relative">
         <TransitionFade>
             <div
-                v-if="pop_up_manager_store.getIsUserLogInSignUpOpen"
+                v-if="pop_up_manager_store.isUserLogInSignUpOpen"
                 class="absolute hidden lg:flex flex-row w-full h-[calc(100vh-4.5rem)] bg-theme-light/60 backdrop-blur"
             >
+                <!--keep v-click-outside UX expectation consistent vs. not losing data when accidentally clicking outside-->
+                <!--TODO: real solution is to use store or KeepAlive, but is low priority-->
                 <div
+                    v-click-outside="{
+                        var_name_for_element_bool_status: forceCloseLogInSignUp,
+                        refs_to_exclude: []
+                    }"
                     class="lg:w-2/6 xl:w-2/6 max-h-[90%] min-h-fit m-auto px-4 border border-theme-light-gray bg-theme-light shadow-xl rounded-lg overflow-y-auto"
                 >
                     <UserLogInSignUp
@@ -24,7 +30,7 @@
                 </div>
             </div>
             <div
-                v-else-if="pop_up_manager_store.getIsLoginRequiredPromptOpen"
+                v-else-if="pop_up_manager_store.isLoginRequiredPromptOpen"
                 class="absolute flex items-center w-full h-[calc(100vh-4.5rem)] bg-theme-light/60 backdrop-blur"
             >
                 <div
@@ -35,7 +41,8 @@
                     class="w-5/6 sm:w-fit max-h-[90%] min-h-fit m-auto px-4 pb-14 border border-theme-light-gray bg-theme-light shadow-xl rounded-lg"
                 >
                     <VLoginRequiredPrompt
-                        @is-open="forceCloseLoginRequiredPromptMenu()"
+                        @force-close="forceCloseLoginRequiredPromptMenu()"
+                        :prop-prompt-text="pop_up_manager_store.getLoginRequiredPromptText"
                     />
                 </div>
             </div>
@@ -84,13 +91,17 @@
         computed: {
         },
         methods: {
+            forceCloseLogInSignUp() : void {
+
+                this.pop_up_manager_store.toggleIsUserLogInSignUpOpen(false);
+            },
             forceCloseLoginRequiredPromptMenu() : void {
 
                 this.pop_up_manager_store.toggleIsLoginRequiredPromptOpen(false);
             },
             checkHasCookiesConsent() : void {
 
-                if(this.pop_up_manager_store.getIsLoggedIn === false || localStorage.getItem('user_consents_to_cookies') !== null){
+                if(this.pop_up_manager_store.isLoggedIn === false || localStorage.getItem('user_consents_to_cookies') !== null){
 
                     return;
                 }

@@ -248,15 +248,15 @@
                 await axios.get(url, {
                     signal: this.controller.signal
                 })
-                .then((response:any) => {
+                .then((result:any) => {
 
-                    if(response.data['data']['username'] !== this.username_string){
+                    if(result.data['data']['username'] !== this.username_string){
 
                         //don't do anything with stale requests
                         //luckily this edge case was caught
                         return;
 
-                    }else if(response.data['data']['exists'] === false){
+                    }else if(result.data['data']['exists'] === false){
 
                         this.username_is_ok = true;
                         this.username_validation_has_error = false;
@@ -324,9 +324,9 @@
                 data.append("username", this.username_string);
 
                 await axios.post(window.location.origin + "/api/users/username/set", data)
-                .then((response:any) => {
+                .then((result:any) => {
 
-                    if(response.data['data']['exists'] === false){
+                    if(result.data['data']['exists'] === false){
 
                         //doing this will refresh all open tabs/pages for us
                         this.page_refresh_trigger_store.$patch({
@@ -341,7 +341,7 @@
                         //username is taken
                         this.username_is_ok = false;
                         this.username_validation_has_error = true;
-                        this.username_validation_status_text = response.data['message'];
+                        this.username_validation_status_text = result.data['message'];
 
                         this.is_submitting = false;
                     }

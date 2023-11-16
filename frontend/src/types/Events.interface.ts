@@ -6,8 +6,6 @@ interface EventsTypes{
             id: number,
             generic_status_name: string,
         },
-        when_locked?: string,
-        is_replying?: boolean,
 }
 
 export default EventsTypes;

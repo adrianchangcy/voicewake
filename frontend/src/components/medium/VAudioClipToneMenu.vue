@@ -29,6 +29,9 @@
             >
                 <VDialogPlain
                     :propHasBorder="false"
+                    :prop-has-auto-space-logo="false"
+                    :prop-has-auto-space-title="false"
+                    :prop-has-auto-space-content="false"
                     class="mx-auto"
                 >
                     <template #title>

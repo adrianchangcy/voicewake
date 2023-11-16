@@ -35,6 +35,7 @@
             return {
                 notifications: [] as any[],
                 event: null as EventsAndAudioClipsTypes|null,
+
             };
         },
         watch: {
@@ -102,6 +103,7 @@
             console.log(Object.hasOwn(yolo, 'ho'));
             console.log('ho' in yolo);
             console.log(Object.hasOwn(Object.keys(yolo), 'ho'));
+
         },
     });
 </script>

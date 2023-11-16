@@ -2,7 +2,7 @@
     <div class="text-theme-black">
         <div
             :class="[
-                propHasAutoSpacing ? 'px-2 pb-2' : '',
+                propHasAutoSpaceLogo ? 'px-2 pb-2' : '',
                 'flex flex-col items-center text-center text-xl'
             ]"
         >
@@ -16,7 +16,7 @@
         >
             <div
                 :class="[
-                    propHasAutoSpacing ? 'px-4 py-2' : '',
+                    propHasAutoSpaceTitle ? 'px-4 py-2' : '',
                     'flex flex-col items-center text-xl font-medium'
                 ]"
             >
@@ -26,7 +26,7 @@
             </div>
             <div
                 :class="[
-                    propHasAutoSpacing ? 'p-4' : '',
+                    propHasAutoSpaceContent ? 'p-4' : '',
                     'text-base text-center'
                 ]"
             >
@@ -45,7 +45,15 @@
                 type: Boolean,
                 default: true
             },
-            propHasAutoSpacing: {
+            propHasAutoSpaceLogo: {
+                type: Boolean,
+                default: true
+            },
+            propHasAutoSpaceTitle: {
+                type: Boolean,
+                default: true
+            },
+            propHasAutoSpaceContent: {
                 type: Boolean,
                 default: true
             },

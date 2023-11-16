@@ -83,7 +83,7 @@ class EventReplyQueuesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EventReplyQueues
-        fields = ['when_locked', 'is_replying']
+        fields = ['event_id', 'when_locked', 'is_replying']
 
 
 

@@ -331,7 +331,7 @@
             },
             async isLoggedIn() : Promise<boolean> {
 
-                if(this.pop_up_manager_store.getIsLoggedIn === false){
+                if(this.pop_up_manager_store.isLoggedIn === false){
 
                     this.pop_up_manager_store.toggleIsLoginRequiredPromptOpen(true);
                     return false;
