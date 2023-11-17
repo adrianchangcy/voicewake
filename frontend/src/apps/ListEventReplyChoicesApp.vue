@@ -26,26 +26,23 @@
 
                 <!--search, loading dialogs, other dialogs-->
                 <div
-                    v-show="!event_reply_choices_store.hasEventReplyChoices && !is_reply_confirming"
+                    v-show="!is_searching && !event_reply_choices_store.hasEventReplyChoices && !is_reply_confirming"
                     class="w-full h-fit"
                 >
 
-                    <!--hide when searching so skeleton below can align according to main buttons of reply choice-->
-                    <TransitionFade>
-                        <VTitle
-                            v-show="!is_searching && !event_reply_choices_store.hasEventReplyChoices"
-                            propFontSize="l"
-                            class="pb-10"
-                        >
-                            <template #title>
-                                <div class="flex flex-col">
-                                    <span class="block w-full text-center">
-                                        Reply
-                                    </span>
-                                </div>
-                            </template>
-                        </VTitle>
-                    </TransitionFade>
+                    <!--title, duplicated to prevent UI jolting compared to other alternatives-->
+                    <VTitle
+                        propFontSize="l"
+                        class="w-full pb-10"
+                    >
+                        <template #title>
+                            <div class="flex flex-col">
+                                <span class="block w-full text-center">
+                                    Reply
+                                </span>
+                            </div>
+                        </template>
+                    </VTitle>
 
                     <!--content-->
                     <TransitionGroupFade
@@ -55,8 +52,9 @@
                         <!--can search-->
                         <div
                             v-show="canQueueNextEventReplyChoices && !event_reply_choices_store.isReplying"
-                            class="w-full h-fit"
+                            class="w-full h-fit flex flex-col"
                         >
+
                             <!--search-->
                             <VActionSpecial
                                 @click="queueNextEventReplyChoices()"
@@ -159,7 +157,7 @@
                                     </VDialogPlain>
 
                                     <VDialogPlain
-                                        v-else-if="event_reply_choices_store.getSharedDialogContext === 'daily_reply_limit_reached'"
+                                        v-else-if="event_reply_choices_store.getSharedDialogContext === 'event_reply_daily_limit_reached'"
                                         :prop-has-border="false"
                                         :prop-has-auto-space-logo="false"
                                         :prop-has-auto-space-title="false"
@@ -183,7 +181,7 @@
                         <!--is_replying dialog-->
                         <div
                             v-show="!isLoading && event_reply_choices_store.isReplying"
-                            class="w-full h-fit"
+                            class="w-full h-fit flex flex-col"
                         >
 
                             <!--dialog to complete or cancel unfinished reply before continuing-->
@@ -229,22 +227,24 @@
                         <!--loading dialogs-->
                         <div
                             v-show="isLoading && !is_searching"
-                            class="w-full h-40 flex items-center text-xl font-medium"
+                            class="w-full flex flex-col"
                         >
 
-                            <div
-                                v-show="is_event_cancelling"
-                                class="w-full flex flex-col"
-                            >
-                                <i class="fas fa-eraser block mx-auto animate-pulse" aria-hidden="true"></i>
-                                <span class="block mx-auto">Cancelling reply...</span>
-                            </div>
-                            <div
-                                v-show="is_event_expiring"
-                                class="w-full flex flex-col"
-                            >
-                                <i class="fas fa-eraser block mx-auto animate-pulse" aria-hidden="true"></i>
-                                <span class="block mx-auto">Processing expired event...</span>
+                            <div class="h-40 flex items-center text-xl font-medium">
+                                <div
+                                    v-show="is_event_cancelling"
+                                    class="w-full flex flex-col"
+                                >
+                                    <i class="fas fa-eraser block mx-auto animate-pulse" aria-hidden="true"></i>
+                                    <span class="block mx-auto">Cancelling reply...</span>
+                                </div>
+                                <div
+                                    v-show="is_event_expiring"
+                                    class="w-full flex flex-col"
+                                >
+                                    <i class="fas fa-eraser block mx-auto animate-pulse" aria-hidden="true"></i>
+                                    <span class="block mx-auto">Processing expired event...</span>
+                                </div>
                             </div>
                         </div>
                     </TransitionGroupFade>
@@ -317,8 +317,9 @@
                                 class="w-full"
                             >
                                 <!--must use v-if since EventCard cannot exist with null-->
+                                <!--must add same v-show condition to prevent unwanted rendering-->
                                 <EventCard
-                                    v-if="event_reply_choices_store.getMainEvent !== null"
+                                    v-if="event_reply_choices_store.getMainEvent !== null && !event_reply_choices_store.isReplying"
                                     @newIsLiked="event_reply_choices_store.newAudioClipIsLiked($event)"
                                     :propEvent="event_reply_choices_store.getMainEvent"
                                     :propShowTitle="true"

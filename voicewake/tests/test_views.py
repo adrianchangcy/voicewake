@@ -1004,6 +1004,15 @@ class CoreProcess_TestCase(TestCase):
             self.assertEqual(request.status_code, 400)
             print_function_name(request.content)
 
+            #check
+
+            result_data = (bytes(request.content).decode())
+            result_data = json.loads(result_data)
+
+            self.assertEqual(result_data['event_create_daily_limit_reached'], True)
+            self.assertTrue(Events.objects.count(), 1)
+            self.assertTrue(AudioClips.objects.count(), 1)
+
 
     def test_list_event_reply_choices_daily_limit_reached(self):
 
@@ -1066,8 +1075,7 @@ class CoreProcess_TestCase(TestCase):
                 locked_for_user=self.user1, event_id=sample_event_1.id, is_replying=False
             ).exists()
         )
-        self.assertEqual(result_data['data'], [])
-        self.assertEqual(result_data['daily_reply_limit_reached'], True)
+        self.assertEqual(result_data['event_reply_daily_limit_reached'], True)
         self.assertEqual(Events.objects.count(), 2)
         self.assertEqual(AudioClips.objects.count(), 3)
 

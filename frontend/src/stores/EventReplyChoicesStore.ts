@@ -8,7 +8,7 @@ const axios = require('axios');
 
 
 type CurrentStatuses = ""|"no_new_event_reply_choices"|"event_reply_choices_expired"|
-    "reply_cancelled"|"reply_expired"|"daily_reply_limit_reached";
+    "reply_cancelled"|"reply_expired"|"event_reply_daily_limit_reached";
 
 
 //this store resets when user logs out, since this is user-specific
@@ -215,11 +215,12 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                     return;
                 }
 
-                if(Object.hasOwn(error.response.data, 'daily_reply_limit_reached') === true){
+                if(Object.hasOwn(error.response.data, 'event_reply_daily_limit_reached') === true){
 
-                    this.updateSharedDialogContext('daily_reply_limit_reached');
+                    this.updateSharedDialogContext('event_reply_daily_limit_reached');
 
                     notify({
+                        icon: "fas fa-battery-empty",
                         title: "Reply limit reached",
                         text: error.response.data['message'],
                         type: "generic"

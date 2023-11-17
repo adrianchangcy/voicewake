@@ -295,9 +295,11 @@ export function getRandomNumber(min_value:number, max_value:number) : number {
 
 export function isPageAccessedByReload() : boolean {
 
-    const entries = performance.getEntriesByType("navigation");
-
     let is_reload = false;
+
+    const has_referrer = document.referrer.length > 0;
+
+    const entries = performance.getEntriesByType("navigation");
 
     entries.forEach((entry) => {
         if((entry as PerformanceNavigationTiming).type === "reload"){
@@ -305,7 +307,7 @@ export function isPageAccessedByReload() : boolean {
         }
     });
 
-    return is_reload;
+    return is_reload || has_referrer;
 }
 
 

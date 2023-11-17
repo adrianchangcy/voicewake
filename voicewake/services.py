@@ -1673,7 +1673,8 @@ class CreateAudioClips:
 
             return Response(
                 data={
-                    "message": "Daily event creation limit reached. Come back in " + get_pretty_datetime(cooldown_s) + ".",
+                    "message": "Come back in " + get_pretty_datetime(cooldown_s) + "!",
+                    "event_create_daily_limit_reached": True,
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )

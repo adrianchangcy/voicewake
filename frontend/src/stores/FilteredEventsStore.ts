@@ -8,8 +8,7 @@ import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.inte
 
 interface DefaultPageTypes {
     events: EventsAndAudioClipsTypes[],
-    stop_searching: boolean,
-    when_stopped_searching: string|null,
+    are_all_rows_fetched: boolean,
     last_selected_audio_clip: AudioClipsAndLikeDetailsTypes|null,
     next_url: string,
     back_url: string,
@@ -51,11 +50,12 @@ export function useFilteredEventsStore(is_user_page:boolean){
             audio_clip_role_names: ["originator", "responder"],
             pretty_audio_clip_role_names: ["Started", "Replied"],
 
-            //when null, i.e. "any", our index is 0, which is fine, since audio_clip_tones.id in db starts from 1
-            current_audio_clip_tone_id: 0,
+            //when null, i.e. "any", our index is -1, which is fine, since audio_clip_tones.id in db starts from 1
+            current_audio_clip_tone_id: -1,
+            default_audio_clip_tone_id_when_null: -1,
             current_audio_clip_tone: null as AudioClipTonesTypes|null,
 
-            stop_searching_duration_s: 10,
+            failed_fetch_cooldown_s: 2,
             last_scroll_y: 0,
         }),
         getters: {
@@ -65,31 +65,70 @@ export function useFilteredEventsStore(is_user_page:boolean){
             },
             getEventsForBrowsing: (state):EventsAndAudioClipsTypes[] => {
 
-                const args_list = [
-                    state.current_event_generic_status_name_index,
-                    state.current_main_filter_index,
-                    state.current_timeframe_index,
-                    state.current_audio_clip_role_name_index,
-                    state.current_audio_clip_tone_id,
-                ];
-
                 //tried checking using the proper way, i.e. manual 'if' checks going deeper and deeper
                 //that seemed to ruin reactivity
                 //beware that this solution here may hide errors
                 try{
 
-                    return state.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]].events;
+                    return state.filtered_events_structure[
+                        state.current_event_generic_status_name_index
+                    ][
+                        state.current_main_filter_index
+                    ][
+                        state.current_timeframe_index
+                    ][
+                        state.current_audio_clip_role_name_index
+                    ][
+                        state.current_audio_clip_tone_id
+                    ][
+                        'events'
+                    ];
 
                 }catch(error){
 
                     return [];
                 }
             },
+            canStopFetching: (state):boolean => {
+    
+                try{
+
+                    return state.filtered_events_structure[
+                        state.current_event_generic_status_name_index
+                    ][
+                        state.current_main_filter_index
+                    ][
+                        state.current_timeframe_index
+                    ][
+                        state.current_audio_clip_role_name_index
+                    ][
+                        state.current_audio_clip_tone_id
+                    ][
+                        'are_all_rows_fetched'
+                    ];
+    
+                }catch(error){
+    
+                    return false;
+                }
+            },
             getLastSelectedAudioClip: (state):AudioClipsAndLikeDetailsTypes|null => {
 
                 try{
 
-                    return state.filtered_events_structure[state.current_event_generic_status_name_index][state.current_main_filter_index][state.current_timeframe_index][state.current_audio_clip_role_name_index][state.current_audio_clip_tone_id].last_selected_audio_clip;
+                    return state.filtered_events_structure[
+                        state.current_event_generic_status_name_index
+                    ][
+                        state.current_main_filter_index
+                    ][
+                        state.current_timeframe_index
+                    ][
+                        state.current_audio_clip_role_name_index
+                    ][
+                        state.current_audio_clip_tone_id
+                    ][
+                        'last_selected_audio_clip'
+                    ];
 
                 }catch(error){
 
@@ -172,6 +211,10 @@ export function useFilteredEventsStore(is_user_page:boolean){
 
                 return this.current_main_filter_index === index;
             },
+            getSelectedMainFilterFromIndex(current_main_filter_index:number){
+
+                return this.main_filters[current_main_filter_index];
+            },
             async updateCurrentTimeframeIndex(new_index:number) : Promise<void> {
 
                 if(new_index >= this.timeframes.length){
@@ -201,13 +244,13 @@ export function useFilteredEventsStore(is_user_page:boolean){
             async updateCurrentAudioClipTone(audio_clip_tone:AudioClipTonesTypes|null) : Promise<void> {
 
                 this.current_audio_clip_tone = audio_clip_tone;
-                this.current_audio_clip_tone_id = audio_clip_tone === null ? 0 : audio_clip_tone.id;
+                this.current_audio_clip_tone_id = audio_clip_tone === null ? this.default_audio_clip_tone_id_when_null : audio_clip_tone.id;
             },
             isSameCurrentAudioClipTone(audio_clip_tone:AudioClipTonesTypes|null) : boolean {
 
                 if(audio_clip_tone === null){
 
-                    return this.current_audio_clip_tone_id === 0;
+                    return this.current_audio_clip_tone_id === this.default_audio_clip_tone_id_when_null;
 
                 }else{
 
@@ -256,35 +299,13 @@ export function useFilteredEventsStore(is_user_page:boolean){
 
                 const target_level = this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]];
 
-                if(target_level.stop_searching === false){
+                //check if fetching is permanently stopped
+                if(target_level.are_all_rows_fetched === true){
 
-                    //can search
-                    return true;
+                    return false;
                 }
 
-                //has stopped searching before
-                //if when_stopped_searching is too far in the past, reset and return true
-
-                const datetime_object = new Date();
-                let when_stopped_searching_difference_s = 0;
-
-                const datetime_now = new Date(target_level.when_stopped_searching!);
-
-                when_stopped_searching_difference_s = datetime_object.getTime() - datetime_now.getTime();
-
-                when_stopped_searching_difference_s = when_stopped_searching_difference_s / 1000;
-
-                if(when_stopped_searching_difference_s >= this.stop_searching_duration_s){
-
-                    //time has passed, can search
-                    this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]]['stop_searching'] = false;
-                    this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]]['when_stopped_searching'] = null;
-
-                    return true;
-                }
-
-                //time has not yet passed
-                return false;
+                return true;
             },
             async insertEvents(
                 current_event_generic_status_name_index:number,
@@ -302,13 +323,22 @@ export function useFilteredEventsStore(is_user_page:boolean){
                 //i.e. data from filter choices previously but new choices were selected
 
                 //stop searching if received no events
-                if(new_events.length === 0){
+                if(
+                    new_events.length === 0 &&
+                    this.main_filters[current_main_filter_index] === 'Latest' && next_or_back === 'next'
+                ){
 
-                    const datetime_now = new Date().toISOString();
-
-                    //update "stop_searching", "when_stopped_searching"
-                    this.filtered_events_structure[current_event_generic_status_name_index][current_main_filter_index][current_timeframe_index][current_audio_clip_role_name_index][current_audio_clip_tone_id]['stop_searching'] = true;
-                    this.filtered_events_structure[current_event_generic_status_name_index][current_main_filter_index][current_timeframe_index][current_audio_clip_role_name_index][current_audio_clip_tone_id]['when_stopped_searching'] = datetime_now;
+                    this.filtered_events_structure[
+                        current_event_generic_status_name_index
+                    ][
+                        current_main_filter_index
+                    ][
+                        current_timeframe_index
+                    ][
+                        current_audio_clip_role_name_index
+                    ][
+                        current_audio_clip_tone_id
+                    ]['are_all_rows_fetched'] = true;
 
                     return;
                 }
@@ -338,15 +368,34 @@ export function useFilteredEventsStore(is_user_page:boolean){
 
                     new_events.forEach((event:EventsAndAudioClipsTypes)=>{
 
-                        this.filtered_events_structure[current_event_generic_status_name_index][current_main_filter_index][current_timeframe_index][current_audio_clip_role_name_index][current_audio_clip_tone_id]['events'].push(event);
+                        this.filtered_events_structure[
+                            current_event_generic_status_name_index
+                        ][
+                            current_main_filter_index
+                        ][
+                            current_timeframe_index
+                        ][
+                            current_audio_clip_role_name_index
+                        ][
+                            current_audio_clip_tone_id
+                        ]['events'].push(event);
                     });
                 
                 }else if(next_or_back === "back"){
 
-                    //backwards
                     for(let x = (new_events.length - 1); x >= 0; x--){
 
-                        this.filtered_events_structure[current_event_generic_status_name_index][current_main_filter_index][current_timeframe_index][current_audio_clip_role_name_index][current_audio_clip_tone_id]['events'].splice(0, 0, new_events[x]);
+                        this.filtered_events_structure[
+                            current_event_generic_status_name_index
+                        ][
+                            current_main_filter_index
+                        ][
+                            current_timeframe_index
+                        ][
+                            current_audio_clip_role_name_index
+                        ][
+                            current_audio_clip_tone_id
+                        ]['events'].splice(0, 0, new_events[x]);
                     }
                 }
 
@@ -354,12 +403,33 @@ export function useFilteredEventsStore(is_user_page:boolean){
 
                 if(next_url !== ''){
 
-                    this.filtered_events_structure[current_event_generic_status_name_index][current_main_filter_index][current_timeframe_index][current_audio_clip_role_name_index][current_audio_clip_tone_id]['next_url'] = next_url;
+                    this.filtered_events_structure[
+                        current_event_generic_status_name_index
+                    ][
+                        current_main_filter_index
+                    ][
+                        current_timeframe_index
+                    ][
+                        current_audio_clip_role_name_index
+                    ][
+                        current_audio_clip_tone_id
+                    ]['next_url'] = next_url;
+
                 }
 
                 if(back_url !== ''){
 
-                    this.filtered_events_structure[current_event_generic_status_name_index][current_main_filter_index][current_timeframe_index][current_audio_clip_role_name_index][current_audio_clip_tone_id]['back_url'] = back_url;
+                    this.filtered_events_structure[
+                        current_event_generic_status_name_index
+                    ][
+                        current_main_filter_index
+                    ][
+                        current_timeframe_index
+                    ][
+                        current_audio_clip_role_name_index
+                    ][
+                        current_audio_clip_tone_id
+                    ]['back_url'] = back_url;
                 }
             },
             async initialiseFilteredEventsStructure(
@@ -392,8 +462,7 @@ export function useFilteredEventsStore(is_user_page:boolean){
 
                     this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]] = {
                         'events': [],
-                        'stop_searching': false,
-                        'when_stopped_searching': null,
+                        'are_all_rows_fetched': false,
                         'last_selected_audio_clip': null,
                         'next_url': '',
                         'back_url': '',
