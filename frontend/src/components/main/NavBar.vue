@@ -7,7 +7,6 @@
             <!--home-->
             <div class="col-start-1 col-span-1">
                 <VActionTextOnly
-                    @click="scheduleHomePageStoreResetNextRevisit()"
                     propElement="a"
                     propFontSize="m"
                     href="/"
@@ -512,10 +511,6 @@
 
                     this.is_currently_log_in_sign_up_static_page = false;
                 }
-            },
-            scheduleHomePageStoreResetNextRevisit() : void {
-
-                localStorage.setItem('reset_home_page_audio_clip_stores', JSON.stringify(true));
             },
         },
         beforeMount(){

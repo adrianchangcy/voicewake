@@ -198,7 +198,7 @@ class CreateAudioClipsAPISerializer(serializers.Serializer):
         min_length=1,
         max_length=200, #follow Events.event_name
     )
-    audio_clip_tone_id = serializers.IntegerField()
+    audio_clip_tone_id = serializers.IntegerField(min_value=1)
     audio_file = serializers.FileField(
         allow_empty_file=False
     )

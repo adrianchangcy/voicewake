@@ -1111,16 +1111,20 @@ class BrowseEventsAPI(generics.GenericAPIView):
 
         for x in range(0, len(audio_clips)):
 
-            if audio_clips[x].audio_clip_role.audio_clip_role_name != audio_clip_role_name:
+            if audio_clips[x].audio_clip_role.audio_clip_role_name == audio_clip_role_name:
 
-                result['next_cursor_token'] = encode_cursor_token({
-                    'when_created': audio_clips[last_relevant_index].when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-                    'id': audio_clips[last_relevant_index].id,
-                })
+                #edge case awareness
+                #cursor is most accurate when at least 1 row with specified audio_clip_role_name is guaranteed to exist
+                last_relevant_index = x
+
+            else:
 
                 break
 
-            last_relevant_index = x
+        result['next_cursor_token'] = encode_cursor_token({
+            'when_created': audio_clips[last_relevant_index].when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+            'id': audio_clips[last_relevant_index].id,
+        })
 
         return result
 
@@ -1211,7 +1215,7 @@ class BrowseEventsAPI(generics.GenericAPIView):
 
         if len(result['rows']) > 0:
 
-            #if we have > 0 rows, it means we also have new cursor tokens
+            #if we have > 0 rows, even with 1 row, both next and back cursor tokens will exist
             next_url = next_url + "/" + result['next_cursor_token']
             back_url = back_url + "/" + result['back_cursor_token']
 
@@ -1537,9 +1541,8 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'data': [],
-                    'message': "Daily reply limit reached. Come back in " + get_pretty_datetime(cooldown_s) + ".",
-                    'daily_reply_limit_reached': True,
+                    'message': "Come back in " + get_pretty_datetime(cooldown_s) + "!",
+                    'event_reply_daily_limit_reached': True,
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )

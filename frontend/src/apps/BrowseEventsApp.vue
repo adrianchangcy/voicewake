@@ -5,7 +5,7 @@
         <VUserCard
             v-if="propIsUserProfilePage"
             :prop-username="user_profile_username"
-            class="pt-8 pb-14"
+            class="py-8"
         />
 
         <!--sorting options-->
@@ -18,28 +18,33 @@
         >
 
             <!--filter-->
-            <div ref="open_close_filter_menu_button">
+            <div>
 
                 <!--open/close filter menu-->
-                <VAction
-                    @click="toggleFilterMenu()"
-                    prop-element="button"
-                    type="button"
-                    prop-element-size="s"
-                    prop-font-size="s"
-                    :prop-is-icon-only="false"
-                    :prop-is-enabled="true"
-                    class="w-fit mx-auto px-4 flex-row"
+                <div
+                    ref="open_close_filter_menu_button"
+                    class="w-fit mx-auto"
                 >
-                    <span class="pr-2">Filters</span>
-                    <i
-                        :class="[
-                            is_filter_menu_open ? '-rotate-180' : 'rotate-0',
-                            'fas text-xs fa-chevron-down transition-transform'
-                        ]"
-                        aria-hidden="true"
-                    ></i>
-                </VAction>
+                    <VAction
+                        @click="toggleFilterMenu()"
+                        prop-element="button"
+                        type="button"
+                        prop-element-size="s"
+                        prop-font-size="s"
+                        :prop-is-icon-only="false"
+                        :prop-is-enabled="true"
+                        class="px-4 flex-row"
+                    >
+                        <span class="pr-2">Filters</span>
+                        <i
+                            :class="[
+                                is_filter_menu_open ? '-rotate-180' : 'rotate-0',
+                                'fas text-xs fa-chevron-down transition-transform'
+                            ]"
+                            aria-hidden="true"
+                        ></i>
+                    </VAction>
+                </div>
 
                 <!--filter menu-->
                 <div class="h-0 relative">
@@ -179,13 +184,13 @@
             </TransitionFade>
 
             <!--dialogs-->
-            <div class="pt-8 relative">
+            <div class="relative">
 
-                <TransitionGroupFade :prop-has-absolute="true">
+                <TransitionFade>
 
-                    <!--no events-->
+                    <!--no events at all-->
                     <VDialogPlain
-                        v-show="canShowEventsEmptyMessage || canShowNoNewEventsMessage"
+                        v-if="canShowEventsEmptyMessage"
                         :prop-has-border="false"
                         :prop-has-auto-space-logo="false"
                         :prop-has-auto-space-title="false"
@@ -196,22 +201,41 @@
                             <i class="far fa-face-meh-blank" aria-hidden="true"></i>
                         </template>
                         <template #title>
-                            <span v-show="canShowEventsEmptyMessage">No recordings found.</span>
-                            <span v-show="canShowNoNewEventsMessage">You've reached the end.</span>
+                            <span>No events found.</span>
                         </template>
                         <template #content>
                             <span>The filters can be changed to explore other content!</span>
                         </template>
                     </VDialogPlain>
 
-                    <!--reconsider loading more audio_clips -->
+                    <!--no events left to load-->
                     <VDialogPlain
-                        v-show="canPauseScrolling"
+                        v-else-if="canShowNoNewEventsMessage"
+                        :prop-has-border="false"
+                        :prop-has-auto-space-logo="false"
+                        :prop-has-auto-space-title="false"
+                        :prop-has-auto-space-content="false"
+                        class="w-full pt-8"
+                    >
+                        <template #logo>
+                            <i class="far fa-face-meh-blank" aria-hidden="true"></i>
+                        </template>
+                        <template #title>
+                            <span>You've reached the end.</span>
+                        </template>
+                        <template #content>
+                            <span>The filters can be changed to explore other content!</span>
+                        </template>
+                    </VDialogPlain>
+
+                    <!--reconsider loading more events-->
+                    <VDialogPlain
+                        v-else-if="canPauseScrolling"
                         :prop-has-border="true"
                         :prop-has-auto-space-logo="false"
                         :prop-has-auto-space-title="true"
                         :prop-has-auto-space-content="true"
-                        class="w-full"
+                        class="w-full pt-8"
                     >
                         <template #title>
                             <span>
@@ -232,12 +256,46 @@
                                     type="button"
                                     class="w-full"
                                 >
-                                    <span class="mx-auto">Load more recordings</span>
+                                    <span class="mx-auto">Load more events</span>
                                 </VActionSpecial>
                             </div>
                         </template>
                     </VDialogPlain>
-                </TransitionGroupFade>
+
+                    <!--retry-->
+                    <VDialogPlain
+                        v-else-if="canShowManualFetchRetry"
+                        :prop-has-border="true"
+                        :prop-has-auto-space-logo="false"
+                        :prop-has-auto-space-title="true"
+                        :prop-has-auto-space-content="true"
+                        class="w-full pt-8"
+                    >
+                        <template #title>
+                            <span>
+                                Unable to load events.
+                            </span>
+                        </template>
+                        <template #content>
+                            <div class="flex flex-col gap-4">
+                                <span>
+                                    An error had occurred.
+                                </span>
+                                <VActionSpecial
+                                    @click="continueScrolling()"
+                                    prop-element="button"
+                                    prop-element-size="s"
+                                    prop-font-size="s"
+                                    :prop-is-icon-only="false"
+                                    type="button"
+                                    class="w-full"
+                                >
+                                    <span class="mx-auto">Load more events</span>
+                                </VActionSpecial>
+                            </div>
+                        </template>
+                    </VDialogPlain>
+                </TransitionFade>
             </div>
         </div>
 
@@ -267,7 +325,6 @@
     import EventCard from '@/components/main/EventCard.vue';
     import EventCardSkeleton from '@/components/skeleton/EventCardSkeleton.vue';
     import VPlayback from '@/components/medium/VPlayback.vue';
-    import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
     import VAudioClipToneMenu from '@/components/medium/VAudioClipToneMenu.vue';
     import VAction from '@/components/small/VAction.vue';
@@ -281,7 +338,6 @@
 
 <script lang="ts">
     import { defineComponent, } from 'vue';
-    import { notify } from 'notiwind';
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
     import { useCurrentlyPlayingAudioClipStore } from '@/stores/CurrentlyPlayingAudioClipStore';
     import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
@@ -309,7 +365,7 @@
                 can_autoplay: true,
 
                 played_audio_clips_by_id: [] as number[],
-                played_audio_clips_quantity_to_pause_scrolling: 10,
+                played_audio_clips_quantity_to_pause_scrolling: 2,
                 can_pause_scrolling: false,
                 scrolling_timeout: window.setTimeout(()=>{}, 0),
                 scrolling_checkpoint_px: 0,
@@ -319,8 +375,8 @@
 
                 infinite_scroll_observer: new IntersectionObserver(this.getInfiniteScrollCallback(), {threshold: 1}),
                 is_fetching: false,
-                is_observer_on_cooldown: false,
                 must_skip_observer_once: true,
+                is_error_on_previous_fetch: false,
             };
         },
         props: {
@@ -336,18 +392,36 @@
             },
             canPauseScrolling() : boolean {
 
-                return this.is_fetching === false && this.can_pause_scrolling === true;
+                return (
+                    this.is_fetching === false &&
+                    this.can_pause_scrolling === true &&
+                    this.filtered_events_store.canStopFetching === false
+                );
             },
             canShowEventsEmptyMessage() : boolean {
 
-                return this.is_fetching === false && this.filtered_events_store.getEventsForBrowsing.length === 0;
+                return (
+                    this.filtered_events_store.getEventsForBrowsing.length === 0 &&
+                    this.is_fetching === false &&
+                    this.filtered_events_store.canStopFetching === true &&
+                    this.is_error_on_previous_fetch === false
+                );
             },
             canShowNoNewEventsMessage() : boolean {
 
                 return (
-                    this.is_fetching === false &&
                     this.filtered_events_store.getEventsForBrowsing.length > 0 &&
-                    this.is_observer_on_cooldown === true
+                    this.is_fetching === false &&
+                    this.filtered_events_store.canStopFetching === true &&
+                    this.is_error_on_previous_fetch === false
+                );
+            },
+            canShowManualFetchRetry() : boolean {
+                return (
+                    this.filtered_events_store.getEventsForBrowsing.length > 0 &&
+                    this.is_fetching === false &&
+                    this.filtered_events_store.canStopFetching === false &&
+                    this.is_error_on_previous_fetch === true
                 );
             },
             getVPlaybackTeleportId() : string {
@@ -381,6 +455,9 @@
             ): Promise<void> {
 
                 this.is_fetching = true;
+
+                //if we can manage to call this, scrolling can no longer need to be paused
+                this.can_pause_scrolling = false;
 
                 //initialise to ensure object is ready
                 if(is_first_page === true){
@@ -463,12 +540,7 @@
                 }
 
                 await axios.get(full_url)
-                .then(async (results: any) => {
-
-                    if(results.data['data'].length === 0){
-
-                        this.is_observer_on_cooldown = true;
-                    }
+                .then(async (result:any)=>{
 
                     await this.filtered_events_store.insertEvents(
                         current_event_generic_status_name_index,
@@ -477,18 +549,19 @@
                         current_audio_clip_role_name_index,
                         current_audio_clip_tone_id,
                         next_or_back,
-                        results.data['data'],
-                        results.data['next_url'],
-                        results.data['back_url'],
+                        result.data['data'],
+                        result.data['next_url'],
+                        result.data['back_url'],
                     );
 
-                }).catch(() => {
+                    //put this after insertEvents(), for potential are_all_rows_fetched=true
+                    this.is_error_on_previous_fetch = false;
 
-                    notify({
-                        title: "Error",
-                        text: "Oops, something is not right. Try again later.",
-                        type: "error"
-                    }, 3000);
+                }).catch(async()=>{
+
+                    this.is_error_on_previous_fetch = true;
+
+                    //no need to notify
 
                 }).finally(()=>{
 
@@ -529,7 +602,7 @@
                 full_url += "/" + this.filtered_events_store.getAudioClipRoleNames[current_audio_clip_role_name_index];
 
                 //audio_clip_tone
-                if(current_audio_clip_tone_id > 0){
+                if(current_audio_clip_tone_id > this.filtered_events_store.default_audio_clip_tone_id_when_null){
 
                     full_url += "/" + current_audio_clip_tone_id.toString();
                 }
@@ -591,12 +664,13 @@
                     this.can_pause_scrolling = true;
                 }
             },
-            getInfiniteScrollCallback() : ()=>void {
+            getInfiniteScrollCallback() : ()=>Promise<void> {
 
                 return async ()=>{
                     if(
                         this.is_fetching === true ||
                         this.can_pause_scrolling === true ||
+                        this.is_error_on_previous_fetch === true ||
                         this.filtered_events_store.getEventsForBrowsing.length === 0
                     ){
 
@@ -623,8 +697,6 @@
                         return;
                     }
 
-                    this.is_observer_on_cooldown = false;
-
                     //on filter change, we already run getEvents()
                     //upon reaching here, that first page fetch is already done
                     this.getEvents(
@@ -642,11 +714,10 @@
 
                 if(
                     this.propIsUserProfilePage === false &&
-                    (localStorage.getItem('reset_home_page_audio_clip_stores') !== null || isPageAccessedByReload() === true)
+                    isPageAccessedByReload() === true
                 ){
 
                     await this.filtered_events_store.partialResetStore();
-                    localStorage.removeItem('reset_home_page_audio_clip_stores');
                 }
             },
             async handleWindowResize() : Promise<void> {

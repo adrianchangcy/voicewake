@@ -318,11 +318,23 @@
                         error_text = error.response.data['message'];
                     }
 
-                    notify({
-                        title: this.propIsOriginator === true ? 'Starting event failed' : 'Creating reply failed',
-                        text: error_text,
-                        type: "error"
-                    }, 4000);
+                    if(Object.hasOwn(error.response.data, 'event_create_daily_limit_reached') === true){
+
+                        notify({
+                            icon: "fas fa-battery-empty",
+                            title: 'Creation limit reached',
+                            text: error_text,
+                            type: "generic"
+                        }, 4000);
+
+                    }else{
+
+                        notify({
+                            title: this.propIsOriginator === true ? 'Starting event failed' : 'Creating reply failed',
+                            text: error_text,
+                            type: "error"
+                        }, 4000);
+                    }
                 });
             },
             getPreparedFileForSubmit() : File {
