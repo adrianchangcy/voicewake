@@ -88,7 +88,7 @@
                 this.can_observer_fetch = false;
                 this.has_no_audio_clips_left_to_fetch = false;
 
-                await axios.get(window.location.origin + '/api/users/banned-audio_clips/get/' + this.current_page.toString())
+                await axios.get(window.location.origin + '/api/users/banned-audio-clips/get/' + this.current_page.toString())
                 .then((result:any) => {
 
                     console.log(result.data['data'].length);

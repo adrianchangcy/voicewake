@@ -5,6 +5,7 @@ from django.db import transaction
 from django.utils.cache import patch_cache_control
 from django.utils.decorators import method_decorator
 from django.db.models import Prefetch
+from django.db.utils import IntegrityError
 
 #auth
 from django.contrib.auth import get_user_model, login, logout
@@ -55,6 +56,9 @@ class TestAPI(generics.GenericAPIView):
 
 
     def get(self, request, *args, **kwargs):
+
+
+
 
         return Response(
             data={
@@ -108,7 +112,7 @@ class AudioClipReportsAPI(generics.GenericAPIView):
                 data={
                     'message': 'Recording does not exist.',
                 },
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_404_NOT_FOUND
             )
 
         #no need to check whether audio_clip belongs to user
@@ -146,54 +150,76 @@ class UserBannedAudioClipsAPI(generics.GenericAPIView):
     serializer_class = AudioClipsSerializer
     permission_classes = [IsAuthenticated]
 
-    #no post() here, once an audio_clip is banned, nobody can do anything
-    #cronjob does the banning
+    #no post() here, cronjob does the banning
 
-    #user wants to see their own banned audio_clips
-    def get(self, request, *args, **kwargs):
 
-        if 'page' not in kwargs:
+    def get_latest_banned_audio_clips(self, next_or_back:Literal['next', 'back'], cursor_token:str=''):
+
+        #we could simply implement when_banned
+        #but due to deadlines, there was no time available to retest BrowseEventsAPI
+        #using when_banned did increase query time
+
+        #this is sufficient, as long as:
+            #being banned is the last possible step to trigger last_modified
+
+        full_sql = '''
+            SELECT * FROM audio_clips
+            INNER JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
+            WHERE is_banned IS TRUE
+            AND audio_clips.user_id = 5
+            AND generic_statuses.generic_status_name = 'deleted'
+            AND (
+                audio_clips.last_modified <= now()
+                AND
+                (audio_clips.id < 350000 OR audio_clips.last_modified < now())
+            )
+            ORDER BY audio_clips.last_modified DESC, audio_clips.id DESC
+			LIMIT 10
+        '''
+
+        full_params = [
+            self.request.user.id,
+            'deleted',
+            get_datetime_now(),
+            1,
+            get_datetime_now(),
+            settings.BAN_AUDIO_CLIP_QUANTITY_PER_PAGE,
+        ]
+
+        pass
+
+
+    def get(self,request, *args, **kwargs):
+
+        serializer = UserBannedAudioClipsAPISerializer(data=kwargs, many=False)
+
+        if serializer.is_valid() is False:
 
             return Response(
                 data={
-                    'message': 'No page specified in URL.'
+                    'message': get_serializer_error_message(serializer),
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        offset_quantity = settings.BAN_AUDIO_CLIP_QUANTITY_PER_PAGE * (kwargs['page'] - 1)
+        new_data = serializer.validated_data
 
-        qs = AudioClips.objects.select_related(
-            'user', 'audio_clip_tone'
-        ).filter(
-            user=request.user
-        ).order_by('-when_created')[
-            offset_quantity : offset_quantity + settings.BAN_AUDIO_CLIP_QUANTITY_PER_PAGE
-        ]
+        #check username
 
-        banned_audio_clips = []
+        if self.request.user.username.lower() != new_data['username']:
 
-        if len(qs) > 0:
+            return Response(
+                data={
+                    'message': 'You can only view your own banned recordings.'
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
 
-            banned_audio_clips = AudioClipsSerializer(
-                qs,
-                many=True
-            ).data
 
-        response = Response(
-            data={
-                'data': banned_audio_clips,
-                'message': ''
-            },
-            status=status.HTTP_200_OK
-        )
 
-        patch_cache_control(
-            response,
-            no_cache=True, no_store=True, must_revalidate=True, max_age=0
-        )
 
-        return response
+
 
 
 
@@ -341,7 +367,7 @@ class UsersUsernameAPI(generics.GenericAPIView):
                     'username': new_data['username'],
                     'exists': exists
                 },
-                'message': 'Request successful.',
+                'message': '',
             },
             status.HTTP_200_OK
         )
@@ -2054,36 +2080,8 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
 
         new_data = serializer.validated_data
 
-        try:
-
-            target_audio_clip = AudioClips.objects.get(pk=new_data['audio_clip_id'])
-
-            #check if audio_clip is banned
-            if target_audio_clip.is_banned is True:
-
-                return Response(
-                    data={
-                        'message': 'This recording has been banned.',
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-        except AudioClips.DoesNotExist:
-
-            return Response(
-                data={
-                    'message': 'This recording no longer exists.',
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        #these solutions didn't help prevent race condition
-            #direct .filter().update(like_count=F('like_count') + 1)
-            #like_count = F('like_count) + 1; .save()
-        #what worked:
-            #using trigger that also checks for OLD.is_liked != NEW.is_liked during INSERT prevents race condition
-        #peculiar:
-            #with/without trigger, both at Locust had yielded the same response times (avg. 17000ms)
+        #initially had checks on whether audio_clip exists, and whether it is already banned
+        #instead, we now let db catch the error for us, because these checks are unnecessary in 99% of all cases
 
         #start
 
@@ -2110,7 +2108,8 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
 
             if type(e.__context__) == UniqueViolation:
 
-                #this is no big deal, as unique constraint has just done its job of protecting us from duplicates
+                #this is no big deal
+                #catches FK duplicates and when FK doesn't exist
                 pass
 
             else:
@@ -2141,6 +2140,17 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
             },
             status=status.HTTP_200_OK
         )
+
+        #these solutions didn't help prevent race condition
+            #direct .filter().update(like_count=F('like_count') + 1)
+            #like_count = F('like_count) + 1; .save()
+        #what worked:
+            #using trigger that also checks for OLD.is_liked != NEW.is_liked during INSERT prevents race condition
+        #peculiar:
+            #with/without trigger, both at Locust had yielded the same response times (avg. 17000ms)
+
+
+
 
 
 

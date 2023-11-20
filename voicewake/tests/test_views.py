@@ -48,12 +48,67 @@ class Random_TestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
-        pass
+        cls.user0 = get_user_model().objects.create_user(username='user0', email='user0@gmail.com')
+        cls.user1 = get_user_model().objects.create_user(username='user1', email='user1@gmail.com')
+        cls.user2 = get_user_model().objects.create_user(username='user2', email='user2@gmail.com')
+
+        cls.user0 = get_user_model().objects.get(username_lowercase="user0")
+        cls.user1 = get_user_model().objects.get(username_lowercase="user1")
+        cls.user2 = get_user_model().objects.get(username_lowercase="user2")
+
+        cls.user0.is_active = True
+        cls.user1.is_active = True
+        cls.user2.is_active = True
+
+        cls.user0.save()
+        cls.user1.save()
+        cls.user2.save()
+
+        cls.user0.refresh_from_db()
+        cls.user1.refresh_from_db()
+        cls.user2.refresh_from_db()
+
+        #audio file
+        cls.audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/audio_can_overwrite.mp3')
+        cls.audio_file = open(cls.audio_file_full_path, 'rb')
+        cls.audio_file = SimpleUploadedFile(cls.audio_file.name, cls.audio_file.read(), 'audio/mp3')
+
+        #dummy file
+        cls.dummy_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/dummy_file.txt')
+        cls.dummy_file = open(cls.dummy_file_full_path, 'rb')
+        cls.dummy_file = SimpleUploadedFile(cls.dummy_file.name, cls.dummy_file.read(), 'audio/mp3')
+
+        cls.audio_file_path = "/audio_test.mp3"
+        cls.audio_volume_peaks = [
+            0.32, 0.47, 0.76, 0.75, 0.79, 0.59, 0.78, 0.83, 0.85, 0.77,
+            0.62, 0.69, 0.97, 0.96, 0.97, 0.96, 0.96, 0.63, 0.47, 0.0
+        ]
+        cls.audio_duration_s = 26
+        cls.audio_clip_tone = AudioClipTones.objects.first()
 
 
     def test_random(self):
 
         pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -468,35 +523,51 @@ class System_TestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
-        cls.user_1_email = "someemail@gmail.com"
-        cls.user_1_username = "someemail"
-        cls.user_1_password = "abc"
+        cls.user0 = get_user_model().objects.create_user(username='user0', email='user0@gmail.com')
+        cls.user1 = get_user_model().objects.create_user(username='user1', email='user1@gmail.com')
+        cls.user2 = get_user_model().objects.create_user(username='user2', email='user2@gmail.com')
 
-        cls.user_2_email = "someemail2@gmail.com"
-        cls.user_2_username = "someemail2"
-        cls.user_2_password = "abc2"
+        cls.user0 = get_user_model().objects.get(username_lowercase="user0")
+        cls.user1 = get_user_model().objects.get(username_lowercase="user1")
+        cls.user2 = get_user_model().objects.get(username_lowercase="user2")
 
-        #prepare data
-        #we put it here so that our new account below is not involved
-        cls.prepare_test_data_class = PrepareTestData(for_test=True)
-        cls.prepare_test_data_class.do_quick_start(1)
+        cls.user0.is_active = True
+        cls.user1.is_active = True
+        cls.user2.is_active = True
 
-        #sign up
-        #API already works, as tested in other test cases
-        get_user_model().objects.create_user(cls.user_1_email, cls.user_1_username)
-        get_user_model().objects.create_user(cls.user_2_email, cls.user_2_username)
+        cls.user0.save()
+        cls.user1.save()
+        cls.user2.save()
 
-        cls.user_1_instance = get_user_model().objects.get(email=cls.user_1_email)
-        cls.user_2_instance = get_user_model().objects.get(email=cls.user_2_email)
+        cls.user0.refresh_from_db()
+        cls.user1.refresh_from_db()
+        cls.user2.refresh_from_db()
 
-        #set is_active=True for login success
-        cls.user_1_instance.is_active = True
-        cls.user_1_instance.save()
-        cls.user_1_instance.refresh_from_db()
+        #audio file
+        cls.audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/audio_can_overwrite.mp3')
+        cls.audio_file = open(cls.audio_file_full_path, 'rb')
+        cls.audio_file = SimpleUploadedFile(cls.audio_file.name, cls.audio_file.read(), 'audio/mp3')
 
-        cls.user_2_instance.is_active = True
-        cls.user_2_instance.save()
-        cls.user_2_instance.refresh_from_db()
+        #dummy file
+        cls.dummy_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/dummy_file.txt')
+        cls.dummy_file = open(cls.dummy_file_full_path, 'rb')
+        cls.dummy_file = SimpleUploadedFile(cls.dummy_file.name, cls.dummy_file.read(), 'audio/mp3')
+
+        cls.audio_file_path = "/audio_test.mp3"
+        cls.audio_volume_peaks = [
+            0.32, 0.47, 0.76, 0.75, 0.79, 0.59, 0.78, 0.83, 0.85, 0.77,
+            0.62, 0.69, 0.97, 0.96, 0.97, 0.96, 0.96, 0.63, 0.47, 0.0
+        ]
+        cls.audio_duration_s = 26
+        cls.audio_clip_tone = AudioClipTones.objects.first()
+
+
+    @classmethod
+    def tearDownClass(cls):
+
+        shutil.rmtree(os.path.join(settings.MEDIA_ROOT, 'audio_clips'), ignore_errors=True)
+
+        super().tearDownClass()
 
 
     def login(self, user_instance):
@@ -639,104 +710,21 @@ class System_TestCase(TestCase):
 
     def test_audio_clip_report(self):
 
-        self.login(self.user_1_instance)
-
-        #create user2 audio_clip
-        prepare_test_data_class = PrepareTestData(for_test=True)
-        prepare_test_data_class.prepare_test_data_events(
-            self.user_1_username,
-            self.user_2_username,
-            0,
-            1
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
         )
 
-        #get audio_clips from events that both users are involved in
-        linked_audio_clips = AudioClips.objects.raw(
-            '''
-                WITH
-                    user_1_events AS (
-                        SELECT events.id FROM events
-                        INNER JOIN audio_clips ON events.id = audio_clips.event_id
-                        WHERE audio_clips.user_id = %s
-                    ),
-                    user_2_events AS (
-                        SELECT events.id FROM events
-                        INNER JOIN audio_clips ON events.id = audio_clips.event_id
-                        WHERE audio_clips.user_id = %s
-                    ),
-                    shared_events AS (
-                        SELECT events.id FROM events
-                        RIGHT JOIN user_1_events ON events.id = user_1_events.id
-                        RIGHT JOIN user_2_events ON events.id = user_2_events.id
-                    )
-                    SELECT audio_clips.* FROM audio_clips
-                    RIGHT JOIN shared_events ON audio_clips.event_id = shared_events.id
-            ''',
-            params=(
-                self.user_1_instance.id,
-                self.user_2_instance.id
-            )
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
         )
 
-        #report the other audio_clip that does not belong to this signed in user
-        audio_clip_to_report = None
+        self.login(self.user1)
 
-        for row in linked_audio_clips:
+        self.client.post(reverse('create_audio_clip_reports_api'))
 
-            if row.user_id != self.user_1_instance.id:
-
-                audio_clip_to_report = row
-                break
-
-        #we change audio_clip's values to meet ban conditions
-        audio_clip_to_report.like_count = 25
-        audio_clip_to_report.dislike_count = settings.BAN_AUDIO_CLIP_DISLIKE_COUNT * 2
-        audio_clip_to_report.when_created = get_datetime_now() - timedelta(seconds=settings.BAN_AUDIO_CLIP_AGE_SECONDS * 2)
-        audio_clip_to_report.save()
-
-        #no reports initially
-        self.assertEqual(AudioClipReports.objects.count(), 0)
-
-        #report
-        result = self.client.post(
-            path=reverse('create_audio_clip_reports_api'),
-            data={
-                'reported_audio_clip_id': audio_clip_to_report.id
-            }
-        )
-        self.assertEqual(result.status_code, 200)
-
-        #check whether report now exists
-        self.assertTrue(AudioClipReports.objects.filter(user_id=self.user_1_instance.id, reported_audio_clip_id=audio_clip_to_report.id).exists())
-
-        #try report again, expect to be fine but not accept duplicates
-        result = self.client.post(
-            path=reverse('create_audio_clip_reports_api'),
-            data={
-                'reported_audio_clip_id': audio_clip_to_report.id
-            }
-        )
-        self.assertEqual(result.status_code, 200)
-
-        #check whether report now exists
-        self.assertTrue(AudioClipReports.objects.filter(user_id=self.user_1_instance.id, reported_audio_clip_id=audio_clip_to_report.id).exists())
-
-
-    def test_ban(self):
-
-        self.prepare_test_data_class.prepare_test_data_for_bans(
-            target_username=self.user_1_username,
-            backup_username=self.user_2_username,
-            audio_clips_to_ban_quantity=10,
-            audio_clips_not_to_ban_quantity=6,
-            reporting_user_quantity=10
-        )
-
-        #do ban
-        cronjob_ban_audio_clips()
-
-        self.assertEqual(AudioClips.objects.filter(is_banned=True).count(), 10)
-        self.assertEqual(AudioClipReports.objects.count(), 0)
 
 
 
@@ -749,9 +737,9 @@ class CoreProcess_TestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
-        cls.user0 = get_user_model().objects.create_user(username='user0', email='user0@gmail.com')
-        cls.user1 = get_user_model().objects.create_user(username='user1', email='user1@gmail.com')
-        cls.user2 = get_user_model().objects.create_user(username='user2', email='user2@gmail.com')
+        cls.user0 = get_user_model().objects.create_user(username='useR0', email='user0@gmail.com')
+        cls.user1 = get_user_model().objects.create_user(username='useR1', email='user1@gmail.com')
+        cls.user2 = get_user_model().objects.create_user(username='useR2', email='user2@gmail.com')
 
         cls.user0 = get_user_model().objects.get(username_lowercase="user0")
         cls.user1 = get_user_model().objects.get(username_lowercase="user1")
@@ -841,7 +829,7 @@ class CoreProcess_TestCase(TestCase):
             audio_duration_s=self.audio_duration_s,
             audio_volume_peaks=self.audio_volume_peaks,
             audio_file=self.audio_file_path,
-            is_banned=is_banned
+            is_banned=is_banned,
         )
 
 
@@ -1919,7 +1907,7 @@ class CoreProcess_TestCase(TestCase):
             sample_event_0.id,
             "originator",
             generic_status_name="deleted",
-            is_banned=True
+            is_banned=True,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2423,7 +2411,7 @@ class CoreProcess_TestCase(TestCase):
             sample_event_0.id,
             "originator",
             generic_status_name="deleted",
-            is_banned=True
+            is_banned=True,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2749,7 +2737,7 @@ class CoreProcess_TestCase(TestCase):
             sample_event_0.id,
             "originator",
             generic_status_name="deleted",
-            is_banned=True
+            is_banned=True,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2788,6 +2776,435 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(AudioClips.objects.count(), 1)
         self.assertTrue(UserEvents.objects.filter(user=self.user1, event_id=sample_event_0.id).exists())
 
+
+    def test_create_audio_clip_report_ok(self):
+
+        #prepare
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {
+            'reported_audio_clip_id': sample_audio_clip_0.id
+        }
+
+        request = self.client.post(reverse('create_audio_clip_reports_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        audio_clip_report = AudioClipReports.objects.first()
+
+        self.assertEqual(AudioClipReports.objects.all().count(), 1)
+        self.assertEqual(audio_clip_report.user_id, self.user1.id)
+        self.assertEqual(audio_clip_report.reported_audio_clip_id, sample_audio_clip_0.id)
+        self.assertIsNone(audio_clip_report.when_evaluated)
+
+
+    def test_create_audio_clip_report_missing_args(self):
+
+        #prepare
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {
+        }
+
+        request = self.client.post(reverse('create_audio_clip_reports_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        audio_clip_report = AudioClipReports.objects.first()
+
+        self.assertEqual(AudioClipReports.objects.all().count(), 0)
+
+
+    def test_create_audio_clip_report_faulty_args(self):
+
+        #prepare
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {
+            'yolo': sample_audio_clip_0.id
+        }
+
+        request = self.client.post(reverse('create_audio_clip_reports_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        audio_clip_report = AudioClipReports.objects.first()
+
+        self.assertEqual(AudioClipReports.objects.all().count(), 0)
+
+
+    def test_create_audio_clip_report_not_found(self):
+
+        #prepare
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {
+            'reported_audio_clip_id': 9999999
+        }
+
+        request = self.client.post(reverse('create_audio_clip_reports_api'), data)
+
+        self.assertEqual(request.status_code, 404)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        audio_clip_report = AudioClipReports.objects.first()
+
+        self.assertEqual(AudioClipReports.objects.all().count(), 0)
+
+
+    def test_create_audio_clip_report_already_reported_before(self):
+
+        #prepare
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_audio_clip_report_0 = AudioClipReports.objects.create(
+            user_id=self.user1.id,
+            reported_audio_clip_id=sample_audio_clip_0.id
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {
+            'reported_audio_clip_id': sample_audio_clip_0.id
+        }
+
+        request = self.client.post(reverse('create_audio_clip_reports_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        audio_clip_report = AudioClipReports.objects.first()
+
+        self.assertEqual(AudioClipReports.objects.all().count(), 1)
+        self.assertEqual(audio_clip_report.user_id, self.user1.id)
+        self.assertEqual(audio_clip_report.reported_audio_clip_id, sample_audio_clip_0.id)
+        self.assertIsNone(audio_clip_report.when_evaluated)
+
+
+    def test_create_audio_clip_report_already_banned(self):
+
+        #prepare
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+            is_banned=True,
+        )
+
+        sample_audio_clip_report_0 = AudioClipReports.objects.create(
+            user_id=self.user1.id,
+            reported_audio_clip_id=sample_audio_clip_0.id,
+            when_evaluated=get_datetime_now()
+        )
+
+        #start
+
+        self.login(self.user1)
+
+        data = {
+            'reported_audio_clip_id': sample_audio_clip_0.id
+        }
+
+        request = self.client.post(reverse('create_audio_clip_reports_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        audio_clip_report = AudioClipReports.objects.first()
+
+        self.assertEqual(AudioClipReports.objects.all().count(), 1)
+        self.assertEqual(audio_clip_report.user_id, self.user1.id)
+        self.assertEqual(audio_clip_report.reported_audio_clip_id, sample_audio_clip_0.id)
+        self.assertIsNotNone(audio_clip_report.when_evaluated)
+
+
+    def test_create_audio_clip_report_self_ok(self):
+
+        #prepare
+
+        sample_event_0 = self.create_event(
+            self.user0,
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.user0.id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        #start
+
+        self.login(self.user0)
+
+        data = {
+            'reported_audio_clip_id': sample_audio_clip_0.id
+        }
+
+        request = self.client.post(reverse('create_audio_clip_reports_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        audio_clip_report = AudioClipReports.objects.first()
+
+        self.assertEqual(AudioClipReports.objects.all().count(), 1)
+        self.assertEqual(audio_clip_report.user_id, self.user0.id)
+        self.assertEqual(audio_clip_report.reported_audio_clip_id, sample_audio_clip_0.id)
+        self.assertIsNone(audio_clip_report.when_evaluated)
+
+
+    def test_create_user_block_ok(self):
+
+        self.login(self.user1)
+
+        data = {
+            'username': self.user0.username,
+            'to_block': True
+        }
+
+        request = self.client.post(reverse('user_blocks_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        self.assertEqual(UserBlocks.objects.all().count(), 1)
+
+
+    def test_create_user_block_missing_args(self):
+
+        self.login(self.user1)
+
+        #start
+
+        data = {
+            'username': self.user0.username,
+        }
+
+        request = self.client.post(reverse('user_blocks_api'), data)
+
+        #200 because bool defaults to False when not passed
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        self.assertEqual(UserBlocks.objects.all().count(), 0)
+
+        #start
+
+        data = {
+            'to_block': True,
+        }
+
+        request = self.client.post(reverse('user_blocks_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        self.assertEqual(UserBlocks.objects.all().count(), 0)
+
+
+    def test_create_user_block_faulty_args(self):
+
+        self.login(self.user1)
+
+        #start
+
+        data = {
+            'username': self.user0.username,
+            'to_block': '',
+        }
+
+        request = self.client.post(reverse('user_blocks_api'), data)
+
+        #200 because bool defaults to False when not passed
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        self.assertEqual(UserBlocks.objects.all().count(), 0)
+
+
+    def test_create_user_block_unblock_ok(self):
+
+        sample_user_block_0 = UserBlocks.objects.create(
+            user_id=self.user1.id,
+            blocked_user_id=self.user0.id
+        )
+
+        self.login(self.user1)
+
+        data = {
+            'username': self.user0.username,
+            'to_block': False
+        }
+
+        request = self.client.post(reverse('user_blocks_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        self.assertEqual(UserBlocks.objects.all().count(), 0)
+
+
+    def test_cronjob_ban_audio_clip_ok(self):
+
+        pass
+
+
+    def test_cronjob_ban_audio_clip_not_all_conditions_met(self):
+
+        pass
+
+
+    def test_cronjob_reset_reply_ok(self):
+
+        pass
+
+
+    def test_cronjob_reset_reply_choice_ok(self):
+
+        pass
+
+
+    def test_cronjob_reset_reply_not_all_conditions_met(self):
+
+        pass
 
 
 

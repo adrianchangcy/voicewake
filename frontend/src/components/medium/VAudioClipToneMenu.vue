@@ -156,7 +156,7 @@
 
                 this.is_loading = true;
 
-                await axios.get(window.location.origin + '/api/audio-clip-tones/list')
+                await axios.get(window.location.origin + '/api/audio-clips/tones')
                 .then((result:any) => {
 
                     this.audio_clip_tones = result.data['data'];

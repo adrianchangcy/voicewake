@@ -1,7 +1,7 @@
 <template>
     <div>
 
-        <div class="h-10 grid grid-cols-6 gap-0.5 sm:gap-1 text-xl text-theme-black">
+        <div class="h-10 grid grid-cols-6 gap-1 text-xl text-theme-black">
 
             <!--like/dislike-->
             <div class="h-full col-span-4 grid grid-cols-2 relative parent-trigger-shade-fake-border-when-hover">
@@ -294,7 +294,7 @@
                     data.append('audio_clip_id', JSON.stringify(audio_clip.id));
                     data.append('is_liked', JSON.stringify(is_liked));
 
-                    axios.post(window.location.origin + '/api/audio-clip-likes-dislikes', data)
+                    axios.post(window.location.origin + '/api/audio-clips/likes-dislikes', data)
                     .then(() => {
 
                         //update store
@@ -426,7 +426,7 @@
                 
                 data.append('reported_audio_clip_id', JSON.stringify(this.propAudioClip['id']));
 
-                axios.post(window.location.origin + '/api/audio-clip-reports/create', data)
+                axios.post(window.location.origin + '/api/audio-clips/reports', data)
                 .then(() => {
 
                     notify({
