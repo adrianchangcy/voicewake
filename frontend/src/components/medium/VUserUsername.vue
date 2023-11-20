@@ -66,7 +66,6 @@
     import { defineComponent } from 'vue';
     import { notify } from 'notiwind';
     import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
-    const bad_usernames = require( '../../../../voicewake/static/json/bad_usernames.en.json')['usernames'];
     const axios = require('axios');
 
     export default defineComponent({
@@ -195,7 +194,7 @@
 
                     //must not have any whitespace
                     //do not make this too complicated, it is easier to just send email and see if user receives it
-                    if(bad_usernames.includes(new_value) === false && this.newRegExp().test(new_value) === true){
+                    if(this.newRegExp().test(new_value) === true){
 
                         this.username_string = new_value;
                         this.username_is_ok = false;
@@ -203,14 +202,6 @@
                         this.username_validation_status_text = "";
 
                         await this.checkUsernameExists();
-
-                    }else if(bad_usernames.includes(new_value) === true){
-                    
-                        this.username_string = "";
-                        this.username_is_ok = false;
-                        this.username_validation_has_error = true;
-                        this.username_validation_status_text = "That username is not allowed.";
-                        this.is_username_check_loading = false;
 
                     }else if(/\s+/g.test(new_value) === true){
 

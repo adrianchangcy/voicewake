@@ -191,7 +191,7 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                 JSON.stringify(unlock_all_locked_events)
             );
 
-            await axios.post(window.location.origin + "/api/events/reply/choices/list", data)
+            await axios.post(window.location.origin + "/api/events/replies/choices/list", data)
             .then((result:any) => {
 
                 if(result.data["data"].length > 0){
@@ -254,7 +254,7 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
 
             data.append("event_id", JSON.stringify(this.event_reply_choices[index].event.id));
 
-            await axios.post(window.location.origin + "/api/events/reply/start", data)
+            await axios.post(window.location.origin + "/api/events/replies/start", data)
             .then((result:any) => {
 
                 //add event_reply_queue to event, and save
@@ -328,7 +328,7 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                 data.append('event_id', JSON.stringify(this.event_reply_choices[0].event.id));
             }
 
-            await axios.post(window.location.origin + '/api/events/reply/cancel', data)
+            await axios.post(window.location.origin + '/api/events/replies/cancel', data)
             .then(() => {
 
                 this.softReset();

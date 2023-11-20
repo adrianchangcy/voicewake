@@ -345,7 +345,7 @@ class UserBlocksSerializer(serializers.ModelSerializer):
 
 class UserBlocksAPISerializer(serializers.Serializer):
 
-    username = serializers.CharField()
+    username = serializers.CharField(min_length=1, max_length=30)
     to_block = serializers.BooleanField()
 
 
@@ -402,6 +402,28 @@ class BrowseEventsAPISerializer(serializers.Serializer):
             return value
 
         raise serializers.ValidationError("Accepted values not specified: next/back.")
+
+
+
+class UserBannedAudioClipsAPISerializer(serializers.Serializer):
+
+    #cursor_token max_length is double of usual
+    username = serializers.CharField(required=False, min_length=1, max_length=30)
+    next_or_back = serializers.CharField()
+    cursor_token = serializers.CharField(required=False, default='', max_length=200)
+
+
+    def validate_next_or_back(self, value):
+
+        if value in ['next', 'back']:
+
+            return value
+
+        raise serializers.ValidationError("Accepted values not specified: next/back.")
+
+
+
+
 
 
 

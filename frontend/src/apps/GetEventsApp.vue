@@ -23,16 +23,16 @@
                 v-if="hasReplyingMenu"
                 class="relative"
             >
-                <TransitionGroupFadeSlow :prop-has-absolute="true">
+                <TransitionFadeSlow>
                     <div
-                        v-show="isReplying"
+                        v-if="isReplying"
                         class="w-full flex flex-col gap-2 pt-10"
                     >
                         <VUsernameURL
                             :propUsername="(getDataFromTemplateJSONScript('data-user-username') as string)"
                         />
 
-                        <div class="relative border border-theme-light-gray rounded-lg px-4 py-6 shade-border-when-hover transition-colors">
+                        <div class="relative border border-theme-light-gray rounded-lg px-2 sm:px-4 py-8 shade-border-when-hover transition-colors">
 
                             <div class="grid grid-cols-4 gap-2 pb-6">
 
@@ -86,7 +86,7 @@
 
                     <!--just cancelled while replying-->
                     <div
-                        v-show="!isReplying && dialog_context !== ''"
+                        v-else-if="!isReplying && dialog_context !== ''"
                         class="w-full"
                     >
                         <div class="w-full h-fit pt-14 flex flex-col items-center text-xl font-medium">
@@ -122,7 +122,7 @@
                             </VActionSpecial>
                         </div>
                     </div>
-                </TransitionGroupFadeSlow>
+                </TransitionFadeSlow>
             </div>
 
             <!--VAudioClipCard emits selection, which triggers :to, thus teleporting-->
@@ -148,7 +148,7 @@
     import VActionSpecial from '@/components/small/VActionSpecial.vue';
     import CreateAudioClips from '@/components/main/CreateAudioClips.vue';
     import VTitle from '@/components/small/VTitle.vue';
-    import TransitionGroupFadeSlow from '@/transitions/TransitionGroupFadeSlow.vue';
+    import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
     import VPlayback from '@/components/medium/VPlayback.vue';
     import VUsernameURL from '@/components/small/VUsernameURL.vue';
     import VAudioClipCardSkeleton from '@/components/skeleton/VAudioClipCardSkeleton.vue';

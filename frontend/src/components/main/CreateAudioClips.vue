@@ -90,7 +90,7 @@
     </div>
 
     <!--submit-->
-    <div class="mt-8 flex flex-col gap-2">
+    <div class="pt-8 flex flex-col gap-2">
         <VActionSpecial
             @click.stop="submitForm()"
             :propIsEnabled="canSubmit"

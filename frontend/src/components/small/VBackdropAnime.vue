@@ -59,7 +59,7 @@
         methods: {
             async getAudioClipTones() : Promise<void> {
 
-                await axios.get(window.location.origin + '/api/audio-clip-tones/list')
+                await axios.get(window.location.origin + '/api/audio-clips/tones')
                 .then((result:any) => {
 
                     //get our audio_clip_tones
