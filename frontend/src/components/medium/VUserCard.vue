@@ -1,6 +1,6 @@
 <template>
     <div>
-        <div class="flex flex-col gap-2 px-2 py-6 pt-4 rounded-lg border-2 border-theme-black">
+        <div class="flex flex-col gap-2 px-2 py-6 pt-4 border-4 border-theme-black">
 
             <div class="flex flex-row items-center">
                 <i class="fas fa-user text-2xl pl-2 pr-4" aria-hidden="true"></i>
@@ -8,7 +8,7 @@
             </div>
 
             <div class="flex flex-row gap-1">
-                <VActionSimplest
+                <VActionBorder
                     @click="copyUserURL()"
                     prop-element-size="s"
                     prop-font-size="s"
@@ -26,9 +26,9 @@
                             <span class="pl-1">Copied</span>
                         </span>
                     </TransitionFade>
-                </VActionSimplest>
+                </VActionBorder>
 
-                <VActionSimplest
+                <VActionBorder
                     v-if="canBlockUnblock"
                     @click="handleBlock()"
                     prop-element-size="s"
@@ -51,7 +51,7 @@
                         <span v-show="!is_blocked" class="pl-1">Block</span>
                         <span v-show="is_blocked" class="pl-1">Unblock</span>
                     </span>
-                </VActionSimplest>
+                </VActionBorder>
             </div>
         </div>
     </div>
@@ -61,7 +61,7 @@
 <script setup lang="ts">
     // import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
     import VLoading from '../small/VLoading.vue';
-    import VActionSimplest from '../small/VActionSimplest.vue';
+    import VActionBorder from '../small/VActionBorder.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
 </script>
 

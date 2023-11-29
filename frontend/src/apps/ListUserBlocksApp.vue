@@ -1,85 +1,87 @@
 <template>
     <div>
+        <DynamicScroller
+            v-show="user_blocks.length > 0"
+            :items="user_blocks"
+            :min-item-size="1"
+            :buffer="dynamic_scroller_buffer"
+            :page-mode="true"
+            key-field="scroller_index_id"
+            class="scroller"
+        >
 
-        <div class="flex flex-col gap-2">
-            <div
-                v-for="(user, index) in user_blocks" :key="index"
-                class="w-full flex flex-row items-center p-2 gap-2 border border-theme-light-gray transition-colors shade-border-when-hover rounded-lg text-theme-black"
-            >
+            <template #default="{ item, index, active }">
 
-                <!--user-->
-                <VActionTextOnly
-                    prop-element="a"
-                    :href="getProfileURL(index)"
-                    prop-element-size="s"
-                    prop-font-size="s"
-                    class="min-w-0 flex-grow"
+                <!--events-->
+                <!--DynamicScrollerItem has weird right side overflow clip-->
+                <!--px-1 is used to fix it, so other outer elements will require px-1 too-->
+                <DynamicScrollerItem
+                    :item="item"
+                    :index="index"
+                    :active="active"
                 >
-                    <i class="fas fa-user text-base pl-2 pr-4"></i>
-                    <span class="text-base font-normal text-ellipsis overflow-hidden">{{ user.blocked_user.username }}</span>
-                </VActionTextOnly>
-
-                <!--block/unblock-->
-                <div class="w-fit flex-shrink-0">
-
-                    <TransitionFade>
-                        <!--block-->
-                        <VActionSimplest
-                            v-if="!user.is_blocked"
-                            @click="handleBlock(index)"
-                            prop-element-size="s"
-                            prop-font-size="s"
-                            prop-element="button"
-                            :prop-is-enabled="!isBlocking(index)"
-                            :prop-is-icon-only="isBlocking(index)"
-                            type="button"
-                            class="w-[6rem]"
-                        >
-                            <div
-                                v-if="isBlocking(index)"
-                                class="mx-auto"
-                            >
-                                <VLoading prop-element-size="s"/>
-                            </div>
-                            <span v-else class="mx-auto flex items-center text-center">
-                                <i class="fas fa-ban text-base" aria-hidden="true"></i>
-                                <span class="pl-1">Block</span>
-                            </span>
-                        </VActionSimplest>
-
-                        <!--unblock-->
-                        <VActionTextOnly
-                            v-else-if="user.is_blocked"
-                            @click="handleBlock(index)"
-                            :prop-is-enabled="!isBlocking(index)"
-                            :prop-is-icon-only="true"
-                            prop-element-size="s"
-                            prop-font-size="s"
-                            prop-element="button"
-                            type="button"
-                            class="w-10"
-                        >
-                            <VLoading
-                                v-if="isBlocking(index)"
+                    <div class="px-1 pb-2">
+                        <div class="w-full flex flex-row items-center p-2 gap-4 border border-theme-light-gray transition-colors shade-border-when-hover rounded-lg text-theme-black">
+                            <!--user-->
+                            <VActionText
+                                prop-element="a"
+                                :href="getProfileURL(index)"
                                 prop-element-size="s"
-                                class="mx-auto"
-                            />
-                            <i v-else class="fas fa-square-minus text-2xl mx-auto" aria-hidden="true"></i>
-                            <span class="sr-only">unblock</span>
-                        </VActionTextOnly>
-                    </TransitionFade>
-                </div>
-            </div>
+                                prop-font-size="s"
+                                class="min-w-0 flex-grow"
+                            >
+                                <i class="fas fa-user text-base pl-2 pr-4"></i>
+                                <span class="text-base font-normal text-ellipsis overflow-hidden">{{ item.blocked_user.username }}</span>
+                            </VActionText>
+                        
+                            <!--block/unblock-->
+                            <div class="w-fit flex-shrink-0">
+                                <VActionBorder
+                                    @click="handleBlock(index)"
+                                    prop-element-size="s"
+                                    prop-font-size="s"
+                                    prop-element="button"
+                                    :prop-is-enabled="!isBlocking(index)"
+                                    :prop-is-icon-only="isBlocking(index)"
+                                    type="button"
+                                    class="w-[7rem]"
+                                >
+                                    <div
+                                        v-show="isBlocking(index)"
+                                        class="mx-auto"
+                                    >
+                                        <VLoading prop-element-size="s"/>
+                                    </div>
+                                    <span v-show="!isBlocking(index)" class="mx-auto flex items-center text-center">
+                                        <i v-show="!item.is_blocked" class="fas fa-ban text-base" aria-hidden="true"></i>
+                                        <i v-show="item.is_blocked" class="far fa-circle text-base" aria-hidden="true"></i>
+                                        <span v-show="!item.is_blocked" class="pl-1">Block</span>
+                                        <span v-show="item.is_blocked" class="pl-1">Unblock</span>
+                                    </span>
+                                </VActionBorder>
+                            </div>
+                        </div>
+                    </div>
+                </DynamicScrollerItem>
+            </template>
+        </DynamicScroller>
+
+        <div
+            v-show="is_fetching"
+            class="flex flex-col gap-2 px-1"
+        >
+            <div class="w-full h-14 rounded-lg skeleton"></div>
+            <div class="w-full h-14 rounded-lg skeleton"></div>
         </div>
 
         <TransitionFade>
             <VDialogPlain
-                v-show="canShowEmptyMessage || canShowEndOfPageMessage"
+                v-if="canShowEmptyMessage || canShowEndOfPageMessage"
                 :prop-has-border="false"
                 :prop-has-auto-space-logo="false"
                 :prop-has-auto-space-title="false"
                 :prop-has-auto-space-content="false"
-                class="w-full py-8"
+                class="w-full px-1 pt-8"
             >
                 <template #title>
                     <span v-show="canShowEmptyMessage">No users blocked.</span>
@@ -96,9 +98,10 @@
 <script setup lang="ts">
     import TransitionFade from '@/transitions/TransitionFade.vue';
     import VDialogPlain from '@/components/small/VDialogPlain.vue';
-    import VActionTextOnly from '@/components/small/VActionTextOnly.vue';
-    import VActionSimplest from '@/components/small/VActionSimplest.vue';
+    import VActionText from '@/components/small/VActionText.vue';
+    import VActionBorder from '@/components/small/VActionBorder.vue';
     import VLoading from '@/components/small/VLoading.vue';
+    import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 </script>
 
 
@@ -114,18 +117,27 @@
         is_blocked: boolean
     }
 
+    interface ScrollableUserBlocksTypes extends UserBlocksTypes {
+        scroller_index_id: number,
+    }
+
     export default defineComponent({
         name: 'ListUserBlocksApp',
         data(){
             return {
-                user_blocks: [] as UserBlocksTypes[],
+                user_blocks: [] as ScrollableUserBlocksTypes[],
                 is_blocking: false,
                 is_blocking_index: null as number|null,
+
+                dynamic_scroller_buffer: 1000, //px, larger means rendered earlier, needed for proper tabbing
+                window_resize_timeout: window.setTimeout(()=>{}, 0),
+
+                next_url: window.location.origin + '/api/users/blocks/list/next',
+                back_url: window.location.origin + '/api/users/blocks/list/back',
 
                 is_fetching: false,
                 can_observer_fetch: false,
                 has_no_user_blocks_left_to_fetch: false,
-                current_page: 1,
             };
         },
         computed: {
@@ -157,15 +169,6 @@
             },
             async handleBlock(user_block_index:number) : Promise<void> {
 
-                //your template must have {% csrf_token %}
-                let token = document.getElementsByName("csrfmiddlewaretoken")[0];
-
-                if(token === undefined){
-
-                    console.log('CSRF not found.');
-                    return;
-                }
-
                 if(this.is_blocking === true){
 
                     return;
@@ -181,15 +184,9 @@
                 data.append('to_block', JSON.stringify(!this.user_blocks[user_block_index].is_blocked));
 
                 await axios.post(url, data)
-                .then((result:any)=>{
+                .then(()=>{
 
                     this.user_blocks[user_block_index].is_blocked = !this.user_blocks[user_block_index].is_blocked;
-
-                    notify({
-                        title: this.user_blocks[user_block_index].is_blocked === true ? 'Blocked user' : 'Unblocked user',
-                        text: result.data['message'],
-                        type: 'ok'
-                    }, 2000);
 
                 }).catch(()=>{
 
@@ -207,33 +204,32 @@
             },
             async getUserBlocks() : Promise<void> {
 
+                if(this.is_fetching === true){
+
+                    return;
+                }
+
                 this.is_fetching = true;
                 this.can_observer_fetch = false;
                 this.has_no_user_blocks_left_to_fetch = false;
 
-                const url = window.location.origin + '/api/users/blocks/list/' + this.current_page.toString();
-
-                await axios.get(url)
+                await axios.get(this.next_url)
                 .then((result:any) => {
 
-                    console.log(result.data['data'].length);
+                    if(result.data['data'].length === 0){
+
+                        this.has_no_user_blocks_left_to_fetch = true;
+                        return;
+                    }
 
                     result.data['data'].forEach((user_block:UserBlocksTypes)=>{
 
-                        this.user_blocks.push(user_block);
+                        (user_block as ScrollableUserBlocksTypes).scroller_index_id = this.user_blocks.length;
+                        this.user_blocks.push(user_block as ScrollableUserBlocksTypes);
                     });
 
-                    if(result.data['data'].length > 0){
-
-                        this.current_page += 1;
-
-                    }else{
-
-                        this.has_no_user_blocks_left_to_fetch = true;
-
-                    }
-
-                    this.can_observer_fetch = true;
+                    this.next_url = result.data['next_url'];
+                    this.back_url = result.data['back_url'];
 
                 }).catch(() => {
 
@@ -246,12 +242,13 @@
                 }).finally(() => {
 
                     this.is_fetching = false;
+                    this.can_observer_fetch = true;
                 });
             },
             setUpObserver() : void {
 
                 //set up observer for infinite scroll
-                const observer_target = document.querySelector('#load-more-user-banned-audio-clips-observer-target');
+                const observer_target = document.querySelector('#load-more-user-blocks-observer-target');
 
                 const observer = new IntersectionObserver(()=>{
 
@@ -273,14 +270,38 @@
                     observer.observe(observer_target);
                 }
             },
+            async handleWindowResize() : Promise<void> {
+
+                //we do our best to cater to user's viewport height to ensure sufficient buffer size
+                //else elements are late to render, causing tab focus and whitespace issues
+
+                this.window_resize_timeout !== null ? clearTimeout(this.window_resize_timeout) : null;
+
+                //run this delayed one next, in case immediate call had fired before dimension is fixed
+                this.window_resize_timeout = window.setTimeout(async ()=>{
+                    this.dynamic_scroller_buffer = window.innerHeight * 2;
+                }, 200);
+            },
         },
         beforeMount(){
+
+            history.scrollRestoration = 'manual';
 
             this.getUserBlocks();
         },
         mounted(){
 
             this.setUpObserver();
-        }
+
+            //reassign buffer size in case screen height > 1000px
+            //better bigger than smaller
+            this.dynamic_scroller_buffer = window.innerHeight * 2;
+
+            window.addEventListener('resize', this.handleWindowResize);
+        },
+        beforeUnmount(){
+
+            window.removeEventListener('resize', this.handleWindowResize);
+        },
     });
 </script>

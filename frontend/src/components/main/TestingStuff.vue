@@ -8,26 +8,25 @@
 
 
 
-
-
-
     </div>
 </template>
 
 
 <script setup lang="ts">
     // import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
-    // import VActionTextOnly from '../small/VActionTextOnly.vue';
+    // import VActionText from '../small/VActionText.vue';
+    // import VTest from '../small/VTest.vue';
 </script>
 
 
 <script lang="ts">
     import { defineComponent } from 'vue';
     import { notify } from 'notiwind';
-    // import anime from 'animejs';
+    import anime from 'animejs';
     // import VPlayback from '../medium/VPlayback.vue';
     // import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
     import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
+    // import { isPageAccessedByBackForward } from '@/helper_functions';
     const axios = require('axios');
 
     export default defineComponent({
@@ -35,7 +34,7 @@
             return {
                 notifications: [] as any[],
                 event: null as EventsAndAudioClipsTypes|null,
-
+                is_yolo: false,
             };
         },
         watch: {
@@ -91,7 +90,7 @@
         },
         mounted(){
 
-            this.callTest();
+            // this.callTest();
 
             notify({
                 title: "Keep it up!",
@@ -99,10 +98,35 @@
                 type: "ok"
             }, 3000);
 
-            let yolo = {'ho': 1};
-            console.log(Object.hasOwn(yolo, 'ho'));
-            console.log('ho' in yolo);
-            console.log(Object.hasOwn(Object.keys(yolo), 'ho'));
+            anime({
+                autoplay: true,
+                loop: true,
+                easing: 'linear',
+                targets: '#yolo1',
+                opacity: ['1', '0'],
+                scale: ['0', '1'],
+                duration: 3000,
+            });
+            anime({
+                autoplay: true,
+                loop: true,
+                easing: 'linear',
+                targets: '#yolo2',
+                opacity: ['1', '0'],
+                scale: ['0', '1'],
+                duration: 3000,
+                delay:1000,
+            });
+            anime({
+                autoplay: true,
+                loop: true,
+                easing: 'linear',
+                targets: '#yolo3',
+                opacity: ['1', '0'],
+                scale: ['0', '1'],
+                duration: 3000,
+                delay:2000,
+            });
 
         },
     });

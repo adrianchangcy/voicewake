@@ -12,6 +12,7 @@ from django.core import mail
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.db.models import Count
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import connection
 
 #apps
 from voicewake.services import *
@@ -87,9 +88,40 @@ class Random_TestCase(TestCase):
         cls.audio_clip_tone = AudioClipTones.objects.first()
 
 
+    def create_audio_clip(
+        self,
+        user_id:int, event_id:int, audio_clip_role_name:Literal['originator', 'responder'],
+        audio_clip_tone_id:int=1,
+        generic_status_name:str="ok", is_banned:bool=False,
+    ):
+
+            return AudioClips(
+                user_id=user_id,
+                event_id=event_id,
+                audio_clip_role=AudioClipRoles.objects.get(audio_clip_role_name=audio_clip_role_name),
+                audio_clip_tone_id=audio_clip_tone_id,
+                generic_status=GenericStatuses.objects.get(generic_status_name=generic_status_name),
+                audio_duration_s=self.audio_duration_s,
+                audio_volume_peaks=self.audio_volume_peaks,
+                audio_file=None,
+                is_banned=is_banned,
+            )
+
+
+    def create_event(self, created_by, generic_status_name="incomplete"):
+
+        return Events.objects.create(
+            event_name="yolo",
+            created_by=created_by,
+            generic_status=GenericStatuses.objects.get(generic_status_name=generic_status_name)
+        )
+
+
     def test_random(self):
 
         pass
+
+
 
 
 
@@ -1101,8 +1133,8 @@ class CoreProcess_TestCase(TestCase):
         result_data = result_data['data'][0]
 
         self.assertTrue('event' in result_data and type(result_data['event']) == dict)
-        self.assertTrue('originator' in result_data and type(result_data['originator']) == dict)
-        self.assertTrue('responder' in result_data and result_data['responder'] == [])
+        self.assertTrue('originator' in result_data and len(result_data['originator']) == 1)
+        self.assertTrue('responder' in result_data and len(result_data['responder']) == 0)
         self.assertTrue('event_reply_queue' in result_data and type(result_data['event_reply_queue']) == dict)
 
         event_reply_queue = EventReplyQueues.objects.first()
@@ -1151,8 +1183,8 @@ class CoreProcess_TestCase(TestCase):
         result_data = result_data['data'][0]
 
         self.assertTrue('event' in result_data and type(result_data['event']) == dict)
-        self.assertTrue('originator' in result_data and type(result_data['originator']) == dict)
-        self.assertTrue('responder' in result_data and result_data['responder'] == [])
+        self.assertTrue('originator' in result_data and len(result_data['originator']) == 1)
+        self.assertTrue('responder' in result_data and len(result_data['responder']) == 0)
         self.assertTrue('event_reply_queue' in result_data and type(result_data['event_reply_queue']) == dict)
 
         event_reply_queue = EventReplyQueues.objects.first()
@@ -2797,7 +2829,7 @@ class CoreProcess_TestCase(TestCase):
         self.login(self.user1)
 
         data = {
-            'reported_audio_clip_id': sample_audio_clip_0.id
+            'audio_clip_id': sample_audio_clip_0.id
         }
 
         request = self.client.post(reverse('create_audio_clip_reports_api'), data)
@@ -2813,9 +2845,8 @@ class CoreProcess_TestCase(TestCase):
         audio_clip_report = AudioClipReports.objects.first()
 
         self.assertEqual(AudioClipReports.objects.all().count(), 1)
-        self.assertEqual(audio_clip_report.user_id, self.user1.id)
-        self.assertEqual(audio_clip_report.reported_audio_clip_id, sample_audio_clip_0.id)
-        self.assertIsNone(audio_clip_report.when_evaluated)
+        self.assertEqual(audio_clip_report.audio_clip_id, sample_audio_clip_0.id)
+        self.assertIsNone(audio_clip_report.last_evaluated)
 
 
     def test_create_audio_clip_report_missing_args(self):
@@ -2913,7 +2944,7 @@ class CoreProcess_TestCase(TestCase):
         self.login(self.user1)
 
         data = {
-            'reported_audio_clip_id': 9999999
+            'audio_clip_id': 9999999
         }
 
         request = self.client.post(reverse('create_audio_clip_reports_api'), data)
@@ -2947,8 +2978,7 @@ class CoreProcess_TestCase(TestCase):
         )
 
         sample_audio_clip_report_0 = AudioClipReports.objects.create(
-            user_id=self.user1.id,
-            reported_audio_clip_id=sample_audio_clip_0.id
+            audio_clip_id=sample_audio_clip_0.id
         )
 
         #start
@@ -2956,7 +2986,7 @@ class CoreProcess_TestCase(TestCase):
         self.login(self.user1)
 
         data = {
-            'reported_audio_clip_id': sample_audio_clip_0.id
+            'audio_clip_id': sample_audio_clip_0.id
         }
 
         request = self.client.post(reverse('create_audio_clip_reports_api'), data)
@@ -2972,9 +3002,8 @@ class CoreProcess_TestCase(TestCase):
         audio_clip_report = AudioClipReports.objects.first()
 
         self.assertEqual(AudioClipReports.objects.all().count(), 1)
-        self.assertEqual(audio_clip_report.user_id, self.user1.id)
-        self.assertEqual(audio_clip_report.reported_audio_clip_id, sample_audio_clip_0.id)
-        self.assertIsNone(audio_clip_report.when_evaluated)
+        self.assertEqual(audio_clip_report.audio_clip_id, sample_audio_clip_0.id)
+        self.assertIsNone(audio_clip_report.last_evaluated)
 
 
     def test_create_audio_clip_report_already_banned(self):
@@ -2994,9 +3023,8 @@ class CoreProcess_TestCase(TestCase):
         )
 
         sample_audio_clip_report_0 = AudioClipReports.objects.create(
-            user_id=self.user1.id,
-            reported_audio_clip_id=sample_audio_clip_0.id,
-            when_evaluated=get_datetime_now()
+            audio_clip_id=sample_audio_clip_0.id,
+            last_evaluated=get_datetime_now(),
         )
 
         #start
@@ -3004,7 +3032,7 @@ class CoreProcess_TestCase(TestCase):
         self.login(self.user1)
 
         data = {
-            'reported_audio_clip_id': sample_audio_clip_0.id
+            'audio_clip_id': sample_audio_clip_0.id
         }
 
         request = self.client.post(reverse('create_audio_clip_reports_api'), data)
@@ -3020,9 +3048,8 @@ class CoreProcess_TestCase(TestCase):
         audio_clip_report = AudioClipReports.objects.first()
 
         self.assertEqual(AudioClipReports.objects.all().count(), 1)
-        self.assertEqual(audio_clip_report.user_id, self.user1.id)
-        self.assertEqual(audio_clip_report.reported_audio_clip_id, sample_audio_clip_0.id)
-        self.assertIsNotNone(audio_clip_report.when_evaluated)
+        self.assertEqual(audio_clip_report.audio_clip_id, sample_audio_clip_0.id)
+        self.assertIsNotNone(audio_clip_report.last_evaluated)
 
 
     def test_create_audio_clip_report_self_ok(self):
@@ -3045,7 +3072,7 @@ class CoreProcess_TestCase(TestCase):
         self.login(self.user0)
 
         data = {
-            'reported_audio_clip_id': sample_audio_clip_0.id
+            'audio_clip_id': sample_audio_clip_0.id
         }
 
         request = self.client.post(reverse('create_audio_clip_reports_api'), data)
@@ -3061,9 +3088,8 @@ class CoreProcess_TestCase(TestCase):
         audio_clip_report = AudioClipReports.objects.first()
 
         self.assertEqual(AudioClipReports.objects.all().count(), 1)
-        self.assertEqual(audio_clip_report.user_id, self.user0.id)
-        self.assertEqual(audio_clip_report.reported_audio_clip_id, sample_audio_clip_0.id)
-        self.assertIsNone(audio_clip_report.when_evaluated)
+        self.assertEqual(audio_clip_report.audio_clip_id, sample_audio_clip_0.id)
+        self.assertIsNone(audio_clip_report.last_evaluated)
 
 
     def test_create_user_block_ok(self):

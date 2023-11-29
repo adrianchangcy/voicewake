@@ -6,6 +6,7 @@ from django.utils.cache import patch_cache_control
 from django.utils.decorators import method_decorator
 from django.db.models import Prefetch
 from django.db.utils import IntegrityError
+from django.urls import reverse
 
 #auth
 from django.contrib.auth import get_user_model, login, logout
@@ -59,7 +60,6 @@ class TestAPI(generics.GenericAPIView):
 
 
 
-
         return Response(
             data={
                 'data': {},
@@ -104,7 +104,7 @@ class AudioClipReportsAPI(generics.GenericAPIView):
         try:
 
             #get audio_clip
-            target_audio_clip = AudioClips.objects.get(pk=new_data['reported_audio_clip_id'])
+            target_audio_clip = AudioClips.objects.get(pk=new_data['audio_clip_id'])
 
         except AudioClips.DoesNotExist:
 
@@ -128,17 +128,19 @@ class AudioClipReportsAPI(generics.GenericAPIView):
             )
 
         #add report
-        AudioClipReports.objects.get_or_create(
-            user_id=request.user.id,
-            reported_audio_clip_id=new_data['reported_audio_clip_id']
-        )
+        audio_clip_report, is_created = AudioClipReports.objects.get_or_create(audio_clip_id=new_data['audio_clip_id'])
+
+        if is_created is False:
+
+            audio_clip_report.last_reported = get_datetime_now()
+            audio_clip_report.save()
 
         #for edge case where same user reports --> evaluated --> reports again,
         #no need to do anything, otherwise our cronjob can get overwhelmed
 
         return Response(
             data={
-                'message': 'System notified. We will evaluate the report soon.',
+                'message': 'The recording is now queued for evaluation.',
             },
             status=status.HTTP_200_OK
         )
@@ -157,39 +159,139 @@ class UserBannedAudioClipsAPI(generics.GenericAPIView):
 
         #we could simply implement when_banned
         #but due to deadlines, there was no time available to retest BrowseEventsAPI
-        #using when_banned did increase query time
+            #using when_banned did increase query time
 
         #this is sufficient, as long as:
             #being banned is the last possible step to trigger last_modified
+
+        result = {
+            'rows': [],
+            'next_cursor_token': cursor_token,
+            'back_cursor_token': cursor_token,
+        }
+
+        #only show when user is still banned
+
+        if self.request.user.banned_until is None:
+
+            return result
+
+        #handle cursor token
+
+        decoded_cursor_token = {}
+        cursor_params = []
+
+        if cursor_token != '':
+
+            try:
+
+                #get audio_clips.last_modified, audio_clips.id
+                decoded_cursor_token = decode_cursor_token(cursor_token)
+
+                cursor_params = [
+                    decoded_cursor_token['last_modified'],
+                    decoded_cursor_token['id'], decoded_cursor_token['last_modified'],
+                ]
+
+            except:
+
+                raise custom_error(
+                    ValueError,
+                    user_message="Unable to fetch content due to faulty cursor token.",
+                    dev_message="Token could not be decoded: " + cursor_token
+                )
+
+        #prepare adjustments based on cursor direction
+
+        cursor_sql = ''
+
+        if next_or_back == 'next':
+
+            if len(decoded_cursor_token) > 0:
+
+                cursor_sql = '''
+                    AND (
+                        audio_clips.last_modified <= %s
+                        AND
+                        (audio_clips.id < %s OR audio_clips.last_modified < %s)
+                    )
+                '''
+
+        elif next_or_back == 'back':
+
+            if len(decoded_cursor_token) > 0:
+
+                cursor_sql = '''
+                    AND (
+                        audio_clips.last_modified >= %s
+                        AND
+                        (audio_clips.id > %s OR audio_clips.last_modified > %s)
+                    )
+                '''
+
+        #proceed
 
         full_sql = '''
             SELECT * FROM audio_clips
             INNER JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
             WHERE is_banned IS TRUE
-            AND audio_clips.user_id = 5
-            AND generic_statuses.generic_status_name = 'deleted'
-            AND (
-                audio_clips.last_modified <= now()
-                AND
-                (audio_clips.id < 350000 OR audio_clips.last_modified < now())
-            )
+            AND audio_clips.user_id = %s
+            AND generic_statuses.generic_status_name = %s
+            ''' + cursor_sql + '''
             ORDER BY audio_clips.last_modified DESC, audio_clips.id DESC
-			LIMIT 10
+			LIMIT %s
         '''
 
         full_params = [
             self.request.user.id,
             'deleted',
-            get_datetime_now(),
-            1,
-            get_datetime_now(),
+        ] + cursor_params + [
             settings.BAN_AUDIO_CLIP_QUANTITY_PER_PAGE,
         ]
 
-        pass
+        #execute
+
+        audio_clips = AudioClips.objects.prefetch_related(
+            'audio_clip_role',
+            'audio_clip_tone',
+            'generic_status',
+            'user',
+        ).raw(
+            full_sql,
+            params=full_params
+        )
+
+        audio_clips = AudioClips.objects.all()[0:10]
+
+        list(audio_clips)
+
+        if len(audio_clips) == 0:
+
+            return result
+        
+        result['rows'] = audio_clips
+
+        #start preparing our cursor tokens
+
+        result['back_cursor_token'] = encode_cursor_token({
+            'last_modified': audio_clips[0].last_modified.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+            'id': audio_clips[0].id,
+        })
+
+        # result['next_cursor_token'] = encode_cursor_token({
+        #     'last_modified': audio_clips[-1].last_modified.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+        #     'id': audio_clips[-1].id,
+        # })
+
+        result['next_cursor_token'] = encode_cursor_token({
+            'last_modified': audio_clips[9].last_modified.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+            'id': audio_clips[9].id,
+        })
+
+        return result
 
 
-    def get(self,request, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
 
         serializer = UserBannedAudioClipsAPISerializer(data=kwargs, many=False)
 
@@ -204,22 +306,43 @@ class UserBannedAudioClipsAPI(generics.GenericAPIView):
 
         new_data = serializer.validated_data
 
-        #check username
+        #continue
 
-        if self.request.user.username.lower() != new_data['username']:
+        result = self.get_latest_banned_audio_clips(
+            new_data['next_or_back'],
+            new_data['cursor_token'],
+        )
 
-            return Response(
-                data={
-                    'message': 'You can only view your own banned recordings.'
-                },
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        
+        #prepare URLs
 
+        current_url_splits = self.request.build_absolute_uri().split(new_data['next_or_back'], 1)
 
+        next_url = current_url_splits[0] + "next"
+        back_url = current_url_splits[0] + "back"
 
+        if len(result['rows']) > 0:
 
+            next_url += "/" + result['next_cursor_token']
+            back_url += "/" + result['back_cursor_token']
 
+        elif new_data['cursor_token'] != '':
+
+            next_url += "/" + new_data['cursor_token']
+            back_url += "/" + new_data['cursor_token']
+
+        #prepare response
+
+        serializer = AudioClipsSerializer(result['rows'], many=True)
+
+        return Response(
+            data={
+                'next_url': next_url,
+                'back_url': back_url,
+                'message': '',
+                'data': serializer.data,
+            },
+            status=status.HTTP_200_OK
+        )
 
 
 
@@ -229,37 +352,172 @@ class UserBlocksAPI(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
 
-    #get list of blocked users
+    def get_latest_user_blocks(self, next_or_back:Literal['next', 'back'], cursor_token:str=''):
+
+        #we could simply implement when_banned
+        #but due to deadlines, there was no time available to retest BrowseEventsAPI
+            #using when_banned did increase query time
+
+        #this is sufficient, as long as:
+            #being banned is the last possible step to trigger last_modified
+
+        result = {
+            'rows': [],
+            'next_cursor_token': cursor_token,
+            'back_cursor_token': cursor_token,
+        }
+
+        #handle cursor token
+
+        decoded_cursor_token = {}
+        cursor_params = []
+
+        if cursor_token != '':
+
+            try:
+
+                #get audio_clips.last_modified, audio_clips.id
+                decoded_cursor_token = decode_cursor_token(cursor_token)
+
+                cursor_params = [
+                    decoded_cursor_token['when_created'],
+                    decoded_cursor_token['id'], decoded_cursor_token['when_created'],
+                ]
+
+            except:
+
+                raise custom_error(
+                    ValueError,
+                    user_message="Unable to fetch content due to faulty cursor token.",
+                    dev_message="Token could not be decoded: " + cursor_token
+                )
+
+        #prepare adjustments based on cursor direction
+
+        cursor_sql = ''
+
+        if next_or_back == 'next':
+
+            if len(decoded_cursor_token) > 0:
+
+                cursor_sql = '''
+                    AND (
+                        user_blocks.when_created <= %s
+                        AND
+                        (user_blocks.id < %s OR user_blocks.when_created < %s)
+                    )
+                '''
+
+        elif next_or_back == 'back':
+
+            if len(decoded_cursor_token) > 0:
+
+                cursor_sql = '''
+                    AND (
+                        user_blocks.when_created >= %s
+                        AND
+                        (user_blocks.id > %s OR user_blocks.when_created > %s)
+                    )
+                '''
+
+        #proceed
+
+        full_sql = '''
+            SELECT * FROM user_blocks
+            WHERE user_id = %s
+            ''' + cursor_sql + '''
+            ORDER BY user_blocks.when_created DESC, user_blocks.id DESC
+			LIMIT %s
+        '''
+
+        full_params = [
+            self.request.user.id,
+        ] + cursor_params + [
+            settings.USER_BLOCK_QUANTITY_PER_PAGE,
+        ]
+
+        #execute
+
+        user_blocks = UserBlocks.objects.prefetch_related(
+            'user',
+            'blocked_user',
+        ).raw(
+            full_sql,
+            params=full_params
+        )
+
+        list(user_blocks)
+
+        if len(user_blocks) == 0:
+
+            return result
+        
+        result['rows'] = user_blocks
+
+        #start preparing our cursor tokens
+
+        result['back_cursor_token'] = encode_cursor_token({
+            'when_created': user_blocks[0].when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+            'id': user_blocks[0].id,
+        })
+
+        result['next_cursor_token'] = encode_cursor_token({
+            'when_created': user_blocks[-1].when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+            'id': user_blocks[-1].id,
+        })
+
+        return result
+
+
     def get(self, request, *args, **kwargs):
 
-        if 'page' not in kwargs:
+        serializer = GetUserBlocksAPISerializer(data=kwargs, many=False)
+
+        if serializer.is_valid() is False:
 
             return Response(
                 data={
-                    'message': 'No page specified in URL.'
+                    'message': get_serializer_error_message(serializer),
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        offset_quantity = settings.GENERAL_ROW_QUANTITY_PER_PAGE * (kwargs['page'] - 1)
+        new_data = serializer.validated_data
 
-        qs = UserBlocks.objects.select_related(
-            'blocked_user'
-        ).filter(
-            user=request.user
-        ).order_by('blocked_user__username')[
-            offset_quantity : offset_quantity + settings.GENERAL_ROW_QUANTITY_PER_PAGE
-        ]
+        #continue
 
-        serializer = UserBlocksSerializer(
-            qs,
-            many=True
+        result = self.get_latest_user_blocks(
+            new_data['next_or_back'],
+            new_data['cursor_token'],
         )
+
+        #prepare URLs
+
+        current_url_splits = self.request.build_absolute_uri().split(new_data['next_or_back'], 1)
+
+        next_url = current_url_splits[0] + "next"
+        back_url = current_url_splits[0] + "back"
+
+        if len(result['rows']) > 0:
+
+            next_url += "/" + result['next_cursor_token']
+            back_url += "/" + result['back_cursor_token']
+
+        elif new_data['cursor_token'] != '':
+
+            next_url += "/" + new_data['cursor_token']
+            back_url += "/" + new_data['cursor_token']
+
+        #prepare response
+
+        serializer = UserBlocksSerializer(result['rows'], many=True)
 
         response = Response(
             data={
+                'next_url': next_url,
+                'back_url': back_url,
+                'message': '',
                 'data': serializer.data,
-                'message': ''
             },
             status=status.HTTP_200_OK
         )
@@ -275,7 +533,7 @@ class UserBlocksAPI(generics.GenericAPIView):
     #perform blocking/unblocking
     def post(self, request, *args, **kwargs):
 
-        serializer = UserBlocksAPISerializer(data=request.data, many=False)
+        serializer = CreateUserBlocksAPISerializer(data=request.data, many=False)
 
         #validate
         if serializer.is_valid() is False:
@@ -804,34 +1062,6 @@ class BrowseEventsAPI(generics.GenericAPIView):
 
         username_lowercase = username.lower()
 
-        #handle profile page, if it is
-
-        #do quick check
-        #it's also good to return quietly if user doesn't exist, to keep things ambiguous
-        if (
-            username_lowercase == '' or
-            (
-                get_user_model().objects.filter(
-                    username_lowercase=username_lowercase,
-                    banned_until__isnull=True
-                ).exists() is True and
-                AudioClips.objects.filter(
-                    user__username_lowercase=username_lowercase,
-                    is_banned=False,
-                    generic_status__generic_status_name='ok'
-                ).count() > 0
-            )
-        ):
-
-            pass
-
-        else:
-
-            return result
-
-        #sql below handles non-existent event_clip_tone_id well
-        #url ensures int is passed
-
         #handle cursor token
 
         decoded_cursor_token = {}
@@ -859,18 +1089,30 @@ class BrowseEventsAPI(generics.GenericAPIView):
 
         #handle whether to display all audio_clip_tones, or specific
 
-        audio_clip_tones_sql = ''
+        audio_clip_tones_sql = {
+            'join': '',
+            'and': ''
+        }
         audio_clip_tones_params = []
 
         if audio_clip_tone_id is None:
 
-            audio_clip_tones_sql = '''
-                AND audio_clip_tones.id IS NOT NULL
-            '''
+            if username_lowercase == '':
+
+                audio_clip_tones_sql['join'] = '''
+                    INNER JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
+                '''
+
+                audio_clip_tones_sql['and'] = '''
+                    AND audio_clip_tones.id IS NOT NULL
+                '''
 
         else:
 
-            audio_clip_tones_sql = '''
+            audio_clip_tones_sql['join'] = '''
+                INNER JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
+            '''
+            audio_clip_tones_sql['and'] = '''
                 AND audio_clip_tones.id = %s
             '''
             audio_clip_tones_params = [audio_clip_tone_id]
@@ -1048,7 +1290,9 @@ class BrowseEventsAPI(generics.GenericAPIView):
                 SELECT
                     audio_clips.event_id, audio_clips.when_created, audio_clips.id
                 FROM audio_clips
-				INNER JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
+
+                ''' + audio_clip_tones_sql['join'] + '''
+
                 INNER JOIN audio_clip_roles ON audio_clips.audio_clip_role_id = audio_clip_roles.id
                 INNER JOIN events ON audio_clips.event_id = events.id
                 INNER JOIN generic_statuses AS ac_gs ON audio_clips.generic_status_id = ac_gs.id
@@ -1058,7 +1302,7 @@ class BrowseEventsAPI(generics.GenericAPIView):
 
                 WHERE audio_clips.is_banned IS FALSE
 
-                ''' + audio_clip_tones_sql + '''
+                ''' + audio_clip_tones_sql['and'] + '''
 
                 AND ac_gs.generic_status_name = %s
                 AND audio_clip_roles.audio_clip_role_name = %s
@@ -1153,6 +1397,27 @@ class BrowseEventsAPI(generics.GenericAPIView):
         })
 
         return result
+    
+        #overview
+        #interesting caveats, unsure if it's due to flawed table structure or flawed query
+            #user
+                #when specified
+                    #WITH ... ORDER BY must have extra unnecessary is_banned
+                    #audio_clip_tone
+                        #must leave out completely, cannot do IS NOT NULL
+                        #other scenarios are fine, e.g.:
+                            #no audio_clips with audio_clip_tone
+                            #has audio_clips with audio_clip_tone but many
+                #when not specified
+                    #WITH ... ORDER BY does not need unnecessary is_banned
+                    #audio_clip_tone
+                        #can do IS NOT NULL
+                        #other scenarios are fine, e.g.:
+                            #no audio_clips with audio_clip_tone
+                            #has audio_clips with audio_clip_tone but many
+
+        #fixed: when user is specified, audio_clip_tones.id IS NOT NULL becomes around 250ms at 40k+ rows
+            #remove join on audio_clip_tones when none specified
 
         #fixed: cursor goes through entire table, even with the correct index
             #for background, indexes work best when using/starting with "=" operator, or given a >= <= range
@@ -1183,11 +1448,6 @@ class BrowseEventsAPI(generics.GenericAPIView):
             #extra context:
                 #this issue persists when user is specified, but is also fixed using dummy ORDER BY is_banned
 
-        #good:
-            #user-audio_clips scales nicely when querying for a user
-            #higher % of is_banned=True rows does not slow down query
-            #currently at 150ms+- when user has 45k audio_clips rows, which is impossible to reach in reality
-
 
     #get event.id to simply view
     def get(self, request, *args, **kwargs):
@@ -1209,27 +1469,14 @@ class BrowseEventsAPI(generics.GenericAPIView):
         #get rows and cursor
         #currently only handling latest
 
-        result = None
-
-        try:
-
-            result = self.get_latest_grouped_audio_clips(
-                username=new_data['username'],
-                timeframe=new_data['timeframe'],
-                audio_clip_role_name=new_data['audio_clip_role_name'],
-                audio_clip_tone_id=new_data['audio_clip_tone_id'],
-                next_or_back=new_data['next_or_back'],
-                cursor_token=new_data['cursor_token'],
-            )
-
-        except Exception as e:
-
-            return Response(
-                data={
-                    'message': get_user_message_from_custom_error(e),
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        result = self.get_latest_grouped_audio_clips(
+            username=new_data['username'],
+            timeframe=new_data['timeframe'],
+            audio_clip_role_name=new_data['audio_clip_role_name'],
+            audio_clip_tone_id=new_data['audio_clip_tone_id'],
+            next_or_back=new_data['next_or_back'],
+            cursor_token=new_data['cursor_token'],
+        )
 
         #prepare next and back URLs
 

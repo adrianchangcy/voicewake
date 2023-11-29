@@ -8,17 +8,18 @@
             v-if="propIsForStaticPage === false"
             class="h-10 relative"
         >
-            <VActionTextOnly
+            <VActionText
                 :propIsIconOnly="true"
-                @click.stop="forceClose()"
+                @click="forceClose()"
                 propElement="button"
                 propElementSize="s"
                 type="button"
                 class="w-10 absolute top-1 -right-3 m-auto"
             >
                 <i class="fas fa-xmark mx-auto text-xl" aria-hidden="true"></i>
-                <span class="sr-only">close login and sign-up menu</span>
-            </VActionTextOnly>
+                <span v-show="current_section === 'log-in-section'" class="sr-only">close login menu</span>
+                <span v-show="current_section === 'sign-up-section'" class="sr-only">close sign-up menu</span>
+            </VActionText>
         </div>
 
         <!--
@@ -77,7 +78,7 @@
 
                                 <div class="flex flex-col gap-4 mt-6">
                                     <VAction
-                                        @click.stop="doNavigation('log-in-section', 'log-in-step-1')"
+                                        @click="doNavigation('log-in-section', 'log-in-step-1')"
                                         propElement="button"
                                         type="button"
                                         propElementSize="s"
@@ -95,27 +96,27 @@
                                 <div class="mx-auto flex flex-row items-center">
                                     <span class="text-base block">Don't have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
-                                        <VActionTextOnly
-                                            :propIsIconOnly="true"
+                                        <VActionText
+                                            :propIsIconOnly="false"
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
                                             href="/signup"
                                         >
                                             <span class="font-bold">Sign up</span>
-                                        </VActionTextOnly>
+                                        </VActionText>
                                     </div>
                                     <div v-else>
-                                        <VActionTextOnly
-                                            :propIsIconOnly="true"
-                                            @click.stop="doNavigation('sign-up-section', 'sign-up-step-0', false)"
+                                        <VActionText
+                                            :propIsIconOnly="false"
+                                            @click="switchContextInstance('sign-up-section')"
                                             propElement="button"
                                             propElementSize="s"
                                             propFontSize="s"
                                             type="button"
                                         >
                                             <span class="font-bold">Sign up</span>
-                                        </VActionTextOnly>
+                                        </VActionText>
                                     </div>
                                 </div>
                             </div>
@@ -134,7 +135,7 @@
                             </VTitle>
 
                             <VInput
-                                propElementId="user-log-in-sign-up-email-input"
+                                propElementId="user-log-in-email-input"
                                 propLabel="Email"
                                 propPlaceholder=""
                                 propType="text"
@@ -155,7 +156,7 @@
                             <!--main action-->
                             <div class="mt-8 w-full h-fit">
                                 <VActionSpecial
-                                    @click.stop="submitStep1('log-in')"
+                                    @click="submitStep1('log-in')"
                                     :propIsEnabled="!is_email_loading"
                                     propElement="button"
                                     type="button"
@@ -172,27 +173,27 @@
                                 <div class="mx-auto flex flex-row items-center">
                                     <span class="text-base block">Don't have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
-                                        <VActionTextOnly
-                                            :propIsIconOnly="true"
+                                        <VActionText
+                                            :propIsIconOnly="false"
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
                                             href="/signup"
                                         >
                                             <span class="font-bold">Sign up</span>
-                                        </VActionTextOnly>
+                                        </VActionText>
                                     </div>
                                     <div v-else>
-                                        <VActionTextOnly
-                                            :propIsIconOnly="true"
-                                            @click.stop="doNavigation('sign-up-section', 'sign-up-step-1', false)"
+                                        <VActionText
+                                            :propIsIconOnly="false"
+                                            @click="switchContextInstance('sign-up-section')"
                                             propElement="button"
                                             propElementSize="s"
                                             propFontSize="s"
                                             type="button"
                                         >
                                             <span class="font-bold">Sign up</span>
-                                        </VActionTextOnly>
+                                        </VActionText>
                                     </div>
                                 </div>
                             </div>
@@ -205,9 +206,9 @@
                         >
 
                             <div class="h-10 relative">
-                                <VActionTextOnly
-                                    :propIsIconOnly="true"
-                                    @click.stop="[doNavigation('log-in-section', 'log-in-step-1', false)]"
+                                <VActionText
+                                    :propIsIconOnly="false"
+                                    @click="doNavigation('log-in-section', 'log-in-step-1', false)"
                                     propElement="button"
                                     propElementSize="s"
                                     propFontSize="s"
@@ -218,7 +219,7 @@
                                         <i class="fas fa-arrow-left w-fit h-fit text-lg block pr-2" aria-hidden="true"></i>
                                         <span class="font-bold break-words">Back</span>
                                     </div>
-                                </VActionTextOnly>
+                                </VActionText>
                             </div>
 
                             <VTitle propFontSize="l">
@@ -259,23 +260,23 @@
                                 >
                                     {{ otp_request_status_text }}&nbsp;
                                 </span>
-                                <VActionTextOnly
-                                    :propIsIconOnly="true"
+                                <VActionText
+                                    :propIsIconOnly="false"
                                     v-show="canSubmitEmailAndRequestOTP"
-                                    @click.stop="submitEmailAndRequestOTP('log-in', true)"
+                                    @click="submitEmailAndRequestOTP('log-in', true)"
                                     propElement="button"
                                     propElementSize="s"
                                     propFontSize="s"
                                     type="button"
                                 >
                                     <span class="font-bold">Resend</span>
-                                </VActionTextOnly>
+                                </VActionText>
                             </div>
 
                             <!--main action-->
                             <div class="mt-8 h-fit">
                                 <VActionSpecial
-                                    @click.stop="submitStep2('log-in')"
+                                    @click="submitStep2('log-in')"
                                     :propIsEnabled="!is_main_action_loading"
                                     propElement="button"
                                     type="button"
@@ -304,27 +305,27 @@
                                 <div class="mx-auto flex flex-row items-center">
                                     <span class="text-base block">Don't have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
-                                        <VActionTextOnly
-                                            :propIsIconOnly="true"
+                                        <VActionText
+                                            :propIsIconOnly="false"
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
                                             href="/signup"
                                         >
                                             <span class="font-bold">Sign up</span>
-                                        </VActionTextOnly>
+                                        </VActionText>
                                     </div>
                                     <div v-else>
-                                        <VActionTextOnly
-                                            :propIsIconOnly="true"
-                                            @click.stop="doNavigation('sign-up-section', 'sign-up-step-1', false)"
+                                        <VActionText
+                                            :propIsIconOnly="false"
+                                            @click="switchContextInstance('sign-up-section')"
                                             propElement="button"
                                             propElementSize="s"
                                             propFontSize="s"
                                             type="button"
                                         >
                                             <span class="font-bold">Sign up</span>
-                                        </VActionTextOnly>
+                                        </VActionText>
                                     </div>
                                 </div>
                             </div>
@@ -352,7 +353,7 @@
 
                                 <div class="flex flex-col gap-4 mt-6">
                                     <VAction
-                                        @click.stop="doNavigation('sign-up-section', 'sign-up-step-1')"
+                                        @click="doNavigation('sign-up-section', 'sign-up-step-1')"
                                         propElement="button"
                                         type="button"
                                         propElementSize="s"
@@ -370,27 +371,27 @@
                                 <div class="mx-auto flex flex-row items-center">
                                     <span class="text-base block">Already have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
-                                        <VActionTextOnly
-                                            :propIsIconOnly="true"
+                                        <VActionText
+                                            :propIsIconOnly="false"
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
                                             href="/login"
                                         >
                                             <span class="font-bold">Log in</span>
-                                        </VActionTextOnly>
+                                        </VActionText>
                                     </div>
                                     <div v-else>
-                                        <VActionTextOnly
-                                            :propIsIconOnly="true"
-                                            @click.stop="doNavigation('log-in-section', 'log-in-step-0', false)"
+                                        <VActionText
+                                            :propIsIconOnly="false"
+                                            @click="switchContextInstance('log-in-section')"
                                             propElement="button"
                                             propElementSize="s"
                                             propFontSize="s"
                                             type="button"
                                         >
                                             <span class="font-bold">Log in</span>
-                                        </VActionTextOnly>
+                                        </VActionText>
                                     </div>
                                 </div>
                             </div>
@@ -409,7 +410,7 @@
                             </VTitle>
 
                             <VInput
-                                propElementId="user-log-in-sign-up-email-input"
+                                propElementId="user-sign-up-email-input"
                                 propLabel="Email"
                                 propPlaceholder=""
                                 propType="text"
@@ -430,7 +431,7 @@
                             <!--main action-->
                             <div class="mt-8 w-full h-fit">
                                 <VActionSpecial
-                                    @click.stop="submitStep1('sign-up')"
+                                    @click="submitStep1('sign-up')"
                                     :propIsEnabled="!is_email_loading"
                                     propElement="button"
                                     type="button"
@@ -447,27 +448,27 @@
                                 <div class="mx-auto flex flex-row items-center">
                                     <span class="text-base block">Already have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
-                                        <VActionTextOnly
-                                            :propIsIconOnly="true"
+                                        <VActionText
+                                            :propIsIconOnly="false"
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
                                             href="/login"
                                         >
                                             <span class="font-bold">Log in</span>
-                                        </VActionTextOnly>
+                                        </VActionText>
                                     </div>
                                     <div v-else>
-                                        <VActionTextOnly
-                                            :propIsIconOnly="true"
-                                            @click.stop="doNavigation('log-in-section', 'log-in-step-1', false)"
+                                        <VActionText
+                                            :propIsIconOnly="false"
+                                            @click="switchContextInstance('log-in-section')"
                                             propElement="button"
                                             propElementSize="s"
                                             propFontSize="s"
                                             type="button"
                                         >
                                             <span class="font-bold">Log in</span>
-                                        </VActionTextOnly>
+                                        </VActionText>
                                     </div>
                                 </div>
                             </div>
@@ -479,9 +480,9 @@
                             v-show="current_step === 'sign-up-step-2'"
                         >
                             <div class="h-10 relative">
-                                <VActionTextOnly
-                                    :propIsIconOnly="true"
-                                    @click.stop="[doNavigation('sign-up-section', 'sign-up-step-1', false)]"
+                                <VActionText
+                                    :propIsIconOnly="false"
+                                    @click="[doNavigation('sign-up-section', 'sign-up-step-1', false)]"
                                     propElement="button"
                                     propElementSize="s"
                                     propFontSize="s"
@@ -492,7 +493,7 @@
                                         <i class="fas fa-arrow-left w-fit h-fit text-lg block pr-2" aria-hidden="true"></i>
                                         <span class="font-bold break-words">Back</span>
                                     </div>
-                                </VActionTextOnly>
+                                </VActionText>
                             </div>
 
                             <VTitle propFontSize="l">
@@ -533,23 +534,23 @@
                                 >
                                     {{ otp_request_status_text }}&nbsp;
                                 </span>
-                                <VActionTextOnly
-                                    :propIsIconOnly="true"
+                                <VActionText
+                                    :propIsIconOnly="false"
                                     v-show="canSubmitEmailAndRequestOTP"
-                                    @click.stop="submitEmailAndRequestOTP('log-in', true)"
+                                    @click="submitEmailAndRequestOTP('log-in', true)"
                                     propElement="button"
                                     propElementSize="s"
                                     propFontSize="s"
                                     type="button"
                                 >
                                     <span class="font-bold">Resend</span>
-                                </VActionTextOnly>
+                                </VActionText>
                             </div>
 
                             <!--main action-->
                             <div class="mt-8 h-fit">
                                 <VActionSpecial
-                                    @click.stop="submitStep2('sign-up')"
+                                    @click="submitStep2('sign-up')"
                                     :propIsEnabled="!is_main_action_loading"
                                     propElement="button"
                                     type="button"
@@ -576,27 +577,27 @@
                                 <div class="mx-auto flex flex-row items-center">
                                     <span class="text-base block">Already have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
-                                        <VActionTextOnly
-                                            :propIsIconOnly="true"
+                                        <VActionText
+                                            :propIsIconOnly="false"
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
                                             href="/login"
                                         >
                                             <span class="font-bold">Log in</span>
-                                        </VActionTextOnly>
+                                        </VActionText>
                                     </div>
                                     <div v-else>
-                                        <VActionTextOnly
-                                            :propIsIconOnly="true"
-                                            @click.stop="doNavigation('log-in-section', 'log-in-step-1', false)"
+                                        <VActionText
+                                            :propIsIconOnly="false"
+                                            @click="switchContextInstance('log-in-section')"
                                             propElement="button"
                                             propElementSize="s"
                                             propFontSize="s"
                                             type="button"
                                         >
                                             <span class="font-bold">Log in</span>
-                                        </VActionTextOnly>
+                                        </VActionText>
                                     </div>
                                 </div>
                             </div>
@@ -617,7 +618,7 @@
     import VInput from '@/components/small/VInput.vue';
     import VTitle from '@/components/small/VTitle.vue';
     import VNumberSlots from '@/components/small/VNumberSlots.vue';
-    import VActionTextOnly from '@/components/small/VActionTextOnly.vue';
+    import VActionText from '@/components/small/VActionText.vue';
     import TransitionGroupSlide from '@/transitions/TransitionGroupSlide.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
     import VAction from '@/components/small/VAction.vue';
@@ -627,7 +628,7 @@
 
 
 <script lang="ts">
-    import { defineComponent } from 'vue';
+    import { defineComponent, PropType } from 'vue';
     import { notify } from 'notiwind';
     import { emailValidatorDjango } from '@/helper_functions';
     import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
@@ -637,6 +638,8 @@
     interface StepsType {
         [key: number]: string[],
     }
+    type SectionsValues = "log-in-section"|"sign-up-section"
+    type SectionsArray = ["log-in-section", "sign-up-section"]
 
     export default defineComponent({
         name: "UserLogInSignUp",
@@ -671,8 +674,8 @@
                 is_main_action_loading: false,
                 is_email_loading: false,
 
-                current_section: "",
-                sections: ["log-in-section", "sign-up-section"] as string[],
+                current_section: "" as SectionsValues,
+                sections: ["log-in-section", "sign-up-section"] as SectionsArray,
 
                 current_step: "",
                 steps: {
@@ -689,13 +692,13 @@
                 default: false
             },
             propRequestedSection: {
-                type: String,
+                type: String as PropType<SectionsValues>,
                 required: true,
                 default: "log-in-section"
             },
         },
         watch: {
-            propRequestedSection(new_value:string){
+            propRequestedSection(new_value:SectionsValues){
 
                 this.doNavigation(
                     new_value,
@@ -747,14 +750,29 @@
                 }
 
                 this.doNavigation(
-                    section_type+'-section',
+                    section_type+'-section' as SectionsValues,
                     section_type+'-step-2'
                 );
                 this.submitEmailAndRequestOTP(section_type);
             },
             async forceClose() : Promise<void> {
 
-                this.pop_up_manager_store.toggleIsUserLogInSignUpOpen(false);
+                this.pop_up_manager_store.toggleIsUserLogInOpen(false);
+                this.pop_up_manager_store.toggleIsUserSignUpOpen(false);
+            },
+            async switchContextInstance(new_section:SectionsValues) : Promise<void> {
+
+                //close current section, open new section
+
+                if(new_section === 'log-in-section'){
+
+                    await this.pop_up_manager_store.toggleIsUserLogInOpen(true);
+
+                }else if(new_section === 'sign-up-section'){
+
+                    await this.pop_up_manager_store.toggleIsUserSignUpOpen(true);
+                }
+
             },
             async resetOTPRelatedValues() : Promise<void> {
 
@@ -782,7 +800,7 @@
 
                 this.resetOTPFields();
             },
-            doNavigation(section:string="", step:string="", transition_slide_is_forward=true) : void {
+            doNavigation(section:SectionsValues, step:string="", transition_slide_is_forward=true) : void {
 
                 this.transition_slide_is_forward = transition_slide_is_forward;
 

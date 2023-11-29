@@ -6,16 +6,16 @@
 
             <!--home-->
             <div class="col-start-1 col-span-1">
-                <VActionTextOnly
-                    propElement="a"
-                    propFontSize="m"
+                <VActionText
+                    prop-element="a"
+                    prop-font-size="m"
                     href="/"
-                    :propIsIconOnly="true"
+                    :propIsIconOnly="false"
                     class="w-full h-full pb-0.5"
                 >
                     <i class="fas fa-wave-square mx-auto" aria-hidden="true"></i>
                     <span class="sr-only">home</span>
-                </VActionTextOnly>
+                </VActionText>
             </div>
 
             <!--start-->
@@ -23,39 +23,35 @@
             <div
                 class="col-start-2 col-span-1 sm:col-start-3 sm:col-span-2 lg:col-start-4 lg:col-span-1"
             >
-                <VActionTextOnly
+                <VActionText
                     v-if="pop_up_manager_store.isLoggedIn === true"
-                    propElement="a"
-                    propFontSize="m"
+                    prop-element="a"
+                    prop-font-size="m"
                     href="/start"
                     :propIsIconOnly="false"
                     class="w-full h-full pb-0.5"
                 >
-                    <span class="block mx-auto">
-                        <i class="fas fa-comment" aria-hidden="true"></i>
-                    </span>
-                    <span class="sr-only">start event</span>
-                </VActionTextOnly>
+                        <i class="fas fa-comment block mx-auto" aria-hidden="true"></i>
+                        <span class="sr-only">start event</span>
+                </VActionText>
 
                 <div
                     v-else
                     class="w-full h-full"
                 >
                     <TransitionFade>
-                        <VActionTextOnly
+                        <VActionText
                             v-show="!pop_up_manager_store.hasPopUpOpen"
-                            @click="pop_up_manager_store.toggleIsLoginRequiredPromptOpen(true, 'Log in to reply in events.')"
-                            propElement="button"
+                            @click="pop_up_manager_store.toggleIsLoginRequiredPromptOpen(true, 'Log in to start events.')"
+                            prop-element="button"
                             type="button"
-                            propFontSize="m"
+                            prop-font-size="m"
                             :propIsIconOnly="false"
                             class="w-full h-full pb-0.5"
                         >
-                            <span class="block mx-auto">
-                                <i class="fas fa-comment" aria-hidden="true"></i>
-                            </span>
+                            <i class="fas fa-comment block mx-auto" aria-hidden="true"></i>
                             <span class="sr-only">start event</span>
-                        </VActionTextOnly>
+                        </VActionText>
                     </TransitionFade>
                 </div>
             </div>
@@ -65,39 +61,35 @@
             <div
                 class="col-start-3 col-span-1 sm:col-start-5 sm:col-span-2 lg:col-start-5 lg:col-span-1"
             >
-                <VActionTextOnly
+                <VActionText
                     v-if="pop_up_manager_store.isLoggedIn === true"
-                    propElement="a"
-                    propFontSize="m"
+                    prop-element="a"
+                    prop-font-size="m"
                     href="/reply"
                     :propIsIconOnly="false"
                     class="w-full h-full pb-0.5"
                 >
-                    <span class="block mx-auto">
-                        <i class="fas fa-comments" aria-hidden="true"></i>
-                    </span>
+                    <i class="fas fa-comments block mx-auto" aria-hidden="true"></i>
                     <span class="sr-only">reply in events</span>
-                </VActionTextOnly>
+                </VActionText>
 
                 <div
                     v-else
                     class="w-full h-full"
                 >
                     <TransitionFade>
-                        <VActionTextOnly
+                        <VActionText
                             v-show="!pop_up_manager_store.hasPopUpOpen"
                             @click="pop_up_manager_store.toggleIsLoginRequiredPromptOpen(true, 'Log in to reply in events.')"
-                            propElement="button"
+                            prop-element="button"
                             type="button"
-                            propFontSize="m"
+                            prop-font-size="m"
                             :propIsIconOnly="false"
                             class="w-full h-full pb-0.5"
                         >
-                            <span class="block mx-auto">
-                                <i class="fas fa-comments" aria-hidden="true"></i>
-                            </span>
+                            <i class="fas fa-comments block mx-auto" aria-hidden="true"></i>
                             <span class="sr-only">reply in events</span>
-                        </VActionTextOnly>
+                        </VActionText>
                     </TransitionFade>
                 </div>
             </div>
@@ -107,9 +99,9 @@
                 ref="nav_menu_button_1"
                 class="block lg:hidden col-start-4 col-span-1 sm:col-start-8"
             >
-                <VActionTextOnly
+                <VActionText
                     @click.stop="pop_up_manager_store.toggleIsNavMenuOpen()"
-                    propElement="button"
+                    prop-element="button"
                     type="button"
                     :propIsIconOnly="true"
                     class="w-full h-full"
@@ -139,7 +131,7 @@
                         </div>
                         <span class="sr-only">more navigation options</span>
                     </div>
-                </VActionTextOnly>
+                </VActionText>
             </div>
 
             <!--desktop, if logged in-->
@@ -150,9 +142,9 @@
                     pop_up_manager_store.isLoggedIn === true ? 'hidden lg:block lg:col-start-8 lg:col-span-1' : 'hidden'
                 ]"
             >
-                <VActionTextOnly
+                <VActionText
                     @click.stop="pop_up_manager_store.toggleIsNavMenuOpen()"
-                    propElement="button"
+                    prop-element="button"
                     type="button"
                     :propIsIconOnly="true"
                     class="w-full h-full"
@@ -171,7 +163,7 @@
                         </span>
                     </span>
                     <span class="sr-only">you are logged in, more navigation options</span>
-                </VActionTextOnly>
+                </VActionText>
             </div>
 
             <!--desktop, if not logged in, show log in option-->
@@ -180,19 +172,20 @@
                 class="hidden lg:block lg:col-start-7 lg:col-span-1"
             >
                 <TransitionFade>
-                    <VActionTextOnly
+                    <VActionText
                         v-show="canShowLogInSignUpAtNav"
                         @click.stop="openUserLogInSignUp('log-in-section')"
-                        propElement="button"
-                        propFontSize="m"
+                        prop-element="button"
                         type="button"
-                        class="w-full h-full pb-0.5"
+                        prop-font-size="m"
+                        :prop-is-icon-only="true"
+                        class="w-full h-full pb-1"
                     >
                         <span class="block mx-auto">
                             <i class="fas fa-circle-user sm:pr-2" aria-hidden="true"></i>
                             <span>Log in</span>
                         </span>
-                    </VActionTextOnly>
+                    </VActionText>
                 </TransitionFade>
             </div>
 
@@ -205,9 +198,9 @@
                     <VActionSpecial
                         v-show="canShowLogInSignUpAtNav"
                         @click.stop="openUserLogInSignUp('sign-up-section')"
-                        propElement="button"
+                        prop-element="button"
                         type="button"
-                        class="w-full h-full pb-0.5 shadow-md active:shadow-sm -translate-y-[1px]"
+                        class="w-full h-full pb-1 shadow-md active:shadow-sm -translate-y-[1px]"
                     >
                         <span class="block mx-auto text-xl font-medium">
                             <i class="fas fa-right-to-bracket sm:pr-2" aria-hidden="true"></i>
@@ -246,7 +239,7 @@
                     <div
                         v-show="pop_up_manager_store.isNavMenuOpen"
                         v-click-outside="{
-                            var_name_for_element_bool_status: forceCloseNavMenu,
+                            bool_status_variable_or_callback: forceCloseNavMenu,
                             refs_to_exclude: ['nav_menu_button_1', 'nav_menu_button_2']
                         }"
                         class="absolute w-full h-[calc(100vh-4.5rem)] flex flex-col overflow-hidden p-2 border-l border-theme-light-gray bg-theme-light"
@@ -256,9 +249,10 @@
                         <div class="pt-12 pb-14">
 
                             <!--logged in, can click to view profile-->
-                            <VActionTextOnly
+                            <VActionText
                                 v-if="pop_up_manager_store.isLoggedIn"
                                 prop-element="a"
+                                :prop-is-icon-only="false"
                                 :href="getProfileURL()"
                             >
                                 <div class="w-full flex flex-col">
@@ -267,7 +261,7 @@
                                         <span>{{ propUsername }}</span>
                                     </span>
                                 </div>
-                            </VActionTextOnly>
+                            </VActionText>
 
                             <!--not logged in-->
                             <div
@@ -293,11 +287,12 @@
                         >
 
                             <!--log in-->
-                            <VActionTextOnly
-                                propElement="a"
+                            <VActionText
+                                prop-element="a"
                                 href="/login"
-                                propFontSize="s"
-                                propElementSize="s"
+                                prop-font-size="s"
+                                prop-element-size="s"
+                                :prop-is-icon-only="false"
                                 class="row-span-1 w-full"
                             >
                                 <div class="w-full h-full grid grid-cols-4">
@@ -310,14 +305,15 @@
                                         </span>
                                     </div>
                                 </div>
-                            </VActionTextOnly>
+                            </VActionText>
 
                             <!--sign up-->
-                            <VActionTextOnly
-                                propElement="a"
+                            <VActionText
+                                prop-element="a"
                                 href="/signup"
-                                propFontSize="s"
-                                propElementSize="s"
+                                prop-font-size="s"
+                                prop-element-size="s"
+                                :prop-is-icon-only="false"
                                 class="row-span-1 w-full"
                             >
                                 <div class="w-full h-full grid grid-cols-4">
@@ -330,7 +326,7 @@
                                         </span>
                                     </div>
                                 </div>
-                            </VActionTextOnly>
+                            </VActionText>
                         </div>
 
                         <!--block list-->
@@ -339,11 +335,12 @@
                             class="h-fit grid"
                         >
                             <!--block list-->
-                            <VActionTextOnly
-                                propElement="a"
+                            <VActionText
+                                prop-element="a"
                                 href="/block"
-                                propFontSize="s"
-                                propElementSize="s"
+                                prop-font-size="s"
+                                prop-element-size="s"
+                                :prop-is-icon-only="false"
                                 class="row-span-1 w-full"
                             >
                                 <div class="w-full h-full grid grid-cols-4">
@@ -356,7 +353,7 @@
                                         </span>
                                     </div>
                                 </div>
-                            </VActionTextOnly>
+                            </VActionText>
                         </div>
 
                         <!--divider-->
@@ -373,13 +370,14 @@
                             class="h-fit grid gap-2"
                         >
                             <!--log out-->
-                            <VActionTextOnly
+                            <VActionText
                                 v-if="pop_up_manager_store.isLoggedIn === true"
-                                :propIsEnabled="!is_log_out_loading"
+                                :prop-is-enabled="!is_log_out_loading"
                                 @click.stop="logOut()"
-                                propElement="button"
-                                propFontSize="s"
-                                propElementSize="s"
+                                prop-element="button"
+                                prop-font-size="s"
+                                prop-element-size="s"
+                                :prop-is-icon-only="true"
                                 type="button"
                                 class="w-full"
                             >
@@ -387,7 +385,7 @@
                                     <div class="col-span-1 flex items-center">
                                         <VLoading
                                             v-if="is_log_out_loading"
-                                            propElementSize="s"
+                                            prop-element-size="s"
                                             class="mx-auto"
                                         />
                                         <span v-else class="mx-auto">
@@ -405,7 +403,7 @@
                                         </span>
                                     </div>
                                 </div>
-                            </VActionTextOnly>
+                            </VActionText>
                         </div>
                     </div>
                 </TransitionFade>
@@ -417,7 +415,7 @@
 <script setup lang="ts">
     // import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
     import TransitionFade from '/src/transitions/TransitionFade.vue';
-    import VActionTextOnly from '@/components/small/VActionTextOnly.vue';
+    import VActionText from '@/components/small/VActionText.vue';
     import VActionSpecial from '../small/VActionSpecial.vue';
     import VLoading from '../small/VLoading.vue';
 </script>
@@ -451,7 +449,8 @@
             canShowLogInSignUpAtNav() : boolean {
                 return (
                     this.is_currently_log_in_sign_up_static_page === false &&
-                    this.pop_up_manager_store.isUserLogInSignUpOpen === false &&
+                    this.pop_up_manager_store.isUserLogInOpen === false &&
+                    this.pop_up_manager_store.isUserSignUpOpen === false &&
                     this.pop_up_manager_store.isLoginRequiredPromptOpen === false
                 );
             },
@@ -469,8 +468,14 @@
             },
             openUserLogInSignUp(section:"log-in-section"|"sign-up-section") : void {
 
-                this.pop_up_manager_store.toggleIsNavMenuOpen(false);
-                this.pop_up_manager_store.toggleIsUserLogInSignUpOpen(true, section);
+                if(section === 'log-in-section'){
+
+                    this.pop_up_manager_store.toggleIsUserLogInOpen(true);
+
+                }else if(section === 'sign-up-section'){
+
+                    this.pop_up_manager_store.toggleIsUserSignUpOpen(true);
+                }
             },
             async logOut() : Promise<void> {
 

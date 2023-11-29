@@ -1,50 +1,45 @@
 <template>
-    <div>
+    <div class="border-x-2 border-red-500 px-1">
 
         <AudioClipsCard
             :prop-audio-clips="audio_clips"
-            :prop-is-fetching="is_fetching"
         />
+
+        <div
+            v-show="is_fetching"
+            class="flex flex-col gap-4 px-1"
+        >
+            <div class="w-full h-20 rounded-lg skeleton"></div>
+            <div class="w-full h-20 rounded-lg skeleton"></div>
+        </div>
 
         <TransitionFade>
             <VDialogPlain
-                v-show="has_no_audio_clips_left_to_fetch"
+                v-if="canShowEmptyMessage || canShowEndOfPageMessage"
                 :prop-has-border="false"
                 :prop-has-auto-space-logo="false"
                 :prop-has-auto-space-title="false"
                 :prop-has-auto-space-content="false"
-                class="w-full py-8"
+                class="w-full px-1 pt-8"
             >
                 <template #title>
-                    <span>You've reached the end of this page.</span>
+                    <span v-show="canShowEmptyMessage">No banned recordings.</span>
+                    <span v-show="canShowEndOfPageMessage">You've reached the end of this page.</span>
                 </template>
             </VDialogPlain>
         </TransitionFade>
 
         <div id="load-more-user-banned-audio-clips-observer-target"></div>
 
-        <!--VAudioClipCard emits selection, which triggers :to, thus teleporting-->
-        <!--presence of VAudioClipCard depends on VEventCard-->
-        <div v-if="selected_audio_clip !== null">
-            <Teleport :to="getVPlaybackTeleportId">
-                <VPlayback
-                    :propAudioClip="selected_audio_clip"
-                    :propIsOpen="true"
-                    :propAudioVolumePeaks="selected_audio_clip.audio_volume_peaks"
-                    :propBucketQuantity="selected_audio_clip.audio_volume_peaks.length"
-                    :propAutoPlayOnSourceChange="true"
-                />
-            </Teleport>
-        </div>
+
     </div>
 </template>
 
 
 <script setup lang="ts">
-    import AudioClipsCard from '@/components/main/AudioClipsCard.vue';
-    import VPlayback from '@/components/medium/VPlayback.vue';
     import VDialogPlain from '@/components/small/VDialogPlain.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
+    import AudioClipsCard from '@/components/main/AudioClipsCard.vue';
 </script>
 
 
@@ -56,59 +51,74 @@
     import { notify } from 'notiwind';
     const axios = require('axios');
 
+    interface ScrollableAudioClipsTypes extends AudioClipsTypes {
+        scroller_index_id: number,
+    }
+
     export default defineComponent({
         name: 'ListUserBannedAudioClipsApp',
         data(){
             return {
-                audio_clips: [] as AudioClipsTypes[],
+                audio_clips: [] as ScrollableAudioClipsTypes[],
                 currently_playing_audio_clip_store: useCurrentlyPlayingAudioClipStore(),
                 selected_audio_clip: null as AudioClipsTypes|null,
+
+                next_url: window.location.origin + '/api/audio-clips/bans/list/next',
+                back_url: window.location.origin + '/api/audio-clips/bans/list/back',
 
                 is_fetching: false,
                 can_observer_fetch: false,
                 has_no_audio_clips_left_to_fetch: false,
-                current_page: 1,
             };
         },
         computed: {
-            getVPlaybackTeleportId() : string {
+            canShowEmptyMessage() : boolean {
 
-                if(this.selected_audio_clip === null){
+                return (
+                    this.is_fetching === false &&
+                    this.audio_clips.length === 0 &&
+                    this.has_no_audio_clips_left_to_fetch === true
+                );
+            },
+            canShowEndOfPageMessage() : boolean {
 
-                    return '';
-                }
-
-                return '#playback-teleport-audio-clip-id-' + this.selected_audio_clip.id;
+                return (
+                    this.is_fetching === false &&
+                    this.audio_clips.length > 0 &&
+                    this.has_no_audio_clips_left_to_fetch === true
+                );
             },
         },
         methods: {
             async getUserBannedAudioClips() : Promise<void> {
 
+                if(this.is_fetching === true){
+
+                    return;
+                }
+
                 this.is_fetching = true;
                 this.can_observer_fetch = false;
                 this.has_no_audio_clips_left_to_fetch = false;
 
-                await axios.get(window.location.origin + '/api/users/banned-audio-clips/get/' + this.current_page.toString())
+                await axios.get(this.next_url)
                 .then((result:any) => {
 
-                    console.log(result.data['data'].length);
+                    if(result.data['data'].length === 0){
+
+                        this.has_no_audio_clips_left_to_fetch = true;
+                        return;
+                    }
 
                     result.data['data'].forEach((audio_clip:AudioClipsTypes)=>{
 
-                        this.audio_clips.push(audio_clip);
+                        (audio_clip as ScrollableAudioClipsTypes).scroller_index_id = this.audio_clips.length;
+
+                        this.audio_clips.push(audio_clip as ScrollableAudioClipsTypes);
                     });
 
-                    if(result.data['data'].length > 0){
-
-                        this.current_page += 1;
-
-                    }else{
-
-                        this.has_no_audio_clips_left_to_fetch = true;
-
-                    }
-
-                    this.can_observer_fetch = true;
+                    this.next_url = result.data['next_url'];
+                    this.back_url = result.data['back_url'];
 
                 }).catch(() => {
 
@@ -121,7 +131,17 @@
                 }).finally(() => {
 
                     this.is_fetching = false;
+                    this.can_observer_fetch = true;
                 });
+            },
+            checkIsSelected(audio_clip_id:number) : boolean {
+
+                const playing_audio_clip = this.currently_playing_audio_clip_store.getPlayingAudioClip;
+
+                return (
+                    playing_audio_clip !== null &&
+                    playing_audio_clip.id === audio_clip_id
+                );
             },
             handleNewSelectedAudioClip(audio_clip:AudioClipsTypes|null) : void {
 
@@ -155,6 +175,8 @@
         },
         beforeMount(){
 
+            history.scrollRestoration = 'manual';
+
             this.getUserBannedAudioClips();
 
             //listen to store
@@ -178,11 +200,10 @@
                     new Date(banned_until).getTime()
                 );
             }
-
         },
         mounted(){
 
             this.setUpObserver();
-        }
+        },
     });
 </script>

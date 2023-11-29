@@ -12,7 +12,7 @@
             class="pb-10"
         >
             <!--ugc tells crawlers that it is user-generated content-->
-            <VActionTextOnly
+            <VActionText
                 prop-element="a"
                 :href="getEventURL"
                 rel="ugc"
@@ -20,7 +20,7 @@
             >
                 <VTitle
                     propFontSize="s"
-                    class="w-full shade-text-when-hover transition-colors"
+                    class="w-full"
                 >
                     <template #title>
                         <span
@@ -38,125 +38,210 @@
                         <span>{{ prettyWhenCreated }}</span>
                     </template>
                 </VTitle>
-            </VActionTextOnly>
+            </VActionText>
         </div>
 
-        <!--more than 1 audio_clip each-->
-        <div v-if="originatorCount > 0 && responderCount > 0" class="flex flex-col gap-10">
-
-            <!--originator-->
+        <!--if events are always completed, use this-->
+        <!--child components are never re-rendered-->
+        <div v-if="propIsEventAlwaysCompleted">
             <div
-                v-show="originatorCount > 0"
-                class="flex flex-col gap-2"
+                v-if="propLoadVAudioClipCardsOnly"
+                class="flex flex-col gap-10"
             >
-                <VUsernameURL
-                    :propUsername="propEvent.originator!.user.username"
-                />
-                <VAudioClipCard
-                    :propAudioClip="propEvent.originator"
-                    :propIsSelected="checkIsSelected(propEvent.originator!.id)"
-                    @isSelected="handleNewSelectedAudioClip($event)"
-                />
-                <VAudioClipTools
-                    :propAudioClip="propEvent.originator"
-                    :propEventId="propEvent.event.id"
-                    @newIsLiked="emitNewIsLiked($event)"
-                />
-            </div>
 
-            <!--responders-->
-            <div
-                v-for="audio_clip in propEvent.responder" :key="audio_clip.id"
-                class="flex flex-col gap-2"
-            >
-                <VUsernameURL
-                    :propUsername="audio_clip.user.username"
-                />
-                <VAudioClipCard
-                    :propAudioClip="audio_clip"
-                    :propIsSelected="checkIsSelected(audio_clip.id)"
-                    @isSelected="handleNewSelectedAudioClip($event)"
-                />
-                <VAudioClipTools
-                    :propAudioClip="audio_clip"
-                    :propEventId="propEvent.event.id"
-                    @newIsLiked="emitNewIsLiked($event)"
-                />
-            </div>
-        </div>
-
-        <!--only 1 audio_clip total-->
-        <!--must use v-if here, else VPlayback error, unsure why its code runs when it's using v-else and not v-show-->
-        <div v-else class="flex flex-col gap-10">
-
-            <!--originator-->
-            <div
-                v-show="originatorCount > 0"
-                class="flex flex-col gap-2"
-            >
-                <VUsernameURL
-                    :propUsername="propEvent.originator!.user.username"
-                />
-                <VAudioClipCard
-                    v-if="propLoadVAudioClipCardsOnly"
-                    :propAudioClip="propEvent.originator"
-                    :propIsSelected="checkIsSelected(propEvent.originator!.id)"
-                    @isSelected="handleNewSelectedAudioClip($event)"
-                />
-                <VPlayback
-                    v-else
-                    :propAudioClip="propEvent.originator"
-                    :propAudioVolumePeaks="propEvent.originator!.audio_volume_peaks"
-                    :propBucketQuantity="propEvent.originator!.audio_volume_peaks.length"
-                />
-                <VAudioClipTools
-                    :propAudioClip="propEvent.originator"
-                    :propEventId="propEvent.event.id"
-                    @newIsLiked="emitNewIsLiked($event)"
-                />
-            </div>
-
-            <!--responders-->
-            <div v-show="responderCount > 0">
-                <div v-if="propLoadVAudioClipCardsOnly">
-                    <div
-                        v-for="audio_clip in propEvent.responder" :key="audio_clip.id"
-                        class="flex flex-col gap-2"
-                    >
-                        <VUsernameURL
-                            :propUsername="audio_clip.user.username"
-                        />
-                        <VAudioClipCard
-                            :propAudioClip="audio_clip"
-                            :propIsSelected="checkIsSelected(audio_clip.id)"
-                            @isSelected="handleNewSelectedAudioClip($event)"
-                        />
-                        <VAudioClipTools
-                            :propAudioClip="audio_clip"
-                            :propEventId="propEvent.event.id"
-                            @newIsLiked="emitNewIsLiked($event)"
-                        />
-                    </div>
+                <!--originator-->
+                <div
+                    class="flex flex-col gap-2"
+                >
+                    <VUsernameURL
+                        :propUsername="propEvent.originator[0]!.user.username"
+                    />
+                    <VAudioClipCard
+                        :prop-audio-clip="propEvent.originator[0]!"
+                        :prop-selected-audio-clip="currently_playing_audio_clip_store.getPlayingAudioClip"
+                        @selectedAudioClip="handleSelectedAudioClip($event)"
+                        @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
+                    />
+                    <VAudioClipTools
+                        :prop-audio-clip="propEvent.originator[0]!"
+                        :prop-event-id="propEvent.event.id"
+                        :prop-has-virtual-scroll="propHasVirtualScroll"
+                        @newIsLiked="emitNewIsLiked($event)"
+                    />
                 </div>
-                <div v-else>
-                    <div
-                        v-for="audio_clip in propEvent.responder" :key="audio_clip.id"
-                        class="flex flex-col gap-2"
-                    >
-                        <VUsernameURL
-                            :propUsername="audio_clip.user.username"
-                        />
-                        <VPlayback
-                            :propAudioClip="audio_clip"
-                            :propAudioVolumePeaks="audio_clip.audio_volume_peaks"
-                            :propBucketQuantity="audio_clip.audio_volume_peaks.length"
-                        />
-                        <VAudioClipTools
-                            :propAudioClip="audio_clip"
-                            :propEventId="propEvent.event.id"
-                            @newIsLiked="emitNewIsLiked($event)"
-                        />
-                    </div>
+
+                <!--responder-->
+                <div
+                    class="flex flex-col gap-2"
+                >
+                    <VUsernameURL
+                        :propUsername="propEvent.responder[0]!.user.username"
+                    />
+                    <VAudioClipCard
+                        :prop-audio-clip="propEvent.responder[0]!"
+                        :prop-selected-audio-clip="currently_playing_audio_clip_store.getPlayingAudioClip"
+                        @selectedAudioClip="handleSelectedAudioClip($event)"
+                        @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
+                    />
+                    <VAudioClipTools
+                        :prop-audio-clip="propEvent.responder[0]!"
+                        :prop-event-id="propEvent.event.id"
+                        :prop-has-virtual-scroll="propHasVirtualScroll"
+                        @newIsLiked="emitNewIsLiked($event)"
+                    />
+                </div>
+            </div>
+
+            <div
+                v-else
+                class="flex flex-col gap-10"
+            >
+
+                <!--originator-->
+                <div
+                    class="flex flex-col gap-2"
+                >
+                    <VUsernameURL
+                        :propUsername="propEvent.responder[0]!.user.username"
+                    />
+                    <VPlayback
+                        :prop-audio-clip="propEvent.responder[0]!"
+                        :prop-audio-volume-peaks="propEvent.responder[0]!.audio_volume_peaks"
+                        :prop-bucket-quantity="propEvent.responder[0]!.audio_volume_peaks.length"
+                        :prop-is-open="true"
+                    />
+                    <VAudioClipTools
+                        :prop-audio-clip="propEvent.responder[0]!"
+                        :prop-event-id="propEvent.event.id"
+                        :prop-has-virtual-scroll="propHasVirtualScroll"
+                        @newIsLiked="emitNewIsLiked($event)"
+                    />
+                </div>
+
+                <!--responder-->
+                <div
+                    class="flex flex-col gap-2"
+                >
+                    <VUsernameURL
+                        :propUsername="propEvent.responder[0]!.user.username"
+                    />
+                    <VPlayback
+                        :prop-audio-clip="propEvent.responder[0]!"
+                        :prop-audio-volume-peaks="propEvent.responder[0]!.audio_volume_peaks"
+                        :prop-bucket-quantity="propEvent.responder[0]!.audio_volume_peaks.length"
+                        :prop-is-open="true"
+                    />
+                    <VAudioClipTools
+                        :prop-audio-clip="propEvent.responder[0]!"
+                        :prop-event-id="propEvent.event.id"
+                        :prop-has-virtual-scroll="propHasVirtualScroll"
+                        @newIsLiked="emitNewIsLiked($event)"
+                    />
+                </div>
+            </div>
+        </div>
+
+
+        <!--if events are not guaranteed to be completed, use this-->
+        <!--disadvantage is that v-for is always re-rendered-->
+        <div v-else>
+            <div
+                v-if="propLoadVAudioClipCardsOnly"
+                class="flex flex-col gap-10"
+            >
+        
+                <!--originator-->
+                <div
+                    v-for="audio_clip in propEvent.originator" :key="audio_clip.id"
+                    class="flex flex-col gap-2"
+                >
+                    <VUsernameURL
+                        :propUsername="audio_clip.user.username"
+                    />
+                    <VAudioClipCard
+                        :prop-audio-clip="audio_clip"
+                        :prop-selected-audio-clip="currently_playing_audio_clip_store.getPlayingAudioClip"
+                        @selectedAudioClip="handleSelectedAudioClip($event)"
+                        @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
+                    />
+                    <VAudioClipTools
+                        :prop-audio-clip="audio_clip"
+                        :prop-event-id="propEvent.event.id"
+                        :prop-has-virtual-scroll="propHasVirtualScroll"
+                        @newIsLiked="emitNewIsLiked($event)"
+                    />
+                </div>
+            
+                <!--responder-->
+                <div
+                    v-for="audio_clip in propEvent.responder" :key="audio_clip.id"
+                    class="flex flex-col gap-2"
+                >
+                    <VUsernameURL
+                        :propUsername="audio_clip.user.username"
+                    />
+                    <VAudioClipCard
+                        :prop-audio-clip="audio_clip"
+                        :prop-selected-audio-clip="currently_playing_audio_clip_store.getPlayingAudioClip"
+                        @selectedAudioClip="handleSelectedAudioClip($event)"
+                        @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
+                    />
+                    <VAudioClipTools
+                        :prop-audio-clip="audio_clip"
+                        :prop-event-id="propEvent.event.id"
+                        :prop-has-virtual-scroll="propHasVirtualScroll"
+                        @newIsLiked="emitNewIsLiked($event)"
+                    />
+                </div>
+            </div>
+        
+            <div
+                v-else
+                class="flex flex-col gap-10"
+            >
+        
+                <!--originator-->
+                <div
+                    v-for="audio_clip in propEvent.originator" :key="audio_clip.id"
+                    class="flex flex-col gap-2"
+                >
+                    <VUsernameURL
+                        :propUsername="audio_clip.user.username"
+                    />
+                    <VPlayback
+                        :prop-audio-clip="audio_clip"
+                        :prop-audio-volume-peaks="audio_clip.audio_volume_peaks"
+                        :prop-bucket-quantity="audio_clip.audio_volume_peaks.length"
+                        :prop-is-open="true"
+                    />
+                    <VAudioClipTools
+                        :prop-audio-clip="audio_clip"
+                        :prop-event-id="propEvent.event.id"
+                        :prop-has-virtual-scroll="propHasVirtualScroll"
+                        @newIsLiked="emitNewIsLiked($event)"
+                    />
+                </div>
+            
+                <!--responder-->
+                <div
+                    v-for="audio_clip in propEvent.responder" :key="audio_clip.id"
+                    class="flex flex-col gap-2"
+                >
+                    <VUsernameURL
+                        :propUsername="audio_clip.user.username"
+                    />
+                    <VPlayback
+                        :prop-audio-clip="audio_clip"
+                        :prop-audio-volume-peaks="audio_clip.audio_volume_peaks"
+                        :prop-bucket-quantity="audio_clip.audio_volume_peaks.length"
+                        :prop-is-open="true"
+                    />
+                    <VAudioClipTools
+                        :prop-audio-clip="audio_clip"
+                        :prop-event-id="propEvent.event.id"
+                        :prop-has-virtual-scroll="propHasVirtualScroll"
+                        @newIsLiked="emitNewIsLiked($event)"
+                    />
                 </div>
             </div>
         </div>
@@ -169,7 +254,7 @@
     import VAudioClipCard from '/src/components/medium/VAudioClipCard.vue';
     import VAudioClipTools from '/src/components/medium/VAudioClipTools.vue';
     import VUsernameURL from '/src/components/small/VUsernameURL.vue';
-    import VActionTextOnly from '/src/components/small/VActionTextOnly.vue';
+    import VActionText from '/src/components/small/VActionText.vue';
 </script>
 
 
@@ -179,6 +264,7 @@
     import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
     import { useCurrentlyPlayingAudioClipStore } from '@/stores/CurrentlyPlayingAudioClipStore';
+    import AudioClipsTypes from '@/types/AudioClips.interface';
 
     export default defineComponent({
         data() {
@@ -191,38 +277,28 @@
                 type: Object as PropType<EventsAndAudioClipsTypes>,
                 required: true,
             },
+            propIsEventAlwaysCompleted: {
+                type: Boolean,
+                default: false,
+            },
             propShowTitle: {
                 type: Boolean,
-                default: true
+                default: true,
             },
             propHasBorder: {
                 type: Boolean,
-                default: false
+                default: false,
             },
             propLoadVAudioClipCardsOnly: {
                 type: Boolean,
-                default: false
+                default: false,
+            },
+            propHasVirtualScroll: {
+                type: Boolean,
+                default: false,
             },
         },
         computed: {
-            originatorCount() : number {
-
-                if(this.propEvent === null || this.propEvent.originator === null){
-
-                    return 0;
-                }
-
-                return 1;
-            },
-            responderCount() : number {
-
-                if(this.propEvent === null){
-
-                    return 0;
-                }
-
-                return this.propEvent.responder.length;
-            },
             getEventURL() : string {
 
                 return window.location.origin + "/event/" + this.propEvent.event.id;
@@ -233,33 +309,25 @@
             },
         },
         emits: [
-            'newIsLiked',
+            'newIsLiked', 'newVPlaybackTeleportId',
         ],
         methods: {
-            checkIsSelected(audio_clip_id:number) : boolean {
+            async emitNewVPlaybackTeleportId(teleport_id:string) : Promise<void> {
 
-                const playing_audio_clip = this.currently_playing_audio_clip_store.getPlayingAudioClip;
-
-                return (
-                    playing_audio_clip !== null &&
-                    playing_audio_clip.id === audio_clip_id
-                );
+                this.$emit('newVPlaybackTeleportId', teleport_id);
             },
-            handleNewSelectedAudioClip(audio_clip:AudioClipsAndLikeDetailsTypes) : void {
+            async handleSelectedAudioClip(audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes) : Promise<void> {
 
                 this.currently_playing_audio_clip_store.$patch({
                     playing_audio_clip: audio_clip
                 });
             },
             async emitNewIsLiked(
-                new_value:{audio_clip:AudioClipsAndLikeDetailsTypes, new_is_liked:boolean|null}
+                new_value:{audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes, new_is_liked:boolean|null}
             ) : Promise<void> {
 
                 this.$emit('newIsLiked', new_value);
             },
-        },
-        beforeMount(){
-
         },
     });
 </script>

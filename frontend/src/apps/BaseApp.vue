@@ -3,39 +3,57 @@
         :propUsername="username"
     />
 
-    <!--use v-show and teleport your components here when not ready to teleport to the right place yet-->
-    <div id="temporary-teleport-target" class="w-0 h-0">
-    </div>
-
     <!--all popups belong here so we can ensure that only one shows at a time-->
     <div class="w-full h-0 relative">
         <TransitionFade>
             <div
-                v-if="pop_up_manager_store.isUserLogInSignUpOpen"
+                v-show="pop_up_manager_store.isUserLogInOpen || pop_up_manager_store.isUserSignUpOpen"
                 class="absolute hidden lg:flex flex-row w-full h-[calc(100vh-4.5rem)] bg-theme-light/60 backdrop-blur"
             >
-                <!--keep v-click-outside UX expectation consistent vs. not losing data when accidentally clicking outside-->
-                <!--TODO: real solution is to use store or KeepAlive, but is low priority-->
                 <div
+                    v-show="pop_up_manager_store.isUserLogInOpen"
                     v-click-outside="{
-                        var_name_for_element_bool_status: forceCloseLogInSignUp,
+                        bool_status_variable_or_callback: forceCloseLogIn,
                         refs_to_exclude: []
                     }"
                     class="lg:w-2/6 xl:w-2/6 max-h-[90%] min-h-fit m-auto px-4 border border-theme-light-gray bg-theme-light shadow-xl rounded-lg overflow-y-auto"
                 >
-                    <UserLogInSignUp
-                        :propRequestedSection="pop_up_manager_store.getRequestedSection"
-                        :propIsForStaticPage="false"
-                    />
+                    <TransitionFadeSlow>
+                        <keep-alive>
+                            <UserLogInSignUp
+                                v-if="pop_up_manager_store.isUserLogInOpen"
+                                propRequestedSection="log-in-section"
+                                :propIsForStaticPage="false"
+                            />
+                        </keep-alive>
+                    </TransitionFadeSlow>
+                </div>
+                <div
+                    v-show="pop_up_manager_store.isUserSignUpOpen"
+                    v-click-outside="{
+                        bool_status_variable_or_callback: forceCloseSignUp,
+                        refs_to_exclude: []
+                    }"
+                    class="lg:w-2/6 xl:w-2/6 max-h-[90%] min-h-fit m-auto px-4 border border-theme-light-gray bg-theme-light shadow-xl rounded-lg overflow-y-auto"
+                >
+                    <TransitionFadeSlow>
+                        <keep-alive>
+                            <UserLogInSignUp
+                                v-if="pop_up_manager_store.isUserSignUpOpen"
+                                propRequestedSection="sign-up-section"
+                                :propIsForStaticPage="false"
+                            />
+                        </keep-alive>
+                    </TransitionFadeSlow>
                 </div>
             </div>
             <div
-                v-else-if="pop_up_manager_store.isLoginRequiredPromptOpen"
+                v-if="pop_up_manager_store.isLoginRequiredPromptOpen"
                 class="absolute flex items-center w-full h-[calc(100vh-4.5rem)] bg-theme-light/60 backdrop-blur"
             >
                 <div
                     v-click-outside="{
-                        var_name_for_element_bool_status: forceCloseLoginRequiredPromptMenu,
+                        bool_status_variable_or_callback: forceCloseLoginRequiredPromptMenu,
                         refs_to_exclude: []
                     }"
                     class="w-5/6 sm:w-fit max-h-[90%] min-h-fit m-auto px-4 pb-14 border border-theme-light-gray bg-theme-light shadow-xl rounded-lg"
@@ -50,15 +68,12 @@
     </div>
 
     <!--toasts-->
-    <TransitionFade>
-
-        <!--if pop-ups clash with toasts, do v-if here-->
-        <div
-            class="w-0 h-0"
-        >
-            <VNotiwind/>
-        </div>
-    </TransitionFade>
+    <!--if pop-ups clash with toasts, do v-if here-->
+    <div
+        class="w-0 h-0"
+    >
+        <VNotiwind/>
+    </div>
 </template>
 
 
@@ -67,6 +82,7 @@
     import NavBar from '@/components/main/NavBar.vue';
     import UserLogInSignUp from '@/components/main/UserLogInSignUp.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
+    import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
     import VLoginRequiredPrompt from '@/components/medium/VLoginRequiredPrompt.vue';
 </script>
 
@@ -91,9 +107,13 @@
         computed: {
         },
         methods: {
-            forceCloseLogInSignUp() : void {
+            forceCloseLogIn() : void {
 
-                this.pop_up_manager_store.toggleIsUserLogInSignUpOpen(false);
+                this.pop_up_manager_store.toggleIsUserLogInOpen(false);
+            },
+            forceCloseSignUp() : void {
+
+                this.pop_up_manager_store.toggleIsUserSignUpOpen(false);
             },
             forceCloseLoginRequiredPromptMenu() : void {
 

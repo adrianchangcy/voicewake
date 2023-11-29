@@ -23,7 +23,7 @@
             >
             <button
                 @click.stop="togglePasswordShow()"
-                class="w-12 h-full rounded-lg absolute right-0 top-0 bottom-0 m-auto flex items-center text-theme-black shade-text-when-hover transition-colors"
+                class="w-12 h-full rounded-lg absolute right-0 top-0 bottom-0 m-auto flex items-center text-theme-black transition-colors"
                 type="button"
             >
                 <i

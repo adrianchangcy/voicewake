@@ -69,12 +69,16 @@ export function prettyTimePassed(date:Date) : string {
     interval = Math.floor(seconds / 86400);
     if(interval === 1){
         return interval.toString() + ' day ago';
-    }else if(interval < 28){    //fastest transition to '1 month ago', for aesthetic reasons only
+    }else if(interval < 28){
+        //fastest transition to '1 month ago', for aesthetic reasons only
         return interval.toString() + ' days ago';
     }
 
     interval = Math.floor(seconds / 2592000);
-    if(interval === 1){
+    if(interval < 1){
+        //need this, since 2592000 is 30 days, and we are doing < 28
+        return '1 month ago';
+    }else if(interval === 1){
         return interval.toString() + ' month ago';
     }else if(interval < 12){
         return interval.toString() + ' months ago';
@@ -124,13 +128,17 @@ export function prettyTimeRemaining(current_ms:number, max_ms:number) : string {
     interval = Math.floor(seconds / 86400);
     if(interval === 1){
         return interval.toString() + ' day';
-    }else if(interval < 28){    //fastest transition to '1 month', for aesthetic reasons only
+    }else if(interval < 28){
+        //fastest transition to '1 month', for aesthetic reasons only
         return interval.toString() + ' days';
     }
 
     interval = Math.floor(seconds / 2592000);
-    if(interval === 1){
-        return interval.toString() + ' month';
+    if(interval < 1){
+        //need this, since 2592000 is 30 days, and we are doing < 28
+        return '1 month ago';
+    }else if(interval === 1){
+        return interval.toString() + ' month ago';
     }else if(interval < 12){
         return interval.toString() + ' months';
     }
@@ -308,6 +316,22 @@ export function isPageAccessedByReload() : boolean {
     });
 
     return is_reload || has_referrer;
+}
+
+
+export function isPageAccessedByBackForward() : boolean {
+
+    const entries = performance.getEntriesByType("navigation");
+
+    let is_back_forward = false;
+
+    entries.forEach((entry) => {
+        if((entry as PerformanceNavigationTiming).type === "back_forward"){
+            is_back_forward = true;
+        }
+    });
+
+    return is_back_forward;
 }
 
 

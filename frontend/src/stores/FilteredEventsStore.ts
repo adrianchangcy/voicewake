@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
 import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
+import AudioClipsTypes from '@/types/AudioClips.interface';
 import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
 
 
@@ -9,7 +10,7 @@ import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.inte
 interface DefaultPageTypes {
     events: EventsAndAudioClipsTypes[],
     are_all_rows_fetched: boolean,
-    last_selected_audio_clip: AudioClipsAndLikeDetailsTypes|null,
+    last_selected_audio_clip: AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null,
     next_url: string,
     back_url: string,
 }
@@ -112,7 +113,7 @@ export function useFilteredEventsStore(is_user_page:boolean){
                     return false;
                 }
             },
-            getLastSelectedAudioClip: (state):AudioClipsAndLikeDetailsTypes|null => {
+            getLastSelectedAudioClip: (state):AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null => {
 
                 try{
 
@@ -257,7 +258,7 @@ export function useFilteredEventsStore(is_user_page:boolean){
                     return this.current_audio_clip_tone_id === audio_clip_tone.id;
                 }
             },
-            async updateLastSelectedAudioClip(audio_clip:AudioClipsAndLikeDetailsTypes) : Promise<void> {
+            async updateLastSelectedAudioClip(audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes) : Promise<void> {
 
                 this.filtered_events_structure[
                     this.current_event_generic_status_name_index
@@ -353,9 +354,9 @@ export function useFilteredEventsStore(is_user_page:boolean){
 
                     //add previous_is_liked_by_user, useful for revert on API failure
 
-                    if(new_events[x].originator !== null){
+                    for(let xx = 0; xx < new_events[x].responder.length; xx++){
 
-                        new_events[x].originator!.previous_is_liked_by_user = null;
+                        new_events[x].originator[xx].previous_is_liked_by_user = null;
                     }
 
                     for(let xx = 0; xx < new_events[x].responder.length; xx++){

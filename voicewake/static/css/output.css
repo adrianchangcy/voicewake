@@ -602,10 +602,6 @@ video {
   inset: 0px;
 }
 
-.-bottom-\[3px\] {
-  bottom: -3px;
-}
-
 .-left-1 {
   left: -0.25rem;
 }
@@ -688,6 +684,14 @@ video {
 
 .top-4 {
   top: 1rem;
+}
+
+.top-\[0\.54rem\] {
+  top: 0.54rem;
+}
+
+.top-\[0\.6rem\] {
+  top: 0.6rem;
 }
 
 .-z-10 {
@@ -869,6 +873,10 @@ video {
   display: none;
 }
 
+.aspect-square {
+  aspect-ratio: 1 / 1;
+}
+
 .h-0 {
   height: 0px;
 }
@@ -887,6 +895,10 @@ video {
 
 .h-12 {
   height: 3rem;
+}
+
+.h-14 {
+  height: 3.5rem;
 }
 
 .h-2 {
@@ -933,6 +945,10 @@ video {
   height: 2rem;
 }
 
+.h-9 {
+  height: 2.25rem;
+}
+
 .h-\[1px\] {
   height: 1px;
 }
@@ -976,6 +992,10 @@ video {
 
 .max-h-\[90\%\] {
   max-height: 90%;
+}
+
+.max-h-full {
+  max-height: 100%;
 }
 
 .min-h-\[calc\(100vh-4\.5rem\)\] {
@@ -1423,6 +1443,15 @@ video {
   border-width: 2px;
 }
 
+.border-4 {
+  border-width: 4px;
+}
+
+.border-x-2 {
+  border-left-width: 2px;
+  border-right-width: 2px;
+}
+
 .border-b {
   border-bottom-width: 1px;
 }
@@ -1454,6 +1483,11 @@ video {
 .border-\[\#fd8a8a\] {
   --tw-border-opacity: 1;
   border-color: rgb(253 138 138 / var(--tw-border-opacity));
+}
+
+.border-red-500 {
+  --tw-border-opacity: 1;
+  border-color: rgb(239 68 68 / var(--tw-border-opacity));
 }
 
 .border-theme-black {
@@ -1934,6 +1968,26 @@ video {
   color: rgb(255 255 255 / var(--tw-text-opacity));
 }
 
+.underline {
+  text-decoration-line: underline;
+}
+
+.decoration-transparent {
+  text-decoration-color: transparent;
+}
+
+.decoration-2 {
+  text-decoration-thickness: 2px;
+}
+
+.underline-offset-2 {
+  text-underline-offset: 2px;
+}
+
+.underline-offset-4 {
+  text-underline-offset: 4px;
+}
+
 .opacity-0 {
   opacity: 0;
 }
@@ -2324,6 +2378,53 @@ textarea {
   content: '';
 }
 
+/*pulse audio clip selected*/
+
+/*visibility here is needed to prevent first-time jolt or starting too early (both not intentional)*/
+
+/*0% keyframe is to prevent pixelated circle if it were to truly start from scale(0)*/
+
+.audio-clip-selected-pulse-1 {
+  animation: slow-pulse 3s infinite linear;
+  animation-delay: 0s;
+  transform-origin: center;
+  visibility: hidden;
+}
+
+.audio-clip-selected-pulse-2 {
+  animation: slow-pulse 3s infinite linear;
+  animation-delay: 1s;
+  transform-origin: center;
+  visibility: hidden;
+}
+
+.audio-clip-selected-pulse-3 {
+  animation: slow-pulse 3s infinite linear;
+  animation-delay: 2s;
+  transform-origin: center;
+  visibility: hidden;
+}
+
+@keyframes slow-pulse {
+  0% {
+    visibility: visible;
+    opacity: 0;
+    transform: scale(0.4);
+  }
+
+  1% {
+    visibility: visible;
+    opacity: 1;
+    transform: scale(0);
+  }
+
+  100% {
+    visibility: visible;
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
 @media(hover: hover){
   /*
     this is for buttons that don't look like buttons
@@ -2331,10 +2432,6 @@ textarea {
     */
 
   /*from theme-black to theme-dark-gray*/
-
-  .shade-text-when-hover:hover{
-    color: #a8a29e;
-  }
 
   .shade-background-when-hover:hover{
     background-color: #a8a29e;
@@ -2356,10 +2453,6 @@ textarea {
     transform: scaleY(2);
   }
 
-  .nav-burger-when-hover:hover > .nav-burger-line{
-    background-color: #a8a29e;
-  }
-
   .action-hover:hover{
     filter: brightness(0.97);
   }
@@ -2370,6 +2463,14 @@ textarea {
 
   .action-danger-hover:hover{
     filter: brightness(0.90);
+  }
+
+  .action-text-text-hover:hover{
+    text-decoration-color: #facc15;
+  }
+
+  .action-text-icon-hover:hover{
+    background-color: #e7e5e4;
   }
 
   /*triggers from parent to all descendants that have classes above*/
@@ -2473,9 +2574,19 @@ textarea {
   background-color: rgb(250 53 21 / var(--tw-bg-opacity));
 }
 
+.active\:bg-theme-light-gray:active {
+  --tw-bg-opacity: 1;
+  background-color: rgb(231 229 228 / var(--tw-bg-opacity));
+}
+
 .active\:bg-theme-lightest-gray:active {
   --tw-bg-opacity: 1;
   background-color: rgb(238 238 238 / var(--tw-bg-opacity));
+}
+
+.active\:bg-theme-medium-gray:active {
+  --tw-bg-opacity: 1;
+  background-color: rgb(214 211 209 / var(--tw-bg-opacity));
 }
 
 .active\:shadow-md:active {
@@ -2555,6 +2666,19 @@ textarea {
 
   .sm\:grid-cols-8 {
     grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
+  .sm\:rounded-t-lg {
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+  }
+
+  .sm\:border-2 {
+    border-width: 2px;
+  }
+
+  .sm\:border-b-0 {
+    border-bottom-width: 0px;
   }
 
   .sm\:px-4 {

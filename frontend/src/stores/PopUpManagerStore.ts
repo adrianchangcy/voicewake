@@ -11,12 +11,15 @@ type IsOpenTypes = {
 export const usePopUpManagerStore = defineStore('pop_up_manager', {
     state: ()=>({
         is_logged_in: false,
-        requested_section: "log-in-section" as "log-in-section"|"sign-up-section",
 
         is_open: {
             is_login_required_prompt_open: false,
             is_nav_menu_open: false,
-            is_user_log_in_sign_up_open: false,
+
+            //two identical components, but separate state
+            //allows for <keep-alive> and better UX
+            is_user_log_in_open: false,
+            is_user_sign_up_open: false,
         } as IsOpenTypes,
 
         login_required_prompt_text: "",
@@ -32,12 +35,17 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
             return (
                 state.is_open.is_login_required_prompt_open === true ||
                 state.is_open.is_nav_menu_open === true ||
-                state.is_open.is_user_log_in_sign_up_open === true
+                state.is_open.is_user_log_in_open === true ||
+                state.is_open.is_user_sign_up_open === true
             );
         },
-        isUserLogInSignUpOpen: (state)=>{
+        isUserLogInOpen: (state)=>{
 
-            return state.is_open.is_user_log_in_sign_up_open;
+            return state.is_open.is_user_log_in_open;
+        },
+        isUserSignUpOpen: (state)=>{
+
+            return state.is_open.is_user_sign_up_open;
         },
         isLoginRequiredPromptOpen: (state)=>{
 
@@ -46,10 +54,6 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
         isNavMenuOpen: (state)=>{
 
             return state.is_open.is_nav_menu_open;
-        },
-        getRequestedSection: (state)=>{
-            
-            return state.requested_section;
         },
         getLoginRequiredPromptText: (state)=>{
 
@@ -83,24 +87,27 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
                 }
             }
         },
-        async toggleIsUserLogInSignUpOpen(
-            new_value:boolean|null=null,
-            section:"log-in-section"|"sign-up-section"|null=null
-        ) : Promise<void> {
+        async toggleIsUserLogInOpen(is_open:boolean|null=null) : Promise<void> {
 
-            const new_store_value = new_value === null ? !this.is_open.is_user_log_in_sign_up_open : new_value;
+            const new_store_value = is_open === null ? !this.is_open.is_user_log_in_open : is_open;
 
             if(new_store_value === true){
 
-                this.forceCloseOtherPopUps('is_user_log_in_sign_up_open');
+                await this.forceCloseOtherPopUps('is_user_log_in_open');
             }
 
-            this.is_open.is_user_log_in_sign_up_open = new_store_value;
+            this.is_open.is_user_log_in_open = new_store_value;
+        },
+        async toggleIsUserSignUpOpen(is_open:boolean|null=null) : Promise<void> {
 
-            if(section !== null){
+            const new_store_value = is_open === null ? !this.is_open.is_user_sign_up_open : is_open;
 
-                this.requested_section = section;
+            if(new_store_value === true){
+
+                await this.forceCloseOtherPopUps('is_user_sign_up_open');
             }
+
+            this.is_open.is_user_sign_up_open = new_store_value;
         },
         async toggleIsLoginRequiredPromptOpen(
             forced_state:boolean|null=null,

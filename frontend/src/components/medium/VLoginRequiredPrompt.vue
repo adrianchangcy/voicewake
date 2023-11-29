@@ -2,7 +2,7 @@
     <div class="">
 
         <div class="relative h-10">
-            <VActionTextOnly
+            <VActionText
                 @click="emitForceClose()"
                 prop-element="button"
                 type="button"
@@ -12,7 +12,7 @@
                 class="absolute w-10 -right-4"
             >
                 <i class="fas fa-xmark mx-auto"></i>
-            </VActionTextOnly>
+            </VActionText>
         </div>
 
         <div class="pt-4 flex flex-col gap-1">
@@ -55,7 +55,7 @@
 
 <script setup lang="ts">
     import VAction from '../small/VAction.vue';
-    import VActionTextOnly from '../small/VActionTextOnly.vue';
+    import VActionText from '../small/VActionText.vue';
     import VActionSpecial from '../small/VActionSpecial.vue';
     import VTitle from '../small/VTitle.vue';
 </script>
