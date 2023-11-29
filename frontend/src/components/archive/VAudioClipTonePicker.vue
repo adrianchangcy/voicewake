@@ -30,7 +30,7 @@
                     <VBox
                         v-show="is_audio_clip_tone_picker_open"
                         v-click-outside="{
-                            var_name_for_element_bool_status: 'is_audio_clip_tone_picker_open',
+                            bool_status_variable_or_callback: 'is_audio_clip_tone_picker_open',
                             refs_to_exclude: ['audio_clip_tone_choice_label', 'audio_clip_tone_choice_opener']
                         }"
                         class="top-2 p-2 absolute z-10 w-full left-0 right-0 mx-auto"

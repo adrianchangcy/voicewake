@@ -202,13 +202,42 @@ class UserBlocks(models.Model):
         ]
 
 
+class AudioClips(models.Model):
+    #we need to denormalise via like_count and dislike_count
+    #because otherwise, read operation scales horribly (260ms to 700ms vs. 40ms)
+    id = models.BigAutoField(primary_key=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, default=None)
+    audio_clip_role = models.ForeignKey('AudioClipRoles', on_delete=models.PROTECT, blank=True, null=True, default=None)
+    audio_clip_tone = models.ForeignKey('AudioClipTones', on_delete=models.SET_NULL, blank=True, null=True, default=None)
+    event = models.ForeignKey('Events', on_delete=models.CASCADE, null=True, default=None)
+    generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)
+    audio_file = models.FileField(blank=True, null=True, upload_to=determine_audio_clip_audio_file_path_and_name)
+    audio_duration_s = models.IntegerField(default=0)  #seconds, is not used for VPlayback functionality
+    audio_volume_peaks = ArrayField(
+        models.DecimalField(default=0, max_digits=3, decimal_places=2), #0 to 0.49 to 1
+        size=20,    #if size changes, change at get_default_audio_volume_peaks too
+        null=True,
+        default=None
+    )
+    like_count = models.IntegerField(default=0)
+    dislike_count = models.IntegerField(default=0)
+    is_banned = models.BooleanField(default=False)
+    when_created = models.DateTimeField(auto_now_add=True)
+    last_modified = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = 'voicewake'
+        managed = True
+        db_table = 'audio_clips'
+
+
 #on ban_decision becoming from None to True/False, delete all other rows with the same reported_audio_clip
 #a user can only be banned once per audio_clip
 class AudioClipReports(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    reported_audio_clip = models.ForeignKey('AudioClips', on_delete=models.CASCADE)
-    when_evaluated = models.DateTimeField(blank=True, null=True, default=None)
+    audio_clip = models.ForeignKey('AudioClips', on_delete=models.CASCADE)
+    last_evaluated = models.DateTimeField(blank=True, null=True, default=None)
+    last_reported = models.DateTimeField(auto_now_add=True)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
@@ -216,9 +245,6 @@ class AudioClipReports(models.Model):
         app_label = 'voicewake'
         managed = True
         db_table = 'audio_clip_reports'
-        constraints = [
-            models.UniqueConstraint(fields=["user", "reported_audio_clip"], name="unique_user_reported_audio_clip")
-        ]
 
 
 class AudioClipLikesDislikes(models.Model):
@@ -319,35 +345,6 @@ class AudioClipTones(models.Model):
         app_label = 'voicewake'
         managed = True
         db_table = 'audio_clip_tones'
-
-
-class AudioClips(models.Model):
-    #we need to denormalise via like_count and dislike_count
-    #because otherwise, read operation scales horribly (260ms to 700ms vs. 40ms)
-    id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, default=None)
-    audio_clip_role = models.ForeignKey('AudioClipRoles', on_delete=models.PROTECT, blank=True, null=True, default=None)
-    audio_clip_tone = models.ForeignKey('AudioClipTones', on_delete=models.SET_NULL, blank=True, null=True, default=None)
-    event = models.ForeignKey('Events', on_delete=models.CASCADE, null=True, default=None)
-    generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)
-    audio_file = models.FileField(blank=True, null=True, upload_to=determine_audio_clip_audio_file_path_and_name)
-    audio_duration_s = models.IntegerField(default=0)  #seconds, is not used for VPlayback functionality
-    audio_volume_peaks = ArrayField(
-        models.DecimalField(default=0, max_digits=3, decimal_places=2), #0 to 0.49 to 1
-        size=20,    #if size changes, change at get_default_audio_volume_peaks too
-        null=True,
-        default=None
-    )
-    like_count = models.IntegerField(default=0)
-    dislike_count = models.IntegerField(default=0)
-    is_banned = models.BooleanField(default=False)
-    when_created = models.DateTimeField(auto_now_add=True)
-    last_modified = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        app_label = 'voicewake'
-        managed = True
-        db_table = 'audio_clips'
 
 
 class GenericStatuses(models.Model):

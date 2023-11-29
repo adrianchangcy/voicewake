@@ -9,15 +9,17 @@ import { defineStore } from 'pinia';
     //also, <audio>.duration changes according to rate
     //currently always 1, so if we implement rate, remember to update the code here
 
-const audio_clip_limit = 10;
-
 //make sure to sync the order of audio_clip_id with stopped_at_s
 //we separate them instead of storing as dict, because array.includes() makes checking easier
 export const useVPlaybackStore = defineStore('vplayback', {
     state: ()=>({
+        active_uuids: [] as string[],
         last_interacted_uuid: "",
+        has_focus: false,
+
         audio_clip_id: [] as number[],   //left to right, oldest to newest
         stopped_at_s: [] as number[],   //left to right, oldest to newest
+        max_stopped_at_quantity: 10,
     }),
     getters: {
         getLastInteractedUUID: (state)=>{
@@ -38,8 +40,8 @@ export const useVPlaybackStore = defineStore('vplayback', {
 
                 //does not exist
 
-                //if limit has been reached, remove oldest via shift() until are 1 item away from limit
-                while(this.audio_clip_id.length >= audio_clip_limit){
+                //if limit has been reached, remove oldest via shift() until 1 item away from limit
+                while(this.audio_clip_id.length >= this.max_stopped_at_quantity){
 
                     this.audio_clip_id.shift();
                     this.stopped_at_s.shift();
@@ -48,21 +50,11 @@ export const useVPlaybackStore = defineStore('vplayback', {
                 //push() as newest
                 this.audio_clip_id.push(audio_clip_id);
                 this.stopped_at_s.push(stopped_at_s);
-
-            }else if(target_index === (this.audio_clip_id.length - 1)){
-
-                //exists and is already newest
                 return;
-
-            }else{
-
-                //remove older record of itself and add to newest
-                this.audio_clip_id.splice(target_index, 1);
-                this.stopped_at_s.splice(target_index, 1);
-
-                this.audio_clip_id.push(audio_clip_id);
-                this.stopped_at_s.push(stopped_at_s);
             }
+
+            //simply update existing record
+            this.stopped_at_s[target_index] = stopped_at_s;
         },
         async getAudioClipPlaybackLastStoppedS(audio_clip_id:number) : Promise<number|null> {
 
@@ -74,7 +66,21 @@ export const useVPlaybackStore = defineStore('vplayback', {
             }
 
             return this.stopped_at_s[target_index];
-        }
+        },
+        async addActiveUUID(uuid:string) : Promise<void> {
+
+            if(this.active_uuids.indexOf(uuid) === -1){
+
+                this.active_uuids.push(uuid);
+            }
+        },
+        async focusFirstUUID() : Promise<void> {
+
+            if(this.active_uuids.length > 0){
+
+                this.last_interacted_uuid = this.active_uuids[0];
+            }
+        },
     },
     //all things considered, we get overall better usability with persistence than without
     persist: {
@@ -82,6 +88,5 @@ export const useVPlaybackStore = defineStore('vplayback', {
         paths: [
             'audio_clip_id', 'stopped_at_s',
         ],
-        debug: true
     },
 });

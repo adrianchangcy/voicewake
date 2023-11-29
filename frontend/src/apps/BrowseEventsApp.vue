@@ -59,15 +59,15 @@
                     <div
                         v-show="is_filter_menu_open"
                         v-click-outside="{
-                            var_name_for_element_bool_status: 'is_filter_menu_open',
+                            bool_status_variable_or_callback: 'is_filter_menu_open',
                             refs_to_exclude: ['open_close_filter_menu_button']
                         }"
                         class="absolute w-full h-fit top-4 z-20 flex flex-col p-4 gap-4 rounded-lg border-2 border-theme-black bg-theme-light"
                     >
-        
-                        <!--main filters-->
+
+                    <!--main filters-->
                         <div class="w-fit flex flex-row items-center border rounded-lg border-theme-light-gray px-2">
-                            <VActionTextOnly
+                            <VActionText
                                 v-for="(filter_type, index) in filtered_events_store.getMainFilters"
                                 :key="index"
                                 @click="filtered_events_store.updateCurrentMainFilterIndex(index)"
@@ -91,12 +91,12 @@
                                         class="absolute w-full h-0.5 bg-theme-black left-0 right-0 bottom-0"
                                     ></div>
                                 </TransitionFade>
-                            </VActionTextOnly>
+                            </VActionText>
                         </div>
 
                         <!--audio_clip_roles-->
                         <div class="w-fit flex flex-row items-center border rounded-lg border-theme-light-gray px-2">
-                            <VActionTextOnly
+                            <VActionText
                                 v-for="(pretty_audio_clip_role_name, index) in filtered_events_store.getPrettyAudioClipRoleNames"
                                 :key="index"
                                 @click="filtered_events_store.updateCurrentAudioClipRoleNameIndex(index)"
@@ -120,7 +120,7 @@
                                         class="absolute w-full h-0.5 bg-theme-black left-0 right-0 bottom-0"
                                     ></div>
                                 </TransitionFade>
-                            </VActionTextOnly>
+                            </VActionText>
                         </div>
         
                         <!--audio_clip_tones-->
@@ -139,39 +139,43 @@
             </div>
         </div>
 
-        <DynamicScroller
-            v-show="filtered_events_store.getEventsForBrowsing.length > 0"
-            @visible="restoreScrollY()"
-            :items="filtered_events_store.getEventsForBrowsing"
-            :min-item-size="2"
-            :buffer="dynamic_scroller_buffer"
-            :page-mode="true"
-            key-field="event_id_as_scroller_index"
-            class="scroller"
-        >
+        <div>
+            <DynamicScroller
+                v-show="filtered_events_store.getEventsForBrowsing.length > 0"
+                @visible="restoreScrollY()"
+                :items="filtered_events_store.getEventsForBrowsing"
+                :min-item-size="2"
+                :buffer="dynamic_scroller_buffer"
+                :page-mode="true"
+                key-field="event_id_as_scroller_index"
+                class="scroller"
+            >
 
-            <template #default="{ item, index, active }">
-
-                <!--events-->
-                <!--DynamicScrollerItem has weird right side overflow clip-->
-                <!--px-1 is used to fix it, so other outer elements will require px-1 too-->
-                <DynamicScrollerItem
-                    :item="item"
-                    :index="index"
-                    :active="active"
-                >
-                    <div class="px-1 pb-4">
-                        <EventCard
-                            :prop-show-title="true"
-                            :prop-event="item"
-                            :prop-has-border="true"
-                            :prop-load-v-audio-clip-cards-only="true"
-                            @newIsLiked="filtered_events_store.newAudioClipIsLiked($event)"
-                        />
-                    </div>
-                </DynamicScrollerItem>
-            </template>
-        </DynamicScroller>
+                <template #default="{ item, index, active }">
+                    <!--events-->
+                    <!--DynamicScrollerItem has weird right side overflow clip-->
+                    <!--px-1 is used to fix it, so other outer elements will require px-1 too-->
+                    <DynamicScrollerItem
+                        :item="item"
+                        :index="index"
+                        :active="active"
+                    >
+                        <div class="px-1 pb-4">
+                            <EventCard
+                                :prop-is-event-always-completed="!propIsUserProfilePage"
+                                :prop-show-title="true"
+                                :prop-event="item"
+                                :prop-has-border="true"
+                                :prop-load-v-audio-clip-cards-only="true"
+                                :prop-has-virtual-scroll="true"
+                                @new-is-liked="filtered_events_store.newAudioClipIsLiked($event)"
+                                @new-v-playback-teleport-id="handleNewVPlaybackTeleportId($event)"
+                            />
+                        </div>
+                    </DynamicScrollerItem>
+                </template>
+            </DynamicScroller>
+        </div>
 
         <div class="px-1">
             <!--loading events-->
@@ -301,20 +305,18 @@
 
         <div id="load-more-events-observer-target"></div>
 
-        <!--VAudioClipCard emits selection, which triggers :to, thus teleporting-->
-        <!--presence of VAudioClipCard depends on VEventCard-->
-        <!--we don't use :disabled because it will still attempt to teleport to :to-->
         <Teleport
-            :to="getVPlaybackTeleportId"
+            v-if="teleport_id !== ''"
+            :to="teleport_id"
         >
             <VPlayback
-                v-show="selected_audio_clip !== null"
-                :propAudioClip="selected_audio_clip"
-                :propIsOpen="true"
-                :propAudioVolumePeaks="getSelectedAudioClipAudioVolumePeaks"
-                :propBucketQuantity="20"
-                :propAutoPlayOnSourceChange="can_autoplay"
-                :propPauseTrigger="filter_change_trigger"
+                :prop-audio-clip="currently_playing_audio_clip_store.getPlayingAudioClip"
+                :prop-is-open="true"
+                :prop-audio-volume-peaks="getSelectedAudioClipAudioVolumePeaks"
+                :prop-bucket-quantity="20"
+                :prop-auto-play-on-source-change="can_autoplay"
+                :prop-pause-trigger="filter_change_trigger"
+                :prop-is-floating="true"
             />
         </Teleport>
     </div>
@@ -329,7 +331,7 @@
     import VAudioClipToneMenu from '@/components/medium/VAudioClipToneMenu.vue';
     import VAction from '@/components/small/VAction.vue';
     import VActionSpecial from '@/components/small/VActionSpecial.vue';
-    import VActionTextOnly from '@/components/small/VActionTextOnly.vue';
+    import VActionText from '@/components/small/VActionText.vue';
     import VDialogPlain from '@/components/small/VDialogPlain.vue';
     import VUserCard from '@/components/medium/VUserCard.vue';
     import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
@@ -339,9 +341,10 @@
 <script lang="ts">
     import { defineComponent, } from 'vue';
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
+    import AudioClipsTypes from '@/types/AudioClips.interface';
     import { useCurrentlyPlayingAudioClipStore } from '@/stores/CurrentlyPlayingAudioClipStore';
     import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
-    import { isPageAccessedByReload } from '@/helper_functions';
+    import { isPageAccessedByBackForward } from '@/helper_functions';
     const axios = require('axios');
 
 
@@ -360,12 +363,11 @@
                 dynamic_scroller_buffer: 1000, //px, larger means rendered earlier, needed for proper tabbing
                 window_resize_timeout: window.setTimeout(()=>{}, 0),
 
-                selected_audio_clip: null as AudioClipsAndLikeDetailsTypes|null,
                 filter_change_trigger: false,  //switch between true/false to trigger pause
                 can_autoplay: true,
 
                 played_audio_clips_by_id: [] as number[],
-                played_audio_clips_quantity_to_pause_scrolling: 2,
+                played_audio_clips_quantity_to_pause_scrolling: 40,
                 can_pause_scrolling: false,
                 scrolling_timeout: window.setTimeout(()=>{}, 0),
                 scrolling_checkpoint_px: 0,
@@ -375,8 +377,10 @@
 
                 infinite_scroll_observer: new IntersectionObserver(this.getInfiniteScrollCallback(), {threshold: 1}),
                 is_fetching: false,
-                must_skip_observer_once: true,
+                can_observer_fetch: false,
                 is_error_on_previous_fetch: false,
+
+                teleport_id: '',
             };
         },
         props: {
@@ -424,23 +428,14 @@
                     this.is_error_on_previous_fetch === true
                 );
             },
-            getVPlaybackTeleportId() : string {
-
-                if(this.selected_audio_clip === null){
-
-                    return '#temporary-teleport-target';
-                }
-
-                return '#playback-teleport-audio-clip-id-' + this.selected_audio_clip.id;
-            },
             getSelectedAudioClipAudioVolumePeaks() : number[] {
 
-                if(this.selected_audio_clip === null){
+                if(this.currently_playing_audio_clip_store.getPlayingAudioClip === null){
 
                     return [];
                 }
 
-                return this.selected_audio_clip.audio_volume_peaks;
+                return this.currently_playing_audio_clip_store.getPlayingAudioClip.audio_volume_peaks;
             },
         },
         methods: {
@@ -455,6 +450,7 @@
             ): Promise<void> {
 
                 this.is_fetching = true;
+                this.can_observer_fetch = false;
 
                 //if we can manage to call this, scrolling can no longer need to be paused
                 this.can_pause_scrolling = false;
@@ -566,6 +562,7 @@
                 }).finally(()=>{
 
                     this.is_fetching = false;
+                    this.can_observer_fetch = true;
                 });
             },
             async constructFirstPageURL(
@@ -637,12 +634,11 @@
                 this.filter_change_trigger = !this.filter_change_trigger;
             },
             async handleNewSelectedAudioClip(
-                audio_clip:AudioClipsAndLikeDetailsTypes|null,
+                audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null,
                 can_autoplay:boolean,
             ) : Promise<void> {
 
                 this.can_autoplay = can_autoplay;
-                this.selected_audio_clip = audio_clip;
 
                 if(audio_clip === null){
 
@@ -669,18 +665,12 @@
                 return async ()=>{
                     if(
                         this.is_fetching === true ||
+                        this.can_observer_fetch === false ||
                         this.can_pause_scrolling === true ||
                         this.is_error_on_previous_fetch === true ||
                         this.filtered_events_store.getEventsForBrowsing.length === 0
                     ){
 
-                        return;
-                    }
-
-                    //prevents first run when DOM is still fresh
-                    if(this.must_skip_observer_once === true){
-
-                        this.must_skip_observer_once = false;
                         return;
                     }
 
@@ -714,7 +704,7 @@
 
                 if(
                     this.propIsUserProfilePage === false &&
-                    isPageAccessedByReload() === true
+                    isPageAccessedByBackForward() === false
                 ){
 
                     await this.filtered_events_store.partialResetStore();
@@ -782,6 +772,10 @@
 
                 }, 250);
             },
+            async handleNewVPlaybackTeleportId(teleport_id:string) : Promise<void> {
+
+                this.teleport_id = teleport_id;
+            },
         },
         beforeMount(){
 
@@ -798,33 +792,46 @@
                 this.user_profile_username = (container.getAttribute('data-user-profile-username') as string);
             }
 
-            //reset store if scheduled by home button click at NavBar
+            //reset store if not navigated from back/forward
             this.resetStores();
 
-            //listen from EventCard
+            //sync currently_playing store
+            // if(this.filtered_events_store.getLastSelectedAudioClip !== null){
+
+            //     this.currently_playing_audio_clip_store.$patch({
+            //         playing_audio_clip: this.filtered_events_store.getLastSelectedAudioClip,
+            //     });
+            // }
+
+            //listen from EventCardAlwaysCompleted
             this.currently_playing_audio_clip_store.$subscribe((mutation, state)=>{
 
                 //if playing_audio_clip is identical to selected_audio_clip,
                 //it means that this $patch is fired from filter change
 
-                const playing_audio_clip = (state.playing_audio_clip as AudioClipsAndLikeDetailsTypes|null);
+                const playing_audio_clip = (state.playing_audio_clip as AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null);
 
-                if(
-                    playing_audio_clip !== null && this.selected_audio_clip !== null &&
-                    playing_audio_clip.id === this.selected_audio_clip.id
-                ){
+                if(playing_audio_clip === null){
 
                     return;
                 }
 
                 //selected_audio_clip from here is fired when user has just manually selected audio_clip
 
-                this.handleNewSelectedAudioClip(playing_audio_clip, true);
+                //if audio clip is selected as "continue from previous filter", do not autoplay
+                if(
+                    this.filtered_events_store.getLastSelectedAudioClip !== null &&
+                    this.filtered_events_store.getLastSelectedAudioClip.id === playing_audio_clip.id
+                ){
 
-                if(playing_audio_clip !== null){
+                    this.handleNewSelectedAudioClip(playing_audio_clip, false);
 
-                    this.filtered_events_store.updateLastSelectedAudioClip(playing_audio_clip);
+                }else{
+
+                    this.handleNewSelectedAudioClip(playing_audio_clip, true);
                 }
+
+                this.filtered_events_store.updateLastSelectedAudioClip(playing_audio_clip);
             });
 
             //handle things on filter change
@@ -840,6 +847,11 @@
                     name === 'updateCurrentAudioClipRoleNameIndex' ||
                     name === 'updateCurrentAudioClipTone'
                 ){
+
+                    //turn off observer on filter change, as we manually fetch
+                    //getEvents will set it to true for us when done
+                    this.can_observer_fetch = false;
+
                     after(()=>{
 
                         this.switchTriggerOnFilterChange();
@@ -851,8 +863,6 @@
                         this.currently_playing_audio_clip_store.$patch({
                             playing_audio_clip: last_selected_audio_clip
                         });
-
-                        this.must_skip_observer_once = true;
 
                         this.getEvents(
                             this.filtered_events_store.getCurrentEventGenericStatusNameIndex,
@@ -869,21 +879,15 @@
 
             if(this.filtered_events_store.getEventsForBrowsing.length === 0){
 
-                (async ()=>{
-
-                    await this.getEvents(
-                        this.filtered_events_store.getCurrentEventGenericStatusNameIndex,
-                        this.filtered_events_store.getCurrentMainFilterIndex,
-                        this.filtered_events_store.getCurrentTimeframeIndex,
-                        this.filtered_events_store.getCurrentAudioClipRoleNameIndex,
-                        this.filtered_events_store.getCurrentAudioClipToneId,
-                        true,
-                        "next",
-                    ).finally(()=>{
-
-                        this.must_skip_observer_once = false;
-                    });
-                })();
+                this.getEvents(
+                    this.filtered_events_store.getCurrentEventGenericStatusNameIndex,
+                    this.filtered_events_store.getCurrentMainFilterIndex,
+                    this.filtered_events_store.getCurrentTimeframeIndex,
+                    this.filtered_events_store.getCurrentAudioClipRoleNameIndex,
+                    this.filtered_events_store.getCurrentAudioClipToneId,
+                    true,
+                    "next",
+                );
             }
         },
         mounted(){

@@ -6,10 +6,8 @@
         i.e. when error occurs that does not return error.response.data['message']
     -->
     <!--notify({}, param2) is duration, accepts ms, and you can pass -1 for permanence, default is 3000-->
-    <NotificationGroup>
-        <div
-            class="fixed w-full max-w-sm h-fit left-0 right-0 bottom-0 m-auto flex items-start px-6"
-        >
+    <Teleport to="#notiwind-target">
+        <NotificationGroup>
             <div class="w-full">
                 <Notification
                     v-slot="{ notifications, close }"
@@ -82,8 +80,8 @@
                     </div>
                 </Notification>
             </div>
-        </div>
-    </NotificationGroup>
+        </NotificationGroup>
+    </Teleport>
 </template>
 
 

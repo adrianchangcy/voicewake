@@ -1,6 +1,6 @@
 <template>
     <div
-        class="text-theme-black text-center"
+        class="border rounded-lg border-theme-light-gray shade-border-when-hover transition-colors text-center     backdrop-blur bg-theme-light/60"
     >
         <!--add @timeupdate at mounted(), not here, as beforeUnmount() cannot remove it, and it'll still fire after unmount-->
         <!--must add all calls in handleHasMetadata(), not here, since the Infinity duration is not fixed until then-->
@@ -17,27 +17,27 @@
 
         <!--
             ripples, slider, volume, play/pause, rate, timers
+            @focusin works here, but not @focusout
         -->
         <div
             ref="playback_main"
             :class="[
-                propAudioClip === null ? 'grid-cols-3 pr-4' : 'grid-cols-4',
-                'h-20 grid grid-rows-2 rounded-lg border border-theme-light-gray shade-border-when-hover transition-colors'
+                propHasAudioClipTone === true ? 'grid-cols-4' : 'grid-cols-3 pr-4',
+                'h-20 grid grid-rows-2'
             ]"
             @click="[updateInstanceLastInteracted()]"
             @pointerdown="[updateInstanceLastInteracted()]"
             @focusin="[updateInstanceLastInteracted()]"
-            @focusout="instance_has_focus=false"
         >
 
             <!--play/pause-->
             <!--must use click-->
             <!--because pointerdown doesn't tell browser that user has interacted with document for media.play()-->
             <div class="row-start-1 row-span-2 col-start-1 col-span-1 text-4xl relative">
-                <VActionTextOnly
+                <VActionText
                     @click="userTogglePlaybackPlayPause()"
                     @keydown.enter="userTogglePlaybackPlayPause()"
-                    :propIsEnabled="isPlaybackReady"
+                    :propIsEnabled="!isProcessing"
                     propElement="button"
                     type="button"
                     :propIsIconOnly="true"
@@ -51,13 +51,18 @@
                         ]"
                         aria-hidden="true"
                     ></i>
-                    <span v-show="playback_paused" class="sr-only">
-                        pause
+                    <span v-show="isPlaybackReady">
+                        <span v-show="playback_paused" class="sr-only">
+                            pause
+                        </span>
+                        <span v-show="!playback_paused" class="sr-only">
+                            play
+                        </span>
                     </span>
-                    <span v-show="!playback_paused" class="sr-only">
-                        play
+                    <span v-show="!isPlaybackReady">
+                        <span class="sr-only">Cannot play, no recording loaded</span>
                     </span>
-                </VActionTextOnly>
+                </VActionText>
             </div>
 
             <!--ripples, slider, do left-2 right-2 m-auto if you want outermost knob to be within bounds-->
@@ -87,8 +92,9 @@
                 </div>
 
                 <!--slider-->
+                <!--not sure why, but when fixed, need to shift this a little lower-->
                 <div
-                    class="w-full h-10 absolute top-2"
+                    class="w-full h-10 absolute top-[0.54rem]"
                 >
                     <!--only want z-10 here so that it takes priority over volume button-->
                     <!--we want to use button instead of div to allow for pointerdown bubbling-->
@@ -176,15 +182,14 @@
                     >
 
                         <!--volume button-->
-                        <VActionTextOnly
+                        <VActionText
                             @pointerdown="toggleMute(false)"
                             @keydown.enter="toggleMute(true)"
-                            :propIsEnabled="isPlaybackReady"
                             propElement="button"
                             type="button"
                             :propIsIconOnly="true"
                             :propIsDefaultOutlineOffset="false"
-                            class="w-full h-10 absolute -bottom-[3px] focus-visible:-outline-offset-4"
+                            class="w-full h-9 absolute bottom-0"
                         >
                             <div class="w-full h-full relative">
                                 <i
@@ -207,7 +212,7 @@
                             <span class="sr-only">
                                 when volume menu is open, keyboard up and down keys can also adjust volume
                             </span>
-                        </VActionTextOnly>
+                        </VActionText>
 
                         <!--volume menu-->
                         <!--h-22, so +h-10 of button, we can set content size at h-32-->
@@ -235,12 +240,16 @@
             </div>
 
             <div
-                v-if="propAudioClip !== null"
                 class="row-span-2 col-span-1 relative"
+                v-if="propHasAudioClipTone"
             >
-                <span class="text-2xl pb-0.5 absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto">
-                    {{ propAudioClip.audio_clip_tone.audio_clip_tone_symbol }}
-                </span>
+                <div class="text-2xl pb-0.5 absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto">
+                    <span v-if="propAudioClip !== null">
+                        {{ propAudioClip.audio_clip_tone.audio_clip_tone_symbol }}
+                        <span class="sr-only">{{ propAudioClip.audio_clip_tone.audio_clip_tone_name }}</span>
+                    </span>
+                    <i v-else class="far fa-face-meh-blank text-2xl" aria-hidden="true"></i>
+                </div>
             </div>
         </div>
     </div>
@@ -250,7 +259,7 @@
 
 <script setup lang="ts">
     import VSliderYSmall from '/src/components/small/VSliderYSmall.vue';
-    import VActionTextOnly from '../small/VActionTextOnly.vue';
+    import VActionText from '../small/VActionText.vue';
 </script>
 
 
@@ -262,24 +271,21 @@
     import AudioClipsTypes from '@/types/AudioClips.interface';
     // import VSliderTypes from '@/types/values/VSlider';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
+    import { notify } from 'notiwind';
 
     export default defineComponent({
         data(){
             return {
                 is_debug: false,
 
-                instance_id: "",    //uuid, to identify between multiple VPlayback instances
+                instance_uuid: "",    //uuid, to identify between multiple VPlayback instances, and to manage focus
                 vplayback_store: useVPlaybackStore(),
-                instance_has_focus: false,  //enables keyboard events inside VPlayback that need e.preventDefault()
-                previous_audio_clip: null as AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null,  //store triggers on new audio_clip, but needs previous audio_clip
 
                 pretty_current_playback_time: '00:00',
                 pretty_playback_duration: '00:00',
                 playback_paused: true,
                 play_promise: null as Promise<void>|null,
                 main_anime: null as InstanceType<typeof anime> | null,   //to store animePlaybackStates() anime
-
-                is_playback_empty_anime: true,  //this is only to anime empty --> non-empty once, and vice versa
 
                 is_playback_slider_ready: false,
                 is_playback_attached: false,
@@ -302,6 +308,13 @@
                 is_playback_volume_slider_hovering: false,
 
                 is_playback_speed_options_open: false,
+
+                //handleHasMetadata() make this true, but only when propIsOpen is true
+                //else, the related functions don't run until propIsOpen is true
+                //resets on new audio
+                is_initialised_on_new_audio: false,
+
+                instance_has_focus: false,
                 
                 //everything else will auto-close volume menu
                 //except for hover
@@ -356,6 +369,10 @@
                 type: Boolean,
                 default: false, //switch between true/false to trigger watcher and pause
             },
+            propHasAudioClipTone: {
+                type: Boolean,
+                default: true,
+            },
         },
         watch: {
             is_playback_buffering(new_value){
@@ -386,23 +403,35 @@
                 //apply focus on source change
                 this.updateInstanceLastInteracted();
             },
-            propAudioClip(new_value:AudioClipsAndLikeDetailsTypes|null){
+            propAudioClip(
+                new_value:AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null,
+                old_value:AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null,
+            ){
 
                 //reminder that with v-if and props already supplied, first time will not trigger watchers
 
+                //reset
+                this.is_initialised_on_new_audio = false;
+
+                //store where the previous audio was stopped
+                //must do this before <audio> changes via attachAudioToPlayback()
+                if(old_value !== null){
+
+                    this.storeCurrentAudioClipLastStopped(old_value);
+                }
+
                 if(new_value === null){
+
+                    //reset
+                    this.pretty_current_playback_time = '00:00';
+                    this.pretty_playback_duration = '00:00';
+                    this.playback_slider_value = 0;
+                    this.seekPlayback();
 
                     return;
                 }
 
-                //do store before new audio is attached
-                if(this.previous_audio_clip !== null){
-
-                    this.storeCurrentAudioClipLastStopped(this.previous_audio_clip);
-                }
-
-                //store previous audio_clip for situations where store needs it
-                this.previous_audio_clip = new_value;
+                //get where new audio was stopped, if any
 
                 //attach new audio
                 this.attachAudioToPlayback(new_value.audio_file);
@@ -433,7 +462,11 @@
                     //ok to run this often, since it does nothing if dimension is the same
                     this.$nextTick(async () => {
 
-                        if(await this.adjustPlaybackSliderDimension() === true && this.isPlaybackReady === true){
+                        if(this.is_initialised_on_new_audio === false){
+
+                            this.handleHasMetadata();
+
+                        }else if(await this.adjustPlaybackSliderDimension() === true && this.isPlaybackReady === true){
 
                             await this.createPlaybackSliderAnime();
                             await this.syncSliderAnimeAfterSuspend();
@@ -474,6 +507,7 @@
             isPlaybackReady() : boolean {
 
                 const is_playback_ready = (
+                    this.is_initialised_on_new_audio === true &&
                     this.propAudioVolumePeaks.length > 0 &&
                     this.propAudioVolumePeaks.length === this.propBucketQuantity &&
                     (this.propAudio !== null || this.propAudioClip !== null) &&
@@ -494,14 +528,10 @@
             },
             isInstanceLastInteracted() : boolean {
 
-                return this.instance_id === this.vplayback_store.getLastInteractedUUID;
+                return this.instance_uuid === this.vplayback_store.getLastInteractedUUID;
             },
         },
         methods: {
-            async determineInstanceHasFocus(e:PointerEvent) : Promise<void> {
-
-                this.instance_has_focus = (this.$refs.playback_main as HTMLElement).contains(e.target as Node);
-            },
             async setInitialPlaybackSliderValue() : Promise<void> {
                 
                 //initial
@@ -529,17 +559,14 @@
 
                 this.playback_slider_value = new_value;
             },
-            async storeCurrentAudioClipLastStopped(specific_audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes) : Promise<void> {
+            async storeCurrentAudioClipLastStopped(audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes) : Promise<void> {
 
                 //call this after pause on source change, but before source change happens
 
                 const audio_element = (this.$refs.audio_element as HTMLAudioElement);
-                const specific_audio_clip_full_url = window.location.origin + specific_audio_clip.audio_file;
 
                 if(
-                    specific_audio_clip.audio_file.length === 0 ||
-                    specific_audio_clip === null || audio_element.src === '' ||
-                    audio_element.src !== specific_audio_clip_full_url
+                    audio_clip === null || audio_element.src === ''
                 ){
 
                     return;
@@ -556,14 +583,22 @@
                 }
 
                 //store
-                this.vplayback_store.addAudioClipPlaybackLastStopped(specific_audio_clip.id, current_time_s);
+                this.vplayback_store.addAudioClipPlaybackLastStopped(audio_clip.id, current_time_s);
             },
             async updateInstanceLastInteracted() : Promise<void> {
 
                 //any actions taken to any VPlayback instance will update store
                 //so that handleKeyboardEvent() goes through for "last interacted VPlayback" only
-                this.vplayback_store.updateLastInteractedUUID(this.instance_id);
+                this.vplayback_store.updateLastInteractedUUID(this.instance_uuid);
+
                 this.instance_has_focus = true;
+            },
+            async determineInstanceHasFocus(e:PointerEvent) : Promise<void> {
+
+                //we need this with pointerdown at window to detect focus lost
+                //because @focusout doesn't work
+
+                this.instance_has_focus = (this.$refs.playback_main as HTMLElement).contains(e.target as Node);
             },
             handleInitialAutoplay() : void {
 
@@ -713,12 +748,6 @@
             handleKeyboardEvent(event:KeyboardEvent) : void {
 
                 //FYI, some keyup events are too late for .preventDefault(), so they use keydown
-                
-                //these keys affect only playback, so no point if there's no file
-                if(this.isPlaybackReady === false || this.isInstanceLastInteracted === false){
-
-                    return;
-                }
 
                 //ensure this won't be used during user input
                 const audio_clip_target = (event.target as Node);
@@ -735,38 +764,55 @@
 
                     case 'ArrowLeft':
 
-                        //go backwards playback
-                        this.skipPlayback(-5);
+                        if(this.isPlaybackReady === true && this.isInstanceLastInteracted === true){
+
+                            //go backwards playback
+                            this.skipPlayback(-5);
+                        }
+
                         break;
 
                     case 'ArrowRight':
 
-                        //go forward playback
-                        this.skipPlayback(5);
+                        if(this.isPlaybackReady === true && this.isInstanceLastInteracted === true){
+
+                            //go forward playback
+                            this.skipPlayback(5);
+                        }
+
                         break;
 
                     case ' ':
 
-                        //space also acts like 'enter', so we prevent that
-                        event.preventDefault();
+                        if(this.isPlaybackReady === true && this.isInstanceLastInteracted === true){
 
-                        //play/pause
-                        this.userTogglePlaybackPlayPause();
+                            //space also acts like 'enter', so we prevent that
+                            event.preventDefault();
+
+                            //play/pause
+                            this.userTogglePlaybackPlayPause();
+                        }
+
                         break;
 
                     case 'm':
 
-                        {
+                        if(this.isInstanceLastInteracted === true){
+
                             //mute/unmute
                             //when for recording, no volume option
                             //we use localStorage for backup value from mute to unmute
                             this.toggleMute(true);
-                            break;
                         }
+
+                        this.instance_has_focus = true;
+
+                        break;
 
                     case 'ArrowUp':
 
-                        if(this.instance_has_focus === true){
+                        if(this.isInstanceLastInteracted === true && this.instance_has_focus === true){
+
 
                             event.preventDefault();
                             this.keyboardAdjustVolume(0.2);
@@ -776,10 +822,19 @@
 
                     case 'ArrowDown':
 
-                        if(this.instance_has_focus === true){
+                        if(this.isInstanceLastInteracted === true && this.instance_has_focus === true){
 
                             event.preventDefault();
                             this.keyboardAdjustVolume(-0.2);
+                        }
+
+                        break;
+
+                    case 'Escape':
+
+                        if(this.instance_has_focus === true){
+
+                            this.instance_has_focus = false;
                         }
 
                         break;
@@ -808,12 +863,6 @@
                         
                         await this.createPlaybackSliderAnime();
                         await this.syncSliderAnimeAfterSuspend();
-
-                        if(this.is_debug === true){
-
-                            console.log("Triggered handleWindowResize()");
-                            console.log("Navigation dimensions: " + JSON.stringify(this.playback_slider_dimension));
-                        }
                     }
                 }
 
@@ -870,7 +919,7 @@
                 this.playback_slider_knob_anime = null;
                 this.playback_slider_progress_anime = null;
 
-                //calculate starting point of translateX
+                //calculate starting point
                 const ending_translateX = (this.playback_slider_dimension as DOMRect).width;
 
                 //calculate duration based on playback_rate
@@ -985,17 +1034,6 @@
                     return;
                 }
 
-                const audio_element = (this.$refs.audio_element as HTMLAudioElement);
-
-                if(this.is_debug === true){
-
-                    console.log('======stopPlaybackDrag()======');
-                    console.log('playback_slider_value: ' + this.playback_slider_value);
-                    console.log('stay_paused_on_drag: ' + this.stay_paused_on_drag);
-                    console.log('.ended: ' + audio_element.ended);
-                    console.log('============================');
-                }
-
                 //when user has dragged to end, will fix .ended=false issue
                 this.seekPlayback();
                 this.endPlaybackTruly();
@@ -1039,18 +1077,6 @@
                     this.playback_slider_knob_anime.completed = false;
                     this.playback_slider_progress_anime.completed = false;
                 }
-
-
-                if(this.is_debug === true){
-
-                    console.log('======endPlaybackTruly()======');
-                    console.log('.paused: ' + audio_element.paused);
-                    console.log('playback_paused: ' + this.playback_paused);
-                    console.log('playback_slider_value: ' + this.playback_slider_value);
-                    console.log('.ended: ' + audio_element.ended);
-                    console.log('knob.completed: ' + this.playback_slider_knob_anime.completed);
-                    console.log('==============================');
-                }
             },
             seekPlayback() : void {
 
@@ -1079,19 +1105,6 @@
 
                 //handle <audio>
                 audio_element.currentTime = jumped_playback_duration;
-
-                if(this.is_debug === true){
-
-                    console.log('=====seekPlayback()=====');
-                    console.log("playback_slider_value: " + this.playback_slider_value);
-                    console.log('jumped_playback_duration: ' + jumped_playback_duration);
-                    console.log('.currentTime: ' + audio_element.currentTime);
-                    console.log('.duration: ' + audio_element.duration);
-                    console.log('.ended: ' + audio_element.ended);
-                    console.log('.readyState: ' + audio_element.readyState);
-                    console.log('knob.completed: ' + this.playback_slider_knob_anime.completed);
-                    console.log('========================');
-                }
 
                 //handle timer
                 this.updateCurrentPlaybackTime();
@@ -1126,16 +1139,6 @@
 
                 //update slider value
                 this.playback_slider_value = updated_time / audio_element.duration;
-
-                if(this.is_debug === true){
-
-                    console.log('=====skipPlayback()=====');
-                    console.log('stay_paused_on_drag: ' + this.stay_paused_on_drag);
-                    console.log('playback_slider_value: ' + this.playback_slider_value);
-                    console.log('.ended: ' + audio_element.ended);
-                    console.log('updated_time: ' + updated_time);
-                    console.log('========================');
-                }
 
                 //adjust
                 this.seekPlayback();
@@ -1262,11 +1265,6 @@
 
                 }).catch(()=>{
 
-                    if(this.is_debug === true){
-
-                        console.log('Autoplay prevented. Pausing now.');
-                    }
-
                     audio_element.pause();
 
                 }).finally(()=>{
@@ -1319,6 +1317,12 @@
 
                 //do this instead of relying on :disabled, as :disabled makes sliders bug out
                 if(this.isPlaybackReady === false){
+
+                    notify({
+                        icon: "far fa-face-meh-blank",
+                        title: "No recording loaded",
+                        type: "generic",
+                    }, 2000);
 
                     return;
                 }
@@ -1417,8 +1421,6 @@
                 this.is_playback_attached = false;
                 this.is_playback_attaching = true;
 
-                this.animeIsNotEmptyPlayback();
-                
                 if(audio_element.hasAttribute('src') && audio_element.src.length > 0){
 
                     //destroy URL.createObjectURL() instance to free from memory, then stop loading, no checks needed
@@ -1455,14 +1457,12 @@
             },
             async handleHasMetadata() : Promise<void> {
 
-                //@loadedmetadata is when <audio>.duration is finally available
+                //@loadedmetadata fires when <audio>.duration is finally available
 
                 const audio_element = (this.$refs.audio_element as HTMLAudioElement);
 
-                //most often is just a hot reload issue
-                //but audio_element can be null and throw error
-                //i.e. this code runs but element is no longer at DOM
-                if(audio_element === null){
+                //when NaN, it's because this isn't called by @loadedmetadata, i.e. VPlayback loaded as empty
+                if(audio_element === null || this.propIsOpen === false || isNaN(audio_element.duration) === true){
 
                     return;
                 }
@@ -1483,16 +1483,13 @@
                         audio_element.duration
                     );
 
-                    if(this.is_debug === true){
-
-                        console.log("audio metadata duration: " + this.pretty_playback_duration);
-                    }
-
                     await this.adjustPlaybackSliderDimension();
                     await this.createPlaybackSliderAnime();
                     await this.setInitialPlaybackSliderValue();
                     this.seekPlayback();
                     this.handleInitialAutoplay();
+
+                    this.is_initialised_on_new_audio = true;
                 };
 
                 audio_element.currentTime = 1e101;
@@ -1501,46 +1498,6 @@
                 //don't try to access (this.$refs.audio_element as HTMLAudioElement).duration precisely here, as something is async
                 //you'll get 0, but if you check via watch, the value does change
                 //put your code in handler instead if you need to run something else
-            },
-            async animeIsNotEmptyPlayback() : Promise<void> {
-
-                if(this.is_playback_empty_anime === false){
-
-                    return;
-                }
-
-                anime({
-                    easing: 'linear',
-                    loop: false,
-                    autoplay: true,
-                    targets: this.$refs.playback_main,
-                    duration: this.fastest_anime_duration_ms,
-                    opacity: '1',
-                });
-
-                this.is_playback_empty_anime = false;
-            },
-            async animeIsEmptyPlayback(): Promise<void> {
-
-                const volume_ripples = (this.$refs.volume_ripple as HTMLElement[]);
-
-                anime.timeline({
-                    easing: 'linear',
-                    loop: false,
-                    autoplay: true,
-                }).add({
-                    targets: this.$refs.playback_main,
-                    duration: this.fastest_anime_duration_ms,
-                    opacity: '0.1',
-                }).add({
-                    //set to default volume_ripples
-                    targets: volume_ripples,
-                    scaleY: ['0', '1'],
-                    translateY: ['0%'],
-                    duration: this.fastest_anime_duration_ms,
-                });
-
-                this.is_playback_empty_anime = true;
             },
         },
         mounted(){
@@ -1567,18 +1524,39 @@
             }
 
             //generate uuid for this component instance
-            this.instance_id = getRandomUUID();
+            this.instance_uuid = getRandomUUID();
+
+            //fun little anime for empty ripples
+            if(this.propAudioClip === null){
+
+                const volume_ripples = (this.$refs.volume_ripple as HTMLElement[]);
+
+                anime({
+                    targets: volume_ripples,
+                    easing: 'linear',
+                    loop: false,
+                    autoplay: true,
+                    scaleY: ['0', '1'],
+                    translateY: ['0%'],
+                    duration: 400,
+                });
+            }
 
             //initial state
-            this.animeIsEmptyPlayback();
             this.$emit('isProcessing', false);
 
-            this.updateInstanceLastInteracted();
+            //add uuid to list of active uuids
+            //we then always focus on first UUID, useful when we have multiple VPlayback
+            (async ()=>{
+                await this.vplayback_store.addActiveUUID(this.instance_uuid)
+                .then(()=>{
+                    this.vplayback_store.focusFirstUUID();
+                });
+            })();
 
             //handle when propAudioClip already exists on mounted, which means it's from API
             if(this.propAudioClip !== null && this.propAudioClip.audio_file.length > 0){
 
-                this.previous_audio_clip = this.propAudioClip;
                 this.attachAudioToPlayback(this.propAudioClip.audio_file);
             }
 
@@ -1667,6 +1645,12 @@
             this.propIsRecording === false ? window.removeEventListener('keydown', this.handleKeyboardEvent) : null;
             document.removeEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
             audio_element.removeEventListener('timeupdate', this.updateCurrentPlaybackTime);
+
+            //record last stopped
+            if(this.propAudioClip !== null){
+
+                this.storeCurrentAudioClipLastStopped(this.propAudioClip);
+            }
         },
     });
 </script>

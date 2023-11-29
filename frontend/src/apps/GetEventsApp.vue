@@ -13,9 +13,10 @@
 
             <!--audio-clips-->
             <EventCard
-                :propEvent="event"
-                :propShowTitle="false"
-                @newIsLiked="event_reply_choices_store.newAudioClipIsLiked($event)"
+                :prop-event="event"
+                :prop-show-title="false"
+                :prop-load-v-audio-clip-cards-only="!isReplying"
+                @new-is-liked="event_reply_choices_store.newAudioClipIsLiked($event)"
             />
 
             <!--reply area-->
@@ -125,19 +126,19 @@
                 </TransitionFadeSlow>
             </div>
 
-            <!--VAudioClipCard emits selection, which triggers :to, thus teleporting-->
-            <!--presence of VAudioClipCard depends on VEventCard-->
-            <div v-if="selected_audio_clip !== null">
-                <Teleport :to="getVPlaybackTeleportId">
-                    <VPlayback
-                        :propAudioClip="selected_audio_clip"
-                        :propIsOpen="true"
-                        :propAudioVolumePeaks="selected_audio_clip.audio_volume_peaks"
-                        :propBucketQuantity="selected_audio_clip.audio_volume_peaks.length"
-                        :propAutoPlayOnSourceChange="true"
-                    />
-                </Teleport>
-            </div>
+            <!-- <Teleport
+                to="#vplayback-target"
+            >
+                <VPlayback
+                    :prop-audio-clip="currently_playing_audio_clip_store.getPlayingAudioClip"
+                    :prop-is-open="true"
+                    :prop-audio-volume-peaks="getSelectedAudioClipAudioVolumePeaks"
+                    :prop-bucket-quantity="20"
+                    :prop-auto-play-on-source-change="true"
+                    :prop-pause-trigger="filter_change_trigger"
+                    :prop-is-floating="true"
+                />
+            </Teleport> -->
         </div>
     </div>
 </template>
@@ -149,7 +150,7 @@
     import CreateAudioClips from '@/components/main/CreateAudioClips.vue';
     import VTitle from '@/components/small/VTitle.vue';
     import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
-    import VPlayback from '@/components/medium/VPlayback.vue';
+    // import VPlayback from '@/components/medium/VPlayback.vue';
     import VUsernameURL from '@/components/small/VUsernameURL.vue';
     import VAudioClipCardSkeleton from '@/components/skeleton/VAudioClipCardSkeleton.vue';
     import VLoading from '@/components/small/VLoading.vue';
@@ -468,10 +469,6 @@
                     }
 
                 });
-            },
-            async handleNewSelectedAudioClip(audio_clip:AudioClipsAndLikeDetailsTypes|null) : Promise<void> {
-
-                this.selected_audio_clip = audio_clip;
             },
         },
         beforeMount(){

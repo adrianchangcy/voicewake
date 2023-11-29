@@ -1,7 +1,11 @@
 <template>
     <div>
 
-        <div class="h-10 grid grid-cols-6 gap-1 text-xl text-theme-black">
+        <!--put ref here to target closest vue virtual scroller-->
+        <div
+            ref="main_ref"
+            class="h-10 grid grid-cols-6 gap-1 text-xl text-theme-black"
+        >
 
             <!--like/dislike-->
             <div class="h-full col-span-4 grid grid-cols-2 relative parent-trigger-shade-fake-border-when-hover">
@@ -12,7 +16,6 @@
 
                 <!--like-->
                 <button
-                    ref="like_button"
                     @click="handleLikeDislike(true)"
                     class="col-span-1 h-full     shade-border-when-hover active:bg-theme-lightest-gray transition-colors      bg-theme-light       border border-r-0 border-theme-light-gray rounded-full rounded-r-none    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                     type="button"
@@ -48,7 +51,6 @@
 
                 <!--dislike-->
                 <button
-                    ref="dislike_button"
                     @click="handleLikeDislike(false)"
                     class="col-span-1 h-full     shade-border-when-hover active:bg-theme-lightest-gray transition-colors      bg-theme-light       border border-l-0 border-theme-light-gray rounded-full rounded-l-none     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                     type="button"
@@ -130,19 +132,19 @@
             <div
                 v-show="is_extra_options_menu_open"
                 v-click-outside="{
-                    var_name_for_element_bool_status: 'is_extra_options_menu_open',
+                    bool_status_variable_or_callback: forceCloseExtraOptionsMenu,
                     refs_to_exclude: ['open_close_extra_options_menu_button']
                 }"
                 class="absolute w-fit h-fit right-0 m-auto p-2 top-4 z-20 flex flex-col rounded-lg border-2 border-theme-black bg-theme-light"
             >
-                <VActionTextOnly
+                <VActionText
                     @click="submitReport()"
                     :prop-is-enabled="!is_reporting"
                     propElement="button"
                     type="button"
                     propFontSize="s"
                     propElementSize="s"
-                    :prop-is-icon-only="false"
+                    :prop-is-icon-only="true"
                     class="w-fit px-2"
                 >
 
@@ -155,7 +157,7 @@
                         <i class="fas fa-flag w-fit h-fit text-sm"></i>
                         <span class="pl-2">Report</span>
                     </span>
-                </VActionTextOnly>
+                </VActionText>
             </div>
         </div>
     </div>
@@ -164,7 +166,7 @@
 
 <script setup lang="ts">
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
-    import VActionTextOnly from '../small/VActionTextOnly.vue';
+    import VActionText from '../small/VActionText.vue';
     import VLoading from '../small/VLoading.vue';
 </script>
 
@@ -208,6 +210,10 @@
                 type: Number,
                 required: true,
             },
+            propHasVirtualScroll: {
+                type: Boolean,
+                default: false,
+            },
         },
         computed: {
             prettyLikeCount() : string {
@@ -245,16 +251,36 @@
         watch: {
             propAudioClip(){
 
+                //this is used for virtual scroll
+
                 this.syncLikesDislikes();
+                this.toggleExtraOptionsMenu(false);
+                this.submit_timeout= null;
+                this.has_shared = false;
+                this.has_shared_timeout = null;
+                this.is_reporting = false;
             },
         },
         emits: [
             'newIsLiked',
         ],
         methods: {
-            toggleExtraOptionsMenu() : void {
+            async forceCloseExtraOptionsMenu() : Promise<void> {
 
-                this.is_extra_options_menu_open = !this.is_extra_options_menu_open;
+                this.toggleExtraOptionsMenu(false);
+            },
+            async toggleExtraOptionsMenu(force_is_open:boolean|null=null) : Promise<void> {
+
+                const final_state = force_is_open === null ? !this.is_extra_options_menu_open : force_is_open;
+
+                if(this.propHasVirtualScroll === true){
+
+                    const closest_virtual_scroll_view = (this.$refs.main_ref as HTMLElement).closest('.vue-recycle-scroller__item-view');
+
+                    (closest_virtual_scroll_view as HTMLElement).style.zIndex = final_state === true ? '1' : '';
+                }
+
+                this.is_extra_options_menu_open = final_state;
             },
             async copyAudioClipURL() : Promise<void> {
 
@@ -424,7 +450,7 @@
 
                 let data = new FormData();
                 
-                data.append('reported_audio_clip_id', JSON.stringify(this.propAudioClip['id']));
+                data.append('audio_clip_id', JSON.stringify(this.propAudioClip['id']));
 
                 axios.post(window.location.origin + '/api/audio-clips/reports', data)
                 .then(() => {

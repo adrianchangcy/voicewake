@@ -49,9 +49,9 @@ const clickOutside = {
         element.clickOutsideAudioClip = (event:any) => {
 
             //unpack passed arguments
-            //var_name_for_element_bool_status, string, is the bool status variable, in charge of your element
-            //refs_to_exclude, [], means elements that already handle the same var_name_for_element_bool_status variable on their own
-            const {var_name_for_element_bool_status, refs_to_exclude} = binding.value;
+            //bool_status_variable_or_callback, string, is the bool status variable, in charge of your element
+            //refs_to_exclude, [], means elements that already handle the same bool_status_variable_or_callback variable on their own
+            const {bool_status_variable_or_callback, refs_to_exclude} = binding.value;
 
             //contains() on this ref element always returns true when event.target refers to ref child or itself
             //if true, we don't do anything, because excluded element already runs handler at @click
@@ -87,14 +87,14 @@ const clickOutside = {
                 
                 //change element's is_open to false manually, because no other way to run methods without binding.value()
                 //binding.value() requires that you pass only the method name to the directive
-                if(typeof var_name_for_element_bool_status === 'string'){
+                if(typeof bool_status_variable_or_callback === 'string'){
 
-                    binding.instance.$data[var_name_for_element_bool_status] = false;
+                    binding.instance.$data[bool_status_variable_or_callback] = false;
 
                 }else{
 
                     //callback
-                    var_name_for_element_bool_status();
+                    bool_status_variable_or_callback();
                 }
             }
         };

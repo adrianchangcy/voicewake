@@ -24,7 +24,7 @@
                                 v-show="is_playback_speed_options_open"
                                 :propIsOpaque="true"
                                 v-click-outside="{
-                                    var_name_for_element_bool_status: 'is_playback_speed_options_open',
+                                    bool_status_variable_or_callback: 'is_playback_speed_options_open',
                                     refs_to_exclude: ['playback_speed_options_opener']
                                 }"
                                 class="w-full h-[300%] absolute left-0 right-0 bottom-[110%] m-auto"

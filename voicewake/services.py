@@ -108,7 +108,10 @@ def get_pretty_datetime(seconds:int)->str:
         return str(interval) + ' days'
 
     interval = math.floor(seconds / 2592000)
-    if interval == 1:
+    if interval < 1:
+        #need this, since 2592000 is 30 days, and we are doing < 28
+        return '1 month'
+    elif interval == 1:
         return str(interval) + ' month'
     elif interval < 12:
         return str(interval) + ' months'
@@ -142,7 +145,7 @@ def group_audio_clips_into_events(audio_clips:list[AudioClips])->list:
             #this is what frontend expects
             sorted_audio_clips.append({
                 'event': row.event,
-                'originator': None,
+                'originator': [],
                 'responder': [],
             })
 
@@ -151,7 +154,7 @@ def group_audio_clips_into_events(audio_clips:list[AudioClips])->list:
 
         if row.audio_clip_role.audio_clip_role_name == 'originator':
 
-            sorted_audio_clips[event_ids.index(row.event.id)]['originator'] = row
+            sorted_audio_clips[event_ids.index(row.event.id)]['originator'].append(row)
 
         else:
 
@@ -190,14 +193,14 @@ def group_audio_clips_into_events_and_event_reply_queues(audio_clips:list[AudioC
     sorted_audio_clips = []
     event_ids = []  #simpler way to check and get element position in sorted_audio_clips
 
-    for index, row in enumerate(audio_clips):
+    for row in audio_clips:
 
         if row.event.id not in event_ids:
 
             #this is what frontend expects
             sorted_audio_clips.append({
                 'event': row.event,
-                'originator': None,
+                'originator': [],
                 'responder': [],
                 'event_reply_queue': event_reply_queues[len(event_ids)],
             })
@@ -207,7 +210,7 @@ def group_audio_clips_into_events_and_event_reply_queues(audio_clips:list[AudioC
 
         if row.audio_clip_role.audio_clip_role_name == 'originator':
 
-            sorted_audio_clips[event_ids.index(row.event.id)]['originator'] = row
+            sorted_audio_clips[event_ids.index(row.event.id)]['originator'].append(row)
 
         else:
 
@@ -346,7 +349,7 @@ def get_datetime_between(timeframe:Literal['day', 'week', 'month', 'all']='all')
     #determine earliest possible datetime
     if timeframe in datetime_checkpoint_timedelta:
 
-        datetime_from = (get_datetime_now() - datetime_checkpoint_timedelta[timeframe]).strftime('%Y-%m-%d %H:%M:%S %z')
+        datetime_from = (get_datetime_now() - datetime_checkpoint_timedelta[timeframe]).strftime('%Y-%m-%d %H:%M:%S.%f %z')
 
     else:
 

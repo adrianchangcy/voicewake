@@ -65,7 +65,7 @@ class AudioClipsSerializer(serializers.ModelSerializer):
     user = UsersSerializer()
     audio_clip_role = AudioClipRolesSerializer()
     audio_clip_tone = AudioClipTonesSerializer()
-    event = EventsSerializer()
+    event_id = serializers.IntegerField()
     generic_status = GenericStatusesSerializer()
     audio_volume_peaks = serializers.ListField(
         child=serializers.DecimalField(min_value=0, max_value=1, max_digits=3, decimal_places=2, coerce_to_string=False),
@@ -75,7 +75,7 @@ class AudioClipsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AudioClips
-        fields = '__all__'
+        fields = ['id', 'user', 'audio_clip_role', 'audio_clip_tone', 'event_id', 'generic_status', 'audio_file', 'audio_volume_peaks', 'audio_duration_s']
 
 
 
@@ -87,6 +87,14 @@ class EventReplyQueuesSerializer(serializers.ModelSerializer):
 
 
 
+class UserBlocksSerializer(serializers.ModelSerializer):
+
+    blocked_user = UsersSerializer()
+    is_blocked = serializers.BooleanField(default=True) #for frontend only
+
+    class Meta:
+        model = UserBlocks
+        fields = ['blocked_user', 'is_blocked']
 
 
 
@@ -140,30 +148,21 @@ class TestAPISerializer(serializers.Serializer):
 
 #no need event=EventsSerializer
 #because we will use store into SortedAudioClipsIntoEventsSerializer.event, once for all related audio_clips
-class AudioClipsAndLikeDetailsAPISerializer(serializers.ModelSerializer):
-    user = UsersSerializer()
-    audio_clip_role = AudioClipRolesSerializer()
-    audio_clip_tone = AudioClipTonesSerializer()
-    event_id = serializers.IntegerField()
-    generic_status = GenericStatusesSerializer()
-    audio_volume_peaks = serializers.ListField(
-        child=serializers.DecimalField(min_value=0, max_value=1, max_digits=3, decimal_places=2, coerce_to_string=False),
-        min_length=20,
-        max_length=20
-    )
+class AudioClipsAndLikeDetailsAPISerializer(AudioClipsSerializer):
     like_count = serializers.IntegerField()
     dislike_count = serializers.IntegerField()
     is_liked_by_user = serializers.BooleanField(allow_null=True)
 
-    class Meta:
-        model = AudioClips
-        fields = ['id', 'user', 'audio_clip_role', 'audio_clip_tone', 'event_id', 'generic_status', 'audio_file', 'audio_volume_peaks', 'audio_duration_s', 'like_count', 'dislike_count', 'is_liked_by_user']
+    class Meta(AudioClipsSerializer.Meta):
+        fields = AudioClipsSerializer.Meta.fields + ['like_count', 'dislike_count', 'is_liked_by_user']
 
 
 
 class EventsAndAudioClipsAPISerializer(serializers.Serializer):
     event = EventsSerializer()
-    originator = AudioClipsAndLikeDetailsAPISerializer()
+    originator = serializers.ListField(
+        child=AudioClipsAndLikeDetailsAPISerializer()
+    )
     responder = serializers.ListField(
         child=AudioClipsAndLikeDetailsAPISerializer()
     )
@@ -172,7 +171,9 @@ class EventsAndAudioClipsAPISerializer(serializers.Serializer):
 
 class LockedEventsAndAudioClipsAPISerializer(serializers.Serializer):
     event = EventsSerializer()
-    originator = AudioClipsAndLikeDetailsAPISerializer()
+    originator = serializers.ListField(
+        child=AudioClipsAndLikeDetailsAPISerializer()
+    )
     responder = serializers.ListField(
         child=AudioClipsAndLikeDetailsAPISerializer()
     )
@@ -332,27 +333,9 @@ class UsersLogInSignUpAPISerializer(serializers.Serializer):
 
 
 
-class UserBlocksSerializer(serializers.ModelSerializer):
-
-    blocked_user = UsersSerializer()
-    is_blocked = serializers.BooleanField(default=True) #for frontend only
-
-    class Meta:
-        model = UserBlocks
-        fields = ['blocked_user', 'is_blocked']
-
-
-
-class UserBlocksAPISerializer(serializers.Serializer):
-
-    username = serializers.CharField(min_length=1, max_length=30)
-    to_block = serializers.BooleanField()
-
-
-
 class AudioClipReportsAPISerializer(serializers.Serializer):
 
-    reported_audio_clip_id = serializers.IntegerField()
+    audio_clip_id = serializers.IntegerField()
 
 
 
@@ -405,10 +388,33 @@ class BrowseEventsAPISerializer(serializers.Serializer):
 
 
 
+class CreateUserBlocksAPISerializer(serializers.Serializer):
+
+    username = serializers.CharField(min_length=1, max_length=30)
+    to_block = serializers.BooleanField()
+
+
+
+class GetUserBlocksAPISerializer(serializers.Serializer):
+
+    #cursor_token max_length is double of usual
+    next_or_back = serializers.CharField()
+    cursor_token = serializers.CharField(required=False, default='', max_length=200)
+
+
+    def validate_next_or_back(self, value):
+
+        if value in ['next', 'back']:
+
+            return value
+
+        raise serializers.ValidationError("Accepted values not specified: next/back.")
+
+
+
 class UserBannedAudioClipsAPISerializer(serializers.Serializer):
 
     #cursor_token max_length is double of usual
-    username = serializers.CharField(required=False, min_length=1, max_length=30)
     next_or_back = serializers.CharField()
     cursor_token = serializers.CharField(required=False, default='', max_length=200)
 

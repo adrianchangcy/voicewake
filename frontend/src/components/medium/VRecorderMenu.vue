@@ -13,6 +13,7 @@
                     :propIsRecording="is_recording"
                     :propIsForRecording="true"
                     :propIsOpen="propIsOpen"
+                    :propHasAudioClipTone="false"
                     @isProcessing="handleIsPlaybackProcessing($event)"
                     class="w-full h-full"
                 />

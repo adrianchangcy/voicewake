@@ -189,6 +189,44 @@ textarea {
     content: '';
 }
 
+/*pulse audio clip selected*/
+/*visibility here is needed to prevent first-time jolt or starting too early (both not intentional)*/
+/*0% keyframe is to prevent pixelated circle if it were to truly start from scale(0)*/
+.audio-clip-selected-pulse-1 {
+    animation: slow-pulse 3s infinite linear;
+    animation-delay: 0s;
+    transform-origin: center;
+    visibility: hidden;
+}
+.audio-clip-selected-pulse-2 {
+    animation: slow-pulse 3s infinite linear;
+    animation-delay: 1s;
+    transform-origin: center;
+    visibility: hidden;
+}
+.audio-clip-selected-pulse-3 {
+    animation: slow-pulse 3s infinite linear;
+    animation-delay: 2s;
+    transform-origin: center;
+    visibility: hidden;
+}
+@keyframes slow-pulse {
+    0% {
+        visibility: visible;
+        opacity: 0;
+        transform: scale(0.4);
+    }
+    1% {
+        visibility: visible;
+        opacity: 1;
+        transform: scale(0);
+    }
+    100% {
+        visibility: visible;
+        opacity: 0;
+        transform: scale(1);
+    }
+}
 
 
 
@@ -200,9 +238,6 @@ textarea {
     */
 
     /*from theme-black to theme-dark-gray*/
-    .shade-text-when-hover:hover{
-        color: #a8a29e;
-    }
     .shade-background-when-hover:hover{
         background-color: #a8a29e;
     }
@@ -218,9 +253,6 @@ textarea {
     .double-height-when-hover:hover{
         transform: scaleY(2);
     }
-    .nav-burger-when-hover:hover > .nav-burger-line{
-        background-color: #a8a29e;
-    }
     .action-hover:hover{
         filter: brightness(0.97);
     }
@@ -229,6 +261,12 @@ textarea {
     }
     .action-danger-hover:hover{
         filter: brightness(0.90);
+    }
+    .action-text-text-hover:hover{
+        text-decoration-color: #facc15;
+    }
+    .action-text-icon-hover:hover{
+        background-color: #e7e5e4;
     }
 
     /*triggers from parent to all descendants that have classes above*/

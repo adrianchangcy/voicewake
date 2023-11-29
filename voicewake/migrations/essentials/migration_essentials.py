@@ -155,15 +155,24 @@ custom_trigger_audio_clip_likes_dislikes = '''
     EXECUTE FUNCTION handle_audio_clip_likes_dislikes_count();
 '''
 
-#ASC not needed, since plan can use index scan backward
 #the id should start to matter when one specific when_created has many ids
-#currently indexing extra id has no effect, but we always order by these two columns this way, so might as well
+    #currently indexing extra id has no effect, but we always order by these two columns this way, so might as well
+#adding extra user_id to index did not improve anything, especially not for user-specific querying
 audio_clips_when_created_id_1 = '''
-    CREATE INDEX audio_clips_when_created_id_1 ON audio_clips(when_created DESC, id DESC);
+    CREATE INDEX audio_clips_when_created_id_1 ON audio_clips(when_created, id);
+'''
+
+#this is for temporary solution for viewing banned audio_clips
+audio_clips_last_modified_id_1 = '''
+    CREATE INDEX audio_clips_last_modified_id_1 ON audio_clips(last_modified, id);
 '''
 
 events_when_created_1 = '''
     CREATE INDEX events_when_created_1 ON events (when_created);
+'''
+
+user_blocks_when_created_id_1 = '''
+    CREATE INDEX user_blocks_when_created_id_1 ON public.user_blocks USING btree (when_created, id);
 '''
 
 

@@ -5,8 +5,7 @@
 
         <!--label, ripples, total duration-->
         <div
-            v-show="!propIsSelected"
-            ref="card_button"
+            v-show="!isSelected"
             class="w-full h-full"
         >
             <VAction
@@ -16,18 +15,18 @@
                 :prop-is-icon-only="true"
                 type="button"
                 class="w-full shadow-md active:shadow-sm"
-                @click.stop="handleIsSelected()"
+                @click="emitSelectedAudioClip()"
             >
-                <div class="w-full grid grid-cols-4 text-4xl">
+                <div class="w-full h-full grid grid-cols-4 text-4xl">
                     <span class="sr-only">play recording</span>
 
                     <div class="col-span-1 h-full relative">
                         <!--total duration, width is to match emoji-->
-                        <span
+                        <div
                             class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto text-sm"
                         >
-                            {{ prettyFileDuration }}
-                        </span>
+                            <span>{{ prettyFileDuration }}</span>
+                        </div>
                     </div>
 
                     <!--ripples-->
@@ -38,9 +37,9 @@
                             class="w-full h-full absolute flex flex-row justify-evenly"
                         >
                             <div
-                                v-for="volume_ripple in propAudioClip.audio_volume_peaks.length" :key="volume_ripple"
-                                ref="volume_ripple"
+                                v-for="index in propBucketQuantity" :key="index"
                                 class="h-full scale-y-0 origin-center"
+                                :style="getAudioVolumePeakStyle(index)"
                             >
                                 <div class="left-0 right-0 mx-auto w-0.5 h-full bg-theme-black">
                                 </div>
@@ -62,14 +61,13 @@
             </VAction>
         </div>
 
-        <!--for playback teleport-->
-        <!--must be here to ensure it's in the correct order of focus after card_button disappears-->
         <div
-            v-show="propIsSelected"
+            v-show="isSelected"
             :id="getTeleportId"
-            ref="playback_container"
             class="w-full h-full"
-        ></div>
+        >
+        </div>
+
     </div>
 </template>
 
@@ -82,9 +80,9 @@
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
     import anime from 'animejs';
+    import AudioClipsTypes from '@/types/AudioClips.interface';
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
     import { prettyDuration } from '@/helper_functions';
-
 
     export default defineComponent({
         data(){
@@ -94,12 +92,20 @@
         },
         props: {
             propAudioClip: {
-                type: Object as PropType<AudioClipsAndLikeDetailsTypes>,
+                type: Object as PropType<AudioClipsTypes|AudioClipsAndLikeDetailsTypes>,
                 required: true,
             },
-            propIsSelected: {
+            propSelectedAudioClip: {
+                type: Object as PropType<AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null>,
+                default: null,
+            },
+            propBucketQuantity: {
+                type: Number,
+                default: 20,
+            },
+            propCanLoadVPlayback: {
                 type: Boolean,
-                default: false
+                default: false,
             },
         },
         computed: {
@@ -107,95 +113,86 @@
 
                 return prettyDuration(this.propAudioClip.audio_duration_s);
             },
-            getTeleportId() : string {
+            getTeleportId(){
 
-                return 'playback-teleport-audio-clip-id-' + this.propAudioClip.id.toString();
+                return 'vplayback-teleport-audio-clip-id-' + this.propAudioClip.id.toString();
+            },
+            isSelected() : boolean {
+
+                return this.propSelectedAudioClip !== null && this.propAudioClip.id === this.propSelectedAudioClip.id;
             },
         },
+        emits: [
+            'selectedAudioClip', 'newVPlaybackTeleportId',
+        ],
         watch: {
-            propAudioClip(new_value:AudioClipsAndLikeDetailsTypes){
+            isSelected(new_value){
 
-                this.updateAudioVolumePeaks(new_value);
+                //this watcher is affordable when used with Virtual Scroller
+                //must watch isSelected, as passing active from Virtual Scroller is unreliable
+
+                //only emit true here to prevent race condition
+                //if we want to teleport VPlayback back to temporary id, do it at beforeUnmount
+                //i.e. only happens during new filter change
+                if(new_value === true){
+
+                    this.emitNewVPlaybackTeleportId(new_value);
+                }
             },
         },
         methods: {
-            handleIsSelected() : void {
+            async emitNewVPlaybackTeleportId(can_teleport:boolean) : Promise<void> {
 
-                this.$emit('isSelected', this.propAudioClip);
-            },
-            async handleSelectionAnime(is_selected:boolean) : Promise<void> {
+                if(can_teleport === true){
 
-                this.main_anime === null ? null : this.main_anime.pause();
-
-                if(is_selected === true){
-
-                    this.main_anime = anime.timeline({
-                        easing: 'linear',
-                        autoplay: true,
-                        loop: false,
-                    }).add({
-                        targets: this.$refs.card_button,
-                        opacity: '0',
-                        duration: 0,
-                        complete: () => {
-                            (this.$refs.card_button as HTMLElement).style.display = 'none';
-                        }
-                    }).add({
-                        targets: this.$refs.playback_container,
-                        opacity: '1',
-                        duration: 150,
-                    });
+                    this.$emit('newVPlaybackTeleportId', '#' + this.getTeleportId);
 
                 }else{
 
-                    this.main_anime = anime.timeline({
-                        easing: 'linear',
-                        autoplay: true,
-                        loop: false,
-                    }).add({
-                        targets: this.$refs.playback_container,
-                        opacity: '0',
-                        duration: 0,
-                    }).add({
-                        begin: () => {
-                            (this.$refs.card_button as HTMLElement).style.display = 'grid';
-                        },
-                        targets: this.$refs.card_button,
-                        opacity: '1',
-                        duration: 150,
-                    });
+                    this.$emit('newVPlaybackTeleportId', '');
                 }
             },
-            async updateAudioVolumePeaks(new_value:AudioClipsAndLikeDetailsTypes) : Promise<void> {
+            emitSelectedAudioClip() : void {
 
-                if(this.$refs.volume_ripple === undefined){
+                if(this.isSelected === true){
 
                     return;
                 }
 
-                for(let x = 0; x < new_value.audio_volume_peaks.length; x++){
+                this.$emit('selectedAudioClip', this.propAudioClip);
+                this.emitNewVPlaybackTeleportId(true);
+            },
+            getAudioVolumePeakStyle(index:number) : string {
 
-                    const target_ripple = (this.$refs.volume_ripple as HTMLElement[])[x];
+                //reminder that v-for starts from 1, not 0
 
-                    //UPDATE: non-zero feels more functional for end user
-                    if(new_value.audio_volume_peaks[x] < 0.05){
+                if(this.propAudioClip.audio_volume_peaks[index - 1] < 0.05){
 
-                        target_ripple.style.transform = 'scaleY('+ 0.05 +')';
+                    return 'transform: scaleY('+ 0.05 +');';
 
-                    }else if(new_value.audio_volume_peaks[x] > 1){
+                }else if(this.propAudioClip.audio_volume_peaks[index - 1] > 1){
 
-                        target_ripple.style.transform = 'scaleY('+ 1 +')';                    
+                    return 'transform: scaleY('+ 1 +');';
 
-                    }else{
+                }else{
 
-                        target_ripple.style.transform = 'scaleY('+ new_value.audio_volume_peaks[x] +')';                    
-                    }
+                    return 'transform: scaleY('+ this.propAudioClip.audio_volume_peaks[index - 1] +');';
                 }
             },
         },
         mounted(){
 
-            this.updateAudioVolumePeaks(this.propAudioClip);
+            if(this.isSelected === true){
+
+                this.emitNewVPlaybackTeleportId(true);
+            }
         },
+        beforeUnmount(){
+
+            if(this.isSelected === false){
+
+                this.emitNewVPlaybackTeleportId(false);
+            }
+        }
     });
 </script>

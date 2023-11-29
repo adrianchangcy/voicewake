@@ -4,7 +4,7 @@ import EventsTypes from "./Events.interface";
 
 interface EventsAndAudioClipsTypes{
     event: EventsTypes,
-    originator: AudioClipsAndLikeDetailsTypes|null,
+    originator: AudioClipsAndLikeDetailsTypes[]|[],
     responder: AudioClipsAndLikeDetailsTypes[]|[],
     event_reply_queue?: {
         'event_id': number,
