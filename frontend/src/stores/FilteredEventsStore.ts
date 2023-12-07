@@ -258,7 +258,7 @@ export function useFilteredEventsStore(is_user_page:boolean){
                     return this.current_audio_clip_tone_id === audio_clip_tone.id;
                 }
             },
-            async updateLastSelectedAudioClip(audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes) : Promise<void> {
+            async updateLastSelectedAudioClip(audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null) : Promise<void> {
 
                 this.filtered_events_structure[
                     this.current_event_generic_status_name_index

@@ -10,7 +10,7 @@
         </div>
         <div
             :class="[
-                propHasBorder === true? 'border border-theme-light-gray divide-y divide-theme-light-gray' : '',
+                propHasBorder === true? 'border border-theme-gray-2 divide-y divide-theme-gray-2' : '',
                 'w-full h-fit text-center flex flex-col rounded-lg'
             ]"
         >

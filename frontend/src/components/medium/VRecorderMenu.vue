@@ -51,10 +51,13 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
+    import { useVPlaybackStore } from '@/stores/VPlaybackStore';
 
     export default defineComponent({
         data() {
             return {
+                vplayback_store: useVPlaybackStore(),
+
                 is_recording: false,
                 recording_pulse: 0,
                 interval_ms: 100, //milliseconds

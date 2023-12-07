@@ -17,6 +17,7 @@
                 :prop-show-title="false"
                 :prop-load-v-audio-clip-cards-only="!isReplying"
                 @new-is-liked="event_reply_choices_store.newAudioClipIsLiked($event)"
+                @new-v-playback-teleport-id="handleNewVPlaybackTeleportId($event)"
             />
 
             <!--reply area-->
@@ -33,7 +34,7 @@
                             :propUsername="(getDataFromTemplateJSONScript('data-user-username') as string)"
                         />
 
-                        <div class="relative border border-theme-light-gray rounded-lg px-2 sm:px-4 py-8 shade-border-when-hover transition-colors">
+                        <div class="relative border border-theme-gray-2 rounded-lg px-2 sm:px-4 py-8 shade-border-when-hover transition-colors">
 
                             <div class="grid grid-cols-4 gap-2 pb-6">
 
@@ -95,14 +96,14 @@
                                 v-show="dialog_context === 'cancelled'"
                                 class="w-full flex flex-col"
                             >
-                                <i class="fas fa-eraser block mx-auto" aria-hidden="true"></i>
+                                <FontAwesomeIcon icon="fas fa-eraser" class="mx-auto"/>
                                 <span class="block mx-auto">Reply was cancelled.</span>
                             </div>
                             <div
                                 v-show="dialog_context === 'expired'"
                                 class="w-full flex flex-col"
                             >
-                                <i class="fas fa-hourglass-end block mx-auto" aria-hidden="true"></i>
+                                <FontAwesomeIcon icon="fas fa-hourglass-end" class="mx-auto"/>
                                 <span class="block mx-auto">Reply has expired.</span>
                             </div>
                         </div>
@@ -118,7 +119,7 @@
                             >
                                 <span class="flex items-center px-4">
                                     <span class="block">More reply choices</span>
-                                    <i class="fas fa-arrow-right block text-lg pl-2" aria-hidden="true"></i>
+                                    <FontAwesomeIcon icon="fas fa-arrow-right" class="text-lg pl-2"/>
                                 </span>
                             </VActionSpecial>
                         </div>
@@ -126,19 +127,17 @@
                 </TransitionFadeSlow>
             </div>
 
-            <!-- <Teleport
-                to="#vplayback-target"
+            <Teleport
+                v-if="!isReplying && teleport_id !== ''"
+                :to="teleport_id"
             >
                 <VPlayback
-                    :prop-audio-clip="currently_playing_audio_clip_store.getPlayingAudioClip"
+                    :prop-audio-clip="vplayback_store.getPlayingAudioClip"
                     :prop-is-open="true"
                     :prop-audio-volume-peaks="getSelectedAudioClipAudioVolumePeaks"
                     :prop-bucket-quantity="20"
-                    :prop-auto-play-on-source-change="true"
-                    :prop-pause-trigger="filter_change_trigger"
-                    :prop-is-floating="true"
                 />
-            </Teleport> -->
+            </Teleport>
         </div>
     </div>
 </template>
@@ -150,10 +149,19 @@
     import CreateAudioClips from '@/components/main/CreateAudioClips.vue';
     import VTitle from '@/components/small/VTitle.vue';
     import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
-    // import VPlayback from '@/components/medium/VPlayback.vue';
+    import VPlayback from '@/components/medium/VPlayback.vue';
     import VUsernameURL from '@/components/small/VUsernameURL.vue';
     import VAudioClipCardSkeleton from '@/components/skeleton/VAudioClipCardSkeleton.vue';
     import VLoading from '@/components/small/VLoading.vue';
+
+    import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+    import { library } from '@fortawesome/fontawesome-svg-core';
+    import { faFaceMehBlank } from '@fortawesome/free-regular-svg-icons/faFaceMehBlank';
+    import { faEraser } from '@fortawesome/free-solid-svg-icons/faEraser';
+    import { faHourglassEnd } from '@fortawesome/free-solid-svg-icons/faHourglassEnd';
+    import { faArrowRight } from '@fortawesome/free-solid-svg-icons/faArrowRight';
+
+    library.add(faFaceMehBlank, faEraser, faHourglassEnd, faArrowRight);
 </script>
 
 
@@ -161,10 +169,9 @@
     import { defineComponent, } from 'vue';
     import { timeFromNowMS, getDataFromTemplateJSONScript, prettyTimePassed } from '@/helper_functions';
     import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
-    import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
     import { notify } from 'notiwind';
     import { useEventReplyChoicesStore } from '@/stores/EventReplyChoicesStore';
-    import { useCurrentlyPlayingAudioClipStore } from '@/stores/CurrentlyPlayingAudioClipStore';
+    import { useVPlaybackStore } from '@/stores/VPlaybackStore';
     import { CreateAudioClips__isSubmitSuccessfulTypes } from '@/types/General.interface';
 
     const axios = require('axios');
@@ -175,11 +182,10 @@
         data() {
             return {
                 event_reply_choices_store: useEventReplyChoicesStore(),
-                currently_playing_audio_clip_store: useCurrentlyPlayingAudioClipStore(),
+                vplayback_store: useVPlaybackStore(),
 
                 event_id: null as number|null,
                 event: null as EventsAndAudioClipsTypes|null,
-                selected_audio_clip: null as AudioClipsAndLikeDetailsTypes|null,
 
                 audio_clip_count: 0,
                 original_document_title: "",
@@ -191,6 +197,8 @@
                 dialog_context: "" as ""|"expired"|"cancelled",
 
                 expiry_interval: null as number|null,
+
+                teleport_id: '',
             };
         },
         computed: {
@@ -202,15 +210,6 @@
                     this.is_event_submitting === true ||
                     this.is_event_expiring === true
                 );
-            },
-            getVPlaybackTeleportId() : string {
-
-                if(this.selected_audio_clip === null){
-
-                    return '';
-                }
-
-                return '#playback-teleport-audio-clip-id-' + this.selected_audio_clip.id;
             },
             isReplying() : boolean {
 
@@ -224,6 +223,22 @@
                 //use this.event so we have an event to check with after replying
                 return this.event !== null &&
                     Object.hasOwn(this.event, 'event_reply_queue') === true;
+            },
+            getSelectedAudioClipAudioVolumePeaks() : number[] {
+
+                if(this.vplayback_store.getPlayingAudioClip === null){
+
+                    return [];
+                }
+
+                return this.vplayback_store.getPlayingAudioClip.audio_volume_peaks;
+            },
+        },
+        watch: {
+            isReplying(new_value){
+
+                //don't autoplay when replying
+                this.vplayback_store.updateCanAutoplay(!new_value);
             },
         },
         methods: {
@@ -470,6 +485,10 @@
 
                 });
             },
+            handleNewVPlaybackTeleportId(teleport_id:string) : void {
+
+                this.teleport_id = teleport_id;
+            },
         },
         beforeMount(){
 
@@ -487,6 +506,9 @@
 
             //store original page title, so if user is no longer replying, can auto-revert
             this.original_document_title = document.title;
+
+            //if replying, don't autoplay
+            this.vplayback_store.updateCanAutoplay(!this.isReplying);
 
             //if event_reply_choices_store has this event, get from store instead of API
 
@@ -514,6 +536,7 @@
                             document.title = "Replying: " + document.title;
 
                             this.startExpiryInterval(true);
+                            this.vplayback_store.updateCanAutoplay(!this.isReplying);
                         }
                     });
                 })();

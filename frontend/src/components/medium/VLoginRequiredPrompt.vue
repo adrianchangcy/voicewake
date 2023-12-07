@@ -11,7 +11,7 @@
                 :prop-is-icon-only="true"
                 class="absolute w-10 -right-4"
             >
-                <i class="fas fa-xmark mx-auto"></i>
+                <FontAwesomeIcon icon="fas fa-xmark" class="mx-auto"/>
             </VActionText>
         </div>
 
@@ -58,6 +58,12 @@
     import VActionText from '../small/VActionText.vue';
     import VActionSpecial from '../small/VActionSpecial.vue';
     import VTitle from '../small/VTitle.vue';
+
+    import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+    import { library } from '@fortawesome/fontawesome-svg-core';
+    import { faXmark } from '@fortawesome/free-solid-svg-icons/faXmark';
+
+    library.add(faXmark);
 </script>
 
 <script lang="ts">

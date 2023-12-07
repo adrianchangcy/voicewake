@@ -136,6 +136,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_superuser = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)   #when False, login() and force_login() will fail
     banned_until = models.DateTimeField(null=True, blank=True, default=None)
+    ban_count = models.SmallIntegerField(default=0)
     last_login = models.DateTimeField(null=True, blank=True)
     date_joined = models.DateTimeField(auto_now_add=True)
     
@@ -221,6 +222,7 @@ class AudioClips(models.Model):
     )
     like_count = models.IntegerField(default=0)
     dislike_count = models.IntegerField(default=0)
+    like_ratio = models.DecimalField(default=Decimal('0.00'), decimal_places=2, max_digits=3)   #0.00 to 1.00
     is_banned = models.BooleanField(default=False)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)

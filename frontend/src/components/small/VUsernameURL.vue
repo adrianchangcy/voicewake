@@ -1,17 +1,22 @@
 <template>
     <div>
         <a
-            :href="user_url"
-            class="w-fit h-fit overflow-hidden flex flex-row items-center gap-2 text-theme-black text-sm transition-colors    action-text-text-hover active:bg-theme-light-gray underline underline-offset-2 decoration-2 decoration-transparent    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-theme-outline"
+            :href="getUsernameURL"
+            class="w-fit h-fit overflow-hidden flex flex-row items-center gap-2 text-theme-black text-sm rounded-md transition-colors    action-text-hover active:bg-theme-gray-2    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-theme-outline"
         >
-            <i class="h-fit fas fa-user" aria-hidden="true"></i>
-            <span class="h-fit break-all">{{ propUsername }}</span>
+        <FontAwesomeIcon icon="fas fa-user"/>
+        <span class="h-fit break-all">{{ propUsername }}</span>
         </a>
     </div>
 </template>
 
 
 <script setup lang="ts">
+    import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+    import { library } from '@fortawesome/fontawesome-svg-core';
+    import { faUser } from '@fortawesome/free-solid-svg-icons/faUser';
+
+    library.add(faUser);
 </script>
 
 
@@ -21,7 +26,6 @@
     export default defineComponent({
         data(){
             return {
-                user_url: '',
             };
         },
         props: {
@@ -30,9 +34,11 @@
                 default: ''
             },
         },
-        beforeMount(){
+        computed: {
+            getUsernameURL() : string {
 
-            this.user_url = window.location.origin + '/user/' + this.propUsername;
-        }
+                return window.location.origin + '/user/' + this.propUsername;
+            },
+        },
     });
 </script>

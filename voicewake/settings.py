@@ -49,7 +49,7 @@ MIDDLEWARE = []
 
 if DEBUG is True:
 
-    REQUEST_TIME_DELAY = 0  #seconds
+    REQUEST_TIME_DELAY = 4  #seconds
 
     MIDDLEWARE += [
         'voicewake.middleware.drf_api_delay_middleware.TimeDelayMiddleware',
@@ -98,9 +98,6 @@ INSTALLED_APPS = [
 
     #channels for websocket
     # 'channels',
-
-    #fontawesome, installed via requirements.txt
-    'fontawesomefree',
 
     #OTP
     'django_otp',
@@ -302,7 +299,11 @@ EVENT_REPLY_EXPIRY_SECONDS = 3600       #60 mins, when locked and is_replying=Tr
 EVENT_QUANTITY_PER_PAGE = 4
 EVENT_INCOMPLETE_ROLL_QUANTITY = 1
 EVENT_INCOMPLETE_MAX_AGE = 302400   #3 days 12 hours
-EVENT_UNDO_REPLY_QUANTITY_PER_CRON = 100
+EVENT_UNDO_REPLY_QUANTITY_CRONJOB_LIMIT = 100
+
+if DEBUG is True:
+
+    EVENT_INCOMPLETE_MAX_AGE = 99999999
 
 
 #EMAIL
@@ -336,10 +337,10 @@ OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS = 1800
 
 #values used to evaluate audio_clip_reports and banning the audio_clips
 #keeping it simple
-BAN_AUDIO_CLIP_DISLIKE_RATIO = 0.75   #0 to 1
+BAN_AUDIO_CLIP__LIKE_RATIO = 0.25   #0 to 1
 BAN_AUDIO_CLIP_DISLIKE_COUNT = 100
 BAN_AUDIO_CLIP_AGE_SECONDS = 3600    #1 hour
-BAN_AUDIO_CLIP_QUANTITY_PER_CRON = 100
+BAN_AUDIO_CLIP_QUANTITY_CRONJOB_LIMIT = 100
 BAN_AUDIO_CLIP_DURATION_PER_BAN_DAYS = 2     #multiply this with ban count
 BAN_AUDIO_CLIP_QUANTITY_PER_PAGE = 20
 
@@ -347,9 +348,7 @@ BAN_AUDIO_CLIP_QUANTITY_PER_PAGE = 20
 USER_BLOCK_QUANTITY_PER_PAGE = 20
 
 
-if DEBUG is True:
 
-    EVENT_INCOMPLETE_MAX_AGE = 99999999
 
 
 

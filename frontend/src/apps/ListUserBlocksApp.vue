@@ -21,7 +21,7 @@
                     :active="active"
                 >
                     <div class="px-1 pb-2">
-                        <div class="w-full flex flex-row items-center p-2 gap-4 border border-theme-light-gray transition-colors shade-border-when-hover rounded-lg text-theme-black">
+                        <div class="w-full flex flex-row items-center p-2 gap-4 border border-theme-gray-2 transition-colors shade-border-when-hover rounded-lg text-theme-black">
                             <!--user-->
                             <VActionText
                                 prop-element="a"
@@ -30,7 +30,7 @@
                                 prop-font-size="s"
                                 class="min-w-0 flex-grow"
                             >
-                                <i class="fas fa-user text-base pl-2 pr-4"></i>
+                                <FontAwesomeIcon icon="fas fa-user" class="text-base pl-2 pr-4"/>
                                 <span class="text-base font-normal text-ellipsis overflow-hidden">{{ item.blocked_user.username }}</span>
                             </VActionText>
                         
@@ -53,8 +53,8 @@
                                         <VLoading prop-element-size="s"/>
                                     </div>
                                     <span v-show="!isBlocking(index)" class="mx-auto flex items-center text-center">
-                                        <i v-show="!item.is_blocked" class="fas fa-ban text-base" aria-hidden="true"></i>
-                                        <i v-show="item.is_blocked" class="far fa-circle text-base" aria-hidden="true"></i>
+                                        <FontAwesomeIcon v-show="!item.is_blocked" icon="fas fa-ban" class="text-base"/>
+                                        <FontAwesomeIcon v-show="item.is_blocked" icon="far fa-circle" class="text-base"/>
                                         <span v-show="!item.is_blocked" class="pl-1">Block</span>
                                         <span v-show="item.is_blocked" class="pl-1">Unblock</span>
                                     </span>
@@ -102,6 +102,14 @@
     import VActionBorder from '@/components/small/VActionBorder.vue';
     import VLoading from '@/components/small/VLoading.vue';
     import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
+
+    import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+    import { library } from '@fortawesome/fontawesome-svg-core';
+    import { faCircle } from '@fortawesome/free-regular-svg-icons/faCircle';
+    import { faUser } from '@fortawesome/free-solid-svg-icons/faUser';
+    import { faBan } from '@fortawesome/free-solid-svg-icons/faBan';
+
+    library.add(faCircle, faUser, faBan);
 </script>
 
 

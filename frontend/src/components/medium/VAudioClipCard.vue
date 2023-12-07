@@ -31,20 +31,8 @@
 
                     <!--ripples-->
                     <!--h-8 because VPlayback at half is h-4-->
-                    <div class="col-span-2 h-8 top-0 bottom-0 my-auto relative">
-                        <div
-                            ref="volume_ripples_container"
-                            class="w-full h-full absolute flex flex-row justify-evenly"
-                        >
-                            <div
-                                v-for="index in propBucketQuantity" :key="index"
-                                class="h-full scale-y-0 origin-center"
-                                :style="getAudioVolumePeakStyle(index)"
-                            >
-                                <div class="left-0 right-0 mx-auto w-0.5 h-full bg-theme-black">
-                                </div>
-                            </div>
-                        </div>
+                    <div ref="canvas_ripples_container" class="col-span-2 h-8 top-0 bottom-0 my-auto">
+                        <canvas ref="canvas_ripples" class="w-full h-full mx-auto"></canvas>
                     </div>
 
                     <div class="col-span-1 h-full relative">
@@ -82,7 +70,7 @@
     import anime from 'animejs';
     import AudioClipsTypes from '@/types/AudioClips.interface';
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
-    import { prettyDuration } from '@/helper_functions';
+    import { prettyDuration, drawCanvasRipples } from '@/helper_functions';
 
     export default defineComponent({
         data(){
@@ -139,6 +127,22 @@
                     this.emitNewVPlaybackTeleportId(new_value);
                 }
             },
+            propAudioClip(){
+
+                //not sure why, but $nextTick must also be used here
+                this.$nextTick(()=>{
+
+                    (async ()=>{
+                        await drawCanvasRipples(
+                            this.$refs.canvas_ripples_container as HTMLElement,
+                            this.$refs.canvas_ripples as HTMLCanvasElement,
+                            this.propAudioClip.audio_volume_peaks,
+                            'center',
+                            this.propBucketQuantity,
+                        );
+                    })();
+                })
+            },
         },
         methods: {
             async emitNewVPlaybackTeleportId(can_teleport:boolean) : Promise<void> {
@@ -149,7 +153,8 @@
 
                 }else{
 
-                    this.$emit('newVPlaybackTeleportId', '');
+                    //this teleports VPlayback on unmount so audio persists
+                    this.$emit('newVPlaybackTeleportId', '#temporary-vplayback-teleport');
                 }
             },
             emitSelectedAudioClip() : void {
@@ -162,22 +167,28 @@
                 this.$emit('selectedAudioClip', this.propAudioClip);
                 this.emitNewVPlaybackTeleportId(true);
             },
-            getAudioVolumePeakStyle(index:number) : string {
+            async redrawCanvasRipplesOnResize() : Promise<void> {
 
-                //reminder that v-for starts from 1, not 0
+                await drawCanvasRipples(
+                    this.$refs.canvas_ripples_container as HTMLElement,
+                    this.$refs.canvas_ripples as HTMLCanvasElement,
+                    this.propAudioClip.audio_volume_peaks,
+                    'center',
+                    this.propBucketQuantity,
+                );
 
-                if(this.propAudioClip.audio_volume_peaks[index - 1] < 0.05){
+                //redraw again after 200ms
+                //resize can sometimes fire before final dimension is known
+                window.setTimeout(async ()=>{
 
-                    return 'transform: scaleY('+ 0.05 +');';
-
-                }else if(this.propAudioClip.audio_volume_peaks[index - 1] > 1){
-
-                    return 'transform: scaleY('+ 1 +');';
-
-                }else{
-
-                    return 'transform: scaleY('+ this.propAudioClip.audio_volume_peaks[index - 1] +');';
-                }
+                    await drawCanvasRipples(
+                        this.$refs.canvas_ripples_container as HTMLElement,
+                        this.$refs.canvas_ripples as HTMLCanvasElement,
+                        this.propAudioClip.audio_volume_peaks,
+                        'center',
+                        this.propBucketQuantity,
+                    );
+                }, 200);
             },
         },
         mounted(){
@@ -186,13 +197,31 @@
 
                 this.emitNewVPlaybackTeleportId(true);
             }
+
+            //must use this, as mounted() does not guarantee child is rendered
+            this.$nextTick(()=>{
+
+                (async ()=>{
+                    await drawCanvasRipples(
+                        this.$refs.canvas_ripples_container as HTMLElement,
+                        this.$refs.canvas_ripples as HTMLCanvasElement,
+                        this.propAudioClip.audio_volume_peaks,
+                        'center',
+                        this.propBucketQuantity,
+                    );
+                })();
+            })
+
+            window.addEventListener('resize', this.redrawCanvasRipplesOnResize);
         },
         beforeUnmount(){
 
-            if(this.isSelected === false){
+            if(this.isSelected === true){
 
                 this.emitNewVPlaybackTeleportId(false);
             }
-        }
+
+            window.removeEventListener('resize', this.redrawCanvasRipplesOnResize);
+        },
     });
 </script>

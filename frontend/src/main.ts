@@ -18,6 +18,7 @@ import VBackdropAnime from '/src/components/small/VBackdropAnime.vue';
 import TestingStuff from '/src/components/main/TestingStuff.vue';
 
 
+//Pinia
 const pinia = createPinia();
 
 //persists store even after browser close/refresh
@@ -110,7 +111,7 @@ const clickOutside = {
 };
 
 //as long as base-app has pinia, and since base-app is loaded everywhere, pinia can thus be used everywhere
-//the same cannot be said for click-outside
+//the same cannot be said for .directive, nor .component
 if(document.querySelector('#base-app')){
     createApp(BaseApp)
         .use(pinia)

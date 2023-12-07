@@ -15,7 +15,7 @@
                 :type="inputTypeForPassword"
                 :id="propElementId"
                 v-model="input_value"
-                class="w-full h-10 p-2 pr-11 bg-theme-light border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover rounded-lg transition-colors"
+                class="w-full h-10 p-2 pr-11 bg-theme-light border-2 focus:border-theme-black border-theme-gray-4 shade-border-when-hover rounded-lg transition-colors"
                 :placeholder="propPlaceholder"
                 autocomplete="off"
                 spellcheck="false"

@@ -9,13 +9,13 @@
                 :id="propElementId"
                 type="text" inputmode="numeric" maxlength="1" autocomplete="off"
                 name="number-slot-field"
-                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover    focus:outline-none"
+                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 focus:border-theme-black border-theme-gray-4 shade-border-when-hover    focus:outline-none"
             />
             <input
                 v-for="x in propExtraSlots" :key="x"
                 type="text" inputmode="numeric" maxlength="1" autocomplete="off"
                 name="number-slot-field"
-                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover    focus:outline-none"
+                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 focus:border-theme-black border-theme-gray-4 shade-border-when-hover    focus:outline-none"
             />
         </div>
         <div class="h-6 px-2">

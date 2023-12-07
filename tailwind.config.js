@@ -31,7 +31,7 @@ module.exports = {
                 'theme-soft-lead': '#f5f5dc',   //for background yellow
 
                 //for small but high attention items, e.g. focus, highlight, etc.
-                'theme-outline': '#a8a29e',
+                'theme-outline': '#A8A29E',
 
                 'theme-green-1': '#90a955',
                 'theme-green-2': '#4f772d',
@@ -44,19 +44,28 @@ module.exports = {
                 'theme-light-trim': '#FDFDFD',
                 'theme-dark': '#22333B',
 
-                'theme-toast-success': '#379d00',   //as text, or bg and use text-theme-light
-                'theme-toast-warning': '#ffc500',   //as text, or bg and use text-theme-black
+                'theme-black': '#404040',   //scaled via shades generator from theme-light
+
+                'theme-toast-success': '#379d00',   //as text, or as bg + text-theme-light
+                'theme-toast-warning': '#ffc500',   //as text, or as bg + text-theme-black
                 'theme-toast-warning-2': '#daa520', //as text only
-                'theme-toast-danger': '#d81a1a',    //as text, or bg and use text-theme-light
-                'theme-toast': '#e6e6e6',           //as text, or bg and use text-theme-black
+                'theme-toast-danger': '#d81a1a',    //as text, or as bg + text-theme-light
+                'theme-toast': '#e6e6e6',           //as text, or as bg + text-theme-black
 
                 //for disabled feature, advised to use opacity on entire element until unreadable, not gray background
-                'theme-lightest-gray': '#eeeeee',
-                'theme-light-gray': '#e7e5e4',
-                'theme-medium-gray': '#d6d3d1',
-                'theme-dark-gray': '#a8a29e',
+                //these are darker shades of theme-light
+                'theme-gray-1': '#EDEFF0',
+                'theme-gray-2': '#E8EAEB',
+                'theme-gray-3': '#D5D8DA',
+                'theme-gray-4': '#CDCFD1',
+                'theme-gray-5': '#C5C7C8',
+                'theme-gray-6': '#A8A29E',
+                // 'theme-gray-1': '#eeeeee',
+                // 'theme-gray-2': '#e7e5e4',
+                // 'theme-gray-3': '',
+                // 'theme-gray-4': '#d6d3d1',
+                // 'theme-gray-5': '#a8a29e',
 
-                'theme-black': '#444444',
 
                 'theme-cream': '#F8F9F0',
                 'theme-red': '#A4243B',

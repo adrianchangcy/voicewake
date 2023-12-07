@@ -2,7 +2,7 @@
     <div class="h-full text-theme-black text-center">
 
         <!--main nav-->
-        <nav class="h-full grid grid-cols-4 sm:grid-cols-8 p-2 gap-x-2      backdrop-blur bg-theme-light/60 border-b border-theme-light-gray/50">
+        <nav class="h-full grid grid-cols-4 sm:grid-cols-8 p-2 gap-x-2      backdrop-blur bg-theme-light/60 border-b border-theme-gray-2/50">
 
             <!--home-->
             <div class="col-start-1 col-span-1">
@@ -13,7 +13,7 @@
                     :propIsIconOnly="false"
                     class="w-full h-full pb-0.5"
                 >
-                    <i class="fas fa-wave-square mx-auto" aria-hidden="true"></i>
+                    <FontAwesomeIcon icon="fas fa-wave-square" class="mx-auto"/>
                     <span class="sr-only">home</span>
                 </VActionText>
             </div>
@@ -24,36 +24,15 @@
                 class="col-start-2 col-span-1 sm:col-start-3 sm:col-span-2 lg:col-start-4 lg:col-span-1"
             >
                 <VActionText
-                    v-if="pop_up_manager_store.isLoggedIn === true"
                     prop-element="a"
                     prop-font-size="m"
                     href="/start"
                     :propIsIconOnly="false"
                     class="w-full h-full pb-0.5"
                 >
-                        <i class="fas fa-comment block mx-auto" aria-hidden="true"></i>
-                        <span class="sr-only">start event</span>
+                    <FontAwesomeIcon icon="fas fa-comment" class="mx-auto"/>
+                    <span class="sr-only">start event</span>
                 </VActionText>
-
-                <div
-                    v-else
-                    class="w-full h-full"
-                >
-                    <TransitionFade>
-                        <VActionText
-                            v-show="!pop_up_manager_store.hasPopUpOpen"
-                            @click="pop_up_manager_store.toggleIsLoginRequiredPromptOpen(true, 'Log in to start events.')"
-                            prop-element="button"
-                            type="button"
-                            prop-font-size="m"
-                            :propIsIconOnly="false"
-                            class="w-full h-full pb-0.5"
-                        >
-                            <i class="fas fa-comment block mx-auto" aria-hidden="true"></i>
-                            <span class="sr-only">start event</span>
-                        </VActionText>
-                    </TransitionFade>
-                </div>
             </div>
 
             <!--reply-->
@@ -62,36 +41,15 @@
                 class="col-start-3 col-span-1 sm:col-start-5 sm:col-span-2 lg:col-start-5 lg:col-span-1"
             >
                 <VActionText
-                    v-if="pop_up_manager_store.isLoggedIn === true"
                     prop-element="a"
                     prop-font-size="m"
                     href="/reply"
                     :propIsIconOnly="false"
                     class="w-full h-full pb-0.5"
                 >
-                    <i class="fas fa-comments block mx-auto" aria-hidden="true"></i>
+                    <FontAwesomeIcon icon="fas fa-comments" class="mx-auto"/>
                     <span class="sr-only">reply in events</span>
                 </VActionText>
-
-                <div
-                    v-else
-                    class="w-full h-full"
-                >
-                    <TransitionFade>
-                        <VActionText
-                            v-show="!pop_up_manager_store.hasPopUpOpen"
-                            @click="pop_up_manager_store.toggleIsLoginRequiredPromptOpen(true, 'Log in to reply in events.')"
-                            prop-element="button"
-                            type="button"
-                            prop-font-size="m"
-                            :propIsIconOnly="false"
-                            class="w-full h-full pb-0.5"
-                        >
-                            <i class="fas fa-comments block mx-auto" aria-hidden="true"></i>
-                            <span class="sr-only">reply in events</span>
-                        </VActionText>
-                    </TransitionFade>
-                </div>
             </div>
 
             <!--mobile, always show-->
@@ -150,16 +108,16 @@
                     class="w-full h-full"
                 >
                     <span class="mx-auto">
-                        <i class="fas fa-circle-user text-xl" aria-hidden="true"></i>
+                        <FontAwesomeIcon icon="fas fa-circle-user" class="text-xl"/>
                         <!--do this so user icon stays truly centered-->
                         <span class="relative w-0">
-                            <i
+                            <FontAwesomeIcon
+                                icon="fas fa-chevron-down"
                                 :class="[
                                     pop_up_manager_store.isNavMenuOpen ? '-rotate-180' : 'rotate-0',
-                                    'fas fa-chevron-down text-xs transition-transform h-fit absolute top-0 bottom-0 left-2 m-auto'
+                                    'text-xs transition-transform absolute top-0 bottom-0 left-2 m-auto'
                                 ]"
-                                aria-hidden="true"
-                            ></i>
+                            />
                         </span>
                     </span>
                     <span class="sr-only">you are logged in, more navigation options</span>
@@ -182,7 +140,7 @@
                         class="w-full h-full pb-1"
                     >
                         <span class="block mx-auto">
-                            <i class="fas fa-circle-user sm:pr-2" aria-hidden="true"></i>
+                            <FontAwesomeIcon icon="fas fa-circle-user" class="sm:pr-2"/>
                             <span>Log in</span>
                         </span>
                     </VActionText>
@@ -203,7 +161,7 @@
                         class="w-full h-full pb-1 shadow-md active:shadow-sm -translate-y-[1px]"
                     >
                         <span class="block mx-auto text-xl font-medium">
-                            <i class="fas fa-right-to-bracket sm:pr-2" aria-hidden="true"></i>
+                            <FontAwesomeIcon icon="fas fa-right-to-bracket" class="sm:pr-2"/>
                             <span>Sign up</span>
                         </span>
                     </VActionSpecial>
@@ -242,7 +200,7 @@
                             bool_status_variable_or_callback: forceCloseNavMenu,
                             refs_to_exclude: ['nav_menu_button_1', 'nav_menu_button_2']
                         }"
-                        class="absolute w-full h-[calc(100vh-4.5rem)] flex flex-col overflow-hidden p-2 border-l border-theme-light-gray bg-theme-light"
+                        class="absolute w-full h-[calc(100vh-4.5rem)] flex flex-col overflow-hidden p-2 border-l border-theme-gray-2 bg-theme-light"
                     >
 
                         <!--profile area-->
@@ -256,7 +214,7 @@
                                 :href="getProfileURL()"
                             >
                                 <div class="w-full flex flex-col">
-                                    <i class="fas fa-circle-user text-2xl w-fit h-fit mx-auto" aria-hidden="true"></i>
+                                    <FontAwesomeIcon icon="fas fa-circle-user" class="text-2xl mx-auto"/>
                                     <span class="max-w-full h-fit mx-auto text-xl font-medium break-words">
                                         <span>{{ propUsername }}</span>
                                     </span>
@@ -268,7 +226,7 @@
                                 v-else
                                 class="flex flex-col"
                             >
-                                <i class="fas fa-circle-user text-2xl w-fit h-fit mx-auto" aria-hidden="true"></i>
+                                <FontAwesomeIcon icon="fas fa-circle-user" class="text-2xl mx-auto"/>
                                 <span class="max-w-full h-fit mx-auto text-xl font-light break-words">
                                     <span>Not logged in</span>
                                 </span>
@@ -277,7 +235,7 @@
 
                         <!--divider-->
                         <div class="pb-4">
-                            <div class="w-[75%] h-[1px] bg-theme-light-gray mx-auto"></div>
+                            <div class="w-[75%] h-[1px] bg-theme-gray-2 mx-auto"></div>
                         </div>
 
                         <!--log in / sign up-->
@@ -297,7 +255,7 @@
                             >
                                 <div class="w-full h-full grid grid-cols-4">
                                     <div class="col-span-1 flex items-center">
-                                        <i class="fas fa-circle-user pt-0.5 w-fit h-fit mx-auto" aria-hidden="true"></i>
+                                        <FontAwesomeIcon icon="fas fa-circle-user" class="pt-0.5 mx-auto"/>
                                     </div>
                                     <div class="col-span-3 flex items-center">
                                         <span class="text-left break-all">
@@ -318,7 +276,7 @@
                             >
                                 <div class="w-full h-full grid grid-cols-4">
                                     <div class="col-span-1 flex items-center">
-                                        <i class="fas fa-right-to-bracket pt-0.5 w-fit h-fit mx-auto" aria-hidden="true"></i>
+                                        <FontAwesomeIcon icon="fas fa-right-to-bracket" class="pt-0.5 mx-auto"/>
                                     </div>
                                     <div class="col-span-3 flex items-center">
                                         <span class="text-left break-all">
@@ -345,7 +303,7 @@
                             >
                                 <div class="w-full h-full grid grid-cols-4">
                                     <div class="col-span-1 flex items-center">
-                                        <i class="fas fa-ban pt-0.5 w-fit h-fit mx-auto" aria-hidden="true"></i>
+                                        <FontAwesomeIcon icon="fas fa-ban" class="pt-0.5 mx-auto"/>
                                     </div>
                                     <div class="col-span-3 flex items-center">
                                         <span class="text-left break-all">
@@ -361,7 +319,7 @@
                             v-if="pop_up_manager_store.isLoggedIn === true"
                             class="py-4"
                         >
-                            <div class="w-[75%] h-[1px] bg-theme-light-gray mx-auto"></div>
+                            <div class="w-[75%] h-[1px] bg-theme-gray-2 mx-auto"></div>
                         </div>
 
                         <!--log out-->
@@ -389,7 +347,7 @@
                                             class="mx-auto"
                                         />
                                         <span v-else class="mx-auto">
-                                            <i class="fas fa-door-open" aria-hidden="true"></i>
+                                            <FontAwesomeIcon icon="fas fa-door-open"/>
                                         </span>
                                     </div>
                                     <div class="col-span-3 flex items-center">
@@ -418,6 +376,19 @@
     import VActionText from '@/components/small/VActionText.vue';
     import VActionSpecial from '../small/VActionSpecial.vue';
     import VLoading from '../small/VLoading.vue';
+
+    import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+    import { library } from '@fortawesome/fontawesome-svg-core';
+    import { faWaveSquare } from '@fortawesome/free-solid-svg-icons/faWaveSquare';
+    import { faComment } from '@fortawesome/free-solid-svg-icons/faComment';
+    import { faComments } from '@fortawesome/free-solid-svg-icons/faComments';
+    import { faCircleUser } from '@fortawesome/free-solid-svg-icons/faCircleUser';
+    import { faChevronDown } from '@fortawesome/free-solid-svg-icons/faChevronDown';
+    import { faRightToBracket } from '@fortawesome/free-solid-svg-icons/faRightToBracket';
+    import { faBan } from '@fortawesome/free-solid-svg-icons/faBan';
+    import { faDoorOpen } from '@fortawesome/free-solid-svg-icons/faDoorOpen';
+
+    library.add(faWaveSquare, faComment, faComments, faCircleUser, faChevronDown, faRightToBracket, faBan, faDoorOpen);
 </script>
 
 

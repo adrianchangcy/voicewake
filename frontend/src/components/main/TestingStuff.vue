@@ -1,11 +1,7 @@
 <template>
-    <div class="flex flex-col gap-8 pt-10">
-
-
-
-
-
-
+    <div class="flex flex-row gap-8 pt-10">
+    
+    <FontAwesomeIcon icon="fas fa-comments"/>
 
 
     </div>
@@ -16,17 +12,23 @@
     // import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
     // import VActionText from '../small/VActionText.vue';
     // import VTest from '../small/VTest.vue';
+
+    import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+    import { library } from '@fortawesome/fontawesome-svg-core';
+    import { faComments } from '@fortawesome/free-solid-svg-icons/faComments';
+
+    library.add(faComments);
 </script>
 
 
 <script lang="ts">
     import { defineComponent } from 'vue';
     import { notify } from 'notiwind';
-    import anime from 'animejs';
+    // import anime from 'animejs';
     // import VPlayback from '../medium/VPlayback.vue';
     // import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
     import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
-    // import { isPageAccessedByBackForward } from '@/helper_functions';
+    // import { drawCanvasRipples } from '@/helper_functions';
     const axios = require('axios');
 
     export default defineComponent({
@@ -98,35 +100,10 @@
                 type: "ok"
             }, 3000);
 
-            anime({
-                autoplay: true,
-                loop: true,
-                easing: 'linear',
-                targets: '#yolo1',
-                opacity: ['1', '0'],
-                scale: ['0', '1'],
-                duration: 3000,
-            });
-            anime({
-                autoplay: true,
-                loop: true,
-                easing: 'linear',
-                targets: '#yolo2',
-                opacity: ['1', '0'],
-                scale: ['0', '1'],
-                duration: 3000,
-                delay:1000,
-            });
-            anime({
-                autoplay: true,
-                loop: true,
-                easing: 'linear',
-                targets: '#yolo3',
-                opacity: ['1', '0'],
-                scale: ['0', '1'],
-                duration: 3000,
-                delay:2000,
-            });
+
+
+
+
 
         },
     });
