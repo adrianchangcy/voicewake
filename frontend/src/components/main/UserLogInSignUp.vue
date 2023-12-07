@@ -637,7 +637,6 @@
 
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
-    import { notify } from 'notiwind';
     import { emailValidatorDjango } from '@/helper_functions';
     import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
@@ -896,19 +895,16 @@
 
                     //400 when invalid
                     this.is_main_action_loading = false;
+                    this.otp_validation_has_error = true;
 
-                    let error_text = '';
+                    if(error.request.status === 400){
 
-                    if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
+                        this.otp_validation_status_text = "Incorrect code. Try again.";
 
-                        error_text = error.response.data['message'];
+                    }else{
+
+                        this.otp_validation_status_text = "Something went wrong. Try again.";
                     }
-
-                    notify({
-                        title: procedure_url === "log-in" ? 'Login failed' : 'Sign-up failed',
-                        text: error_text,
-                        type: "error"
-                    }, 8000);
 
                     //prevent auto-submit
                     this.otp_can_auto_submit = false;
@@ -937,7 +933,7 @@
 
                     await this.startRequestOTPCooldown();
                 })
-                .catch((error:any) => {
+                .catch(() => {
 
                     //unexpected error
                     if(this.otp_request_cooldown_interval !== null){
@@ -945,21 +941,8 @@
                         window.clearInterval(this.otp_request_cooldown_interval);
                         this.otp_request_cooldown_interval = null;
                     }
-                    
+
                     this.otp_request_status_text = "Oops! Could not send code.";
-
-                    let error_text = '';
-
-                    if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
-
-                        error_text = error.response.data['message'];
-                    }
-
-                    notify({
-                        title: "Code request failed",
-                        text: error_text,
-                        type: "error"
-                    }, 3000);
 
                 }).finally(()=>{
 

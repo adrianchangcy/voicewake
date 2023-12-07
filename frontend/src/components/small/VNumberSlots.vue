@@ -4,7 +4,7 @@
             <span>{{ propLabelText }}</span>
         </VInputLabel>
         <!--pattern attribute does not help-->
-        <div class="number-slot-field h-10 flex flex-row gap-1 text-lg">
+        <div class="number-slot-field h-10 flex flex-row items-center gap-1 text-lg">
             <input
                 :id="propElementId"
                 type="text" inputmode="numeric" maxlength="1" autocomplete="off"
@@ -17,11 +17,12 @@
                 name="number-slot-field"
                 class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 focus:border-theme-black border-theme-gray-4 shade-border-when-hover    focus:outline-none"
             />
+            <FontAwesomeIcon v-show="is_error" icon="fas fa-exclamation" class="px-2 text-theme-toast-danger"/>
         </div>
-        <div class="h-6 px-2">
+        <div class="h-6">
             <TransitionFade>
                 <div v-show="is_error" class="w-full h-fit text-theme-toast-danger text-base whitespace-break-spaces">
-                    <p>{{ status_text }}</p>
+                    <span>{{ status_text }}</span>
                 </div>
             </TransitionFade>
         </div>
@@ -32,6 +33,12 @@
 <script setup lang="ts">
     import VInputLabel from '@/components/small/VInputLabel.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
+
+    import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+    import { library } from '@fortawesome/fontawesome-svg-core';
+    import { faExclamation } from '@fortawesome/free-solid-svg-icons/faExclamation';
+
+    library.add(faExclamation);
 </script>
 
 
