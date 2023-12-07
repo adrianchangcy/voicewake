@@ -17,7 +17,7 @@
                     :propIsIconOnly="true"
                     class="w-full"
                 >
-                    <i class="fas fa-microphone-lines text-4xl mx-auto" aria-hidden="true"></i>
+                    <FontAwesomeIcon icon="fas fa-microphone-lines" class="text-4xl mx-auto"/>
                     <span class="sr-only">start recording</span>
                 </VAction>
             </div>
@@ -38,7 +38,7 @@
                         :propIsIconOnly="true"
                         class="col-start-1 row-span-2 col-span-1"
                     >
-                        <i class="fas fa-xmark text-2xl mx-auto" aria-hidden="true"></i>
+                        <FontAwesomeIcon icon="fas fa-xmark" class="text-2xl mx-auto"/>
                         <span class="sr-only">cancel recording</span>
                     </VAction>
 
@@ -56,14 +56,8 @@
                         :propIsIconOnly="true"
                         class="row-start-2 row-span-1 col-span-2 h-full"
                     >
-                        <i
-                            :class="[
-                                (recorder_state === 'recording' ? 'fas fa-pause' : 'fas fa-pause'),
-                                (recorder_state === 'paused' ? 'fas fa-play' : 'fas fa-pause'),
-                                'text-2xl mx-auto'
-                            ]"
-                            aria-hidden="true"
-                        ></i>
+                        <FontAwesomeIcon v-show="recorder_state === 'recording'" icon="fas fa-pause" class="text-2xl mx-auto"/>
+                        <FontAwesomeIcon v-show="recorder_state === 'paused'" icon="fas fa-play" class="text-2xl mx-auto"/>
                         <span class="sr-only">{{ getPlayPauseScreenReader }}</span>
                     </VAction>
 
@@ -77,7 +71,7 @@
                         :propIsIconOnly="true"
                         class="col-start-4 row-span-2 col-span-1"
                     >
-                        <i class="fas fa-check text-2xl mx-auto" aria-hidden="true"></i>
+                        <FontAwesomeIcon icon="fas fa-check" class="text-2xl mx-auto"/>
                         <span class="sr-only">stop recording</span>
                     </VAction>
                 </div>
@@ -93,17 +87,29 @@
 <script setup lang="ts">
     import VAction from '../small/VAction.vue';
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
+
+    import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+    import { library } from '@fortawesome/fontawesome-svg-core';
+    import { faMicrophoneLines } from '@fortawesome/free-solid-svg-icons/faMicrophoneLines';
+    import { faXmark } from '@fortawesome/free-solid-svg-icons/faXmark';
+    import { faPlay } from '@fortawesome/free-solid-svg-icons/faPlay';
+    import { faPause } from '@fortawesome/free-solid-svg-icons/faPause';
+    import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
+
+    library.add(faMicrophoneLines, faXmark, faPlay, faPause, faCheck);
 </script>
 
 <script lang="ts">
     import { defineComponent } from 'vue';
     import fixWebmDuration from 'fix-webm-duration';
-    // import anime from 'animejs';
+    import { useVPlaybackStore } from '@/stores/VPlaybackStore';
     const recordRTC = require('/node_modules/recordrtc/RecordRTC.min.js');
 
     export default defineComponent({
         data(){
             return {
+                vplayback_store: useVPlaybackStore(),
+
                 stream: null as MediaStream | null,  //for defining recorder instances
                 volume_analyser: null as AnalyserNode | null,
                 volume_analyser_interval: null as number | null,
@@ -134,6 +140,8 @@
             is_recording(new_value){
 
                 this.$emit('isRecording', new_value);
+
+                this.vplayback_store.triggerPause();
             },
             propIsOpen(new_value){
 

@@ -8,7 +8,7 @@
             @pointerdown.prevent="[startDrag($event), doDrag($event)]"
         >
             <div
-                class="w-2 absolute bg-theme-light-gray left-0 right-0 top-0 bottom-0 m-auto double-width-when-hover transition-transform"
+                class="w-2 absolute bg-theme-gray-3 left-0 right-0 top-0 bottom-0 m-auto double-width-when-hover transition-transform"
             >
             </div>
             <!--this is just to patch up grey spot-->
@@ -21,7 +21,7 @@
             >
                 <div
                     ref="slider_knob"
-                    class="w-4 h-4 absolute -top-2 -left-1  bg-theme-black shade-background-when-hover transition-colors"
+                    class="w-4 h-4 absolute -top-2 -left-1  bg-theme-black"
                 ></div>
             </div>
         </div>

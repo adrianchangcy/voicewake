@@ -5,7 +5,7 @@
 
     <!--all popups belong here so we can ensure that only one shows at a time-->
     <div class="w-full h-0 relative">
-        <TransitionFade>
+        <TransitionGroupFade>
             <div
                 v-show="pop_up_manager_store.isUserLogInOpen || pop_up_manager_store.isUserSignUpOpen"
                 class="absolute hidden lg:flex flex-row w-full h-[calc(100vh-4.5rem)] bg-theme-light/60 backdrop-blur"
@@ -16,9 +16,9 @@
                         bool_status_variable_or_callback: forceCloseLogIn,
                         refs_to_exclude: []
                     }"
-                    class="lg:w-2/6 xl:w-2/6 max-h-[90%] min-h-fit m-auto px-4 border border-theme-light-gray bg-theme-light shadow-xl rounded-lg overflow-y-auto"
+                    class="lg:w-2/6 xl:w-2/6 max-h-[90%] min-h-fit m-auto px-4 border border-theme-gray-2 bg-theme-light shadow-xl rounded-lg overflow-y-auto"
                 >
-                    <TransitionFadeSlow>
+                    <TransitionFade>
                         <keep-alive>
                             <UserLogInSignUp
                                 v-if="pop_up_manager_store.isUserLogInOpen"
@@ -26,7 +26,7 @@
                                 :propIsForStaticPage="false"
                             />
                         </keep-alive>
-                    </TransitionFadeSlow>
+                    </TransitionFade>
                 </div>
                 <div
                     v-show="pop_up_manager_store.isUserSignUpOpen"
@@ -34,9 +34,9 @@
                         bool_status_variable_or_callback: forceCloseSignUp,
                         refs_to_exclude: []
                     }"
-                    class="lg:w-2/6 xl:w-2/6 max-h-[90%] min-h-fit m-auto px-4 border border-theme-light-gray bg-theme-light shadow-xl rounded-lg overflow-y-auto"
+                    class="lg:w-2/6 xl:w-2/6 max-h-[90%] min-h-fit m-auto px-4 border border-theme-gray-2 bg-theme-light shadow-xl rounded-lg overflow-y-auto"
                 >
-                    <TransitionFadeSlow>
+                    <TransitionFade>
                         <keep-alive>
                             <UserLogInSignUp
                                 v-if="pop_up_manager_store.isUserSignUpOpen"
@@ -44,7 +44,7 @@
                                 :propIsForStaticPage="false"
                             />
                         </keep-alive>
-                    </TransitionFadeSlow>
+                    </TransitionFade>
                 </div>
             </div>
             <div
@@ -56,7 +56,7 @@
                         bool_status_variable_or_callback: forceCloseLoginRequiredPromptMenu,
                         refs_to_exclude: []
                     }"
-                    class="w-5/6 sm:w-fit max-h-[90%] min-h-fit m-auto px-4 pb-14 border border-theme-light-gray bg-theme-light shadow-xl rounded-lg"
+                    class="w-5/6 sm:w-fit max-h-[90%] min-h-fit m-auto px-4 pb-14 border border-theme-gray-2 bg-theme-light shadow-xl rounded-lg"
                 >
                     <VLoginRequiredPrompt
                         @force-close="forceCloseLoginRequiredPromptMenu()"
@@ -64,7 +64,7 @@
                     />
                 </div>
             </div>
-        </TransitionFade>
+        </TransitionGroupFade>
     </div>
 
     <!--toasts-->
@@ -81,8 +81,8 @@
     import VNotiwind from '@/components/medium/VNotiwind.vue';
     import NavBar from '@/components/main/NavBar.vue';
     import UserLogInSignUp from '@/components/main/UserLogInSignUp.vue';
+    import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
-    import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
     import VLoginRequiredPrompt from '@/components/medium/VLoginRequiredPrompt.vue';
 </script>
 

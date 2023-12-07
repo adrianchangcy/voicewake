@@ -11,7 +11,7 @@
         >
             <template #title>
                 <div class="flex flex-col text-center">
-                    <i class="fas fa-comments text-2xl" aria-hidden="true"></i>
+                    <FontAwesomeIcon icon="fas fa-comments" class="text-2xl mx-auto"/>
                 </div>
             </template>
         </VTitle>
@@ -89,7 +89,7 @@
                                         class="w-full"
                                     >
                                         <template #logo>
-                                            <i class="far fa-face-meh-blank" aria-hidden="true"></i>
+                                            <FontAwesomeIcon icon="far fa-face-meh-blank"/>
                                         </template>
                                         <template #title>
                                             <span>No new recordings found.</span>
@@ -108,7 +108,7 @@
                                         class="w-full"
                                     >
                                         <template #logo>
-                                            <i class="fas fa-hourglass-end" aria-hidden="true"></i>
+                                            <FontAwesomeIcon icon="fas fa-hourglass-end"/>
                                         </template>
                                         <template #title>
                                             <span>Reply choice has expired.</span>
@@ -127,7 +127,7 @@
                                         class="w-full"
                                     >
                                         <template #logo>
-                                            <i class="fas fa-hourglass-end" aria-hidden="true"></i>
+                                            <FontAwesomeIcon icon="fas fa-hourglass-end"/>
                                         </template>
                                         <template #title>
                                             <span>Reply has expired.</span>
@@ -146,7 +146,7 @@
                                         class="w-full"
                                     >
                                         <template #logo>
-                                            <i class="fas fa-eraser" aria-hidden="true"></i>
+                                            <FontAwesomeIcon icon="fas fa-eraser"/>
                                         </template>
                                         <template #title>
                                             <span>Reply was cancelled.</span>
@@ -165,7 +165,7 @@
                                         class="w-full"
                                     >
                                         <template #logo>
-                                            <i class="fas fa-battery-empty" aria-hidden="true"></i>
+                                            <FontAwesomeIcon icon="fas fa-battery-empty"/>
                                         </template>
                                         <template #title>
                                             <span>Reached daily reply limit.</span>
@@ -235,14 +235,14 @@
                                     v-show="is_event_cancelling"
                                     class="w-full flex flex-col"
                                 >
-                                    <i class="fas fa-eraser block mx-auto animate-pulse" aria-hidden="true"></i>
+                                    <FontAwesomeIcon icon="fas fa-eraser" class="mx-auto animate-pulse"/>
                                     <span class="block mx-auto">Cancelling reply...</span>
                                 </div>
                                 <div
                                     v-show="is_event_expiring"
                                     class="w-full flex flex-col"
                                 >
-                                    <i class="fas fa-eraser block mx-auto animate-pulse" aria-hidden="true"></i>
+                                    <FontAwesomeIcon icon="fas fa-eraser" class="mx-auto animate-pulse"/>
                                     <span class="block mx-auto">Processing expired event...</span>
                                 </div>
                             </div>
@@ -313,18 +313,21 @@
 
                             <!--event preview-->
                             <div
-                                v-show="!isLoading || is_reply_confirming"
+                                v-show="(!isLoading || is_reply_confirming) && !event_reply_choices_store.isReplying"
                                 class="w-full"
                             >
                                 <!--must use v-if since EventCard cannot exist with null-->
-                                <!--must add same v-show condition to prevent unwanted rendering-->
-                                <EventCard
-                                    v-if="event_reply_choices_store.getMainEvent !== null && !event_reply_choices_store.isReplying"
-                                    @newIsLiked="event_reply_choices_store.newAudioClipIsLiked($event)"
-                                    :propEvent="event_reply_choices_store.getMainEvent"
-                                    :propShowTitle="true"
-                                    :propHasBorder="true"
-                                />
+                                <!--keep-alive lets v-if play nicely when you have required props and it becomes null-->
+                                <keep-alive>
+                                    <EventCard
+                                        v-if="event_reply_choices_store.getMainEvent !== null"
+                                        :prop-event="event_reply_choices_store.getMainEvent"
+                                        prop-guaranteed-event-generic-status="incomplete"
+                                        :prop-show-title="true"
+                                        :prop-has-border="true"
+                                        @newIsLiked="event_reply_choices_store.newAudioClipIsLiked($event)"
+                                    />
+                                </keep-alive>
                             </div>
 
                             <!--searching-->
@@ -344,7 +347,7 @@
                                     v-show="is_event_expiring"
                                     class="w-full flex flex-col"
                                 >
-                                    <i class="fas fa-eraser block mx-auto animate-pulse" aria-hidden="true"></i>
+                                    <FontAwesomeIcon icon="fas fa-eraser" class="mx-auto animate-pulse"/>
                                     <span class="block mx-auto">Processing expired event...</span>
                                 </div>
                             </div>
@@ -367,6 +370,16 @@
     import TransitionFade from '@/transitions/TransitionFade.vue';
     import VDialogPlain from '/src/components/small/VDialogPlain.vue';
     import VLoading from '@/components/small/VLoading.vue';
+
+    import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+    import { library } from '@fortawesome/fontawesome-svg-core';
+    import { faFaceMehBlank } from '@fortawesome/free-regular-svg-icons/faFaceMehBlank';
+    import { faComments } from '@fortawesome/free-solid-svg-icons/faComments';
+    import { faHourglassEnd } from '@fortawesome/free-solid-svg-icons/faHourglassEnd';
+    import { faEraser } from '@fortawesome/free-solid-svg-icons/faEraser';
+    import { faBatteryEmpty } from '@fortawesome/free-solid-svg-icons/faBatteryEmpty';
+
+    library.add(faFaceMehBlank, faComments, faHourglassEnd, faEraser, faBatteryEmpty);
 </script>
 
 

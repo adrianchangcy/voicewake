@@ -7,8 +7,8 @@
             id="audio-clip-tone-picker"
             @click.stop="[toggleMenu(), emitIsOpen()]"
             :class="[
-                is_open ? 'border-theme-black      focus-visible:outline-offset-0' : 'border-theme-medium-gray shade-border-when-hover   focus-visible:-outline-offset-2',
-                'w-full h-20 relative border-2 rounded-lg text-3xl text-theme-black text-center     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-theme-dark-gray'
+                is_open ? 'border-theme-black      focus-visible:outline-offset-0' : 'border-theme-gray-4 shade-border-when-hover   focus-visible:-outline-offset-2',
+                'w-full h-20 relative border-2 rounded-lg text-3xl text-theme-black text-center     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-theme-gray-5'
             ]"
             type="button"
         >

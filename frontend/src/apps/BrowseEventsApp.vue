@@ -36,13 +36,13 @@
                         class="px-4 flex-row"
                     >
                         <span class="pr-2">Filters</span>
-                        <i
+                        <FontAwesomeIcon
+                            icon="fas fa-chevron-down"
                             :class="[
                                 is_filter_menu_open ? '-rotate-180' : 'rotate-0',
-                                'fas text-xs fa-chevron-down transition-transform'
+                                'text-xs transition-transform'
                             ]"
-                            aria-hidden="true"
-                        ></i>
+                        />
                     </VAction>
                 </div>
 
@@ -66,7 +66,7 @@
                     >
 
                     <!--main filters-->
-                        <div class="w-fit flex flex-row items-center border rounded-lg border-theme-light-gray px-2">
+                        <div class="w-fit flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors px-2">
                             <VActionText
                                 v-for="(filter_type, index) in filtered_events_store.getMainFilters"
                                 :key="index"
@@ -95,7 +95,7 @@
                         </div>
 
                         <!--audio_clip_roles-->
-                        <div class="w-fit flex flex-row items-center border rounded-lg border-theme-light-gray px-2">
+                        <div class="w-fit flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors px-2">
                             <VActionText
                                 v-for="(pretty_audio_clip_role_name, index) in filtered_events_store.getPrettyAudioClipRoleNames"
                                 :key="index"
@@ -132,7 +132,7 @@
                             :prop-initial-audio-clip-tone="filtered_events_store.getCurrentAudioClipTone"
                             :prop-filtered-grouped-audio-clips-store="filtered_events_store"
                             @audioClipToneSelected="filtered_events_store.updateCurrentAudioClipTone($event)"
-                            class="border rounded-l-lg border-theme-light-gray"
+                            class="border rounded-l-lg border-theme-gray-2 shade-border-when-hover transition-colors"
                         />
                     </div>
                 </div>
@@ -162,7 +162,7 @@
                     >
                         <div class="px-1 pb-4">
                             <EventCard
-                                :prop-is-event-always-completed="!propIsUserProfilePage"
+                                :prop-guaranteed-event-generic-status="propIsUserProfilePage ? '' : 'completed'"
                                 :prop-show-title="true"
                                 :prop-event="item"
                                 :prop-has-border="true"
@@ -202,7 +202,7 @@
                         class="w-full"
                     >
                         <template #logo>
-                            <i class="far fa-face-meh-blank" aria-hidden="true"></i>
+                            <FontAwesomeIcon icon="far fa-face-meh-blank"/>
                         </template>
                         <template #title>
                             <span>No events found.</span>
@@ -222,7 +222,7 @@
                         class="w-full pt-8"
                     >
                         <template #logo>
-                            <i class="far fa-face-meh-blank" aria-hidden="true"></i>
+                            <FontAwesomeIcon icon="far fa-face-meh-blank"/>
                         </template>
                         <template #title>
                             <span>You've reached the end.</span>
@@ -310,13 +310,10 @@
             :to="teleport_id"
         >
             <VPlayback
-                :prop-audio-clip="currently_playing_audio_clip_store.getPlayingAudioClip"
-                :prop-is-open="true"
+                :prop-audio-clip="vplayback_store.getPlayingAudioClip"
+                :prop-is-open="canOpenVPlayback"
                 :prop-audio-volume-peaks="getSelectedAudioClipAudioVolumePeaks"
                 :prop-bucket-quantity="20"
-                :prop-auto-play-on-source-change="can_autoplay"
-                :prop-pause-trigger="filter_change_trigger"
-                :prop-is-floating="true"
             />
         </Teleport>
     </div>
@@ -335,6 +332,13 @@
     import VDialogPlain from '@/components/small/VDialogPlain.vue';
     import VUserCard from '@/components/medium/VUserCard.vue';
     import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
+
+    import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+    import { library } from '@fortawesome/fontawesome-svg-core';
+    import { faFaceMehBlank } from '@fortawesome/free-regular-svg-icons/faFaceMehBlank';
+    import { faChevronDown } from '@fortawesome/free-solid-svg-icons/faChevronDown';
+
+    library.add(faFaceMehBlank, faChevronDown);
 </script>
 
 
@@ -342,7 +346,7 @@
     import { defineComponent, } from 'vue';
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
     import AudioClipsTypes from '@/types/AudioClips.interface';
-    import { useCurrentlyPlayingAudioClipStore } from '@/stores/CurrentlyPlayingAudioClipStore';
+    import { useVPlaybackStore } from '@/stores/VPlaybackStore';
     import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
     import { isPageAccessedByBackForward } from '@/helper_functions';
     const axios = require('axios');
@@ -352,7 +356,7 @@
         name: 'BrowseEventsApp',
         data(){
             return {
-                currently_playing_audio_clip_store: useCurrentlyPlayingAudioClipStore(),
+                vplayback_store: useVPlaybackStore(),
                 filtered_events_store: useFilteredEventsStore(this.propIsUserProfilePage),
 
                 user_profile_username: "",  //only used at profile page
@@ -362,9 +366,6 @@
 
                 dynamic_scroller_buffer: 1000, //px, larger means rendered earlier, needed for proper tabbing
                 window_resize_timeout: window.setTimeout(()=>{}, 0),
-
-                filter_change_trigger: false,  //switch between true/false to trigger pause
-                can_autoplay: true,
 
                 played_audio_clips_by_id: [] as number[],
                 played_audio_clips_quantity_to_pause_scrolling: 40,
@@ -430,12 +431,16 @@
             },
             getSelectedAudioClipAudioVolumePeaks() : number[] {
 
-                if(this.currently_playing_audio_clip_store.getPlayingAudioClip === null){
+                if(this.vplayback_store.getPlayingAudioClip === null){
 
                     return [];
                 }
 
-                return this.currently_playing_audio_clip_store.getPlayingAudioClip.audio_volume_peaks;
+                return this.vplayback_store.getPlayingAudioClip.audio_volume_peaks;
+            },
+            canOpenVPlayback() : boolean {
+
+                return this.filtered_events_store.getLastSelectedAudioClip !== null;
             },
         },
         methods: {
@@ -448,12 +453,6 @@
                 is_first_page:boolean,
                 next_or_back:"next"|"back"="next",
             ): Promise<void> {
-
-                this.is_fetching = true;
-                this.can_observer_fetch = false;
-
-                //if we can manage to call this, scrolling can no longer need to be paused
-                this.can_pause_scrolling = false;
 
                 //initialise to ensure object is ready
                 if(is_first_page === true){
@@ -482,7 +481,6 @@
                 if(can_skip_fetching === true){
 
                     //do nothing else, as template uses getter, which auto-retrieves for us
-                    this.is_fetching = false;
                     return;
                 }
 
@@ -497,7 +495,6 @@
 
                 if(check_can_fetch === false){
 
-                    this.is_fetching = false;
                     return;
                 }
 
@@ -535,6 +532,10 @@
                     ];
                 }
 
+                //don't check for is_fetching here, since user may change filter while already fetching
+
+                this.is_fetching = true;
+
                 await axios.get(full_url)
                 .then(async (result:any)=>{
 
@@ -562,7 +563,6 @@
                 }).finally(()=>{
 
                     this.is_fetching = false;
-                    this.can_observer_fetch = true;
                 });
             },
             async constructFirstPageURL(
@@ -629,16 +629,7 @@
 
                 this.is_filter_menu_open = !this.is_filter_menu_open;
             },
-            switchTriggerOnFilterChange() : void {
-
-                this.filter_change_trigger = !this.filter_change_trigger;
-            },
-            async handleNewSelectedAudioClip(
-                audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null,
-                can_autoplay:boolean,
-            ) : Promise<void> {
-
-                this.can_autoplay = can_autoplay;
+            async handleNewSelectedAudioClip(audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null) : Promise<void> {
 
                 if(audio_clip === null){
 
@@ -798,40 +789,48 @@
             //sync currently_playing store
             // if(this.filtered_events_store.getLastSelectedAudioClip !== null){
 
-            //     this.currently_playing_audio_clip_store.$patch({
+            //     this.vplayback_store.$patch({
             //         playing_audio_clip: this.filtered_events_store.getLastSelectedAudioClip,
             //     });
             // }
 
             //listen from EventCardAlwaysCompleted
-            this.currently_playing_audio_clip_store.$subscribe((mutation, state)=>{
+            this.vplayback_store.$onAction(({
+                name,
+                after,
+            })=>{
 
-                //if playing_audio_clip is identical to selected_audio_clip,
-                //it means that this $patch is fired from filter change
+                after(()=>{
 
-                const playing_audio_clip = (state.playing_audio_clip as AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null);
+                    //decide on autoplay
 
-                if(playing_audio_clip === null){
+                    if(name === 'updatePlayingAudioClip'){
 
-                    return;
-                }
+                        //if playing_audio_clip is identical to selected_audio_clip,
+                        //it means that this $patch is fired from filter change
+                        if(
+                            this.filtered_events_store.getLastSelectedAudioClip !== null &&
+                            this.vplayback_store.getPlayingAudioClip !== null &&
+                            this.filtered_events_store.getLastSelectedAudioClip.id === this.vplayback_store.getPlayingAudioClip.id
+                        ){
 
-                //selected_audio_clip from here is fired when user has just manually selected audio_clip
+                            //don't autoplay on filter change
+                            this.vplayback_store.updateCanAutoplay(false);
+                            this.handleNewSelectedAudioClip(this.vplayback_store.getPlayingAudioClip);
 
-                //if audio clip is selected as "continue from previous filter", do not autoplay
-                if(
-                    this.filtered_events_store.getLastSelectedAudioClip !== null &&
-                    this.filtered_events_store.getLastSelectedAudioClip.id === playing_audio_clip.id
-                ){
+                        }else{
 
-                    this.handleNewSelectedAudioClip(playing_audio_clip, false);
+                            //not from filter change, can autoplay
+                            this.vplayback_store.updateCanAutoplay(true);
+                            this.handleNewSelectedAudioClip(this.vplayback_store.getPlayingAudioClip);
 
-                }else{
+                            this.filtered_events_store.updateLastSelectedAudioClip(
+                                this.vplayback_store.getPlayingAudioClip
+                            );
+                        }
+                    }
+                });
 
-                    this.handleNewSelectedAudioClip(playing_audio_clip, true);
-                }
-
-                this.filtered_events_store.updateLastSelectedAudioClip(playing_audio_clip);
             });
 
             //handle things on filter change
@@ -848,23 +847,23 @@
                     name === 'updateCurrentAudioClipTone'
                 ){
 
-                    //turn off observer on filter change, as we manually fetch
-                    //getEvents will set it to true for us when done
-                    this.can_observer_fetch = false;
+                    after(async ()=>{
 
-                    after(()=>{
+                        this.can_observer_fetch = false;
 
-                        this.switchTriggerOnFilterChange();
-                        
-                        //last selected audio_clip to be currently selected audio_clip
-                        const last_selected_audio_clip = this.filtered_events_store.getLastSelectedAudioClip;
-                        this.handleNewSelectedAudioClip(last_selected_audio_clip, false);
+                        //always pause on filter change
+                        this.vplayback_store.triggerPause();
 
-                        this.currently_playing_audio_clip_store.$patch({
-                            playing_audio_clip: last_selected_audio_clip
-                        });
+                        //restore last played audio clip from filter, if any
+                        if(this.filtered_events_store.getLastSelectedAudioClip !== null){
 
-                        this.getEvents(
+                            this.vplayback_store.updatePlayingAudioClip(
+                                this.filtered_events_store.getLastSelectedAudioClip
+                            );
+                        }
+
+                        //get events on first page of filter change, if no events exist
+                        await this.getEvents(
                             this.filtered_events_store.getCurrentEventGenericStatusNameIndex,
                             this.filtered_events_store.getCurrentMainFilterIndex,
                             this.filtered_events_store.getCurrentTimeframeIndex,
@@ -872,22 +871,29 @@
                             this.filtered_events_store.getCurrentAudioClipToneId,
                             true,
                             "next",
-                        );
+                        ).finally(()=>{
+
+                            this.can_observer_fetch = true;
+                        });
                     });
                 }
             });
 
             if(this.filtered_events_store.getEventsForBrowsing.length === 0){
 
-                this.getEvents(
-                    this.filtered_events_store.getCurrentEventGenericStatusNameIndex,
-                    this.filtered_events_store.getCurrentMainFilterIndex,
-                    this.filtered_events_store.getCurrentTimeframeIndex,
-                    this.filtered_events_store.getCurrentAudioClipRoleNameIndex,
-                    this.filtered_events_store.getCurrentAudioClipToneId,
-                    true,
-                    "next",
-                );
+                (async ()=>{
+                    await this.getEvents(
+                        this.filtered_events_store.getCurrentEventGenericStatusNameIndex,
+                        this.filtered_events_store.getCurrentMainFilterIndex,
+                        this.filtered_events_store.getCurrentTimeframeIndex,
+                        this.filtered_events_store.getCurrentAudioClipRoleNameIndex,
+                        this.filtered_events_store.getCurrentAudioClipToneId,
+                        true,
+                        "next",
+                    ).finally(()=>{
+                        this.can_observer_fetch = true;
+                    });
+                })();
             }
         },
         mounted(){

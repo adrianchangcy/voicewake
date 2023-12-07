@@ -9,7 +9,7 @@
                     id="audio-clip-tone-picker"
                     aria-label="select an emotion"
                     @click.prevent="toggleAudioClipTonePicker()"
-                    class="w-full h-20 relative pb-3 border-2 rounded-lg border-theme-medium-gray text-3xl text-theme-black"
+                    class="w-full h-20 relative pb-3 border-2 rounded-lg border-theme-gray-4 text-3xl text-theme-black"
                     type="button"
                 >
                     <i

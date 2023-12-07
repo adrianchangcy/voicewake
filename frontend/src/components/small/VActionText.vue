@@ -7,8 +7,7 @@
             propElementSize === 's' ? 'h-10' : '',
             propIsEnabled ? '' : 'opacity-30',
             propIsDefaultOutlineOffset ? 'focus-visible:outline-offset-0' : 'focus-visible:-outline-offset-2',
-            propIsIconOnly ? 'action-text-icon-hover active:bg-theme-medium-gray' : 'action-text-text-hover active:bg-theme-light-gray underline underline-offset-4 decoration-2 decoration-transparent',
-            'block transition rounded-lg   text-theme-black     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-theme-outline'
+            'block transition-colors rounded-lg   text-theme-black action-text-hover active:bg-theme-gray-2 origin-center transform     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-theme-outline'
         ]"
         :disabled="!propIsEnabled"
     >

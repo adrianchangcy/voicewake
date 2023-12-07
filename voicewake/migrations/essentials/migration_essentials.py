@@ -77,6 +77,7 @@ def fill_necessary_data(apps, schema_editor):
 
 #the "OLD.is_liked IS FALSE AND NEW.is_liked IS TRUE" and vice versa part is important
 #to protect against race condition redundancy, i.e. multiple requests with same action
+#for like_ratio, must cast any one value with ::float to prevent rounding off to int, i.e. always 0.00 or 1.00
 custom_function_handle_audio_clip_likes_dislikes_count = '''
     CREATE OR REPLACE FUNCTION handle_audio_clip_likes_dislikes_count() RETURNS TRIGGER AS $$
         BEGIN
@@ -85,14 +86,16 @@ custom_function_handle_audio_clip_likes_dislikes_count = '''
                 IF (NEW.is_liked IS TRUE) THEN
 
                     UPDATE audio_clips
-                    SET like_count = like_count + 1
+                    SET like_count = like_count + 1,
+					like_ratio = (like_count + 1)::float / (like_count + dislike_count + 1)
                     WHERE id = NEW.audio_clip_id
                     ;
 
                 ELSIF (NEW.is_liked IS FALSE) THEN
 
                     UPDATE audio_clips
-                    SET dislike_count = dislike_count + 1
+                    SET dislike_count = dislike_count + 1,
+					like_ratio = like_count::float / (like_count + dislike_count + 1)
                     WHERE id = NEW.audio_clip_id
                     ;
 
@@ -105,7 +108,8 @@ custom_function_handle_audio_clip_likes_dislikes_count = '''
 
                     UPDATE audio_clips
                     SET like_count = like_count + 1,
-                    dislike_count = dislike_count - 1
+                    dislike_count = dislike_count - 1,
+					like_ratio = (like_count + 1)::float / (like_count + dislike_count)
                     WHERE id = NEW.audio_clip_id
                     ;
 
@@ -113,7 +117,8 @@ custom_function_handle_audio_clip_likes_dislikes_count = '''
 
                     UPDATE audio_clips
                     SET like_count = like_count - 1,
-                    dislike_count = dislike_count + 1
+                    dislike_count = dislike_count + 1,
+					like_ratio = (like_count - 1)::float / (like_count + dislike_count)
                     WHERE id = NEW.audio_clip_id
                     ;
 
@@ -125,14 +130,16 @@ custom_function_handle_audio_clip_likes_dislikes_count = '''
                 IF (OLD.is_liked IS TRUE) THEN
 
                     UPDATE audio_clips
-                    SET like_count = like_count - 1
+                    SET like_count = like_count - 1,
+					like_ratio = (like_count - 1)::float / (like_count + dislike_count - 1)
                     WHERE id = OLD.audio_clip_id
                     ;
 
                 ELSIF (OLD.is_liked IS FALSE) THEN
 
                     UPDATE audio_clips
-                    SET dislike_count = dislike_count - 1
+                    SET dislike_count = dislike_count - 1,
+					like_ratio = like_count::float / (like_count + dislike_count - 1)
                     WHERE id = OLD.audio_clip_id
                     ;
 
@@ -174,6 +181,15 @@ events_when_created_1 = '''
 user_blocks_when_created_id_1 = '''
     CREATE INDEX user_blocks_when_created_id_1 ON public.user_blocks USING btree (when_created, id);
 '''
+
+audio_clip_reports_last_evaluated_1 = '''
+    CREATE INDEX audio_clip_reports_last_evaluated_1 ON audio_clip_reports (last_evaluated ASC NULLS FIRST);
+'''
+
+event_reply_queues_when_locked_1 = '''
+    CREATE INDEX event_reply_queues_when_locked_1 ON event_reply_queues (when_locked);
+'''
+
 
 
 class Migration(migrations.Migration):

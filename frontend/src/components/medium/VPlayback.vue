@@ -1,6 +1,6 @@
 <template>
     <div
-        class="border rounded-lg border-theme-light-gray shade-border-when-hover transition-colors text-center     backdrop-blur bg-theme-light/60"
+        class="border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors text-center     backdrop-blur bg-theme-light/60"
     >
         <!--add @timeupdate at mounted(), not here, as beforeUnmount() cannot remove it, and it'll still fire after unmount-->
         <!--must add all calls in handleHasMetadata(), not here, since the Infinity duration is not fixed until then-->
@@ -44,13 +44,13 @@
                     :propIsDefaultOutlineOffset="false"
                     class="absolute left-2 right-2 top-2 bottom-2 focus-visible:-outline-offset-2"
                 >
-                    <i
+                    <FontAwesomeIcon
+                        :icon="playback_paused ? 'fas fa-play' : 'fas fa-pause'"
                         :class="[
-                            playback_paused ? 'fa-play pl-[2px]' : 'fa-pause',
-                            'fas pt-[1px] mx-auto'
+                            playback_paused ? 'pl-[2px]' : '',
+                            'pt-[1px] mx-auto'
                         ]"
-                        aria-hidden="true"
-                    ></i>
+                    />
                     <span v-show="isPlaybackReady">
                         <span v-show="playback_paused" class="sr-only">
                             pause
@@ -72,23 +72,8 @@
 
                 <!--ripples-->
                 <!--need inline CSS to prevent jolting from anime if without it-->
-                <div
-                    ref="volume_ripples_container"
-                    class="w-full h-6 absolute top-4 pb-2 flex flex-row justify-between px-2"
-                >
-                    <div
-                        v-for="volume_ripple in propBucketQuantity" :key="volume_ripple"
-                        ref="volume_ripple"
-                        class="h-full origin-bottom"
-                        style="transform: scaleY(0);"
-                    >
-                        <div
-                            :class="[
-                                isPlaybackReady === true ? 'bg-theme-black' : 'outline-1 outline outline-theme-dark-gray',
-                                'left-0 right-0 mx-auto w-0.5 h-full'
-                            ]"
-                        ></div>
-                    </div>
+                <div ref="canvas_ripples_container" class="h-6 absolute top-4 left-2 right-2 pb-2">
+                    <canvas ref="canvas_ripples" class="w-full h-full mx-auto"></canvas>
                 </div>
 
                 <!--slider-->
@@ -132,7 +117,7 @@
                             v-show="!is_playback_buffering"
                             :class="[
                                 isPlaybackReady === true ? 'double-height-when-hover' : '',
-                                'h-1 absolute bg-theme-light-gray left-0 right-0 bottom-2 m-auto transition-transform'
+                                'h-1 absolute bg-theme-gray-3 left-0 right-0 bottom-2 m-auto transition-transform'
                             ]"
                         ></div>
 
@@ -140,9 +125,10 @@
                             ref="playback_slider_progress"
                             class="h-1 absolute bg-theme-lead left-0 right-0 bottom-2 m-auto scale-x-0 origin-left"
                         ></div>
+                        <!--cannot apply scale to knob for some reason-->
                         <div
                             ref="playback_slider_knob"
-                            class="w-4 h-4 absolute bottom-0.5 m-auto rounded-full   bg-theme-black shade-background-when-hover transition-colors"
+                            class="w-4 h-4 absolute bottom-0.5 m-auto rounded-full   bg-theme-black"
                         >
                         </div>
 
@@ -192,16 +178,16 @@
                             class="w-full h-9 absolute bottom-0"
                         >
                             <div class="w-full h-full relative">
-                                <i
+                                <span
                                     :class="[
-                                        (isMuted ? 'fa-volume-xmark' : ''),
-                                        (playback_volume <= 0.5 ? 'fa-volume-low' : ''),
-                                        (playback_volume <= 1 ? 'fa-volume-high' : ''),
-                                        (is_playback_volume_open ? '-rotate-90' : 'rotate-0'),
-                                        'fas transition-transform w-fit h-fit absolute left-0 right-0 top-0 bottom-0 m-auto'
+                                        is_playback_volume_open ? '-rotate-90' : 'rotate-0',
+                                        'w-fit h-fit absolute inset-0 m-auto transition-transform'
                                     ]"
-                                    aria-hidden="true"
-                                ></i>
+                                >
+                                    <FontAwesomeIcon v-show="isMuted" icon="fas fa-volume-xmark"/>
+                                    <FontAwesomeIcon v-show="isLowVolume" icon="fas fa-volume-low"/>
+                                    <FontAwesomeIcon v-show="isHighVolume" icon="fas fa-volume-high"/>
+                                </span>
                             </div>
                             <span v-show="isMuted" class="sr-only">
                                 unmute to bring volume back to {{ getBackupVolume }}
@@ -248,7 +234,7 @@
                         {{ propAudioClip.audio_clip_tone.audio_clip_tone_symbol }}
                         <span class="sr-only">{{ propAudioClip.audio_clip_tone.audio_clip_tone_name }}</span>
                     </span>
-                    <i v-else class="far fa-face-meh-blank text-2xl" aria-hidden="true"></i>
+                    <FontAwesomeIcon v-else icon="far fa-face-meh-blank" class="text-2xl"/>
                 </div>
             </div>
         </div>
@@ -260,12 +246,23 @@
 <script setup lang="ts">
     import VSliderYSmall from '/src/components/small/VSliderYSmall.vue';
     import VActionText from '../small/VActionText.vue';
+
+    import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+    import { library } from '@fortawesome/fontawesome-svg-core';
+    import { faFaceMehBlank } from '@fortawesome/free-regular-svg-icons/faFaceMehBlank';
+    import { faPlay } from '@fortawesome/free-solid-svg-icons/faPlay';
+    import { faPause } from '@fortawesome/free-solid-svg-icons/faPause';
+    import { faVolumeXmark } from '@fortawesome/free-solid-svg-icons/faVolumeXmark';
+    import { faVolumeLow } from '@fortawesome/free-solid-svg-icons/faVolumeLow';
+    import { faVolumeHigh } from '@fortawesome/free-solid-svg-icons/faVolumeHigh';
+
+    library.add(faFaceMehBlank, faPlay, faPause, faVolumeXmark, faVolumeLow, faVolumeHigh);
 </script>
 
 
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
-    import { prettyDuration, getRandomUUID } from '@/helper_functions';
+    import { prettyDuration, getRandomUUID, drawCanvasRipples } from '@/helper_functions';
     import anime from 'animejs';
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
     import AudioClipsTypes from '@/types/AudioClips.interface';
@@ -361,13 +358,9 @@
                 type: Array as PropType<number[]>,
                 default: () => [],  //assigning array of 0s immediately after did not solve unrendered issue
             },
-            propBucketQuantity: {   //with no default value, this is the fix for unrendered this.$refs.volume_ripple
+            propBucketQuantity: {
                 type: Number,
                 required: true
-            },
-            propPauseTrigger: {
-                type: Boolean,
-                default: false, //switch between true/false to trigger watcher and pause
             },
             propHasAudioClipTone: {
                 type: Boolean,
@@ -471,6 +464,14 @@
                             await this.createPlaybackSliderAnime();
                             await this.syncSliderAnimeAfterSuspend();
                         }
+
+                        await drawCanvasRipples(
+                            this.$refs.canvas_ripples_container as HTMLElement,
+                            this.$refs.canvas_ripples as HTMLCanvasElement,
+                            this.propAudioVolumePeaks,
+                            'bottom',
+                            this.propBucketQuantity,
+                        );
                     });
 
                 }else if(new_value === false && this.playback_paused === false){
@@ -482,13 +483,6 @@
                         this.updatePlaybackSliderValue();
                     })();
                 }
-            },
-            propPauseTrigger(){
-
-                (async ()=>{
-                    await this.pausePlayback();
-                    this.updatePlaybackSliderValue();
-                })();
             },
         },
         computed: {
@@ -508,6 +502,7 @@
 
                 const is_playback_ready = (
                     this.is_initialised_on_new_audio === true &&
+                    this.propIsOpen === true &&
                     this.propAudioVolumePeaks.length > 0 &&
                     this.propAudioVolumePeaks.length === this.propBucketQuantity &&
                     (this.propAudio !== null || this.propAudioClip !== null) &&
@@ -528,7 +523,15 @@
             },
             isInstanceLastInteracted() : boolean {
 
-                return this.instance_uuid === this.vplayback_store.getLastInteractedUUID;
+                return this.instance_uuid === this.vplayback_store.getLastInteractedVPlaybackUUID;
+            },
+            isLowVolume() : boolean {
+
+                return this.isMuted === false && this.playback_volume > 0 && this.playback_volume <= 0.5;
+            },
+            isHighVolume() : boolean {
+
+                return this.isMuted === false && this.playback_volume > 0.5 && this.playback_volume <= 1;
             },
         },
         methods: {
@@ -542,7 +545,7 @@
                     return;
                 }
 
-                const last_stopped_s = await this.vplayback_store.getAudioClipPlaybackLastStoppedS(this.propAudioClip.id);
+                const last_stopped_s = await this.vplayback_store.getAudioClipLastStoppedS(this.propAudioClip.id);
 
                 //not stored
                 if(last_stopped_s === null){
@@ -583,13 +586,13 @@
                 }
 
                 //store
-                this.vplayback_store.addAudioClipPlaybackLastStopped(audio_clip.id, current_time_s);
+                this.vplayback_store.addAudioClipLastStoppedS(audio_clip.id, current_time_s);
             },
             async updateInstanceLastInteracted() : Promise<void> {
 
                 //any actions taken to any VPlayback instance will update store
                 //so that handleKeyboardEvent() goes through for "last interacted VPlayback" only
-                this.vplayback_store.updateLastInteractedUUID(this.instance_uuid);
+                this.vplayback_store.updateLastInteractedVPlaybackUUID(this.instance_uuid);
 
                 this.instance_has_focus = true;
             },
@@ -604,7 +607,7 @@
 
                 //auto-play if desired, condition checking is also already handled at this stage
 
-                if(this.propAutoPlayOnSourceChange === false){
+                if(this.vplayback_store.getCanAutoplay === false){
 
                     return;
                 }
@@ -864,6 +867,15 @@
                         await this.createPlaybackSliderAnime();
                         await this.syncSliderAnimeAfterSuspend();
                     }
+
+                    //redraw canvas
+                    await drawCanvasRipples(
+                        this.$refs.canvas_ripples_container as HTMLElement,
+                        this.$refs.canvas_ripples as HTMLCanvasElement,
+                        this.propAudioVolumePeaks,
+                        'bottom',
+                        this.propBucketQuantity,
+                    );
                 }
 
                 //run once, i.e. immediately
@@ -1344,66 +1356,18 @@
                     await this.playPlayback();
                     this.stay_paused_on_drag = false;
 
+                    //if we have other instances, we pause other instances on play
+                    if(this.vplayback_store.active_vplayback_uuids.length > 1){
+
+                        this.vplayback_store.triggerPause(false);
+                    }
+
                 }else{
 
                     await this.pausePlayback();
                     this.updatePlaybackSliderValue();
                     this.endPlaybackTruly();
                     this.stay_paused_on_drag = true;
-                }
-            },
-            async adjustVolumeRipples() : Promise<void> {
-
-                //we calculate height relative to most quiet and loudest parts
-                //samples are expected to be between -1 and 1, but we always get -0.0001 to 1
-                //so we simply force <0 to be 0, and >1 to be 1
-
-                //if no audio, adjust back
-                if(this.propAudioVolumePeaks.length === 0){
-
-                    anime({
-                            targets: this.$refs.volume_ripple as HTMLElement[],
-                            scaleY: ['0', '1'],
-                            autoplay: true,
-                            loop: false,
-                            easing: 'easeInOutQuad',
-                            duration: 200,
-                        });
-
-                    return;
-                }
-
-                //if has audio, continue
-                let scaleY_percentage = 0;
-
-                for(let x=0; x < this.propAudioVolumePeaks.length; x++){
-
-                    //UPDATE: non-zero feels more functional for end user
-                    if(this.propAudioVolumePeaks[x] < 0.05){
-
-                        scaleY_percentage = 0.05;
-
-                    }else if(this.propAudioVolumePeaks[x] > 1){
-
-                        scaleY_percentage = 1;
-
-                    }else{
-
-                        scaleY_percentage = this.propAudioVolumePeaks[x];
-                    }
-                    
-                    //add the deficit
-                    // scaleY_percentage += volume_range_deficit;
-
-                    //this performs fine, so do not add Tailwind transition, else it interferes
-                    anime({
-                        targets: (this.$refs.volume_ripple as HTMLElement[])[x],
-                        scaleY: scaleY_percentage.toString(),
-                        autoplay: true,
-                        loop: false,
-                        easing: 'easeInOutQuad',
-                        duration: 200,
-                    });
                 }
             },
             async attachAudioToPlayback(new_audio:string|Blob|File) : Promise<void> {
@@ -1453,7 +1417,16 @@
                 this.is_playback_attached = true;
                 this.is_playback_attaching = false;
 
-                this.adjustVolumeRipples();
+                //draw canvas
+                this.$nextTick(async ()=>{
+                    await drawCanvasRipples(
+                        this.$refs.canvas_ripples_container as HTMLElement,
+                        this.$refs.canvas_ripples as HTMLCanvasElement,
+                        this.propAudioVolumePeaks,
+                        'bottom',
+                        this.propBucketQuantity,
+                    );
+                });
             },
             async handleHasMetadata() : Promise<void> {
 
@@ -1500,6 +1473,35 @@
                 //put your code in handler instead if you need to run something else
             },
         },
+        beforeMount(){
+
+            this.vplayback_store.$onAction(({
+                name,
+                after,
+            })=>{
+
+                after(()=>{
+
+                    //pause all VPlayback instances
+                    if(
+                        name === 'triggerPause' &&
+                        (
+                            this.vplayback_store.can_pause_trigger_affect_last_interacted_vplayback === true ||
+                            (
+                                this.vplayback_store.can_pause_trigger_affect_last_interacted_vplayback === false &&
+                                this.isInstanceLastInteracted === false
+                            )
+                        )
+                    ){
+
+                        (async ()=>{
+                            await this.pausePlayback();
+                            this.updatePlaybackSliderValue();
+                        })();
+                    }
+                });
+            });
+        },
         mounted(){
 
             if(this.is_debug === true){
@@ -1526,31 +1528,15 @@
             //generate uuid for this component instance
             this.instance_uuid = getRandomUUID();
 
-            //fun little anime for empty ripples
-            if(this.propAudioClip === null){
-
-                const volume_ripples = (this.$refs.volume_ripple as HTMLElement[]);
-
-                anime({
-                    targets: volume_ripples,
-                    easing: 'linear',
-                    loop: false,
-                    autoplay: true,
-                    scaleY: ['0', '1'],
-                    translateY: ['0%'],
-                    duration: 400,
-                });
-            }
-
             //initial state
             this.$emit('isProcessing', false);
 
             //add uuid to list of active uuids
             //we then always focus on first UUID, useful when we have multiple VPlayback
             (async ()=>{
-                await this.vplayback_store.addActiveUUID(this.instance_uuid)
+                await this.vplayback_store.addActiveVPlaybackUUID(this.instance_uuid)
                 .then(()=>{
-                    this.vplayback_store.focusFirstUUID();
+                    this.vplayback_store.focusFirstVPlaybackUUID();
                 });
             })();
 

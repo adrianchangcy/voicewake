@@ -38,6 +38,12 @@
             id="notiwind-target"
             class="w-full max-w-sm h-fit left-0 right-0 bottom-0 m-auto flex items-start px-6"
         ></div>
+
+        <!--VPlayback, when VAudioClipCard is unmounted-->
+        <div
+            id="temporary-vplayback-teleport"
+            class="hidden"
+        ></div>
     </div>
 
     <body class="mt-[4.5rem] overflow-x-hidden overflow-y-scroll bg-theme-light text-theme-black">
@@ -65,11 +71,6 @@
         </div>
 
         <!--footer-->
-
-        <!--extra CSS-->
-        <link href="{% static 'fontawesomefree/css/fontawesome.css' %}" rel="stylesheet">
-        <link href="{% static 'fontawesomefree/css/solid.css' %}" rel="stylesheet">
-        <link href="{% static 'fontawesomefree/css/regular.css' %}" rel="stylesheet">
 
         <!--Vue-->
         <script type="text/javascript" src="{% static 'src/vue/dist/js/chunk-vendors.js' %}"></script>

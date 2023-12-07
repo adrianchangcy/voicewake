@@ -16,7 +16,7 @@
                 type="button"
                 class="w-10 absolute top-1 -right-3 m-auto"
             >
-                <i class="fas fa-xmark mx-auto text-xl" aria-hidden="true"></i>
+                <FontAwesomeIcon icon="fas fa-xmark" class="mx-auto text-xl"/>
                 <span v-show="current_section === 'log-in-section'" class="sr-only">close login menu</span>
                 <span v-show="current_section === 'sign-up-section'" class="sr-only">close sign-up menu</span>
             </VActionText>
@@ -85,7 +85,7 @@
                                         propFontSize="s"
                                         class="w-full px-4 gap-4"
                                     >
-                                        <i class="fas fa-hat-wizard text-2xl" aria-hidden="true"></i>
+                                        <FontAwesomeIcon icon="fas fa-hat-wizard" class="text-2xl"/>
                                         <span>Log in with email</span>
                                     </VAction>
                                 </div>
@@ -97,7 +97,7 @@
                                     <span class="text-base block">Don't have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
                                         <VActionText
-                                            :propIsIconOnly="false"
+                                            :propIsIconOnly="true"
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -108,7 +108,7 @@
                                     </div>
                                     <div v-else>
                                         <VActionText
-                                            :propIsIconOnly="false"
+                                            :propIsIconOnly="true"
                                             @click="switchContextInstance('sign-up-section')"
                                             propElement="button"
                                             propElementSize="s"
@@ -174,7 +174,7 @@
                                     <span class="text-base block">Don't have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
                                         <VActionText
-                                            :propIsIconOnly="false"
+                                            :propIsIconOnly="true"
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -185,7 +185,7 @@
                                     </div>
                                     <div v-else>
                                         <VActionText
-                                            :propIsIconOnly="false"
+                                            :propIsIconOnly="true"
                                             @click="switchContextInstance('sign-up-section')"
                                             propElement="button"
                                             propElementSize="s"
@@ -207,7 +207,7 @@
 
                             <div class="h-10 relative">
                                 <VActionText
-                                    :propIsIconOnly="false"
+                                    :propIsIconOnly="true"
                                     @click="doNavigation('log-in-section', 'log-in-step-1', false)"
                                     propElement="button"
                                     propElementSize="s"
@@ -216,7 +216,7 @@
                                     class="w-fit absolute -top-4"
                                 >
                                     <div class="flex items-center">
-                                        <i class="fas fa-arrow-left w-fit h-fit text-lg block pr-2" aria-hidden="true"></i>
+                                        <FontAwesomeIcon icon="fas fa-arrow-left" class="text-lg pr-2"/>
                                         <span class="font-bold break-words">Back</span>
                                     </div>
                                 </VActionText>
@@ -261,7 +261,7 @@
                                     {{ otp_request_status_text }}&nbsp;
                                 </span>
                                 <VActionText
-                                    :propIsIconOnly="false"
+                                    :propIsIconOnly="true"
                                     v-show="canSubmitEmailAndRequestOTP"
                                     @click="submitEmailAndRequestOTP('log-in', true)"
                                     propElement="button"
@@ -306,7 +306,7 @@
                                     <span class="text-base block">Don't have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
                                         <VActionText
-                                            :propIsIconOnly="false"
+                                            :propIsIconOnly="true"
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -317,7 +317,7 @@
                                     </div>
                                     <div v-else>
                                         <VActionText
-                                            :propIsIconOnly="false"
+                                            :propIsIconOnly="true"
                                             @click="switchContextInstance('sign-up-section')"
                                             propElement="button"
                                             propElementSize="s"
@@ -360,7 +360,7 @@
                                         propFontSize="s"
                                         class="w-full px-4 gap-4"
                                     >
-                                        <i class="fas fa-hat-wizard text-2xl" aria-hidden="true"></i>
+                                        <FontAwesomeIcon icon="fas fa-hat-wizard" class="text-2xl"/>
                                         <span>Sign in with email</span>
                                     </VAction>
                                 </div>
@@ -372,7 +372,7 @@
                                     <span class="text-base block">Already have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
                                         <VActionText
-                                            :propIsIconOnly="false"
+                                            :propIsIconOnly="true"
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -383,7 +383,7 @@
                                     </div>
                                     <div v-else>
                                         <VActionText
-                                            :propIsIconOnly="false"
+                                            :propIsIconOnly="true"
                                             @click="switchContextInstance('log-in-section')"
                                             propElement="button"
                                             propElementSize="s"
@@ -449,7 +449,7 @@
                                     <span class="text-base block">Already have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
                                         <VActionText
-                                            :propIsIconOnly="false"
+                                            :propIsIconOnly="true"
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -460,7 +460,7 @@
                                     </div>
                                     <div v-else>
                                         <VActionText
-                                            :propIsIconOnly="false"
+                                            :propIsIconOnly="true"
                                             @click="switchContextInstance('log-in-section')"
                                             propElement="button"
                                             propElementSize="s"
@@ -481,7 +481,7 @@
                         >
                             <div class="h-10 relative">
                                 <VActionText
-                                    :propIsIconOnly="false"
+                                    :propIsIconOnly="true"
                                     @click="[doNavigation('sign-up-section', 'sign-up-step-1', false)]"
                                     propElement="button"
                                     propElementSize="s"
@@ -490,7 +490,7 @@
                                     class="w-fit absolute -top-4"
                                 >
                                     <div class="flex items-center">
-                                        <i class="fas fa-arrow-left w-fit h-fit text-lg block pr-2" aria-hidden="true"></i>
+                                        <FontAwesomeIcon icon="fas fa-arrow-left" class="text-lg pr-2"/>
                                         <span class="font-bold break-words">Back</span>
                                     </div>
                                 </VActionText>
@@ -535,7 +535,7 @@
                                     {{ otp_request_status_text }}&nbsp;
                                 </span>
                                 <VActionText
-                                    :propIsIconOnly="false"
+                                    :propIsIconOnly="true"
                                     v-show="canSubmitEmailAndRequestOTP"
                                     @click="submitEmailAndRequestOTP('log-in', true)"
                                     propElement="button"
@@ -578,7 +578,7 @@
                                     <span class="text-base block">Already have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
                                         <VActionText
-                                            :propIsIconOnly="false"
+                                            :propIsIconOnly="true"
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -589,7 +589,7 @@
                                     </div>
                                     <div v-else>
                                         <VActionText
-                                            :propIsIconOnly="false"
+                                            :propIsIconOnly="true"
                                             @click="switchContextInstance('log-in-section')"
                                             propElement="button"
                                             propElementSize="s"
@@ -624,6 +624,14 @@
     import VAction from '@/components/small/VAction.vue';
     import VActionSpecial from '@/components/small/VActionSpecial.vue';
     import VLoading from '../small/VLoading.vue';
+
+    import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+    import { library } from '@fortawesome/fontawesome-svg-core';
+    import { faXmark } from '@fortawesome/free-solid-svg-icons/faXmark';
+    import { faHatWizard } from '@fortawesome/free-solid-svg-icons/faHatWizard';
+    import { faArrowLeft } from '@fortawesome/free-solid-svg-icons/faArrowLeft';
+
+    library.add(faXmark, faHatWizard, faArrowLeft);
 </script>
 
 

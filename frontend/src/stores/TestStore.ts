@@ -5,14 +5,14 @@ import { defineStore } from 'pinia';
 
 export const useVPlaybackStore = defineStore('test', {
     state: ()=>({
-        last_interacted_uuid: "",
+        last_interacted_vplayback_uuid: "",
         audio_clip_id: [] as number[],   //left to right, oldest to newest
         stopped_at_s: [] as number[],   //left to right, oldest to newest
     }),
     getters: {
-        getLastInteractedUUID: (state)=>{
+        getLastInteractedVPlaybackUUID: (state)=>{
 
-            return state.last_interacted_uuid;
+            return state.last_interacted_vplayback_uuid;
         },
     },
     actions: {

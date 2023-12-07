@@ -128,19 +128,19 @@ TIPS
 	width: 12px;
 }
 ::-webkit-scrollbar-track-piece{
-	background-color: #e7e5e4;    /*theme-light-gray*/
+	background-color: theme(colors.theme-gray-3);
 }
 ::-webkit-scrollbar-thumb{
-	background-color: #444444;      /*theme-black*/
+	background-color: theme(colors.theme-black);
 }
 ::-webkit-scrollbar-thumb:hover{
-	background-color: #a8a29e;  /*theme-dark-gray*/
+	background-color: black;
 }
 
 
-
+/* remove highlight on tap */
 button, a, div {
-    -webkit-tap-highlight-color: transparent; /* for removing the highlight */
+    -webkit-tap-highlight-color: transparent;
 }
 
 textarea {
@@ -161,7 +161,7 @@ textarea {
     position: relative;
     overflow: hidden;
     opacity: 1;
-    background-color: #e7e5e4;
+    background-color: theme(colors.theme-gray-2);
 }
 @keyframes shimmer {
     100% {
@@ -180,11 +180,10 @@ textarea {
         90deg,
         /*for opacity, do it like #facc15xx, (00...99...FF lowest to highest)*/
         /*last colour must not have coma symbol, else it breaks*/
-        #e7e5e400,
-        #eeeeee,
-        #e7e5e400
+        theme(colors.transparent),
+        theme(colors.theme-gray-1),
+        theme(colors.transparent)
     );
-
     animation: shimmer 1s infinite linear;
     content: '';
 }
@@ -228,6 +227,14 @@ textarea {
     }
 }
 
+canvas {
+    /* all four are needed to support the most browsers */
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-crisp-edges;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
 
 
 @media(hover: hover){
@@ -238,11 +245,8 @@ textarea {
     */
 
     /*from theme-black to theme-dark-gray*/
-    .shade-background-when-hover:hover{
-        background-color: #a8a29e;
-    }
     .shade-border-when-hover:hover{
-        border-color: #a8a29e;
+        border-color: theme(colors.theme-gray-6);
     }
     .border-solid-when-hover:hover{
         border-style: solid;
@@ -254,7 +258,7 @@ textarea {
         transform: scaleY(2);
     }
     .action-hover:hover{
-        filter: brightness(0.97);
+        background-color: theme(colors.theme-gray-1);
     }
     .action-special-hover:hover{
         background-color: #FFF2C0;
@@ -262,11 +266,9 @@ textarea {
     .action-danger-hover:hover{
         filter: brightness(0.90);
     }
-    .action-text-text-hover:hover{
-        text-decoration-color: #facc15;
-    }
-    .action-text-icon-hover:hover{
-        background-color: #e7e5e4;
+    /*cannot use text-decoration, due to the nature of SVGs*/
+    .action-text-hover:hover{
+        background-color: theme(colors.theme-gray-1);
     }
 
     /*triggers from parent to all descendants that have classes above*/
@@ -277,9 +279,9 @@ textarea {
         transform: scaleY(2);
     }
     .parent-trigger-shade-fake-border-when-hover:hover .shade-fake-border-when-hover{
-        background-color: #a8a29e;
+        background-color: theme(colors.theme-black);
     }
     .parent-trigger-shade-background-when-hover:hover .shade-background-when-hover{
-        background-color: #a8a29e;
+        background-color: theme(colors.theme-gray-6);
     }
 }

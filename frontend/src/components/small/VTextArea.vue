@@ -26,10 +26,10 @@
                 :id="propElementId"
                 v-model="input_value"
                 :class="[
-                    (propIsOk ? 'border-theme-ok' : ''),
-                    (propIsWarning ? 'border-theme-warning' : ''),
-                    (propIsError ? 'border-theme-danger' : ''),
-                    'block w-full h-10 bg-theme-light border-2 focus:border-theme-black border-theme-medium-gray shade-border-when-hover rounded-lg overflow-hidden p-2 pt-1    focus:outline-none'
+                    (propIsOk ? 'border-theme-toast-success' : 'focus:border-theme-black border-theme-gray-4'),
+                    (propIsWarning ? 'border-theme-toast-warning' : 'focus:border-theme-black border-theme-gray-4'),
+                    (propIsError ? 'border-theme-toast-danger' : 'focus:border-theme-black border-theme-gray-4'),
+                    'block w-full h-10 bg-theme-light border-2 shade-border-when-hover rounded-lg overflow-hidden p-2 pt-1    focus:outline-none'
                 ]"
                 :placeholder="propPlaceholder"
                 autocomplete="off"
@@ -38,17 +38,23 @@
             ></textarea>
         </div>
         <div v-show="propHasStatusText" class="h-5 text-base px-2">
-            <span v-if="propIsOk" class="text-theme-ok">{{propStatusText}}</span>
-            <span v-if="propIsWarning" class="text-theme-warning">{{propStatusText}}</span>
-            <span v-if="propIsError" class="text-theme-danger">{{propStatusText}}</span>
-            <span v-if="propIsRequired && !propIsOk && !propIsWarning && !propIsError" class="text-theme-danger">required</span>
+            <span
+                :class="[
+                    (propIsOk ? 'text-theme-toast-success' : ''),
+                    (propIsWarning ? 'text-theme-toast-warning-2' : ''),
+                    (propIsError || propIsRequired ? 'text-theme-toast-danger' : ''),
+                    ''
+                ]"
+            >
+                <span v-show="propIsRequired">required</span>
+                <span v-show="!propIsRequired">{{ propStatusText }}</span>
+            </span>
         </div>
     </div>
 </template>
 
 
 <script setup>
-
     import VInputLabel from './VInputLabel.vue';
 </script>
 

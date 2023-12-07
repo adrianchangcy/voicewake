@@ -47,7 +47,7 @@
     import { defineComponent } from 'vue';
     import { prettyTimeRemaining } from '@/helper_functions';
     import AudioClipsTypes from '@/types/AudioClips.interface';
-    import { useCurrentlyPlayingAudioClipStore } from '@/stores/CurrentlyPlayingAudioClipStore';
+    import { useVPlaybackStore } from '@/stores/VPlaybackStore';
     import { notify } from 'notiwind';
     const axios = require('axios');
 
@@ -60,8 +60,7 @@
         data(){
             return {
                 audio_clips: [] as ScrollableAudioClipsTypes[],
-                currently_playing_audio_clip_store: useCurrentlyPlayingAudioClipStore(),
-                selected_audio_clip: null as AudioClipsTypes|null,
+                vplayback_store: useVPlaybackStore(),
 
                 next_url: window.location.origin + '/api/audio-clips/bans/list/next',
                 back_url: window.location.origin + '/api/audio-clips/bans/list/back',
@@ -136,16 +135,12 @@
             },
             checkIsSelected(audio_clip_id:number) : boolean {
 
-                const playing_audio_clip = this.currently_playing_audio_clip_store.getPlayingAudioClip;
+                const playing_audio_clip = this.vplayback_store.getPlayingAudioClip;
 
                 return (
                     playing_audio_clip !== null &&
                     playing_audio_clip.id === audio_clip_id
                 );
-            },
-            handleNewSelectedAudioClip(audio_clip:AudioClipsTypes|null) : void {
-
-                this.selected_audio_clip = audio_clip;
             },
             setUpObserver() : void {
 
@@ -178,12 +173,6 @@
             history.scrollRestoration = 'manual';
 
             this.getUserBannedAudioClips();
-
-            //listen to store
-            this.currently_playing_audio_clip_store.$subscribe((mutation, state)=>{
-
-                this.handleNewSelectedAudioClip(state.playing_audio_clip as AudioClipsTypes|null);
-            });
 
             //make ban duration pretty
             const container = (document.getElementById('data-container-user-banned-audio_clips') as HTMLElement);

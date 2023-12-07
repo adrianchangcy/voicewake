@@ -24,28 +24,28 @@
                 >
                     <div class="px-1 pb-4">
                         <VAudioClipCard
-                            :propAudioClip="item"
-                            :propIsSelected="checkIsSelected(item.id)"
-                            @isSelected="handleNewSelectedAudioClip($event)"
+                            :prop-audio-clip="item"
+                            :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
+                            @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
+                            @newVPlaybackTeleportId="handleNewVPlaybackTeleportId($event)"
                         />
                     </div>
                 </DynamicScrollerItem>
             </template>
         </DynamicScroller>
 
-        <!--VAudioClipCard emits selection, which triggers :to, thus teleporting-->
-        <!--presence of VAudioClipCard depends on VEventCard-->
-        <div v-if="selected_audio_clip !== null">
-            <Teleport :to="getVPlaybackTeleportId">
-                <VPlayback
-                    :propAudioClip="selected_audio_clip"
-                    :propIsOpen="true"
-                    :propAudioVolumePeaks="selected_audio_clip.audio_volume_peaks"
-                    :propBucketQuantity="selected_audio_clip.audio_volume_peaks.length"
-                    :propAutoPlayOnSourceChange="true"
-                />
-            </Teleport>
-        </div>
+        <Teleport
+            v-if="teleport_id !== ''"
+            :to="teleport_id"
+        >
+            <VPlayback
+                :prop-audio-clip="vplayback_store.getPlayingAudioClip"
+                :prop-is-open="true"
+                :prop-audio-volume-peaks="getSelectedAudioClipAudioVolumePeaks"
+                :prop-bucket-quantity="20"
+                :prop-auto-play-on-source-change="true"
+            />
+        </Teleport>
     </div>
 </template>
 
@@ -59,13 +59,13 @@
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
     import AudioClipsTypes from '@/types/AudioClips.interface';
-    import { useCurrentlyPlayingAudioClipStore } from '@/stores/CurrentlyPlayingAudioClipStore';
+    import { useVPlaybackStore } from '@/stores/VPlaybackStore';
 
     export default defineComponent({
         data() {
             return {
-                currently_playing_audio_clip_store: useCurrentlyPlayingAudioClipStore(),
-                selected_audio_clip: null as AudioClipsTypes|null,
+                vplayback_store: useVPlaybackStore(),
+                teleport_id: '',
 
                 window_resize_timeout: window.setTimeout(()=>{}, 0),
                 dynamic_scroller_buffer: 1000, //px, larger means rendered earlier, needed for proper tabbing
@@ -82,26 +82,20 @@
             },
         },
         computed: {
-            getVPlaybackTeleportId() : string {
+            getSelectedAudioClipAudioVolumePeaks() : number[] {
 
-                if(this.selected_audio_clip === null){
+                if(this.vplayback_store.getPlayingAudioClip === null){
 
-                    return '';
+                    return [];
                 }
 
-                return '#playback-teleport-audio-clip-id-' + this.selected_audio_clip.id;
+                return this.vplayback_store.getPlayingAudioClip.audio_volume_peaks;
             },
         },
         methods: {
-            checkIsSelected(audio_clip_id:number) : boolean {
+            async handleNewVPlaybackTeleportId(teleport_id:string) : Promise<void> {
 
-                return this.selected_audio_clip !== null && this.selected_audio_clip.id === audio_clip_id;
-            },
-            handleNewSelectedAudioClip(audio_clip:AudioClipsTypes) : void {
-
-                this.currently_playing_audio_clip_store.$patch({
-                    playing_audio_clip: audio_clip
-                });
+                this.teleport_id = teleport_id;
             },
             async handleWindowResize() : Promise<void> {
 
@@ -117,12 +111,6 @@
             },
         },
         mounted(){
-
-            //listen to store
-            this.currently_playing_audio_clip_store.$subscribe((mutation, state)=>{
-
-                this.selected_audio_clip = state.playing_audio_clip as AudioClipsTypes|null;
-            });
 
             //reassign buffer size in case screen height > 1000px
             //better bigger than smaller

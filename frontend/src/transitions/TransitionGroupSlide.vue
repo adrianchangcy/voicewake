@@ -2,7 +2,7 @@
     <!--parent div should look like:-->
     <!--<div class="h-[your_height+all_padding] overflow-hidden relative">-->
     <TransitionGroup
-        name="transition-group-fade"
+        name="transition-group-slide"
         :enter-from-class="propIsForward ? 'opacity-0 translate-x-full' : 'opacity-0 -translate-x-full'"
         enter-active-class="transition delay-150"
         enter-to-class="opacity-100 transition-x-0"

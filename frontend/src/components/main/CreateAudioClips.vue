@@ -27,7 +27,7 @@
                     :propIsOpen="is_recorder_menu_open"
                     :propBucketQuantity="bucket_quantity"
                     :propHasRecording="final_blob !== null"
-                    :propFileVolumes="blob_volume_peaks"
+                    :propAudioVolumePeaks="blob_volume_peaks"
                     @isOpen="handleIsRecorderMenuOpen($event)"
                 />
             </div>
@@ -83,6 +83,7 @@
         <div>
             <VAudioClipToneMenu
                 :propIsOpen="is_audio_clip_tone_menu_open"
+                :propMustTrackSelectedOption="true"
                 @audioClipToneSelected="handleAudioClipToneSelected($event)"
                 class="border-2 border-theme-black rounded-lg p-4"
             />

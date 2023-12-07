@@ -8,34 +8,15 @@
     <button
         @click.stop="[toggleMenu(), emitIsOpen()]"
         :class="[
-            is_open ? 'border-theme-black      focus-visible:outline-offset-0' : 'border-theme-medium-gray shade-border-when-hover   focus-visible:-outline-offset-2',
-            'w-full h-20 px-4 py-2 relative border-2 rounded-lg     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-theme-dark-gray'
+            is_open ? 'border-theme-black      focus-visible:outline-offset-0' : 'border-theme-gray-4 shade-border-when-hover   focus-visible:-outline-offset-2',
+            'w-full h-20 px-4 py-2 relative border-2 rounded-lg     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-theme-gray-5'
         ]"
         id="click-to-record"
         type="button"
     >
         <!--ripples-->
-        <div class="w-full h-[75%] top-0 bottom-0 m-auto relative">
-            <div
-                class="w-full h-full absolute"
-            >
-                <div class="h-full flex flex-row justify-between">
-                    <div
-                        v-for="volume_ripple in propBucketQuantity" :key="volume_ripple"
-                        ref="volume_ripple"
-                        class="h-full origin-center"
-                        style="transform: scaleY(0);"
-                    >
-                        <div
-                            :class="[
-                                propHasRecording ? 'bg-theme-black' : 'outline-1 outline outline-theme-dark-gray',
-                                'left-0 right-0 mx-auto w-0.5 h-full'
-                            ]"
-                        >
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div ref="canvas_ripples_container" class="w-full h-[75%] top-0 bottom-0 m-auto">
+            <canvas ref="canvas_ripples" class="w-full h-full mx-auto"></canvas>
         </div>
         <span v-if="propHasRecording" class="sr-only">
             You have a recording
@@ -60,7 +41,7 @@
 <script lang="ts">
     //we don't keep VRecorderMenu in this component due to the inflexibility of button size =/= menu size
     import { defineComponent, PropType } from 'vue';
-    import anime from 'animejs';
+    import { drawCanvasRipples } from '@/helper_functions';
 
     export default defineComponent({
         data(){
@@ -69,16 +50,13 @@
             };
         },
         emits: ['isOpen'],
-        mounted(){
-
-        },
         props: {
             propLabel: String,
             propBucketQuantity: {
                 type: Number,
                 required: true,
             },
-            propFileVolumes: {    //not sure if this is the best way to type this, but it looks ok
+            propAudioVolumePeaks: {    //not sure if this is the best way to type this, but it looks ok
                 type: Array as PropType<number[]>,
                 default: () => [],
             },
@@ -91,16 +69,20 @@
                 default: false
             },
         },
-        computed: {
-
-        },
         watch: {
             propIsOpen(new_value:boolean){
                 this.is_open = new_value;
             },
-            propFileVolumes(){
+            propAudioVolumePeaks(new_value){
 
-                this.adjustVolumeRipples();
+                this.$nextTick(async ()=>{
+                    await drawCanvasRipples(
+                        this.$refs.canvas_ripples_container as HTMLElement,
+                        this.$refs.canvas_ripples as HTMLCanvasElement,
+                        new_value,
+                        'center'
+                    );
+                });
             },
         },
         methods: {
@@ -114,47 +96,44 @@
 
                 this.$emit('isOpen', this.is_open);
             },
-            adjustVolumeRipples() : void {
+            async redrawCanvasRipplesOnResize() : Promise<void> {
 
-                //we calculate height relative to most quiet and loudest parts
-                //samples are expected to be between -1 and 1, but we get -0.0001 when no audio
-                
-                let scaleY_percentage = 0;
+                await drawCanvasRipples(
+                    this.$refs.canvas_ripples_container as HTMLElement,
+                    this.$refs.canvas_ripples as HTMLCanvasElement,
+                    this.propAudioVolumePeaks,
+                    'center',
+                    this.propBucketQuantity,
+                );
 
-                for(let x=0; x < this.propFileVolumes.length; x++){
-
-                    //expected volume range is -1 to 0, but our peaks at 0 audio is still -0.0001...
-                    //so we recalibrate from lower and upper 50 to full 100
-                    //instead of <0 ... =0, if you prefer 0 to be visible, do <0.05 ... =5
-                    //UPDATE: non-zero feels more functional for end user
-                    if(this.propFileVolumes[x] < 0.05){
-
-                        scaleY_percentage = 0.05;
-
-                    }else if(this.propFileVolumes[x] > 0.9){
-
-                        //we max at 0.9 to make space for -+5% translateY anime
-                        scaleY_percentage = 0.9;
-
-                    }else{
-
-                        scaleY_percentage = this.propFileVolumes[x];
-                    }
-                    
-                    //add the deficit
-                    // scaleY_percentage += volume_range_deficit;
-
-                    //this performs fine, so do not add Tailwind transition, else it interferes
-                    anime({
-                        targets: (this.$refs.volume_ripple as HTMLElement[])[x],
-                        scaleY: scaleY_percentage.toString(),
-                        autoplay: true,
-                        loop: false,
-                        easing: 'easeInOutQuad',
-                        duration: 200,
-                    });
-                }
+                //redraw again after 200ms
+                //resize can sometimes fire before final dimension is known
+                window.setTimeout(async ()=>{
+                    await drawCanvasRipples(
+                        this.$refs.canvas_ripples_container as HTMLElement,
+                        this.$refs.canvas_ripples as HTMLCanvasElement,
+                        this.propAudioVolumePeaks,
+                        'center'
+                    );
+                }, 200);
             },
+        },
+        mounted(){
+
+            this.$nextTick(async ()=>{
+                await drawCanvasRipples(
+                    this.$refs.canvas_ripples_container as HTMLElement,
+                    this.$refs.canvas_ripples as HTMLCanvasElement,
+                    this.propAudioVolumePeaks,
+                    'center'
+                );
+            });
+
+            window.addEventListener('resize', this.redrawCanvasRipplesOnResize);
+        },
+        beforeUnmount(){
+
+            window.removeEventListener('resize', this.redrawCanvasRipplesOnResize);
         },
     });
 </script>

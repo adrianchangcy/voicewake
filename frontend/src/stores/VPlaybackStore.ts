@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
-
+import AudioClipsTypes from '@/types/AudioClips.interface';
+import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
 
 //this store is used to track the last VPlayback instance that the user had interacted with
 //and, at a page where VPlayback always has propAudioClip, to track where it had stopped when it switched to another audio_clip
@@ -13,26 +14,58 @@ import { defineStore } from 'pinia';
 //we separate them instead of storing as dict, because array.includes() makes checking easier
 export const useVPlaybackStore = defineStore('vplayback', {
     state: ()=>({
-        active_uuids: [] as string[],
-        last_interacted_uuid: "",
-        has_focus: false,
+        active_vplayback_uuids: [] as string[],
+        last_interacted_vplayback_uuid: "",
+
+        playing_audio_clip: null as AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null,
+        can_autoplay: false,
+        
+        //change this value to trigger pause at VPlayback
+        pause_trigger: false,
+        //this is needed when we have multiple VPlayback instances
+        can_pause_trigger_affect_last_interacted_vplayback: true,
 
         audio_clip_id: [] as number[],   //left to right, oldest to newest
         stopped_at_s: [] as number[],   //left to right, oldest to newest
         max_stopped_at_quantity: 10,
     }),
     getters: {
-        getLastInteractedUUID: (state)=>{
+        getLastInteractedVPlaybackUUID: (state)=>{
 
-            return state.last_interacted_uuid;
+            return state.last_interacted_vplayback_uuid;
+        },
+        getPlayingAudioClip: (state)=>{
+
+            return state.playing_audio_clip;
+        },
+        getCanAutoplay: (state)=>{
+
+            return state.can_autoplay;
+        },
+        getPauseTrigger: (state)=>{
+
+            return state.pause_trigger;
         },
     },
     actions: {
-        async updateLastInteractedUUID(uuid:string) : Promise<void> {
+        triggerPause(affect_last_interacted_vplayback:boolean=true) : void {
 
-            this.last_interacted_uuid = uuid;
+            this.pause_trigger = !this.pause_trigger;
+            this.can_pause_trigger_affect_last_interacted_vplayback = affect_last_interacted_vplayback;
         },
-        async addAudioClipPlaybackLastStopped(audio_clip_id:number, stopped_at_s:number) : Promise<void> {
+        updateCanAutoplay(can_autoplay:boolean) : void {
+
+            this.can_autoplay = can_autoplay;
+        },
+        updatePlayingAudioClip(audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null) : void {
+
+            this.playing_audio_clip = audio_clip;
+        },
+        updateLastInteractedVPlaybackUUID(vplayback_uuid:string) : void {
+
+            this.last_interacted_vplayback_uuid = vplayback_uuid;
+        },
+        async addAudioClipLastStoppedS(audio_clip_id:number, stopped_at_s:number) : Promise<void> {
 
             const target_index = this.audio_clip_id.indexOf(audio_clip_id);
 
@@ -56,7 +89,7 @@ export const useVPlaybackStore = defineStore('vplayback', {
             //simply update existing record
             this.stopped_at_s[target_index] = stopped_at_s;
         },
-        async getAudioClipPlaybackLastStoppedS(audio_clip_id:number) : Promise<number|null> {
+        async getAudioClipLastStoppedS(audio_clip_id:number) : Promise<number|null> {
 
             const target_index = this.audio_clip_id.indexOf(audio_clip_id);
 
@@ -67,18 +100,18 @@ export const useVPlaybackStore = defineStore('vplayback', {
 
             return this.stopped_at_s[target_index];
         },
-        async addActiveUUID(uuid:string) : Promise<void> {
+        async addActiveVPlaybackUUID(uuid:string) : Promise<void> {
 
-            if(this.active_uuids.indexOf(uuid) === -1){
+            if(this.active_vplayback_uuids.indexOf(uuid) === -1){
 
-                this.active_uuids.push(uuid);
+                this.active_vplayback_uuids.push(uuid);
             }
         },
-        async focusFirstUUID() : Promise<void> {
+        async focusFirstVPlaybackUUID() : Promise<void> {
 
-            if(this.active_uuids.length > 0){
+            if(this.active_vplayback_uuids.length > 0){
 
-                this.last_interacted_uuid = this.active_uuids[0];
+                this.last_interacted_vplayback_uuid = this.active_vplayback_uuids[0];
             }
         },
     },

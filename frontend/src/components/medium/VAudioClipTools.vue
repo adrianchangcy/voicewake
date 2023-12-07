@@ -11,13 +11,13 @@
             <div class="h-full col-span-4 grid grid-cols-2 relative parent-trigger-shade-fake-border-when-hover">
 
                 <!--fake border-->
-                <div class="absolute w-[1px] h-[50%] left-0 right-0 top-0 bottom-0 m-auto bg-theme-light-gray shade-fake-border-when-hover transition-colors">
+                <div class="absolute w-[1px] h-[50%] left-0 right-0 top-0 bottom-0 m-auto bg-theme-gray-2 shade-fake-border-when-hover transition-colors">
                 </div>
 
                 <!--like-->
                 <button
                     @click="handleLikeDislike(true)"
-                    class="col-span-1 h-full     shade-border-when-hover active:bg-theme-lightest-gray transition-colors      bg-theme-light       border border-r-0 border-theme-light-gray rounded-full rounded-r-none    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                    class="col-span-1 h-full     shade-border-when-hover active:bg-theme-gray-2 transition-colors      bg-transparent       border border-r-0 border-theme-gray-2 rounded-full rounded-r-none    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                     type="button"
                 >
                     <span class="sr-only">like button</span>
@@ -28,14 +28,14 @@
                             class="h-full flex items-center relative pb-0.5"
                             ref="like_logo"
                         >
-                            <i
+                            <FontAwesomeIcon
+                                icon="fas fa-thumbs-up"
                                 :class="[
-                                    is_liked === true ? 'text-theme-lead' : 'text-theme-black/0',
-                                    'w-fit h-fit fas fa-thumbs-up mx-auto transition-colors'
+                                    is_liked === true ? 'text-theme-lead' : 'text-theme-lead/0',
+                                    'mx-auto transition-colors'
                                 ]"
-                                aria-hidden="true"
-                            ></i>
-                            <i class="absolute w-fit h-fit far fa-thumbs-up mx-auto" aria-hidden="true"></i>
+                            />
+                            <FontAwesomeIcon icon="far fa-thumbs-up" class="absolute mx-auto"/>
                         </div>
                         <!--like count-->
                         <div
@@ -52,7 +52,7 @@
                 <!--dislike-->
                 <button
                     @click="handleLikeDislike(false)"
-                    class="col-span-1 h-full     shade-border-when-hover active:bg-theme-lightest-gray transition-colors      bg-theme-light       border border-l-0 border-theme-light-gray rounded-full rounded-l-none     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                    class="col-span-1 h-full     shade-border-when-hover active:bg-theme-gray-2 transition-colors      bg-transparent       border border-l-0 border-theme-gray-2 rounded-full rounded-l-none     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                     type="button"
                 >
                     <span class="sr-only">dislike button</span>
@@ -63,14 +63,14 @@
                             class="h-full flex items-center relative pt-1"
                             ref="dislike_logo"
                         >
-                            <i
+                            <FontAwesomeIcon
+                                icon="fas fa-thumbs-down"
                                 :class="[
-                                    is_liked === false ? 'text-theme-lead' : 'text-theme-black/0',
-                                    'w-fit h-fit fas fa-thumbs-down mx-auto transition-colors'
+                                    is_liked === false ? 'text-theme-lead' : 'text-theme-lead/0',
+                                    'mx-auto transition-colors'
                                 ]"
-                                aria-hidden="true"
-                            ></i>
-                            <i class="absolute w-fit h-fit far fa-thumbs-down mx-auto" aria-hidden="true"></i>
+                            />
+                            <FontAwesomeIcon icon="far fa-thumbs-down" class="absolute mx-auto"/>
                         </div>
                         <!--dislike count-->
                         <div
@@ -88,16 +88,16 @@
             <!--share-->
             <button
                 @click="copyAudioClipURL()"
-                class="h-full col-span-1 relative flex flex-row items-center     shade-border-when-hover active:bg-theme-lightest-gray transition-colors      bg-theme-light       border border-theme-light-gray rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                class="h-full col-span-1 relative flex flex-row items-center     shade-border-when-hover active:bg-theme-gray-2 transition-colors      bg-transparent       border border-theme-gray-2 rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                 type="button"
             >
                 <TransitionGroupFade :prop-has-absolute="true">
                     <span v-show="has_shared === false" class="w-full flex items-center text-center">
-                        <i class="fas fa-share text-base mx-auto" aria-hidden="true"></i>
+                        <FontAwesomeIcon icon="fas fa-share" class="text-base mx-auto"/>
                         <span class="sr-only">Copy recording URL to share</span>
                     </span>
                     <span v-show="has_shared === true" class="w-full flex items-center text-center">
-                        <i class="fas fa-check text-base mx-auto" aria-hidden="true"></i>
+                        <FontAwesomeIcon icon="fas fa-check" class="text-base mx-auto"/>
                         <span class="sr-only">recording URL copied</span>
                     </span>
                 </TransitionGroupFade>
@@ -107,10 +107,10 @@
             <button
                 ref="open_close_extra_options_menu_button"
                 @click="toggleExtraOptionsMenu()"
-                class="h-full col-span-1 relative flex items-center     transition-colors shade-border-when-hover active:bg-theme-lightest-gray border-theme-light-gray      bg-theme-light       border rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                class="h-full col-span-1 relative flex items-center     transition-colors shade-border-when-hover active:bg-theme-gray-2 border-theme-gray-2      bg-transparent       border rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                 type="button"
             >
-                <i class="fas fa-ellipsis-vertical text-base mx-auto" aria-hidden="true"></i>
+                <FontAwesomeIcon icon="fas fa-ellipsis-vertical" class="text-base mx-auto"/>
                 <span v-show="!is_extra_options_menu_open" class="sr-only">open extra options menu</span>
                 <span v-show="is_extra_options_menu_open" class="sr-only">close extra options menu</span>
             </button>
@@ -121,7 +121,7 @@
             <div class="col-start-6 col-span-1 relative">
                 <div
                     v-show="is_extra_options_menu_open"
-                    class="z-30 w-2 h-2 absolute top-3 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"
+                    class="z-30 w-2 h-2 absolute top-3 left-0 right-0 m-auto bg-transparent border-l-2 border-t-2 border-theme-black rotate-45"
                 ></div>
             </div>
         </div>
@@ -135,7 +135,7 @@
                     bool_status_variable_or_callback: forceCloseExtraOptionsMenu,
                     refs_to_exclude: ['open_close_extra_options_menu_button']
                 }"
-                class="absolute w-fit h-fit right-0 m-auto p-2 top-4 z-20 flex flex-col rounded-lg border-2 border-theme-black bg-theme-light"
+                class="absolute w-fit h-fit right-0 m-auto p-2 top-4 z-20 flex flex-col rounded-lg border-2 border-theme-black bg-transparent"
             >
                 <VActionText
                     @click="submitReport()"
@@ -154,7 +154,7 @@
                         </VLoading>
                     </span>
                     <span v-else>
-                        <i class="fas fa-flag w-fit h-fit text-sm"></i>
+                        <FontAwesomeIcon icon="fas fa-flag" class="text-sm"/>
                         <span class="pl-2">Report</span>
                     </span>
                 </VActionText>
@@ -168,6 +168,19 @@
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
     import VActionText from '../small/VActionText.vue';
     import VLoading from '../small/VLoading.vue';
+
+    import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+    import { library } from '@fortawesome/fontawesome-svg-core';
+    import { faThumbsUp as farThumbsUp } from '@fortawesome/free-regular-svg-icons/faThumbsUp';
+    import { faThumbsUp as fasThumbsUp } from '@fortawesome/free-solid-svg-icons/faThumbsUp';
+    import { faThumbsDown as farThumbsDown } from '@fortawesome/free-regular-svg-icons/faThumbsDown';
+    import { faThumbsDown as fasThumbsDown } from '@fortawesome/free-solid-svg-icons/faThumbsDown';
+    import { faShare } from '@fortawesome/free-solid-svg-icons/faShare';
+    import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
+    import { faEllipsisVertical } from '@fortawesome/free-solid-svg-icons/faEllipsisVertical';
+    import { faFlag } from '@fortawesome/free-solid-svg-icons/faFlag';
+
+    library.add(farThumbsUp, fasThumbsUp, farThumbsDown, fasThumbsDown, faShare, faCheck, faEllipsisVertical, faFlag);
 </script>
 
 
@@ -347,7 +360,6 @@
                         }
 
                         notify({
-                            icon: 'fas fa-check',
                             title: 'Action failed',
                             text: error_text,
                             type: 'error',
@@ -472,7 +484,6 @@
                     }
 
                     notify({
-                        icon: 'fas fa-check',
                         title: 'Report failed',
                         text: error_text,
                         type: 'error',

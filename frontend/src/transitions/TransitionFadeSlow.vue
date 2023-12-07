@@ -1,6 +1,6 @@
 <template>
     <Transition
-        name="transition-fade"
+        name="transition-fade-slow"
         mode="out-in"
         enter-from-class="transition-opacity opacity-0"
         enter-active-class="transition-opacity duration-500 ease-in-out"

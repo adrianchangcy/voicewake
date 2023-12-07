@@ -3,7 +3,7 @@
         <div class="flex flex-col gap-2 px-2 py-6 pt-4 border-4 border-theme-black">
 
             <div class="flex flex-row items-center">
-                <i class="fas fa-user text-2xl pl-2 pr-4" aria-hidden="true"></i>
+                <FontAwesomeIcon icon="fas fa-user" class="text-2xl pl-2 pr-4"/>
                 <span class="text-2xl font-medium break-all">{{ propUsername }}</span>
             </div>
 
@@ -18,11 +18,11 @@
                 >
                     <TransitionFade>
                         <span v-if="has_shared === false" class="mx-auto flex items-center text-center">
-                            <i class="fas fa-share text-base" aria-hidden="true"></i>
+                            <FontAwesomeIcon icon="fas fa-share" class="text-base"/>
                             <span class="pl-1">Share</span>
                         </span>
                         <span v-else class="mx-auto flex items-center text-center">
-                            <i class="fas fa-check text-base" aria-hidden="true"></i>
+                            <FontAwesomeIcon icon="fas fa-check" class="text-base"/>
                             <span class="pl-1">Copied</span>
                         </span>
                     </TransitionFade>
@@ -46,8 +46,8 @@
                         <VLoading prop-element-size="s"/>
                     </div>
                     <span v-else class="mx-auto flex items-center text-center">
-                        <i v-show="!is_blocked" class="fas fa-ban text-base" aria-hidden="true"></i>
-                        <i v-show="is_blocked" class="far fa-circle text-base" aria-hidden="true"></i>
+                        <FontAwesomeIcon v-show="!is_blocked" icon="fas fa-ban" class="text-base"/>
+                        <FontAwesomeIcon v-show="is_blocked" icon="far fa-circle" class="text-base"/>
                         <span v-show="!is_blocked" class="pl-1">Block</span>
                         <span v-show="is_blocked" class="pl-1">Unblock</span>
                     </span>
@@ -63,6 +63,16 @@
     import VLoading from '../small/VLoading.vue';
     import VActionBorder from '../small/VActionBorder.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
+
+    import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+    import { library } from '@fortawesome/fontawesome-svg-core';
+    import { faCircle } from '@fortawesome/free-regular-svg-icons/faCircle';
+    import { faUser } from '@fortawesome/free-solid-svg-icons/faUser';
+    import { faShare } from '@fortawesome/free-solid-svg-icons/faShare';
+    import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
+    import { faBan } from '@fortawesome/free-solid-svg-icons/faBan';
+
+    library.add(faCircle, faUser, faShare, faCheck, faBan);
 </script>
 
 
