@@ -49,7 +49,7 @@ MIDDLEWARE = []
 
 if DEBUG is True:
 
-    REQUEST_TIME_DELAY = 4  #seconds
+    REQUEST_TIME_DELAY = 0  #seconds
 
     MIDDLEWARE += [
         'voicewake.middleware.drf_api_delay_middleware.TimeDelayMiddleware',
@@ -288,22 +288,22 @@ AUDIO_CLIP_MAX_FILE_SIZE_BYTES = 3072000
 GENERAL_ROW_QUANTITY_PER_PAGE = 20
 
 
-AUDIO_CLIP_TONE_CACHE_AGE_SECONDS = 1209600  #2 weeks
+AUDIO_CLIP_TONE_CACHE_AGE_S = 1209600  #2 weeks
 
 
 #EVENT
 EVENT_CREATE_DAILY_LIMIT = 10      #compares from 00:00:00 UTC
 EVENT_REPLY_DAILY_LIMIT = 10       #compares from 00:00:00 UTC
-EVENT_REPLY_CHOICE_EXPIRY_SECONDS = 1200      #20 mins, when locked but is_replying=False
-EVENT_REPLY_EXPIRY_SECONDS = 3600       #60 mins, when locked and is_replying=True
+EVENT_REPLY_CHOICE_MAX_DURATION_S = 1200      #20 mins, when locked but is_replying=False
+EVENT_REPLY_MAX_DURATION_S = 3600       #60 mins, when locked and is_replying=True
 EVENT_QUANTITY_PER_PAGE = 4
-EVENT_INCOMPLETE_ROLL_QUANTITY = 1
-EVENT_INCOMPLETE_MAX_AGE = 302400   #3 days 12 hours
-EVENT_UNDO_REPLY_QUANTITY_CRONJOB_LIMIT = 100
+EVENT_INCOMPLETE_QUEUE_QUANTITY = 1
+EVENT_INCOMPLETE_QUEUE_MAX_AGE_S = 302400   #3 days 12 hours
+CRONJOB_UNDO_EVENT_REPLY_LIMIT = 100
 
 if DEBUG is True:
 
-    EVENT_INCOMPLETE_MAX_AGE = 99999999
+    EVENT_INCOMPLETE_QUEUE_MAX_AGE_S = 99999999
 
 
 #EMAIL
@@ -322,27 +322,27 @@ DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 #1 byte is 8 bits, so therefore minimum 15 bytes, recommended 20 bytes
 TOTP_KEY_BYTE_SIZE = 20         #to pass into secrets.token_bytes(int) for creating totp_key
 TOTP_NUMBER_OF_DIGITS = 6       #digits in OTP
-TOTP_VALIDITY_SECONDS = 300     #seconds until expiry, a.k.a. steps
-TOTP_TOLERANCE_SECONDS = 120    #allow early/late by x seconds until truly not allowed
+TOTP_VALIDITY_S = 300     #seconds until expiry, a.k.a. steps
+TOTP_TOLERANCE_S = 120    #allow early/late by x seconds until truly not allowed
 
 
 #UserOTP-related arguments
 #we make max values harder to reach but more punishing
-OTP_CREATION_TIMEOUT_SECONDS = 30            #for each resend, before max is reached
+OTP_CREATION_TIMEOUT_S = 30            #for each resend, before max is reached
 OTP_MAX_CREATIONS = 4                       #max resends
-OTP_MAX_CREATIONS_TIMEOUT_SECONDS = 1800
+OTP_MAX_CREATIONS_TIMEOUT_S = 1800
 OTP_MAX_ATTEMPTS = 8                        #times someone can try before being timed out
-OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS = 1800
+OTP_MAX_ATTEMPTS_TIMEOUT_S = 1800
 
 
 #values used to evaluate audio_clip_reports and banning the audio_clips
 #keeping it simple
-BAN_AUDIO_CLIP__LIKE_RATIO = 0.25   #0 to 1
+BAN_AUDIO_CLIP_LIKE_RATIO = 0.25   #0 to 1
 BAN_AUDIO_CLIP_DISLIKE_COUNT = 100
-BAN_AUDIO_CLIP_AGE_SECONDS = 3600    #1 hour
-BAN_AUDIO_CLIP_QUANTITY_CRONJOB_LIMIT = 100
-BAN_AUDIO_CLIP_DURATION_PER_BAN_DAYS = 2     #multiply this with ban count
-BAN_AUDIO_CLIP_QUANTITY_PER_PAGE = 20
+BAN_AUDIO_CLIP_MIN_AGE_S = 3600    #1 hour
+CRONJOB_BAN_AUDIO_CLIP_QUANTITY_LIMIT = 100
+CRONJOB_AUDIO_CLIP_BAN_DAYS = 2     #ban_count ** this
+LIST_AUDIO_CLIP_QUANTITY_PER_PAGE = 20
 
 
 USER_BLOCK_QUANTITY_PER_PAGE = 20

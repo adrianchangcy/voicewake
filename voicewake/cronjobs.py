@@ -13,10 +13,14 @@ def cronjob_ban_audio_clips():
 
     datetime_now = get_datetime_now()
 
-    #ensure not to select audio_clips that are too new
-    earliest_datetime = datetime_now - timedelta(seconds=settings.BAN_AUDIO_CLIP_AGE_SECONDS)
+    #select via last_evaluated where it is >= earliest_datetime
+    #which means we prioritise older last_evaluated
+    #we may miss those that are < earliest_datetime,
+    #but this also ensures that we don't eternally evaluate oldest reports
+    earliest_datetime = datetime_now - timedelta(seconds=settings.BAN_AUDIO_CLIP_MIN_AGE_S)
 
     generic_status_deleted = GenericStatuses.objects.get(generic_status_name='deleted')
+    generic_status_incomplete = GenericStatuses.objects.get(generic_status_name='incomplete')
 
     with transaction.atomic():
 
@@ -38,12 +42,13 @@ def cronjob_ban_audio_clips():
             last_reported__gt=F('last_evaluated'),
         ).order_by(
             F('last_evaluated').asc(nulls_first=True)
-        )[0:settings.BAN_AUDIO_CLIP_QUANTITY_CRONJOB_LIMIT]
+        )[0:settings.CRONJOB_BAN_AUDIO_CLIP_QUANTITY_LIMIT]
 
         #evaluate and print
         print(str(len(audio_clip_reports)) + ' audio_clips to ban')
 
         events = []
+        event_ids = []
         audio_clips = []
         users = []
         user_ids = []
@@ -54,13 +59,37 @@ def cronjob_ban_audio_clips():
 
             audio_clip_reports[index].last_evaluated = datetime_now
 
-            #update events for originators to be deleted
+            #update events for originators to be deleted, for responders will be incomplete
+            #in cases where event reappears, deleted takes precedence
 
             if audio_clip_report.audio_clip.audio_clip_role.audio_clip_role_name == 'originator':
 
-                audio_clip_report.audio_clip.event.generic_status = generic_status_deleted
+                #mark as deleted
 
-                events.append(audio_clip_report.audio_clip.event.generic_status)
+                #remove event if added from responder
+                if audio_clip_report.audio_clip.event.id in event_ids:
+
+                    events.pop(event_ids.index(audio_clip_report.audio_clip.event.id))
+                    event_ids.remove(audio_clip_report.audio_clip.event.id)
+
+                #add event for update
+                audio_clip_report.audio_clip.event.generic_status = generic_status_deleted
+                events.append(audio_clip_report.audio_clip.event)
+                event_ids.append(audio_clip_report.audio_clip.event.id)
+
+            elif (
+                audio_clip_report.audio_clip.audio_clip_role.audio_clip_role_name == 'responder' and
+                audio_clip_report.audio_clip.event.generic_status.id != generic_status_deleted.id
+            ):
+
+                #mark as incomplete, do nothing if event has already been evaluated as originator
+
+                if audio_clip_report.audio_clip.event.id not in event_ids:
+
+                    #add event for update
+                    audio_clip_report.audio_clip.event.generic_status = generic_status_incomplete
+                    events.append(audio_clip_report.audio_clip.event)
+                    event_ids.append(audio_clip_report.audio_clip.event.id)
 
             #update audio_clips to update is_banned=False and generic_status to 'deleted'
 
@@ -72,20 +101,18 @@ def cronjob_ban_audio_clips():
 
             #update users to be banned
 
-            #use index to reference original list because we want to keep track of ban_count
-            audio_clip_reports[index].audio_clip.user.ban_count += 1
-            audio_clip_reports[index].audio_clip.user.banned_until = (
-                settings.BAN_AUDIO_CLIP_DURATION_PER_BAN_DAYS ** audio_clip_reports[index].audio_clip.user.ban_count
-            )
-
             if audio_clip_report.audio_clip.user.id not in user_ids:
 
                 users.append(audio_clip_reports[index].audio_clip.user)
                 user_ids.append(audio_clip_report.audio_clip.user.id)
 
-            else:
+            #use users and user_ids as source of truth for keeping track of ban_count
 
-                users[user_ids.index(audio_clip_report.audio_clip.user.id)] = audio_clip_reports[index].audio_clip.user
+            target_user_index = user_ids.index(audio_clip_report.audio_clip.user.id)
+
+            ban_days = settings.CRONJOB_AUDIO_CLIP_BAN_DAYS ** users[target_user_index].ban_count
+            users[target_user_index].ban_count += 1
+            users[target_user_index].banned_until = datetime_now + timedelta(days=ban_days)
 
         #update everything
 
@@ -95,38 +122,28 @@ def cronjob_ban_audio_clips():
         get_user_model().objects.bulk_update(users, fields=('ban_count', 'banned_until',))
 
 
-
 def cronjob_reset_event_reply_choice_overdue():
 
-    #have this to reduce the chances of cronjob + auto-cancel reply from frontend colliding
-    #which would be fine, but it's better for UX
-    extra_seconds = 60
-
-    earliest_when_locked = get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS + extra_seconds))
+    when_locked_checkpoint = get_datetime_now() - timedelta(seconds=settings.EVENT_REPLY_CHOICE_MAX_DURATION_S)
 
     EventReplyQueues.objects.filter(
-        when_locked__gte=earliest_when_locked,
+        when_locked__lte=when_locked_checkpoint,
         is_replying=False,
     ).order_by(
         'when_locked',
-    ).delete()[0:settings.EVENT_UNDO_REPLY_QUANTITY_CRONJOB_LIMIT]
-
+    ).delete()[0:settings.CRONJOB_UNDO_EVENT_REPLY_LIMIT]
 
 
 def cronjob_reset_event_reply_overdue():
 
-    #have this to reduce the chances of cronjob + auto-cancel reply from frontend colliding
-    #which would be fine, but it's better for UX
-    extra_seconds = 60
-
-    earliest_when_locked = get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_EXPIRY_SECONDS + extra_seconds))
+    when_locked_checkpoint = get_datetime_now() - timedelta(seconds=settings.EVENT_REPLY_MAX_DURATION_S)
 
     EventReplyQueues.objects.filter(
-        when_locked__gte=earliest_when_locked,
+        when_locked__lte=when_locked_checkpoint,
         is_replying=True,
     ).order_by(
         'when_locked',
-    ).delete()[0:settings.EVENT_UNDO_REPLY_QUANTITY_CRONJOB_LIMIT]
+    ).delete()[0:settings.CRONJOB_UNDO_EVENT_REPLY_LIMIT]
 
 
 

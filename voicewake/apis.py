@@ -246,7 +246,7 @@ class UserBannedAudioClipsAPI(generics.GenericAPIView):
             self.request.user.id,
             'deleted',
         ] + cursor_params + [
-            settings.BAN_AUDIO_CLIP_QUANTITY_PER_PAGE,
+            settings.LIST_AUDIO_CLIP_QUANTITY_PER_PAGE,
         ]
 
         #execute
@@ -821,9 +821,9 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
             #prepare
             handle_user_otp_class = HandleUserOTP(
                 user_instance,
-                settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-                settings.OTP_CREATION_TIMEOUT_SECONDS, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
-                settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
+                settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_S, settings.TOTP_TOLERANCE_S,
+                settings.OTP_CREATION_TIMEOUT_S, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_S,
+                settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_S
             )
             handle_user_otp_class.guarantee_user_otp_instance()
 
@@ -941,7 +941,7 @@ class AudioClipTonesAPI(generics.GenericAPIView):
 
         patch_cache_control(
             response,
-            no_cache=False, no_store=False, must_revalidate=True, max_age=settings.AUDIO_CLIP_TONE_CACHE_AGE_SECONDS
+            no_cache=False, no_store=False, must_revalidate=True, max_age=settings.AUDIO_CLIP_TONE_CACHE_AGE_S
         )
 
         return response
@@ -1538,7 +1538,7 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
     #excludes those that blocked user, as well as those that the user has blocked, i.e. goes both ways
     def get_audio_clips_by_incomplete_events(self, audio_clip_tone_id:int=0):
 
-        max_when_created = (get_datetime_now() - timedelta(seconds=settings.EVENT_INCOMPLETE_MAX_AGE))
+        max_when_created = (get_datetime_now() - timedelta(seconds=settings.EVENT_INCOMPLETE_QUEUE_MAX_AGE_S))
         max_when_created = max_when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z')
 
         #do not get events where this user has been involved in before
@@ -1620,7 +1620,7 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
             self.request.user.id,
         ] + audio_clip_tone_params + [
             max_when_created,
-            settings.EVENT_INCOMPLETE_ROLL_QUANTITY,
+            settings.EVENT_INCOMPLETE_QUEUE_QUANTITY,
         ]
 
         #start
@@ -1701,14 +1701,14 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
         EventReplyQueues.objects.filter(
             locked_for_user=self.request.user,
             is_replying=False,
-            when_locked__lte=(datetime_now - timedelta(seconds=settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS))
+            when_locked__lte=(datetime_now - timedelta(seconds=settings.EVENT_REPLY_CHOICE_MAX_DURATION_S))
         ).delete()
 
         #is_replying=True, a.k.a. replying
         EventReplyQueues.objects.filter(
             locked_for_user=self.request.user,
             is_replying=True,
-            when_locked__lte=(datetime_now - timedelta(seconds=settings.EVENT_REPLY_EXPIRY_SECONDS))
+            when_locked__lte=(datetime_now - timedelta(seconds=settings.EVENT_REPLY_MAX_DURATION_S))
         ).delete()
 
 
@@ -1805,7 +1805,7 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
         create_audio_clips_class = CreateAudioClips(
             self.request.user, "create_reply",
             settings.EVENT_CREATE_DAILY_LIMIT, settings.EVENT_REPLY_DAILY_LIMIT,
-            settings.EVENT_REPLY_EXPIRY_SECONDS,
+            settings.EVENT_REPLY_MAX_DURATION_S,
         )
 
         cooldown_s = create_audio_clips_class.get_cooldown_on_audio_clip_create_limit_s()
@@ -1981,7 +1981,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
         #check for expiry
         if(
             target_event_reply_queue.when_locked <
-            (datetime_now - timedelta(seconds=settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS))
+            (datetime_now - timedelta(seconds=settings.EVENT_REPLY_CHOICE_MAX_DURATION_S))
         ):
 
             #remove expired reply choice
@@ -2024,7 +2024,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
         create_audio_clips_class = CreateAudioClips(
             self.request.user, "create_reply",
             settings.EVENT_CREATE_DAILY_LIMIT, settings.EVENT_REPLY_DAILY_LIMIT,
-            settings.EVENT_REPLY_EXPIRY_SECONDS,
+            settings.EVENT_REPLY_MAX_DURATION_S,
         )
 
         return create_audio_clips_class.create_audio_clip_as_responder(
@@ -2239,7 +2239,7 @@ class CreateEventsAPI(generics.GenericAPIView):
                 create_audio_clips_class = CreateAudioClips(
                     self.request.user, "create_event",
                     settings.EVENT_CREATE_DAILY_LIMIT, settings.EVENT_REPLY_DAILY_LIMIT,
-                    settings.EVENT_REPLY_EXPIRY_SECONDS,
+                    settings.EVENT_REPLY_MAX_DURATION_S,
                 )
 
                 return create_audio_clips_class.create_event_and_audio_clip_as_originator(

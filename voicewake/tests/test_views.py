@@ -49,25 +49,21 @@ class Random_TestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
-        cls.user0 = get_user_model().objects.create_user(username='user0', email='user0@gmail.com')
-        cls.user1 = get_user_model().objects.create_user(username='user1', email='user1@gmail.com')
-        cls.user2 = get_user_model().objects.create_user(username='user2', email='user2@gmail.com')
+        cls.users = []
 
-        cls.user0 = get_user_model().objects.get(username_lowercase="user0")
-        cls.user1 = get_user_model().objects.get(username_lowercase="user1")
-        cls.user2 = get_user_model().objects.get(username_lowercase="user2")
+        for x in range(0, 6):
 
-        cls.user0.is_active = True
-        cls.user1.is_active = True
-        cls.user2.is_active = True
+            current_user = get_user_model().objects.create_user(
+                username='useR'+str(x),
+                email='user'+str(x)+'@gmail.com',
+            )
 
-        cls.user0.save()
-        cls.user1.save()
-        cls.user2.save()
+            current_user = get_user_model().objects.get(username_lowercase="user"+str(x))
 
-        cls.user0.refresh_from_db()
-        cls.user1.refresh_from_db()
-        cls.user2.refresh_from_db()
+            current_user.is_active = True
+            current_user.save()
+
+            cls.users.append(current_user)
 
         #audio file
         cls.audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/audio_can_overwrite.mp3')
@@ -215,9 +211,9 @@ class Users_TestCase(TestCase):
         #get OTP
         handle_user_otp_class = HandleUserOTP(
             user_instance,
-            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-            0, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
-            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
+            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_S, settings.TOTP_TOLERANCE_S,
+            0, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_S,
+            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_S
         )
         handle_user_otp_class.guarantee_user_otp_instance()
         new_otp = handle_user_otp_class.generate_otp()
@@ -331,9 +327,9 @@ class Users_TestCase(TestCase):
         #get correct OTP
         handle_user_otp_class = HandleUserOTP(
             user_instance,
-            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-            0, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
-            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
+            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_S, settings.TOTP_TOLERANCE_S,
+            0, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_S,
+            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_S
         )
         handle_user_otp_class.guarantee_user_otp_instance()
         new_otp = handle_user_otp_class.generate_otp()
@@ -555,25 +551,21 @@ class System_TestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
-        cls.user0 = get_user_model().objects.create_user(username='user0', email='user0@gmail.com')
-        cls.user1 = get_user_model().objects.create_user(username='user1', email='user1@gmail.com')
-        cls.user2 = get_user_model().objects.create_user(username='user2', email='user2@gmail.com')
+        cls.users = []
 
-        cls.user0 = get_user_model().objects.get(username_lowercase="user0")
-        cls.user1 = get_user_model().objects.get(username_lowercase="user1")
-        cls.user2 = get_user_model().objects.get(username_lowercase="user2")
+        for x in range(0, 6):
 
-        cls.user0.is_active = True
-        cls.user1.is_active = True
-        cls.user2.is_active = True
+            current_user = get_user_model().objects.create_user(
+                username='useR'+str(x),
+                email='user'+str(x)+'@gmail.com',
+            )
 
-        cls.user0.save()
-        cls.user1.save()
-        cls.user2.save()
+            current_user = get_user_model().objects.get(username_lowercase="user"+str(x))
 
-        cls.user0.refresh_from_db()
-        cls.user1.refresh_from_db()
-        cls.user2.refresh_from_db()
+            current_user.is_active = True
+            current_user.save()
+
+            cls.users.append(current_user)
 
         #audio file
         cls.audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/audio_can_overwrite.mp3')
@@ -743,17 +735,17 @@ class System_TestCase(TestCase):
     def test_audio_clip_report(self):
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         self.client.post(reverse('create_audio_clip_reports_api'))
 
@@ -769,25 +761,21 @@ class CoreProcess_TestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
-        cls.user0 = get_user_model().objects.create_user(username='useR0', email='user0@gmail.com')
-        cls.user1 = get_user_model().objects.create_user(username='useR1', email='user1@gmail.com')
-        cls.user2 = get_user_model().objects.create_user(username='useR2', email='user2@gmail.com')
+        cls.users = []
 
-        cls.user0 = get_user_model().objects.get(username_lowercase="user0")
-        cls.user1 = get_user_model().objects.get(username_lowercase="user1")
-        cls.user2 = get_user_model().objects.get(username_lowercase="user2")
+        for x in range(0, 6):
 
-        cls.user0.is_active = True
-        cls.user1.is_active = True
-        cls.user2.is_active = True
+            current_user = get_user_model().objects.create_user(
+                username='useR'+str(x),
+                email='user'+str(x)+'@gmail.com',
+            )
 
-        cls.user0.save()
-        cls.user1.save()
-        cls.user2.save()
+            current_user = get_user_model().objects.get(username_lowercase="user"+str(x))
 
-        cls.user0.refresh_from_db()
-        cls.user1.refresh_from_db()
-        cls.user2.refresh_from_db()
+            current_user.is_active = True
+            current_user.save()
+
+            cls.users.append(current_user)
 
         #audio file
         cls.audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/audio_can_overwrite.mp3')
@@ -894,7 +882,7 @@ class CoreProcess_TestCase(TestCase):
 
     def test_create_event_ok(self):
 
-        self.login(self.user0)
+        self.login(self.users[0])
 
         data={
             'event_name': 'yolo',
@@ -919,18 +907,18 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(EventReplyQueues.objects.all().count(), 0)
 
         event = Events.objects.first()
-        self.assertEqual(event.created_by_id, self.user0.id)
+        self.assertEqual(event.created_by_id, self.users[0].id)
         self.assertEqual(event.event_name, data['event_name'])
 
         audio_clip = AudioClips.objects.first()
-        self.assertEqual(audio_clip.user_id, self.user0.id)
+        self.assertEqual(audio_clip.user_id, self.users[0].id)
         self.assertEqual(audio_clip.audio_clip_tone_id, data['audio_clip_tone_id'])
         self.assertTrue(len(audio_clip.audio_file) > 0)
 
 
     def test_create_event_missing_args(self):
 
-        self.login(self.user0)
+        self.login(self.users[0])
 
         data={
             'audio_clip_tone_id': 1,
@@ -969,7 +957,7 @@ class CoreProcess_TestCase(TestCase):
 
     def test_create_event_faulty_args(self):
 
-        self.login(self.user0)
+        self.login(self.users[0])
 
         data={
             'event_name': 'yolo',
@@ -1000,7 +988,7 @@ class CoreProcess_TestCase(TestCase):
 
     def test_create_event_daily_limit_reached(self):
 
-        self.login(self.user0)
+        self.login(self.users[0])
 
         with self.settings(EVENT_CREATE_DAILY_LIMIT=1):
 
@@ -1039,42 +1027,42 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "completed"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_audio_clip_1 = self.create_audio_clip(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             "responder",
         )
 
         sample_event_1 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_2 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_1.id,
             "originator",
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         with self.settings(EVENT_REPLY_DAILY_LIMIT=1):
 
@@ -1092,7 +1080,7 @@ class CoreProcess_TestCase(TestCase):
 
         self.assertFalse(
             EventReplyQueues.objects.filter(
-                locked_for_user=self.user1, event_id=sample_event_1.id, is_replying=False
+                locked_for_user=self.users[1], event_id=sample_event_1.id, is_replying=False
             ).exists()
         )
         self.assertEqual(result_data['event_reply_daily_limit_reached'], True)
@@ -1105,19 +1093,19 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {'unlock_all_locked_events': False}
 
@@ -1143,10 +1131,10 @@ class CoreProcess_TestCase(TestCase):
         self.assertTrue(result_data['event_reply_queue']['when_locked'] is not None)
         self.assertEqual(result_data['event_reply_queue']['is_replying'], event_reply_queue.is_replying)
         self.assertEqual(result_data['event']['id'], event_reply_queue.event_id)
-        self.assertEqual(event_reply_queue.locked_for_user_id, self.user1.id)
+        self.assertEqual(event_reply_queue.locked_for_user_id, self.users[1].id)
         self.assertEqual(UserEvents.objects.all().count(), 1)
         self.assertEqual(user_event.event_id, sample_event_0.id)
-        self.assertEqual(user_event.user_id, self.user1.id)
+        self.assertEqual(user_event.user_id, self.users[1].id)
         self.assertIsNotNone(user_event.when_excluded_for_reply)
 
 
@@ -1155,19 +1143,19 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {'unlock_all_locked_events': True}
 
@@ -1194,10 +1182,10 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(result_data['event_reply_queue']['is_replying'], event_reply_queue.is_replying)
         self.assertEqual(result_data['event']['id'], event_reply_queue.event_id)
         self.assertEqual(EventReplyQueues.objects.all().count(), 1)
-        self.assertEqual(event_reply_queue.locked_for_user_id, self.user1.id)
+        self.assertEqual(event_reply_queue.locked_for_user_id, self.users[1].id)
         self.assertEqual(UserEvents.objects.all().count(), 1)
         self.assertEqual(user_event.event_id, sample_event_0.id)
-        self.assertEqual(user_event.user_id, self.user1.id)
+        self.assertEqual(user_event.user_id, self.users[1].id)
         self.assertIsNotNone(user_event.when_excluded_for_reply)
 
 
@@ -1206,19 +1194,19 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         #start
 
-        self.login(self.user0)
+        self.login(self.users[0])
 
         data = {'unlock_all_locked_events': True}
 
@@ -1243,23 +1231,23 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
-        user_block_0 = self.create_user_block(user_id=self.user1.id, blocked_user_id=self.user0.id)
+        user_block_0 = self.create_user_block(user_id=self.users[1].id, blocked_user_id=self.users[0].id)
 
         #start
 
         #list event
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         request = self.client.post(reverse('list_event_reply_choices_api'))
 
@@ -1282,23 +1270,23 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
-        user_block_0 = self.create_user_block(user_id=self.user0.id, blocked_user_id=self.user1.id)
+        user_block_0 = self.create_user_block(user_id=self.users[0].id, blocked_user_id=self.users[1].id)
 
         #start
 
         #list event
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         request = self.client.post(reverse('list_event_reply_choices_api'))
 
@@ -1321,12 +1309,12 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
@@ -1334,31 +1322,31 @@ class CoreProcess_TestCase(TestCase):
         #ensure when_locked does not change
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=False,
             when_locked=(get_datetime_now() - timedelta(seconds=10))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_event_1 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_1 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_1.id,
             "originator",
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {'unlock_all_locked_events': False}
 
@@ -1384,12 +1372,12 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
@@ -1397,31 +1385,31 @@ class CoreProcess_TestCase(TestCase):
         #simply ensure when_locked changes
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=False,
             when_locked=(get_datetime_now() - timedelta(seconds=10))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_event_1 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_1 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_1.id,
             "originator",
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {'unlock_all_locked_events': True}
 
@@ -1435,7 +1423,7 @@ class CoreProcess_TestCase(TestCase):
         result_data = (bytes(request.content).decode())
         result_data = json.loads(result_data)
 
-        new_user_event = UserEvents.objects.get(user=self.user1, event_id=result_data['data'][0]['event']['id'])
+        new_user_event = UserEvents.objects.get(user=self.users[1], event_id=result_data['data'][0]['event']['id'])
 
         self.assertEqual(EventReplyQueues.objects.all().count(), 1)
         self.assertNotEqual(EventReplyQueues.objects.first().id, result_data['data'][0]['event']['id'])
@@ -1450,43 +1438,43 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=False,
-            when_locked=(get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS * 2)))
+            when_locked=(get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_CHOICE_MAX_DURATION_S * 2)))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_event_1 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_1 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_1.id,
             "originator",
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {'unlock_all_locked_events': False}
 
@@ -1500,7 +1488,7 @@ class CoreProcess_TestCase(TestCase):
         result_data = (bytes(request.content).decode())
         result_data = json.loads(result_data)
 
-        new_user_event = UserEvents.objects.get(user=self.user1, event_id=result_data['data'][0]['event']['id'])
+        new_user_event = UserEvents.objects.get(user=self.users[1], event_id=result_data['data'][0]['event']['id'])
 
         self.assertEqual(EventReplyQueues.objects.all().count(), 1)
         self.assertNotEqual(EventReplyQueues.objects.first().id, result_data['data'][0]['event']['id'])
@@ -1514,43 +1502,43 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=False,
-            when_locked=(get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS * 2)))
+            when_locked=(get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_CHOICE_MAX_DURATION_S * 2)))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_event_1 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_1 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_1.id,
             "originator",
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {'unlock_all_locked_events': False}
 
@@ -1564,7 +1552,7 @@ class CoreProcess_TestCase(TestCase):
         result_data = (bytes(request.content).decode())
         result_data = json.loads(result_data)
 
-        new_user_event = UserEvents.objects.get(user=self.user1, event_id=result_data['data'][0]['event']['id'])
+        new_user_event = UserEvents.objects.get(user=self.users[1], event_id=result_data['data'][0]['event']['id'])
 
         self.assertEqual(EventReplyQueues.objects.all().count(), 1)
         self.assertNotEqual(EventReplyQueues.objects.first().id, result_data['data'][0]['event']['id'])
@@ -1578,32 +1566,32 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=False,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {'event_id': sample_event_0.id}
 
@@ -1617,7 +1605,7 @@ class CoreProcess_TestCase(TestCase):
         result_data = (bytes(request.content).decode())
         result_data = json.loads(result_data)
 
-        event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.user1, event_id=sample_event_0.id)
+        event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.users[1], event_id=sample_event_0.id)
 
         self.assertTrue(event_reply_queue.is_replying)
         self.assertEqual(result_data['data'][0]['event_id'], event_reply_queue.event_id)
@@ -1633,32 +1621,32 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=False,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {}
 
@@ -1672,7 +1660,7 @@ class CoreProcess_TestCase(TestCase):
         result_data = (bytes(request.content).decode())
         result_data = json.loads(result_data)
 
-        event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.user1, event_id=sample_event_0.id)
+        event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.users[1], event_id=sample_event_0.id)
 
         self.assertFalse(event_reply_queue.is_replying)
 
@@ -1682,32 +1670,32 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=False,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {'event_id': 9999}
 
@@ -1721,7 +1709,7 @@ class CoreProcess_TestCase(TestCase):
         result_data = (bytes(request.content).decode())
         result_data = json.loads(result_data)
 
-        event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.user1, event_id=sample_event_0.id)
+        event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.users[1], event_id=sample_event_0.id)
 
         self.assertFalse(event_reply_queue.is_replying)
 
@@ -1731,32 +1719,32 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=True,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {'unlock_all_locked_events': False}
 
@@ -1781,43 +1769,43 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=True,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_event_1 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_1 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_1.id,
             "originator",
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {'unlock_all_locked_events': True}
 
@@ -1842,19 +1830,19 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {'event_id': sample_event_0.id}
 
@@ -1874,32 +1862,32 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=False,
-            when_locked=(get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS) * 2))
+            when_locked=(get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_CHOICE_MAX_DURATION_S) * 2))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {'event_id': sample_event_0.id}
 
@@ -1917,7 +1905,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(EventReplyQueues.objects.all().count(), 0)
         self.assertEqual(
             UserEvents.objects.filter(
-                user=self.user1,
+                user=self.users[1],
                 event_id=sample_event_0,
                 when_excluded_for_reply__isnull=False
             ).count(),
@@ -1930,12 +1918,12 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "deleted"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
             generic_status_name="deleted",
@@ -1944,20 +1932,20 @@ class CoreProcess_TestCase(TestCase):
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=False,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {'event_id': sample_event_0.id}
 
@@ -1975,7 +1963,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(EventReplyQueues.objects.all().count(), 0)
         self.assertEqual(
             UserEvents.objects.filter(
-                user=self.user1,
+                user=self.users[1],
                 event_id=sample_event_0,
                 when_excluded_for_reply__isnull=False
             ).count(),
@@ -1988,32 +1976,32 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user2.id,
+            locked_for_user_id=self.users[2].id,
             is_replying=False,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user2.id,
+            self.users[2].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {'event_id': sample_event_0.id}
 
@@ -2027,19 +2015,19 @@ class CoreProcess_TestCase(TestCase):
         result_data = (bytes(request.content).decode())
         result_data = json.loads(result_data)
 
-        event_reply_queue = EventReplyQueues.objects.get(event_id=sample_event_0.id, locked_for_user=self.user2)
+        event_reply_queue = EventReplyQueues.objects.get(event_id=sample_event_0.id, locked_for_user=self.users[2])
 
         self.assertEqual(EventReplyQueues.objects.all().count(), 1)
         self.assertEqual(
             UserEvents.objects.filter(
-                user=self.user2,
+                user=self.users[2],
                 event_id=sample_event_0,
                 when_excluded_for_reply__isnull=False
             ).count(),
             1
         )
-        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.user1).exists())
-        self.assertFalse(UserEvents.objects.filter(user=self.user1).exists())
+        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1]).exists())
+        self.assertFalse(UserEvents.objects.filter(user=self.users[1]).exists())
 
 
     def test_create_reply_ok(self):
@@ -2047,32 +2035,32 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=True,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
             'event_id': sample_event_0.id,
@@ -2090,12 +2078,12 @@ class CoreProcess_TestCase(TestCase):
         result_data = (bytes(request.content).decode())
         result_data = json.loads(result_data)
 
-        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.user1, event_id=sample_event_0.id).exists())
+        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
         self.assertEqual(Events.objects.count(), 1)
         self.assertEqual(AudioClips.objects.count(), 2)
         self.assertEqual(
             AudioClips.objects.filter(
-                user_id=self.user1.id,
+                user_id=self.users[1].id,
                 event_id=sample_event_0.id,
                 audio_clip_role__audio_clip_role_name='responder',
                 audio_clip_tone=self.audio_clip_tone
@@ -2109,32 +2097,32 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=True,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
             'audio_clip_tone_id': self.audio_clip_tone.id,
@@ -2172,32 +2160,32 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=True,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
             'event_id': 99999,
@@ -2238,19 +2226,19 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
             'event_id': sample_event_0.id,
@@ -2269,32 +2257,32 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=False,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
             'event_id': sample_event_0.id,
@@ -2312,7 +2300,7 @@ class CoreProcess_TestCase(TestCase):
         result_data = (bytes(request.content).decode())
         result_data = json.loads(result_data)
 
-        self.assertTrue(EventReplyQueues.objects.filter(locked_for_user=self.user1, event_id=sample_event_0.id).exists())
+        self.assertTrue(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
         self.assertEqual(Events.objects.count(), 1)
         self.assertEqual(AudioClips.objects.count(), 1)
 
@@ -2322,32 +2310,32 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user2.id,
+            locked_for_user_id=self.users[2].id,
             is_replying=True,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user2.id,
+            self.users[2].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
             'event_id': sample_event_0.id,
@@ -2365,8 +2353,8 @@ class CoreProcess_TestCase(TestCase):
         result_data = (bytes(request.content).decode())
         result_data = json.loads(result_data)
 
-        self.assertTrue(EventReplyQueues.objects.filter(locked_for_user=self.user2, event_id=sample_event_0.id).exists())
-        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.user1, event_id=sample_event_0.id).exists())
+        self.assertTrue(EventReplyQueues.objects.filter(locked_for_user=self.users[2], event_id=sample_event_0.id).exists())
+        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
         self.assertEqual(Events.objects.count(), 1)
         self.assertEqual(AudioClips.objects.count(), 1)
 
@@ -2376,32 +2364,32 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=True,
-            when_locked=(get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_EXPIRY_SECONDS * 2)))
+            when_locked=(get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_MAX_DURATION_S * 2)))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
             'event_id': sample_event_0.id,
@@ -2420,11 +2408,11 @@ class CoreProcess_TestCase(TestCase):
         result_data = json.loads(result_data)
 
         self.assertFalse(result_data['can_retry'])
-        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.user1, event_id=sample_event_0.id).exists())
+        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
         self.assertEqual(Events.objects.count(), 1)
         self.assertEqual(AudioClips.objects.count(), 1)
-        self.assertEqual(AudioClips.objects.filter(user_id=self.user1.id).count(), 0)
-        self.assertEqual(UserEvents.objects.filter(user_id=self.user1.id).count(), 1)
+        self.assertEqual(AudioClips.objects.filter(user_id=self.users[1].id).count(), 0)
+        self.assertEqual(UserEvents.objects.filter(user_id=self.users[1].id).count(), 1)
         sample_event_0.refresh_from_db()
         self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
 
@@ -2434,12 +2422,12 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "deleted"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
             generic_status_name="deleted",
@@ -2448,20 +2436,20 @@ class CoreProcess_TestCase(TestCase):
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=True,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
             'event_id': sample_event_0.id,
@@ -2480,11 +2468,11 @@ class CoreProcess_TestCase(TestCase):
         result_data = json.loads(result_data)
 
         self.assertFalse(result_data['can_retry'])
-        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.user1, event_id=sample_event_0.id).exists())
+        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
         self.assertEqual(Events.objects.count(), 1)
         self.assertEqual(AudioClips.objects.count(), 1)
-        self.assertEqual(AudioClips.objects.filter(user_id=self.user1.id).count(), 0)
-        self.assertEqual(UserEvents.objects.filter(user_id=self.user1.id).count(), 1)
+        self.assertEqual(AudioClips.objects.filter(user_id=self.users[1].id).count(), 0)
+        self.assertEqual(UserEvents.objects.filter(user_id=self.users[1].id).count(), 1)
 
 
     def test_cancel_reply_ok(self):
@@ -2492,32 +2480,32 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=True,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
             'event_id': sample_event_0.id,
@@ -2533,10 +2521,10 @@ class CoreProcess_TestCase(TestCase):
         result_data = (bytes(request.content).decode())
         result_data = json.loads(result_data)
 
-        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.user1, event_id=sample_event_0.id).exists())
+        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
         self.assertEqual(Events.objects.count(), 1)
         self.assertEqual(AudioClips.objects.count(), 1)
-        self.assertTrue(UserEvents.objects.filter(user=self.user1, event_id=sample_event_0.id).exists())
+        self.assertTrue(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0.id).exists())
 
 
     def test_cancel_reply_with_missing_args(self):
@@ -2544,32 +2532,32 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=True,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
         }
@@ -2585,32 +2573,32 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=True,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
             'event_id': 9999,
@@ -2627,19 +2615,19 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
             'event_id': sample_event_0.id,
@@ -2656,32 +2644,32 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=False,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
             'event_id': sample_event_0.id,
@@ -2697,10 +2685,10 @@ class CoreProcess_TestCase(TestCase):
         result_data = (bytes(request.content).decode())
         result_data = json.loads(result_data)
 
-        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.user1, event_id=sample_event_0.id).exists())
+        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
         self.assertEqual(Events.objects.count(), 1)
         self.assertEqual(AudioClips.objects.count(), 1)
-        self.assertTrue(UserEvents.objects.filter(user=self.user1, event_id=sample_event_0.id).exists())
+        self.assertTrue(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0.id).exists())
 
 
     def test_cancel_reply_for_someone_else(self):
@@ -2708,32 +2696,32 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user2.id,
+            locked_for_user_id=self.users[2].id,
             is_replying=True,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user2.id,
+            self.users[2].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
             'event_id': sample_event_0.id,
@@ -2749,10 +2737,10 @@ class CoreProcess_TestCase(TestCase):
         result_data = (bytes(request.content).decode())
         result_data = json.loads(result_data)
 
-        self.assertTrue(EventReplyQueues.objects.filter(locked_for_user=self.user2, event_id=sample_event_0.id).exists())
+        self.assertTrue(EventReplyQueues.objects.filter(locked_for_user=self.users[2], event_id=sample_event_0.id).exists())
         self.assertEqual(Events.objects.count(), 1)
         self.assertEqual(AudioClips.objects.count(), 1)
-        self.assertTrue(UserEvents.objects.filter(user=self.user2, event_id=sample_event_0.id).exists())
+        self.assertTrue(UserEvents.objects.filter(user=self.users[2], event_id=sample_event_0.id).exists())
 
 
     def test_cancel_reply_but_event_is_banned(self):
@@ -2760,12 +2748,12 @@ class CoreProcess_TestCase(TestCase):
         #prepare data
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "deleted"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
             generic_status_name="deleted",
@@ -2774,20 +2762,20 @@ class CoreProcess_TestCase(TestCase):
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.user1.id,
+            locked_for_user_id=self.users[1].id,
             is_replying=True,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.user1.id,
+            self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
             'event_id': sample_event_0.id,
@@ -2803,10 +2791,10 @@ class CoreProcess_TestCase(TestCase):
         result_data = (bytes(request.content).decode())
         result_data = json.loads(result_data)
 
-        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.user1, event_id=sample_event_0.id).exists())
+        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
         self.assertEqual(Events.objects.count(), 1)
         self.assertEqual(AudioClips.objects.count(), 1)
-        self.assertTrue(UserEvents.objects.filter(user=self.user1, event_id=sample_event_0.id).exists())
+        self.assertTrue(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0.id).exists())
 
 
     def test_create_audio_clip_report_ok(self):
@@ -2814,19 +2802,19 @@ class CoreProcess_TestCase(TestCase):
         #prepare
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
             'audio_clip_id': sample_audio_clip_0.id
@@ -2854,19 +2842,19 @@ class CoreProcess_TestCase(TestCase):
         #prepare
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
         }
@@ -2891,19 +2879,19 @@ class CoreProcess_TestCase(TestCase):
         #prepare
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
             'yolo': sample_audio_clip_0.id
@@ -2929,19 +2917,19 @@ class CoreProcess_TestCase(TestCase):
         #prepare
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
             'audio_clip_id': 9999999
@@ -2967,12 +2955,12 @@ class CoreProcess_TestCase(TestCase):
         #prepare
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
@@ -2983,7 +2971,7 @@ class CoreProcess_TestCase(TestCase):
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
             'audio_clip_id': sample_audio_clip_0.id
@@ -3011,12 +2999,12 @@ class CoreProcess_TestCase(TestCase):
         #prepare
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
             is_banned=True,
@@ -3029,7 +3017,7 @@ class CoreProcess_TestCase(TestCase):
 
         #start
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
             'audio_clip_id': sample_audio_clip_0.id
@@ -3057,19 +3045,19 @@ class CoreProcess_TestCase(TestCase):
         #prepare
 
         sample_event_0 = self.create_event(
-            self.user0,
+            self.users[0],
             "incomplete"
         )
 
         sample_audio_clip_0 = self.create_audio_clip(
-            self.user0.id,
+            self.users[0].id,
             sample_event_0.id,
             "originator",
         )
 
         #start
 
-        self.login(self.user0)
+        self.login(self.users[0])
 
         data = {
             'audio_clip_id': sample_audio_clip_0.id
@@ -3094,10 +3082,10 @@ class CoreProcess_TestCase(TestCase):
 
     def test_create_user_block_ok(self):
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
-            'username': self.user0.username,
+            'username': self.users[0].username,
             'to_block': True
         }
 
@@ -3116,12 +3104,12 @@ class CoreProcess_TestCase(TestCase):
 
     def test_create_user_block_missing_args(self):
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         #start
 
         data = {
-            'username': self.user0.username,
+            'username': self.users[0].username,
         }
 
         request = self.client.post(reverse('user_blocks_api'), data)
@@ -3158,12 +3146,12 @@ class CoreProcess_TestCase(TestCase):
 
     def test_create_user_block_faulty_args(self):
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         #start
 
         data = {
-            'username': self.user0.username,
+            'username': self.users[0].username,
             'to_block': '',
         }
 
@@ -3184,14 +3172,14 @@ class CoreProcess_TestCase(TestCase):
     def test_create_user_block_unblock_ok(self):
 
         sample_user_block_0 = UserBlocks.objects.create(
-            user_id=self.user1.id,
-            blocked_user_id=self.user0.id
+            user_id=self.users[1].id,
+            blocked_user_id=self.users[0].id
         )
 
-        self.login(self.user1)
+        self.login(self.users[1])
 
         data = {
-            'username': self.user0.username,
+            'username': self.users[0].username,
             'to_block': False
         }
 
@@ -3208,29 +3196,712 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(UserBlocks.objects.all().count(), 0)
 
 
-    def test_cronjob_ban_audio_clip_ok(self):
+    def test_cronjob_ban_audio_clip_originator_ok(self):
 
-        pass
+        datetime_now = get_datetime_now()
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_audio_clip_0.like_count = 2
+        sample_audio_clip_0.dislike_count = 10
+        sample_audio_clip_0.like_ratio = 0.2
+        sample_audio_clip_0.save()
+
+        #arbitrary last_evaluated, as long as < last_reported
+        sample_audio_clip_report_0 = AudioClipReports.objects.create(
+            last_evaluated=(datetime_now - timedelta(seconds=10)),
+            audio_clip_id=sample_audio_clip_0.id,
+        )
+
+        #start
+
+        with self.settings(
+            BAN_AUDIO_CLIP_LIKE_RATIO=0.2,
+            BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
+            BAN_AUDIO_CLIP_MIN_AGE_S=11
+        ):
+
+            cronjob_ban_audio_clips()
+
+        #check
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        sample_audio_clip_report_0.refresh_from_db()
+        self.users[0].refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_0.is_banned)
+        self.assertTrue(sample_audio_clip_report_0.last_evaluated >= sample_audio_clip_report_0.last_reported)
+        self.assertTrue(self.users[0].banned_until > datetime_now)
+        self.assertEqual(self.users[0].ban_count, 1)
 
 
-    def test_cronjob_ban_audio_clip_not_all_conditions_met(self):
+    def test_cronjob_ban_audio_clip_responder_ok(self):
 
-        pass
+        datetime_now = get_datetime_now()
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "completed"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_audio_clip_1 = self.create_audio_clip(
+            self.users[1].id,
+            sample_event_0.id,
+            "responder",
+        )
+
+        sample_audio_clip_1.like_count = 2
+        sample_audio_clip_1.dislike_count = 10
+        sample_audio_clip_1.like_ratio = 0.2
+        sample_audio_clip_1.save()
+
+        #arbitrary last_evaluated, as long as < last_reported
+        sample_audio_clip_report_0 = AudioClipReports.objects.create(
+            last_evaluated=(datetime_now - timedelta(seconds=10)),
+            audio_clip_id=sample_audio_clip_1.id,
+        )
+
+        #start
+
+        with self.settings(
+            BAN_AUDIO_CLIP_LIKE_RATIO=0.2,
+            BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
+            BAN_AUDIO_CLIP_MIN_AGE_S=11
+        ):
+
+            cronjob_ban_audio_clips()
+
+        #check
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        sample_audio_clip_1.refresh_from_db()
+        sample_audio_clip_report_0.refresh_from_db()
+        self.users[1].refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_0.is_banned)
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_1.is_banned)
+        self.assertTrue(sample_audio_clip_report_0.last_evaluated >= sample_audio_clip_report_0.last_reported)
+        self.assertTrue(self.users[1].banned_until > datetime_now)
+        self.assertEqual(self.users[1].ban_count, 1)
 
 
-    def test_cronjob_reset_reply_ok(self):
+    def test_cronjob_ban_audio_clip_same_event_all_users(self):
 
-        pass
+        datetime_now = get_datetime_now()
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "completed"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_audio_clip_0.like_count = 2
+        sample_audio_clip_0.dislike_count = 10
+        sample_audio_clip_0.like_ratio = 0.2
+        sample_audio_clip_0.save()
+
+        sample_audio_clip_1 = self.create_audio_clip(
+            self.users[1].id,
+            sample_event_0.id,
+            "responder",
+        )
+
+        sample_audio_clip_1.like_count = 2
+        sample_audio_clip_1.dislike_count = 10
+        sample_audio_clip_1.like_ratio = 0.2
+        sample_audio_clip_1.save()
+
+        #arbitrary last_evaluated, as long as < last_reported
+        sample_audio_clip_report_0 = AudioClipReports.objects.create(
+            last_evaluated=(datetime_now - timedelta(seconds=10)),
+            audio_clip_id=sample_audio_clip_0.id,
+        )
+        sample_audio_clip_report_1 = AudioClipReports.objects.create(
+            last_evaluated=(datetime_now - timedelta(seconds=10)),
+            audio_clip_id=sample_audio_clip_1.id,
+        )
+
+        #start
+
+        with self.settings(
+            BAN_AUDIO_CLIP_LIKE_RATIO=0.2,
+            BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
+            BAN_AUDIO_CLIP_MIN_AGE_S=11
+        ):
+
+            cronjob_ban_audio_clips()
+
+        #check
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        sample_audio_clip_1.refresh_from_db()
+        sample_audio_clip_report_0.refresh_from_db()
+        sample_audio_clip_report_1.refresh_from_db()
+        self.users[0].refresh_from_db()
+        self.users[1].refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_0.is_banned)
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_1.is_banned)
+        self.assertTrue(sample_audio_clip_report_0.last_evaluated >= sample_audio_clip_report_0.last_reported)
+        self.assertTrue(sample_audio_clip_report_1.last_evaluated >= sample_audio_clip_report_1.last_reported)
+        self.assertTrue(self.users[0].banned_until > datetime_now)
+        self.assertTrue(self.users[1].banned_until > datetime_now)
+        self.assertEqual(self.users[0].ban_count, 1)
+        self.assertEqual(self.users[1].ban_count, 1)
+
+
+    def test_cronjob_ban_audio_clip_different_event_different_users(self):
+
+        datetime_now = get_datetime_now()
+
+        #event 0, ban originator
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "completed"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_audio_clip_1 = self.create_audio_clip(
+            self.users[1].id,
+            sample_event_0.id,
+            "responder",
+        )
+
+        sample_audio_clip_0.like_count = 2
+        sample_audio_clip_0.dislike_count = 10
+        sample_audio_clip_0.like_ratio = 0.2
+        sample_audio_clip_0.save()
+
+        #event 1, ban responder
+
+        sample_event_1 = self.create_event(
+            self.users[0],
+            "completed"
+        )
+
+        sample_audio_clip_2 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_1.id,
+            "originator",
+        )
+
+        sample_audio_clip_3 = self.create_audio_clip(
+            self.users[1].id,
+            sample_event_1.id,
+            "responder",
+        )
+
+        sample_audio_clip_3.like_count = 2
+        sample_audio_clip_3.dislike_count = 10
+        sample_audio_clip_3.like_ratio = 0.2
+        sample_audio_clip_3.save()
+
+        #arbitrary last_evaluated, as long as < last_reported
+        sample_audio_clip_report_0 = AudioClipReports.objects.create(
+            last_evaluated=(datetime_now - timedelta(seconds=10)),
+            audio_clip_id=sample_audio_clip_0.id,
+        )
+        sample_audio_clip_report_1 = AudioClipReports.objects.create(
+            last_evaluated=(datetime_now - timedelta(seconds=10)),
+            audio_clip_id=sample_audio_clip_3.id,
+        )
+
+        #start
+
+        with self.settings(
+            BAN_AUDIO_CLIP_LIKE_RATIO=0.2,
+            BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
+            BAN_AUDIO_CLIP_MIN_AGE_S=11
+        ):
+
+            cronjob_ban_audio_clips()
+
+        #check
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        sample_audio_clip_1.refresh_from_db()
+        sample_event_1.refresh_from_db()
+        sample_audio_clip_2.refresh_from_db()
+        sample_audio_clip_3.refresh_from_db()
+        sample_audio_clip_report_0.refresh_from_db()
+        sample_audio_clip_report_1.refresh_from_db()
+        self.users[0].refresh_from_db()
+        self.users[1].refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_0.is_banned)
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_1.is_banned)
+
+        self.assertEqual(sample_event_1.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_2.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_2.is_banned)
+        self.assertEqual(sample_audio_clip_3.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_3.is_banned)
+
+        self.assertTrue(sample_audio_clip_report_0.last_evaluated >= sample_audio_clip_report_0.last_reported)
+        self.assertTrue(sample_audio_clip_report_1.last_evaluated >= sample_audio_clip_report_1.last_reported)
+
+        self.assertTrue(self.users[0].banned_until > datetime_now)
+        self.assertTrue(self.users[1].banned_until > datetime_now)
+        self.assertEqual(self.users[0].ban_count, 1)
+        self.assertEqual(self.users[1].ban_count, 1)
+
+
+    def test_cronjob_ban_audio_clip_different_event_same_user(self):
+
+        datetime_now = get_datetime_now()
+
+        #event 0, ban originator
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_audio_clip_0.like_count = 2
+        sample_audio_clip_0.dislike_count = 10
+        sample_audio_clip_0.like_ratio = 0.2
+        sample_audio_clip_0.save()
+
+        #event 1, ban responder
+
+        sample_event_1 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_1 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_1.id,
+            "originator",
+        )
+
+        sample_audio_clip_1.like_count = 2
+        sample_audio_clip_1.dislike_count = 10
+        sample_audio_clip_1.like_ratio = 0.2
+        sample_audio_clip_1.save()
+
+        #arbitrary last_evaluated, as long as < last_reported
+        sample_audio_clip_report_0 = AudioClipReports.objects.create(
+            last_evaluated=(datetime_now - timedelta(seconds=10)),
+            audio_clip_id=sample_audio_clip_0.id,
+        )
+        sample_audio_clip_report_1 = AudioClipReports.objects.create(
+            last_evaluated=(datetime_now - timedelta(seconds=10)),
+            audio_clip_id=sample_audio_clip_1.id,
+        )
+
+        #start
+
+        with self.settings(
+            BAN_AUDIO_CLIP_LIKE_RATIO=0.2,
+            BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
+            BAN_AUDIO_CLIP_MIN_AGE_S=11
+        ):
+
+            cronjob_ban_audio_clips()
+
+        #check
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        sample_event_1.refresh_from_db()
+        sample_audio_clip_1.refresh_from_db()
+        sample_audio_clip_report_0.refresh_from_db()
+        sample_audio_clip_report_1.refresh_from_db()
+        self.users[0].refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_0.is_banned)
+
+        self.assertEqual(sample_event_1.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_1.is_banned)
+
+        self.assertTrue(sample_audio_clip_report_0.last_evaluated >= sample_audio_clip_report_0.last_reported)
+        self.assertTrue(sample_audio_clip_report_1.last_evaluated >= sample_audio_clip_report_1.last_reported)
+
+        self.assertTrue(self.users[0].banned_until > datetime_now)
+        self.assertEqual(self.users[0].ban_count, 2)
+
+
+    def test_cronjob_ban_audio_clip_skip_not_reported(self):
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_audio_clip_0.like_count = 2
+        sample_audio_clip_0.dislike_count = 10
+        sample_audio_clip_0.like_ratio = 0.2
+        sample_audio_clip_0.save()
+
+        #start
+
+        with self.settings(
+            BAN_AUDIO_CLIP_LIKE_RATIO=0.2,
+            BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
+            BAN_AUDIO_CLIP_MIN_AGE_S=11
+        ):
+
+            cronjob_ban_audio_clips()
+
+        #check
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        self.users[0].refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_0.is_banned)
+        self.assertIsNone(self.users[0].banned_until)
+
+
+    def test_cronjob_ban_audio_clip_skip_already_evaluated(self):
+
+        datetime_now = get_datetime_now()
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_audio_clip_0.like_count = 2
+        sample_audio_clip_0.dislike_count = 10
+        sample_audio_clip_0.like_ratio = 0.2
+        sample_audio_clip_0.save()
+
+        #arbitrary last_evaluated, as long as > last_reported
+        sample_audio_clip_report_0 = AudioClipReports.objects.create(
+            last_evaluated=(datetime_now + timedelta(seconds=10)),
+            audio_clip_id=sample_audio_clip_0.id,
+        )
+
+        previous_last_evaluated = sample_audio_clip_report_0.last_evaluated
+
+        #start
+
+        with self.settings(
+            BAN_AUDIO_CLIP_LIKE_RATIO=0.2,
+            BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
+            BAN_AUDIO_CLIP_MIN_AGE_S=11
+        ):
+
+            cronjob_ban_audio_clips()
+
+        #check
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        sample_audio_clip_report_0.refresh_from_db()
+        self.users[0].refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_0.is_banned)
+        self.assertEqual(previous_last_evaluated, sample_audio_clip_report_0.last_evaluated)
+        self.assertIsNone(self.users[0].banned_until)
+
+
+    def test_cronjob_ban_audio_clip_skip_already_banned(self):
+
+        datetime_now = get_datetime_now()
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "deleted"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+            generic_status_name='deleted',
+            is_banned=True,
+        )
+
+        sample_audio_clip_0.like_count = 2
+        sample_audio_clip_0.dislike_count = 10
+        sample_audio_clip_0.like_ratio = 0.2
+        sample_audio_clip_0.save()
+
+        #arbitrary last_evaluated, as long as < last_reported
+        sample_audio_clip_report_0 = AudioClipReports.objects.create(
+            last_evaluated=(datetime_now - timedelta(seconds=10)),
+            audio_clip_id=sample_audio_clip_0.id,
+        )
+
+        previous_last_evaluated = sample_audio_clip_report_0.last_evaluated
+
+        #start
+
+        with self.settings(
+            BAN_AUDIO_CLIP_LIKE_RATIO=0.2,
+            BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
+            BAN_AUDIO_CLIP_MIN_AGE_S=11
+        ):
+
+            cronjob_ban_audio_clips()
+
+        #check
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        sample_audio_clip_report_0.refresh_from_db()
+        self.users[0].refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_0.is_banned)
+        self.assertEqual(previous_last_evaluated, sample_audio_clip_report_0.last_evaluated)
+        self.assertIsNone(self.users[0].banned_until)
 
 
     def test_cronjob_reset_reply_choice_ok(self):
 
-        pass
+        datetime_now = get_datetime_now()
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            sample_event_0.id,
+            self.users[1].id,
+            False,
+            (datetime_now - timedelta(seconds=10))
+        )
+
+        with self.settings(
+            EVENT_REPLY_CHOICE_MAX_DURATION_S=2,
+        ):
+
+            cronjob_reset_event_reply_choice_overdue()
+
+        self.assertFalse(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
 
 
-    def test_cronjob_reset_reply_not_all_conditions_met(self):
+    def test_cronjob_reset_reply_choice_not_expired(self):
 
-        pass
+        datetime_now = get_datetime_now()
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            sample_event_0.id,
+            self.users[1].id,
+            False,
+            (datetime_now - timedelta(seconds=10))
+        )
+
+        with self.settings(
+            EVENT_REPLY_CHOICE_MAX_DURATION_S=20,
+        ):
+
+            cronjob_reset_event_reply_choice_overdue()
+
+        self.assertTrue(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
+
+
+    def test_cronjob_reset_reply_choice_skip_unrelated_expired_rows(self):
+
+        datetime_now = get_datetime_now()
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            sample_event_0.id,
+            self.users[1].id,
+            True,
+            (datetime_now - timedelta(seconds=10))
+        )
+
+        with self.settings(
+            EVENT_REPLY_CHOICE_MAX_DURATION_S=2,
+        ):
+
+            cronjob_reset_event_reply_choice_overdue()
+
+        self.assertTrue(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
+
+
+    def test_cronjob_reset_reply_ok(self):
+
+        datetime_now = get_datetime_now()
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            sample_event_0.id,
+            self.users[1].id,
+            True,
+            (datetime_now - timedelta(seconds=10))
+        )
+
+        with self.settings(
+            EVENT_REPLY_MAX_DURATION_S=2,
+        ):
+
+            cronjob_reset_event_reply_overdue()
+
+        self.assertFalse(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
+
+
+    def test_cronjob_reset_reply_not_expired(self):
+
+        datetime_now = get_datetime_now()
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            sample_event_0.id,
+            self.users[1].id,
+            True,
+            (datetime_now - timedelta(seconds=10))
+        )
+
+        with self.settings(
+            EVENT_REPLY_MAX_DURATION_S=20,
+        ):
+
+            cronjob_reset_event_reply_overdue()
+
+        self.assertTrue(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
+
+
+    def test_cronjob_reset_reply_skip_unrelated_expired_rows(self):
+
+        datetime_now = get_datetime_now()
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            sample_event_0.id,
+            self.users[1].id,
+            False,
+            (datetime_now - timedelta(seconds=10))
+        )
+
+        with self.settings(
+            EVENT_REPLY_MAX_DURATION_S=2,
+        ):
+
+            cronjob_reset_event_reply_overdue()
+
+        self.assertTrue(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
 
 
 

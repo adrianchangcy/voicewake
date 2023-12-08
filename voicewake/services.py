@@ -733,7 +733,7 @@ class PrepareTestData:
 
         for x, event in enumerate(bulk_incomplete_events):
 
-            when_locked = datetime_now - timedelta(minutes=random.randrange(1, settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS*2))
+            when_locked = datetime_now - timedelta(minutes=random.randrange(1, settings.EVENT_REPLY_CHOICE_MAX_DURATION_S*2))
 
             #ensure full datetime logic consistency
             if when_locked < event.when_created:
@@ -1087,8 +1087,8 @@ class HandleUserOTP(TOTPVerification):
 
     def send_otp_email(self, recipient_email, subject, direction, otp):
 
-        #we can freely use math.ceil() as long as TOTP_TOLERANCE_SECONDS is sufficient
-        otp_expiry = settings.TOTP_VALIDITY_SECONDS / 60
+        #we can freely use math.ceil() as long as TOTP_TOLERANCE_S is sufficient
+        otp_expiry = settings.TOTP_VALIDITY_S / 60
         otp_expiry = str(math.ceil(otp_expiry))
 
         email_message = get_template('email/otp.html').render(context={
