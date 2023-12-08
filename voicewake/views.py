@@ -208,8 +208,8 @@ class GetEvents(TemplateView):
             request,
             template_name=self.template_name,
             context={
-            'event_reply_choice_expiry_seconds': settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS,
-            'event_reply_expiry_seconds': settings.EVENT_REPLY_EXPIRY_SECONDS,
+            'event_reply_choice_expiry_seconds': settings.EVENT_REPLY_CHOICE_MAX_DURATION_S,
+            'event_reply_expiry_seconds': settings.EVENT_REPLY_MAX_DURATION_S,
             'event': event,
             'is_deleted': is_deleted,
             'is_deleted_json': json.dumps(is_deleted),
@@ -245,8 +245,8 @@ class ListEventReplyChoices(TemplateView):
             request,
             template_name=self.template_name,
             context={
-            'event_reply_choice_expiry_seconds': settings.EVENT_REPLY_CHOICE_EXPIRY_SECONDS,
-            'event_reply_expiry_seconds': settings.EVENT_REPLY_EXPIRY_SECONDS,
+            'event_reply_choice_expiry_seconds': settings.EVENT_REPLY_CHOICE_MAX_DURATION_S,
+            'event_reply_expiry_seconds': settings.EVENT_REPLY_MAX_DURATION_S,
             }
         )
 

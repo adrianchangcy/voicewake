@@ -55,8 +55,8 @@ class HandleUserOTP_TestCase(TestCase):
         self.handle_user_otp_class = HandleUserOTP(
             user_instance,
             settings.TOTP_NUMBER_OF_DIGITS, 2, 1,
-            settings.OTP_CREATION_TIMEOUT_SECONDS, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
-            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
+            settings.OTP_CREATION_TIMEOUT_S, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_S,
+            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_S
         )
 
         #create UserOTP instance
@@ -85,9 +85,9 @@ class HandleUserOTP_TestCase(TestCase):
 
         self.handle_user_otp_class = HandleUserOTP(
             user_instance,
-            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-            settings.OTP_CREATION_TIMEOUT_SECONDS, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
-            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
+            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_S, settings.TOTP_TOLERANCE_S,
+            settings.OTP_CREATION_TIMEOUT_S, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_S,
+            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_S
         )
 
         #create UserOTP instance
@@ -124,8 +124,8 @@ class HandleUserOTP_TestCase(TestCase):
         self.handle_user_otp_class = HandleUserOTP(
             user_instance,
             settings.TOTP_NUMBER_OF_DIGITS, 1, 1,
-            settings.OTP_CREATION_TIMEOUT_SECONDS, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
-            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
+            settings.OTP_CREATION_TIMEOUT_S, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_S,
+            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_S
         )
 
         self.handle_user_otp_class.guarantee_user_otp_instance()
@@ -145,9 +145,9 @@ class HandleUserOTP_TestCase(TestCase):
 
         self.handle_user_otp_class = HandleUserOTP(
             user_instance,
-            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
+            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_S, settings.TOTP_TOLERANCE_S,
             2, 2, 4,
-            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
+            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_S
         )
         self.handle_user_otp_class.guarantee_user_otp_instance()
 
@@ -200,8 +200,8 @@ class HandleUserOTP_TestCase(TestCase):
 
         self.handle_user_otp_class = HandleUserOTP(
             user_instance,
-            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-            2, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
+            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_S, settings.TOTP_TOLERANCE_S,
+            2, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_S,
             2, 2
         )
         self.handle_user_otp_class.guarantee_user_otp_instance()
@@ -261,7 +261,7 @@ class HandleUserOTP_TestCase(TestCase):
         self.handle_user_otp_class = HandleUserOTP(
             user_instance,
             settings.TOTP_NUMBER_OF_DIGITS, 2, 2,
-            1, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
+            1, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_S,
             settings.OTP_MAX_ATTEMPTS, 1
         )
 
@@ -365,9 +365,9 @@ class HandleUserOTP_TestCase(TestCase):
 
         self.handle_user_otp_class = HandleUserOTP(
             user_instance,
-            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-            settings.OTP_CREATION_TIMEOUT_SECONDS, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
-            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
+            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_S, settings.TOTP_TOLERANCE_S,
+            settings.OTP_CREATION_TIMEOUT_S, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_S,
+            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_S
         )
 
         self.handle_user_otp_class.guarantee_user_otp_instance()
@@ -388,9 +388,9 @@ class HandleUserOTP_TestCase(TestCase):
 
         self.handle_user_otp_class = HandleUserOTP(
             user_instance,
-            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_SECONDS, settings.TOTP_TOLERANCE_SECONDS,
-            settings.OTP_CREATION_TIMEOUT_SECONDS, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_SECONDS,
-            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_SECONDS
+            settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_S, settings.TOTP_TOLERANCE_S,
+            settings.OTP_CREATION_TIMEOUT_S, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_S,
+            settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_S
         )
 
         self.handle_user_otp_class.guarantee_user_otp_instance()
