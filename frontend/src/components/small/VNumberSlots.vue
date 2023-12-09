@@ -9,12 +9,14 @@
                 :id="propElementId"
                 type="text" inputmode="numeric" maxlength="1" autocomplete="off"
                 name="number-slot-field"
+                :data-index="0"
                 class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 focus:border-theme-black border-theme-gray-4 shade-border-when-hover    focus:outline-none"
             />
             <input
                 v-for="x in propExtraSlots" :key="x"
                 type="text" inputmode="numeric" maxlength="1" autocomplete="off"
                 name="number-slot-field"
+                :data-index="x"
                 class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 focus:border-theme-black border-theme-gray-4 shade-border-when-hover    focus:outline-none"
             />
             <FontAwesomeIcon v-show="is_error" icon="fas fa-exclamation" class="px-2 text-theme-toast-danger"/>
@@ -54,7 +56,9 @@
                 is_error: false,
                 status_text: "",
 
-                input_fields: null as any,  //NodeListOf<Element> from querySelectorAll() is undefined
+                //unable to type NodeListOf successfully, so we just call it once
+                //data() calls before mounted(), so don't expect elements here yet
+                input_fields: document.querySelectorAll(".number-slot-field > input"),
             };
         },
         props: {
@@ -127,24 +131,26 @@
                 this.is_error = false;
                 this.status_text = "";
             },
-            concatenateSlots(input_fields:any) : void {
+            concatenateSlots() : void {
 
                 let concat_string = "";
 
-                input_fields.forEach((input_field:HTMLInputElement) => {
+                this.input_fields.forEach((element:Element)=>{
 
-                    if(/^[0-9]+$/.test(input_field.value) === true){
+                    if(/^[0-9]+$/.test((element as HTMLInputElement).value) === true){
                         
-                        concat_string += input_field.value.toString();
+                        concat_string += (element as HTMLInputElement).value.toString();
                     }
                 });
 
                 this.otp_string = concat_string;
             },
-            handlePaste(e:ClipboardEvent, input_fields:any) : void {
+            handlePaste(event:Event) : void {
 
-                //thanks to Lighthouse for discovering this when analysing
-                if(e.clipboardData === null){
+                //thanks to Lighthouse for discovering possible .clipboardData === null when analysing
+                const clipboard_data = (event as ClipboardEvent).clipboardData;
+
+                if(clipboard_data === null){
 
                     return;
                 }
@@ -152,7 +158,7 @@
                 //remove spaces
                 //getData() returns "" if there is nothing
                 //we don't want to use deep-clean with regex here, so that user can identify their mistake
-                const pasted_value:string = (e.clipboardData as DataTransfer).getData("text/plain").replace(/\s/g, "");
+                const pasted_value:string = (clipboard_data as DataTransfer).getData("text/plain").replace(/\s/g, "");
 
                 //check and override error message
                 if(/^[0-9]+$/.test(pasted_value) === false){
@@ -172,7 +178,7 @@
 
                     this.status_text += "'.";
 
-                    this.concatenateSlots(input_fields);
+                    this.concatenateSlots();
                     return;
                 }
 
@@ -180,34 +186,45 @@
 
                 //can continue, so start pasting programmatically
                 //during this, if input_fields[x] is going over pasted_value.length, "" is pasted instead
-                for(let x = 0; x < input_fields.length; x++){
+                for(let x = 0; x < this.input_fields.length; x++){
 
                     if(x < pasted_value.length){
 
-                        input_fields[x].value = pasted_value[x];
+                        (this.input_fields[x] as HTMLInputElement).value = pasted_value[x];
                         last_filled_input_index = x;
 
                     }else{
 
-                        input_fields[x].value = "";
+                        (this.input_fields[x] as HTMLInputElement).value = "";
                     }
                 }
                 
                 //focus on last character of pasted input
                 //input listener only triggers for last slot, with e.data===null and current_input_field.value!=null
                 //input listener will not trigger for every slot before the last one if done in for-loop above
-                input_fields[last_filled_input_index].focus();
-                input_fields[last_filled_input_index].setSelectionRange(input_fields[last_filled_input_index].value.length, input_fields[last_filled_input_index].value.length);
+                const last_input_field = this.input_fields[last_filled_input_index] as HTMLInputElement;
+
+                last_input_field.focus();
+                last_input_field.setSelectionRange(
+                    last_input_field.value.length,
+                    last_input_field.value.length
+                );
 
                 this.resetErrorMessage();
-                this.concatenateSlots(input_fields);
+                this.concatenateSlots();
             },
-            handleBackspace(event:KeyboardEvent, input_fields:any, current_input_field:HTMLInputElement, current_input_field_index:number) : void {
+            handleBackspace(event:Event) : void {
 
+                const current_input_field = (event.currentTarget as HTMLInputElement);
                 const previous_input_field = current_input_field.previousElementSibling as HTMLInputElement;
+                const current_index = Number(current_input_field.getAttribute('data-index')!);
 
                 //handle backspace
-                if(event.key === "Backspace" && current_input_field_index > 0 && current_input_field.value.length === 0){
+                if(
+                    (event as KeyboardEvent).key === "Backspace" &&
+                    current_index > 0 &&
+                    current_input_field.value.length === 0
+                ){
 
                     previous_input_field.value = "";
                     previous_input_field.focus();
@@ -215,28 +232,28 @@
 
                     //reset
                     this.resetErrorMessage();
-                    this.concatenateSlots(input_fields);
-                    return;
+                    this.concatenateSlots();
                 }
             },
-            validateSlot(
-                e:InputEvent, input_fields:any, current_input_field:HTMLInputElement, current_input_field_index:number
-            ) : void {
+            validateSlot(event:Event) : void {
 
                 //current_input_field behaves as reference
                     //when manual user input, current_input_field.value!=null, e.data!=null
                     //when programmatically inserted input, current_input_field.value!=null, e.data===null
 
                 //null if not found
+                const current_input_field = (event.currentTarget as HTMLInputElement);
                 const next_input_field = current_input_field.nextElementSibling as HTMLInputElement;
+                const current_index = Number(current_input_field.getAttribute('data-index')!);
                 
                 //get the value in the context of slot that triggered validateSlot()
                 //irrelevant reminder that typeof null is object, not "null type"
                 let new_slot_value = "";
+                const input_data = (event as InputEvent).data;
 
-                if(e.data !== null && e.data.length > 0){
+                if(input_data !== null && input_data.length > 0){
 
-                    new_slot_value = e.data;
+                    new_slot_value = input_data;
 
                 }else if(current_input_field.value !== null && current_input_field.value.length > 0){
 
@@ -260,7 +277,7 @@
                     this.resetErrorMessage();
 
                     //handle input position
-                    if(next_input_field !== null && current_input_field_index < (input_fields.length - 1)){
+                    if(next_input_field !== null && current_index < (this.input_fields.length - 1)){
 
                         //go to next input if not last
                         next_input_field.focus();
@@ -274,65 +291,42 @@
                     current_input_field.value = "";
                 }
 
-                this.concatenateSlots(input_fields);
+                this.concatenateSlots();
+            },
+            selectEntireInput(event:Event) : void {
+
+                event.stopPropagation();
+
+                const current_input_field = event.currentTarget as HTMLInputElement;
+
+                current_input_field.setSelectionRange(0, current_input_field.value.length);
             },
         },
         mounted(){
 
-            //TODO:
-                //refactor to not use anonymous functions, else the listeners cannot be removed, causing memory leak
-                    //tried with .bind() and .apply(), wasn't successful
-                    //complexity lies in requiring outside values for inner procedures
-
             //add listeners
-            //not declaring as NodeListOf<HTMLInputElement> due to unfixable no-undef warning
-            const input_fields = document.querySelectorAll(".number-slot-field > input");
-            this.input_fields = input_fields;
+            this.input_fields = document.querySelectorAll(".number-slot-field > input");
 
-            input_fields.forEach((input_field:Element, x:number) => {
+            this.input_fields.forEach((input_field:Element) => {
 
-                input_field.addEventListener("keydown", (e) => {
-                    e.stopPropagation();
-                    this.handleBackspace(e as KeyboardEvent, input_fields, input_field as HTMLInputElement, x);
-                });
-                input_field.addEventListener("input", (e) => {
-                    e.stopPropagation();
-                    this.validateSlot(e as InputEvent, input_fields, input_field as HTMLInputElement, x);
-                });
-                input_field.addEventListener("click", (e) => {
-                    e.stopPropagation();
-                    (input_field as HTMLInputElement).setSelectionRange(0, (input_field as HTMLInputElement).value.length);
-                });
+                input_field.addEventListener("keydown", this.handleBackspace);
+                input_field.addEventListener("input", this.validateSlot);
+                input_field.addEventListener("click", this.selectEntireInput);
             });
 
-            input_fields[0].addEventListener("paste", (e) => {
-                this.handlePaste(e as ClipboardEvent, input_fields);
-            });
+            this.input_fields[0].addEventListener("paste", this.handlePaste);
         },
         beforeUnmount(){
 
             //remove listeners
-            const input_fields = document.querySelectorAll(".number-slot-field > input");
+            this.input_fields.forEach((input_field:Element) => {
 
-            input_fields.forEach((input_field, x) => {
-
-                input_field.removeEventListener("keydown", (e) => {
-                    e.stopPropagation();
-                    this.handleBackspace(e as KeyboardEvent,input_fields, input_field as HTMLInputElement, x);
-                });
-                input_field.removeEventListener("input", (e) => {
-                    e.stopPropagation();
-                    this.validateSlot(e as InputEvent, input_fields, input_field as HTMLInputElement, x);
-                });
-                input_field.removeEventListener("click", (e) => {
-                    e.stopPropagation();
-                    (input_field as HTMLInputElement).setSelectionRange(0, (input_field as HTMLInputElement).value.length);
-                });
+                input_field.removeEventListener("keydown", this.handleBackspace);
+                input_field.removeEventListener("input", this.validateSlot);
+                input_field.removeEventListener("click", this.selectEntireInput);
             });
 
-            input_fields[0].removeEventListener("paste", (e) => {
-                this.handlePaste(e as ClipboardEvent, input_fields);
-            });
+            this.input_fields[0].removeEventListener("paste", this.handlePaste);
         },
     });
 </script>

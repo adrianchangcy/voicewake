@@ -1,7 +1,6 @@
 <template>
     <div>
         <span>{{ ooga_count }}</span>
-        <button type="button" @click="addOogaCount()" class="w-10 h-10"></button>
     </div>
 </template>
 
@@ -12,6 +11,7 @@
         data(){
             return {
                 ooga_count: 0,
+                yolo_elements: [] as HTMLElement[],
             };
         },
         watch: {
@@ -27,5 +27,6 @@
         mounted(){
 
         },
+
     });
 </script>

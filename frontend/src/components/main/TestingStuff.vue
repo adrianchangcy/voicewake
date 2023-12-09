@@ -1,7 +1,7 @@
 <template>
     <div class="flex flex-row gap-8 pt-10">
     
-    <FontAwesomeIcon icon="fas fa-comments"/>
+    <!-- <FontAwesomeIcon icon="fas fa-comments"/> -->
 
 
     </div>
@@ -13,11 +13,11 @@
     // import VActionText from '../small/VActionText.vue';
     // import VTest from '../small/VTest.vue';
 
-    import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-    import { library } from '@fortawesome/fontawesome-svg-core';
-    import { faComments } from '@fortawesome/free-solid-svg-icons/faComments';
+    // import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+    // import { library } from '@fortawesome/fontawesome-svg-core';
+    // import { faComments } from '@fortawesome/free-solid-svg-icons/faComments';
 
-    library.add(faComments);
+    // library.add(faComments);
 </script>
 
 
@@ -99,7 +99,6 @@
                 text: "You'll finish this project soon. You can do this!",
                 type: "ok"
             }, 3000);
-
 
 
 
