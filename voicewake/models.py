@@ -117,8 +117,8 @@ class UserManager(BaseUserManager):
     #for normal users, if manual, call get_user_model().objects.create_user()
     #py manage.py createsuperuser and UserCreationForm will auto-call these methods
 
-    def create_user(self, email, username=None, **extra_fields):
-        return self._create_user(email, username, None, False, False, False, **extra_fields)
+    def create_user(self, email, username=None, is_active=False, **extra_fields):
+        return self._create_user(email, username, None, is_active, False, False, **extra_fields)
 
     def create_superuser(self, email, username, password, **extra_fields):
         return self._create_user(email, username, password, True, True, True, **extra_fields)

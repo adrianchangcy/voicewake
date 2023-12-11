@@ -261,8 +261,6 @@ class UserBannedAudioClipsAPI(generics.GenericAPIView):
             params=full_params
         )
 
-        audio_clips = AudioClips.objects.all()[0:10]
-
         list(audio_clips)
 
         if len(audio_clips) == 0:
@@ -278,14 +276,9 @@ class UserBannedAudioClipsAPI(generics.GenericAPIView):
             'id': audio_clips[0].id,
         })
 
-        # result['next_cursor_token'] = encode_cursor_token({
-        #     'last_modified': audio_clips[-1].last_modified.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-        #     'id': audio_clips[-1].id,
-        # })
-
         result['next_cursor_token'] = encode_cursor_token({
-            'last_modified': audio_clips[9].last_modified.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-            'id': audio_clips[9].id,
+            'last_modified': audio_clips[-1].last_modified.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+            'id': audio_clips[-1].id,
         })
 
         return result

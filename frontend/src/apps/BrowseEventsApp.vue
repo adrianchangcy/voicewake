@@ -181,7 +181,7 @@
             <!--loading events-->
             <TransitionFade>
                 <EventCardSkeleton
-                    v-show="is_fetching"
+                    v-show="filtered_events_store.isFetching"
                     :prop-has-border="true"
                     :prop-audio-clip-quantity="2"
                 />
@@ -377,7 +377,6 @@
                 has_restored_scroll_once: false,
 
                 infinite_scroll_observer: new IntersectionObserver(this.getInfiniteScrollCallback(), {threshold: 1}),
-                is_fetching: false,
                 can_observer_fetch: false,
                 is_error_on_previous_fetch: false,
 
@@ -398,7 +397,7 @@
             canPauseScrolling() : boolean {
 
                 return (
-                    this.is_fetching === false &&
+                    this.filtered_events_store.isFetching === false &&
                     this.can_pause_scrolling === true &&
                     this.filtered_events_store.canStopFetching === false
                 );
@@ -407,7 +406,7 @@
 
                 return (
                     this.filtered_events_store.getEventsForBrowsing.length === 0 &&
-                    this.is_fetching === false &&
+                    this.filtered_events_store.isFetching === false &&
                     this.filtered_events_store.canStopFetching === true &&
                     this.is_error_on_previous_fetch === false
                 );
@@ -416,7 +415,7 @@
 
                 return (
                     this.filtered_events_store.getEventsForBrowsing.length > 0 &&
-                    this.is_fetching === false &&
+                    this.filtered_events_store.isFetching === false &&
                     this.filtered_events_store.canStopFetching === true &&
                     this.is_error_on_previous_fetch === false
                 );
@@ -424,7 +423,7 @@
             canShowManualFetchRetry() : boolean {
                 return (
                     this.filtered_events_store.getEventsForBrowsing.length > 0 &&
-                    this.is_fetching === false &&
+                    this.filtered_events_store.isFetching === false &&
                     this.filtered_events_store.canStopFetching === false &&
                     this.is_error_on_previous_fetch === true
                 );
@@ -532,9 +531,15 @@
                     ];
                 }
 
-                //don't check for is_fetching here, since user may change filter while already fetching
-
-                this.is_fetching = true;
+                //is fetching
+                this.filtered_events_store.updateIsFetching(
+                    true,
+                    current_event_generic_status_name_index,
+                    current_main_filter_index,
+                    current_timeframe_index,
+                    current_audio_clip_role_name_index,
+                    current_audio_clip_tone_id,
+                );
 
                 await axios.get(full_url)
                 .then(async (result:any)=>{
@@ -562,7 +567,15 @@
 
                 }).finally(()=>{
 
-                    this.is_fetching = false;
+                    //no longer fetching
+                    this.filtered_events_store.updateIsFetching(
+                        false,
+                        current_event_generic_status_name_index,
+                        current_main_filter_index,
+                        current_timeframe_index,
+                        current_audio_clip_role_name_index,
+                        current_audio_clip_tone_id,
+                    );
                 });
             },
             async constructFirstPageURL(
@@ -655,7 +668,7 @@
 
                 return async ()=>{
                     if(
-                        this.is_fetching === true ||
+                        this.filtered_events_store.isFetching === true ||
                         this.can_observer_fetch === false ||
                         this.can_pause_scrolling === true ||
                         this.is_error_on_previous_fetch === true ||
