@@ -43,7 +43,6 @@
                 :prop-is-open="true"
                 :prop-audio-volume-peaks="getSelectedAudioClipAudioVolumePeaks"
                 :prop-bucket-quantity="20"
-                :prop-auto-play-on-source-change="true"
             />
         </Teleport>
     </div>
@@ -109,6 +108,10 @@
                     this.dynamic_scroller_buffer = window.innerHeight * 2;
                 }, 200);
             },
+        },
+        beforeMount(){
+
+            this.vplayback_store.updateCanAutoplay(true);
         },
         mounted(){
 

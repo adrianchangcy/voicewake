@@ -18,6 +18,7 @@ from django.db import connection
 from voicewake.services import *
 from voicewake.models import *
 from voicewake.cronjobs import *
+from voicewake.factories import *
 from django.conf import settings
 
 #py packages
@@ -49,71 +50,12 @@ class Random_TestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
-        cls.users = []
-
-        for x in range(0, 6):
-
-            current_user = get_user_model().objects.create_user(
-                username='useR'+str(x),
-                email='user'+str(x)+'@gmail.com',
-            )
-
-            current_user = get_user_model().objects.get(username_lowercase="user"+str(x))
-
-            current_user.is_active = True
-            current_user.save()
-
-            cls.users.append(current_user)
-
-        #audio file
-        cls.audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/audio_can_overwrite.mp3')
-        cls.audio_file = open(cls.audio_file_full_path, 'rb')
-        cls.audio_file = SimpleUploadedFile(cls.audio_file.name, cls.audio_file.read(), 'audio/mp3')
-
-        #dummy file
-        cls.dummy_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/dummy_file.txt')
-        cls.dummy_file = open(cls.dummy_file_full_path, 'rb')
-        cls.dummy_file = SimpleUploadedFile(cls.dummy_file.name, cls.dummy_file.read(), 'audio/mp3')
-
-        cls.audio_file_path = "/audio_test.mp3"
-        cls.audio_volume_peaks = [
-            0.32, 0.47, 0.76, 0.75, 0.79, 0.59, 0.78, 0.83, 0.85, 0.77,
-            0.62, 0.69, 0.97, 0.96, 0.97, 0.96, 0.96, 0.63, 0.47, 0.0
-        ]
-        cls.audio_duration_s = 26
-        cls.audio_clip_tone = AudioClipTones.objects.first()
-
-
-    def create_audio_clip(
-        self,
-        user_id:int, event_id:int, audio_clip_role_name:Literal['originator', 'responder'],
-        audio_clip_tone_id:int=1,
-        generic_status_name:str="ok", is_banned:bool=False,
-    ):
-
-            return AudioClips(
-                user_id=user_id,
-                event_id=event_id,
-                audio_clip_role=AudioClipRoles.objects.get(audio_clip_role_name=audio_clip_role_name),
-                audio_clip_tone_id=audio_clip_tone_id,
-                generic_status=GenericStatuses.objects.get(generic_status_name=generic_status_name),
-                audio_duration_s=self.audio_duration_s,
-                audio_volume_peaks=self.audio_volume_peaks,
-                audio_file=None,
-                is_banned=is_banned,
-            )
-
-
-    def create_event(self, created_by, generic_status_name="incomplete"):
-
-        return Events.objects.create(
-            event_name="yolo",
-            created_by=created_by,
-            generic_status=GenericStatuses.objects.get(generic_status_name=generic_status_name)
-        )
+        cls.users = UsersFactory.create_batch(5)
 
 
     def test_random(self):
+
+
 
         pass
 
@@ -752,6 +694,7 @@ class System_TestCase(TestCase):
 
 
 
+#not yet adjusted to use FactoryBoy
 @override_settings(
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
     MEDIA_ROOT = os.path.join(settings.BASE_DIR, 'voicewake/tests'),

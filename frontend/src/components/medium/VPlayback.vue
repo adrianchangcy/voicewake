@@ -306,7 +306,7 @@
 
                 is_playback_speed_options_open: false,
 
-                //handleHasMetadata() make this true, but only when propIsOpen is true
+                //handleHasMetadata() makes this true, but only when propIsOpen is true
                 //else, the related functions don't run until propIsOpen is true
                 //resets on new audio
                 is_initialised_on_new_audio: false,
@@ -331,10 +331,6 @@
             'newFileVolumes', 'isReadyToPlay', 'isProcessing'
         ],
         props: {
-            propAutoPlayOnSourceChange: {
-                type: Boolean,
-                default: false
-            },
             propAudioClip: {
                 type: Object as PropType<AudioClipsAndLikeDetailsTypes|AudioClipsTypes|null>,
                 default: null

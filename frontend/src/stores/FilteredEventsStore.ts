@@ -7,12 +7,14 @@ import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.inte
 
 //reminder, Pinia does not rehydrate Date() as Date(), but string
 
+//put is_fetching here to keep every filter variation independent
 interface DefaultPageTypes {
     events: EventsAndAudioClipsTypes[],
     are_all_rows_fetched: boolean,
     last_selected_audio_clip: AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null,
     next_url: string,
     back_url: string,
+    is_fetching: boolean,
 }
 
 interface FilteredEventsStructure {
@@ -183,6 +185,28 @@ export function useFilteredEventsStore(is_user_page:boolean){
             getCurrentAudioClipTone: (state):AudioClipTonesTypes|null => {
 
                 return state.current_audio_clip_tone;
+            },
+            isFetching: (state):boolean|null => {
+                try{
+
+                    return state.filtered_events_structure[
+                        state.current_event_generic_status_name_index
+                    ][
+                        state.current_main_filter_index
+                    ][
+                        state.current_timeframe_index
+                    ][
+                        state.current_audio_clip_role_name_index
+                    ][
+                        state.current_audio_clip_tone_id
+                    ][
+                        'is_fetching'
+                    ];
+
+                }catch(error){
+
+                    return null;
+                }
             },
         },
         actions: {
@@ -467,6 +491,7 @@ export function useFilteredEventsStore(is_user_page:boolean){
                         'last_selected_audio_clip': null,
                         'next_url': '',
                         'back_url': '',
+                        is_fetching: false,
                     };
                 }
             },
@@ -559,6 +584,27 @@ export function useFilteredEventsStore(is_user_page:boolean){
             
                 new_value.audio_clip.previous_is_liked_by_user = new_value.audio_clip.is_liked_by_user;
                 new_value.audio_clip.is_liked_by_user = new_value.new_is_liked;
+            },
+            updateIsFetching(
+                is_fetching: boolean,
+                current_event_generic_status_name_index:number,
+                current_main_filter_index:number,
+                current_timeframe_index:number,
+                current_audio_clip_role_name_index:number,
+                current_audio_clip_tone_id:number,
+            ) : void {
+
+                this.filtered_events_structure[
+                    current_event_generic_status_name_index
+                ][
+                    current_main_filter_index
+                ][
+                    current_timeframe_index
+                ][
+                    current_audio_clip_role_name_index
+                ][
+                    current_audio_clip_tone_id
+                ]['is_fetching'] = is_fetching;
             },
         },
         persist: !is_user_page,
