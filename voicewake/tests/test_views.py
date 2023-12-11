@@ -420,13 +420,6 @@ class AudioClips_TestCase(TestCase):
         pass
 
 
-    def test_prepare_test_data(self):
-
-        prepare_test_data_class = PrepareTestData(for_test=True)
-
-        prepare_test_data_class.do_quick_start(1)
-
-
     def test_ffmpeg(self):
 
         #should have webm/opus and mp4/__ files for test, but too lazy for now
@@ -488,6 +481,10 @@ class AudioClips_TestCase(TestCase):
 
 
 
+@override_settings(
+    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    MEDIA_ROOT = os.path.join(settings.BASE_DIR, 'voicewake/tests'),
+)
 class System_TestCase(TestCase):
 
     @classmethod
@@ -544,15 +541,14 @@ class System_TestCase(TestCase):
 
     def test_like_dislike_and_trigger(self):
 
-        self.login(self.user_1_instance)
+        self.login(self.users[0])
 
         #create user2 audio_clip
-        prepare_test_data_class = PrepareTestData(for_test=True)
-        prepare_test_data_class.prepare_test_data_events(
-            self.user_1_username,
-            self.user_2_username,
-            0,
-            1
+        target_event = EventsFactory(event_created_by=self.users[1], generic_status_generic_status_name='incomplete')
+        target_audio_clip = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=target_event,
         )
 
         def do_like_dislike(audio_clip_id, is_liked, previous_is_liked=None):
@@ -576,7 +572,10 @@ class System_TestCase(TestCase):
             #check db
             try:
 
-                audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(audio_clip_id=audio_clip_id, user_id=self.user_1_instance.id)
+                audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(
+                    audio_clip_id=audio_clip_id,
+                    user_id=self.users[0]
+                )
                 self.assertEqual(audio_clip_like_dislike.is_liked, is_liked)
 
             except AudioClipLikesDislikes.DoesNotExist:
@@ -627,7 +626,7 @@ class System_TestCase(TestCase):
         #check like/dislike doesn't exist for current user
         self.assertFalse(
             AudioClipLikesDislikes.objects.filter(
-                audio_clip_id=first_audio_clip.id, user_id=self.user_1_instance.id
+                audio_clip_id=first_audio_clip.id, user=self.users[1]
             ).exists()
         )
 
@@ -646,7 +645,7 @@ class System_TestCase(TestCase):
 
     def test_user_block(self):
 
-        self.login(self.user_1_instance)
+        self.login(self.users[0])
 
         def do_block(to_block:bool):
 
@@ -654,7 +653,7 @@ class System_TestCase(TestCase):
             request = self.client.post(
                 path=reverse('user_blocks_api'),
                 data={
-                    'username': self.user_2_username,
+                    'username': self.users[1].username,
                     'to_block': to_block
                 }
             )
@@ -662,7 +661,7 @@ class System_TestCase(TestCase):
             #expect success
             self.assertEqual(request.status_code, 200)
 
-            self.assertEqual(UserBlocks.objects.filter(user=self.user_1_instance, blocked_user=self.user_2_instance).exists(), to_block)
+            self.assertEqual(UserBlocks.objects.filter(user=self.users[0], blocked_user=self.users[1]).exists(), to_block)
 
         #block
         do_block(True)
@@ -676,21 +675,18 @@ class System_TestCase(TestCase):
 
     def test_audio_clip_report(self):
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        self.login(self.users[0])
+
+        target_event = EventsFactory(event_created_by=self.users[1], generic_status_generic_status_name='incomplete')
+        target_audio_clip = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=target_event,
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
-        )
+        request = self.client.post(reverse('create_audio_clip_reports_api'), data={'audio_clip_id': target_audio_clip.id})
 
-        self.login(self.users[1])
-
-        self.client.post(reverse('create_audio_clip_reports_api'))
-
+        self.assertEqual(request.status_code, 200)
 
 
 
