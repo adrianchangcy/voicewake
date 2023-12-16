@@ -1,0 +1,21 @@
+{% extends 'voicewake/base.html' %}
+
+{% block extra_head %}
+    <title>
+        Your Likes and Dislikes
+    </title>
+    <meta name="description" content="{{ username }}'s likes and dislikes.">
+    <meta name="robots" content="noindex,nofollow">
+{% endblock %}
+
+{% block content %}
+
+    <div
+        data-username="{{ username }}"
+        data-is-own-page="{{ is_own_page }}"
+        id="data-container-list-user-likes-dislikes"
+    >
+
+        <div id="list-user-likes-dislikes-app"></div>
+    </div>
+{% endblock %}

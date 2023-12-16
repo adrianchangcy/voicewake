@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db import connection
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Q
 
 #apps
 from voicewake.services import *
@@ -19,12 +19,24 @@ def cronjob_ban_audio_clips():
     #but this also ensures that we don't eternally evaluate oldest reports
     earliest_datetime = datetime_now - timedelta(seconds=settings.BAN_AUDIO_CLIP_MIN_AGE_S)
 
-    generic_status_deleted = GenericStatuses.objects.get(generic_status_name='deleted')
-    generic_status_incomplete = GenericStatuses.objects.get(generic_status_name='incomplete')
+    generic_statuses = GenericStatuses.objects.filter(generic_status_name__in=('deleted', 'incomplete',))
+    generic_status_deleted = None
+    generic_status_incomplete = None
+
+    for row in generic_statuses:
+
+        if row.generic_status_name == 'deleted':
+
+            generic_status_deleted = row
+
+        elif row.generic_status_name == 'incomplete':
+
+            generic_status_incomplete = row
 
     with transaction.atomic():
 
         #get guaranteed bans and rows from related tables
+        #Q() is important since you cannot do comparison with NULL, e.g. >= NULL
         audio_clip_reports = AudioClipReports.objects.select_for_update(
             of=('self', 'audio_clip',),
             no_key=True,
@@ -35,11 +47,10 @@ def cronjob_ban_audio_clips():
             'audio_clip__audio_clip_role',
             'audio_clip__user',
         ).filter(
+            Q(last_evaluated__isnull=True) | (Q(last_evaluated__gte=earliest_datetime) & Q(last_reported__gt=F('last_evaluated'))),
             audio_clip__is_banned=False,
             audio_clip__like_ratio__lte=settings.BAN_AUDIO_CLIP_LIKE_RATIO,
             audio_clip__dislike_count__gte=settings.BAN_AUDIO_CLIP_DISLIKE_COUNT,
-            last_evaluated__gte=earliest_datetime,
-            last_reported__gt=F('last_evaluated'),
         ).order_by(
             F('last_evaluated').asc(nulls_first=True)
         )[0:settings.CRONJOB_BAN_AUDIO_CLIP_QUANTITY_LIMIT]
@@ -110,8 +121,14 @@ def cronjob_ban_audio_clips():
 
             target_user_index = user_ids.index(audio_clip_report.audio_clip.user.id)
 
-            ban_days = settings.CRONJOB_AUDIO_CLIP_BAN_DAYS ** users[target_user_index].ban_count
             users[target_user_index].ban_count += 1
+            ban_days = settings.CRONJOB_AUDIO_CLIP_BAN_DAYS ** users[target_user_index].ban_count
+
+            #cap ban_days, else it can get out of hand
+            if ban_days > settings.CRONJOB_AUDIO_CLIP_MAX_BAN_DAYS:
+
+                ban_days = settings.CRONJOB_AUDIO_CLIP_MAX_BAN_DAYS
+
             users[target_user_index].banned_until = datetime_now + timedelta(days=ban_days)
 
         #update everything

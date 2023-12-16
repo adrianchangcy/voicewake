@@ -71,18 +71,12 @@
         },
         watch: {
             propIsOpen(new_value:boolean){
+
                 this.is_open = new_value;
             },
-            propAudioVolumePeaks(new_value){
+            propAudioVolumePeaks(){
 
-                this.$nextTick(async ()=>{
-                    await drawCanvasRipples(
-                        this.$refs.canvas_ripples_container as HTMLElement,
-                        this.$refs.canvas_ripples as HTMLCanvasElement,
-                        new_value,
-                        'center'
-                    );
-                });
+                this.drawRipples();
             },
         },
         methods: {
@@ -98,36 +92,32 @@
             },
             async redrawCanvasRipplesOnResize() : Promise<void> {
 
-                await drawCanvasRipples(
-                    this.$refs.canvas_ripples_container as HTMLElement,
-                    this.$refs.canvas_ripples as HTMLCanvasElement,
-                    this.propAudioVolumePeaks,
-                    'center',
-                    this.propBucketQuantity,
-                );
+                await this.drawRipples();
 
                 //redraw again after 200ms
                 //resize can sometimes fire before final dimension is known
                 window.setTimeout(async ()=>{
-                    await drawCanvasRipples(
-                        this.$refs.canvas_ripples_container as HTMLElement,
-                        this.$refs.canvas_ripples as HTMLCanvasElement,
-                        this.propAudioVolumePeaks,
-                        'center'
-                    );
+                    await this.drawRipples();
                 }, 200);
+            },
+            async drawRipples() : Promise<void> {
+
+                //can be 0
+                if(this.propAudioVolumePeaks.length === this.propBucketQuantity){
+
+                    this.$nextTick(()=>{
+
+                        drawCanvasRipples(
+                            (this.$refs.canvas_ripples_container as HTMLElement).getBoundingClientRect(),
+                            this.$refs.canvas_ripples as HTMLCanvasElement,
+                            this.propAudioVolumePeaks,
+                            'center',
+                        );
+                    });
+                }
             },
         },
         mounted(){
-
-            this.$nextTick(async ()=>{
-                await drawCanvasRipples(
-                    this.$refs.canvas_ripples_container as HTMLElement,
-                    this.$refs.canvas_ripples as HTMLCanvasElement,
-                    this.propAudioVolumePeaks,
-                    'center'
-                );
-            });
 
             window.addEventListener('resize', this.redrawCanvasRipplesOnResize);
         },

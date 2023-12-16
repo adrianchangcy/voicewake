@@ -335,17 +335,24 @@ export function isPageAccessedByBackForward() : boolean {
 }
 
 
-export async function drawCanvasRipples(
-    canvas_container_element:HTMLElement,
+export function drawCanvasRipples(
+    canvas_container_rect:DOMRect,
     canvas_element:HTMLCanvasElement,
     audio_volume_peaks:number[]=[],
     transform_origin:'center'|'bottom'='center',
-    bucket_quantity:number=20,
     ripple_width_px:number=2,
-) : Promise<void> {
+) : void {
 
-    //everything must be rounded to allow css image-rendering to work properly
+    //everything must be rounded to non-float values allow css image-rendering to work properly
     //be sure that <canvas> also has css w-full h-full
+
+    if(
+        (canvas_container_rect.width === 0 && canvas_container_rect.height === 0) ||
+        audio_volume_peaks.length === 0
+    ){
+
+        return;
+    }
 
     //use DPI to maintain canvas resolution
     //depending on device, or whether user is zoomed in, DPI can be different
@@ -354,9 +361,8 @@ export async function drawCanvasRipples(
     //ensure ripple also scales with DPI
     ripple_width_px = Math.floor(2 * dpi);
 
-    //if getBoundingClientRect() has 0 width/height, try calling from component's this.$nextTick() instead
-    const rect = canvas_container_element.getBoundingClientRect();
     const canvas_context = canvas_element.getContext('2d') as CanvasRenderingContext2D;
+    const ripple_quantity = audio_volume_peaks.length;
 
     //clear canvas for redraw
     canvas_context.clearRect(0, 0, canvas_element.width, canvas_element.height);
@@ -364,32 +370,21 @@ export async function drawCanvasRipples(
     //canvas width and css width are separate things
     //if they are not equal, you will get stretching, pixelation, etc.
     //we adjust resolution according to DPI, while canvas still behaves within w-full h-full CSS
-    canvas_element.width = Math.floor(rect.width * dpi);
-    canvas_element.height = Math.floor(rect.height * dpi);
+    canvas_element.width = Math.floor(canvas_container_rect.width * dpi);
+    canvas_element.height = Math.floor(canvas_container_rect.height * dpi);
 
     //spacing between ripples, divided without -1 so we have right-most space
     //what's surprising is that the ripples themselves don't need to be accounted for here
-    const spacing = Math.floor(canvas_element.width / (bucket_quantity - 1));
+    const spacing = Math.floor(canvas_element.width / (ripple_quantity - 1));
 
     //recalculate width, with and without DPI
     //this allows us to perfectly fit our rects, and we can then mx-auto it
-    const new_canvas_width = (spacing * (bucket_quantity - 1)) + ripple_width_px;
+    const new_canvas_width = (spacing * (ripple_quantity - 1)) + ripple_width_px;
     canvas_element.width = new_canvas_width;
     canvas_element.style.width = (new_canvas_width / dpi).toString() + 'px';
 
     //canvas must have valid and latest width and height, else this won't be applied
     canvas_context.fillStyle = audio_volume_peaks.length === 0 ? "#FFFFFF00" : "#444444";
-
-    //check if peaks are empty
-    //doing it this way also handles mismatched quantity
-    if(audio_volume_peaks.length !== bucket_quantity){
-
-        for(let i = 0; i < bucket_quantity; i++){
-
-            //assign lowest non-zero peak
-            audio_volume_peaks.push(0.05);
-        }
-    }
 
     //use this function to ensure that peaks stay within our range
     function getRipple(
@@ -421,7 +416,7 @@ export async function drawCanvasRipples(
 
         //loop through and draw evenly spaced lines
         //do i=1 for left-most space to already exist
-        for(let i = 0; i < bucket_quantity; i++){
+        for(let i = 0; i < ripple_quantity; i++){
 
             ripple_height_px = getRipple(canvas_element.height, audio_volume_peaks[i]);
 
@@ -438,7 +433,7 @@ export async function drawCanvasRipples(
 
         //loop through and draw evenly spaced lines
         //do i=1 for left-most space to already exist
-        for(let i = 0; i < bucket_quantity; i++){
+        for(let i = 0; i < ripple_quantity; i++){
 
             ripple_height_px = getRipple(canvas_element.height, audio_volume_peaks[i]);
 

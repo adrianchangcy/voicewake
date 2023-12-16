@@ -4,10 +4,13 @@
 
             <div class="flex flex-row items-center">
                 <FontAwesomeIcon icon="fas fa-user" class="text-2xl pl-2 pr-4"/>
-                <span class="text-2xl font-medium break-all">{{ propUsername }}</span>
+                <span class="text-2xl font-medium break-all">{{ username }}</span>
             </div>
 
-            <div class="flex flex-row gap-1">
+            <div
+                v-if="propHasDefaultActions"
+                class="flex flex-row gap-1"
+            >
                 <VActionBorder
                     @click="copyUserURL()"
                     prop-element-size="s"
@@ -53,6 +56,10 @@
                     </span>
                 </VActionBorder>
             </div>
+
+            <div v-else class="text-xl font-medium pl-2">
+                <slot></slot>
+            </div>
         </div>
     </div>
 </template>
@@ -77,7 +84,7 @@
 
 
 <script lang="ts">
-    import { defineComponent } from 'vue';
+    import { PropType, defineComponent } from 'vue';
     import { notify } from 'notiwind';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     // import anime from 'animejs';
@@ -95,14 +102,18 @@
 
                 is_blocked: false,
                 is_blocking: false,
+
+                is_own_page: false,
             };
         },
-        watch: {
-        },
         props: {
-            propUsername: {
-                type: String,
-                required: true
+            propPageContext: {
+                type:String as PropType<"home"|"user_profile"|"user_likes_dislikes">,
+                default: "home",
+            },
+            propHasDefaultActions: {
+                type: Boolean,
+                default: true,
             },
         },
         computed: {
@@ -126,7 +137,7 @@
 
                 let data = new FormData();
 
-                data.append('username', this.propUsername);
+                data.append('username', this.username);
                 data.append('to_block', JSON.stringify((!this.is_blocked)));
 
                 await axios.post(window.location.origin + '/api/users/blocks', data)
@@ -160,7 +171,7 @@
                     return;
                 }
 
-                const url = window.origin + "/user/" + this.propUsername;
+                const url = window.origin + "/user/" + this.username;
                 navigator.clipboard.writeText(url);
 
                 notify({
@@ -177,14 +188,21 @@
                 }, 2000);
             },
         },
-
         beforeMount(){
 
-            const container = (document.getElementById('data-container-get-user-profile') as HTMLElement);
-            this.username = (container.getAttribute('data-user-profile-username') as string);
+            if(this.propPageContext === 'user_profile'){
 
-            this.is_own_profile = JSON.parse(container.getAttribute('data-is-own-profile') as string);
-            this.is_blocked = JSON.parse(container.getAttribute('data-is-blocked') as string);
-        },
+                const container = (document.getElementById('data-container-get-user-profile') as HTMLElement);
+                this.username = (container.getAttribute('data-username') as string);
+                this.is_own_page = JSON.parse(container.getAttribute('data-is-own-page') as string);
+                this.is_blocked = JSON.parse(container.getAttribute('data-is-blocked') as string);
+
+            }else if(this.propPageContext === 'user_likes_dislikes'){
+
+                const container = (document.getElementById('data-container-list-user-likes-dislikes') as HTMLElement);
+                this.username = (container.getAttribute('data-username') as string);
+                this.is_own_page = JSON.parse(container.getAttribute('data-is-own-page') as string);
+            }
+        }
     });
 </script>

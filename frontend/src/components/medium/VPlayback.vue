@@ -1,6 +1,6 @@
 <template>
     <div
-        class="border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors text-center     backdrop-blur bg-theme-light/60"
+        class="h-20 border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors text-center     backdrop-blur bg-theme-light/60"
     >
         <!--add @timeupdate at mounted(), not here, as beforeUnmount() cannot remove it, and it'll still fire after unmount-->
         <!--must add all calls in handleHasMetadata(), not here, since the Infinity duration is not fixed until then-->
@@ -23,7 +23,7 @@
             ref="playback_main"
             :class="[
                 propHasAudioClipTone === true ? 'grid-cols-4' : 'grid-cols-3 pr-4',
-                'h-20 grid grid-rows-2'
+                'h-full grid grid-rows-2'
             ]"
             @click="[updateInstanceLastInteracted()]"
             @pointerdown="[updateInstanceLastInteracted()]"
@@ -147,7 +147,7 @@
                 <!--current duration-->
                 <div class="row-start-1 row-span-1 col-start-1 col-span-1 relative text-xs sm:text-sm">
                     <span class="sr-only">current duration</span>
-                    <span class="absolute w-fit h-fit left-0 -top-[0.625rem] bottom-0 m-auto">{{pretty_current_playback_time}}</span>
+                    <span class="absolute w-fit h-fit left-0 -top-2 bottom-0 m-auto">{{pretty_current_playback_time}}</span>
                 </div>
 
                 <!--volume-->
@@ -175,7 +175,7 @@
                             type="button"
                             :propIsIconOnly="true"
                             :propIsDefaultOutlineOffset="false"
-                            class="w-full h-9 absolute bottom-0"
+                            class="w-full h-[2.1875rem] absolute bottom-0"
                         >
                             <div class="w-full h-full relative">
                                 <span
@@ -218,7 +218,7 @@
 
                 <!--total duration-->
                 <div class="row-start-1 row-span-1 col-start-3 col-span-1 relative text-xs sm:text-sm">
-                    <span class="absolute w-fit h-fit right-0 -top-[0.625rem] bottom-0 m-auto">
+                    <span class="absolute w-fit h-fit right-0 -top-2 bottom-0 m-auto">
                         <span class="sr-only">total duration</span>
                         {{pretty_playback_duration}}
                     </span>
@@ -328,7 +328,7 @@
             };
         },
         emits: [
-            'newFileVolumes', 'isReadyToPlay', 'isProcessing'
+            'newFileVolumes', 'isReadyToPlay', 'isProcessing',
         ],
         props: {
             propAudioClip: {
@@ -459,15 +459,8 @@
 
                             await this.createPlaybackSliderAnime();
                             await this.syncSliderAnimeAfterSuspend();
+                            await this.drawRipples();
                         }
-
-                        await drawCanvasRipples(
-                            this.$refs.canvas_ripples_container as HTMLElement,
-                            this.$refs.canvas_ripples as HTMLCanvasElement,
-                            this.propAudioVolumePeaks,
-                            'bottom',
-                            this.propBucketQuantity,
-                        );
                     });
 
                 }else if(new_value === false && this.playback_paused === false){
@@ -858,6 +851,9 @@
                     //for audio_clip listener 'resize', this recreates slider anime and syncs it
                     await this.adjustPlaybackSliderDimension();
 
+                    //redraw canvas
+                    await this.drawRipples();
+
                     if(this.isPlaybackReady === true && isNaN((this.$refs.audio_element as HTMLAudioElement).duration) === false){
                         
                         await this.createPlaybackSliderAnime();
@@ -865,13 +861,6 @@
                     }
 
                     //redraw canvas
-                    await drawCanvasRipples(
-                        this.$refs.canvas_ripples_container as HTMLElement,
-                        this.$refs.canvas_ripples as HTMLCanvasElement,
-                        this.propAudioVolumePeaks,
-                        'bottom',
-                        this.propBucketQuantity,
-                    );
                 }
 
                 //run once, i.e. immediately
@@ -914,6 +903,14 @@
                 //to be called during handleHasMetadata(), window resize, changePlaybackRate()
                 //we can then use .play/.pause/.seek
                 //expects to already have accurate this.playback_slider_value
+
+                //sometimes, immediate mounting and unmounting causes race condition
+                    //e.g. store has reply choice --> open reply page --> load VPlayback --> immediately expire
+
+                if(this.playback_slider_dimension === null){
+
+                    return;
+                }
 
                 //states
                 this.is_playback_slider_ready = false;
@@ -1412,17 +1409,6 @@
                 //states
                 this.is_playback_attached = true;
                 this.is_playback_attaching = false;
-
-                //draw canvas
-                this.$nextTick(async ()=>{
-                    await drawCanvasRipples(
-                        this.$refs.canvas_ripples_container as HTMLElement,
-                        this.$refs.canvas_ripples as HTMLCanvasElement,
-                        this.propAudioVolumePeaks,
-                        'bottom',
-                        this.propBucketQuantity,
-                    );
-                });
             },
             async handleHasMetadata() : Promise<void> {
 
@@ -1453,6 +1439,7 @@
                     );
 
                     await this.adjustPlaybackSliderDimension();
+                    await this.drawRipples();
                     await this.createPlaybackSliderAnime();
                     await this.setInitialPlaybackSliderValue();
                     this.seekPlayback();
@@ -1467,6 +1454,18 @@
                 //don't try to access (this.$refs.audio_element as HTMLAudioElement).duration precisely here, as something is async
                 //you'll get 0, but if you check via watch, the value does change
                 //put your code in handler instead if you need to run something else
+            },
+            async drawRipples() : Promise<void> {
+
+                this.$nextTick(()=>{
+
+                    drawCanvasRipples(
+                        (this.$refs.canvas_ripples_container as HTMLElement).getBoundingClientRect(),
+                        this.$refs.canvas_ripples as HTMLCanvasElement,
+                        this.propAudioVolumePeaks,
+                        'bottom',
+                    );
+                });
             },
         },
         beforeMount(){

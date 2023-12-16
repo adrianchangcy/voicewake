@@ -2,16 +2,16 @@
 
 {% block extra_head %}
     <title>
-        User: {{ user_profile_username }}
+        User: {{ username }}
     </title>
-    <meta name="description" content="User page for {{ user_profile_username }}">
+    <meta name="description" content="{{ username }}'s page.">
 {% endblock %}
 
 {% block content %}
 
     <div
-        data-user-profile-username="{{user_profile_username}}"
-        data-is-own-profile="{{is_own_profile}}"
+        data-username="{{ username }}"
+        data-is-own-page="{{ is_own_page }}"
         data-is-blocked="{{is_blocked}}"
         id="data-container-get-user-profile"
     >

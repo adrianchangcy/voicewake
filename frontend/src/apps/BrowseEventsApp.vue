@@ -3,16 +3,28 @@
 
         <!--user profile-->
         <VUserCard
-            v-if="propIsUserProfilePage"
-            :prop-username="user_profile_username"
+            v-if="isUserProfilePage"
+            :prop-page-context="propPageContext"
+            :prop-has-default-actions="true"
+            @new-username="handleNewUsername($event)"
             class="py-8"
         />
+
+        <!--user likes dislikes-->
+        <VUserCard
+            v-else-if="isUserLikesDislikesPage"
+            :prop-page-context="propPageContext"
+            :prop-has-default-actions="false"
+            class="py-8"
+        >
+            <span>Likes and Dislikes</span>
+        </VUserCard>
 
         <!--sorting options-->
         <div
             ref="sorting_options_container"
             :class="[
-                propIsUserProfilePage ? 'pb-8' : 'pb-10',
+                isUserProfilePage || isUserLikesDislikesPage ? 'pb-8' : 'pb-10',
                 'flex flex-col'
             ]"
         >
@@ -65,64 +77,71 @@
                         class="absolute w-full h-fit top-4 z-20 flex flex-col p-4 gap-4 rounded-lg border-2 border-theme-black bg-theme-light"
                     >
 
-                    <!--main filters-->
-                        <div class="w-fit flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors px-2">
-                            <VActionText
-                                v-for="(filter_type, index) in filtered_events_store.getMainFilters"
-                                :key="index"
-                                @click="filtered_events_store.updateCurrentMainFilterIndex(index)"
-                                :disabled="filtered_events_store.isSameCurrentMainFilterIndex(index)"
-                                prop-element="button"
-                                prop-element-size="s"
-                                prop-font-size="s"
-                                :prop-is-icon-only="true"
-                                class="p-2 relative"
+                        <!--get width of widest child, and match all child widths to it-->
+                        <div class="flex flex-col gap-4 w-fit">
+
+                            <!--likes/dislikes-->
+                            <div
+                                v-if="isUserLikesDislikesPage"
+                                class="w-full flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors px-2"
                             >
-                                <span>{{ filter_type }}</span>
-                                <span
-                                    v-show="filtered_events_store.isSameCurrentMainFilterIndex(index)"
-                                    class="sr-only"
+                                <VActionText
+                                    v-for="(filter_type, index) in filtered_events_store.getLikeDislikeChoices"
+                                    :key="index"
+                                    @click="filtered_events_store.updateCurrentLikeDislikeChoiceIndex(index)"
+                                    :disabled="filtered_events_store.isSameCurrentLikeDislikeChoiceIndex(index)"
+                                    prop-element="button"
+                                    prop-element-size="s"
+                                    prop-font-size="s"
+                                    :prop-is-icon-only="true"
+                                    class="w-full p-2 relative"
                                 >
-                                    selected
-                                </span>
-                                <TransitionFade>
-                                    <div
-                                        v-show="filtered_events_store.isSameCurrentMainFilterIndex(index)"
-                                        class="absolute w-full h-0.5 bg-theme-black left-0 right-0 bottom-0"
-                                    ></div>
-                                </TransitionFade>
-                            </VActionText>
+                                    <span class="w-fit mx-auto">{{ filter_type }}</span>
+                                    <span
+                                        v-show="filtered_events_store.isSameCurrentLikeDislikeChoiceIndex(index)"
+                                        class="sr-only"
+                                    >
+                                        selected
+                                    </span>
+                                    <TransitionFade>
+                                        <div
+                                            v-show="filtered_events_store.isSameCurrentLikeDislikeChoiceIndex(index)"
+                                            class="absolute w-full h-0.5 bg-theme-black left-0 right-0 bottom-0"
+                                        ></div>
+                                    </TransitionFade>
+                                </VActionText>
+                            </div>
+
+                            <!--audio_clip_roles-->
+                            <div class="w-full flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors px-2">
+                                <VActionText
+                                    v-for="(pretty_audio_clip_role_name, index) in filtered_events_store.getPrettyAudioClipRoleNames"
+                                    :key="index"
+                                    @click="filtered_events_store.updateCurrentAudioClipRoleNameIndex(index)"
+                                    :disabled="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
+                                    prop-element="button"
+                                    prop-element-size="s"
+                                    prop-font-size="s"
+                                    :prop-is-icon-only="true"
+                                    class="w-full p-2 relative"
+                                >
+                                    <span class="w-fit mx-auto">{{ pretty_audio_clip_role_name }}</span>
+                                    <span
+                                        v-show="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
+                                        class="sr-only"
+                                    >
+                                        selected
+                                    </span>
+                                    <TransitionFade>
+                                        <div
+                                            v-show="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
+                                            class="absolute w-full h-0.5 bg-theme-black left-0 right-0 bottom-0"
+                                        ></div>
+                                    </TransitionFade>
+                                </VActionText>
+                            </div>
                         </div>
 
-                        <!--audio_clip_roles-->
-                        <div class="w-fit flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors px-2">
-                            <VActionText
-                                v-for="(pretty_audio_clip_role_name, index) in filtered_events_store.getPrettyAudioClipRoleNames"
-                                :key="index"
-                                @click="filtered_events_store.updateCurrentAudioClipRoleNameIndex(index)"
-                                :disabled="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
-                                prop-element="button"
-                                prop-element-size="s"
-                                prop-font-size="s"
-                                :prop-is-icon-only="true"
-                                class="p-2 relative"
-                            >
-                                <span>{{ pretty_audio_clip_role_name }}</span>
-                                <span
-                                    v-show="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
-                                    class="sr-only"
-                                >
-                                    selected
-                                </span>
-                                <TransitionFade>
-                                    <div
-                                        v-show="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
-                                        class="absolute w-full h-0.5 bg-theme-black left-0 right-0 bottom-0"
-                                    ></div>
-                                </TransitionFade>
-                            </VActionText>
-                        </div>
-        
                         <!--audio_clip_tones-->
                         <VAudioClipToneMenu
                             :prop-is-open="true"
@@ -162,7 +181,7 @@
                     >
                         <div class="px-1 pb-4">
                             <EventCard
-                                :prop-guaranteed-event-generic-status="propIsUserProfilePage ? '' : 'completed'"
+                                :prop-guaranteed-event-generic-status="isHomePage ? 'completed' : ''"
                                 :prop-show-title="true"
                                 :prop-event="item"
                                 :prop-has-border="true"
@@ -343,7 +362,7 @@
 
 
 <script lang="ts">
-    import { defineComponent, } from 'vue';
+    import { defineComponent, PropType } from 'vue';
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
     import AudioClipsTypes from '@/types/AudioClips.interface';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
@@ -357,9 +376,12 @@
         data(){
             return {
                 vplayback_store: useVPlaybackStore(),
-                filtered_events_store: useFilteredEventsStore(this.propIsUserProfilePage),
+                filtered_events_store: useFilteredEventsStore(this.propPageContext),
 
-                user_profile_username: "",  //only used at profile page
+                //data-container
+                username: "",
+                is_own_page: false,
+                is_blocked: false,
 
                 is_filter_menu_open: false,
                 can_filter_menu_teleport: false,
@@ -384,12 +406,24 @@
             };
         },
         props: {
-            propIsUserProfilePage: {
-                type: Boolean,
-                default: false
+            propPageContext: {
+                type: String as PropType<"home"|"user_profile"|"user_likes_dislikes">,
+                default: "home"
             },
         },
         computed: {
+            isHomePage() : boolean {
+
+                return this.propPageContext === 'home';
+            },
+            isUserProfilePage() : boolean {
+
+                return this.propPageContext === 'user_profile';
+            },
+            isUserLikesDislikesPage() : boolean {
+
+                return this.propPageContext === 'user_likes_dislikes';
+            },
             getPlayedAudioClipsLength() : number {
 
                 return this.played_audio_clips_by_id.length;
@@ -444,6 +478,7 @@
         },
         methods: {
             async getEvents(
+                current_like_dislike_choice_index:number,
                 current_event_generic_status_name_index:number,
                 current_main_filter_index:number,
                 current_timeframe_index:number,
@@ -457,6 +492,7 @@
                 if(is_first_page === true){
 
                     await this.filtered_events_store.initialiseFilteredEventsStructure(
+                        current_like_dislike_choice_index,
                         current_event_generic_status_name_index,
                         current_main_filter_index,
                         current_timeframe_index,
@@ -469,6 +505,7 @@
                 const can_skip_fetching = (
                     is_first_page === true &&
                     await this.filtered_events_store.hasExistingDataAfterFilterChange(
+                        current_like_dislike_choice_index,
                         current_event_generic_status_name_index,
                         current_main_filter_index,
                         current_timeframe_index,
@@ -485,6 +522,7 @@
 
                 //check if can fetch, e.g. if timed out from previous search that yielded no results
                 const check_can_fetch = await this.filtered_events_store.checkCanFetch(
+                    current_like_dislike_choice_index,
                     current_event_generic_status_name_index,
                     current_main_filter_index,
                     current_timeframe_index,
@@ -504,6 +542,7 @@
 
                     //get first time URL
                     full_url = await this.constructFirstPageURL(
+                        current_like_dislike_choice_index,
                         current_event_generic_status_name_index,
                         current_main_filter_index,
                         current_timeframe_index,
@@ -517,6 +556,8 @@
                     const url_key = next_or_back === "next" ? "next_url" : "back_url";
 
                     full_url = this.filtered_events_store.getFilteredEventsStructure[
+                        current_like_dislike_choice_index
+                    ][
                         current_event_generic_status_name_index
                     ][
                         current_main_filter_index
@@ -534,6 +575,7 @@
                 //is fetching
                 this.filtered_events_store.updateIsFetching(
                     true,
+                    current_like_dislike_choice_index,
                     current_event_generic_status_name_index,
                     current_main_filter_index,
                     current_timeframe_index,
@@ -545,6 +587,7 @@
                 .then(async (result:any)=>{
 
                     await this.filtered_events_store.insertEvents(
+                        current_like_dislike_choice_index,
                         current_event_generic_status_name_index,
                         current_main_filter_index,
                         current_timeframe_index,
@@ -570,6 +613,7 @@
                     //no longer fetching
                     this.filtered_events_store.updateIsFetching(
                         false,
+                        current_like_dislike_choice_index,
                         current_event_generic_status_name_index,
                         current_main_filter_index,
                         current_timeframe_index,
@@ -579,6 +623,7 @@
                 });
             },
             async constructFirstPageURL(
+                current_like_dislike_choice_index:number,
                 current_event_generic_status_name_index:number,
                 current_main_filter_index:number,
                 current_timeframe_index:number,
@@ -590,16 +635,31 @@
                 //this is only used for first page
                 //API will send us next_url and back_url to directly use after that
 
-                //construct URL
+                //start of URL
                 let full_url = window.location.origin + "/api/events/list";
 
-                //event.generic_status.generic_status_name
-                full_url += "/" + this.filtered_events_store.getEventGenericStatusNames[current_event_generic_status_name_index];
+                if(this.isUserProfilePage === true){
 
-                if(this.propIsUserProfilePage === true){
+                    //signature URL
+                    full_url += "/user" + "/" + this.username;
 
-                    full_url += "/user/" + this.user_profile_username;
+                }else if(this.isUserLikesDislikesPage === true){
 
+                    //signature URL
+                    full_url += "/user-likes-dislikes" + "/" + this.username;
+
+                    //likes/dislikes
+                    full_url += "/" + this.filtered_events_store.like_dislike_choices[current_like_dislike_choice_index].toLowerCase();
+
+                }else if(this.isHomePage === true){
+
+                    //no signature URL
+
+                    //event.generic_status.generic_status_name
+                    if(this.filtered_events_store.getEventGenericStatusNames[current_event_generic_status_name_index] !== null){
+
+                        full_url += "/" + this.filtered_events_store.getEventGenericStatusNames[current_event_generic_status_name_index]!.toLowerCase();
+                    }
                 }
 
                 //latest/best
@@ -629,6 +689,7 @@
                 this.can_pause_scrolling = false;
 
                 await this.getEvents(
+                    this.filtered_events_store.getCurrentLikeDislikeChoiceIndex,
                     this.filtered_events_store.getCurrentEventGenericStatusNameIndex,
                     this.filtered_events_store.getCurrentMainFilterIndex,
                     this.filtered_events_store.getCurrentTimeframeIndex,
@@ -679,6 +740,7 @@
                     }
 
                     const can_fetch = await this.filtered_events_store.checkCanFetch(
+                        this.filtered_events_store.getCurrentLikeDislikeChoiceIndex,
                         this.filtered_events_store.getCurrentEventGenericStatusNameIndex,
                         this.filtered_events_store.getCurrentMainFilterIndex,
                         this.filtered_events_store.getCurrentTimeframeIndex,
@@ -694,6 +756,7 @@
                     //on filter change, we already run getEvents()
                     //upon reaching here, that first page fetch is already done
                     this.getEvents(
+                        this.filtered_events_store.getCurrentLikeDislikeChoiceIndex,
                         this.filtered_events_store.getCurrentEventGenericStatusNameIndex,
                         this.filtered_events_store.getCurrentMainFilterIndex,
                         this.filtered_events_store.getCurrentTimeframeIndex,
@@ -707,7 +770,7 @@
             async resetStores() : Promise<void> {
 
                 if(
-                    this.propIsUserProfilePage === false &&
+                    this.isHomePage === true &&
                     isPageAccessedByBackForward() === false
                 ){
 
@@ -780,6 +843,10 @@
 
                 this.teleport_id = teleport_id;
             },
+            handleNewUsername(new_value:string) : void {
+
+                this.username = new_value;
+            },
         },
         beforeMount(){
 
@@ -788,24 +855,28 @@
             //however, since store always changes/resets for latest content, "auto" is terrible
             history.scrollRestoration = 'manual';
 
-            //get username
-            if(this.propIsUserProfilePage === true){
-
-                const container = (document.getElementById('data-container-get-user-profile') as HTMLElement);
-
-                this.user_profile_username = (container.getAttribute('data-user-profile-username') as string);
-            }
-
             //reset store if not navigated from back/forward
             this.resetStores();
 
-            //sync currently_playing store
-            // if(this.filtered_events_store.getLastSelectedAudioClip !== null){
+            //we have to get username here, cannot wait for VUserCard
+            if(this.propPageContext === 'user_profile'){
 
-            //     this.vplayback_store.$patch({
-            //         playing_audio_clip: this.filtered_events_store.getLastSelectedAudioClip,
-            //     });
-            // }
+                const container = (document.getElementById('data-container-get-user-profile') as HTMLElement);
+                this.username = (container.getAttribute('data-username') as string);
+
+            }else if(this.propPageContext === 'user_likes_dislikes'){
+
+                const container = (document.getElementById('data-container-list-user-likes-dislikes') as HTMLElement);
+                this.username = (container.getAttribute('data-username') as string);
+            }
+
+            //sync vplayback_store if filtered_events_store has persisted
+            if(this.filtered_events_store.getLastSelectedAudioClip !== null){
+
+                this.vplayback_store.updatePlayingAudioClip(
+                    this.filtered_events_store.getLastSelectedAudioClip
+                );
+            }
 
             //listen from EventCardAlwaysCompleted
             this.vplayback_store.$onAction(({
@@ -853,6 +924,7 @@
             })=>{
 
                 if(
+                    name === 'updateCurrentLikeDislikeChoiceIndex' ||
                     name === 'updateCurrentEventGenericStatusNameIndex' ||
                     name === 'updateCurrentMainFilterIndex' ||
                     name === 'updateCurrentTimeframeIndex' ||
@@ -877,6 +949,7 @@
 
                         //get events on first page of filter change, if no events exist
                         await this.getEvents(
+                            this.filtered_events_store.getCurrentLikeDislikeChoiceIndex,
                             this.filtered_events_store.getCurrentEventGenericStatusNameIndex,
                             this.filtered_events_store.getCurrentMainFilterIndex,
                             this.filtered_events_store.getCurrentTimeframeIndex,
@@ -896,6 +969,7 @@
 
                 (async ()=>{
                     await this.getEvents(
+                        this.filtered_events_store.getCurrentLikeDislikeChoiceIndex,
                         this.filtered_events_store.getCurrentEventGenericStatusNameIndex,
                         this.filtered_events_store.getCurrentMainFilterIndex,
                         this.filtered_events_store.getCurrentTimeframeIndex,

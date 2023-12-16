@@ -34,6 +34,7 @@ from urllib.parse import quote, unquote
 import random
 from django.db import connection
 import inspect
+import platform
 
 #app files
 from .models import *
@@ -400,16 +401,29 @@ def get_serializer_error_message(serializer)->str:
     return error_message
 
 
+def copy_to_clipboard(full_string:str):
+
+    #https://stackoverflow.com/a/17371323
+
+    if platform.system() == 'Darwin':
+
+        #Mac
+        subprocess.run("pbcopy", text=True, input=full_string)
+
+    else:
+
+        subprocess.run("clip", text=True, input=full_string)
+
+
 def output_testable_sql(full_sql, full_params):
 
     with connection.cursor() as cursor:
 
-        print(
-            cursor.mogrify(
-                full_sql,
-                full_params
-            )
-        )
+        full_sql = cursor.mogrify(full_sql, full_params)
+
+        print(full_sql)
+        copy_to_clipboard(full_sql)
+        print('Full mogrify() has been copied to clipboard.')
 
 
 #not advisable to group functions via class,

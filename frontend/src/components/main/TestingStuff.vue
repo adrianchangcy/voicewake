@@ -4,6 +4,9 @@
     <!-- <FontAwesomeIcon icon="fas fa-comments"/> -->
 
 
+
+
+
     </div>
 </template>
 
@@ -100,7 +103,9 @@
                 type: "ok"
             }, 3000);
 
-
+            window.setInterval(()=>{
+                this.is_yolo = !this.is_yolo;
+            }, 2000);
 
 
 

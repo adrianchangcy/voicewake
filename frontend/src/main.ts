@@ -150,9 +150,13 @@ if(document.querySelector('#get-events-app')){
 
 if(document.querySelector('#browse-events-app')){
 
-    createApp(BrowseEventsApp)
-        .directive('click-outside', clickOutside)
-        .mount('#browse-events-app');
+    createApp(
+        BrowseEventsApp,
+        {
+            propPageContext: 'home',
+        }
+    ).directive('click-outside', clickOutside)
+    .mount('#browse-events-app');
 }
 
 if(document.querySelector('#get-user-profile-app')){
@@ -160,11 +164,22 @@ if(document.querySelector('#get-user-profile-app')){
     createApp(
         BrowseEventsApp,
         {
-            propIsUserProfilePage: true
+            propPageContext: 'user_profile',
         }
     ).directive('click-outside', clickOutside)
     .use(VueVirtualScroller)
     .mount('#get-user-profile-app');
+}
+
+if(document.querySelector('#list-user-likes-dislikes-app')){
+
+    createApp(
+        BrowseEventsApp,
+        {
+            propPageContext: 'user_likes_dislikes',
+        }
+    ).directive('click-outside', clickOutside)
+    .mount('#list-user-likes-dislikes-app');
 }
 
 if(document.querySelector('#list-user-banned-audio-clips-app')){
