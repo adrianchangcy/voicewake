@@ -6,7 +6,6 @@
             propFontSize === 'm' ? 'text-xl font-medium' : '',
             propElementSize === 's' ? 'h-10' : '',
             propIsEnabled ? '' : 'opacity-30',
-            propIsDefaultOutlineOffset ? 'focus-visible:outline-offset-0' : 'focus-visible:-outline-offset-2',
             'block transition-colors rounded-lg   text-theme-black action-text-hover active:bg-theme-gray-2 origin-center transform     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-theme-outline'
         ]"
         :disabled="!propIsEnabled"
@@ -64,10 +63,6 @@
             propIsIconOnly: {   //if only fa icon, being absolute lets it not move lower like text would
                 type: Boolean,
                 default: false
-            },
-            propIsDefaultOutlineOffset: {
-                type: Boolean,
-                default: true
             },
         }
     });
