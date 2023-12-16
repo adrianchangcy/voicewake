@@ -41,7 +41,6 @@
                     propElement="button"
                     type="button"
                     :propIsIconOnly="true"
-                    :propIsDefaultOutlineOffset="false"
                     class="absolute left-2 right-2 top-2 bottom-2 focus-visible:-outline-offset-2"
                 >
                     <FontAwesomeIcon
@@ -174,8 +173,7 @@
                             propElement="button"
                             type="button"
                             :propIsIconOnly="true"
-                            :propIsDefaultOutlineOffset="false"
-                            class="w-full h-[2.1875rem] absolute bottom-0"
+                            class="w-full h-[2.1875rem] absolute bottom-0 focus-visible:-outline-offset-2"
                         >
                             <div class="w-full h-full relative">
                                 <span
