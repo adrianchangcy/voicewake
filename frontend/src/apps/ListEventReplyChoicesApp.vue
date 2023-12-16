@@ -313,11 +313,11 @@
 
                             <!--event preview-->
                             <div
-                                v-show="(!isLoading || is_reply_confirming) && !event_reply_choices_store.isReplying"
+                                v-show="isEventCardOpen"
                                 class="w-full"
                             >
                                 <!--must use v-if since EventCard cannot exist with null-->
-                                <!--keep-alive lets v-if play nicely when you have required props and it becomes null-->
+                                <!--keep-alive prevents unmounting when choices are suddenly null-->
                                 <keep-alive>
                                     <EventCard
                                         v-if="event_reply_choices_store.getMainEvent !== null"
@@ -325,7 +325,8 @@
                                         prop-guaranteed-event-generic-status="incomplete"
                                         :prop-show-title="true"
                                         :prop-has-border="true"
-                                        @newIsLiked="event_reply_choices_store.newAudioClipIsLiked($event)"
+                                        :prop-is-v-playback-open="isEventCardOpen"
+                                        @new-is-liked="event_reply_choices_store.newAudioClipIsLiked($event)"
                                     />
                                 </keep-alive>
                             </div>
@@ -409,6 +410,8 @@
                 is_event_expiring: false,
 
                 expiry_interval: null as number|null,
+
+                vplayback_canvas_ripple_callback: null as Function|null,
             };
         },
         computed: {
@@ -424,6 +427,14 @@
             canQueueNextEventReplyChoices() : boolean {
 
                 return this.isLoading === false;
+            },
+            isEventCardOpen() : boolean {
+
+                //keep this open even when reply is confirming
+                return (
+                    (this.isLoading === false || this.is_reply_confirming === true) &&
+                    this.event_reply_choices_store.isReplying === false
+                );
             },
         },
         methods: {

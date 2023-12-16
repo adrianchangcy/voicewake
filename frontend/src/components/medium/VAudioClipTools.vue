@@ -219,10 +219,6 @@
                 type: Object as PropType<AudioClipsAndLikeDetailsTypes>,
                 required: true,
             },
-            propEventId: {
-                type: Number,
-                required: true,
-            },
             propHasVirtualScroll: {
                 type: Boolean,
                 default: false,
@@ -302,7 +298,7 @@
                     return;
                 }
 
-                const url = window.location.origin + "/event/" + this.propEventId;
+                const url = window.location.origin + "/event/" + this.propAudioClip.event_id;
                 navigator.clipboard.writeText(url);
 
                 notify({

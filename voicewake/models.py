@@ -201,6 +201,12 @@ class UserBlocks(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["user", "blocked_user"], name="unique_user_blocked_user")
         ]
+        indexes = [
+            #for cursor
+            models.Index(
+                fields=('when_created', 'id',),
+            ),
+        ]
 
 
 class AudioClips(models.Model):
@@ -231,13 +237,23 @@ class AudioClips(models.Model):
         app_label = 'voicewake'
         managed = True
         db_table = 'audio_clips'
+        indexes = [
+            #for cursor
+            models.Index(
+                fields=('when_created', 'id',),
+            ),
+            #this is for temporary solution for viewing banned audio_clips
+            models.Index(
+                fields=('last_modified', 'id',),
+            ),
+        ]
 
 
 #on ban_decision becoming from None to True/False, delete all other rows with the same reported_audio_clip
 #a user can only be banned once per audio_clip
 class AudioClipReports(models.Model):
     id = models.BigAutoField(primary_key=True)
-    audio_clip = models.ForeignKey('AudioClips', on_delete=models.CASCADE)
+    audio_clip = models.OneToOneField('AudioClips', on_delete=models.CASCADE)
     last_evaluated = models.DateTimeField(blank=True, null=True, default=None)
     last_reported = models.DateTimeField(auto_now_add=True)
     when_created = models.DateTimeField(auto_now_add=True)
@@ -247,6 +263,13 @@ class AudioClipReports(models.Model):
         app_label = 'voicewake'
         managed = True
         db_table = 'audio_clip_reports'
+        indexes = [
+            #prioritise ASC NULLS FIRST
+            models.Index(
+                models.F('last_evaluated').asc(nulls_first=True),
+                name='acr_last_evaluated_1',
+            ),
+        ]
 
 
 class AudioClipLikesDislikes(models.Model):
@@ -263,6 +286,11 @@ class AudioClipLikesDislikes(models.Model):
         db_table = 'audio_clip_likes_dislikes'
         constraints = [
             models.UniqueConstraint(fields=["user", "audio_clip"], name="unique_audio_clip_likes_dislikes_1")
+        ]
+        indexes = [
+            models.Index(
+                fields=('user_id', 'last_modified', 'id',),
+            ),
         ]
 
 class AudioClipRequestStatuses(models.Model):
@@ -331,6 +359,11 @@ class EventReplyQueues(models.Model):
         app_label = 'voicewake'
         managed = True
         db_table = 'event_reply_queues'
+        indexes = [
+            models.Index(
+                fields=('when_locked',),
+            ),
+        ]
 
 
 

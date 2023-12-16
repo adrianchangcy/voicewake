@@ -18,11 +18,13 @@ interface DefaultPageTypes {
 }
 
 interface FilteredEventsStructure {
-    [current_event_generic_status_name_index:number]: {
-        [current_main_filter_index:number]: {
-            [current_timeframe_index:number]: {
-                [current_audio_clip_role_name_index:number]: {
-                    [audio_clip_tone_id:number]: DefaultPageTypes
+    [current_like_dislike_choice_index:number]: {
+        [current_event_generic_status_name_index:number]: {
+            [current_main_filter_index:number]: {
+                [current_timeframe_index:number]: {
+                    [current_audio_clip_role_name_index:number]: {
+                        [audio_clip_tone_id:number]: DefaultPageTypes
+                    }
                 }
             }
         }
@@ -30,16 +32,21 @@ interface FilteredEventsStructure {
 }
 
 
-export function useFilteredEventsStore(is_user_page:boolean){
+export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_likes_dislikes"){
 
-    const store_id = is_user_page === true ? 'user_page_filtered_events_store' : 'filtered_events_store';
+    const store_id = "filtered_events_store_" + page_context;
 
+    //if a page does not require a certain index, simply exclude it
+    //we let all indexes initialise on non-null and non-zero-string values
     return defineStore(store_id, {
         state: ()=>({
             filtered_events_structure: {} as FilteredEventsStructure,
 
+            current_like_dislike_choice_index: 0,
+            like_dislike_choices: ['Likes', 'Dislikes'] as string[],
+
             current_event_generic_status_name_index: 0,
-            event_generic_status_names: ["completed"],
+            event_generic_status_names: ["Completed"] as string[],
 
             current_main_filter_index: 0,
             // main_filters: ["Latest", "Best"],
@@ -47,7 +54,7 @@ export function useFilteredEventsStore(is_user_page:boolean){
 
             current_timeframe_index: 0,
             // timeframes: ["All", "Year", "Month", "Day"],
-            timeframes: ["All"],
+            timeframes: ["All"] as string[],
 
             current_audio_clip_role_name_index: 0,
             audio_clip_role_names: ["originator", "responder"],
@@ -74,6 +81,8 @@ export function useFilteredEventsStore(is_user_page:boolean){
                 try{
 
                     return state.filtered_events_structure[
+                        state.current_like_dislike_choice_index
+                    ][
                         state.current_event_generic_status_name_index
                     ][
                         state.current_main_filter_index
@@ -97,6 +106,8 @@ export function useFilteredEventsStore(is_user_page:boolean){
                 try{
 
                     return state.filtered_events_structure[
+                        state.current_like_dislike_choice_index
+                    ][
                         state.current_event_generic_status_name_index
                     ][
                         state.current_main_filter_index
@@ -120,6 +131,8 @@ export function useFilteredEventsStore(is_user_page:boolean){
                 try{
 
                     return state.filtered_events_structure[
+                        state.current_like_dislike_choice_index
+                    ][
                         state.current_event_generic_status_name_index
                     ][
                         state.current_main_filter_index
@@ -141,6 +154,14 @@ export function useFilteredEventsStore(is_user_page:boolean){
             getLastScrollY: (state):number => {
 
                 return state.last_scroll_y;
+            },
+            getCurrentLikeDislikeChoiceIndex: (state):number => {
+
+                return state.current_like_dislike_choice_index;
+            },
+            getLikeDislikeChoices: (state):string[] => {
+
+                return state.like_dislike_choices;
             },
             getCurrentEventGenericStatusNameIndex: (state):number => {
 
@@ -190,6 +211,8 @@ export function useFilteredEventsStore(is_user_page:boolean){
                 try{
 
                     return state.filtered_events_structure[
+                        state.current_like_dislike_choice_index
+                    ][
                         state.current_event_generic_status_name_index
                     ][
                         state.current_main_filter_index
@@ -210,6 +233,19 @@ export function useFilteredEventsStore(is_user_page:boolean){
             },
         },
         actions: {
+            async updateCurrentLikeDislikeChoiceIndex(new_index:number) : Promise<void> {
+
+                if(new_index >= this.like_dislike_choices.length){
+
+                    throw new Error('Index out of range.');
+                }
+
+                this.current_like_dislike_choice_index = new_index;
+            },
+            isSameCurrentLikeDislikeChoiceIndex(index:number) : boolean {
+
+                return this.current_like_dislike_choice_index === index;
+            },
             async updateCurrentEventGenericStatusNameIndex(new_index:number) : Promise<void> {
 
                 if(new_index >= this.event_generic_status_names.length){
@@ -285,6 +321,8 @@ export function useFilteredEventsStore(is_user_page:boolean){
             async updateLastSelectedAudioClip(audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null) : Promise<void> {
 
                 this.filtered_events_structure[
+                    this.current_like_dislike_choice_index
+                ][
                     this.current_event_generic_status_name_index
                 ][
                     this.current_main_filter_index
@@ -299,6 +337,7 @@ export function useFilteredEventsStore(is_user_page:boolean){
                 ] = audio_clip;
             },
             async checkCanFetch(
+                current_like_dislike_choice_index:number,
                 current_event_generic_status_name_index:number,
                 current_main_filter_index:number,
                 current_timeframe_index:number,
@@ -307,6 +346,7 @@ export function useFilteredEventsStore(is_user_page:boolean){
             ) : Promise<boolean> {
 
                 const args_list = [
+                    current_like_dislike_choice_index,
                     current_event_generic_status_name_index,
                     current_main_filter_index,
                     current_timeframe_index,
@@ -315,6 +355,7 @@ export function useFilteredEventsStore(is_user_page:boolean){
                 ];
 
                 await this.initialiseFilteredEventsStructure(
+                    current_like_dislike_choice_index,
                     current_event_generic_status_name_index,
                     current_main_filter_index,
                     current_timeframe_index,
@@ -322,7 +363,7 @@ export function useFilteredEventsStore(is_user_page:boolean){
                     current_audio_clip_tone_id,
                 );
 
-                const target_level = this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]];
+                const target_level = this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]][args_list[5]];
 
                 //check if fetching is permanently stopped
                 if(target_level.are_all_rows_fetched === true){
@@ -333,6 +374,7 @@ export function useFilteredEventsStore(is_user_page:boolean){
                 return true;
             },
             async insertEvents(
+                current_like_dislike_choice_index:number,
                 current_event_generic_status_name_index:number,
                 current_main_filter_index:number,
                 current_timeframe_index:number,
@@ -354,6 +396,8 @@ export function useFilteredEventsStore(is_user_page:boolean){
                 ){
 
                     this.filtered_events_structure[
+                        current_like_dislike_choice_index
+                    ][
                         current_event_generic_status_name_index
                     ][
                         current_main_filter_index
@@ -394,6 +438,8 @@ export function useFilteredEventsStore(is_user_page:boolean){
                     new_events.forEach((event:EventsAndAudioClipsTypes)=>{
 
                         this.filtered_events_structure[
+                            current_like_dislike_choice_index
+                        ][
                             current_event_generic_status_name_index
                         ][
                             current_main_filter_index
@@ -411,6 +457,8 @@ export function useFilteredEventsStore(is_user_page:boolean){
                     for(let x = (new_events.length - 1); x >= 0; x--){
 
                         this.filtered_events_structure[
+                            current_like_dislike_choice_index
+                        ][
                             current_event_generic_status_name_index
                         ][
                             current_main_filter_index
@@ -429,6 +477,8 @@ export function useFilteredEventsStore(is_user_page:boolean){
                 if(next_url !== ''){
 
                     this.filtered_events_structure[
+                        current_like_dislike_choice_index
+                    ][
                         current_event_generic_status_name_index
                     ][
                         current_main_filter_index
@@ -445,6 +495,8 @@ export function useFilteredEventsStore(is_user_page:boolean){
                 if(back_url !== ''){
 
                     this.filtered_events_structure[
+                        current_like_dislike_choice_index
+                    ][
                         current_event_generic_status_name_index
                     ][
                         current_main_filter_index
@@ -458,6 +510,7 @@ export function useFilteredEventsStore(is_user_page:boolean){
                 }
             },
             async initialiseFilteredEventsStructure(
+                current_like_dislike_choice_index:number,
                 current_event_generic_status_name_index:number,
                 current_main_filter_index:number,
                 current_timeframe_index:number,
@@ -469,6 +522,7 @@ export function useFilteredEventsStore(is_user_page:boolean){
                 //does nothing if there is already our desired structure
 
                 const args_list = [
+                    current_like_dislike_choice_index,
                     current_event_generic_status_name_index,
                     current_main_filter_index,
                     current_timeframe_index,
@@ -481,11 +535,12 @@ export function useFilteredEventsStore(is_user_page:boolean){
                 Object.hasOwn(this.filtered_events_structure[args_list[0]], args_list[1]) === false ? this.filtered_events_structure[args_list[0]][args_list[1]] = {} : null;
                 Object.hasOwn(this.filtered_events_structure[args_list[0]][args_list[1]], args_list[2]) === false ? this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]] = {} : null;
                 Object.hasOwn(this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]], args_list[3]) === false ? this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]] = {} : null;
+                Object.hasOwn(this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]], args_list[4]) === false ? this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]] = {} : null;
 
                 //final initialisation
-                if(Object.hasOwn(this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]], args_list[4]) === false){
+                if(Object.hasOwn(this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]], args_list[5]) === false){
 
-                    this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]] = {
+                    this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]][args_list[5]] = {
                         'events': [],
                         'are_all_rows_fetched': false,
                         'last_selected_audio_clip': null,
@@ -496,6 +551,7 @@ export function useFilteredEventsStore(is_user_page:boolean){
                 }
             },
             async hasExistingDataAfterFilterChange(
+                current_like_dislike_choice_index:number,
                 current_event_generic_status_name_index:number,
                 current_main_filter_index:number,
                 current_timeframe_index:number,
@@ -504,6 +560,7 @@ export function useFilteredEventsStore(is_user_page:boolean){
             ) : Promise<boolean> {
 
                 const args_list = [
+                    current_like_dislike_choice_index,
                     current_event_generic_status_name_index,
                     current_main_filter_index,
                     current_timeframe_index,
@@ -511,7 +568,7 @@ export function useFilteredEventsStore(is_user_page:boolean){
                     current_audio_clip_tone_id,
                 ];
 
-                return this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]]['events'].length > 0;
+                return this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]][args_list[5]]['events'].length > 0;
             },
             async partialResetStore() : Promise<void> {
 
@@ -587,6 +644,7 @@ export function useFilteredEventsStore(is_user_page:boolean){
             },
             updateIsFetching(
                 is_fetching: boolean,
+                current_like_dislike_choice_index:number,
                 current_event_generic_status_name_index:number,
                 current_main_filter_index:number,
                 current_timeframe_index:number,
@@ -595,6 +653,8 @@ export function useFilteredEventsStore(is_user_page:boolean){
             ) : void {
 
                 this.filtered_events_structure[
+                    current_like_dislike_choice_index
+                ][
                     current_event_generic_status_name_index
                 ][
                     current_main_filter_index
@@ -607,6 +667,6 @@ export function useFilteredEventsStore(is_user_page:boolean){
                 ]['is_fetching'] = is_fetching;
             },
         },
-        persist: !is_user_page,
+        persist: page_context === 'home' ? true : false,
     })();
 }

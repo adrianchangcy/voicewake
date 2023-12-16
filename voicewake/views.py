@@ -141,9 +141,37 @@ class GetUserProfile(TemplateView):
             request,
             template_name=self.template_name,
             context={
-            'user_profile_username': specific_user.username,
-            'is_own_profile': json.dumps(request.user.is_authenticated is True and request.user.id == specific_user.id),
+            'username': specific_user.username,
+            'is_own_page': json.dumps(request.user.is_authenticated is True and request.user.id == specific_user.id),
             'is_blocked': json.dumps(is_blocked)
+            }
+        )
+
+
+
+@method_decorator(
+    [
+        app_decorators.deny_if_no_username("redirect"),
+        app_decorators.deny_if_banned("redirect"),
+        app_decorators.deny_if_not_logged_in("redirect"),
+        never_cache
+    ],
+    name='get'
+)
+class ListUserLikesDislikes(TemplateView):
+
+    template_name = 'voicewake/user_likes_dislikes.html'
+
+    def get(self, request, *args, **kwargs):
+
+        #users can only view their own likes/dislikes for now
+
+        return render(
+            request,
+            template_name=self.template_name,
+            context={
+            'username': request.user.username,
+            'is_own_page': json.dumps(True),
             }
         )
 

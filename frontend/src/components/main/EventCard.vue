@@ -24,21 +24,20 @@
                 >
                     <template #title>
                         <span
-                            v-if="propEvent.event.generic_status.generic_status_name !== 'deleted'"
+                            v-show="!isEventDeleted"
                         >
                             {{ propEvent.event.event_name }}
                         </span>
-                        <span v-else
+                        <span v-show="isEventDeleted"
                             class="italic"
                         >
                             Event and original recording deleted.
                         </span>
                     </template>
-                    <template
-                        #titleDescription
-                        v-if="propEvent.event.generic_status.generic_status_name !== 'deleted'"
-                    >
-                        <span>{{ prettyWhenCreated }}</span>
+                    <template #titleDescription>
+                        <span v-show="!isEventDeleted">
+                            {{ prettyWhenCreated }}
+                        </span>
                     </template>
                 </VTitle>
             </VActionText>
@@ -68,13 +67,12 @@
                     :prop-audio-clip="propEvent.originator[0]!"
                     :prop-audio-volume-peaks="propEvent.originator[0]!.audio_volume_peaks"
                     :prop-bucket-quantity="propEvent.originator[0]!.audio_volume_peaks.length"
-                    :prop-is-open="true"
+                    :prop-is-open="propIsVPlaybackOpen"
                 />
                 <VAudioClipTools
                     :prop-audio-clip="propEvent.originator[0]!"
-                    :prop-event-id="propEvent.event.id"
                     :prop-has-virtual-scroll="propHasVirtualScroll"
-                    @newIsLiked="emitNewIsLiked($event)"
+                    @new-is-liked="emitNewIsLiked($event)"
                 />
             </div>
 
@@ -97,13 +95,12 @@
                     :prop-audio-clip="propEvent.responder[0]!"
                     :prop-audio-volume-peaks="propEvent.responder[0]!.audio_volume_peaks"
                     :prop-bucket-quantity="propEvent.responder[0]!.audio_volume_peaks.length"
-                    :prop-is-open="true"
+                    :prop-is-open="propIsVPlaybackOpen"
                 />
                 <VAudioClipTools
                     :prop-audio-clip="propEvent.responder[0]!"
-                    :prop-event-id="propEvent.event.id"
                     :prop-has-virtual-scroll="propHasVirtualScroll"
-                    @newIsLiked="emitNewIsLiked($event)"
+                    @new-is-liked="emitNewIsLiked($event)"
                 />
             </div>
         </div>
@@ -131,13 +128,12 @@
                     :prop-audio-clip="propEvent.originator[0]!"
                     :prop-audio-volume-peaks="propEvent.originator[0]!.audio_volume_peaks"
                     :prop-bucket-quantity="propEvent.originator[0]!.audio_volume_peaks.length"
-                    :prop-is-open="true"
+                    :prop-is-open="propIsVPlaybackOpen"
                 />
                 <VAudioClipTools
                     :prop-audio-clip="propEvent.originator[0]!"
-                    :prop-event-id="propEvent.event.id"
                     :prop-has-virtual-scroll="propHasVirtualScroll"
-                    @newIsLiked="emitNewIsLiked($event)"
+                    @new-is-liked="emitNewIsLiked($event)"
                 />
             </div>
         </div>
@@ -169,9 +165,8 @@
                     />
                     <VAudioClipTools
                         :prop-audio-clip="audio_clip"
-                        :prop-event-id="propEvent.event.id"
                         :prop-has-virtual-scroll="propHasVirtualScroll"
-                        @newIsLiked="emitNewIsLiked($event)"
+                        @new-is-liked="emitNewIsLiked($event)"
                     />
                 </div>
             
@@ -191,9 +186,8 @@
                     />
                     <VAudioClipTools
                         :prop-audio-clip="audio_clip"
-                        :prop-event-id="propEvent.event.id"
                         :prop-has-virtual-scroll="propHasVirtualScroll"
-                        @newIsLiked="emitNewIsLiked($event)"
+                        @new-is-liked="emitNewIsLiked($event)"
                     />
                 </div>
             </div>
@@ -215,13 +209,12 @@
                         :prop-audio-clip="audio_clip"
                         :prop-audio-volume-peaks="audio_clip.audio_volume_peaks"
                         :prop-bucket-quantity="audio_clip.audio_volume_peaks.length"
-                        :prop-is-open="true"
+                        :prop-is-open="propIsVPlaybackOpen"
                     />
                     <VAudioClipTools
                         :prop-audio-clip="audio_clip"
-                        :prop-event-id="propEvent.event.id"
                         :prop-has-virtual-scroll="propHasVirtualScroll"
-                        @newIsLiked="emitNewIsLiked($event)"
+                        @new-is-liked="emitNewIsLiked($event)"
                     />
                 </div>
             
@@ -237,13 +230,12 @@
                         :prop-audio-clip="audio_clip"
                         :prop-audio-volume-peaks="audio_clip.audio_volume_peaks"
                         :prop-bucket-quantity="audio_clip.audio_volume_peaks.length"
-                        :prop-is-open="true"
+                        :prop-is-open="propIsVPlaybackOpen"
                     />
                     <VAudioClipTools
                         :prop-audio-clip="audio_clip"
-                        :prop-event-id="propEvent.event.id"
                         :prop-has-virtual-scroll="propHasVirtualScroll"
-                        @newIsLiked="emitNewIsLiked($event)"
+                        @new-is-liked="emitNewIsLiked($event)"
                     />
                 </div>
             </div>
@@ -303,6 +295,10 @@
                 type: Boolean,
                 default: false,
             },
+            propIsVPlaybackOpen: {
+                type: Boolean,
+                default: true,
+            },
         },
         computed: {
             getEventURL() : string {
@@ -313,18 +309,22 @@
 
                 return prettyTimePassed(new Date(this.propEvent.event.when_created));
             },
+            isEventDeleted() : boolean {
+
+                return this.propEvent.event.generic_status.generic_status_name === 'deleted';
+            }
         },
         emits: [
             'newIsLiked', 'newVPlaybackTeleportId',
         ],
         methods: {
-            async emitNewVPlaybackTeleportId(teleport_id:string) : Promise<void> {
+            emitNewVPlaybackTeleportId(teleport_id:string) : void {
 
                 this.$emit('newVPlaybackTeleportId', teleport_id);
             },
-            async emitNewIsLiked(
+            emitNewIsLiked(
                 new_value:{audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes, new_is_liked:boolean|null}
-            ) : Promise<void> {
+            ) : void {
 
                 this.$emit('newIsLiked', new_value);
             },

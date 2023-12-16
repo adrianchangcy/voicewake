@@ -179,11 +179,14 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
 
             const data = new FormData();
 
-            //id at db starts from 1, so 0 means any
-            data.append(
-                'audio_clip_tone_id',
-                JSON.stringify(audio_clip_tone === null ? 0 : audio_clip_tone.id)
-            );
+            //id at db starts from 1
+            if(audio_clip_tone !== null){
+
+                data.append(
+                    'audio_clip_tone_id',
+                    JSON.stringify(audio_clip_tone.id)
+                );
+            }
 
             //for first List page visit, we get any replying events or any existing choices
             data.append(

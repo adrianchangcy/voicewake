@@ -46,10 +46,15 @@ urlpatterns += [
     #we don't need default URLs
     # path('', include(router.urls)),
 
-    path('api/events/list/completed/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<int:audio_clip_tone_id>/<str:next_or_back>/<str:cursor_token>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
-    path('api/events/list/completed/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<int:audio_clip_tone_id>/<str:next_or_back>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
-    path('api/events/list/completed/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<str:next_or_back>/<str:cursor_token>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
-    path('api/events/list/completed/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<str:next_or_back>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
+    path('api/events/list/user-likes-dislikes/<str:username>/<str:likes_or_dislikes>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<int:audio_clip_tone_id>/<str:next_or_back>/<str:cursor_token>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
+    path('api/events/list/user-likes-dislikes/<str:username>/<str:likes_or_dislikes>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<int:audio_clip_tone_id>/<str:next_or_back>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
+    path('api/events/list/user-likes-dislikes/<str:username>/<str:likes_or_dislikes>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<str:next_or_back>/<str:cursor_token>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
+    path('api/events/list/user-likes-dislikes/<str:username>/<str:likes_or_dislikes>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<str:next_or_back>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
+
+    path('api/events/list/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<int:audio_clip_tone_id>/<str:next_or_back>/<str:cursor_token>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
+    path('api/events/list/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<int:audio_clip_tone_id>/<str:next_or_back>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
+    path('api/events/list/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<str:next_or_back>/<str:cursor_token>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
+    path('api/events/list/user/<str:username>/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<str:next_or_back>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
 
     path('api/events/list/completed/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<int:audio_clip_tone_id>/<str:next_or_back>/<str:cursor_token>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
     path('api/events/list/completed/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<int:audio_clip_tone_id>/<str:next_or_back>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
@@ -96,6 +101,7 @@ urlpatterns += [
 
     path('block', views.ListUserBlocks.as_view(), name='user_blocks'),
     path('user/<str:username>', views.GetUserProfile.as_view(), name='user_profile'),
+    path('likes', views.ListUserLikesDislikes.as_view(), name='user_likes_dislikes'),
     path('username/new', views.SetUsername.as_view(), name='set_username'),
     path('start', views.CreateEvents.as_view(), name='create_events'),
     path('reply', views.ListEventReplyChoices.as_view(), name='list_event_reply_choices'),

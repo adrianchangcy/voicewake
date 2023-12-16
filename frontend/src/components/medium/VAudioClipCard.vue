@@ -126,22 +126,12 @@
 
                     this.emitNewVPlaybackTeleportId(new_value);
                 }
+
+                this.drawRipples();
             },
             propAudioClip(){
 
-                //not sure why, but $nextTick must also be used here
-                this.$nextTick(()=>{
-
-                    (async ()=>{
-                        await drawCanvasRipples(
-                            this.$refs.canvas_ripples_container as HTMLElement,
-                            this.$refs.canvas_ripples as HTMLCanvasElement,
-                            this.propAudioClip.audio_volume_peaks,
-                            'center',
-                            this.propBucketQuantity,
-                        );
-                    })();
-                })
+                this.drawRipples();
             },
         },
         methods: {
@@ -167,27 +157,27 @@
                 this.$emit('selectedAudioClip', this.propAudioClip);
                 this.emitNewVPlaybackTeleportId(true);
             },
+            async drawRipples() : Promise<void> {
+
+                this.$nextTick(()=>{
+
+                    drawCanvasRipples(
+                        (this.$refs.canvas_ripples_container as HTMLElement).getBoundingClientRect(),
+                        this.$refs.canvas_ripples as HTMLCanvasElement,
+                        this.propAudioClip.audio_volume_peaks,
+                        'center',
+                    );
+                });
+            },
             async redrawCanvasRipplesOnResize() : Promise<void> {
 
-                await drawCanvasRipples(
-                    this.$refs.canvas_ripples_container as HTMLElement,
-                    this.$refs.canvas_ripples as HTMLCanvasElement,
-                    this.propAudioClip.audio_volume_peaks,
-                    'center',
-                    this.propBucketQuantity,
-                );
+                await this.drawRipples();
 
                 //redraw again after 200ms
                 //resize can sometimes fire before final dimension is known
                 window.setTimeout(async ()=>{
 
-                    await drawCanvasRipples(
-                        this.$refs.canvas_ripples_container as HTMLElement,
-                        this.$refs.canvas_ripples as HTMLCanvasElement,
-                        this.propAudioClip.audio_volume_peaks,
-                        'center',
-                        this.propBucketQuantity,
-                    );
+                    await this.drawRipples();
                 }, 200);
             },
         },
@@ -198,19 +188,7 @@
                 this.emitNewVPlaybackTeleportId(true);
             }
 
-            //must use this, as mounted() does not guarantee child is rendered
-            this.$nextTick(()=>{
-
-                (async ()=>{
-                    await drawCanvasRipples(
-                        this.$refs.canvas_ripples_container as HTMLElement,
-                        this.$refs.canvas_ripples as HTMLCanvasElement,
-                        this.propAudioClip.audio_volume_peaks,
-                        'center',
-                        this.propBucketQuantity,
-                    );
-                })();
-            })
+            this.drawRipples();
 
             window.addEventListener('resize', this.redrawCanvasRipplesOnResize);
         },

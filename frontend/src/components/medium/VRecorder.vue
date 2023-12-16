@@ -396,7 +396,7 @@
                     recorderType: recordRTC.MediaStreamRecorder,
                 
                     // disable logs
-                    disableLogs: false,
+                    disableLogs: true,
                 
                     // get intervals based blobs
                     // value in milliseconds

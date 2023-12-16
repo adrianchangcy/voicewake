@@ -141,8 +141,13 @@ class UserBlocksSerializer(serializers.ModelSerializer):
 
 class TestAPISerializer(serializers.Serializer):
 
-    val_1 = serializers.IntegerField()
+    val_1 = serializers.CharField(required=False, default='')
     val_2 = serializers.IntegerField(required=False, default=None)
+
+
+    def validate(self, data):
+
+        return data
 
 
 
@@ -151,7 +156,7 @@ class TestAPISerializer(serializers.Serializer):
 class AudioClipsAndLikeDetailsAPISerializer(AudioClipsSerializer):
     like_count = serializers.IntegerField()
     dislike_count = serializers.IntegerField()
-    is_liked_by_user = serializers.BooleanField(allow_null=True)
+    is_liked_by_user = serializers.BooleanField(allow_null=True, default=None)
 
     class Meta(AudioClipsSerializer.Meta):
         fields = AudioClipsSerializer.Meta.fields + ['like_count', 'dislike_count', 'is_liked_by_user']
@@ -228,7 +233,7 @@ class CreateAudioClipsAPISerializer(serializers.Serializer):
 
 class ListEventReplyChoicesAPISerializer(serializers.Serializer):
 
-    audio_clip_tone_id = serializers.IntegerField(required=False, default=0)
+    audio_clip_tone_id = serializers.IntegerField(required=False, default=None, min_value=1)
     unlock_all_locked_events = serializers.BooleanField()
 
 
@@ -348,7 +353,36 @@ class BrowseEventsAPISerializer(serializers.Serializer):
     audio_clip_role_name = serializers.CharField()
     audio_clip_tone_id = serializers.IntegerField(required=False, default=None, min_value=1)
     next_or_back = serializers.CharField()
+    likes_or_dislikes = serializers.CharField(required=False, default='', max_length=8)
     cursor_token = serializers.CharField(required=False, default='', max_length=200)
+
+
+    def validate_username(self, value):
+
+        value = remove_all_whitespace(value)
+
+        if len(value) == 0:
+
+            return value
+        
+        #disallow these usernames
+        with open(os.path.join(settings.BASE_DIR, 'voicewake/static/json/bad_usernames.en.json')) as file:
+
+            bad_usernames = json.load(file)['usernames']
+
+            if value in bad_usernames:
+
+                raise serializers.ValidationError('Username not allowed.')
+
+        #either entirely letters and numbers only,
+        #or start and end with letters and numbers with possible '_' and '.' in between
+        #with the addition of {1,30} for condition 1, constant 120+ steps becomes 6 steps
+        #if '_' or '.', cannot continue with another '_' nor '.'
+        if re.match(r'(^[a-zA-Z0-9]{1,30}$)|(^[a-zA-Z0-9](_(?!(\.|_))|\.(?!(_|\.))|[a-zA-Z0-9]){0,28}[a-zA-Z0-9]$)', value) is None:
+
+            raise serializers.ValidationError('Invalid username format.')
+
+        return value
 
 
     def validate_latest_or_best(self, value):
@@ -385,6 +419,26 @@ class BrowseEventsAPISerializer(serializers.Serializer):
             return value
 
         raise serializers.ValidationError("Accepted values not specified: next/back.")
+
+
+    def validate_likes_or_dislikes(self, value):
+
+        if value == '' or value in ['likes', 'dislikes']:
+
+            return value
+
+        raise serializers.ValidationError("Accepted values not specified: likes/dislikes.")
+
+
+    def validate(self, data):
+
+        if data['likes_or_dislikes'] != '' and len(data['username']) == 0:
+
+            raise serializers.ValidationError(
+                "For likes/dislikes, you can only view by per-user basis. Please specify a username."
+            )
+
+        return data
 
 
 

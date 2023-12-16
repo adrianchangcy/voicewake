@@ -23,7 +23,6 @@
             <!--reply area-->
             <div
                 v-if="hasReplyingMenu"
-                class="relative"
             >
                 <TransitionFadeSlow>
                     <div
@@ -88,7 +87,7 @@
 
                     <!--just cancelled while replying-->
                     <div
-                        v-else-if="!isReplying && dialog_context !== ''"
+                        v-else
                         class="w-full"
                     >
                         <div class="w-full h-fit pt-14 flex flex-col items-center text-xl font-medium">
