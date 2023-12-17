@@ -839,14 +839,17 @@
 
                 }, 250);
             },
-            async handleNewVPlaybackTeleportId(teleport_id:string) : Promise<void> {
+            handleNewVPlaybackTeleportId(teleport_id:string) : void {
 
                 this.teleport_id = teleport_id;
+
+                console.log(teleport_id);
             },
             handleNewUsername(new_value:string) : void {
 
                 this.username = new_value;
             },
+
         },
         beforeMount(){
 

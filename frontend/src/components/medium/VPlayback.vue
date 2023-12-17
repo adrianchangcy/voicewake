@@ -1,6 +1,9 @@
 <template>
     <div
-        class="h-20 border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors text-center     backdrop-blur bg-theme-light/60"
+        :class="[
+            source_has_error ? 'border-theme-toast-danger' : 'border-theme-gray-2 shade-border-when-hover',
+            'h-20 border rounded-lg  transition-colors text-center'
+        ]"
     >
         <!--add @timeupdate at mounted(), not here, as beforeUnmount() cannot remove it, and it'll still fire after unmount-->
         <!--must add all calls in handleHasMetadata(), not here, since the Infinity duration is not fixed until then-->
@@ -15,11 +18,19 @@
             @pause="playback_paused=true"
         ></audio>
 
+        <div
+            v-show="playbackHasError"
+            class="w-full h-full flex items-center text-center text-theme-toast-danger"
+        >
+            <span class="w-full h-fit text-base">Oops! Recording unavailable.</span>
+        </div>
+
         <!--
             ripples, slider, volume, play/pause, rate, timers
             @focusin works here, but not @focusout
         -->
         <div
+            v-show="!playbackHasError"
             ref="playback_main"
             :class="[
                 propHasAudioClipTone === true ? 'grid-cols-4' : 'grid-cols-3 pr-4',
@@ -272,6 +283,7 @@
         data(){
             return {
                 is_debug: false,
+                source_has_error: false,
 
                 instance_uuid: "",    //uuid, to identify between multiple VPlayback instances, and to manage focus
                 vplayback_store: useVPlaybackStore(),
@@ -489,6 +501,7 @@
 
                 const is_playback_ready = (
                     this.is_initialised_on_new_audio === true &&
+                    this.playbackHasError === false &&
                     this.propIsOpen === true &&
                     this.propAudioVolumePeaks.length > 0 &&
                     this.propAudioVolumePeaks.length === this.propBucketQuantity &&
@@ -519,6 +532,10 @@
             isHighVolume() : boolean {
 
                 return this.isMuted === false && this.playback_volume > 0.5 && this.playback_volume <= 1;
+            },
+            playbackHasError() : boolean {
+
+                return this.source_has_error === true;
             },
         },
         methods: {
@@ -874,6 +891,12 @@
                 //we need this because anime.suspendDocumentWhenHidden=false does not work
                 //basically just to reposition slider anime to playback, else it doesn't do that
                 //must call pause() first, else seek() is inaccurate
+
+                if(this.isPlaybackReady === false){
+
+                    return;
+                }
+
                 if(
                     document.visibilityState === 'visible' &&
                     this.playback_slider_knob_anime !== null && this.playback_slider_progress_anime !== null
@@ -1363,6 +1386,9 @@
             },
             async attachAudioToPlayback(new_audio:string|Blob|File) : Promise<void> {
 
+                //reset
+                this.source_has_error = false;
+
                 const audio_element = (this.$refs.audio_element as HTMLAudioElement);
 
                 //pause first if playing
@@ -1464,6 +1490,10 @@
                         'bottom',
                     );
                 });
+            },
+            setPlaybackSourceHasError() : void {
+
+                this.source_has_error = true;
             },
         },
         beforeMount(){
@@ -1611,6 +1641,7 @@
             this.propIsRecording === false ? window.addEventListener('keydown', this.handleKeyboardEvent) : null;
             document.addEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
             audio_element.addEventListener('timeupdate', this.updateCurrentPlaybackTime);
+            audio_element.addEventListener('error', this.setPlaybackSourceHasError);
         },
         beforeUnmount(){
 
@@ -1624,6 +1655,7 @@
             this.propIsRecording === false ? window.removeEventListener('keydown', this.handleKeyboardEvent) : null;
             document.removeEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
             audio_element.removeEventListener('timeupdate', this.updateCurrentPlaybackTime);
+            audio_element.removeEventListener('error', this.setPlaybackSourceHasError);
 
             //record last stopped
             if(this.propAudioClip !== null){
