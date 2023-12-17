@@ -842,8 +842,6 @@
             handleNewVPlaybackTeleportId(teleport_id:string) : void {
 
                 this.teleport_id = teleport_id;
-
-                console.log(teleport_id);
             },
             handleNewUsername(new_value:string) : void {
 
