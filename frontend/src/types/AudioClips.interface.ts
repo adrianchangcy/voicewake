@@ -1,7 +1,6 @@
 interface AudioClipsTypes{
     id: number,
     user: {
-        id: number,
         username: string
     },
     audio_clip_role: {

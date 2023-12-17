@@ -91,10 +91,6 @@
                 type: Number,
                 default: 20,
             },
-            propCanLoadVPlayback: {
-                type: Boolean,
-                default: false,
-            },
         },
         computed: {
             prettyFileDuration(){
@@ -119,23 +115,34 @@
                 //this watcher is affordable when used with Virtual Scroller
                 //must watch isSelected, as passing active from Virtual Scroller is unreliable
 
-                //only emit true here to prevent race condition
-                //if we want to teleport VPlayback back to temporary id, do it at beforeUnmount
-                //i.e. only happens during new filter change
                 if(new_value === true){
 
-                    this.emitNewVPlaybackTeleportId(new_value);
+                    this.emitNewVPlaybackTeleportId(true);
                 }
+
+                //we cannot emit teleport(false) here,
+                //since it would cause a race condition with selected's teleport(true)
 
                 this.drawRipples();
             },
-            propAudioClip(){
+            propAudioClip(new_value:AudioClipsTypes, old_value:AudioClipsTypes){
+
+                //if old value is same as selected, it means it was previously selected
+                //this happens when VirtualScroller reuses selected component on scroll
+                if(
+                    this.propSelectedAudioClip !== null &&
+                    old_value.id === this.propSelectedAudioClip.id &&
+                    new_value.id !== this.propSelectedAudioClip.id
+                ){
+
+                    this.emitNewVPlaybackTeleportId(false);
+                }
 
                 this.drawRipples();
             },
         },
         methods: {
-            async emitNewVPlaybackTeleportId(can_teleport:boolean) : Promise<void> {
+            emitNewVPlaybackTeleportId(can_teleport:boolean) : void {
 
                 if(can_teleport === true){
 
@@ -155,7 +162,6 @@
                 }
 
                 this.$emit('selectedAudioClip', this.propAudioClip);
-                this.emitNewVPlaybackTeleportId(true);
             },
             async drawRipples() : Promise<void> {
 
