@@ -94,7 +94,6 @@
         data(){
             return {
                 pop_up_manager_store: usePopUpManagerStore(),
-                is_own_profile: false,
 
                 username: '',
                 has_shared: false,
@@ -103,7 +102,7 @@
                 is_blocked: false,
                 is_blocking: false,
 
-                is_own_page: false,
+                is_own_user_page: false,
             };
         },
         props: {
@@ -121,7 +120,7 @@
 
                 return (
                     this.pop_up_manager_store.isLoggedIn === true &&
-                    this.is_own_profile === false
+                    this.is_own_user_page === false
                 );
             },
         },
@@ -194,14 +193,14 @@
 
                 const container = (document.getElementById('data-container-get-user-profile') as HTMLElement);
                 this.username = (container.getAttribute('data-username') as string);
-                this.is_own_page = JSON.parse(container.getAttribute('data-is-own-page') as string);
+                this.is_own_user_page = JSON.parse(container.getAttribute('data-is-own-page') as string);
                 this.is_blocked = JSON.parse(container.getAttribute('data-is-blocked') as string);
 
             }else if(this.propPageContext === 'user_likes_dislikes'){
 
                 const container = (document.getElementById('data-container-list-user-likes-dislikes') as HTMLElement);
                 this.username = (container.getAttribute('data-username') as string);
-                this.is_own_page = JSON.parse(container.getAttribute('data-is-own-page') as string);
+                this.is_own_user_page = JSON.parse(container.getAttribute('data-is-own-page') as string);
             }
         }
     });

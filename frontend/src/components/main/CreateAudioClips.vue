@@ -251,7 +251,7 @@
                 this.is_submitting = true;
 
                 let data = new FormData();
-                const specific_url = this.propIsOriginator === true ? 'create' : 'reply/create';
+                const specific_url = this.propIsOriginator === true ? 'create' : 'replies/create';
                 
                 //prepare data
                 //webm follows VRecorder
