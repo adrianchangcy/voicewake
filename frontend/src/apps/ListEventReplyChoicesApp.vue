@@ -4,7 +4,7 @@
         <!--title-->
         <!--logo only here, since "Reply" goes away for certain parts, and putting it here would make things jolt-->
         <!--you can find "Reply" at areas that need it instead-->
-        <!--for "Reply", we use pb-10 instead of pb-8 here due to the font overflowing out at current size-->
+        <!--for "Reply", we use pb-9 instead of pb-8 here due to the font overflowing out at current size-->
         <VTitle
             propFontSize="l"
             class="pt-8"
@@ -33,7 +33,7 @@
                     <!--title, duplicated to prevent UI jolting compared to other alternatives-->
                     <VTitle
                         propFontSize="l"
-                        class="w-full pb-10"
+                        class="w-full pb-9"
                     >
                         <template #title>
                             <div class="flex flex-col">

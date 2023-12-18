@@ -8,7 +8,7 @@
         <span class="sr-only">loading audio clips</span>
         <!--title and datetime-->
         <!--<div> seems to have bigger height than the inner <span>, and doing it all in <span> didn't work-->
-        <div class="flex flex-col pb-10">
+        <div class="flex flex-col pb-8">
             <div class="w-[75%] h-6 flex items-center">
                 <div class="w-full h-5 rounded-lg skeleton"></div>
             </div>
@@ -16,7 +16,7 @@
                 <div class="w-full h-5 rounded-lg skeleton"></div>
             </div>
         </div>
-        <div class="flex flex-col gap-10">
+        <div class="flex flex-col gap-8">
             <!--audio-clips-->
             <div v-for="x in propAudioClipQuantity" :key="x">
                 <VAudioClipCardSkeleton/>
