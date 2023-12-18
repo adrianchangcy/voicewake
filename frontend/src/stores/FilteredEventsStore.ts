@@ -573,6 +573,8 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
             async partialResetStore() : Promise<void> {
 
                 this.filtered_events_structure = {};
+                this.current_audio_clip_role_name_index = 0;
+                this.updateCurrentAudioClipTone(null);
                 this.last_scroll_y = 0;
             },
             async setLastScrollY(scrollY_value:number) : Promise<void> {

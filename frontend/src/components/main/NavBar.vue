@@ -292,7 +292,6 @@
                             v-if="pop_up_manager_store.isLoggedIn === true"
                             class="h-fit grid"
                         >
-                            <!--block list-->
                             <VActionText
                                 prop-element="a"
                                 href="/block"
@@ -322,12 +321,48 @@
                             <div class="w-[75%] h-[1px] bg-theme-gray-2 mx-auto"></div>
                         </div>
 
+                        <!--likes/dislikes-->
+                        <div
+                            v-if="pop_up_manager_store.isLoggedIn === true"
+                            class="h-fit grid"
+                        >
+                            <VActionText
+                                prop-element="a"
+                                href="/likes"
+                                prop-font-size="s"
+                                prop-element-size="s"
+                                :prop-is-icon-only="false"
+                                class="row-span-1 w-full"
+                            >
+                                <div class="w-full h-full grid grid-cols-4">
+                                    <div class="col-span-1 h-full flex items-center">
+                                        <div class="w-fit flex items-center mx-auto">
+                                            <FontAwesomeIcon icon="fas fa-thumbs-up" class="text-theme-lead mx-auto"/>
+                                            <FontAwesomeIcon icon="far fa-thumbs-up" class="absolute mx-auto"/>
+                                        </div>
+                                    </div>
+                                    <div class="col-span-3 flex items-center">
+                                        <span class="text-left break-all">
+                                            Likes &#38; dislikes
+                                        </span>
+                                    </div>
+                                </div>
+                            </VActionText>
+                        </div>
+
+                        <!--divider-->
+                        <div
+                            v-if="pop_up_manager_store.isLoggedIn === true"
+                            class="py-4"
+                        >
+                            <div class="w-[75%] h-[1px] bg-theme-gray-2 mx-auto"></div>
+                        </div>
+
                         <!--log out-->
                         <div
                             v-if="pop_up_manager_store.isLoggedIn === true"
                             class="h-fit grid gap-2"
                         >
-                            <!--log out-->
                             <VActionText
                                 v-if="pop_up_manager_store.isLoggedIn === true"
                                 :prop-is-enabled="!is_log_out_loading"
@@ -387,8 +422,14 @@
     import { faRightToBracket } from '@fortawesome/free-solid-svg-icons/faRightToBracket';
     import { faBan } from '@fortawesome/free-solid-svg-icons/faBan';
     import { faDoorOpen } from '@fortawesome/free-solid-svg-icons/faDoorOpen';
+    import { faThumbsUp as farThumbsUp } from '@fortawesome/free-regular-svg-icons/faThumbsUp';
+    import { faThumbsUp as fasThumbsUp } from '@fortawesome/free-solid-svg-icons/faThumbsUp';
 
-    library.add(faWaveSquare, faComment, faComments, faCircleUser, faChevronDown, faRightToBracket, faBan, faDoorOpen);
+    library.add(
+        faWaveSquare, faComment, faComments, faCircleUser,
+        faChevronDown, faRightToBracket, faBan, faDoorOpen,
+        farThumbsUp, fasThumbsUp,
+    );
 </script>
 
 
