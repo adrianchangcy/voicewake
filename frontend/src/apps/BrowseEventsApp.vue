@@ -17,7 +17,7 @@
             :prop-has-default-actions="false"
             class="py-8"
         >
-            <span>Likes and Dislikes</span>
+            <span>Likes &#38; dislikes</span>
         </VUserCard>
 
         <!--sorting options-->
