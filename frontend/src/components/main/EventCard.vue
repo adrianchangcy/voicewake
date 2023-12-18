@@ -9,7 +9,7 @@
         <!--title and datetime-->
         <div
             v-if="propShowTitle === true"
-            class="pb-10"
+            class="pb-8"
         >
             <!--ugc tells crawlers that it is user-generated content-->
             <VActionText
@@ -45,96 +45,102 @@
 
         <div
             v-if="propGuaranteedEventGenericStatus === 'completed'"
-            class="flex flex-col gap-10"
+            class="flex flex-col gap-8"
         >
 
             <!--originator-->
             <div
-                class="flex flex-col gap-2"
+                class="flex flex-col"
             >
                 <VUsernameURL
                     :propUsername="propEvent.originator[0]!.user.username"
                 />
-                <VAudioClipCard
-                    v-if="propLoadVAudioClipCardsOnly === true"
-                    :prop-audio-clip="propEvent.originator[0]!"
-                    :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
-                    @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
-                    @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
-                />
-                <VPlayback
-                    v-else
-                    :prop-audio-clip="propEvent.originator[0]!"
-                    :prop-audio-volume-peaks="propEvent.originator[0]!.audio_volume_peaks"
-                    :prop-bucket-quantity="propEvent.originator[0]!.audio_volume_peaks.length"
-                    :prop-is-open="propIsVPlaybackOpen"
-                />
-                <VAudioClipTools
-                    :prop-audio-clip="propEvent.originator[0]!"
-                    :prop-has-virtual-scroll="propHasVirtualScroll"
-                    @new-is-liked="emitNewIsLiked($event)"
-                />
+                <div class="flex flex-col gap-2">
+                    <VAudioClipCard
+                        v-if="propLoadVAudioClipCardsOnly === true"
+                        :prop-audio-clip="propEvent.originator[0]!"
+                        :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
+                        @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
+                        @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
+                    />
+                    <VPlayback
+                        v-else
+                        :prop-audio-clip="propEvent.originator[0]!"
+                        :prop-audio-volume-peaks="propEvent.originator[0]!.audio_volume_peaks"
+                        :prop-bucket-quantity="propEvent.originator[0]!.audio_volume_peaks.length"
+                        :prop-is-open="propIsVPlaybackOpen"
+                    />
+                    <VAudioClipTools
+                        :prop-audio-clip="propEvent.originator[0]!"
+                        :prop-has-virtual-scroll="propHasVirtualScroll"
+                        @new-is-liked="emitNewIsLiked($event)"
+                    />
+                </div>
             </div>
 
             <!--responder-->
             <div
-                class="flex flex-col gap-2"
+                class="flex flex-col"
             >
                 <VUsernameURL
                     :propUsername="propEvent.responder[0]!.user.username"
                 />
-                <VAudioClipCard
-                    v-if="propLoadVAudioClipCardsOnly === true"
-                    :prop-audio-clip="propEvent.responder[0]!"
-                    :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
-                    @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
-                    @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
-                />
-                <VPlayback
-                    v-else
-                    :prop-audio-clip="propEvent.responder[0]!"
-                    :prop-audio-volume-peaks="propEvent.responder[0]!.audio_volume_peaks"
-                    :prop-bucket-quantity="propEvent.responder[0]!.audio_volume_peaks.length"
-                    :prop-is-open="propIsVPlaybackOpen"
-                />
-                <VAudioClipTools
-                    :prop-audio-clip="propEvent.responder[0]!"
-                    :prop-has-virtual-scroll="propHasVirtualScroll"
-                    @new-is-liked="emitNewIsLiked($event)"
-                />
+                <div class="flex flex-col gap-2">
+                    <VAudioClipCard
+                        v-if="propLoadVAudioClipCardsOnly === true"
+                        :prop-audio-clip="propEvent.responder[0]!"
+                        :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
+                        @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
+                        @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
+                    />
+                    <VPlayback
+                        v-else
+                        :prop-audio-clip="propEvent.responder[0]!"
+                        :prop-audio-volume-peaks="propEvent.responder[0]!.audio_volume_peaks"
+                        :prop-bucket-quantity="propEvent.responder[0]!.audio_volume_peaks.length"
+                        :prop-is-open="propIsVPlaybackOpen"
+                    />
+                    <VAudioClipTools
+                        :prop-audio-clip="propEvent.responder[0]!"
+                        :prop-has-virtual-scroll="propHasVirtualScroll"
+                        @new-is-liked="emitNewIsLiked($event)"
+                    />
+                </div>
             </div>
         </div>
 
         <div
             v-else-if="propGuaranteedEventGenericStatus === 'incomplete'"
-            class="flex flex-col gap-10"
+            class="flex flex-col gap-8"
         >
             <!--originator-->
             <div
-                class="flex flex-col gap-2"
+                class="flex flex-col"
             >
                 <VUsernameURL
                     :propUsername="propEvent.originator[0]!.user.username"
                 />
-                <VAudioClipCard
-                    v-if="propLoadVAudioClipCardsOnly === true"
-                    :prop-audio-clip="propEvent.originator[0]!"
-                    :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
-                    @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
-                    @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
-                />
-                <VPlayback
-                    v-else
-                    :prop-audio-clip="propEvent.originator[0]!"
-                    :prop-audio-volume-peaks="propEvent.originator[0]!.audio_volume_peaks"
-                    :prop-bucket-quantity="propEvent.originator[0]!.audio_volume_peaks.length"
-                    :prop-is-open="propIsVPlaybackOpen"
-                />
-                <VAudioClipTools
-                    :prop-audio-clip="propEvent.originator[0]!"
-                    :prop-has-virtual-scroll="propHasVirtualScroll"
-                    @new-is-liked="emitNewIsLiked($event)"
-                />
+                <div class="flex flex-col gap-2">
+                    <VAudioClipCard
+                        v-if="propLoadVAudioClipCardsOnly === true"
+                        :prop-audio-clip="propEvent.originator[0]!"
+                        :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
+                        @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
+                        @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
+                    />
+                    <VPlayback
+                        v-else
+                        :prop-audio-clip="propEvent.originator[0]!"
+                        :prop-audio-volume-peaks="propEvent.originator[0]!.audio_volume_peaks"
+                        :prop-bucket-quantity="propEvent.originator[0]!.audio_volume_peaks.length"
+                        :prop-is-open="propIsVPlaybackOpen"
+                    />
+                    <VAudioClipTools
+                        :prop-audio-clip="propEvent.originator[0]!"
+                        :prop-has-virtual-scroll="propHasVirtualScroll"
+                        @new-is-liked="emitNewIsLiked($event)"
+                    />
+                </div>
             </div>
         </div>
 
@@ -146,97 +152,105 @@
         >
             <div
                 v-if="propLoadVAudioClipCardsOnly"
-                class="flex flex-col gap-10"
+                class="flex flex-col gap-8"
             >
         
                 <!--originator-->
                 <div
                     v-for="audio_clip in propEvent.originator" :key="audio_clip.id"
-                    class="flex flex-col gap-2"
+                    class="flex flex-col"
                 >
                     <VUsernameURL
                         :propUsername="audio_clip.user.username"
                     />
-                    <VAudioClipCard
-                        :prop-audio-clip="audio_clip"
-                        :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
-                        @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
-                        @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
-                    />
-                    <VAudioClipTools
-                        :prop-audio-clip="audio_clip"
-                        :prop-has-virtual-scroll="propHasVirtualScroll"
-                        @new-is-liked="emitNewIsLiked($event)"
-                    />
+                    <div class="flex flex-col gap-2">
+                        <VAudioClipCard
+                            :prop-audio-clip="audio_clip"
+                            :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
+                            @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
+                            @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
+                        />
+                        <VAudioClipTools
+                            :prop-audio-clip="audio_clip"
+                            :prop-has-virtual-scroll="propHasVirtualScroll"
+                            @new-is-liked="emitNewIsLiked($event)"
+                        />
+                    </div>
                 </div>
             
                 <!--responder-->
                 <div
                     v-for="audio_clip in propEvent.responder" :key="audio_clip.id"
-                    class="flex flex-col gap-2"
+                    class="flex flex-col"
                 >
                     <VUsernameURL
                         :propUsername="audio_clip.user.username"
                     />
-                    <VAudioClipCard
-                        :prop-audio-clip="audio_clip"
-                        :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
-                        @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
-                        @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
-                    />
-                    <VAudioClipTools
-                        :prop-audio-clip="audio_clip"
-                        :prop-has-virtual-scroll="propHasVirtualScroll"
-                        @new-is-liked="emitNewIsLiked($event)"
-                    />
+                    <div class="flex flex-col gap-2">
+                        <VAudioClipCard
+                            :prop-audio-clip="audio_clip"
+                            :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
+                            @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
+                            @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
+                        />
+                        <VAudioClipTools
+                            :prop-audio-clip="audio_clip"
+                            :prop-has-virtual-scroll="propHasVirtualScroll"
+                            @new-is-liked="emitNewIsLiked($event)"
+                        />
+                    </div>
                 </div>
             </div>
         
             <div
                 v-else
-                class="flex flex-col gap-10"
+                class="flex flex-col gap-8"
             >
         
                 <!--originator-->
                 <div
                     v-for="audio_clip in propEvent.originator" :key="audio_clip.id"
-                    class="flex flex-col gap-2"
+                    class="flex flex-col"
                 >
                     <VUsernameURL
                         :propUsername="audio_clip.user.username"
                     />
-                    <VPlayback
-                        :prop-audio-clip="audio_clip"
-                        :prop-audio-volume-peaks="audio_clip.audio_volume_peaks"
-                        :prop-bucket-quantity="audio_clip.audio_volume_peaks.length"
-                        :prop-is-open="propIsVPlaybackOpen"
-                    />
-                    <VAudioClipTools
-                        :prop-audio-clip="audio_clip"
-                        :prop-has-virtual-scroll="propHasVirtualScroll"
-                        @new-is-liked="emitNewIsLiked($event)"
-                    />
+                    <div class="flex flex-col gap-2">
+                        <VPlayback
+                            :prop-audio-clip="audio_clip"
+                            :prop-audio-volume-peaks="audio_clip.audio_volume_peaks"
+                            :prop-bucket-quantity="audio_clip.audio_volume_peaks.length"
+                            :prop-is-open="propIsVPlaybackOpen"
+                        />
+                        <VAudioClipTools
+                            :prop-audio-clip="audio_clip"
+                            :prop-has-virtual-scroll="propHasVirtualScroll"
+                            @new-is-liked="emitNewIsLiked($event)"
+                        />
+                    </div>
                 </div>
             
                 <!--responder-->
                 <div
                     v-for="audio_clip in propEvent.responder" :key="audio_clip.id"
-                    class="flex flex-col gap-2"
+                    class="flex flex-col"
                 >
                     <VUsernameURL
                         :propUsername="audio_clip.user.username"
                     />
-                    <VPlayback
-                        :prop-audio-clip="audio_clip"
-                        :prop-audio-volume-peaks="audio_clip.audio_volume_peaks"
-                        :prop-bucket-quantity="audio_clip.audio_volume_peaks.length"
-                        :prop-is-open="propIsVPlaybackOpen"
-                    />
-                    <VAudioClipTools
-                        :prop-audio-clip="audio_clip"
-                        :prop-has-virtual-scroll="propHasVirtualScroll"
-                        @new-is-liked="emitNewIsLiked($event)"
-                    />
+                    <div class="flex flex-col gap-2">
+                        <VPlayback
+                            :prop-audio-clip="audio_clip"
+                            :prop-audio-volume-peaks="audio_clip.audio_volume_peaks"
+                            :prop-bucket-quantity="audio_clip.audio_volume_peaks.length"
+                            :prop-is-open="propIsVPlaybackOpen"
+                        />
+                        <VAudioClipTools
+                            :prop-audio-clip="audio_clip"
+                            :prop-has-virtual-scroll="propHasVirtualScroll"
+                            @new-is-liked="emitNewIsLiked($event)"
+                        />
+                    </div>
                 </div>
             </div>
         </div>

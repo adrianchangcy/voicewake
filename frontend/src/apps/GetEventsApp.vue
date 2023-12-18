@@ -1,7 +1,7 @@
 <template>
     <div class="flex flex-col">
 
-        <div v-if="is_fetching_event" class="flex flex-col gap-10">
+        <div v-if="is_fetching_event" class="flex flex-col gap-8">
 
             <!--loading audio-clips-->
             <div v-for="x in audio_clip_count" :key="x">
@@ -27,7 +27,7 @@
                 <TransitionFadeSlow>
                     <div
                         v-if="isReplying"
-                        class="w-full flex flex-col gap-2 pt-10"
+                        class="w-full flex flex-col pt-8"
                     >
                         <VUsernameURL
                             :propUsername="(getDataFromTemplateJSONScript('data-user-username') as string)"

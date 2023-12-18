@@ -177,13 +177,12 @@
             },
             async redrawCanvasRipplesOnResize() : Promise<void> {
 
-                await this.drawRipples();
+                this.drawRipples();
 
                 //redraw again after 200ms
                 //resize can sometimes fire before final dimension is known
-                window.setTimeout(async ()=>{
-
-                    await this.drawRipples();
+                window.setTimeout(()=>{
+                    this.drawRipples();
                 }, 200);
             },
         },

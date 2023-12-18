@@ -1283,6 +1283,10 @@ video {
   align-items: flex-start;
 }
 
+.items-end {
+  align-items: flex-end;
+}
+
 .items-center {
   align-items: center;
 }
@@ -1339,12 +1343,20 @@ video {
   border-color: rgb(232 234 235 / var(--tw-divide-opacity));
 }
 
+.self-end {
+  align-self: flex-end;
+}
+
 .justify-self-end {
   justify-self: end;
 }
 
 .overflow-hidden {
   overflow: hidden;
+}
+
+.overflow-clip {
+  overflow: clip;
 }
 
 .overflow-y-auto {
@@ -1808,6 +1820,10 @@ video {
   padding-top: 1px;
 }
 
+.pb-9 {
+  padding-bottom: 2.25rem;
+}
+
 .text-left {
   text-align: left;
 }
@@ -2010,10 +2026,6 @@ video {
 
 .outline {
   outline-style: solid;
-}
-
-.outline-1 {
-  outline-width: 1px;
 }
 
 .ring-0 {
@@ -2494,10 +2506,6 @@ canvas {
   outline-width: 2px;
 }
 
-.focus-visible\:outline-1:focus-visible {
-  outline-width: 1px;
-}
-
 .focus-visible\:-outline-offset-1:focus-visible {
   outline-offset: -1px;
 }
@@ -2512,10 +2520,6 @@ canvas {
 
 .focus-visible\:outline-offset-0:focus-visible {
   outline-offset: 0px;
-}
-
-.focus-visible\:outline-offset-1:focus-visible {
-  outline-offset: 1px;
 }
 
 .focus-visible\:outline-theme-gray-5:focus-visible {

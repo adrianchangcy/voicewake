@@ -335,13 +335,13 @@ export function isPageAccessedByBackForward() : boolean {
 }
 
 
-export function drawCanvasRipples(
+export async function drawCanvasRipples(
     canvas_container_rect:DOMRect,
     canvas_element:HTMLCanvasElement,
     audio_volume_peaks:number[]=[],
     transform_origin:'center'|'bottom'='center',
     ripple_width_px:number=2,
-) : void {
+) : Promise<void> {
 
     //everything must be rounded to non-float values allow css image-rendering to work properly
     //be sure that <canvas> also has css w-full h-full
