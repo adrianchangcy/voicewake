@@ -86,6 +86,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',     #requires SITE_ID later, so db can manage content for multiple sites
 
+    #Celery
+    "django_celery_beat",
+    "django_celery_results",
+
     'rest_framework',
     #optional, provides template when returning Response() and not JsonResponse()
     #Django expects this when returning Response(), else error TemplateDoesNotExist ... rest_framework/api.html
@@ -272,6 +276,29 @@ ASGI_APPLICATION = 'voicewake.asgi.application'
 CHANNEL_LAYERS = {}
 
 
+#CELERY
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379'
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_TIMEZONE = 'UTC'
+CELERY_TASK_TIME_LIMIT = 10 * 60
+
+
+#REDIS CACHE
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": f"redis://127.0.0.1:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+    }
+}
+
+
 #folder name, only for storage
 MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')
 
@@ -347,6 +374,33 @@ LIST_AUDIO_CLIP_QUANTITY_PER_PAGE = 20
 
 
 USER_BLOCK_QUANTITY_PER_PAGE = 20
+
+
+#CRONJOBS
+CELERY_IMPORTS = ("voicewake.tasks",)
+CELERY_BEAT_SCHEDULE = {
+    'ban-audio-clips': {
+        'task': 'voicewake.tasks.cronjob_ban_audio_clips',
+        'schedule': (60 * 60),  #1 hour
+        'options': {
+            'expires': 30,    #30 seconds
+        },
+    },
+    'reset-expired-reply-choice': {
+        'task': 'voicewake.tasks.cronjob_reset_event_reply_choice_overdue',
+        'schedule': (30 * 60),  #30 minutes
+        'options': {
+            'expires': 30,    #30 seconds
+        },
+    },
+    'reset-expired-reply': {
+        'task': 'voicewake.tasks.cronjob_reset_event_reply_overdue',
+        'schedule': (30 * 60),  #30 minutes
+        'options': {
+            'expires': 30,    #30 seconds
+        },
+    },
+}
 
 
 

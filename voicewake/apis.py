@@ -46,7 +46,6 @@ from django.conf import settings
 #specifically just for error handling
 from psycopg.errors import UniqueViolation
 from django.db.utils import IntegrityError
-from voicewake.cronjobs import *
 
 
 

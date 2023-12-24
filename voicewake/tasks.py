@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.db import connection
 from django.db import transaction
 from django.db.models import F, Q
+from celery import shared_task
 
 #apps
 from voicewake.services import *
@@ -9,6 +10,7 @@ from voicewake.models import *
 from django.conf import settings
 
 
+@shared_task
 def cronjob_ban_audio_clips():
 
     datetime_now = get_datetime_now()
@@ -139,6 +141,7 @@ def cronjob_ban_audio_clips():
         get_user_model().objects.bulk_update(users, fields=('ban_count', 'banned_until',))
 
 
+@shared_task
 def cronjob_reset_event_reply_choice_overdue():
 
     when_locked_checkpoint = get_datetime_now() - timedelta(seconds=settings.EVENT_REPLY_CHOICE_MAX_DURATION_S)
@@ -151,6 +154,7 @@ def cronjob_reset_event_reply_choice_overdue():
     ).delete()[0:settings.CRONJOB_UNDO_EVENT_REPLY_LIMIT]
 
 
+@shared_task
 def cronjob_reset_event_reply_overdue():
 
     when_locked_checkpoint = get_datetime_now() - timedelta(seconds=settings.EVENT_REPLY_MAX_DURATION_S)
