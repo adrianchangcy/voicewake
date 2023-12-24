@@ -17,7 +17,7 @@ from django.db import connection
 #apps
 from voicewake.services import *
 from voicewake.models import *
-from voicewake.cronjobs import *
+from voicewake.tasks import *
 from voicewake.factories import *
 from django.conf import settings
 
