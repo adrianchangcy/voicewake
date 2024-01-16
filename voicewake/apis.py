@@ -1074,7 +1074,6 @@ class BrowseEventsAPI(generics.GenericAPIView):
     def list_latest_grouped_audio_clips(
         self,
         username:str='',
-        timeframe:Literal['all', 'month', 'week', 'day']='all',
         audio_clip_role_name:Literal['originator', 'responder']='originator',
         audio_clip_tone_id:int=None,
         next_or_back:Literal['next', 'back']='next',
@@ -1128,9 +1127,8 @@ class BrowseEventsAPI(generics.GenericAPIView):
             audio_clip_tones_params = [audio_clip_tone_id]
 
         #prepare timeframe
-        #different checkpoints for different time range
 
-        datetime_between = get_datetime_between(timeframe)
+        datetime_between = get_datetime_between('all')
 
         #ran out of time to properly implement user blocks
         #i.e. prevent content from showing when blocking/blocked, either one-way or two-way
@@ -1709,7 +1707,7 @@ class BrowseEventsAPI(generics.GenericAPIView):
 
                 return Response(
                     data={
-                        'message': 'You can only view your own likes and dislikes.',
+                        'message': 'You can only view your own likes and dislikes for now.',
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
@@ -1718,7 +1716,6 @@ class BrowseEventsAPI(generics.GenericAPIView):
 
             result = self.list_latest_grouped_audio_clips(
                 username=new_data['username'],
-                timeframe=new_data['timeframe'],
                 audio_clip_role_name=new_data['audio_clip_role_name'],
                 audio_clip_tone_id=new_data['audio_clip_tone_id'],
                 next_or_back=new_data['next_or_back'],
