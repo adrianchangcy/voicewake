@@ -96,7 +96,6 @@
     //this depends on main.js clickOutside custom directive
     import { PropType, defineComponent } from 'vue';
     import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
-    import { notify } from 'notiwind';
     import axios from 'axios';
     import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
 
@@ -166,12 +165,6 @@
 
                     this.is_loading = false;
                     this.has_error = true;
-
-                    notify({
-                        title: "Error",
-                        text: 'Could not get the tags. Try refreshing the page.',
-                        type: "error"
-                    }, 5000);
                 });
             },
             isSelected(audio_clip_tone_index:number|null) : boolean {

@@ -637,7 +637,7 @@
 
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
-    import { emailValidatorDjango } from '@/helper_functions';
+    import { emailValidatorDjango, prettyTimeRemaining } from '@/helper_functions';
     import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     const axios = require('axios');
@@ -726,7 +726,11 @@
             },
             canSubmitEmailAndRequestOTP() : boolean {
 
-                return this.email_is_ok === true && this.otp_request_cooldown_interval === null && this.is_otp_request_loading === false;
+                return (
+                    this.email_is_ok === true &&
+                    this.otp_request_cooldown_interval === null &&
+                    this.is_otp_request_loading === false
+                );
             }
         },
         methods: {
@@ -826,7 +830,10 @@
                     this.current_step = (this.steps as StepsType)[section_index][steps_value_index];
                 }
             },
-            async startRequestOTPCooldown() : Promise<void> {
+            async startRequestOTPCooldown(
+                context:"sent"|"too_many_sent"="sent",
+                timeout_s:number=0
+            ) : Promise<void> {
 
                 //reset
                 this.otp_request_cooldown_interval !== null ? window.clearTimeout(this.otp_request_cooldown_interval) : null;
@@ -835,14 +842,26 @@
                 this.otp_request_status_text = "";
                 this.otp_can_auto_submit = true;
 
+                //prepare values
+                let status_text = "";
+
+                if(context === "sent"){
+
+                    status_text = "Code should arrive in ";
+                    timeout_s = this.otp_request_cooldown_duration_s;
+
+                }else if(context === "too_many_sent"){
+
+                    status_text = "Too many codes sent. Retry in ";
+                }
+
                 //set cooldown seconds
                 //-1 to account for setInterval() first-time delay
-                this.otp_request_cooldown_s = this.otp_request_cooldown_duration_s - 1;
+                this.otp_request_cooldown_s = timeout_s - 1;
 
                 //have text already done during setInterval() first-time delay
-                this.otp_request_status_text = "Code should arrive in " +
-                    (this.otp_request_cooldown_s + 1).toString() +
-                    " seconds...";
+                this.otp_request_status_text = status_text +
+                    prettyTimeRemaining(0, ((this.otp_request_cooldown_s + 1) * 1000)) + '.';
 
                 //interval itself for cooldown
                 this.otp_request_cooldown_interval = window.setInterval(()=>{
@@ -856,13 +875,11 @@
                     }
 
                     if(this.otp_request_cooldown_s === 1){
-                        this.otp_request_status_text = "Code should arrive in " +
-                            this.otp_request_cooldown_s.toString() +
-                            " second...";
+                        this.otp_request_status_text = status_text +
+                            prettyTimeRemaining(0, (this.otp_request_cooldown_s * 1000)) + '.';
                     }else{
-                        this.otp_request_status_text = "Code should arrive in " +
-                            this.otp_request_cooldown_s.toString() +
-                            " seconds...";
+                        this.otp_request_status_text = status_text +
+                            prettyTimeRemaining(0, (this.otp_request_cooldown_s * 1000)) + '.';
                     }
 
                     this.otp_request_cooldown_s -= 1;
@@ -933,16 +950,36 @@
 
                     await this.startRequestOTPCooldown();
                 })
-                .catch(() => {
+                .catch((error:any) => {
 
-                    //unexpected error
                     if(this.otp_request_cooldown_interval !== null){
 
                         window.clearInterval(this.otp_request_cooldown_interval);
                         this.otp_request_cooldown_interval = null;
                     }
 
-                    this.otp_request_status_text = "Oops! Could not send code.";
+                    //start cooldown when user has made too many otp requests
+
+                    if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
+
+                        if(
+                            Object.hasOwn(error.response.data, 'error_code') &&
+                            Object.hasOwn(error.response.data, 'timeout_s') &&
+                            error.response.data['error_code'] === 'otp-creation-timeout'
+                        ){
+
+                            this.startRequestOTPCooldown("too_many_sent", error.response.data['timeout_s']);
+
+                        }else{
+
+                            this.otp_request_status_text = "Could not send code.";
+                        }
+
+                    }else{
+
+                        this.otp_request_status_text = "Could not send code.";
+                    }
+
 
                 }).finally(()=>{
 

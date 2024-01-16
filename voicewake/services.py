@@ -766,7 +766,8 @@ class HandleUserOTP(TOTPVerification):
         email_message = get_template('email/otp.html').render(context={
             'otp_direction': direction,
             'otp': otp,
-            'otp_expiry': '%s minutes' % (otp_expiry)
+            'otp_expiry': '%s minutes' % (otp_expiry),
+            'cache_age': settings.CACHE_OTP_EMAIL_AGE_S,
         })
 
         send_mail(

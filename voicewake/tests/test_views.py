@@ -32,6 +32,7 @@ import math
 import subprocess
 import traceback
 import inspect, sys
+import dotenv
 
 
 def ensure_otp_is_always_wrong(otp):
