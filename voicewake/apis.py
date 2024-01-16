@@ -7,6 +7,8 @@ from django.utils.decorators import method_decorator
 from django.db.models import Prefetch
 from django.db.utils import IntegrityError
 from django.urls import reverse
+from django.core.cache import cache
+from redis.exceptions import ConnectionError
 
 #auth
 from django.contrib.auth import get_user_model, login, logout
@@ -870,12 +872,11 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
 
                     if otp_creation_timeout_s > 0:
 
-                        #timed out from creating otp
-                        message = "Timed out from too many codes sent. Try again in " + get_pretty_datetime(otp_creation_timeout_s) + "."
-
                         return Response(
                             data={
-                                'message': message,
+                                'error_code': 'otp-creation-timeout',
+                                'timeout_s': otp_creation_timeout_s,
+                                'message': '',
                             },
                             status=status.HTTP_400_BAD_REQUEST
                         )
@@ -924,11 +925,43 @@ class AudioClipTonesAPI(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
 
+        audio_clip_tones = None
+
+        try:
+
+            sentinel = object()
+
+            audio_clip_tones = cache.get("all_audio_clip_tones", default=sentinel)
+
+            if audio_clip_tones is sentinel:
+
+                #does not exist in cache
+                #retrieve and store in cache
+
+                audio_clip_tones = AudioClipTones.objects.all()
+
+                list(audio_clip_tones)
+
+                cache.set(
+                    "all_audio_clip_tones",
+                    audio_clip_tones,
+                    timeout=settings.CACHE_AUDIO_CLIP_TONE_AGE_S,
+                )
+
+        except ConnectionError:
+
+            #fallback for when Redis is down
+            audio_clip_tones = AudioClipTones.objects.all()
+
+        except Exception as e:
+
+            raise e
+
         response = Response(
             data={
                 'message': '',
                 'data': AudioClipTonesSerializer(
-                    AudioClipTones.objects.all(),
+                    audio_clip_tones,
                     many=True
                 ).data
             }
@@ -936,7 +969,7 @@ class AudioClipTonesAPI(generics.GenericAPIView):
 
         patch_cache_control(
             response,
-            no_cache=False, no_store=False, must_revalidate=True, max_age=settings.AUDIO_CLIP_TONE_CACHE_AGE_S
+            no_cache=False, no_store=False, must_revalidate=True, max_age=settings.CACHE_AUDIO_CLIP_TONE_AGE_S
         )
 
         return response

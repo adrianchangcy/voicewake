@@ -121,6 +121,9 @@
             },
             checkHasCookiesConsent() : void {
 
+                //currently not used
+                //only need consent if collecting user data
+
                 if(this.pop_up_manager_store.isLoggedIn === false || localStorage.getItem('user_consents_to_cookies') !== null){
 
                     return;
@@ -171,10 +174,6 @@
             //allow use of ESC key to close popups
             window.addEventListener('keydown', this.pop_up_manager_store.forceCloseAllPopUps);
 
-        },
-        mounted(){
-
-            this.checkHasCookiesConsent();
         },
         beforeUnmount(){
 

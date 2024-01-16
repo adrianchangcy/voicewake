@@ -13,25 +13,27 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 #Python packages
 from pathlib import Path
 import os
+import dotenv
+
+
+#find and load .env file
+#must only have one per environment
+dotenv.load_dotenv(dotenv.find_dotenv())
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = int(os.environ['DEBUG']) == 1
+MAINTENANCE_MODE = int(os.environ['MAINTENANCE_MODE']) == 1
+
 
 # SECURITY WARNING: keep the secret key used in production secret!
 #must use fixed SECRET_KEY for Django to sign session cookies
 #else if always using new SECRET_KEY, it would kill all existing sessions
-SECRET_KEY = 'django-insecure-hdgs8@4nxkx0du^2n-gdss(!eo6i0kj6vk=gx1mddc@g=6h_^1'
-
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-
-MAINTENANCE_MODE = False
+SECRET_KEY = os.environ['SECRET_KEY']
 
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
@@ -49,7 +51,7 @@ MIDDLEWARE = []
 
 if DEBUG is True:
 
-    REQUEST_TIME_DELAY = 2  #seconds
+    REQUEST_TIME_DELAY = 0  #seconds
 
     MIDDLEWARE += [
         'voicewake.middleware.drf_api_delay_middleware.TimeDelayMiddleware',
@@ -284,7 +286,7 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_TIMEZONE = 'UTC'
-CELERY_TASK_TIME_LIMIT = 10 * 60
+CELERY_TASK_TIME_LIMIT = 2 * 60
 
 
 #REDIS CACHE
@@ -313,9 +315,6 @@ AUDIO_CLIP_MAX_FILE_SIZE_BYTES = 3072000
 
 
 GENERAL_ROW_QUANTITY_PER_PAGE = 20
-
-
-AUDIO_CLIP_TONE_CACHE_AGE_S = 1209600  #2 weeks
 
 
 #EVENT
@@ -357,9 +356,9 @@ TOTP_TOLERANCE_S = 120    #allow early/late by x seconds until truly not allowed
 #we make max values harder to reach but more punishing
 OTP_CREATION_TIMEOUT_S = 30            #for each resend, before max is reached
 OTP_MAX_CREATIONS = 4                       #max resends
-OTP_MAX_CREATIONS_TIMEOUT_S = 1800
+OTP_MAX_CREATIONS_TIMEOUT_S = 600           #10 minutes
 OTP_MAX_ATTEMPTS = 8                        #times someone can try before being timed out
-OTP_MAX_ATTEMPTS_TIMEOUT_S = 1800
+OTP_MAX_ATTEMPTS_TIMEOUT_S = 1800           #30 minutes
 
 
 #values used to evaluate audio_clip_reports and banning the audio_clips
@@ -374,6 +373,11 @@ LIST_AUDIO_CLIP_QUANTITY_PER_PAGE = 20
 
 
 USER_BLOCK_QUANTITY_PER_PAGE = 20
+
+
+#CACHE
+CACHE_AUDIO_CLIP_TONE_AGE_S = 1209600  #2 weeks
+CACHE_OTP_EMAIL_AGE_S = 86400   #1 day
 
 
 #CRONJOBS
