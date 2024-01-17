@@ -32,13 +32,7 @@ class Random_TestCase(TestCase):
 
     def test_random(self):
 
-        vals = {
-            'val_1': 0,
-        }
-
-        ser = TestApiSerializer(data=vals, many=False)
-        ser.is_valid()
-        print(ser.validated_data)
+        pass
 
 
 
