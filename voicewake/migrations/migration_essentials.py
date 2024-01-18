@@ -127,11 +127,20 @@ custom_function_handle_audio_clip_likes_dislikes_count = '''
 
             ELSIF (TG_OP = 'DELETE') THEN
 
+                /*
+                *we use COALESCE + NULLIF trick to solve "division by 0" error
+                */
+
                 IF (OLD.is_liked IS TRUE) THEN
 
                     UPDATE audio_clips
                     SET like_count = like_count - 1,
-					like_ratio = (like_count - 1)::float / (like_count + dislike_count - 1)
+					like_ratio = (like_count - 1)::float / (
+                        COALESCE(
+                            NULLIF((like_count + dislike_count - 1), 0),
+                            1
+                        )
+                    )
                     WHERE id = OLD.audio_clip_id
                     ;
 
@@ -139,11 +148,17 @@ custom_function_handle_audio_clip_likes_dislikes_count = '''
 
                     UPDATE audio_clips
                     SET dislike_count = dislike_count - 1,
-					like_ratio = like_count::float / (like_count + dislike_count - 1)
+					like_ratio = like_count::float / (
+                        COALESCE(
+                            NULLIF((like_count + dislike_count - 1), 0),
+                            1
+                        )
+                    )
                     WHERE id = OLD.audio_clip_id
                     ;
 
                 END IF;
+
                 RETURN OLD;
 
             END IF;

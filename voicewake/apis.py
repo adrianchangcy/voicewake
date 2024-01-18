@@ -2580,11 +2580,19 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
 
         new_data = serializer.validated_data
 
-        #initially had checks on whether audio_clip exists, and whether it is already banned
-        #instead, we now let db catch the error for us, because these checks are unnecessary in 99% of all cases
-
         #current code is also supposedly better than 100% delete + insert
         #https://stackoverflow.com/questions/1271641/in-sql-is-update-always-faster-than-deleteinsert
+
+        #check if audio clip exists
+
+        if AudioClips.objects.filter(pk=new_data['audio_clip_id']).exists() is False:
+
+            return Response(
+                data={
+                    'message': 'Recording does not exist.',
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         #start
 
@@ -2601,6 +2609,7 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
             else:
 
                 #for value changes, use defaults arg
+                #weirdly, you cannot catch ForeignKeyViolation error with try catch here
                 AudioClipLikesDislikes.objects.update_or_create(
                     user_id=request.user.id,
                     audio_clip_id=new_data['audio_clip_id'],
@@ -2651,6 +2660,8 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
             #using trigger that also checks for OLD.is_liked != NEW.is_liked during INSERT prevents race condition
         #peculiar:
             #with/without trigger, both at Locust had yielded the same response times (avg. 17000ms)
+            #cannot catch ForeignKeyViolation from update_or_create()
+                #object will be created, end of line will be reached, status 200 is returned
 
 
 

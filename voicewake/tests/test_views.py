@@ -46,43 +46,6 @@ def ensure_otp_is_always_wrong(otp):
 
 
 
-class Random_TestCase(TestCase):
-
-    @classmethod
-    def setUpTestData(cls):
-
-        cls.users = UsersFactory.create_batch(5)
-
-
-    def test_random(self):
-
-
-
-        pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class Users_TestCase(TestCase):
 
     @classmethod
@@ -478,216 +441,6 @@ class AudioClips_TestCase(TestCase):
         handle_audio_file_class.audio_file.seek(0)
 
         handle_audio_file_class.close_audio_file()
-
-
-
-
-@override_settings(
-    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
-    MEDIA_ROOT = os.path.join(settings.BASE_DIR, 'voicewake/tests'),
-)
-class System_TestCase(TestCase):
-
-    @classmethod
-    def setUpTestData(cls):
-
-        cls.users = []
-
-        for x in range(0, 6):
-
-            current_user = get_user_model().objects.create_user(
-                username='useR'+str(x),
-                email='user'+str(x)+'@gmail.com',
-            )
-
-            current_user = get_user_model().objects.get(username_lowercase="user"+str(x))
-
-            current_user.is_active = True
-            current_user.save()
-
-            cls.users.append(current_user)
-
-        #audio file
-        cls.audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/audio_can_overwrite.mp3')
-        cls.audio_file = open(cls.audio_file_full_path, 'rb')
-        cls.audio_file = SimpleUploadedFile(cls.audio_file.name, cls.audio_file.read(), 'audio/mp3')
-
-        #dummy file
-        cls.dummy_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/dummy_file.txt')
-        cls.dummy_file = open(cls.dummy_file_full_path, 'rb')
-        cls.dummy_file = SimpleUploadedFile(cls.dummy_file.name, cls.dummy_file.read(), 'audio/mp3')
-
-        cls.audio_file_path = "/audio_test.mp3"
-        cls.audio_volume_peaks = [
-            0.32, 0.47, 0.76, 0.75, 0.79, 0.59, 0.78, 0.83, 0.85, 0.77,
-            0.62, 0.69, 0.97, 0.96, 0.97, 0.96, 0.96, 0.63, 0.47, 0.0
-        ]
-        cls.audio_duration_s = 26
-        cls.audio_clip_tone = AudioClipTones.objects.first()
-
-
-    @classmethod
-    def tearDownClass(cls):
-
-        shutil.rmtree(os.path.join(settings.MEDIA_ROOT, 'audio_clips'), ignore_errors=True)
-
-        super().tearDownClass()
-
-
-    def login(self, user_instance):
-
-        #need this here because @classmethod does not have .client attribute
-        self.client.force_login(user_instance)
-
-
-    def test_like_dislike_and_trigger(self):
-
-        self.login(self.users[0])
-
-        #create user2 audio_clip
-        target_event = EventsFactory(event_created_by=self.users[1], generic_status_generic_status_name='incomplete')
-        target_audio_clip = AudioClipsFactory(
-            audio_clip_user=self.users[1],
-            audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=target_event,
-        )
-
-        def do_like_dislike(audio_clip_id, is_liked, previous_is_liked=None):
-
-            #get initial audio_clip to evaluate trigger on like_count and dislike_count
-            target_audio_clip = AudioClips.objects.get(pk=audio_clip_id)
-
-            #submit
-            request = self.client.post(
-                path=reverse('audio_clip_likes_dislikes_api'),
-                data={
-                    'audio_clip_id': audio_clip_id,
-                    'is_liked': is_liked
-                },
-                content_type='application/json'
-            )
-
-            #expect success
-            self.assertEqual(request.status_code, 200)
-
-            #check db
-            try:
-
-                audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(
-                    audio_clip_id=audio_clip_id,
-                    user_id=self.users[0]
-                )
-                self.assertEqual(audio_clip_like_dislike.is_liked, is_liked)
-
-            except AudioClipLikesDislikes.DoesNotExist:
-
-                self.assertEqual(is_liked, None)
-
-            expected_like_count = target_audio_clip.like_count
-            expected_dislike_count = target_audio_clip.dislike_count
-
-            #check count trigger
-            updated_target_audio_clip = AudioClips.objects.get(pk=audio_clip_id)
-
-            if is_liked == previous_is_liked:
-
-                #do nothing if identical
-                pass
-
-            elif previous_is_liked is True:
-
-                #is_liked will not be True
-                expected_like_count -= 1
-                if is_liked is False:
-                    expected_dislike_count += 1
-
-            elif previous_is_liked is False:
-
-                #is_liked will not be False
-                expected_dislike_count -= 1
-                if is_liked is True:
-                    expected_like_count += 1
-
-            else:
-                
-                #is_liked will not be None
-                if is_liked is True:
-                    expected_like_count += 1
-                else:
-                    expected_dislike_count += 1
-
-            #evaluate
-            self.assertEqual(updated_target_audio_clip.like_count, expected_like_count)
-            self.assertEqual(updated_target_audio_clip.dislike_count, expected_dislike_count)
-
-
-        #get any audio_clip
-        first_audio_clip = AudioClips.objects.first()
-
-        #check like/dislike doesn't exist for current user
-        self.assertFalse(
-            AudioClipLikesDislikes.objects.filter(
-                audio_clip_id=first_audio_clip.id, user=self.users[1]
-            ).exists()
-        )
-
-        #do request, and try repeating for resiliency
-        do_like_dislike(audio_clip_id=first_audio_clip.id, is_liked=True, previous_is_liked=None)
-        do_like_dislike(audio_clip_id=first_audio_clip.id, is_liked=True, previous_is_liked=True)
-
-        #switch to dislike, also repeat
-        do_like_dislike(audio_clip_id=first_audio_clip.id, is_liked=False, previous_is_liked=True)
-        do_like_dislike(audio_clip_id=first_audio_clip.id, is_liked=False, previous_is_liked=False)
-
-        #remove, and repeat
-        do_like_dislike(audio_clip_id=first_audio_clip.id, is_liked=None, previous_is_liked=False)
-        do_like_dislike(audio_clip_id=first_audio_clip.id, is_liked=None, previous_is_liked=None)
-
-
-    def test_user_block(self):
-
-        self.login(self.users[0])
-
-        def do_block(to_block:bool):
-
-            #block
-            request = self.client.post(
-                path=reverse('user_blocks_api'),
-                data={
-                    'username': self.users[1].username,
-                    'to_block': to_block
-                }
-            )
-
-            #expect success
-            self.assertEqual(request.status_code, 200)
-
-            self.assertEqual(UserBlocks.objects.filter(user=self.users[0], blocked_user=self.users[1]).exists(), to_block)
-
-        #block
-        do_block(True)
-
-        #block again, expect no change
-        do_block(True)
-
-        #unblock, expect no row
-        do_block(False)
-
-
-    def test_audio_clip_report(self):
-
-        self.login(self.users[0])
-
-        target_event = EventsFactory(event_created_by=self.users[1], generic_status_generic_status_name='incomplete')
-        target_audio_clip = AudioClipsFactory(
-            audio_clip_user=self.users[1],
-            audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=target_event,
-        )
-
-        request = self.client.post(reverse('create_audio_clip_reports_api'), data={'audio_clip_id': target_audio_clip.id})
-
-        self.assertEqual(request.status_code, 200)
 
 
 
@@ -3134,6 +2887,481 @@ class CoreProcess_TestCase(TestCase):
         result_data = json.loads(result_data)
 
         self.assertEqual(UserBlocks.objects.all().count(), 0)
+
+
+    def test_audio_clip_like_dislike_missing_args(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        #start
+
+        self.login(self.users[1])
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+
+        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+        #bool defaults to False by serializer
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        data = {
+            'is_liked': True,
+        }
+
+        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+
+    def test_audio_clip_like_dislike_faulty_args(self):
+
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        #start
+
+        self.login(self.users[1])
+
+        #0 and 1 are considered as valid bool by DRF serializer
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+            'is_liked': 1,
+        }
+
+        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+            'is_liked': 2,
+        }
+
+        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        data = {
+            'audio_clip_id': 999,
+            'is_liked': True,
+        }
+
+        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+
+    def test_create_and_delete_audio_clip_like(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        #start
+
+        self.login(self.users[1])
+
+        self.assertEqual(sample_audio_clip_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+        self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[1]).exists())
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+            'is_liked': True
+        }
+
+        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        sample_audio_clip_0.refresh_from_db()
+        audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(user=self.users[1])
+
+        self.assertEqual(sample_audio_clip_0.like_count, 1)
+        self.assertEqual(sample_audio_clip_0.like_ratio, 1)
+        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+
+        self.assertEqual(audio_clip_like_dislike.audio_clip_id, sample_audio_clip_0.id)
+        self.assertTrue(audio_clip_like_dislike.is_liked)
+
+        #undo
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+            'is_liked': json.dumps(None)
+        }
+
+        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        sample_audio_clip_0.refresh_from_db()
+        self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[1]).exists())
+
+        self.assertEqual(sample_audio_clip_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+
+
+    def test_create_and_delete_audio_clip_dislike(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        #start
+
+        self.login(self.users[1])
+
+        self.assertEqual(sample_audio_clip_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+        self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[1]).exists())
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+            'is_liked': False
+        }
+
+        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        sample_audio_clip_0.refresh_from_db()
+        audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(user=self.users[1])
+
+        self.assertEqual(sample_audio_clip_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_0.dislike_count, 1)
+
+        self.assertEqual(audio_clip_like_dislike.audio_clip_id, sample_audio_clip_0.id)
+        self.assertFalse(audio_clip_like_dislike.is_liked)
+
+        #undo
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+            'is_liked': json.dumps(None)
+        }
+
+        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        sample_audio_clip_0.refresh_from_db()
+        self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[1]).exists())
+
+        self.assertEqual(sample_audio_clip_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+
+
+    def test_random_audio_clip_like_dislike_chaining(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        #start
+
+        self.login(self.users[1])
+
+        self.assertEqual(sample_audio_clip_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+        self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[1]).exists())
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+            'is_liked': True
+        }
+
+        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        sample_audio_clip_0.refresh_from_db()
+        audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(user=self.users[1])
+
+        self.assertEqual(sample_audio_clip_0.like_count, 1)
+        self.assertEqual(sample_audio_clip_0.like_ratio, 1)
+        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+
+        self.assertEqual(audio_clip_like_dislike.audio_clip_id, sample_audio_clip_0.id)
+        self.assertTrue(audio_clip_like_dislike.is_liked)
+
+        #switch
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+            'is_liked': False
+        }
+
+        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        sample_audio_clip_0.refresh_from_db()
+        audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(user=self.users[1])
+
+        self.assertEqual(sample_audio_clip_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_0.dislike_count, 1)
+
+        self.assertEqual(audio_clip_like_dislike.audio_clip_id, sample_audio_clip_0.id)
+        self.assertFalse(audio_clip_like_dislike.is_liked)
+
+        #switch again
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+            'is_liked': True
+        }
+
+        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        sample_audio_clip_0.refresh_from_db()
+        audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(user=self.users[1])
+
+        self.assertEqual(sample_audio_clip_0.like_count, 1)
+        self.assertEqual(sample_audio_clip_0.like_ratio, 1)
+        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+
+        self.assertEqual(audio_clip_like_dislike.audio_clip_id, sample_audio_clip_0.id)
+        self.assertTrue(audio_clip_like_dislike.is_liked)
+
+        #random resiliency test
+        #reset to None
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+            'is_liked': json.dumps(None)
+        }
+
+        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        sample_audio_clip_0.refresh_from_db()
+        self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[1]).exists())
+
+        self.assertEqual(sample_audio_clip_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+
+        #like
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+            'is_liked': True
+        }
+
+        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        sample_audio_clip_0.refresh_from_db()
+        audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(user=self.users[1])
+
+        self.assertEqual(sample_audio_clip_0.like_count, 1)
+        self.assertEqual(sample_audio_clip_0.like_ratio, 1)
+        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+
+        self.assertEqual(audio_clip_like_dislike.audio_clip_id, sample_audio_clip_0.id)
+        self.assertTrue(audio_clip_like_dislike.is_liked)
+
+
+    def test_random_audio_clip_like_dislike_chaining_multiple_users(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = self.create_audio_clip(
+            self.users[0].id,
+            sample_event_0.id,
+            "originator",
+        )
+
+        def do_request(target_user, is_liked:bool|None):
+
+            self.login(target_user)
+
+            data = {
+                'audio_clip_id': sample_audio_clip_0.id,
+                'is_liked': json.dumps(is_liked)
+            }
+
+            request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+            self.assertEqual(request.status_code, 200)
+
+        #we randomise between True/False/None, among users
+        #we then track it and see if db accurately reflects it
+
+        possible_is_liked_values = [True, False, None]
+
+        users_latest_is_liked = {}
+
+        for user in self.users:
+
+            users_latest_is_liked.update({
+                user.id: None
+            })
+
+        #start
+
+        for test_loop in range(0, 10):
+
+            #randomise is_liked and make request for every user
+
+            for user in self.users:
+
+                is_liked = possible_is_liked_values[random.randint(0, 2)]
+
+                do_request(user, is_liked)
+
+                users_latest_is_liked.update({
+                    user.id: is_liked
+                })
+
+        #check
+
+        sample_audio_clip_0.refresh_from_db()
+
+        audio_clip_likes_dislikes = AudioClipLikesDislikes.objects.all()
+
+        is_liked_total_count = {
+            'true': 0,
+            'false': 0,
+        }
+
+        for row in audio_clip_likes_dislikes:
+
+            if row.is_liked is True:
+                is_liked_total_count['true'] += 1
+            elif row.is_liked is False:
+                is_liked_total_count['false'] += 1
+
+            if row.is_liked != users_latest_is_liked[row.user_id]:
+
+                raise AssertionError('is_liked did not match.')
+
+        self.assertEqual(sample_audio_clip_0.like_count, is_liked_total_count['true'])
+        self.assertEqual(sample_audio_clip_0.dislike_count, is_liked_total_count['false'])
 
 
     def test_cronjob_ban_audio_clip_originator_ok(self):

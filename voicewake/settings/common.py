@@ -22,11 +22,10 @@ dotenv.load_dotenv(dotenv.find_dotenv())
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = int(os.environ['DEBUG']) == 1
 MAINTENANCE_MODE = int(os.environ['MAINTENANCE_MODE']) == 1
 
 
@@ -36,27 +35,8 @@ MAINTENANCE_MODE = int(os.environ['MAINTENANCE_MODE']) == 1
 SECRET_KEY = os.environ['SECRET_KEY']
 
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
-
-
-#if you want to hide Django Debug Toolbar, put False
-SHOW_DJANGO_DEBUG_TOOLBAR = True
-DEBUG_TOOLBAR_CONFIG = {
-    'SHOW_TOOLBAR_CALLBACK': lambda r: DEBUG is True and SHOW_DJANGO_DEBUG_TOOLBAR is True,
-}
-
-
 #middleware
 MIDDLEWARE = []
-
-if DEBUG is True:
-
-    REQUEST_TIME_DELAY = 0  #seconds
-
-    MIDDLEWARE += [
-        'voicewake.middleware.drf_api_delay_middleware.TimeDelayMiddleware',
-        'debug_toolbar.middleware.DebugToolbarMiddleware',
-    ]
 
 
 if MAINTENANCE_MODE is True:
@@ -119,14 +99,6 @@ INSTALLED_APPS = [
     #social providers
     # 'allauth.socialaccount.providers.google',
 ]
-
-
-if DEBUG is True:
-
-    INSTALLED_APPS += [
-        #debug
-        'debug_toolbar'
-    ]
 
 
 #if this doesn't work, check django_site in db
@@ -205,14 +177,6 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
-
-
-#not needed, but required by django-debug-toolbar
-if DEBUG is True:
-
-    INTERNAL_IPS = [
-        '127.0.0.1',
-    ]
 
 
 # Internationalization
@@ -326,10 +290,6 @@ EVENT_QUANTITY_PER_PAGE = 10
 EVENT_INCOMPLETE_QUEUE_QUANTITY = 1
 EVENT_INCOMPLETE_QUEUE_MAX_AGE_S = 302400   #3 days 12 hours
 CRONJOB_UNDO_EVENT_REPLY_LIMIT = 100
-
-if DEBUG is True:
-
-    EVENT_INCOMPLETE_QUEUE_MAX_AGE_S = 99999999
 
 
 #EMAIL
