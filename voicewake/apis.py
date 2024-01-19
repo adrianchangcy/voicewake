@@ -2584,6 +2584,7 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
         #https://stackoverflow.com/questions/1271641/in-sql-is-update-always-faster-than-deleteinsert
 
         #check if audio clip exists
+        #need this check, for uncatchable update_or_create() exception during tests
 
         if AudioClips.objects.filter(pk=new_data['audio_clip_id']).exists() is False:
 
@@ -2609,7 +2610,13 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
             else:
 
                 #for value changes, use defaults arg
-                #weirdly, you cannot catch ForeignKeyViolation error with try catch here
+                #IRRELEVANT BUG:
+                    #update_or_create()'s psycopg.errors.ForeignKeyViolation exception cannot be caught here (during tests)
+                    #trying to catch at test's self.client.post() also didn't work
+                    #will still reach end and return 200
+                    #if using create(), the exception can be caught
+                    #steps to replicate: at tests, use FK that doesn't exist for audio_clip_id
+                    #current solution: do .exists() check above
                 AudioClipLikesDislikes.objects.update_or_create(
                     user_id=request.user.id,
                     audio_clip_id=new_data['audio_clip_id'],
