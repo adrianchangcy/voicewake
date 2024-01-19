@@ -190,10 +190,6 @@ class CreateAudioClipLikesDislikesSerializer(serializers.Serializer):
     audio_clip_id = serializers.IntegerField()
     is_liked = serializers.BooleanField(allow_null=True)
 
-    def validate_is_liked(self, val):
-        print(val)
-        return val
-
 
 
 class CreateAudioClipsAPISerializer(serializers.Serializer):
