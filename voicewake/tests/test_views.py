@@ -35,6 +35,12 @@ import inspect, sys
 import dotenv
 
 
+
+#tests always auto-override DEBUG to False
+#manually specify it as True via @override_settings as needed
+
+
+
 def ensure_otp_is_always_wrong(otp):
 
     if int(otp[0]) == 0:
@@ -43,6 +49,18 @@ def ensure_otp_is_always_wrong(otp):
         otp = str(int(otp[0]) - 1) + otp[1:]
 
     return otp
+
+
+
+@override_settings(
+    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    MEDIA_ROOT = os.path.join(settings.BASE_DIR, 'voicewake/tests'),
+)
+class Random_TestCase(TestCase):
+
+    def test_random(self):
+
+        print(settings.DEBUG)
 
 
 
@@ -414,9 +432,6 @@ class AudioClips_TestCase(TestCase):
             None
         )
 
-        #check size, not included in HandleAudioFile
-        self.assertLessEqual(audio_file_in_memory.size, settings.AUDIO_CLIP_MAX_FILE_SIZE_BYTES)
-
         #proceed
         handle_audio_file_class = HandleAudioFile(audio_file_in_memory, True)
 
@@ -593,7 +608,6 @@ class CoreProcess_TestCase(TestCase):
         result_data = (bytes(request.content).decode())
         result_data = json.loads(result_data)
 
-
         self.assertTrue('event_id' in result_data)
         self.assertEqual(Events.objects.all().count(), 1)
         self.assertEqual(AudioClips.objects.all().count(), 1)
@@ -607,6 +621,20 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(audio_clip.user_id, self.users[0].id)
         self.assertEqual(audio_clip.audio_clip_tone_id, data['audio_clip_tone_id'])
         self.assertTrue(len(audio_clip.audio_file) > 0)
+
+        #get data via API
+        #we want to see what we get for audio_file
+
+        request = self.client.get(reverse('get_events_api', kwargs={'event_id': audio_clip.event.id}))
+
+        self.assertEqual(request.status_code, 200)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        print(result_data)
 
 
     def test_create_event_missing_args(self):

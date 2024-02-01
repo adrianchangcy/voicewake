@@ -282,7 +282,6 @@
     export default defineComponent({
         data(){
             return {
-                is_debug: false,
                 source_has_error: false,
 
                 instance_uuid: "",    //uuid, to identify between multiple VPlayback instances, and to manage focus
@@ -1415,7 +1414,7 @@
                 if(typeof(new_audio) === 'string'){
 
                     //attach audio from URL origin
-                    audio_element.setAttribute('src', window.location.origin + new_audio);
+                    audio_element.setAttribute('src', new_audio);
 
                 }else{
 
@@ -1527,26 +1526,22 @@
         },
         mounted(){
 
-            if(this.is_debug === true){
-
-                console.log(
-                    "\n\nNote on expected playback issue:\n" +
-                    "At localhost, on first-time media serve (i.e. not from cache), Django is missing a few headers." +
-                    "\n\nSome or all of these headers are required to do .currentTime properly:\n" +
-                    "Content-Range, Accept-Ranges, Content-Length, Content-Type" +
-                    "\nRequest status is also 200, when it should be 206." +
-                    "\n\nWhat the issue looks like:\n" +
-                    "First time load --> missing headers --> play until end -->" +
-                    "trying to do <audio>.currentTime=x always becomes <audio>.currentTime=0." +
-                    "\n\nSolutions:\n" +
-                    "To fix at localhost, just refresh page and let browser serve from cache. Everything is correct if from cache." +
-                    "\nTo fix at production, specify some settings at web server. It's supposedly easy." +
-                    "\n\nLinks that will/might help:\n" +
-                    "https://stackoverflow.com/q/39051206\n" +
-                    "https://stackoverflow.com/q/157318\n" +
-                    "https://stackoverflow.com/q/52137963\n"
-                );
-            }
+            // Note on expected playback issue:
+                // At localhost, on first-time media serve (i.e. not from cache), Django is missing a few headers.
+                // Some or all of these headers are required to do .currentTime properly:
+                // Content-Range, Accept-Ranges, Content-Length, Content-Type
+                // Request status is also 200, when it should be 206.
+            // What the issue looks like:
+                // First time load --> missing headers --> play until end -->
+                // trying to do <audio>.currentTime=x always becomes <audio>.currentTime=0.
+            // Solutions:
+                // To fix at localhost, just refresh page and let browser serve from cache. Everything is correct if from cache.
+                // To fix at production, specify some settings at web server. It's supposedly easy.
+                // If using AWS CloudFront, the problem seems non-existent.
+                // Links that will/might help:
+                // https://stackoverflow.com/q/39051206
+                // https://stackoverflow.com/q/157318
+                // https://stackoverflow.com/q/52137963
 
             //generate uuid for this component instance
             this.instance_uuid = getRandomUUID();

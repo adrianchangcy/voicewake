@@ -79,7 +79,7 @@ class RegExp_TestCase(TestCase):
                 }).is_valid()
             )
 
-        #found in static/json/bad_usernames.en.json
+        #found in static/voicewake/json/bad_usernames.en.json
         usernames_not_allowed = [
             'admin', 'me', 'you', 'ceo'
         ]

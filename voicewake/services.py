@@ -166,8 +166,9 @@ def group_audio_clips_into_events(audio_clips:list[AudioClips])->list:
 
 def extract_event_reply_queues_once_per_event(audio_clips:list[AudioClips])->list:
 
-    #we sometimes have EventReplyQueues on an each-audio-clip basis, while sometimes on each-event basis
-    #we choose each-event basis
+    #pass in fetched AudioClips
+    #EventReplyQueues is then attached to AudioClips.Events, leading to AudioClips.Events.EventReplyQueues structure
+    #we extract unique EventReplyQueues
 
     event_ids = []
     event_reply_queues = []

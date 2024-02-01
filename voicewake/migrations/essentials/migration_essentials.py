@@ -25,7 +25,7 @@ def fill_necessary_data(apps, schema_editor):
     Group.objects.create(name="regular")
 
     #AudioClipTones
-    with open(os.path.join(settings.BASE_DIR, 'voicewake/static/json/data_emojis_final.json'), encoding="utf8") as file:
+    with open(os.path.join(settings.BASE_DIR, 'static/voicewake/json/data_emojis_final.json'), encoding="utf8") as file:
 
         emojis = json.load(file)
         emojis = emojis.items()

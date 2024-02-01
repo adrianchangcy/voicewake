@@ -37,9 +37,15 @@ from django.conf import settings
 
 
 
-def test_page(request):
+#test only
+#return callable
+def test_page(template_name='test.html'):
 
-    return render(request, template_name='test.html')
+    def render_callable(request, template_name=template_name):
+
+        return render(request, template_name=template_name)
+
+    return render_callable
 
 
 

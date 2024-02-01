@@ -38,7 +38,7 @@ if settings.DEBUG is True:
         path('admin', admin.site.urls),
         path('__debug__/', include('debug_toolbar.urls')),
         path('api/test', apis.TestAPI.as_view(), name='test_api'),
-        path('test', views.test_page, name='test_page'),
+        path('test', views.test_page(template_name='test.html'), name='test_page'),
     ]
 
 urlpatterns += [
@@ -69,7 +69,7 @@ urlpatterns += [
     path('api/events/get/<int:event_id>', apis.GetEventsAPI.as_view(), name='get_events_api'),
 
     path('api/audio-clips/reports', apis.AudioClipReportsAPI.as_view(), name="create_audio_clip_reports_api"),
-    path('api/audio-clips/tones', apis.AudioClipTonesAPI.as_view(), name='audio_clip_tones_api'),
+    path('api/audio-clips/tones/list', apis.AudioClipTonesAPI.as_view(), name='audio_clip_tones_api'),
     path('api/audio-clips/likes-dislikes', apis.AudioClipLikesDislikesAPI.as_view(), name='audio_clip_likes_dislikes_api'),
     path('api/audio-clips/bans/list/<str:next_or_back>/<str:cursor_token>', apis.UserBannedAudioClipsAPI.as_view(), name="user_banned_audio_clips_api"),
     path('api/audio-clips/bans/list/<str:next_or_back>', apis.UserBannedAudioClipsAPI.as_view(), name="user_banned_audio_clips_api"),
@@ -110,10 +110,11 @@ urlpatterns += [
 
     #favicon
     #only for tab icon, not to be used as actual svg
-    path('favicon.ico', RedirectView.as_view(url=staticfiles_storage.url('tab-icon.svg'))),
+    #permanent=True allows browser to cache the file
+    path('favicon.ico', RedirectView.as_view(url=staticfiles_storage.url('voicewake/tab-icon.svg'), permanent=True)),
 ]
 
-#for media files
+#media files, only for dev
 if settings.DEBUG is True:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

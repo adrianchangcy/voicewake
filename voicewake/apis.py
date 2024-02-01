@@ -43,11 +43,13 @@ from voicewake.models import *
 from voicewake.serializers import *
 from voicewake.services import *
 import voicewake.decorators as app_decorators
+# import voicewake.factories as app_factories
 from django.conf import settings
 
 #specifically just for error handling
 from psycopg.errors import UniqueViolation
 from django.db.utils import IntegrityError
+from django.contrib.staticfiles.storage import staticfiles_storage
 
 
 
@@ -329,7 +331,10 @@ class UserBannedAudioClipsAPI(generics.GenericAPIView):
 
         #prepare response
 
-        serializer = AudioClipsSerializer(result['rows'], many=True)
+        serializer = AudioClipsSerializer(
+            result['rows'],
+            many=True,
+        )
 
         return Response(
             data={
@@ -1035,14 +1040,14 @@ class GetEventsAPI(generics.GenericAPIView):
 
             events_and_audio_clips = LockedEventsAndAudioClipsAPISerializer(
                 group_audio_clips_into_events_and_event_reply_queues(audio_clips, event_reply_queues),
-                many=True
+                many=True,
             ).data
 
         else:
 
             events_and_audio_clips = EventsAndAudioClipsAPISerializer(
                 group_audio_clips_into_events(audio_clips),
-                many=True
+                many=True,
             ).data
 
         #user simply wants to check the post for an event
@@ -1745,7 +1750,10 @@ class BrowseEventsAPI(generics.GenericAPIView):
         #build the response
 
         response_data = group_audio_clips_into_events(result['rows'])
-        response_data = EventsAndAudioClipsAPISerializer(response_data, many=True).data
+        response_data = EventsAndAudioClipsAPISerializer(
+            response_data,
+            many=True,
+        ).data
 
         response = Response(
             data={
@@ -2042,7 +2050,10 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
 
                 #return non-expired reply choices
                 result = group_audio_clips_into_events_and_event_reply_queues(audio_clips, event_reply_queues)
-                serializer = LockedEventsAndAudioClipsAPISerializer(result, many=True)
+                serializer = LockedEventsAndAudioClipsAPISerializer(
+                    result,
+                    many=True,
+                )
 
                 return Response(
                     data={
@@ -2097,7 +2108,10 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
 
                 #return
                 result = group_audio_clips_into_events_and_event_reply_queues(audio_clips, event_reply_queues)
-                serializer = LockedEventsAndAudioClipsAPISerializer(result, many=True)
+                serializer = LockedEventsAndAudioClipsAPISerializer(
+                    result,
+                    many=True,
+                )
 
                 return Response(
                     data={

@@ -54,11 +54,11 @@
 </template>
 
 
-<script setup>
+<script setup lang="ts">
     import VInputLabel from './VInputLabel.vue';
 </script>
 
-<script>
+<script lang="ts">
     import { defineComponent } from 'vue';
 
     export default defineComponent({
@@ -92,9 +92,6 @@
                 //we do trim() validation outside of here instead
             },
         },
-        components: {
-            VInputLabel,
-        },
         methods: {
             emitWasInteracted(){
 
@@ -102,7 +99,7 @@
             },
             resize(){
 
-                const textarea = this.$refs.nice_textarea;
+                const textarea = this.$refs.nice_textarea as HTMLTextAreaElement;
 
                 //need 0 to make it snappy
                 textarea.style.height = '0px';
