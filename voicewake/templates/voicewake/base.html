@@ -18,7 +18,7 @@
     {{user.is_authenticated | json_script:"data-user-is-authenticated"}}
 
     <!--ensure main CSS is loaded first before content-->
-    <link href="{% static 'css/output.css' %}" rel="stylesheet"/>
+    <link href="{% static 'voicewake/css/output.css' %}{{STATIC_CACHE_BUST_VERSION}}" rel="stylesheet"/>
 </head>
 
 {% block body %}
@@ -62,7 +62,7 @@
             <div class="w-full h-0 mt-[25%] relative">
                 <div class="w-full absolute bottom-0 m-auto -z-10">
                     <object
-                        data="{% static 'svg/before_footer_mountain.svg' %}"
+                        data="{% static 'voicewake/svg/before_footer_mountain.svg' %}{{STATIC_CACHE_BUST_VERSION}}"
                         type="image/svg+xml"
                         aria-hidden="true"
                     ></object>
@@ -73,8 +73,8 @@
         <!--footer-->
 
         <!--Vue-->
-        <script type="text/javascript" src="{% static 'src/vue/dist/js/chunk-vendors.js' %}"></script>
-        <script type="text/javascript" src="{% static 'src/vue/dist/js/app.js' %}"></script>
+        <script type="text/javascript" src="{% static 'frontend/js/chunk-vendors.js' %}{{STATIC_CACHE_BUST_VERSION}}"></script>
+        <script type="text/javascript" src="{% static 'frontend/js/app.js' %}{{STATIC_CACHE_BUST_VERSION}}"></script>
     </body>
 {% endblock %}
 </html>

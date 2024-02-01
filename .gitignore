@@ -8,6 +8,11 @@ media
 uploads
 test_uploads
 
+#static
+static/frontend/*
+!static/voicewake
+deploy/*
+
 #node_modules from npm installs
 node_modules/*
 !node_modules/.package-lock.json
@@ -108,14 +113,14 @@ celerybeat-schedule.*
 
 # Environments 
 .env
-stage.env
 prod.env
-.venv 
-env/ 
-venv/ 
-ENV/ 
-env.bak/ 
-venv.bak/ 
+env/*
+ENV/*
+!example.env
+.venv
+venv/
+env.bak/
+venv.bak/
 
 # mkdocs documentation 
 /site 

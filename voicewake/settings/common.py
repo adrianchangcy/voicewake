@@ -12,20 +12,25 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 
 #Python packages
 from pathlib import Path
-import os
 import dotenv
+import os
 
 
 #find and load .env file
 #must only have one per environment
-dotenv.load_dotenv(dotenv.find_dotenv())
+dotenv.load_dotenv(dotenv.find_dotenv(filename='env/.env'))
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 
-# SECURITY WARNING: don't run with debug turned on in production!
+#lazy but simple and effective solution, passed via context_processors.py
+#look into ManifestStaticFileStorage to automate this by adding hash to file names
+STATIC_CACHE_BUST_PREFIX = '?version='
+STATIC_CACHE_BUST_VERSION = STATIC_CACHE_BUST_PREFIX + '1.0.0'
+
+
 MAINTENANCE_MODE = int(os.environ['MAINTENANCE_MODE']) == 1
 
 
@@ -102,7 +107,11 @@ INSTALLED_APPS = [
 
 
 #if this doesn't work, check django_site in db
+#currently not used, which would have default example.com
 SITE_ID = 1
+
+
+BASE_URL = os.environ['BASE_URL']
 
 
 #custom user model
@@ -133,10 +142,10 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
-                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'voicewake.context_processors.settings_values',
             ],
         },
     },
@@ -187,21 +196,8 @@ LANGUAGE_CODE = 'en-us'
 USE_I18N = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/4.0/howto/static-files/
-STATIC_URL = 'static/'  #my_app/static
-
-#extra static directories
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),   #this is where Django can find our Vue content
-]
-
-STATIC_ROOT = 'deploy/static_root'  #collect all static files for live server
-
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
@@ -265,17 +261,11 @@ CACHES = {
 }
 
 
-#folder name, only for storage
-MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')
-
-#URL, trailing slash is compulsory, must not include domain URL
-MEDIA_URL = '/media/'
-
-
 #MEDIA SIZES
-#in bytes, so when x/(1024*1024), is 3mb
-FILE_UPLOAD_MAX_MEMORY_SIZE = 3072000   #threshold for processing files in memory instead, i.e. much faster
-AUDIO_CLIP_MAX_FILE_SIZE_BYTES = 3072000
+#NGINX's client_max_body_size should be the desired max value
+    #in bytes, so when x/(1024*1024), is 3mb
+#set FILE_UPLOAD_MAX_MEMORY_SIZE to be bigger than at NGINX, to guarantee file is stored in memory only
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5000000
 
 
 GENERAL_ROW_QUANTITY_PER_PAGE = 20
@@ -293,12 +283,13 @@ CRONJOB_UNDO_EVENT_REPLY_LIMIT = 100
 
 
 #EMAIL
+#ports 465 (SSL), 587 (TLS)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 MAILER_EMAIL_BACKEND = EMAIL_BACKEND
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_HOST_USER = 'adrianchangcy@gmail.com'
-EMAIL_HOST_PASSWORD = 'qjxtrlcllrtbnmvn'
-EMAIL_PORT = 465
+EMAIL_HOST_USER = os.environ['EMAIL_HOST_USER']
+EMAIL_HOST_PASSWORD = os.environ['EMAIL_HOST_PASSWORD']
+EMAIL_PORT = os.environ['EMAIL_PORT']
 EMAIL_USE_SSL = True
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 

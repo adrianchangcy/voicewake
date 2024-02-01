@@ -16,7 +16,6 @@
     "@headlessui/vue": "^1.7.2",
     "animejs": "^3.2.1",
     "axios": "^1.3.0",
-    "caniuse-lite": "^1.0.30001449",
     "core-js": "^3.8.3",
     "fix-webm-duration": "^1.0.5",
     "notiwind": "^2.0.2",

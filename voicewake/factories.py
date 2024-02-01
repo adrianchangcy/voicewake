@@ -7,6 +7,14 @@ from voicewake.models import *
 from voicewake.services import *
 
 
+
+#usage guide
+#incomplete events
+    #just use AudioClipsFactory(), and everything else will also be auto-created
+    #must specify AudioClipsFactory.audio_clip_user, can be any user
+
+
+
 class UsersFactory(DjangoModelFactory):
 
     class Meta:
@@ -84,7 +92,7 @@ class AudioClipsFactory(DjangoModelFactory):
         lambda o : AudioClipRoles.objects.get(audio_clip_role_name=o.audio_clip_role_audio_clip_role_name)
     )
     audio_clip_tone = AudioClipTones.objects.all().first()
-    audio_file = "/audio_test.mp3"
+    audio_file = "audio_test.mp3"
     audio_volume_peaks = [
         0.32, 0.47, 0.76, 0.75, 0.79, 0.59, 0.78, 0.83, 0.85, 0.77,
         0.62, 0.69, 0.97, 0.96, 0.97, 0.96, 0.96, 0.63, 0.47, 0.0
@@ -103,7 +111,7 @@ class AudioClipsFactory(DjangoModelFactory):
             else (
                 EventsFactory(
                     created_by=(o.audio_clip_user if o.audio_clip_user is not None else UsersFactory()),
-                    generic_status_name=('deleted' if o.audio_clip_is_banned is True else 'ok')
+                    generic_status_generic_status_name=('deleted' if o.audio_clip_is_banned is True else 'ok')
                 )
             )
         )

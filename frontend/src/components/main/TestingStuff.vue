@@ -15,6 +15,7 @@
     // import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
     // import VActionText from '../small/VActionText.vue';
     // import VTest from '../small/VTest.vue';
+    // import VPlayback from '../medium/VPlayback.vue';
 
     // import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     // import { library } from '@fortawesome/fontawesome-svg-core';
@@ -32,6 +33,7 @@
     // import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
     import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
     // import { drawCanvasRipples } from '@/helper_functions';
+    import AudioClipsTypes from '@/types/AudioClips.interface';
     const axios = require('axios');
 
     export default defineComponent({
@@ -40,6 +42,35 @@
                 notifications: [] as any[],
                 event: null as EventsAndAudioClipsTypes|null,
                 is_yolo: false,
+
+                sample_audio_clip: {
+                    id: 1,
+                    user: {
+                        username: 'blabla',
+                    },
+                    audio_clip_role: {
+                        id: 1,
+                        audio_clip_role_name: 'originator',
+                    },
+                    audio_clip_tone: {
+                        id: 1,
+                        audio_clip_tone_name: 'happy',
+                        audio_clip_tone_slug: 'happy',
+                        audio_clip_tone_symbol: 'h',
+                    },
+                    event_id: 1,
+                    generic_status: {
+                        id: 1,
+                        generic_status_name: 'ok',
+                    },
+                    audio_file: 'https://d3cej2n7sifsea.cloudfront.net' + '/yolo/audio_ori.mp3',
+                    audio_duration_s: 26,
+                    audio_volume_peaks: [
+                        0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2,
+                        0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2
+                    ],
+                    is_banned: false,
+                } as AudioClipsTypes,
             };
         },
         watch: {

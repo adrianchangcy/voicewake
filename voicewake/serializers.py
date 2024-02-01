@@ -72,6 +72,12 @@ class AudioClipsSerializer(serializers.ModelSerializer):
         min_length=20,
         max_length=20
     )
+    audio_file = serializers.SerializerMethodField()
+
+    def get_audio_file(self, object):
+        if settings.USE_S3 is True:
+            return settings.MEDIA_URL + str(object.audio_file)
+        return '{0}{1}{2}'.format(settings.BASE_URL, settings.MEDIA_URL, str(object.audio_file))
 
     class Meta:
         model = AudioClips
@@ -205,29 +211,10 @@ class CreateAudioClipsAPISerializer(serializers.Serializer):
         max_length=200, #follow Events.event_name
     )
     audio_clip_tone_id = serializers.IntegerField(min_value=1)
+    #we validate audio_file size at web server, i.e. NGINX, not here
     audio_file = serializers.FileField(
         allow_empty_file=False
     )
-
-
-    def validate_audio_file(self, value):
-
-        #ensure audio_file does not exceed max file size
-        #web serve should be first line of defense at production (e.g. LimitRequestBody setting at Apache)
-        #https://stackoverflow.com/questions/6195478/max-image-size-on-file-upload
-        if value.size > settings.AUDIO_CLIP_MAX_FILE_SIZE_BYTES:
-
-            #file is too large
-            custom_error_message = "Invalid data, file is too big. Your file is %sMB, while the limit is %sMB." % (
-                round(value.size / (1024 * 1024), 2),
-                round(settings.AUDIO_CLIP_MAX_FILE_SIZE_BYTES / (1024 * 1024), 2)
-            )
-
-            raise serializers.ValidationError(custom_error_message)
-
-        #don't do processing here, we leave it as final step at views.py
-        
-        return value
 
 
 
@@ -264,7 +251,7 @@ class UsersUsernameAPISerializer(serializers.Serializer):
             raise serializers.ValidationError('Empty username.')
         
         #disallow these usernames
-        with open(os.path.join(settings.BASE_DIR, 'voicewake/static/json/bad_usernames.en.json')) as file:
+        with open(os.path.join(settings.BASE_DIR, 'static/voicewake/json/bad_usernames.en.json')) as file:
 
             bad_usernames = json.load(file)['usernames']
 
@@ -366,7 +353,7 @@ class BrowseEventsAPISerializer(serializers.Serializer):
             return value
         
         #disallow these usernames
-        with open(os.path.join(settings.BASE_DIR, 'voicewake/static/json/bad_usernames.en.json')) as file:
+        with open(os.path.join(settings.BASE_DIR, 'static/voicewake/json/bad_usernames.en.json')) as file:
 
             bad_usernames = json.load(file)['usernames']
 
