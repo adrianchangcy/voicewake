@@ -11,7 +11,7 @@ from voicewake.services import *
 #usage guide
 #incomplete events
     #just use AudioClipsFactory(), and everything else will also be auto-created
-    #must specify AudioClipsFactory.audio_clip_user, can be any user
+    #optional, can specify user
 
 
 
@@ -37,11 +37,18 @@ class UsersFactory(DjangoModelFactory):
 
         manager = cls._get_manager(model_class)
 
-        return manager.create_user(
-            kwargs['email'],
-            kwargs['username'],
-            True
+        is_user_created = get_user_model().objects.filter(
+            email_lowercase=kwargs['email'].lower(),
+            username_lowercase=kwargs['username'].lower(),
         )
+
+        if is_user_created is False:
+
+            return manager.create_user(
+                kwargs['email'],
+                kwargs['username'],
+                True
+            )
 
 
 

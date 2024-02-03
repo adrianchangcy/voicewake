@@ -55,6 +55,7 @@ if MAINTENANCE_MODE is True:
 MIDDLEWARE += [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -71,7 +72,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.sites',     #requires SITE_ID later, so db can manage content for multiple sites
+    'django.contrib.sites',     #if 1 db and multiple sites, use this and SITE_ID
 
     #Celery
     "django_celery_beat",
@@ -90,6 +91,10 @@ INSTALLED_APPS = [
     #channels for websocket
     # 'channels',
 
+    #CORS, allows code in current domain to dynamically make requests to other domains, e.g. CloudFront
+    #<link> does not count
+    'corsheaders',
+
     #OTP
     'django_otp',
     # 'django_otp.plugins.otp_totp',
@@ -106,6 +111,14 @@ INSTALLED_APPS = [
 ]
 
 
+CORS_ALLOW_ALL_ORIGINS = False
+
+CORS_ALLOWED_ORIGINS = [
+    'http://127.0.0.1:8000',
+    'https://' + os.environ['AWS_S3_CUSTOM_DOMAIN'],
+]
+
+
 #if this doesn't work, check django_site in db
 #currently not used, which would have default example.com
 SITE_ID = 1
@@ -116,6 +129,12 @@ BASE_URL = os.environ['BASE_URL']
 
 #custom user model
 AUTH_USER_MODEL = 'voicewake.User'
+
+
+#where to find all frontend + backend static files
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
 
 
 #session in seconds, default 2 weeks

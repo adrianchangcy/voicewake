@@ -103,6 +103,7 @@
     import { defineComponent } from 'vue';
     import fixWebmDuration from 'fix-webm-duration';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
+    import '/src/cors_worker_patch';
     const recordRTC = require('/node_modules/recordrtc/RecordRTC.min.js');
 
     export default defineComponent({
@@ -195,6 +196,12 @@
                     this.recording_interval_worker = null;
                 }
             },
+            createRecordingInternalWorker(){
+
+                this.recording_interval_worker = new Worker(
+                    new URL('/src/workers/IntervalTimer.ts', import.meta.url),
+                );
+            },
             startRecordingIntervalWorker(){
 
                 //set up web worker to stop recording appropriately, even when tabbed out
@@ -203,18 +210,17 @@
 
                 if(this.recording_interval_worker === null){
 
-                    this.recording_interval_worker = new Worker(
-                        new URL('/src/workers/IntervalTimer.ts', import.meta.url)
-                    );
+                    this.createRecordingInternalWorker();
                 }
 
-                this.recording_interval_worker.postMessage({
+                //start web worker
+                this.recording_interval_worker!.postMessage({
                     'action': 'start',
                     'interval_ms': this.propIntervalMs,
                     'starting_ms': this.current_duration
                 });
 
-                this.recording_interval_worker.onmessage = (event:MessageEvent)=>{
+                this.recording_interval_worker!.onmessage = (event:MessageEvent)=>{
 
                     //can do ===, but feels safer with >=
                     if(event.data >= this.propMaxDurationMs){
@@ -226,6 +232,11 @@
                     //blob duration is more reliable here, in the context of tabbed out while recording
                     this.countdownRecordingTime();
                 }
+
+                this.recording_interval_worker!.onerror = ()=>{
+
+                    alert('Uh oh, the recorder had an unexpected issue.');
+                };
 
             },
             async handleVolumeAnalyser() : Promise<boolean> {
@@ -627,6 +638,10 @@
 
             //choose proper mime type
             this.chooseMimeType();
+
+            //create earlier, in case there is a wait time
+            //we want the waiting to occur here, and not when user wants to record
+            this.createRecordingInternalWorker();
         },
         beforeUnmount(){
 

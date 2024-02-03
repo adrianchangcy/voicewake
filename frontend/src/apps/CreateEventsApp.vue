@@ -42,7 +42,7 @@
                     window.location.href = window.location.origin + "/event/" + new_data['event_id'].toString();
                 }
             },
-        }
+        },
     });
 </script>
 

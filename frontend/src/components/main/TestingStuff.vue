@@ -137,9 +137,6 @@
             window.setInterval(()=>{
                 this.is_yolo = !this.is_yolo;
             }, 2000);
-
-
-
         },
     });
 </script>
