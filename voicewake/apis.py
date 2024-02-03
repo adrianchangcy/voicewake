@@ -49,7 +49,6 @@ from django.conf import settings
 #specifically just for error handling
 from psycopg.errors import UniqueViolation
 from django.db.utils import IntegrityError
-from django.contrib.staticfiles.storage import staticfiles_storage
 
 
 

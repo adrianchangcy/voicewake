@@ -371,10 +371,6 @@
                 this.event_name = new_value;
             },
         },
-        mounted(){
-
-
-        },
     });
 </script>
 
