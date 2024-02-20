@@ -202,6 +202,7 @@ class UserBannedAudioClipsAPI(generics.GenericAPIView):
 
                 raise custom_error(
                     ValueError,
+                    __name__,
                     user_message="Unable to fetch content due to faulty cursor token.",
                     dev_message="Token could not be decoded: " + cursor_token
                 )
@@ -389,6 +390,7 @@ class UserBlocksAPI(generics.GenericAPIView):
 
                 raise custom_error(
                     ValueError,
+                    __name__,
                     user_message="Unable to fetch content due to faulty cursor token.",
                     dev_message="Token could not be decoded: " + cursor_token
                 )
@@ -708,7 +710,11 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
 
         if 'current_context' not in kwargs or kwargs['current_context'] not in ['log_in', 'sign_up']:
 
-            raise custom_error(ValueError, dev_message="Incorrect current_context passed. Check .as_view() at urls.py.")
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message="Incorrect current_context passed. Check .as_view() at urls.py."
+            )
     
         super().__init__(*args, **kwargs)
 
@@ -890,6 +896,7 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
                         #not supposed to reach here
                         raise custom_error(
                             IntegrityError,
+                            __name__,
                             dev_message="Could not generate OTP for user, but user is unexpectedly not timed out."
                         )
 
@@ -1007,6 +1014,7 @@ class GetEventsAPI(generics.GenericAPIView):
             FROM audio_clips
             LEFT JOIN events ON audio_clips.event_id = events.id
             LEFT JOIN event_reply_queues ON events.id = event_reply_queues.event_id
+                AND event_reply_queues.locked_for_user_id = %s
             LEFT JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
             LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
                 AND audio_clip_likes_dislikes.user_id = %s
@@ -1030,12 +1038,14 @@ class GetEventsAPI(generics.GenericAPIView):
         #handle singular events view
 
         audio_clips = self.get_events_by_id(kwargs['event_id'])
-        event_reply_queues = extract_event_reply_queues_once_per_event(audio_clips)
 
         events_and_audio_clips = []
 
-        #since we get by event, we can lazily check one to see whether user is replying
-        if len(audio_clips) > 0 and hasattr(audio_clips[0].event, 'eventreplyqueues') is True:
+        #we have event.eventreplyqueues if request.user has queued or is replying
+
+        if hasattr(audio_clips[0].event, 'eventreplyqueues') is True:
+
+            event_reply_queues = extract_event_reply_queues_once_per_event(audio_clips)
 
             events_and_audio_clips = LockedEventsAndAudioClipsAPISerializer(
                 group_audio_clips_into_events_and_event_reply_queues(audio_clips, event_reply_queues),
@@ -1049,7 +1059,6 @@ class GetEventsAPI(generics.GenericAPIView):
                 many=True,
             ).data
 
-        #user simply wants to check the post for an event
         response = Response(
             data={
                 'data': events_and_audio_clips,
@@ -1114,6 +1123,7 @@ class BrowseEventsAPI(generics.GenericAPIView):
 
                 raise custom_error(
                     ValueError,
+                    __name__,
                     user_message="Unable to fetch content due to faulty cursor token.",
                     dev_message="Token could not be decoded: " + cursor_token
                 )
@@ -1500,6 +1510,7 @@ class BrowseEventsAPI(generics.GenericAPIView):
 
                 raise custom_error(
                     ValueError,
+                    __name__,
                     user_message="Unable to fetch content due to faulty cursor token.",
                     dev_message="Token could not be decoded: " + cursor_token
                 )
@@ -1937,7 +1948,11 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
         #originators and Events are also 1-to-1
         if len(audio_clips) != len(bulk_event_reply_queues):
 
-            raise custom_error(ValueError, 'Ratio of originators and EventReplyQueues is not 1-to-1 as expected.')
+            raise custom_error(
+                ValueError,
+                __name__,
+                'Ratio of originators and EventReplyQueues is not 1-to-1 as expected.'
+            )
 
         return bulk_event_reply_queues
 
@@ -2146,8 +2161,12 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
         if 'current_context' not in kwargs or kwargs['current_context'] not in ['start', 'reply', 'cancel']:
 
-            raise custom_error(ValueError, dev_message="Incorrect current_context. Check .as_view() at urls.py.")
-    
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message="Incorrect current_context. Check .as_view() at urls.py."
+            )
+
         super().__init__(*args, **kwargs)
 
 

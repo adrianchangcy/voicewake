@@ -27,13 +27,19 @@ import json
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 import os
+import sys
 import shutil
 import math
 import subprocess
 import traceback
 import inspect, sys
 import dotenv
+import logging
 
+import boto3
+import argparse
+from botocore.exceptions import ClientError
+import requests
 
 
 #tests always auto-override DEBUG to False
@@ -56,11 +62,452 @@ def ensure_otp_is_always_wrong(otp):
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
     MEDIA_ROOT = os.path.join(settings.BASE_DIR, 'voicewake/tests'),
 )
+class AWS_TestCase(TestCase):
+
+
+    @classmethod
+    def setUpTestData(cls):
+
+        #uses production bucket
+        cls.upload_folder_path = 'test/'
+
+        test_file_prefix = os.path.join(settings.BASE_DIR, 'voicewake/tests/test_file_samples/')
+
+        #files for test
+        cls.test_files = {
+            'audio_not_mp3': {
+                'file': test_file_prefix + 'audio_not_mp3.wav',
+                'expected_status_code': 400,
+            },
+            'audio_ok_1': {
+                'file': test_file_prefix + 'audio_ok_1.mp3',
+                'expected_status_code': 200,
+            },
+            'audio_ok_2': {
+                'file': test_file_prefix + 'audio_ok_2.mp3',
+                'expected_status_code': 200,
+            },
+            'audio_too_large': {
+                'file': test_file_prefix + 'audio_too_large.mp3',
+                'expected_status_code': 400,
+            },
+            'not_audio': {
+                'file': test_file_prefix + 'not_audio.txt',
+                'expected_status_code': 400,
+            },
+            'txt_as_fake_mp3': {
+                'file': test_file_prefix + 'txt_as_fake_mp3.mp3',
+                'expected_status_code': 400,
+            },
+        }
+
+
+    #test that upload works
+    #this should actually be done at client-side
+    def s3_post_upload(self, url, fields, local_file_path):
+
+        with open(local_file_path, mode='rb') as object_file:
+
+            object_file.seek(0)
+
+            #must be 'file'
+            fields['file'] = object_file.read()
+
+            #at Python, form fields are passed as files={}
+            return requests.post(
+                url,
+                files=fields
+            )
+
+
+    def test_upload_and_delete_ok(self):
+
+        upload_key = 'test/test_upload_and_delete_ok' + '.mp3'
+
+        s3_wrapper_class = S3PostWrapper(
+            is_ec2=False,
+            region_name=os.environ['AWS_S3_REGION_NAME'],
+            unprocessed_ugc_bucket=os.environ['AWS_STORAGE_UGC_UNPROCESSED_BUCKET_NAME'],
+            s3_audio_file_max_size_b=settings.S3_AUDIO_FILE_MAX_SIZE_B,
+            url_expiry_s=settings.S3_UPLOAD_URL_EXPIRY_S,
+            aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
+        )
+
+        upload_info = s3_wrapper_class.generate_presigned_post_url(upload_key)
+
+        upload_url = upload_info['url']
+        upload_fields = upload_info['fields']
+
+        request = self.s3_post_upload(upload_url, upload_fields, self.test_files['audio_ok_1']['file'])
+
+        print(request.request)
+        print(request.headers)
+        print(request.content)
+
+        self.assertEqual(request.status_code, 204)
+
+        #delete when done
+
+        response = s3_wrapper_class.delete_object(upload_key)
+
+        self.assertEqual(response['ResponseMetadata']['HTTPStatusCode'], 204)
+
+
+    def test_upload_file_too_large(self):
+
+        upload_key = 'test/test_upload_file_too_large' + '.mp3'
+
+        s3_wrapper_class = S3PostWrapper(
+            is_ec2=False,
+            region_name=os.environ['AWS_S3_REGION_NAME'],
+            unprocessed_ugc_bucket=os.environ['AWS_STORAGE_UGC_UNPROCESSED_BUCKET_NAME'],
+            s3_audio_file_max_size_b=settings.S3_AUDIO_FILE_MAX_SIZE_B,
+            url_expiry_s=settings.S3_UPLOAD_URL_EXPIRY_S,
+            aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
+        )
+
+        upload_info = s3_wrapper_class.generate_presigned_post_url(upload_key)
+
+        upload_url = upload_info['url']
+        upload_fields = upload_info['fields']
+
+        try:
+
+            request = self.s3_post_upload(upload_url, upload_fields, self.test_files['audio_too_large']['file'])
+
+            #if unexpectedly no error, delete stored file
+
+            response = s3_wrapper_class.delete_object(upload_key)
+
+            self.assertEqual(response['ResponseMetadata']['HTTPStatusCode'], 204)
+
+            raise ValueError('Unexpected upload success.')
+
+        except Exception as e:
+
+            print(e)
+
+
+    def test_upload_policy_does_not_validate_payload(self):
+
+        #policy only validates the file extension of key
+        #policy does not validate actual payload
+        #so key of .mp3, with payload of .wav, will still return 204
+
+        upload_key = 'test/test_upload_wrong_file_extension' + '.mp3'
+
+        s3_wrapper_class = S3PostWrapper(
+            is_ec2=False,
+            region_name=os.environ['AWS_S3_REGION_NAME'],
+            unprocessed_ugc_bucket=os.environ['AWS_STORAGE_UGC_UNPROCESSED_BUCKET_NAME'],
+            s3_audio_file_max_size_b=settings.S3_AUDIO_FILE_MAX_SIZE_B,
+            url_expiry_s=settings.S3_UPLOAD_URL_EXPIRY_S,
+            aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
+        )
+
+        upload_info = s3_wrapper_class.generate_presigned_post_url(upload_key)
+
+        upload_url = upload_info['url']
+        upload_fields = upload_info['fields']
+
+        try:
+
+            print(self.test_files['audio_not_mp3']['file'])
+
+            response = self.s3_post_upload(upload_url, upload_fields, self.test_files['audio_not_mp3']['file'])
+
+            print(response)
+
+            #if unexpectedly no error, delete stored file
+
+            response = s3_wrapper_class.delete_object(upload_key)
+
+            self.assertEqual(response['ResponseMetadata']['HTTPStatusCode'], 204)
+
+            raise ValueError('Unexpected upload success.')
+
+        except Exception as e:
+
+            print(e)
+
+
+    def test_upload_multiple_same_file_to_same_url(self):
+
+        upload_key = 'test/test_upload_more_files_same_url' + '.mp3'
+
+        s3_wrapper_class = S3PostWrapper(
+            is_ec2=False,
+            region_name=os.environ['AWS_S3_REGION_NAME'],
+            unprocessed_ugc_bucket=os.environ['AWS_STORAGE_UGC_UNPROCESSED_BUCKET_NAME'],
+            s3_audio_file_max_size_b=settings.S3_AUDIO_FILE_MAX_SIZE_B,
+            url_expiry_s=settings.S3_UPLOAD_URL_EXPIRY_S,
+            aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
+        )
+
+        upload_info = s3_wrapper_class.generate_presigned_post_url(upload_key)
+
+        upload_url = upload_info['url']
+        upload_fields = upload_info['fields']
+
+        request = self.s3_post_upload(upload_url, upload_fields, self.test_files['audio_ok_1']['file'])
+
+        self.assertEqual(request.status_code, 204)
+
+        #random sleep, and start second upload
+
+        time.sleep(4)
+
+        request = self.s3_post_upload(upload_url, upload_fields, self.test_files['audio_ok_1']['file'])
+
+        print(request.status_code)
+        print(request.request)
+        print(request.headers)
+        print(request.content)
+
+        #delete when done
+
+        response = s3_wrapper_class.delete_object(upload_key)
+
+        self.assertEqual(response['ResponseMetadata']['HTTPStatusCode'], 204)
+
+
+    def test_lambda(self):
+
+        upload_key = 'test/test_lambda' + '.mp3'
+
+        s3_wrapper_class = S3PostWrapper(
+            is_ec2=False,
+            region_name=os.environ['AWS_S3_REGION_NAME'],
+            unprocessed_ugc_bucket=os.environ['AWS_STORAGE_UGC_UNPROCESSED_BUCKET_NAME'],
+            s3_audio_file_max_size_b=settings.S3_AUDIO_FILE_MAX_SIZE_B,
+            url_expiry_s=settings.S3_UPLOAD_URL_EXPIRY_S,
+            aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
+        )
+
+        if s3_wrapper_class.check_object_exists(upload_key) is False:
+
+            upload_info = s3_wrapper_class.generate_presigned_post_url(upload_key)
+
+            upload_url = upload_info['url']
+            upload_fields = upload_info['fields']
+
+            request = self.s3_post_upload(upload_url, upload_fields, self.test_files['audio_ok_1']['file'])
+
+            self.assertEqual(request.status_code, 204)
+
+        #call lambda
+
+        client = boto3.client(
+            service_name='lambda',
+            region_name=os.environ['AWS_LAMBDA_REGION_NAME'],
+            aws_access_key_id=os.environ['AWS_LAMBDA_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['AWS_LAMBDA_SECRET_ACCESS_KEY'],
+        )
+
+        #at Lambda, simply retrieve in lambda_handler via event.get('keyname')
+        lambda_payload = {
+            'target_object_key': upload_key
+        }
+        lambda_payload = json.dumps(lambda_payload)
+        lambda_payload = bytes(lambda_payload, encoding='utf-8')
+
+        response = client.invoke(
+            FunctionName='normalise_audio_clips',
+            InvocationType='RequestResponse',
+            Payload=lambda_payload
+        )
+
+        #handle response
+
+        #['Payload'] is StreamingBody object, so we use .read() to get bytes
+        #AWS Lambda serializes entire response to JSON
+        response_data = response['Payload'].read()
+        response_data = bytes(response_data).decode(encoding='utf-8')
+        response_data = json.loads(response_data)
+
+        print(response_data)
+
+
+    def test_subprocess_error(self):
+
+        with open(self.test_files['audio_not_mp3']['file'], 'rb') as target_file:
+
+            #using sseof did not reduce sys.getsizeof() of .stdout
+            result = subprocess.run(
+                [
+                    'ffmpeg',
+                    '-i', 'pipe:0',
+                    "-c:a", 'mp3',
+                    "-f", 'mp3', "pipe:1"
+                ],
+                input=target_file.read(),
+                capture_output=True,
+                timeout=10,
+            )
+            target_file.seek(0)
+
+            print('output size:')
+            print(sys.getsizeof(result.stdout))
+            print('original file size:')
+            print(sys.getsizeof(target_file.read()))
+
+            return
+
+
+            result = subprocess.run(
+                [
+                    'ffprobe',
+                    '-v', 'error',
+                    '-show_entries', 'format',
+                    '-show_packets',
+                    '-read_intervals', '1',
+                    '-show_streams',
+                    '-select_streams', 'a',
+                    '-of', 'json',
+                    '-i', 'pipe:0',
+                ],
+                # input=target_file.read(),
+                input=cut_file,
+                capture_output=True,
+                timeout=10
+            )
+
+            print(result.stderr)
+            wtf = json.loads(result.stdout)
+            print(wtf)
+            print(sys.getsizeof(wtf['packets']))
+
+
+    def test_production_bucket_cors_policy_rejected(self):
+
+        pass
+
+
+
+
+
+
+    def test_lambda_from_local(self):
+
+        #https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/lambda/client/invoke.html#
+
+        lambda_client = boto3.client(
+            service_name='lambda',
+            region_name=os.environ['AWS_S3_REGION_NAME'],
+            aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
+        )
+
+        lambda_payload = json.dumps({"name":"name","age":"age"})
+
+        result = lambda_client.invoke(
+            FunctionName=os.environ['AWS_LAMBDA_TEST_ARN'],
+            InvocationType='RequestResponse',
+            Payload=lambda_payload,
+        )
+
+        print(result)
+
+        #at Lambda, use {}.get() for keys to prevent error when not found
+
+
+    def test_lambda_ffprobe_from_local(self):
+
+        def lambda_handler(event, context):
+
+            audio_file = event.get('audio_file')
+
+            result = subprocess.run(
+                [
+                    'ffprobe',
+                    '-v', 'error',
+                    '-show_entries', 'format',  #if you want only some keys, do format=duration, no difference though
+                    '-show_streams',
+                    '-select_streams', 'a',
+                    '-of', 'json',
+                    '-i', 'pipe:0'
+                ],
+                input=audio_file.read(),
+                check=True,
+                capture_output=True,
+                timeout=10
+            )
+
+            audio_file.seek(0)
+
+            audio_file_info = json.loads(result.stdout)
+
+            return {
+                'statusCode': 200,
+                'body': json.dumps({
+                    'audio_file_info': audio_file_info,
+                    'audio_file': audio_file
+                }),
+            }
+
+        lambda_client = boto3.client(
+            service_name='lambda',
+            region_name=os.environ['AWS_S3_REGION_NAME'],
+            aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
+        )
+
+        #example file
+        audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/test_file_samples/audio_can_overwrite.mp3')
+
+        #automate args
+        file_extension = audio_file_full_path.split(".", -1)[-1]
+        temporary_audio_file_name = 'new_recording' + '.' + file_extension
+        content_type = 'audio/' + file_extension
+
+        #simulate InMemoryUploadedFile
+        audio_file_in_memory = InMemoryUploadedFile(
+            io.FileIO(audio_file_full_path, mode="rb+"),
+            'FileField',
+            temporary_audio_file_name,
+            content_type,
+            os.path.getsize(audio_file_full_path),
+            None
+        )
+
+        lambda_payload = json.dumps({
+            'audio_file': audio_file_in_memory
+        })
+
+        result = lambda_client.invoke(
+            FunctionName=os.environ['AWS_LAMBDA_TEST_ARN'],
+            InvocationType='RequestResponse',
+            Payload=lambda_payload,
+        )
+
+        print(result)
+
+
+    def get_keys_from_ec2_in_prod(self):
+
+        session = boto3.Session(region_name=os.environ['AWS_S3_REGION_NAME'])
+        credentials = session.get_credentials()
+        credentials = credentials.get_frozen_credentials()
+        ACCESS_KEY_ID = credentials.access_key
+        ACCESS_SECRET_KEY = credentials.secret_key 
+
+
+
+@override_settings(
+    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    MEDIA_ROOT = os.path.join(settings.BASE_DIR, 'voicewake/tests'),
+)
 class Random_TestCase(TestCase):
 
     def test_random(self):
 
-        print(settings.DEBUG)
+
+        pass
 
 
 
@@ -399,7 +846,41 @@ class AudioClips_TestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
-        pass
+        #example original file
+        cls.source_audio_file_full_path = os.path.join(
+            settings.BASE_DIR,
+            'voicewake/tests/test_file_samples/audio_ok_1.mp3'
+        )
+
+        #where to overwrite file
+        cls.overwrite_audio_file_full_path = os.path.join(
+            settings.BASE_DIR,
+            'voicewake/tests/test_file_samples/audio_can_overwrite.mp3'
+        )
+
+        #automate args
+        file_extension = cls.source_audio_file_full_path.split(".", -1)[-1]
+        temporary_audio_file_name = 'new_recording' + '.' + file_extension
+        content_type = 'audio/' + file_extension
+
+        #create callable to avoid any pickling shenanigan from instantiating cls.InMemoryUploadedFile()
+        def get_audio_file():
+
+            #simulate InMemoryUploadedFile
+            #if this works, then TemporaryUploadedFile() when live works too
+            #since both are the same, with only 1 extra method as difference
+            #can't seem to create TemporaryUploadedFile() when testing, as .read() returns b''
+
+            return InMemoryUploadedFile(
+                io.FileIO(cls.source_audio_file_full_path, mode="rb+"),
+                'FileField',                            #to-be field if it were in form/serializer
+                temporary_audio_file_name,              #doesn't have to match actual file name
+                content_type,                           #Content-Type
+                os.path.getsize(cls.source_audio_file_full_path),  #use os.path.getsize(path) for file size, not sys.getsizeof()
+                None
+            )
+
+        cls.get_audio_file = get_audio_file
 
 
     def test_ffmpeg(self):
@@ -409,53 +890,28 @@ class AudioClips_TestCase(TestCase):
         #https://dirask.com/posts/JavaScript-supported-Audio-Video-MIME-Types-by-MediaRecorder-Chrome-and-Firefox-jERn81
 
         # audio_file = 'audio-clips/year_2023/month_7/day_21/user_id_1/e_13.webm'
-        # process_audio_file_class = HandleAudioFile(audio_file)
 
-        #example file
-        audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/audio_can_overwrite.mp3')
+        handle_audio_file_class = AWSLambdaNormaliseAudioFile(is_test=True)
 
-        #automate args
-        file_extension = audio_file_full_path.split(".", -1)[-1]
-        temporary_audio_file_name = 'new_recording' + '.' + file_extension
-        content_type = 'audio/' + file_extension
-
-        #simulate InMemoryUploadedFile
-        #if this works, then TemporaryUploadedFile() when live works too
-        #since both are the same, with only 1 extra method as difference
-        #can't seem to create TemporaryUploadedFile() when testing, as .read() returns b''
-        audio_file_in_memory = InMemoryUploadedFile(
-            io.FileIO(audio_file_full_path, mode="rb+"),
-            'FileField',                            #to-be field if it were in form/serializer
-            temporary_audio_file_name,              #doesn't have to match actual file name
-            content_type,                           #Content-Type
-            os.path.getsize(audio_file_full_path),  #use os.path.getsize(path) for file size, not sys.getsizeof()
-            None
+        handle_audio_file_class.test_retrieve_unprocessed_audio_file_local(
+            self.source_audio_file_full_path
         )
 
-        #proceed
-        handle_audio_file_class = HandleAudioFile(audio_file_in_memory, True)
+        handle_audio_file_class.prepare_info_before_normalise()
 
-        #process info, will raise error during validation
-        self.assertEqual(handle_audio_file_class.prepare_audio_file_info(), True)
+        #get duration by simply converting file here, then get duration
+        #then can get peaks
 
-        #process peaks
-        self.assertEqual(type(handle_audio_file_class.get_peaks_by_buckets()), list)
+        handle_audio_file_class.normalise_and_overwrite_audio_file()
 
-        #check
-        self.assertEqual(type(handle_audio_file_class.peak_buckets), list)
-        self.assertEqual(len(handle_audio_file_class.peak_buckets), handle_audio_file_class.bucket_quantity)
+        handle_audio_file_class.get_peaks_by_buckets()
 
-        for row in handle_audio_file_class.peak_buckets:
-            self.assertEqual(type(row), float)
+        new_peaks = handle_audio_file_class.get_peaks_by_buckets()
 
-        #normalise
-        self.assertEqual(type(handle_audio_file_class.do_normalisation()), bytes)
+        #to compare old and new peaks, must manually ensure duration exists first
+        #in production, this isn't necessary, and would be redundant
 
-        #check
-        self.assertGreater(len(handle_audio_file_class.audio_file.read()), 0)
-        handle_audio_file_class.audio_file.seek(0)
-
-        handle_audio_file_class.close_audio_file()
+        print(new_peaks)
 
 
 
@@ -486,7 +942,7 @@ class CoreProcess_TestCase(TestCase):
             cls.users.append(current_user)
 
         #audio file
-        cls.audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/audio_can_overwrite.mp3')
+        cls.audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/test_file_samples/audio_can_overwrite.mp3')
         cls.audio_file = open(cls.audio_file_full_path, 'rb')
         cls.audio_file = SimpleUploadedFile(cls.audio_file.name, cls.audio_file.read(), 'audio/mp3')
 

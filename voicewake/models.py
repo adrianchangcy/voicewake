@@ -22,34 +22,6 @@ def get_current_datetime_with_tz():
     return datetime.now().astimezone(tz=ZoneInfo('UTC'))
 
 
-#determine appropriate file path
-def determine_audio_clip_audio_file_path_and_name(instance, filename):
-    
-    #FYI, no need to have separate audio and video directory
-    #will always have only one or the other, not both
-
-    #e.g.:
-    #MEDIA_ROOT/audio_clips/year_2022/month_8/day_1/user_id_1
-    #no need to type out MEDIA_ROOT here, as it is determined in settings.py
-    #.format() converts args into str for us
-    file_path = 'audio_clips/year_{0}/month_{1}/day_{2}/user_id_{3}'.format(
-        int(instance.when_created.strftime('%Y')),
-        int(instance.when_created.strftime('%m')),
-        int(instance.when_created.strftime('%d')),
-        instance.user.id    #avoids headache of worrying about '.' in file names, etc.
-    )
-
-    #e.g.:
-    #e_9
-    new_file_name = 'e_{0}'.format(
-        instance.id
-    )
-
-    file_extension = filename.rsplit('.', 1)[-1]
-
-    return file_path + '/' + new_file_name + '.' + file_extension
-
-
 def get_default_generic_status():
 
     #tuple of (row, is_created)
@@ -211,14 +183,14 @@ class UserBlocks(models.Model):
 
 class AudioClips(models.Model):
     #we need to denormalise via like_count and dislike_count
-    #because otherwise, read operation scales horribly (260ms to 700ms vs. 40ms)
+        #because otherwise, read operation scales horribly (260ms to 700ms vs. 40ms)
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, default=None)
     audio_clip_role = models.ForeignKey('AudioClipRoles', on_delete=models.PROTECT, blank=True, null=True, default=None)
     audio_clip_tone = models.ForeignKey('AudioClipTones', on_delete=models.SET_NULL, blank=True, null=True, default=None)
     event = models.ForeignKey('Events', on_delete=models.CASCADE, null=True, default=None)
     generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)
-    audio_file = models.FileField(blank=True, null=True, upload_to=determine_audio_clip_audio_file_path_and_name)
+    audio_file = models.FileField(upload_to='') #MEDIA_ROOT/...
     audio_duration_s = models.IntegerField(default=0)  #seconds, is not used for VPlayback functionality
     audio_volume_peaks = ArrayField(
         models.DecimalField(default=0, max_digits=3, decimal_places=2), #0 to 0.49 to 1

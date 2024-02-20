@@ -35,6 +35,13 @@ import random
 from django.db import connection
 import inspect
 import platform
+import logging
+import requests
+
+#AWS
+import boto3
+from botocore.config import Config
+from botocore.exceptions import ClientError
 
 #app files
 from .models import *
@@ -427,16 +434,25 @@ def output_testable_sql(full_sql, full_params):
         print('Full mogrify() has been copied to clipboard.')
 
 
-#not advisable to group functions via class,
-#it's better to create modules (files) to group functions together
-def custom_error(error_class:Exception, dev_message="", user_message="")->Exception:
+def custom_error(error_class:Exception, __name__context:str, dev_message="", user_message="")->Exception:
 
     #demo
     # try:
-    #     raise custom_error(ValueError, "yo fix this", "hehe oops")
+    #     raise custom_error(ValueError, __name__, "yo fix this", "hehe oops")
     # except ValueError as e:
     #     print(get_user_message_from_custom_error(e))
 
+    #for now, we only log errors that are meant for developers
+    if dev_message != "":
+
+        #find or create logger
+        logger = logging.getLogger(__name__context)
+
+        #log, with attention to logger's severity level
+        #only log at equal or higher severity
+        logger.exception(__name__context + " : " + dev_message)
+
+    #pass {} into Exception as *args, which can later be retrieved with Exception.args[0]
     return error_class({
         "dev_message": dev_message,
         "user_message": user_message
@@ -784,19 +800,192 @@ class HandleUserOTP(TOTPVerification):
 
 
 
-class HandleAudioFile:
 
-    def __init__(self, audio_file:Union[InMemoryUploadedFile, TemporaryUploadedFile], overwrite_source:bool):
+class S3PostWrapper:
 
-        #we do not accept abs path, because our code overrides the passed file to save memory
-        #i.e. InMemoryUploadedFile/TemporaryUploadedFile makes .save() go smoothly
-        #preventing override would mean duplicating memory/disk space, and ensuring disk copy is deleted
-        if overwrite_source is False:
+    def __init__(
+        self,
+        is_ec2:bool,
+        region_name:str,
+        s3_audio_file_max_size_b:int,
+        unprocessed_ugc_bucket:str,
+        url_expiry_s:int=1000,
+        key_exist_retries:int=4,
+        aws_access_key_id:str|None=None,
+        aws_secret_access_key:str|None=None,
+    ):
+
+        #process flow
+            #frontend POSTs with CSRF token --> backend --> generate pre-signed S3 URL --> ...
+            #... --> frontend PUTs to pre-signed S3 URL --> when done, POST to backend --> ...
+            #... --> backend receives file info --> POSTs to Lambda via RequestResponse --> ...
+            #... --> if Lambda ok, return 200, else delete file in S3 if found
+
+        #policies, if possible
+            #1 bucket to dump all unprocessed user files
+                #auto-delete if file remains past x days
+                #allow only PUT
+                #allow only 1 file upload per pre-signed S3 URL
+            #1 bucket for processed files
+                #proper folder pathing
+                #fully private
+
+        #we use POST via generate_presigned_post(), instead of generate_presigned_url()
+        #we can have better control over policies and criterias this way
+
+        #prepare
+        self.unprocessed_ugc_bucket = unprocessed_ugc_bucket
+        self.s3_client = None
+
+        #passed values
+        self.s3_audio_file_max_size_b = s3_audio_file_max_size_b
+        self.url_expiry_s = url_expiry_s
+        self.key_exist_retries = key_exist_retries
+
+        advanced_config = Config(
+            retries={
+                'max_attempts': 10,
+                'mode': 'standard'
+            }
+        )
+
+        try:
+
+            if is_ec2 is True:
+
+                self.s3_client = boto3.client(
+                    service_name='s3',
+                    region_name=region_name,
+                    config=advanced_config,
+                )
+
+            else:
+
+                self.s3_client = boto3.client(
+                    service_name='s3',
+                    region_name=region_name,
+                    aws_access_key_id=aws_access_key_id,
+                    aws_secret_access_key=aws_secret_access_key,
+                    config=advanced_config,
+                )
+
+        except ClientError:
 
             raise custom_error(
                 ValueError,
-                dev_message="Current code will always overwrite original source's bytes to save memory."
+                __name__,
+                dev_message='Could not create S3 boto client.',
+                user_message='Upload is temporarily unavailable.'
             )
+
+
+    def check_object_exists(self, key:str)->bool:
+
+        try:
+
+            #requires "s3:GetObject" and "s3:ListBucket" policy
+            self.s3_client.head_object(
+                Bucket=self.unprocessed_ugc_bucket,
+                Key=key,
+            )
+
+            return True
+        
+        except ClientError as e:
+
+            if e.response['ResponseMetadata']['HTTPStatusCode'] == 404:
+
+                return False
+
+            raise e
+
+
+    def generate_unprocessed_audio_file_object_key(self, user_id:int, audio_clip_id:int):
+
+        datetime_now = get_datetime_now()
+
+        #no starting slash
+        #.format() converts args into str for us
+        file_path = 'audio_clips/year_{0}/month_{1}/day_{2}/user_id_{3}/'.format(
+            datetime_now.strftime('%Y'),
+            datetime_now.strftime('%m'),
+            datetime_now.strftime('%d'),
+            user_id,
+        )
+
+        #retry if full key exists
+
+        for retry in range(0, self.key_exist_retries):
+
+            file_key = file_path + str(audio_clip_id) + '.mp3'
+
+            if self.check_object_exists(file_key) is False:
+
+                return file_key
+
+        raise ValueError('Maximum retries reached on check_object_exists().')
+
+
+    def generate_presigned_post_url(self, key:str):
+
+        #HTTP 422 on condition failure, will not upload
+        #HTTP 204 on success
+
+        #for file MimeType, e.g. allow only .mp3, must be done at bucket policy, not here
+
+        conditions = [
+            {'bucket': self.unprocessed_ugc_bucket},
+            {'key': key},
+            ["starts-with", "$Content-Type", "audio/mpeg"],
+            ["content-length-range", 1024, self.s3_audio_file_max_size_b],
+        ]
+
+        try:
+
+            return self.s3_client.generate_presigned_post(
+                Bucket=self.unprocessed_ugc_bucket,
+                Key=key,
+                Fields={"Content-Type": "audio/mpeg"},
+                Conditions=conditions,
+                ExpiresIn=self.url_expiry_s
+            )
+
+        except:
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message=f"Couldn't generate POST URL for key: {key}",
+                user_message='Upload is temporarily unavailable.'
+            )
+
+
+    def delete_object(self, key:str):
+
+        #requires "s3:DeleteObject" policy
+        return self.s3_client.delete_object(
+            Bucket=self.unprocessed_ugc_bucket,
+            Key=key,
+        )
+
+
+
+class AWSLambdaNormaliseAudioFile:
+
+    #process
+        #normalise --> copy to new bucket --> delete from old bucket --> return info
+
+    #how to troubleshoot
+        #do check=False, then get subprocess.run().stderr
+
+    def __init__(
+        self,
+        is_test:bool,
+        region_name:str=None,
+        unprocessed_bucket_name:str=None,
+        processed_bucket_name:str=None,
+        object_key:str=None
+    ):
 
         #precaution:
             #size is checked via .size at serializer/form, not here
@@ -821,110 +1010,104 @@ class HandleAudioFile:
 
         self.bucket_quantity = 20
 
-        #check type
-        if type(audio_file) not in [InMemoryUploadedFile, TemporaryUploadedFile]:
-
-            raise custom_error(
-                ValueError,
-                dev_message="audio_file must be of type [InMemoryUploadedFile, TemporaryUploadedFile]."
-            )
-        
-        # if type(audio_file) == str:
-            # self.audio_file = open(audio_file, "rb+")
-
-        self.audio_file = audio_file
-
         #other data
+        self.audio_file = None
         self.audio_file_duration_s = None
-        self.peak_buckets = None
+        self.audio_volume_peaks = None
+
+        #if test, we handle files locally
+        #if not test, we deal with S3 in Lambda
+
+        if is_test is True:
+
+            return
+
+        #s3
+        #keys are the same for both buckets
+        self.region_name = region_name
+        self.unprocessed_bucket_name = unprocessed_bucket_name
+        self.processed_bucket_name = processed_bucket_name
+        self.object_key = object_key
+
+        #boto
+        try:
+
+            self.s3_client = boto3.client(
+                service_name='s3',
+                region_name=region_name,
+            )
+
+        except ClientError:
+
+            raise
 
 
-    def prepare_audio_file_info(self)->bool:
+    def test_retrieve_unprocessed_audio_file_local(self, audio_file_path:str):
 
-        self.audio_file.seek(0)
+        with open(audio_file_path, 'rb+') as target_file:
+
+            self.audio_file = target_file.read()
+
+
+    def test_store_processed_audio_file_local(self, audio_file_path:str):
+
+        with open(audio_file_path, 'w') as target_file_to_overwrite:
+
+            target_file_to_overwrite.seek(0)
+
+            for chunk in ContentFile(self.audio_file).chunks():
+
+                #remove bytes starting from position 0
+                target_file_to_overwrite.truncate(0)
+
+                #write
+                target_file_to_overwrite.write(chunk)
+
+
+    def retrieve_unprocessed_audio_file(self):
+
+        response = self.s3_client.get_object(
+            Bucket=self.unprocessed_bucket_name,
+            Key=self.object_key
+        )
+
+        #StreamingBody can only use .read() once, and does not contain .seek()
+        #since our files are not large, we can load all into memory in this way
+        self.audio_file = response['Body'].read()
+
+
+    def prepare_info_before_normalise(self):
+
+        #format
+            #this gets all keys, compared to 'format=duration', which returns only duration
 
         result = subprocess.run(
             [
                 'ffprobe',
                 '-v', 'error',
-                '-show_entries', 'format',  #if you want only some keys, do format=duration, no difference though
+                '-show_entries', 'format',
                 '-show_streams',
                 '-select_streams', 'a',
                 '-of', 'json',
-                '-i', 'pipe:0'
+                '-i', 'pipe:0',
             ],
-            input=self.audio_file.read(),
+            input=self.audio_file,
             check=True,
             capture_output=True,
             timeout=self.subprocess_timeout_s
         )
-
-        self.audio_file.seek(0)
 
         self.audio_file_info = json.loads(result.stdout)
 
-        if 'duration' in self.audio_file_info['format']:
-
-            #has duration metadata
-            #round off duration to int, floor is preferred in terms of presentation
-            self.audio_file_duration_s = math.floor(
-                float(self.audio_file_info['format']['duration'])
-            )
-
-        else:
-
-            #no duration metadata, get it from packets instead
-            self._get_duration_from_last_packet()
-
         #validate everything
-        self._validate_audio_file_info()
-
-        return True
+        self._validate_info_before_normalise()
 
 
-    def _get_duration_from_last_packet(self):
-
-        #dts_time: DTS time, decides when a frame has to be decoded
-        #pts_time: PTS time, describes when a frame has to be presented
-        #difference only becomes important in video B-frames, i.e. frames containing references past + future frames
-
-        self.audio_file.seek(0)
-
-        #expect packets to have dts_time/pts_time
-        #we get last packet and use pts_time as seemingly accurate total duration in seconds
-        result = subprocess.run(
-            [
-                'ffprobe',
-                '-v', 'error',
-                '-show_packets',
-                '-of', 'json',
-                '-read_intervals', '999999',    #seconds, make sure is longer than file duration, 999999 is safe
-                '-i', 'pipe:0',
-            ],
-            input=self.audio_file.read(),
-            check=True,
-            capture_output=True,
-            timeout=self.subprocess_timeout_s
-        )
-
-        self.audio_file.seek(0)
-
-        result = json.loads(result.stdout)
-
-        #round off duration to int, floor is preferred in terms of presentation
-        self.audio_file_duration_s = math.floor(
-            float(result['packets'][0]['pts_time'])
-        )
-
-
-    def _validate_audio_file_info(self)->bool:
+    def _validate_info_before_normalise(self):
 
         if self.audio_file_info is None:
 
-            raise custom_error(
-                ValueError,
-                dev_message="Cannot validate audio_file_info when it is None."
-            )
+            raise ValueError('No self.audio_file_info to validate.')
         
         #audio_file_info['streams'] can have multiple dicts if there's not only audio in it
         #e.g. a flac file from an album for test has a jpeg in it with ['index'] == 1
@@ -934,141 +1117,10 @@ class HandleAudioFile:
         #we have "-select_streams a" to tell us that no audio stream exists
         if len(self.audio_file_info['streams']) == 0:
 
-            raise custom_error(
-                ValueError,
-                dev_message="File does not contain audio.",
-                user_message="File does not contain audio."
-            )
-
-        if self.audio_file_duration_s < 1:
-
-            raise custom_error(
-                ValueError,
-                dev_message="Duration must be more than 1s.",
-                user_message="Duration must be more than 1s."
-            )
-
-        return True
+            raise ValueError('No audio stream found.')
 
 
-    def _replace_original_audio_file_bytes_with_normalised_version(self, normalised_bytes:bytes):
-
-        #in views.py, InMemoryUploadedFile and TemporaryUploadedFile can be written into
-        #if you have issues with writing, e.g. during tests, check your mode arg in io.BytesIO(path, mode="rb+")
-
-        #delete existing bytes
-        self.audio_file.truncate(0)
-
-        self.audio_file.seek(0)
-
-        #write in
-        #good practice to use chunks(), even when unnecessary for memory, as per docs
-        for chunk in ContentFile(normalised_bytes).chunks():
-
-            self.audio_file.write(chunk)
-
-        self.audio_file.seek(0)
-
-
-    def get_peaks_by_buckets(self) -> list[float]:
-
-        #get duration
-        #get sample rate
-        #asetnsamples = (duration / x buckets) * sample rate
-        #expect x + 1 buckets output, so compare second last and last bucket and select the one with higher peak
-
-        #to get highest peak per x, add "asetnsamples=x" after amovie, i.e. chunk size, e.g. "amovie=...,asetnsamples=x,..."
-        #e.g. if file is 48000Hz frequency, i.e. 48000 samples/sec, asetnsamples=48000 gives you 1 sec/bucket
-
-        #get necessary info
-        sample_rate = int(self.audio_file_info['streams'][0]['sample_rate'])
-
-        #calculate appropriate sample rate to get bucket_quantity + 1
-        #math.floor() is important to guarantee we always get surplus buckets, i.e. just compare last buckets
-        #compared to math.ceil(), which may give us less buckets than we need, i.e. must maybe create last fake bucket
-        asetnsamples = math.floor(self.audio_file_duration_s / self.bucket_quantity * sample_rate)
-        
-        #must escape ":"
-        ffprobe_i = 'amovie=pipe\\\\:0,asetnsamples=%s,astats=metadata=1:reset=1' % (str(asetnsamples))
-
-        self.audio_file.seek(0)
-
-        #get peaks
-        result = subprocess.run(
-            [
-                'ffprobe',
-                '-v', 'error',
-                '-f', 'lavfi',
-                '-i', ffprobe_i,
-                '-show_entries', 'frame_tags=lavfi.astats.Overall.Peak_level',
-                '-of', 'json'
-            ],
-            input=self.audio_file.read(),
-            check=True,
-            capture_output=True,
-            timeout=self.subprocess_timeout_s
-        )
-
-        self.audio_file.seek(0)
-
-        result = json.loads(result.stdout)
-
-        #extract peaks
-        peak_buckets = []
-
-        for count in range(self.bucket_quantity):
-
-            #we fill the bucket to full first, then use last stored bucket to evaluate extra buckets
-            peak_to_store = 0
-
-            #value is in dBFS, max 0, min is approx. 6dB per bit depth
-            #so bigger negative value means more quiet
-            peak_to_store = float(result['frames'][count]['tags']['lavfi.astats.Overall.Peak_level'])
-
-            #prevent exceeding floor
-            if peak_to_store < self.dbfs_floor:
-
-                peak_to_store = self.dbfs_floor
-
-            #should never have > 0dB (will produce audio clipping), mainly because we'll normalise to prevent it
-            if peak_to_store > 0:
-                
-                raise custom_error(
-                    ValueError,
-                    dev_message="Peak is over 0dBFS, which will clip. Calculating peaks process has been halted.",
-                    user_message="Audio normalisation had failed, as there were above 0dBFS peaks detected."
-                )
-
-            #get percentage
-            # -x / -y will always be positive
-            peak_to_store = peak_to_store / self.dbfs_floor
-
-            #invert percentage
-            peak_to_store = 1 - peak_to_store
-
-            #get 0 to 1 value
-            peak_to_store = peak_to_store * 1
-
-            #truncate
-            peak_to_store = float(round(peak_to_store, 2))
-
-            #while peak_buckets is not yet full, fill until full
-            if count < self.bucket_quantity:
-
-                peak_buckets.append(peak_to_store)
-                continue
-
-            #handle extra buckets
-            #store the higher peak between last stored peak and current peak
-            if peak_buckets[self.bucket_quantity] < peak_to_store:
-
-                peak_buckets[self.bucket_quantity] = peak_to_store
-
-        self.peak_buckets = peak_buckets
-        return peak_buckets
-
-
-    def do_normalisation(self) -> bytes:
+    def normalise_and_overwrite_audio_file(self):
 
         #"loudnorm=I=-16:TP=-1.5:LRA=11" is from loudnorm docs on EBU R 128
         #"loudnorm=I=-23:LRA=7:TP=-2" is from ffmpeg-normalize on EU's LUFS -23 regulation
@@ -1078,8 +1130,6 @@ class HandleAudioFile:
         #LRA is loudness range, i.e. range between softest and loudest parts
         #TP is true peak, -2 seems common, just be sure to give enough headroom towards 0, and never over 0
 
-        self.audio_file.seek(0)
-
         #first pass, get measurement
         ffmpeg_cmd = subprocess.run(
             [
@@ -1088,13 +1138,11 @@ class HandleAudioFile:
                 "-af", loudnorm_args + ":print_format=json",
                 '-f', "null", "/dev/null"
             ],
-            input=self.audio_file.read(),
+            input=self.audio_file,
             check=True,
             capture_output=True,
             timeout=self.subprocess_timeout_s
         )
-
-        self.audio_file.seek(0)
 
         #get print string from stderr
         first_pass_data = ffmpeg_cmd.stderr.decode()
@@ -1107,6 +1155,7 @@ class HandleAudioFile:
 
             raise custom_error(
                 ValueError,
+                __name__,
                 dev_message="Regex could not find the data needed for first_pass_dict via regex.",
                 user_message=""
             )
@@ -1144,33 +1193,193 @@ class HandleAudioFile:
                 "-c:a", self.desired_codec,          #codec; a is audio, v is video
                 "-f", self.desired_format, "pipe:1"   #f is format; for disk files, can just write "my_folder/file.mp3"
             ],
-            input=self.audio_file.read(),
+            input=self.audio_file,
             check=True,
             capture_output=True,
             timeout=self.subprocess_timeout_s
         )
 
-        self.audio_file.seek(0)
+        self.audio_file = ffmpeg_cmd.stdout
 
-        output = ffmpeg_cmd.stdout
-
-        self._replace_original_audio_file_bytes_with_normalised_version(output)
-
-        return output
+        self._get_duration_after_normalise()
 
 
-    def close_audio_file(self):
+    def _get_duration_after_normalise(self):
 
-        #must call this when you're done with .open()
-        #other types will be auto-closed by Django at end of request
-        self.audio_file.close()
+        #we have to do this only after passing through ffmpeg, e.g. normalisation
+        #otherwise, some original files will error when seeking via '-read_intervals' and arbitary '999999'
+
+        #'-show_packets', '-read_intervals' + '999999'
+            #for file duration, getting from packets is more reliable than metadata such as format=duration:
+            #guarantee that -read_intervals, in seconds, is >= file duration, via arbitrarily large value
+            #absolute single value will become absolute start position, so start from last packet
+            #will fall back to last packet when value is too big
+            #this is better than loading all packets into memory just to get [-1]
+        #format
+            #this gets all keys, compared to 'format=duration', which returns only duration
+        #'-show_entries', 'format'
+            #not affected by us skipping packets via -read_intervals
+
+        result = subprocess.run(
+            [
+                'ffprobe',
+                '-v', 'error',
+                '-show_entries', 'format',
+                '-show_packets',
+                '-read_intervals', '999999',
+                '-show_streams',
+                '-select_streams', 'a',
+                '-of', 'json',
+                '-i', 'pipe:0',
+            ],
+            input=self.audio_file,
+            check=True,
+            capture_output=True,
+            timeout=self.subprocess_timeout_s
+        )
+
+        audio_file_info = json.loads(result.stdout)
+
+        try:
+
+            #determine audio_file_duration_s via last packet's pts_time
+            #round off duration to int, floor is preferred for frontend slider
+            self.audio_file_duration_s = math.floor(
+                float(audio_file_info['packets'][-1]['pts_time'])
+            )
+
+        except:
+
+            raise ValueError('Could not determine duration of file uploaded.')
 
 
-class CreateAudioClips:
+    def get_peaks_by_buckets(self) -> list[float]:
+
+        #call this after normalisation
+
+        #get duration
+        #get sample rate
+        #asetnsamples = (duration / x buckets) * sample rate
+        #expect x + 1 buckets output, so compare second last and last bucket and select the one with higher peak
+
+        #to get highest peak per x, add "asetnsamples=x" after amovie, i.e. chunk size, e.g. "amovie=...,asetnsamples=x,..."
+        #e.g. if file is 48000Hz frequency, i.e. 48000 samples/sec, asetnsamples=48000 gives you 1 sec/bucket
+
+        #get necessary info
+        sample_rate = int(self.audio_file_info['streams'][0]['sample_rate'])
+
+        #calculate appropriate sample rate to get bucket_quantity + 1
+        #math.floor() is important to guarantee we always get surplus buckets, i.e. just compare last buckets
+        #compared to math.ceil(), which may give us less buckets than we need, i.e. must maybe create last fake bucket
+        asetnsamples = math.floor(self.audio_file_duration_s / self.bucket_quantity * sample_rate)
+        
+        #must escape ":"
+        ffprobe_i = 'amovie=pipe\\\\:0,asetnsamples=%s,astats=metadata=1:reset=1' % (str(asetnsamples))
+
+        #get peaks
+        result = subprocess.run(
+            [
+                'ffprobe',
+                '-v', 'error',
+                '-f', 'lavfi',
+                '-i', ffprobe_i,
+                '-show_entries', 'frame_tags=lavfi.astats.Overall.Peak_level',
+                '-of', 'json'
+            ],
+            input=self.audio_file,
+            check=True,
+            capture_output=True,
+            timeout=self.subprocess_timeout_s
+        )
+
+        result = json.loads(result.stdout)
+
+        #extract peaks
+        audio_volume_peaks = []
+
+        for count in range(self.bucket_quantity):
+
+            #we fill the bucket to full first, then use last stored bucket to evaluate extra buckets
+            peak_to_store = 0
+
+            #value is in dBFS, max 0, min is approx. 6dB per bit depth
+            #so bigger negative value means more quiet
+            peak_to_store = float(result['frames'][count]['tags']['lavfi.astats.Overall.Peak_level'])
+
+            #prevent exceeding floor
+            if peak_to_store < self.dbfs_floor:
+
+                peak_to_store = self.dbfs_floor
+
+            #should never have > 0dB (will produce audio clipping)
+            if peak_to_store > 0:
+                
+                raise ValueError('Audio normalisation had failed, as there were above 0dBFS peaks detected.')
+
+            #get percentage
+            # -x / -y will always be positive
+            peak_to_store = peak_to_store / self.dbfs_floor
+
+            #invert percentage
+            peak_to_store = 1 - peak_to_store
+
+            #get 0 to 1 value
+            peak_to_store = peak_to_store * 1
+
+            #truncate
+            peak_to_store = float(round(peak_to_store, 2))
+
+            #while audio_volume_peaks is not yet full, fill until full
+            if count < self.bucket_quantity:
+
+                audio_volume_peaks.append(peak_to_store)
+                continue
+
+            #handle extra buckets
+            #store the higher peak between last stored peak and current peak
+            if audio_volume_peaks[self.bucket_quantity] < peak_to_store:
+
+                audio_volume_peaks[self.bucket_quantity] = peak_to_store
+
+        self.audio_volume_peaks = audio_volume_peaks
+
+        return audio_volume_peaks
+
+
+    def store_processed_audio_file(self):
+
+        response = self.s3_client.put_object(
+            Bucket=self.processed_bucket_name,
+            Key=self.object_key,
+            Body=self.audio_file
+        )
+
+
+    def delete_unprocessed_audio_file(self):
+
+        response = self.s3_client.delete_object(
+            Bucket=self.unprocessed_bucket_name,
+            Key=self.object_key,
+        )
+
+
+    def prepare_return_data(self):
+
+        return {
+            'audio_volume_peaks': self.audio_volume_peaks,
+            'audio_file_duration_s': self.audio_file_duration_s
+        }
+
+
+
+class CreateAudioClips(S3PostWrapper):
 
     def __init__(
-        self, user, current_context:Literal["create_event", "create_reply"],
-        event_create_daily_limit:int, event_reply_daily_limit:int,
+        self,
+        user,
+        current_context:Literal["create_event", "create_reply"],
+        event_create_daily_limit:int,
+        event_reply_daily_limit:int,
         event_reply_expiry_seconds:int,
     ):
 
@@ -1190,10 +1399,11 @@ class CreateAudioClips:
 
         self.datetime_now = get_datetime_now()
 
-        self.generic_status_incomplete = None
-        self.generic_status_completed = None
-
+        self.event = None
         self.event_reply_queue = None
+        self.audio_clip = None
+
+        self.s3_post_wrapper = None
 
 
     def get_cooldown_on_audio_clip_create_limit_s(self)->int:
@@ -1232,12 +1442,40 @@ class CreateAudioClips:
         return math.ceil(pretty_difference_s)
 
 
+    def _get_event_reply_queue(self, event_id:int)->tuple[bool, None|Response]:
+
+        try:
+
+            self.event_reply_queue = EventReplyQueues.objects.select_for_update(
+                of=("self",)
+            ).select_related(
+                'event__generic_status'
+            ).get(
+                event_id=event_id,
+                locked_for_user=self.user
+            )
+
+            return (True, None)
+
+        except EventReplyQueues.DoesNotExist:
+
+            response = Response(
+                data={
+                    'message': "You have not selected this event to reply in.",
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+            return (False, response)
+
+
     def _check_user_can_create_reply(self)->tuple[bool, None|Response]:
 
         if self.event_reply_queue is None:
 
             raise custom_error(
                 ValueError,
+                __name__,
                 dev_message="EventReplyQueue not yet retrieved. Call self._get_event_reply_queue()."
             )
 
@@ -1301,44 +1539,112 @@ class CreateAudioClips:
         )
 
 
-    def _create_event(self, event_name:str):
+    def _get_records_for_normalise(self, audio_clip_id:int)->tuple[bool, None|Response]:
 
-        if self.current_context != "create_event":
+        has_records = False
+        response = None
 
-            raise custom_error(
-                ValueError,
-                dev_message="Cannot create events with current_context."
+        try:
+
+            self.audio_clip = AudioClips.objects.get(pk=audio_clip_id)
+            self.event = Events.objects.get(pk=self.audio_clip.event_id)
+
+            has_records = True
+
+        except AudioClips.DoesNotExist:
+
+            response = Response(
+                data={
+                    'message': "Recording does not exist.",
+                },
+                status=status.HTTP_404_NOT_FOUND
             )
 
-        if self.generic_status_incomplete is None:
+        except Events.DoesNotExist:
 
-            self.generic_status_incomplete = GenericStatuses.objects.get(generic_status_name='incomplete')
+            response = Response(
+                data={
+                    'message': "Event does not exist.",
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-        self.event = Events.objects.create(
-            event_name=event_name,
-            generic_status=self.generic_status_incomplete,
-            created_by=self.user,
+        return (has_records, response)
+
+
+    def _check_can_normalise(self)->tuple[bool, None|Response]:
+
+        if self.audio_clip is None or self.event is None:
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message="Missing records. Call self._get_records_for_normalise()."
+            )
+
+        if (
+            self.audio_clip.user.id == self.user.id and
+            self.audio_clip.generic_status.generic_status_name == 'processing' and
+            self.audio_clip.audio_duration_s == 0 and
+            len(self.audio_clip.audio_file) == 0 and
+            len(self.audio_clip.audio_volume_peaks) == 0
+        ):
+
+            return (True, None)
+
+        elif (
+            self.audio_clip.user.id == self.user.id and
+            self.audio_clip.generic_status.generic_status_name == 'ok' and
+            self.audio_clip.audio_duration_s > 0 and
+            len(self.audio_clip.audio_file) > 0 and
+            len(self.audio_clip.audio_volume_peaks) > 0
+        ):
+
+            response = Response(
+                data={
+                    'message': "Recording has been processed.",
+                },
+                status=status.HTTP_200_OK
+            )
+
+            return (False, response)
+
+        else:
+
+            response = Response(
+                data={
+                    'message': "Recording cannot be processed.",
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+            return (False, response)
+
+
+    def _initialise_s3_post_wrapper(self):
+
+        self.s3_post_wrapper = S3PostWrapper(
+            is_ec2=False,
+            region_name=os.environ['AWS_S3_REGION_NAME'],
+            unprocessed_ugc_bucket=os.environ['AWS_STORAGE_UGC_UNPROCESSED_BUCKET_NAME'],
+            s3_audio_file_max_size_b=settings.S3_AUDIO_FILE_MAX_SIZE_B,
+            url_expiry_s=settings.S3_UPLOAD_URL_EXPIRY_S,
+            aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
         )
 
 
-    def _get_event_reply_queue(self, event_id:int):
-
-        self.event_reply_queue = EventReplyQueues.objects.select_for_update(
-            of=("self",)
-        ).select_related(
-            'event__generic_status'
-        ).get(
-            event_id=event_id,
-            locked_for_user=self.user
-        )
-
-
-    def create_event_and_audio_clip_as_originator(self, event_name:str, audio_clip_tone_id:int, audio_file):
+    def create_records_and_return_s3_endpoint_as_originator(
+        self,
+        event_name:str,
+        audio_clip_tone_id:int,
+    ):
 
         if self.current_context != "create_event":
 
             raise custom_error(
                 ValueError,
+                __name__,
                 dev_message="Invalid current_context."
             )
 
@@ -1360,63 +1666,77 @@ class CreateAudioClips:
 
         audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='originator')
         audio_clip_tone = AudioClipTones.objects.get(pk=audio_clip_tone_id)
+        generic_status_processing = GenericStatuses.objects.get(generic_status_name='processing')
 
-        #audio_file, further validation
-        #on error, will raise by themselves
-        handle_audio_file_class = HandleAudioFile(audio_file, True)
+        #create event, as "processing"
+        self.event = Events.objects.create(
+            event_name=event_name,
+            generic_status=generic_status_processing,
+            created_by=self.user,
+        )
 
-        #prepare audio file info, which also self-validates
-        #reminder that .size check should be done at form/serializer
-        handle_audio_file_class.prepare_audio_file_info()
-
-        #normalize
-        handle_audio_file_class.do_normalisation()
-
-        #get peaks
-        handle_audio_file_class.get_peaks_by_buckets()
-
-        #if it reaches here with no problems, then audio_file is fine
-        #create event
-        self._create_event(event_name)
-
-        #create audio_clip, excluding audio_file and event
-        #generic_status is handled by default, so it is skipped here
-        new_audio_clip = AudioClips.objects.create(
+        #create audio_clip, as "processing"
+        #we update audio_volume_peaks, audio_duration_s, and audio_file later
+        self.audio_clip = AudioClips.objects.create(
             user=self.user,
             audio_clip_role=audio_clip_role,
             audio_clip_tone=audio_clip_tone,
             event=self.event,
-            audio_volume_peaks=handle_audio_file_class.peak_buckets,
-            audio_duration_s=handle_audio_file_class.audio_file_duration_s
+            audio_volume_peaks=[],
+            audio_duration_s=0,
+            audio_file='',
+            generic_status=generic_status_processing
         )
 
-        #we delay saving audio_file, as we want when_created for audio_file's path
-        new_audio_clip.audio_file = handle_audio_file_class.audio_file
-        new_audio_clip.save()
+        #s3
 
-        #close just in case it's no longer a reference, i.e. Django won't auto-close
-        handle_audio_file_class.close_audio_file()
+        self._initialise_s3_post_wrapper()
+
+        #generate key and presigned URL
+
+        upload_key = self.s3_post_wrapper.generate_unprocessed_audio_file_object_key(
+            user_id=self.user.id,
+            audio_clip_id=self.audio_clip.id
+        )
+
+        upload_info = self.s3_post_wrapper.generate_presigned_post_url(key=upload_key)
+
+        #save key as audio_file
+        self.audio_clip.audio_file = upload_key
+        self.audio_clip.save()
 
         return Response(
             data={
-                "message": "Event was successfully created!",
-                "event_id": new_audio_clip.event_id,
+                'data': {
+                    'upload_url': upload_info['url'],
+                    'upload_fields': json.dumps(upload_info['fields']),
+                    'audio_clip_id': self.audio_clip.id
+                }
             },
             status=status.HTTP_201_CREATED
         )
 
-
-    def create_audio_clip_as_responder(self, event_id:int, audio_clip_tone_id:int, audio_file):
+    def create_records_and_return_s3_endpoint_as_responder(
+        self,
+        event_id:int,
+        audio_clip_tone_id:int,
+    ):
 
         if self.current_context != "create_reply":
 
             raise custom_error(
                 ValueError,
+                __name__,
                 dev_message="Invalid current_context."
             )
 
         #get queue
-        self._get_event_reply_queue(event_id)
+
+        has_event_reply_queue, response = self._get_event_reply_queue(event_id)
+
+        if has_event_reply_queue is False:
+
+            return response
 
         #perform checks
 
@@ -1433,51 +1753,119 @@ class CreateAudioClips:
 
         audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='responder')
         audio_clip_tone = AudioClipTones.objects.get(pk=audio_clip_tone_id)
+        generic_status_processing = GenericStatuses.objects.get(generic_status_name='processing')
 
-        #audio_file, further validation
-        #on error, will raise by themselves
-        handle_audio_file_class = HandleAudioFile(audio_file, True)
-
-        #prepare audio file info, which also self-validates
-        #reminder that .size check should be done at form/serializer
-        handle_audio_file_class.prepare_audio_file_info()
-
-        #normalize
-        handle_audio_file_class.do_normalisation()
-
-        #get peaks
-        handle_audio_file_class.get_peaks_by_buckets()
-
-        #create audio_clip, excluding audio_file and event
-        #generic_status is handled by default, so it is skipped here
-        new_audio_clip = AudioClips.objects.create(
+        self.audio_clip = AudioClips.objects.create(
             user=self.user,
             audio_clip_role=audio_clip_role,
             audio_clip_tone=audio_clip_tone,
-            event_id=self.event_reply_queue.event_id,
-            audio_volume_peaks=handle_audio_file_class.peak_buckets,
-            audio_duration_s=handle_audio_file_class.audio_file_duration_s
+            event_id=event_id,
+            audio_volume_peaks=[],
+            audio_duration_s=0,
+            audio_file='',
+            generic_status=generic_status_processing
         )
 
-        #we delay saving audio_file, as we want when_created for audio_file's path
-        new_audio_clip.audio_file = handle_audio_file_class.audio_file
-        new_audio_clip.save()
+        #s3
 
-        #close just in case it's no longer a reference, i.e. Django won't auto-close
-        handle_audio_file_class.close_audio_file()
+        self._initialise_s3_post_wrapper()
+
+        #generate key and presigned URL
+
+        upload_key = self.s3_post_wrapper.generate_unprocessed_audio_file_object_key(
+            user_id=self.user.id,
+            audio_clip_id=self.audio_clip.id
+        )
+
+        upload_info = self.s3_post_wrapper.generate_presigned_post_url(key=upload_key)
+
+        #save key as audio_file
+        self.audio_clip.audio_file = upload_key
+        self.audio_clip.save()
+
+        return Response(
+            data={
+                'data': {
+                    'upload_url': upload_info['url'],
+                    'upload_fields': json.dumps(upload_info['fields']),
+                    'audio_clip_id': self.audio_clip.id
+                }
+            },
+            status=status.HTTP_201_CREATED
+        )
 
 
-        if self.generic_status_completed is None:
+    def normalise_and_update_records_as_originator(self, audio_clip_id:int):
 
-            self.generic_status_completed = GenericStatuses.objects.get(generic_status_name='completed')
+        #call Lambda
+        #will normalise, copy to new bucket, and delete from old bucket
+
+        #get records, particularly AudioClips and Events
+
+        has_records, response = self._get_records_for_normalise(audio_clip_id)
+
+        if has_records is False:
+
+            return response
+
+        #check
+
+        can_normalise, response = self._check_can_normalise()
+
+        if can_normalise is False:
+
+            return response
+
+        #proceed
+
+        generic_status_ok = GenericStatuses.objects.get(generic_status_name='ok')
+        generic_status_completed = GenericStatuses.objects.get(generic_status_name='incomplete')
+
+        #update audio_clips
+        #update events
+
+
+    def normalise_and_update_records_as_responder(self, audio_clip_id:int):
+
+        #call Lambda
+
+        #get records, particularly AudioClips and Events
+
+        has_records, response = self._get_records_for_normalise(audio_clip_id)
+
+        if has_records is False:
+
+            return response
+
+        #check
+
+        can_normalise, response = self._check_can_normalise()
+
+        if can_normalise is False:
+
+            return response
+
+        #get queue, no expiry check needed
+
+        has_event_reply_queue, response = self._get_event_reply_queue(self.event.id)
+
+        if has_event_reply_queue is False:
+
+            return response
+
+        #call lambda
+
+        #proceed
+
+        generic_status_ok = GenericStatuses.objects.get(generic_status_name='ok')
+        generic_status_completed = GenericStatuses.objects.get(generic_status_name='completed')
+
+        #update audio_clip
 
         #update event as completed
-        Events.objects.filter(
-            pk=self.event_reply_queue.event_id
-        ).update(
-            generic_status=self.generic_status_completed,
-            last_modified=self.datetime_now
-        )
+        self.event.generic_status=generic_status_completed
+        self.event.last_modified=self.datetime_now
+        self.event.save()
 
         #remove event_reply_queue
         self.event_reply_queue.delete()
@@ -1489,10 +1877,6 @@ class CreateAudioClips:
             },
             status=status.HTTP_201_CREATED
         )
-
-
-
-
 
 
 

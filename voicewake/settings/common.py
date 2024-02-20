@@ -55,7 +55,7 @@ if MAINTENANCE_MODE is True:
 MIDDLEWARE += [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
+    # 'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -93,7 +93,7 @@ INSTALLED_APPS = [
 
     #CORS, allows code in current domain to dynamically make requests to other domains, e.g. CloudFront
     #<link> does not count
-    'corsheaders',
+    # 'corsheaders',
 
     #OTP
     'django_otp',
@@ -115,8 +115,57 @@ CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:8000',
+    'http://127.0.0.1:8070',
+    'https://voicewake.com',
     'https://' + os.environ['AWS_S3_CUSTOM_DOMAIN'],
 ]
+
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://127.0.0.1:8000',
+    'http://127.0.0.1:8070',
+    'https://voicewake.com',
+]
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    #create available formatters
+    'formatters': {
+        'verbose': {
+            'format': '%(asctime)s - %(levelname)s - %(message)s',
+        },
+        'simple': {
+            'format' : '%(message)s',
+        },
+    },
+    'handlers': {
+        'error_file': {
+            #log only severity of ERROR and above
+            'level': 'ERROR',
+            'filename': 'error.log',
+            #choose formatter
+            'formatter': 'verbose',
+            #intead of FileHandler, use RotatingFileHandler for log rotation
+            #help manage large log files by splitting them after reaching a particular size
+            'class': 'logging.handlers.RotatingFileHandler',
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 5,
+        },
+    },
+    'loggers': {
+        #use logger=logging.getLogger('key_name') to specify from one of these loggers
+        #levels consist of: DEBUG < INFO < WARNING < ERROR/EXCEPTION < CRITICAL
+        #ensure that when you log, e.g. logger.info(), that it has equal or higher severity level
+        #else it is not logged
+        'voicewake': {
+            'handlers': ['error_file'],
+            'level': 'ERROR',
+            'propagate': True,
+        },
+    },
+}
 
 
 #if this doesn't work, check django_site in db
@@ -281,10 +330,13 @@ CACHES = {
 
 
 #MEDIA SIZES
-#NGINX's client_max_body_size should be the desired max value
-    #in bytes, so when x/(1024*1024), is 3mb
-#set FILE_UPLOAD_MAX_MEMORY_SIZE to be bigger than at NGINX, to guarantee file is stored in memory only
-FILE_UPLOAD_MAX_MEMORY_SIZE = 5000000
+#in bytes, so x/(1024*1024)
+#if file size is <= FILE_UPLOAD_MAX_MEMORY_SIZE, it is stored in memory only, and not written to disk
+#NGINX's client_max_body_size has default 1mb
+#use NGINX to allow/deny, in the sense that all uploaded files are not larger than this
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5000000   #4.77mb
+S3_AUDIO_FILE_MAX_SIZE_B = 4000000  #3.81mb
+S3_UPLOAD_URL_EXPIRY_S = 1000
 
 
 GENERAL_ROW_QUANTITY_PER_PAGE = 20

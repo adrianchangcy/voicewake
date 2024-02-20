@@ -58,6 +58,7 @@ def fill_necessary_data(apps, schema_editor):
         [
             GenericStatuses(generic_status_name='ok'),
             GenericStatuses(generic_status_name='deleted'),
+            GenericStatuses(generic_status_name='processing'),
             GenericStatuses(generic_status_name='incomplete'),
             GenericStatuses(generic_status_name='completed'),
         ],
