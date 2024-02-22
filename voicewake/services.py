@@ -45,7 +45,7 @@ from botocore.exceptions import ClientError
 
 #app files
 from .models import *
-
+from .serializers import *
 
 
 #also deletes uer_x folder if empty after deletion
@@ -806,13 +806,15 @@ class S3PostWrapper:
     def __init__(
         self,
         is_ec2:bool,
+        allowed_unprocessed_file_extensions:list,
         region_name:str,
         s3_audio_file_max_size_b:int,
-        unprocessed_ugc_bucket:str,
+        unprocessed_bucket_name:str,
         url_expiry_s:int=1000,
         key_exist_retries:int=4,
-        aws_access_key_id:str|None=None,
-        aws_secret_access_key:str|None=None,
+        post_max_attempts:int=10,
+        aws_access_key_id:str='',
+        aws_secret_access_key:str='',
     ):
 
         #process flow
@@ -833,18 +835,21 @@ class S3PostWrapper:
         #we use POST via generate_presigned_post(), instead of generate_presigned_url()
         #we can have better control over policies and criterias this way
 
-        #prepare
-        self.unprocessed_ugc_bucket = unprocessed_ugc_bucket
-        self.s3_client = None
-
         #passed values
+        self.is_ec2 = is_ec2
+        self.allowed_unprocessed_file_extensions = allowed_unprocessed_file_extensions
+        self.unprocessed_bucket_name = unprocessed_bucket_name
         self.s3_audio_file_max_size_b = s3_audio_file_max_size_b
         self.url_expiry_s = url_expiry_s
         self.key_exist_retries = key_exist_retries
 
+        #S3
+
+        self.s3_client = None
+
         advanced_config = Config(
             retries={
-                'max_attempts': 10,
+                'max_attempts': post_max_attempts,
                 'mode': 'standard'
             }
         )
@@ -885,7 +890,7 @@ class S3PostWrapper:
 
             #requires "s3:GetObject" and "s3:ListBucket" policy
             self.s3_client.head_object(
-                Bucket=self.unprocessed_ugc_bucket,
+                Bucket=self.unprocessed_bucket_name,
                 Key=key,
             )
 
@@ -900,7 +905,13 @@ class S3PostWrapper:
             raise e
 
 
-    def generate_unprocessed_audio_file_object_key(self, user_id:int, audio_clip_id:int):
+    def generate_unprocessed_object_key(self, user_id:int, file_extension:str):
+
+        #frontend only records as mp4/webm, depending on browser
+
+        if file_extension not in self.allowed_unprocessed_file_extensions:
+
+            raise ValueError('Invalid file_extension. Must be one of: ' + str(self.allowed_unprocessed_file_extensions))
 
         datetime_now = get_datetime_now()
 
@@ -913,11 +924,18 @@ class S3PostWrapper:
             user_id,
         )
 
+        #if is_ec2=False, means from local, i.e. tests
+
+        if self.is_ec2 is False:
+
+            file_path = 'test/' + file_path
+
         #retry if full key exists
 
         for retry in range(0, self.key_exist_retries):
 
-            file_key = file_path + str(audio_clip_id) + '.mp3'
+            #use secrets.token_hex() to mitigate wrongful possession from random guessing
+            file_key = file_path + secrets.token_hex(16) + '.' + file_extension
 
             if self.check_object_exists(file_key) is False:
 
@@ -930,22 +948,22 @@ class S3PostWrapper:
 
         #HTTP 422 on condition failure, will not upload
         #HTTP 204 on success
-
         #for file MimeType, e.g. allow only .mp3, must be done at bucket policy, not here
+        #key will be available via upload_info['fields']['key']
 
         conditions = [
-            {'bucket': self.unprocessed_ugc_bucket},
+            {'bucket': self.unprocessed_bucket_name},
             {'key': key},
-            ["starts-with", "$Content-Type", "audio/mpeg"],
+            ["starts-with", "$Content-Type", "audio/mp4,audio/webm"],
             ["content-length-range", 1024, self.s3_audio_file_max_size_b],
         ]
 
         try:
 
             return self.s3_client.generate_presigned_post(
-                Bucket=self.unprocessed_ugc_bucket,
+                Bucket=self.unprocessed_bucket_name,
                 Key=key,
-                Fields={"Content-Type": "audio/mpeg"},
+                Fields={"Content-Type": "audio/mp4,audio/webm"},
                 Conditions=conditions,
                 ExpiresIn=self.url_expiry_s
             )
@@ -964,32 +982,139 @@ class S3PostWrapper:
 
         #requires "s3:DeleteObject" policy
         return self.s3_client.delete_object(
-            Bucket=self.unprocessed_ugc_bucket,
+            Bucket=self.unprocessed_bucket_name,
             Key=key,
         )
 
 
 
-class AWSLambdaNormaliseAudioFile:
+class AWSLambdaWrapper:
 
+    def __init__(
+        self,
+        is_ec2:bool,
+        region_name:str='',
+        aws_access_key_id:str='',
+        aws_secret_access_key:str='',
+    ):
+
+        self.is_ec2 = is_ec2
+        self.region_name = region_name
+
+        try:
+
+            if is_ec2 is True:
+
+                self.client = boto3.client(
+                    service_name='lambda',
+                    region_name=region_name,
+                )
+
+            else:
+
+                self.client = boto3.client(
+                    service_name='lambda',
+                    region_name=region_name,
+                    aws_access_key_id=aws_access_key_id,
+                    aws_secret_access_key=aws_secret_access_key,
+                )
+
+        except ClientError:
+
+            raise
+
+
+    def _invoke_lambda(self, function_name:str, payload:dict):
+
+        #at Lambda, retrieve payload in lambda_handler via event.get('keyname')
+        #be sure to standardise all Lambdas to return these at minimum:
+            #{'lambda_status_code': int, 'lambda_message':str}
+
+        payload = json.dumps(payload)
+        payload = bytes(payload, encoding='utf-8')
+
+        response = self.client.invoke(
+            FunctionName=function_name,
+            InvocationType='RequestResponse',
+            Payload=payload
+        )
+
+        #get response
+
+        #['Payload'] is StreamingBody object, so we use .read() to get bytes
+        #AWS Lambda serializes entire response to JSON
+        response_data = response['Payload'].read()
+        response_data = bytes(response_data).decode(encoding='utf-8')
+        response_data = json.loads(response_data)
+
+        return response_data
+
+
+    #all params are for payload, and must match AWSLambdaNormaliseAudioClips.__init__()
+    def invoke_normalise_audio_clips_lambda(
+        self,
+        s3_region_name:str='',
+        unprocessed_object_key:str='',
+        processed_object_key:str='',
+        unprocessed_bucket_name:str='',
+        processed_bucket_name:str='',
+    ):
+
+        payload = {
+            's3_region_name': s3_region_name,
+            'unprocessed_object_key': unprocessed_object_key,
+            'processed_object_key': processed_object_key,
+            'unprocessed_bucket_name': unprocessed_bucket_name,
+            'processed_bucket_name': processed_bucket_name,
+        }
+
+        return self._invoke_lambda(
+            function_name=os.environ['normalise_audio_clips'],
+            payload=payload
+        )
+
+
+
+class AWSLambdaNormaliseAudioClips:
+
+    #context
+        #let backend API decide unprocessed and process keys
+        #just accept both here
     #process
         #normalise --> copy to new bucket --> delete from old bucket --> return info
-
     #how to troubleshoot
         #do check=False, then get subprocess.run().stderr
 
     def __init__(
         self,
-        is_test:bool,
-        region_name:str=None,
-        unprocessed_bucket_name:str=None,
-        processed_bucket_name:str=None,
-        object_key:str=None
+        is_lambda:bool,
+        s3_region_name:str='',
+        s3_aws_access_key_id:str='',
+        s3_aws_secret_access_key:str='',
+        unprocessed_object_key:str='',
+        processed_object_key:str='',
+        unprocessed_bucket_name:str='',
+        processed_bucket_name:str='',
     ):
 
-        #precaution:
-            #size is checked via .size at serializer/form, not here
-            #if you pass absolute path, remember to call .close_audio_file()
+        self.is_lambda = is_lambda
+        self.s3_region_name = s3_region_name
+        self.unprocessed_object_key = unprocessed_object_key
+        self.processed_object_key = processed_object_key
+        self.unprocessed_bucket_name = unprocessed_bucket_name
+        self.processed_bucket_name = processed_bucket_name
+
+        if is_lambda is True:
+
+            #with ffmpeg-arm64.zip/bin/ffmpeg, stored in S3, and loading as Layer in Lambda
+            self.ffprobe_path = '/opt/bin/ffprobe'
+            self.ffmpeg_path = '/opt/bin/ffmpeg'
+
+        else:
+
+            #with Windows environment variables
+            self.ffprobe_path = 'ffprobe'
+            self.ffmpeg_path = 'ffmpeg'
 
         #in the case of mp3, both codec and format/container are the same
         #mp3 can only choose 32000/44100/48000 sample rate
@@ -1015,27 +1140,25 @@ class AWSLambdaNormaliseAudioFile:
         self.audio_file_duration_s = None
         self.audio_volume_peaks = None
 
-        #if test, we handle files locally
-        #if not test, we deal with S3 in Lambda
-
-        if is_test is True:
-
-            return
-
         #s3
-        #keys are the same for both buckets
-        self.region_name = region_name
-        self.unprocessed_bucket_name = unprocessed_bucket_name
-        self.processed_bucket_name = processed_bucket_name
-        self.object_key = object_key
 
-        #boto
         try:
 
-            self.s3_client = boto3.client(
-                service_name='s3',
-                region_name=region_name,
-            )
+            if is_lambda is True:
+
+                self.s3_client = boto3.client(
+                    service_name='s3',
+                    region_name=s3_region_name,
+                )
+
+            else:
+
+                self.s3_client = boto3.client(
+                    service_name='s3',
+                    region_name=s3_region_name,
+                    aws_access_key_id=s3_aws_access_key_id,
+                    aws_secret_access_key=s3_aws_secret_access_key,
+                )
 
         except ClientError:
 
@@ -1064,11 +1187,32 @@ class AWSLambdaNormaliseAudioFile:
                 target_file_to_overwrite.write(chunk)
 
 
+    def check_already_processed(self)->bool:
+
+        try:
+
+            #requires "s3:GetObject" and "s3:ListBucket" policy
+            self.s3_client.head_object(
+                Bucket=self.processed_bucket_name,
+                Key=self.processed_object_key,
+            )
+
+            return True
+        
+        except ClientError as e:
+
+            if e.response['ResponseMetadata']['HTTPStatusCode'] == 404:
+
+                return False
+
+            raise e
+
+
     def retrieve_unprocessed_audio_file(self):
 
         response = self.s3_client.get_object(
             Bucket=self.unprocessed_bucket_name,
-            Key=self.object_key
+            Key=self.unprocessed_object_key
         )
 
         #StreamingBody can only use .read() once, and does not contain .seek()
@@ -1083,7 +1227,7 @@ class AWSLambdaNormaliseAudioFile:
 
         result = subprocess.run(
             [
-                'ffprobe',
+                self.ffprobe_path,
                 '-v', 'error',
                 '-show_entries', 'format',
                 '-show_streams',
@@ -1133,7 +1277,7 @@ class AWSLambdaNormaliseAudioFile:
         #first pass, get measurement
         ffmpeg_cmd = subprocess.run(
             [
-                "ffmpeg",
+                self.ffmpeg_path,
                 "-i", "pipe:0",
                 "-af", loudnorm_args + ":print_format=json",
                 '-f', "null", "/dev/null"
@@ -1153,12 +1297,7 @@ class AWSLambdaNormaliseAudioFile:
 
         if first_pass_dict is None:
 
-            raise custom_error(
-                ValueError,
-                __name__,
-                dev_message="Regex could not find the data needed for first_pass_dict via regex.",
-                user_message=""
-            )
+            raise ValueError("Regex could not find the data needed for first_pass_dict")
 
         #transform into proper dict
         first_pass_dict = json.loads(first_pass_dict)
@@ -1185,7 +1324,7 @@ class AWSLambdaNormaliseAudioFile:
         #do second pass, get file
         ffmpeg_cmd = subprocess.run(
             [
-                "ffmpeg",
+                self.ffmpeg_path,
                 "-i", "pipe:0",
                 "-af", ffmpeg_cmd_af,
                 "-ar", self.desired_sample_rate,           #sample rate; mp3 can only choose 32000/44100/48000
@@ -1201,10 +1340,8 @@ class AWSLambdaNormaliseAudioFile:
 
         self.audio_file = ffmpeg_cmd.stdout
 
-        self._get_duration_after_normalise()
 
-
-    def _get_duration_after_normalise(self):
+    def get_duration_after_normalise(self):
 
         #we have to do this only after passing through ffmpeg, e.g. normalisation
         #otherwise, some original files will error when seeking via '-read_intervals' and arbitary '999999'
@@ -1222,7 +1359,7 @@ class AWSLambdaNormaliseAudioFile:
 
         result = subprocess.run(
             [
-                'ffprobe',
+                self.ffprobe_path,
                 '-v', 'error',
                 '-show_entries', 'format',
                 '-show_packets',
@@ -1279,7 +1416,7 @@ class AWSLambdaNormaliseAudioFile:
         #get peaks
         result = subprocess.run(
             [
-                'ffprobe',
+                self.ffprobe_path,
                 '-v', 'error',
                 '-f', 'lavfi',
                 '-i', ffprobe_i,
@@ -1348,36 +1485,77 @@ class AWSLambdaNormaliseAudioFile:
 
     def store_processed_audio_file(self):
 
-        response = self.s3_client.put_object(
+        return self.s3_client.put_object(
             Bucket=self.processed_bucket_name,
-            Key=self.object_key,
+            Key=self.processed_object_key,
             Body=self.audio_file
         )
 
 
     def delete_unprocessed_audio_file(self):
 
-        response = self.s3_client.delete_object(
+        return self.s3_client.delete_object(
             Bucket=self.unprocessed_bucket_name,
-            Key=self.object_key,
+            Key=self.unprocessed_object_key,
         )
 
 
-    def prepare_return_data(self):
+    def create_return_response(self, error_object=None):
 
-        return {
+        #error_object is ClientError
+
+        response = {
+            'lambda_status_code': 200,
+            'lambda_message': '',
             'audio_volume_peaks': self.audio_volume_peaks,
-            'audio_file_duration_s': self.audio_file_duration_s
+            'audio_duration_s': self.audio_file_duration_s
         }
 
+        if error_object is not None:
+
+            response['lambda_status'] = error_object.response['ResponseMetadata']['HTTPStatusCode']
+            response['lambda_message'] = error_object.response['Error']['Message']
+
+        return response
 
 
-class CreateAudioClips(S3PostWrapper):
+    def main(self):
+
+        response = self.create_return_response()
+
+        try:
+
+            if self.check_already_processed() is True:
+
+                return response
+
+            self.retrieve_unprocessed_audio_file()
+            self.prepare_info_before_normalise()
+            self.normalise_and_overwrite_audio_file()
+            self.get_duration_after_normalise()
+            self.get_peaks_by_buckets()
+            self.store_processed_audio_file()
+
+        except ClientError as e:
+
+            return self.create_return_response(e)
+
+        return response
+
+
+
+class CreateAudioClips():
+
+    #this is step 1
+    #user POSTs to here --> create "processing" audio_clip and/or event --> return presigned URL and other fields
 
     def __init__(
         self,
         user,
+        is_ec2:bool,
         current_context:Literal["create_event", "create_reply"],
+        unprocessed_file_extensions:list,
+        processed_file_extension:str,
         event_create_daily_limit:int,
         event_reply_daily_limit:int,
         event_reply_expiry_seconds:int,
@@ -1392,7 +1570,10 @@ class CreateAudioClips(S3PostWrapper):
             raise ValueError('User must be logged in.')
 
         self.user = user
+        self.is_ec2 = is_ec2
         self.current_context:Literal["create_event", "create_reply"] = current_context
+        self.unprocessed_file_extensions = unprocessed_file_extensions
+        self.processed_file_extension = processed_file_extension
         self.event_create_daily_limit = event_create_daily_limit
         self.event_reply_daily_limit = event_reply_daily_limit
         self.event_reply_expiry_seconds = event_reply_expiry_seconds
@@ -1442,7 +1623,7 @@ class CreateAudioClips(S3PostWrapper):
         return math.ceil(pretty_difference_s)
 
 
-    def _get_event_reply_queue(self, event_id:int)->tuple[bool, None|Response]:
+    def _get_event_reply_queue(self, event_id:int):
 
         try:
 
@@ -1455,21 +1636,16 @@ class CreateAudioClips(S3PostWrapper):
                 locked_for_user=self.user
             )
 
-            return (True, None)
-
         except EventReplyQueues.DoesNotExist:
 
-            response = Response(
-                data={
-                    'message': "You have not selected this event to reply in.",
-                },
-                status=status.HTTP_400_BAD_REQUEST
+            raise custom_error(
+                ValueError,
+                __name__,
+                user_message='Unable to reply to this event.'
             )
 
-            return (False, response)
 
-
-    def _check_user_can_create_reply(self)->tuple[bool, None|Response]:
+    def _check_user_can_create_reply(self)->bool:
 
         if self.event_reply_queue is None:
 
@@ -1482,15 +1658,7 @@ class CreateAudioClips(S3PostWrapper):
         #deny if not yet replying
         if self.event_reply_queue.is_replying is False:
 
-            return (
-                False,
-                Response(
-                    data={
-                        'message': "You have not selected this event to reply in.",
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            )
+            return False
 
         #is replying, proceed
 
@@ -1501,16 +1669,7 @@ class CreateAudioClips(S3PostWrapper):
             self.event_reply_queue.delete()
             self.event_reply_queue = None
 
-            return (
-                False,
-                Response(
-                    data={
-                        'message': "This event is no longer available.",
-                        'can_retry': False,
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            )
+            return False
 
         #check for expiry
         if(
@@ -1522,57 +1681,77 @@ class CreateAudioClips(S3PostWrapper):
             self.event_reply_queue.delete()
             self.event_reply_queue = None
 
-            return (
-                False,
-                Response(
-                    data={
-                        'message': "Reply was not successful. Time limit was reached.",
-                        'can_retry': False,
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            )
+            return False
 
-        return (
-            True,
-            None
-        )
+        return True
 
 
-    def _get_records_for_normalise(self, audio_clip_id:int)->tuple[bool, None|Response]:
-
-        has_records = False
-        response = None
+    def _get_records_for_normalise(self, audio_clip_id:int):
 
         try:
 
-            self.audio_clip = AudioClips.objects.get(pk=audio_clip_id)
-            self.event = Events.objects.get(pk=self.audio_clip.event_id)
+            self.audio_clip = AudioClips.objects.select_related(
+                'generic_status',
+                'audio_clip_role',
+            ).get(
+                pk=audio_clip_id,
+                user_id=self.user.id,
+            )
 
-            has_records = True
+            self.event = Events.objects.select_related('generic_status',).get(pk=self.audio_clip.event_id)
 
         except AudioClips.DoesNotExist:
 
-            response = Response(
-                data={
-                    'message': "Recording does not exist.",
-                },
-                status=status.HTTP_404_NOT_FOUND
+            raise custom_error(
+                ValueError,
+                __name__,
+                user_message='Recording does not exist.',
             )
 
         except Events.DoesNotExist:
 
-            response = Response(
-                data={
-                    'message': "Event does not exist.",
-                },
-                status=status.HTTP_404_NOT_FOUND
+            raise custom_error(
+                ValueError,
+                __name__,
+                user_message='Event does not exist.',
             )
 
-        return (has_records, response)
+
+    def _determine_processed_upload_key(self, unprocessed_upload_key:str)->str:
+
+        #we simply swap the extension of unprocessed_upload_key
+        #we don't have to do detailed string checks
+            #will compare directly with AudioClips.audio_file for validation
+
+        processed_upload_key = ''
+
+        for file_extension in self.unprocessed_file_extensions:
+
+            unprocessed_upload_key_extension = unprocessed_upload_key[
+                -len(file_extension):len(unprocessed_upload_key)
+            ]
+
+            if unprocessed_upload_key_extension == file_extension:
+
+                processed_upload_key = unprocessed_upload_key[0:-len(file_extension)]
+
+                processed_upload_key += self.processed_file_extension
+
+                return processed_upload_key
+
+        raise custom_error(
+            ValueError,
+            __name__,
+            dev_message='upload_key ' + unprocessed_upload_key + ' is not ' + str(self.unprocessed_file_extensions),
+            user_message='Invalid upload_key.'
+        )
 
 
-    def _check_can_normalise(self)->tuple[bool, None|Response]:
+    def _check_can_normalise(
+        self,
+        unprocessed_upload_key:str,
+        determined_processed_upload_key:str,
+    )->bool:
 
         if self.audio_clip is None or self.event is None:
 
@@ -1582,55 +1761,86 @@ class CreateAudioClips(S3PostWrapper):
                 dev_message="Missing records. Call self._get_records_for_normalise()."
             )
 
+        #don't have to check if audio_clip belongs to user
+        #since this is handled at self.get_records_for_normalise()
+
+        #check event
+
+        if (
+            (
+                self.current_context == 'create_event' and
+                self.event.generic_status.generic_status_name == 'processing'
+            ) or (
+                self.current_context == 'create_reply' and
+                self.event.generic_status.generic_status_name == 'incomplete'
+            )
+        ):
+
+            pass
+
+        else:
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                user_message='This event is unavailable.',
+            )
+
+        #check audio_clip
+
         if (
             self.audio_clip.user.id == self.user.id and
             self.audio_clip.generic_status.generic_status_name == 'processing' and
             self.audio_clip.audio_duration_s == 0 and
             len(self.audio_clip.audio_file) == 0 and
-            len(self.audio_clip.audio_volume_peaks) == 0
+            len(self.audio_clip.audio_volume_peaks) == 0 and
+            self.audio_clip.audio_file == unprocessed_upload_key
         ):
 
-            return (True, None)
+            #ready to process
+            return True
 
         elif (
             self.audio_clip.user.id == self.user.id and
             self.audio_clip.generic_status.generic_status_name == 'ok' and
             self.audio_clip.audio_duration_s > 0 and
             len(self.audio_clip.audio_file) > 0 and
-            len(self.audio_clip.audio_volume_peaks) > 0
+            len(self.audio_clip.audio_volume_peaks) > 0 and
+            self.audio_clip.audio_file == determined_processed_upload_key
         ):
 
-            response = Response(
-                data={
-                    'message': "Recording has been processed.",
-                },
-                status=status.HTTP_200_OK
-            )
-
-            return (False, response)
+            #already processed
+            return False
 
         else:
 
-            response = Response(
-                data={
-                    'message': "Recording cannot be processed.",
-                },
-                status=status.HTTP_400_BAD_REQUEST
+            raise custom_error(
+                ValueError,
+                __name__,
+                user_message='This recording could not be processed.',
             )
-
-            return (False, response)
 
 
     def _initialise_s3_post_wrapper(self):
 
         self.s3_post_wrapper = S3PostWrapper(
-            is_ec2=False,
+            is_ec2=self.is_ec2,
             region_name=os.environ['AWS_S3_REGION_NAME'],
-            unprocessed_ugc_bucket=os.environ['AWS_STORAGE_UGC_UNPROCESSED_BUCKET_NAME'],
-            s3_audio_file_max_size_b=settings.S3_AUDIO_FILE_MAX_SIZE_B,
-            url_expiry_s=settings.S3_UPLOAD_URL_EXPIRY_S,
+            unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
+            s3_audio_file_max_size_b=os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B'],
+            url_expiry_s=os.environ['AWS_S3_UPLOAD_URL_EXPIRY_S'],
             aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
             aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
+        )
+
+
+    def _initialise_lambda_wrapper(self):
+
+        self.lambda_wrapper = AWSLambdaWrapper(
+            is_ec2=self.is_ec2,
+            region_name=os.environ['AWS_LAMBDA_REGION_NAME'],
+            aws_access_key_id=os.environ['AWS_LAMBDA_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['AWS_LAMBDA_SECRET_ACCESS_KEY'],
         )
 
 
@@ -1638,7 +1848,8 @@ class CreateAudioClips(S3PostWrapper):
         self,
         event_name:str,
         audio_clip_tone_id:int,
-    ):
+        recorded_file_extension:str,
+    )->Response:
 
         if self.current_context != "create_event":
 
@@ -1694,14 +1905,15 @@ class CreateAudioClips(S3PostWrapper):
 
         #generate key and presigned URL
 
-        upload_key = self.s3_post_wrapper.generate_unprocessed_audio_file_object_key(
+        upload_key = self.s3_post_wrapper.generate_unprocessed_object_key(
             user_id=self.user.id,
-            audio_clip_id=self.audio_clip.id
+            file_extension=recorded_file_extension
         )
 
         upload_info = self.s3_post_wrapper.generate_presigned_post_url(key=upload_key)
 
         #save key as audio_file
+        #currently has file extension of unprocessed file
         self.audio_clip.audio_file = upload_key
         self.audio_clip.save()
 
@@ -1710,17 +1922,20 @@ class CreateAudioClips(S3PostWrapper):
                 'data': {
                     'upload_url': upload_info['url'],
                     'upload_fields': json.dumps(upload_info['fields']),
-                    'audio_clip_id': self.audio_clip.id
+                    'audio_clip_id': self.audio_clip.id,
+                    'unprocessed_upload_key': upload_key,
                 }
             },
             status=status.HTTP_201_CREATED
         )
 
+
     def create_records_and_return_s3_endpoint_as_responder(
         self,
         event_id:int,
         audio_clip_tone_id:int,
-    ):
+        recorded_file_extension:str,
+    )->Response:
 
         if self.current_context != "create_reply":
 
@@ -1732,19 +1947,20 @@ class CreateAudioClips(S3PostWrapper):
 
         #get queue
 
-        has_event_reply_queue, response = self._get_event_reply_queue(event_id)
-
-        if has_event_reply_queue is False:
-
-            return response
+        self._get_event_reply_queue(event_id)
 
         #perform checks
 
-        can_create_reply, response = self._check_user_can_create_reply()
+        if self._check_user_can_create_reply() is False:
 
-        if can_create_reply is False:
-
-            return response
+            return Response(
+                data={
+                    'data': {
+                        'message': 'This event can no longer be replied to.',
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         #no need to check for daily reply limit here
         #as that is enforced when listing choices
@@ -1772,14 +1988,15 @@ class CreateAudioClips(S3PostWrapper):
 
         #generate key and presigned URL
 
-        upload_key = self.s3_post_wrapper.generate_unprocessed_audio_file_object_key(
+        upload_key = self.s3_post_wrapper.generate_unprocessed_object_key(
             user_id=self.user.id,
-            audio_clip_id=self.audio_clip.id
+            file_extension=recorded_file_extension
         )
 
         upload_info = self.s3_post_wrapper.generate_presigned_post_url(key=upload_key)
 
         #save key as audio_file
+        #currently has file extension of unprocessed file
         self.audio_clip.audio_file = upload_key
         self.audio_clip.save()
 
@@ -1788,92 +2005,130 @@ class CreateAudioClips(S3PostWrapper):
                 'data': {
                     'upload_url': upload_info['url'],
                     'upload_fields': json.dumps(upload_info['fields']),
-                    'audio_clip_id': self.audio_clip.id
+                    'audio_clip_id': self.audio_clip.id,
+                    'unprocessed_upload_key': upload_key,
                 }
             },
             status=status.HTTP_201_CREATED
         )
 
 
-    def normalise_and_update_records_as_originator(self, audio_clip_id:int):
-
-        #call Lambda
-        #will normalise, copy to new bucket, and delete from old bucket
-
-        #get records, particularly AudioClips and Events
-
-        has_records, response = self._get_records_for_normalise(audio_clip_id)
-
-        if has_records is False:
-
-            return response
-
-        #check
-
-        can_normalise, response = self._check_can_normalise()
-
-        if can_normalise is False:
-
-            return response
-
-        #proceed
-
-        generic_status_ok = GenericStatuses.objects.get(generic_status_name='ok')
-        generic_status_completed = GenericStatuses.objects.get(generic_status_name='incomplete')
-
-        #update audio_clips
-        #update events
-
-
-    def normalise_and_update_records_as_responder(self, audio_clip_id:int):
-
-        #call Lambda
+    def normalise_and_update_records(
+        self,
+        audio_clip_id:int,
+        unprocessed_upload_key:str,
+    )->Response:
 
         #get records, particularly AudioClips and Events
 
-        has_records, response = self._get_records_for_normalise(audio_clip_id)
+        self._get_records_for_normalise(audio_clip_id)
 
-        if has_records is False:
+        #determine processed upload_key from unprocessed
+        #simply by switching extension
 
-            return response
+        determined_processed_upload_key = self._determine_processed_upload_key(unprocessed_upload_key)
 
-        #check
+        #check whether can normalise
 
-        can_normalise, response = self._check_can_normalise()
+        can_normalise = self._check_can_normalise(
+            unprocessed_upload_key=unprocessed_upload_key,
+            determined_processed_upload_key=determined_processed_upload_key
+        )
 
         if can_normalise is False:
 
-            return response
+            return Response(
+                data={
+                    "message": "Recording was successfully processed.",
+                },
+                status=status.HTTP_201_CREATED
+            )
 
-        #get queue, no expiry check needed
+        #no need to check event_reply_queue,
+        #since most cases would call this directly after part 1, and part 1 does check it
+        #also, Celery tasks will still check it for us
 
-        has_event_reply_queue, response = self._get_event_reply_queue(self.event.id)
+        #call Lambda to normalise and transfer file to processed bucket
 
-        if has_event_reply_queue is False:
+        self._initialise_lambda_wrapper()
 
-            return response
+        #refer to AWSLambdaNormaliseAudioClips.create_return_response()
+        #when ok, will always return 200
+        lambda_response_data = self.lambda_wrapper.invoke_normalise_audio_clips_lambda(
+            s3_region_name=os.environ['AWS_S3_REGION_NAME'],
+            unprocessed_object_key=unprocessed_upload_key,
+            processed_object_key=determined_processed_upload_key,
+            unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
+            processed_bucket_name=os.environ['AWS_S3_MEDIA_BUCKET_NAME'],
+        )
 
-        #call lambda
+        #validate lambda response
 
-        #proceed
+        serializer = AWSLambdaNormaliseAudioClipsAPISerializer(data=lambda_response_data, many=False)
+
+        if serializer.is_valid() is False:
+
+            return Response(
+                data={
+                    'message': 'Unable to process your recording. Try again later.',
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        lambda_response_data = serializer.validated_data
+
+        if lambda_response_data['lambda_status_code'] != 200:
+
+            return Response(
+                data={
+                    "message": "Unable to process your recording. Try again later.",
+                },
+                status=lambda_response_data['lambda_status_code']
+            )
+
+        #ok, proceed
 
         generic_status_ok = GenericStatuses.objects.get(generic_status_name='ok')
-        generic_status_completed = GenericStatuses.objects.get(generic_status_name='completed')
 
         #update audio_clip
 
-        #update event as completed
-        self.event.generic_status=generic_status_completed
-        self.event.last_modified=self.datetime_now
-        self.event.save()
+        self.audio_clip.audio_duration_s = lambda_response_data['audio_duration_s']
+        self.audio_clip.audio_volume_peaks = lambda_response_data['audio_volume_peaks']
+        self.audio_clip.audio_file = determined_processed_upload_key
+        self.audio_clip.generic_status = generic_status_ok
 
-        #remove event_reply_queue
-        self.event_reply_queue.delete()
-        self.event_reply_queue = None
+        self.audio_clip.save()
+
+        #if originator, update event from 'processing' to 'incomplete'
+        #if responder, update event from 'incomplete' to 'completed'
+
+        if self.audio_clip.audio_clip_role.audio_clip_role_name == 'originator':
+
+            self.event.generic_status = GenericStatuses.objects.get(generic_status_name='incomplete')
+
+        elif self.audio_clip.audio_clip_role.audio_clip_role_name == 'responder':
+
+            self.event.generic_status = GenericStatuses.objects.get(generic_status_name='completed')
+
+            #remove event_reply_queue
+            self._get_event_reply_queue(self.event.id)
+            self.event_reply_queue.delete()
+            self.event_reply_queue = None
+
+        else:
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message='Unrecognised audio_clip.audio_clip_role.audio_clip_role_name.',
+                user_message='Something went wrong. Try again later.'
+            )
+
+        self.event.save()
 
         return Response(
             data={
-                "message": "Reply was successfully created!",
+                "message": "Recording was successfully uploaded.",
             },
             status=status.HTTP_201_CREATED
         )

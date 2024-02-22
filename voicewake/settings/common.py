@@ -329,14 +329,22 @@ CACHES = {
 }
 
 
-#MEDIA SIZES
-#in bytes, so x/(1024*1024)
-#if file size is <= FILE_UPLOAD_MAX_MEMORY_SIZE, it is stored in memory only, and not written to disk
-#NGINX's client_max_body_size has default 1mb
-#use NGINX to allow/deny, in the sense that all uploaded files are not larger than this
+#UPLOADS
+#some are in bytes
+    #x/(1024*1024)
+#file size
+    #if <= FILE_UPLOAD_MAX_MEMORY_SIZE, it is stored in memory only, and not written to disk
+    #only relevant for local, as file size limit is enforced at S3 via presigned POST URL
+#file types
+    #frontend RecordRTC can record in any of the choices, depending on browser
+    #you can set the upload key's file type
+    #you cannot actually enforce what file type is uploaded to said upload key
+        #we rely on general error handling to manage this
+#lambda
+    #'mp3' is hard-coded in Lambda class
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5000000   #4.77mb
-S3_AUDIO_FILE_MAX_SIZE_B = 4000000  #3.81mb
-S3_UPLOAD_URL_EXPIRY_S = 1000
+AUDIO_CLIP_UNPROCESSED_FILE_TYPES = ['webm', 'mp4']
+AUDIO_CLIP_PROCESSED_FILE_TYPE = 'mp3'
 
 
 GENERAL_ROW_QUANTITY_PER_PAGE = 20
@@ -421,6 +429,13 @@ CELERY_BEAT_SCHEDULE = {
     },
     'reset-expired-reply': {
         'task': 'voicewake.tasks.cronjob_reset_event_reply_overdue',
+        'schedule': (30 * 60),  #30 minutes
+        'options': {
+            'expires': 30,    #30 seconds
+        },
+    },
+    'delete-non-normalised-audio-clips-overdue': {
+        'task': 'voicewake.tasks.cronjob_delete_non_normalised_audio_clips_overdue',
         'schedule': (30 * 60),  #30 minutes
         'options': {
             'expires': 30,    #30 seconds

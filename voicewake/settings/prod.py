@@ -27,7 +27,7 @@ REST_FRAMEWORK.update({
 STATICFILES_LOCATION = 'static'
 MEDIAFILES_LOCATION = 'media'
 AWS_S3_CUSTOM_DOMAIN = os.environ['AWS_S3_CUSTOM_DOMAIN']
-AWS_STORAGE_BUCKET_NAME = os.environ['AWS_STORAGE_BUCKET_NAME']
+AWS_S3_STATIC_BUCKET_NAME = os.environ['AWS_S3_STATIC_BUCKET_NAME']
 
 
 #we want USE_S3 so we can add correct domain to media path via DRF's serializers.SerializerMethodField()
@@ -62,7 +62,7 @@ STORAGES = {
         "OPTIONS": {
             'access_key': AWS_S3_ACCESS_KEY_ID,
             'secret_key': AWS_S3_SECRET_ACCESS_KEY,
-            'bucket_name': AWS_STORAGE_BUCKET_NAME,
+            'bucket_name': AWS_S3_STATIC_BUCKET_NAME,
             'custom_domain': AWS_S3_CUSTOM_DOMAIN,
             'region_name': os.environ['AWS_S3_REGION_NAME'],
             'object_parameters': {"CacheControl": "max-age=172800"}, #2 days
