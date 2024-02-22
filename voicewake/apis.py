@@ -2228,14 +2228,25 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
         datetime_now = get_datetime_now()
 
-        target_event_reply_queue = EventReplyQueues.objects.select_for_update(
-            of=("self",)
-        ).select_related(
-            'event__generic_status',
-        ).get(
-            locked_for_user=self.request.user,
-            event_id=event_id,
-        )
+        try:
+
+            target_event_reply_queue = EventReplyQueues.objects.select_for_update(
+                of=("self",)
+            ).select_related(
+                'event__generic_status',
+            ).get(
+                locked_for_user=self.request.user,
+                event_id=event_id,
+            )
+
+        except EventReplyQueues.DoesNotExist:
+
+            return Response(
+                data={
+                    'message': 'Cannot start replying when this event was not queued.',
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         #deny if already replying
         if target_event_reply_queue.is_replying is True:
@@ -2356,7 +2367,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
         elif self.current_context == 'reply':
 
-            serializer = CreateAudioClipsAPISerializer(data=request.data, many=False)
+            serializer = CreateAudioClipsPart1APISerializer(data=request.data, many=False)
 
         #validate
         if serializer.is_valid() is False:
@@ -2479,7 +2490,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
     #if audio_clip_role_name='responder', link to event and reset lock
 class CreateEventsAPI(generics.GenericAPIView):
 
-    serializer_class = CreateAudioClipsAPISerializer
+    serializer_class = CreateAudioClipsPart1APISerializer
     permission_classes = [IsAuthenticated]
     queryset = None
 
@@ -2491,7 +2502,7 @@ class CreateEventsAPI(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
 
         #deserialize
-        serializer = CreateAudioClipsAPISerializer(data=request.data, many=False)
+        serializer = CreateAudioClipsPart1APISerializer(data=request.data, many=False)
 
         #validate
         if serializer.is_valid() is False:

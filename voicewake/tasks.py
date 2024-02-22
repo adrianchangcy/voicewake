@@ -167,6 +167,38 @@ def cronjob_reset_event_reply_overdue():
     ).delete()[0:settings.CRONJOB_UNDO_EVENT_REPLY_LIMIT]
 
 
+@shared_task
+def cronjob_delete_non_normalised_audio_clips_overdue():
+
+    #covers both originator and responder
+
+    when_created_checkpoint = get_datetime_now() - timedelta(seconds=settings.EVENT_REPLY_MAX_DURATION_S)
+
+    audio_clips = AudioClips.objects.select_related(
+        'audio_clip_role',
+    ).filter(
+        when_created__lte=when_created_checkpoint,
+        generic_status__generic_status_name='processing'
+    ).order_by(
+        'when_created',
+    )[0:settings.CRONJOB_UNDO_EVENT_REPLY_LIMIT]
+
+    bulk_event_ids = []
+    bulk_audio_clip_ids = []
+
+    for audio_clip in audio_clips:
+
+        if audio_clip.audio_clip_role.audio_clip_role_name == 'originator':
+
+            #delete events for originators
+            bulk_event_ids.append(audio_clip.event_id)
+
+        bulk_audio_clip_ids.append(audio_clip.id)
+
+    #even for audio_clip, we delete via id retrieved, to prevent race condition
+
+    AudioClips.objects.filter(pk__in=bulk_audio_clip_ids).delete()
+    Events.objects.filter(pk__in=bulk_event_ids).delete()
 
 
 

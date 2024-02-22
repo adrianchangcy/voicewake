@@ -198,7 +198,7 @@ class CreateAudioClipLikesDislikesSerializer(serializers.Serializer):
 
 
 
-class CreateAudioClipsAPISerializer(serializers.Serializer):
+class CreateAudioClipsPart1APISerializer(serializers.Serializer):
 
     #pass only when is_originator=False
     event_id = serializers.IntegerField(
@@ -211,10 +211,39 @@ class CreateAudioClipsAPISerializer(serializers.Serializer):
         max_length=200, #follow Events.event_name
     )
     audio_clip_tone_id = serializers.IntegerField(min_value=1)
-    #we validate audio_file size at web server, i.e. NGINX, not here
-    audio_file = serializers.FileField(
-        allow_empty_file=False
+    #this is to keep source file extension as-is in unprocessed s3
+    recorded_file_extension = serializers.CharField(trim_whitespace=True, min_length=3, max_length=4)
+
+    def validate_recorded_file_extension(self, value):
+
+        #depends on what we asked RecordRTC to record in
+
+        if value not in settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES:
+
+            raise serializers.ValidationError(
+                'Extension is not one of: ' + str(settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES)
+            )
+
+        return value
+
+
+
+class CreateAudioClipsPart2APISerializer(serializers.Serializer):
+
+    audio_clip_id = serializers.IntegerField()
+    unprocessed_upload_key = serializers.CharField(max_length=300)
+
+
+
+class AWSLambdaNormaliseAudioClipsAPISerializer(serializers.Serializer):
+    lambda_status_code = serializers.IntegerField()
+    lambda_message = serializers.CharField(min_length=0, max_length=300)
+    audio_volume_peaks = serializers.ListField(
+        child=serializers.DecimalField(min_value=0, max_value=1, max_digits=3, decimal_places=2, coerce_to_string=False),
+        min_length=20,
+        max_length=20
     )
+    audio_duration_s = serializers.IntegerField()
 
 
 

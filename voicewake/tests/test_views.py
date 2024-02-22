@@ -127,9 +127,9 @@ class AWS_TestCase(TestCase):
         s3_wrapper_class = S3PostWrapper(
             is_ec2=False,
             region_name=os.environ['AWS_S3_REGION_NAME'],
-            unprocessed_ugc_bucket=os.environ['AWS_STORAGE_UGC_UNPROCESSED_BUCKET_NAME'],
-            s3_audio_file_max_size_b=settings.S3_AUDIO_FILE_MAX_SIZE_B,
-            url_expiry_s=settings.S3_UPLOAD_URL_EXPIRY_S,
+            unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
+            s3_audio_file_max_size_b=os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B'],
+            url_expiry_s=os.environ['AWS_S3_UPLOAD_URL_EXPIRY_S'],
             aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
             aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
         )
@@ -161,9 +161,9 @@ class AWS_TestCase(TestCase):
         s3_wrapper_class = S3PostWrapper(
             is_ec2=False,
             region_name=os.environ['AWS_S3_REGION_NAME'],
-            unprocessed_ugc_bucket=os.environ['AWS_STORAGE_UGC_UNPROCESSED_BUCKET_NAME'],
-            s3_audio_file_max_size_b=settings.S3_AUDIO_FILE_MAX_SIZE_B,
-            url_expiry_s=settings.S3_UPLOAD_URL_EXPIRY_S,
+            unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
+            s3_audio_file_max_size_b=os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B'],
+            url_expiry_s=os.environ['AWS_S3_UPLOAD_URL_EXPIRY_S'],
             aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
             aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
         )
@@ -201,9 +201,9 @@ class AWS_TestCase(TestCase):
         s3_wrapper_class = S3PostWrapper(
             is_ec2=False,
             region_name=os.environ['AWS_S3_REGION_NAME'],
-            unprocessed_ugc_bucket=os.environ['AWS_STORAGE_UGC_UNPROCESSED_BUCKET_NAME'],
-            s3_audio_file_max_size_b=settings.S3_AUDIO_FILE_MAX_SIZE_B,
-            url_expiry_s=settings.S3_UPLOAD_URL_EXPIRY_S,
+            unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
+            s3_audio_file_max_size_b=os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B'],
+            url_expiry_s=os.environ['AWS_S3_UPLOAD_URL_EXPIRY_S'],
             aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
             aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
         )
@@ -241,9 +241,9 @@ class AWS_TestCase(TestCase):
         s3_wrapper_class = S3PostWrapper(
             is_ec2=False,
             region_name=os.environ['AWS_S3_REGION_NAME'],
-            unprocessed_ugc_bucket=os.environ['AWS_STORAGE_UGC_UNPROCESSED_BUCKET_NAME'],
-            s3_audio_file_max_size_b=settings.S3_AUDIO_FILE_MAX_SIZE_B,
-            url_expiry_s=settings.S3_UPLOAD_URL_EXPIRY_S,
+            unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
+            s3_audio_file_max_size_b=os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B'],
+            url_expiry_s=os.environ['AWS_S3_UPLOAD_URL_EXPIRY_S'],
             aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
             aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
         )
@@ -281,10 +281,11 @@ class AWS_TestCase(TestCase):
 
         s3_wrapper_class = S3PostWrapper(
             is_ec2=False,
+            allowed_unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES,
             region_name=os.environ['AWS_S3_REGION_NAME'],
-            unprocessed_ugc_bucket=os.environ['AWS_STORAGE_UGC_UNPROCESSED_BUCKET_NAME'],
-            s3_audio_file_max_size_b=settings.S3_AUDIO_FILE_MAX_SIZE_B,
-            url_expiry_s=settings.S3_UPLOAD_URL_EXPIRY_S,
+            unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
+            s3_audio_file_max_size_b=os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B'],
+            url_expiry_s=os.environ['AWS_S3_UPLOAD_URL_EXPIRY_S'],
             aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
             aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
         )
@@ -333,54 +334,11 @@ class AWS_TestCase(TestCase):
         print(response_data)
 
 
-    def test_subprocess_error(self):
+    def test_pass_none_to_use_instance_credentials(self):
 
-        with open(self.test_files['audio_not_mp3']['file'], 'rb') as target_file:
-
-            #using sseof did not reduce sys.getsizeof() of .stdout
-            result = subprocess.run(
-                [
-                    'ffmpeg',
-                    '-i', 'pipe:0',
-                    "-c:a", 'mp3',
-                    "-f", 'mp3', "pipe:1"
-                ],
-                input=target_file.read(),
-                capture_output=True,
-                timeout=10,
-            )
-            target_file.seek(0)
-
-            print('output size:')
-            print(sys.getsizeof(result.stdout))
-            print('original file size:')
-            print(sys.getsizeof(target_file.read()))
-
-            return
-
-
-            result = subprocess.run(
-                [
-                    'ffprobe',
-                    '-v', 'error',
-                    '-show_entries', 'format',
-                    '-show_packets',
-                    '-read_intervals', '1',
-                    '-show_streams',
-                    '-select_streams', 'a',
-                    '-of', 'json',
-                    '-i', 'pipe:0',
-                ],
-                # input=target_file.read(),
-                input=cut_file,
-                capture_output=True,
-                timeout=10
-            )
-
-            print(result.stderr)
-            wtf = json.loads(result.stdout)
-            print(wtf)
-            print(sys.getsizeof(wtf['packets']))
+        #do this at lambda
+        #AWS_...=None
+        pass
 
 
     def test_production_bucket_cors_policy_rejected(self):
@@ -891,7 +849,14 @@ class AudioClips_TestCase(TestCase):
 
         # audio_file = 'audio-clips/year_2023/month_7/day_21/user_id_1/e_13.webm'
 
-        handle_audio_file_class = AWSLambdaNormaliseAudioFile(is_test=True)
+        handle_audio_file_class = AWSLambdaNormaliseAudioClips(
+            is_lambda=False,
+            region_name=os.environ['AWS_S3_REGION_NAME'],
+            unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
+            processed_bucket_name=os.environ['AWS_S3_MEDIA_BUCKET_NAME'],
+            aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
+        )
 
         handle_audio_file_class.test_retrieve_unprocessed_audio_file_local(
             self.source_audio_file_full_path
