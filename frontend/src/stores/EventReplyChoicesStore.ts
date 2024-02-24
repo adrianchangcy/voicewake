@@ -249,10 +249,6 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                 throw new Error('Cannot confirm when replying_event is not null.');
             }
 
-            const return_values = {
-                'can_retry': true,
-            };
-
             const data = new FormData();
 
             data.append("event_id", JSON.stringify(this.event_reply_choices[index].event.id));
@@ -262,14 +258,17 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
 
                 //add event_reply_queue to event, and save
 
-                if(result.data['data'].length === 1){
+                if(Object.hasOwn(result.data, 'data') === false){
 
-                    this.event_reply_choices[index].event_reply_queue = result.data['data'][0];
-
-                    this.replying_event = this.event_reply_choices[index];
-
-                    this.event_reply_choices = [];
+                    throw new Error("Missing 'data' key.");
                 }
+
+                //receives event_reply_queue as-is, not [{}]
+                this.event_reply_choices[index].event_reply_queue = result.data['data'];
+
+                this.replying_event = this.event_reply_choices[index];
+
+                this.event_reply_choices = [];
 
             }).catch((error:any) => {
 

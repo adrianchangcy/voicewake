@@ -61,10 +61,12 @@ urlpatterns += [
     path('api/events/list/completed/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<str:next_or_back>/<str:cursor_token>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
     path('api/events/list/completed/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<str:next_or_back>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
 
-    path('api/events/create', apis.CreateEventsAPI.as_view(), name='create_events_api'),
+    path('api/events/create/upload', apis.CreateEventsAPI.as_view(current_context="upload"), name="create_events_upload_api"),
+    path('api/events/create/process', apis.CreateEventsAPI.as_view(current_context="process"), name="create_events_process_api"),
     path('api/events/replies/choices/list', apis.ListEventReplyChoicesAPI.as_view(), name="list_event_reply_choices_api"),
     path('api/events/replies/start', apis.HandleReplyingEventsAPI.as_view(current_context="start"), name="start_replies_api"),
-    path('api/events/replies/create', apis.HandleReplyingEventsAPI.as_view(current_context="reply"), name="create_replies_api"),
+    path('api/events/replies/create/upload', apis.HandleReplyingEventsAPI.as_view(current_context="reply_upload"), name="create_replies_upload_api"),
+    path('api/events/replies/create/process', apis.HandleReplyingEventsAPI.as_view(current_context="reply_process"), name="create_replies_process_api"),
     path('api/events/replies/cancel', apis.HandleReplyingEventsAPI.as_view(current_context="cancel"), name="cancel_replies_api"),
     path('api/events/get/<int:event_id>', apis.GetEventsAPI.as_view(), name='get_events_api'),
 

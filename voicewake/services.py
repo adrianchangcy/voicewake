@@ -2081,7 +2081,7 @@ class CreateAudioClips():
 
             return Response(
                 data={
-                    "message": "Unable to process your recording. Try again later.",
+                    "message": "Recording upload failed. This can happen when there is only silence. Try again later.",
                 },
                 status=lambda_response_data['lambda_status_code']
             )

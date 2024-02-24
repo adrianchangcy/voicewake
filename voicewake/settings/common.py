@@ -345,6 +345,7 @@ CACHES = {
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5000000   #4.77mb
 AUDIO_CLIP_UNPROCESSED_FILE_TYPES = ['webm', 'mp4']
 AUDIO_CLIP_PROCESSED_FILE_TYPE = 'mp3'
+AUDIO_CLIP_UNPROCESSED_EXPIRY_S = 1800  #30 minutes
 
 
 GENERAL_ROW_QUANTITY_PER_PAGE = 20
@@ -358,7 +359,6 @@ EVENT_REPLY_MAX_DURATION_S = 3600       #60 mins, when locked and is_replying=Tr
 EVENT_QUANTITY_PER_PAGE = 10
 EVENT_INCOMPLETE_QUEUE_QUANTITY = 1
 EVENT_INCOMPLETE_QUEUE_MAX_AGE_S = 302400   #3 days 12 hours
-CRONJOB_UNDO_EVENT_REPLY_LIMIT = 100
 
 
 #EMAIL
@@ -411,17 +411,18 @@ CACHE_OTP_EMAIL_AGE_S = 86400   #1 day
 
 
 #CRONJOBS
+CRONJOB_DEFAULT_ROW_LIMIT = 500
 CELERY_IMPORTS = ("voicewake.tasks",)
 CELERY_BEAT_SCHEDULE = {
-    'ban-audio-clips': {
+    'cronjob_ban_audio_clips': {
         'task': 'voicewake.tasks.cronjob_ban_audio_clips',
         'schedule': (60 * 60),  #1 hour
         'options': {
             'expires': 30,    #30 seconds
         },
     },
-    'reset-expired-reply-choice': {
-        'task': 'voicewake.tasks.cronjob_reset_event_reply_choice_overdue',
+    'cronjob_delete_event_reply_choice_overdue': {
+        'task': 'voicewake.tasks.cronjob_delete_event_reply_choice_overdue',
         'schedule': (30 * 60),  #30 minutes
         'options': {
             'expires': 30,    #30 seconds
@@ -434,8 +435,22 @@ CELERY_BEAT_SCHEDULE = {
             'expires': 30,    #30 seconds
         },
     },
-    'delete-non-normalised-audio-clips-overdue': {
-        'task': 'voicewake.tasks.cronjob_delete_non_normalised_audio_clips_overdue',
+    'cronjob_delete_event_reply_overdue': {
+        'task': 'voicewake.tasks.cronjob_delete_event_reply_overdue',
+        'schedule': (30 * 60),  #30 minutes
+        'options': {
+            'expires': 30,    #30 seconds
+        },
+    },
+    'cronjob_delete_originator_processing_overdue': {
+        'task': 'voicewake.tasks.cronjob_delete_originator_processing_overdue',
+        'schedule': (30 * 60),  #30 minutes
+        'options': {
+            'expires': 30,    #30 seconds
+        },
+    },
+    'cronjob_delete_responder_processing_overdue': {
+        'task': 'voicewake.tasks.cronjob_delete_responder_processing_overdue',
         'schedule': (30 * 60),  #30 minutes
         'options': {
             'expires': 30,    #30 seconds
