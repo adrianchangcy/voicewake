@@ -836,11 +836,12 @@ class S3PostWrapper:
         #we can have better control over policies and criterias this way
 
         #passed values
+        #os.environ[] always returns string, so we convert
         self.is_ec2 = is_ec2
         self.allowed_unprocessed_file_extensions = allowed_unprocessed_file_extensions
         self.unprocessed_bucket_name = unprocessed_bucket_name
-        self.s3_audio_file_max_size_b = s3_audio_file_max_size_b
-        self.url_expiry_s = url_expiry_s
+        self.s3_audio_file_max_size_b = int(s3_audio_file_max_size_b)
+        self.url_expiry_s = int(url_expiry_s)
         self.key_exist_retries = key_exist_retries
 
         #S3
@@ -968,12 +969,12 @@ class S3PostWrapper:
                 ExpiresIn=self.url_expiry_s
             )
 
-        except:
+        except ClientError as e:
 
             raise custom_error(
                 ValueError,
                 __name__,
-                dev_message=f"Couldn't generate POST URL for key: {key}",
+                dev_message=f"Couldn't generate POST URL for key ({key}): {str(e)}",
                 user_message='Upload is temporarily unavailable.'
             )
 
@@ -1546,8 +1547,10 @@ class AWSLambdaNormaliseAudioClips:
 
 class CreateAudioClips():
 
-    #this is step 1
-    #user POSTs to here --> create "processing" audio_clip and/or event --> return presigned URL and other fields
+    #steps:
+        #user creates event/reply -->
+        #if no audio_clip_id passed: generate key, create records, return presigned URL and audio_clip_id
+        #if has audio_clip_id passed: return only presigned URL and audio_clip_id
 
     def __init__(
         self,
@@ -1717,41 +1720,57 @@ class CreateAudioClips():
             )
 
 
-    def _determine_processed_upload_key(self, unprocessed_upload_key:str)->str:
+    def _determine_processed_upload_key(self)->str:
 
         #we simply swap the extension of unprocessed_upload_key
         #we don't have to do detailed string checks
             #will compare directly with AudioClips.audio_file for validation
 
-        processed_upload_key = ''
+        if self.audio_clip is None:
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message='self.audio_clip is None. Call self._get_records_for_normalise().',
+            )
+
+        current_upload_key = self.audio_clip.audio_file
+
+        #file extension is not yet of processed type
+        #we determine what the processed key looks like, by simply swapping the extension properly
+
+        #when counting position from end, it starts from index -1, not 0
+            #index 2 lands you on 0,1,2nd, but -2 lands you on -1,-2
 
         for file_extension in self.unprocessed_file_extensions:
 
-            unprocessed_upload_key_extension = unprocessed_upload_key[
-                -len(file_extension):len(unprocessed_upload_key)
+            unprocessed_upload_key_extension = current_upload_key[
+                -len(file_extension):len(current_upload_key)
             ]
 
             if unprocessed_upload_key_extension == file_extension:
 
-                processed_upload_key = unprocessed_upload_key[0:-len(file_extension)]
+                processed_upload_key = current_upload_key[0:-len(file_extension)]
 
                 processed_upload_key += self.processed_file_extension
 
+                #return appropriate processed key
                 return processed_upload_key
+
+            elif unprocessed_upload_key_extension == self.processed_file_extension:
+
+                #already with processed file extension
+                return ''
 
         raise custom_error(
             ValueError,
             __name__,
-            dev_message='upload_key ' + unprocessed_upload_key + ' is not ' + str(self.unprocessed_file_extensions),
+            dev_message='upload_key ' + current_upload_key + ' is not of ' + str(self.unprocessed_file_extensions),
             user_message='Invalid upload_key.'
         )
 
 
-    def _check_can_normalise(
-        self,
-        unprocessed_upload_key:str,
-        determined_processed_upload_key:str,
-    )->bool:
+    def _check_can_normalise(self)->bool:
 
         if self.audio_clip is None or self.event is None:
 
@@ -1786,6 +1805,9 @@ class CreateAudioClips():
                 user_message='This event is unavailable.',
             )
 
+        #we don't check AudioClips.audio_file here
+        #it is already checked by self._determine_processed_upload_key()
+
         #check audio_clip
 
         if (
@@ -1793,11 +1815,10 @@ class CreateAudioClips():
             self.audio_clip.generic_status.generic_status_name == 'processing' and
             self.audio_clip.audio_duration_s == 0 and
             len(self.audio_clip.audio_file) == 0 and
-            len(self.audio_clip.audio_volume_peaks) == 0 and
-            self.audio_clip.audio_file == unprocessed_upload_key
+            len(self.audio_clip.audio_volume_peaks) == 0
         ):
 
-            #ready to process
+            #not yet processed
             return True
 
         elif (
@@ -1805,8 +1826,7 @@ class CreateAudioClips():
             self.audio_clip.generic_status.generic_status_name == 'ok' and
             self.audio_clip.audio_duration_s > 0 and
             len(self.audio_clip.audio_file) > 0 and
-            len(self.audio_clip.audio_volume_peaks) > 0 and
-            self.audio_clip.audio_file == determined_processed_upload_key
+            len(self.audio_clip.audio_volume_peaks) > 0
         ):
 
             #already processed
@@ -1825,6 +1845,7 @@ class CreateAudioClips():
 
         self.s3_post_wrapper = S3PostWrapper(
             is_ec2=self.is_ec2,
+            allowed_unprocessed_file_extensions=self.unprocessed_file_extensions,
             region_name=os.environ['AWS_S3_REGION_NAME'],
             unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
             s3_audio_file_max_size_b=os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B'],
@@ -1923,7 +1944,6 @@ class CreateAudioClips():
                     'upload_url': upload_info['url'],
                     'upload_fields': json.dumps(upload_info['fields']),
                     'audio_clip_id': self.audio_clip.id,
-                    'unprocessed_upload_key': upload_key,
                 }
             },
             status=status.HTTP_201_CREATED
@@ -2006,18 +2026,56 @@ class CreateAudioClips():
                     'upload_url': upload_info['url'],
                     'upload_fields': json.dumps(upload_info['fields']),
                     'audio_clip_id': self.audio_clip.id,
-                    'unprocessed_upload_key': upload_key,
                 }
             },
             status=status.HTTP_201_CREATED
         )
 
 
-    def normalise_and_update_records(
-        self,
-        audio_clip_id:int,
-        unprocessed_upload_key:str,
-    )->Response:
+    def regenerate_s3_endpoint(self, audio_clip_id:int)->Response:
+
+        #check if audio_clip exists
+        #users can only get their own records
+
+        audio_clip = None
+
+        try:
+
+            audio_clip = AudioClips.objects.get(
+                pk=audio_clip_id,
+                user_id=self.user.id,
+                generic_status__generic_status_name='processing',
+            )
+
+        except AudioClips.DoesNotExist:
+
+            return Response(
+                data={
+                    'data': {
+                    }
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        #use audio_file as key and regenerate presigned URL
+
+        self._initialise_s3_post_wrapper()
+
+        upload_info = self.s3_post_wrapper.generate_presigned_post_url(key=audio_clip.audio_file)
+
+        return Response(
+            data={
+                'data': {
+                    'upload_url': upload_info['url'],
+                    'upload_fields': json.dumps(upload_info['fields']),
+                    'audio_clip_id': audio_clip_id,
+                }
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+    def normalise_and_update_records(self, audio_clip_id:int)->Response:
 
         #get records, particularly AudioClips and Events
 
@@ -2026,16 +2084,14 @@ class CreateAudioClips():
         #determine processed upload_key from unprocessed
         #simply by switching extension
 
-        determined_processed_upload_key = self._determine_processed_upload_key(unprocessed_upload_key)
+        determined_processed_upload_key = self._determine_processed_upload_key()
 
         #check whether can normalise
 
-        can_normalise = self._check_can_normalise(
-            unprocessed_upload_key=unprocessed_upload_key,
-            determined_processed_upload_key=determined_processed_upload_key
-        )
-
-        if can_normalise is False:
+        if (
+            determined_processed_upload_key == '' and
+            self._check_can_normalise() is False
+        ):
 
             return Response(
                 data={
@@ -2056,7 +2112,7 @@ class CreateAudioClips():
         #when ok, will always return 200
         lambda_response_data = self.lambda_wrapper.invoke_normalise_audio_clips_lambda(
             s3_region_name=os.environ['AWS_S3_REGION_NAME'],
-            unprocessed_object_key=unprocessed_upload_key,
+            unprocessed_object_key=self.audio_clip.audio_file,
             processed_object_key=determined_processed_upload_key,
             unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
             processed_bucket_name=os.environ['AWS_S3_MEDIA_BUCKET_NAME'],
@@ -2128,9 +2184,12 @@ class CreateAudioClips():
 
         return Response(
             data={
+                "data": {
+                    "event_id": self.event.id,
+                },
                 "message": "Recording was successfully uploaded.",
             },
-            status=status.HTTP_201_CREATED
+            status=status.HTTP_200_OK
         )
 
 

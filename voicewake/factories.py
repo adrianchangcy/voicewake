@@ -59,7 +59,7 @@ class EventsFactory(DjangoModelFactory):
 
     class Params:
         event_created_by = None
-        generic_status_generic_status_name = ''
+        event_generic_status_generic_status_name = ''
 
     created_by = factory.LazyAttribute(
         lambda o : (
@@ -71,7 +71,9 @@ class EventsFactory(DjangoModelFactory):
     event_name = 'test event'
     generic_status = factory.LazyAttribute(
         lambda o : (
-            GenericStatuses.objects.get(generic_status_name=o.generic_status_generic_status_name)
+            GenericStatuses.objects.get(
+                generic_status_name=o.event_generic_status_generic_status_name
+            )
         )
     )
 
@@ -84,8 +86,10 @@ class AudioClipsFactory(DjangoModelFactory):
 
     class Params:
         audio_clip_user = None
-        audio_clip_role_audio_clip_role_name = 'originator'
+        audio_clip_audio_clip_role_audio_clip_role_name = 'originator'
         audio_clip_event = None
+        audio_file_object_key = ''
+        audio_clip_generic_status_generic_status_name = 'ok'
         audio_clip_is_banned = False
 
     user = factory.LazyAttribute(
@@ -96,20 +100,26 @@ class AudioClipsFactory(DjangoModelFactory):
         )
     )
     audio_clip_role = factory.LazyAttribute(
-        lambda o : AudioClipRoles.objects.get(audio_clip_role_name=o.audio_clip_role_audio_clip_role_name)
+        lambda o : AudioClipRoles.objects.get(audio_clip_role_name=o.audio_clip_audio_clip_role_audio_clip_role_name)
     )
     audio_clip_tone = AudioClipTones.objects.all().first()
-    audio_file = "audio_test.mp3"
+    audio_file = factory.LazyAttribute(
+        lambda o : (
+            "audio_test.mp3"
+            if o.audio_file_object_key == ''
+            else o.audio_file_object_key
+        )
+    )
     audio_volume_peaks = [
         0.32, 0.47, 0.76, 0.75, 0.79, 0.59, 0.78, 0.83, 0.85, 0.77,
         0.62, 0.69, 0.97, 0.96, 0.97, 0.96, 0.96, 0.63, 0.47, 0.0
     ]
     audio_duration_s = 26
     is_banned = factory.LazyAttribute(lambda o : o.audio_clip_is_banned)
-    generic_status = factory.Maybe(
-        'audio_clip_is_banned',
-        yes_declaration=GenericStatuses.objects.get(generic_status_name='deleted'),
-        no_declaration=GenericStatuses.objects.get(generic_status_name='ok'),
+    generic_status = factory.LazyAttribute(
+        lambda o : GenericStatuses.objects.get(
+            generic_status_name=o.audio_clip_generic_status_generic_status_name
+        )
     )
     event = factory.LazyAttribute(
         lambda o : (
