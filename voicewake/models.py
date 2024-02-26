@@ -190,7 +190,7 @@ class AudioClips(models.Model):
     audio_clip_tone = models.ForeignKey('AudioClipTones', on_delete=models.SET_NULL, blank=True, null=True, default=None)
     event = models.ForeignKey('Events', on_delete=models.CASCADE, null=True, default=None)
     generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)
-    audio_file = models.FileField(upload_to='') #MEDIA_ROOT/...
+    audio_file = models.CharField(max_length=300)   #no starting slash, so settings.MEDIA_ROOT + 'folder1/myfile.mp3'
     audio_duration_s = models.IntegerField(default=0)  #seconds, is not used for VPlayback functionality
     audio_volume_peaks = ArrayField(
         models.DecimalField(default=0, max_digits=3, decimal_places=2), #0 to 0.49 to 1
@@ -267,7 +267,7 @@ class AudioClipLikesDislikes(models.Model):
 
 class AudioClipRequestStatuses(models.Model):
     id = models.BigAutoField(primary_key=True)
-    audio_clip_request_status_name = models.TextField(max_length=30, unique=True)
+    audio_clip_request_status_name = models.CharField(max_length=30, unique=True)
     description = models.TextField(blank=True)
     when_created = models.DateTimeField(auto_now_add=True)
 
@@ -294,7 +294,7 @@ class AudioClipRequests(models.Model):
 
 class AudioClipRoles(models.Model):
     id = models.BigAutoField(primary_key=True)
-    audio_clip_role_name = models.TextField(max_length=20, unique=True)
+    audio_clip_role_name = models.CharField(max_length=20, unique=True)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -306,7 +306,7 @@ class AudioClipRoles(models.Model):
 class Events(models.Model):
     #is_replying: None when not replying, False when locked for choice, True when replying
     id = models.BigAutoField(primary_key=True)
-    event_name = models.TextField(max_length=200, default='-') #ensure default is never used
+    event_name = models.CharField(max_length=200)
     generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, blank=True, null=True, default=None, related_name='events_user_2')
     when_created = models.DateTimeField(auto_now_add=True)
@@ -343,9 +343,9 @@ class AudioClipTones(models.Model):
     #must use default=None because of unique=True, so that you can still have multiple None rows
     #normal scenario is to do default='' for strings, but it is considered unique
     id = models.BigAutoField(primary_key=True)
-    audio_clip_tone_slug = models.TextField(max_length=50, default=None, unique=True)  #with underscore
-    audio_clip_tone_name = models.TextField(max_length=50, default=None, unique=True)  #without underscore
-    audio_clip_tone_symbol = models.TextField(max_length=50, default=None, unique=True)
+    audio_clip_tone_slug = models.CharField(max_length=50, default=None, unique=True)  #with underscore
+    audio_clip_tone_name = models.CharField(max_length=50, default=None, unique=True)  #without underscore
+    audio_clip_tone_symbol = models.CharField(max_length=50, default=None, unique=True)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -356,7 +356,7 @@ class AudioClipTones(models.Model):
 
 class GenericStatuses(models.Model):
     id = models.BigAutoField(primary_key=True)
-    generic_status_name = models.TextField(max_length=200, unique=True)
+    generic_status_name = models.CharField(max_length=200, unique=True)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
 
@@ -400,7 +400,7 @@ class UserFavourites(models.Model):
 
 class UserPermissions(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user_permission_name = models.TextField()
+    user_permission_name = models.CharField()
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -411,7 +411,7 @@ class UserPermissions(models.Model):
 
 class UserVerificationOptions(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user_verification_option_name = models.TextField(max_length=20, unique=True)
+    user_verification_option_name = models.CharField(max_length=20, unique=True)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -422,7 +422,7 @@ class UserVerificationOptions(models.Model):
 
 class UserVerificationStatuses(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user_verification_status_name = models.TextField(max_length=20, unique=True)
+    user_verification_status_name = models.CharField(max_length=20, unique=True)
     description = models.TextField(blank=True)
     when_created = models.DateTimeField(auto_now_add=True)
 

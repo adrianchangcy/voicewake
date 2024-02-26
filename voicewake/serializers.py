@@ -1,10 +1,14 @@
+#Django
 from django.forms import CharField, DateTimeField
 from rest_framework import serializers
+from typing import Literal
 
+#py
+import json
+
+#app
 from .models import *
 from django.conf import settings
-
-import json
 
 
 
@@ -15,7 +19,6 @@ import json
 def has_numbers_only(string_value):
 
     return re.match(r'^[0-9]+$', string_value) is not None
-
 
 
 
@@ -157,11 +160,17 @@ class UserBlocksSerializer(serializers.ModelSerializer):
 
 class TestAPISerializer(serializers.Serializer):
 
-    val_1 = serializers.CharField(required=False, default='')
+    val_1 = serializers.CharField(trim_whitespace=True, default='')
     val_2 = serializers.IntegerField(required=False, default=None)
 
     #see what CharField(trim_whitespace=True) removes
     #see if validate_() runs when required=False
+
+    def validate_val_2(self, value):
+
+        print('not required, but still validated')
+        return value
+
 
     def validate(self, data):
 
@@ -215,39 +224,18 @@ class CreateAudioClips_Upload_APISerializer(serializers.Serializer):
     #pass only when is_originator=True
     event_name = serializers.CharField(
         required=False,
+        trim_whitespace=True,
         min_length=1,
         max_length=200, #follow Events.event_name
     )
     #pass only when is_originator=False
     event_id = serializers.IntegerField(
-        required=False
+        required=False,
+        min_value=1,
     )
-    audio_clip_tone_id = serializers.IntegerField(min_value=1)
+    audio_clip_tone_id = serializers.IntegerField(min_value=1,)
     #this is to keep source file extension as-is in unprocessed s3
     recorded_file_extension = serializers.CharField(trim_whitespace=True, min_length=3, max_length=4)
-
-
-    def validate_event_name(self, value):
-
-        audio_clip_role_name = self.context.get('audio_clip_role_name')
-
-        if audio_clip_role_name == 'originator' and len(value) == 0:
-
-            raise serializers.ValidationError('Missing event_name for ' + audio_clip_role_name)
-
-        return value
-
-
-    def validate_event_id(self, value):
-
-
-        audio_clip_role_name = self.context.get('audio_clip_role_name')
-
-        if audio_clip_role_name == 'responder' and value == 0:
-
-            raise serializers.ValidationError('Missing event_id for ' + audio_clip_role_name)
-
-        return value
 
 
     def validate_recorded_file_extension(self, value):
@@ -263,11 +251,38 @@ class CreateAudioClips_Upload_APISerializer(serializers.Serializer):
         return value
 
 
+    def validate(self, data):
+
+        audio_clip_role_name:Literal['originator', 'responder'] = self.context.get('audio_clip_role_name')
+
+        if audio_clip_role_name not in ['originator', 'responder']:
+
+            raise serializers.ValidationError("audio_clip_role_name is missing from self.context.")
+
+        #FYI, if no arg passed and default= is specified,
+        #it will be the "passed value" during required=False
+
+        #check for required fields per-context
+
+        if audio_clip_role_name == 'originator' and 'event_name' not in data:
+
+            raise serializers.ValidationError("event_name was not passed.")
+
+        if audio_clip_role_name == 'responder' and 'event_id' not in data:
+
+            raise serializers.ValidationError("event_id was not passed.")
+
+        return data
+
+
+
+class CreateAudioClips_Upload_RegenerateURL_APISerializer(serializers.Serializer):
+    audio_clip_id = serializers.IntegerField(min_value=1,)
+
+
 
 class CreateAudioClips_Process_APISerializer(serializers.Serializer):
-
-    audio_clip_id = serializers.IntegerField()
-    unprocessed_upload_key = serializers.CharField(max_length=300)
+    audio_clip_id = serializers.IntegerField(min_value=1,)
 
 
 
@@ -292,7 +307,7 @@ class ListEventReplyChoicesAPISerializer(serializers.Serializer):
 
 class HandleReplyingEventsAPISerializer(serializers.Serializer):
 
-    event_id = serializers.IntegerField()
+    event_id = serializers.IntegerField(min_value=1,)
 
 
 

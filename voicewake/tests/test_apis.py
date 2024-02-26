@@ -12,13 +12,6 @@ from django.db.models import Count
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
 
-#apps
-from voicewake.services import *
-from voicewake.models import *
-from voicewake.tasks import *
-from voicewake.factories import *
-from django.conf import settings
-
 #py packages
 import io
 import json
@@ -33,11 +26,18 @@ import traceback
 import inspect, sys
 import dotenv
 import logging
-
-import boto3
-import argparse
-from botocore.exceptions import ClientError
 import requests
+
+#AWS
+import boto3
+from botocore.exceptions import ClientError
+
+#apps
+from voicewake.services import *
+from voicewake.models import *
+from voicewake.tasks import *
+from voicewake.factories import *
+from django.conf import settings
 
 
 #tests always auto-override DEBUG to False
@@ -462,11 +462,6 @@ class Random_TestCase(TestCase):
 
     def test_random(self):
 
-        EventReplyQueues.objects.create(
-            event_id=999,
-            locked_for_user_id=999
-        )
-
         pass
 
 
@@ -818,29 +813,27 @@ class AudioClips_TestCase(TestCase):
             'voicewake/tests/test_file_samples/audio_can_overwrite.mp3'
         )
 
+
+    def get_audio_file(self):
+
+        #simulate InMemoryUploadedFile
+        #if this works, then TemporaryUploadedFile() when live works too
+        #since both are the same, with only 1 extra method as difference
+        #can't seem to create TemporaryUploadedFile() when testing, as .read() returns b''
+
         #automate args
-        file_extension = cls.source_audio_file_full_path.split(".", -1)[-1]
+        file_extension = self.source_audio_file_full_path.split(".", -1)[-1]
         temporary_audio_file_name = 'new_recording' + '.' + file_extension
         content_type = 'audio/' + file_extension
 
-        #create callable to avoid any pickling shenanigan from instantiating cls.InMemoryUploadedFile()
-        def get_audio_file():
-
-            #simulate InMemoryUploadedFile
-            #if this works, then TemporaryUploadedFile() when live works too
-            #since both are the same, with only 1 extra method as difference
-            #can't seem to create TemporaryUploadedFile() when testing, as .read() returns b''
-
-            return InMemoryUploadedFile(
-                io.FileIO(cls.source_audio_file_full_path, mode="rb+"),
-                'FileField',                            #to-be field if it were in form/serializer
-                temporary_audio_file_name,              #doesn't have to match actual file name
-                content_type,                           #Content-Type
-                os.path.getsize(cls.source_audio_file_full_path),  #use os.path.getsize(path) for file size, not sys.getsizeof()
-                None
-            )
-
-        cls.get_audio_file = get_audio_file
+        return InMemoryUploadedFile(
+            io.FileIO(self.source_audio_file_full_path, mode="rb+"),
+            'FileField',                            #to-be field if it were in form/serializer
+            temporary_audio_file_name,              #doesn't have to match actual file name
+            content_type,                           #Content-Type
+            os.path.getsize(self.source_audio_file_full_path),  #use os.path.getsize(path) for file size, not sys.getsizeof()
+            None
+        )
 
 
     def test_ffmpeg(self):
@@ -913,18 +906,10 @@ class CoreProcess_TestCase(TestCase):
         cls.audio_file = open(cls.audio_file_full_path, 'rb')
         cls.audio_file = SimpleUploadedFile(cls.audio_file.name, cls.audio_file.read(), 'audio/mp3')
 
-        #dummy file
-        cls.dummy_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/dummy_file.txt')
-        cls.dummy_file = open(cls.dummy_file_full_path, 'rb')
-        cls.dummy_file = SimpleUploadedFile(cls.dummy_file.name, cls.dummy_file.read(), 'audio/mp3')
-
-        cls.audio_file_path = "/audio_test.mp3"
-        cls.audio_volume_peaks = [
-            0.32, 0.47, 0.76, 0.75, 0.79, 0.59, 0.78, 0.83, 0.85, 0.77,
-            0.62, 0.69, 0.97, 0.96, 0.97, 0.96, 0.96, 0.63, 0.47, 0.0
-        ]
-        cls.audio_duration_s = 26
-        cls.audio_clip_tone = AudioClipTones.objects.first()
+        #bad file
+        cls.bad_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/test_file_samples/not_audio.txt')
+        cls.bad_file = open(cls.bad_file_full_path, 'rb')
+        cls.bad_file = SimpleUploadedFile(cls.bad_file.name, cls.bad_file.read(), 'audio/mp3')
 
 
     @classmethod
@@ -948,11 +933,11 @@ class CoreProcess_TestCase(TestCase):
         return self.audio_file
 
 
-    def get_dummy_file(self):
+    def get_bad_file(self):
 
         #need this to auto-reset via seek(0)
-        self.dummy_file.seek(0)
-        return self.dummy_file
+        self.bad_file.seek(0)
+        return self.bad_file
 
 
     def create_event(self, created_by, generic_status_name="incomplete"):
@@ -961,26 +946,6 @@ class CoreProcess_TestCase(TestCase):
             event_name="yolo",
             created_by=created_by,
             generic_status=GenericStatuses.objects.get(generic_status_name=generic_status_name)
-        )
-
-
-    def create_audio_clip(
-        self,
-        user_id:int, event_id:int, audio_clip_role_name:Literal['originator', 'responder'],
-        audio_clip_tone_id:int=1,
-        generic_status_name:str="ok", is_banned:bool=False,
-    ):
-
-        return AudioClips.objects.create(
-            user_id=user_id,
-            event_id=event_id,
-            audio_clip_role=AudioClipRoles.objects.get(audio_clip_role_name=audio_clip_role_name),
-            audio_clip_tone_id=audio_clip_tone_id,
-            generic_status=GenericStatuses.objects.get(generic_status_name=generic_status_name),
-            audio_duration_s=self.audio_duration_s,
-            audio_volume_peaks=self.audio_volume_peaks,
-            audio_file=self.audio_file_path,
-            is_banned=is_banned,
         )
 
 
@@ -1011,159 +976,674 @@ class CoreProcess_TestCase(TestCase):
         )
 
 
-    def test_create_event_ok(self):
+    def test_create_event__upload__ok(self):
 
         self.login(self.users[0])
 
         data={
             'event_name': 'yolo',
             'audio_clip_tone_id': 1,
-            'audio_file': self.get_audio_file(),
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
         }
 
-        request = self.client.post(reverse('create_events_api'), data)
+        request = self.client.post(reverse('create_events_upload_api'), data)
 
-        self.assertEqual(request.status_code, 201)
         print_function_name(request.content)
+        self.assertEqual(request.status_code, 201)
 
         #check data
 
         result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = json.loads(result_data)['data']
 
-        self.assertTrue('event_id' in result_data)
+        self.assertTrue('upload_url' in result_data)
+        self.assertTrue('upload_fields' in result_data)
+        self.assertTrue('audio_clip_id' in result_data)
+
         self.assertEqual(Events.objects.all().count(), 1)
         self.assertEqual(AudioClips.objects.all().count(), 1)
         self.assertEqual(EventReplyQueues.objects.all().count(), 0)
 
         event = Events.objects.first()
+        self.assertEqual(event.generic_status.generic_status_name, 'processing')
         self.assertEqual(event.created_by_id, self.users[0].id)
         self.assertEqual(event.event_name, data['event_name'])
 
         audio_clip = AudioClips.objects.first()
+        self.assertEqual(audio_clip.generic_status.generic_status_name, 'processing')
         self.assertEqual(audio_clip.user_id, self.users[0].id)
         self.assertEqual(audio_clip.audio_clip_tone_id, data['audio_clip_tone_id'])
-        self.assertTrue(len(audio_clip.audio_file) > 0)
+        self.assertEqual(audio_clip.event.id, event.id)
+        self.assertGreater(len(audio_clip.audio_file), 0)
+        self.assertEqual(audio_clip.audio_duration_s, 0)
+        self.assertEqual(len(audio_clip.audio_volume_peaks), 0)
 
-        #get data via API
-        #we want to see what we get for audio_file
+        #ensure that event at this stage cannot be viewed
 
-        request = self.client.get(reverse('get_events_api', kwargs={'event_id': audio_clip.event.id}))
-
-        self.assertEqual(request.status_code, 200)
-
-        #check
-
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
-
-        print(result_data)
-
-
-    def test_create_event_missing_args(self):
-
-        self.login(self.users[0])
-
-        data={
-            'audio_clip_tone_id': 1,
-            'audio_file': self.get_audio_file(),
-        }
-
-        request = self.client.post(reverse('create_events_api'), data)
-
-        self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
-
-        data={
-            'event_name': 'yolo',
-            'audio_file': self.get_audio_file(),
-        }
-
-        request = self.client.post(reverse('create_events_api'), data)
-
-        self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
-
-        data={
-            'event_name': 'yolo',
-            'audio_clip_tone_id': 1,
-        }
-
-        request = self.client.post(reverse('create_events_api'), data)
-
-        self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
-
-        #no remnants on failure
-        self.assertEqual(Events.objects.all().count(), 0)
-        self.assertEqual(AudioClips.objects.all().count(), 0)
-
-
-    def test_create_event_faulty_args(self):
-
-        self.login(self.users[0])
-
-        data={
-            'event_name': 'yolo',
-            'audio_clip_tone_id': 9999999,
-            'audio_file': self.get_audio_file(),
-        }
-
-        request = self.client.post(reverse('create_events_api'), data)
+        request = self.client.get(
+            reverse('get_events_api',
+            kwargs={'event_id': audio_clip.event.id})
+        )
 
         self.assertEqual(request.status_code, 404)
-        print_function_name(request.content)
+
+
+    def test_create_event__upload__not_idempotent_ok(self):
+
+        self.login(self.users[0])
+
+        #first request, new records
 
         data={
             'event_name': 'yolo',
             'audio_clip_tone_id': 1,
-            'audio_file': self.get_dummy_file(),
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
         }
 
-        request = self.client.post(reverse('create_events_api'), data)
+        request = self.client.post(reverse('create_events_upload_api'), data)
 
-        self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
+        self.assertEqual(request.status_code, 201)
 
-        #no remnants on failure
-        self.assertEqual(Events.objects.all().count(), 0)
-        self.assertEqual(AudioClips.objects.all().count(), 0)
+        #second request, new records
+
+        data={
+            'event_name': 'yolo',
+            'audio_clip_tone_id': 1,
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+        }
+
+        request = self.client.post(reverse('create_events_upload_api'), data)
+
+        self.assertEqual(request.status_code, 201)
+
+        #check data
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)['data']
+
+        self.assertTrue('upload_url' in result_data)
+        self.assertTrue('upload_fields' in result_data)
+        self.assertTrue('audio_clip_id' in result_data)
+
+        self.assertEqual(Events.objects.all().count(), 2)
+        self.assertEqual(AudioClips.objects.all().count(), 2)
+        self.assertEqual(EventReplyQueues.objects.all().count(), 0)
+
+        events = Events.objects.all()
+
+        for event in events:
+
+            self.assertEqual(event.generic_status.generic_status_name, 'processing')
+            self.assertEqual(event.created_by_id, self.users[0].id)
+            self.assertEqual(event.event_name, data['event_name'])
+
+            #ensure that event at this stage cannot be viewed
+
+            request = self.client.get(
+                reverse('get_events_api',
+                kwargs={'event_id': event.id})
+            )
+
+            self.assertEqual(request.status_code, 404)
+
+        audio_clips = AudioClips.objects.all()
+
+        for audio_clip in audio_clips:
+
+            self.assertEqual(audio_clip.generic_status.generic_status_name, 'processing')
+            self.assertEqual(audio_clip.user_id, self.users[0].id)
+            self.assertEqual(audio_clip.audio_clip_tone_id, data['audio_clip_tone_id'])
+            self.assertGreater(len(audio_clip.audio_file), 0)
+            self.assertEqual(audio_clip.audio_duration_s, 0)
+            self.assertEqual(len(audio_clip.audio_volume_peaks), 0)
 
 
-    def test_create_event_daily_limit_reached(self):
+    def test_create_event__upload__daily_limit_reached(self):
+
+        #time-based
+        #AudioClips.GenericStatuses.generic_status_name is not relevant
+        #only checks against AudioClips
 
         self.login(self.users[0])
+
+        data={
+            'event_name': 'yolo',
+            'audio_clip_tone_id': 1,
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+        }
+
+        request = self.client.post(reverse('create_events_upload_api'), data)
+
+        self.assertEqual(request.status_code, 201)
+
+        #limit reached
+        #also prove that generic_status_name is irrelevant
 
         with self.settings(EVENT_CREATE_DAILY_LIMIT=1):
 
-            data={
-                'event_name': 'yolo',
-                'audio_clip_tone_id': 1,
-                'audio_file': self.get_audio_file(),
-            }
+            target_audio_clip = AudioClips.objects.first()
 
-            request = self.client.post(reverse('create_events_api'), data)
-            self.assertEqual(request.status_code, 201)
-            print_function_name(request.content)
+            #generic_status_name = 'processing'
 
             data={
                 'event_name': 'yolo',
                 'audio_clip_tone_id': 1,
-                'audio_file': self.get_audio_file(),
+                'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
             }
 
-            request = self.client.post(reverse('create_events_api'), data)
+            request = self.client.post(reverse('create_events_upload_api'), data)
+
             self.assertEqual(request.status_code, 400)
-            print_function_name(request.content)
 
-            #check
+            #generic_status_name = 'ok'
 
-            result_data = (bytes(request.content).decode())
-            result_data = json.loads(result_data)
+            target_audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='ok')
+            target_audio_clip.save()
 
-            self.assertEqual(result_data['event_create_daily_limit_reached'], True)
-            self.assertTrue(Events.objects.count(), 1)
-            self.assertTrue(AudioClips.objects.count(), 1)
+            data={
+                'event_name': 'yolo',
+                'audio_clip_tone_id': 1,
+                'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            }
+
+            request = self.client.post(reverse('create_events_upload_api'), data)
+
+            self.assertEqual(request.status_code, 400)
+
+            #is_banned=True
+
+            target_audio_clip.is_banned = True
+            target_audio_clip.save()
+
+            data={
+                'event_name': 'yolo',
+                'audio_clip_tone_id': 1,
+                'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            }
+
+            request = self.client.post(reverse('create_events_upload_api'), data)
+
+            self.assertEqual(request.status_code, 400)
+
+
+    def test_create_event__upload__missing_args(self):
+
+        self.login(self.users[0])
+
+        data={
+            'audio_clip_tone_id': 1,
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+        }
+
+        request = self.client.post(reverse('create_events_upload_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+
+        data={
+            'event_name': 'yolo',
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+        }
+
+        request = self.client.post(reverse('create_events_upload_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+
+        data={
+            'event_name': 'yolo',
+            'audio_clip_tone_id': 1,
+        }
+
+        request = self.client.post(reverse('create_events_upload_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+
+
+    def test_create_event__upload__faulty_args(self):
+
+        self.login(self.users[0])
+
+        data={
+            'event_name': '',
+            'audio_clip_tone_id': 1,
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+        }
+
+        request = self.client.post(reverse('create_events_upload_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+
+        data={
+            'event_name': '    ',
+            'audio_clip_tone_id': 1,
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+        }
+
+        request = self.client.post(reverse('create_events_upload_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+
+        data={
+            'event_name': 'ha   ha',
+            'audio_clip_tone_id': 1,
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+        }
+
+        request = self.client.post(reverse('create_events_upload_api'), data)
+
+        self.assertEqual(request.status_code, 201)
+
+        data={
+            'event_name': 'yolo',
+            'audio_clip_tone_id': '1',  #fine
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+        }
+
+        request = self.client.post(reverse('create_events_upload_api'), data)
+
+        self.assertEqual(request.status_code, 201)
+
+        data={
+            'event_name': 'yolo',
+            'audio_clip_tone_id': 'b',
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+        }
+
+        request = self.client.post(reverse('create_events_upload_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+
+        data={
+            'event_name': 'yolo',
+            'audio_clip_tone_id': 1,
+            'recorded_file_extension': 'mp3',
+        }
+
+        request = self.client.post(reverse('create_events_upload_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+
+
+    def test_create_event__regenerate_upload_url__ok(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user = self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
+            audio_clip_event = sample_event_0,
+            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            audio_clip_generic_status_generic_status_name = 'processing',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+
+        request = self.client.post(reverse('create_events_regenerate_upload_url_api'), data)
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
+
+
+    def test_create_event__regenerate_upload_url__resubmit_ok(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user = self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
+            audio_clip_event = sample_event_0,
+            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            audio_clip_generic_status_generic_status_name = 'processing',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+
+        request = self.client.post(reverse('create_events_regenerate_upload_url_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+
+        #resubmit
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+
+        request = self.client.post(reverse('create_events_regenerate_upload_url_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+
+
+    def test_create_event__regenerate_upload_url__already_processed(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user = self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
+            audio_clip_event = sample_event_0,
+            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_PROCESSED_FILE_TYPE,
+            audio_clip_generic_status_generic_status_name = 'ok',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+
+        request = self.client.post(reverse('create_events_regenerate_upload_url_api'), data)
+
+        self.assertEqual(request.status_code, 404)
+
+
+    def test_create_event__regenerate_upload_url__no_rows(self):
+
+        self.login(self.users[0])
+
+        #proceed
+
+        data = {
+            'audio_clip_id': 1,
+        }
+
+        request = self.client.post(reverse('create_events_regenerate_upload_url_api'), data)
+
+        self.assertEqual(request.status_code, 404)
+
+
+    def test_create_event__regenerate_upload_url__only_own_rows_allowed(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[1],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user = self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
+            audio_clip_event = sample_event_0,
+            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            audio_clip_generic_status_generic_status_name = 'processing',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+
+        request = self.client.post(reverse('create_events_regenerate_upload_url_api'), data)
+
+        print(request.content)
+        self.assertEqual(request.status_code, 404)
+
+
+    def test_create_event__regenerate_upload_url__missing_args(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user = self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
+            audio_clip_event = sample_event_0,
+            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            audio_clip_generic_status_generic_status_name = 'processing',
+        )
+
+        #proceed
+
+        data = {}
+
+        request = self.client.post(reverse('create_events_regenerate_upload_url_api'), data)
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 400)
+
+
+    def test_create_event__regenerate_upload_url__faulty_args(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user = self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
+            audio_clip_event = sample_event_0,
+            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            audio_clip_generic_status_generic_status_name = 'processing',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': '1a',
+        }
+
+        request = self.client.post(reverse('create_events_regenerate_upload_url_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+
+        data = {
+            'audio_clip_id': '     1     ',
+        }
+
+        request = self.client.post(reverse('create_events_regenerate_upload_url_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+
+
+
+
+
+
+
+
+
+    def test_create_event__process__ok(self):
+
+        #involves AWS Lambda
+        #best to do subsequent real-world requests
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+        pass
+
+
+    def test_create_event__process__resubmit_ok(self):
+
+        #involves AWS Lambda
+        #best to do subsequent real-world requests
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
+        )
+        pass
+
+
+
+
+
+
+
+
+
+    def test_create_event__process__already_processed(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user = self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
+            audio_clip_event = sample_event_0,
+            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_PROCESSED_FILE_TYPE,
+            audio_clip_generic_status_generic_status_name = 'ok',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+
+        request = self.client.post(reverse('create_events_process_api'), data)
+
+        print(request.content)
+        self.assertEqual(request.status_code, 400)
+
+
+    def test_create_event__process__nothing_to_process(self):
+
+        self.login(self.users[0])
+
+        #proceed
+
+        data = {
+            'audio_clip_id': 1,
+        }
+
+        request = self.client.post(reverse('create_events_process_api'), data)
+
+        print(request.content)
+        self.assertEqual(request.status_code, 400)
+
+
+    def test_create_event__process__only_own_rows_allowed(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[1],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user = self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
+            audio_clip_event = sample_event_0,
+            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            audio_clip_generic_status_generic_status_name = 'processing',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+
+        request = self.client.post(reverse('create_events_process_api'), data)
+
+        print(request.content)
+        self.assertEqual(request.status_code, 400)
+
+
+    def test_create_event__process__missing_args(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user = self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
+            audio_clip_event = sample_event_0,
+            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_PROCESSED_FILE_TYPE,
+            audio_clip_generic_status_generic_status_name = 'processing',
+        )
+
+        #proceed
+
+        data = {}
+
+        request = self.client.post(reverse('create_events_process_api'), data)
+
+        print(request.content)
+        self.assertEqual(request.status_code, 400)
+
+
+    def test_create_event__process__faulty_args(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user = self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
+            audio_clip_event = sample_event_0,
+            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_PROCESSED_FILE_TYPE,
+            audio_clip_generic_status_generic_status_name = 'processing',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': 'abc',
+        }
+
+        request = self.client.post(reverse('create_events_process_api'), data)
+
+        print(request.content)
+        self.assertEqual(request.status_code, 400)
+
+        data = {
+            'audio_clip_id': '1a',
+        }
+
+        request = self.client.post(reverse('create_events_process_api'), data)
+
+        print(request.content)
+        self.assertEqual(request.status_code, 400)
 
 
     def test_list_event_reply_choices_daily_limit_reached(self):
@@ -1175,10 +1655,10 @@ class CoreProcess_TestCase(TestCase):
             "completed"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_user_event_0 = self.create_user_event(
@@ -1187,10 +1667,10 @@ class CoreProcess_TestCase(TestCase):
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
-        sample_audio_clip_1 = self.create_audio_clip(
-            self.users[1].id,
-            sample_event_0.id,
-            "responder",
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_1 = self.create_event(
@@ -1198,10 +1678,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_2 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_1.id,
-            "originator",
+        sample_audio_clip_2 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
         )
 
         #start
@@ -1214,8 +1694,8 @@ class CoreProcess_TestCase(TestCase):
 
             request = self.client.post(reverse('list_event_reply_choices_api'), data)
 
-            self.assertEqual(request.status_code, 400)
             print_function_name(request.content)
+            self.assertEqual(request.status_code, 400)
 
         #check
 
@@ -1241,10 +1721,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         #start
@@ -1291,10 +1771,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         #start
@@ -1342,10 +1822,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         #start
@@ -1379,10 +1859,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         user_block_0 = self.create_user_block(user_id=self.users[1].id, blocked_user_id=self.users[0].id)
@@ -1418,10 +1898,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         user_block_0 = self.create_user_block(user_id=self.users[0].id, blocked_user_id=self.users[1].id)
@@ -1457,10 +1937,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         #ensure when_locked does not change
@@ -1482,10 +1962,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_1 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_1.id,
-            "originator",
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
         )
 
         #start
@@ -1520,10 +2000,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         #simply ensure when_locked changes
@@ -1545,10 +2025,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_1 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_1.id,
-            "originator",
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
         )
 
         #start
@@ -1586,10 +2066,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -1610,10 +2090,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_1 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_1.id,
-            "originator",
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
         )
 
         #start
@@ -1650,10 +2130,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -1674,10 +2154,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_1 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_1.id,
-            "originator",
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
         )
 
         #start
@@ -1714,10 +2194,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -1769,10 +2249,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -1818,10 +2298,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -1867,10 +2347,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -1917,10 +2397,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -1941,10 +2421,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_1 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_1.id,
-            "originator",
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
         )
 
         #start
@@ -1978,10 +2458,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         #start
@@ -2010,10 +2490,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2124,10 +2604,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2174,6 +2654,70 @@ class CoreProcess_TestCase(TestCase):
         self.assertFalse(UserEvents.objects.filter(user=self.users[1]).exists())
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def test_create_reply__upload__resubmit_deny(self):
+    pass
+
+
+def test_create_reply__upload__never_queued_for_it(self):
+    pass
+
+
+def test_create_reply__upload__not_locked_not_replying(self):
+    pass
+
+
+def test_create_reply__upload__is_locked_not_replying(self):
+    pass
+
+
+def test_create_reply__upload__is_locked_is_replying_ok(self):
+    pass
+
+
+def test_create_reply__upload__is_locked_is_replying_is_expired(self):
+    pass
+
+
+def test_create_reply__upload__event_is_banned(self):
+    pass
+
+
+def test_create_reply__upload__missing_args(self):
+    pass
+
+
+def test_create_reply__upload__faulty_args(self):
+    pass
+
+
+
+
+
+
+
+
+
+
+
+
+
     def test_create_reply_ok(self):
 
         #prepare data
@@ -2183,10 +2727,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2245,10 +2789,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2308,10 +2852,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2356,7 +2900,7 @@ class CoreProcess_TestCase(TestCase):
         data = {
             'event_id': sample_event_0.id,
             'audio_clip_tone_id': self.audio_clip_tone.id,
-            'audio_file': self.get_dummy_file(),
+            'audio_file': self.get_bad_file(),
         }
 
         request = self.client.post(reverse('create_replies_api'), data)
@@ -2374,10 +2918,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         #start
@@ -2405,10 +2949,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2458,10 +3002,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2512,10 +3056,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2628,10 +3172,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2680,10 +3224,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2721,10 +3265,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2763,10 +3307,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         #start
@@ -2792,10 +3336,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2844,10 +3388,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2941,6 +3485,18 @@ class CoreProcess_TestCase(TestCase):
         self.assertTrue(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0.id).exists())
 
 
+
+
+
+
+
+
+
+
+
+
+
+
     def test_create_audio_clip_report_ok(self):
 
         #prepare
@@ -2950,10 +3506,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         #start
@@ -2990,10 +3546,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         #start
@@ -3027,10 +3583,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         #start
@@ -3065,10 +3621,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         #start
@@ -3103,10 +3659,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_audio_clip_report_0 = AudioClipReports.objects.create(
@@ -3193,10 +3749,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         #start
@@ -3349,10 +3905,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         #start
@@ -3389,10 +3945,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         #start
@@ -3440,10 +3996,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         #start
@@ -3513,10 +4069,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         #start
@@ -3586,10 +4142,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         #start
@@ -3741,10 +4297,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         def do_request(target_user, is_liked:bool|None):

@@ -62,6 +62,7 @@ urlpatterns += [
     path('api/events/list/completed/<str:latest_or_best>/<str:timeframe>/<str:audio_clip_role_name>/<str:next_or_back>', apis.BrowseEventsAPI.as_view(), name='browse_events_api'),
 
     path('api/events/create/upload', apis.CreateEventsAPI.as_view(current_context="upload"), name="create_events_upload_api"),
+    path('api/events/create/upload/url/regenerate', apis.CreateEventsAPI.as_view(current_context="regenerate_upload_url"), name="create_events_regenerate_upload_url_api"),
     path('api/events/create/process', apis.CreateEventsAPI.as_view(current_context="process"), name="create_events_process_api"),
     path('api/events/replies/choices/list', apis.ListEventReplyChoicesAPI.as_view(), name="list_event_reply_choices_api"),
     path('api/events/replies/start', apis.HandleReplyingEventsAPI.as_view(current_context="start"), name="start_replies_api"),

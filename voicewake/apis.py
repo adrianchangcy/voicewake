@@ -1015,7 +1015,6 @@ class GetEventsAPI(generics.GenericAPIView):
             FROM audio_clips
             LEFT JOIN events ON audio_clips.event_id = events.id
             LEFT JOIN event_reply_queues ON events.id = event_reply_queues.event_id
-                AND event_reply_queues.locked_for_user_id = %s
             LEFT JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
             LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
                 AND audio_clip_likes_dislikes.user_id = %s
@@ -1039,6 +1038,19 @@ class GetEventsAPI(generics.GenericAPIView):
         #handle singular events view
 
         audio_clips = self.get_events_by_id(kwargs['event_id'])
+
+        #check if there are rows
+
+        if len(audio_clips) == 0:
+
+            return Response(
+                data={
+                    'message': '',
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        #has audio_clips
 
         events_and_audio_clips = []
 
@@ -1788,6 +1800,138 @@ class BrowseEventsAPI(generics.GenericAPIView):
 
 
 
+#does not have own get(), since viewing audio_clips always involves parent events
+#handle creating audio_clips
+    #if audio_clip_role_name='originator', create event
+    #if audio_clip_role_name='responder', link to event and reset lock
+class CreateEventsAPI(generics.GenericAPIView):
+
+    serializer_class = CreateAudioClips_Upload_APISerializer
+    permission_classes = [IsAuthenticated]
+    available_contexts = ['upload', 'regenerate_upload_url', 'process']
+    current_context:Literal['upload', 'regenerate_upload_url', 'process'] = 'upload'
+
+
+    def __init__(self, *args, **kwargs):
+
+        if 'current_context' not in kwargs or kwargs['current_context'] not in self.available_contexts:
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message="Incorrect current_context. Check .as_view() at urls.py."
+            )
+
+        super().__init__(*args, **kwargs)
+
+
+    @method_decorator([
+        app_decorators.deny_if_no_username("response"),
+        app_decorators.deny_if_banned("response"),
+    ])
+    def post(self, request, *args, **kwargs):
+
+        serializer = None
+
+        if self.current_context == 'upload':
+
+            serializer = CreateAudioClips_Upload_APISerializer(
+                data=request.data,
+                many=False,
+                context={
+                    'audio_clip_role_name': 'originator',
+                },
+            )
+
+        elif self.current_context == 'regenerate_upload_url':
+
+            serializer = CreateAudioClips_Upload_RegenerateURL_APISerializer(
+                data=request.data,
+                many=False,
+            )
+
+        elif self.current_context == 'process':
+
+            serializer = CreateAudioClips_Process_APISerializer(
+                data=request.data,
+                many=False,
+            )
+
+        #validate
+        if serializer.is_valid() is False:
+
+            return Response(
+                data={
+                    'message': get_serializer_error_message(serializer),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        new_data = serializer.validated_data
+
+        #ok, proceed
+
+        create_audio_clips_class = CreateAudioClips(
+            user=self.request.user,
+            is_ec2=os.environ['IS_EC2'],
+            current_context='create_event',
+            unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES,
+            processed_file_extension=settings.AUDIO_CLIP_PROCESSED_FILE_TYPE,
+            event_create_daily_limit=settings.EVENT_CREATE_DAILY_LIMIT,
+            event_reply_daily_limit=settings.EVENT_REPLY_DAILY_LIMIT,
+            event_reply_expiry_seconds=settings.EVENT_REPLY_MAX_DURATION_S,
+        )
+
+        #if regenerate URL, no need .atomic()
+
+        if self.current_context == 'regenerate_upload_url':
+
+            return create_audio_clips_class.regenerate_s3_endpoint(
+                audio_clip_id=new_data['audio_clip_id'],
+            )
+
+        #proceed
+
+        try:
+
+            with transaction.atomic():
+
+                if self.current_context == 'upload':
+
+                    return create_audio_clips_class.create_records_and_return_s3_endpoint_as_originator(
+                        event_name=new_data['event_name'],
+                        audio_clip_tone_id=new_data['audio_clip_tone_id'],
+                        recorded_file_extension=new_data['recorded_file_extension'],
+                    )
+
+                elif self.current_context == 'process':
+
+                    return create_audio_clips_class.normalise_and_update_records(
+                        audio_clip_id=new_data['audio_clip_id'],
+                    )
+
+        except AudioClipTones.DoesNotExist:
+
+            return Response(
+                data={
+                    'message': 'Your selected tag was not found. Try a different one.',
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        except Exception as e:
+
+            print(e)
+
+            return Response(
+                data={
+                    'message': get_user_message_from_custom_error(e),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+
 #user can generate new event reply choice
     #will unlock previous is_replying=False event
     #will add to UserEvents when locking for is_replying=False
@@ -2082,9 +2226,14 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
         #borrow the check from CreateAudioClips
 
         create_audio_clips_class = CreateAudioClips(
-            self.request.user, "create_reply",
-            settings.EVENT_CREATE_DAILY_LIMIT, settings.EVENT_REPLY_DAILY_LIMIT,
-            settings.EVENT_REPLY_MAX_DURATION_S,
+            user=self.request.user,
+            is_ec2=os.environ['IS_EC2'],
+            current_context='create_reply',
+            unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES,
+            processed_file_extension=settings.AUDIO_CLIP_PROCESSED_FILE_TYPE,
+            event_create_daily_limit=settings.EVENT_CREATE_DAILY_LIMIT,
+            event_reply_daily_limit=settings.EVENT_REPLY_DAILY_LIMIT,
+            event_reply_expiry_seconds=settings.EVENT_REPLY_MAX_DURATION_S,
         )
 
         cooldown_s = create_audio_clips_class.get_cooldown_on_audio_clip_create_limit_s()
@@ -2155,8 +2304,8 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
     serializer_class = HandleReplyingEventsAPISerializer
     permission_classes = [IsAuthenticated]
-    available_contexts = ['start', 'reply_upload', 'reply_process', 'cancel']
-    current_context:Literal['start', 'reply_upload', 'reply_process', 'cancel'] = 'start'
+    available_contexts = ['start', 'upload', 'regenerate_upload_url', 'process', 'cancel']
+    current_context:Literal['start', 'upload', 'regenerate_upload_url', 'process', 'cancel'] = 'start'
 
 
     def __init__(self, *args, **kwargs):
@@ -2360,7 +2509,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
             serializer = HandleReplyingEventsAPISerializer(data=request.data, many=False)
 
-        elif self.current_context == 'reply_upload':
+        elif self.current_context == 'upload':
 
             serializer = CreateAudioClips_Upload_APISerializer(
                 data=request.data,
@@ -2370,7 +2519,14 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                 },
             )
 
-        elif self.current_context == 'reply_process':
+        elif self.current_context == 'regenerate_upload_url':
+
+            serializer = CreateAudioClips_Upload_RegenerateURL_APISerializer(
+                data=request.data,
+                many=False,
+            )
+
+        elif self.current_context == 'process':
 
             serializer = CreateAudioClips_Process_APISerializer(
                 data=request.data,
@@ -2394,7 +2550,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
         create_audio_clips_class = None
 
-        if self.current_context == 'reply_upload' or self.current_context == 'reply_process':
+        if self.current_context in ['upload', 'regenerate_upload_url', 'process']:
 
             create_audio_clips_class = CreateAudioClips(
                 user=self.request.user,
@@ -2407,6 +2563,16 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                 event_reply_expiry_seconds=settings.EVENT_REPLY_MAX_DURATION_S,
             )
 
+        #if regenerate URL, no need .atomic()
+
+        if self.current_context == 'regenerate_upload_url':
+
+            return create_audio_clips_class.regenerate_s3_endpoint(
+                audio_clip_id=new_data['audio_clip_id'],
+            )
+
+        #proceed
+
         try:
 
             with transaction.atomic():
@@ -2416,7 +2582,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                     #start replying
                     return self.start_reply_in_event(new_data['event_id'])
 
-                elif self.current_context == 'reply_upload':
+                elif self.current_context == 'upload':
 
                     return create_audio_clips_class.create_records_and_return_s3_endpoint_as_responder(
                         event_id=new_data['event_id'],
@@ -2424,11 +2590,10 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                         recorded_file_extension=new_data['recorded_file_extension'],
                     )
 
-                elif self.current_context == 'reply_process':
+                elif self.current_context == 'process':
 
                     return create_audio_clips_class.normalise_and_update_records(
                         audio_clip_id=new_data['audio_clip_id'],
-                        unprocessed_upload_key=new_data['unprocessed_upload_key'],
                     )
 
                 elif self.current_context == "cancel":
@@ -2494,120 +2659,6 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
         except Exception as e:
 
             traceback.print_exc()
-
-            return Response(
-                data={
-                    'message': get_user_message_from_custom_error(e),
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-
-
-#does not have own get(), since viewing audio_clips always involves parent events
-#handle creating audio_clips
-    #if audio_clip_role_name='originator', create event
-    #if audio_clip_role_name='responder', link to event and reset lock
-class CreateEventsAPI(generics.GenericAPIView):
-
-    serializer_class = CreateAudioClips_Upload_APISerializer
-    permission_classes = [IsAuthenticated]
-    available_contexts = ['upload', 'process']
-    current_context:Literal['upload', 'process'] = 'upload'
-
-
-    def __init__(self, *args, **kwargs):
-
-        if 'current_context' not in kwargs or kwargs['current_context'] not in self.available_contexts:
-
-            raise custom_error(
-                ValueError,
-                __name__,
-                dev_message="Incorrect current_context. Check .as_view() at urls.py."
-            )
-
-        super().__init__(*args, **kwargs)
-
-
-    @method_decorator([
-        app_decorators.deny_if_no_username("response"),
-        app_decorators.deny_if_banned("response"),
-    ])
-    def post(self, request, *args, **kwargs):
-
-        serializer = None
-
-        if self.current_context == 'upload':
-
-            serializer = CreateAudioClips_Upload_APISerializer(
-                data=request.data,
-                many=False,
-                context={
-                    'audio_clip_role_name': 'originator',
-                },
-            )
-
-        elif self.current_context == 'process':
-
-            serializer = CreateAudioClips_Process_APISerializer(
-                data=request.data,
-                many=False,
-            )
-
-        #validate
-        if serializer.is_valid() is False:
-
-            return Response(
-                data={
-                    'message': get_serializer_error_message(serializer),
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        new_data = serializer.validated_data
-
-        #ok, proceed
-
-        create_audio_clips_class = CreateAudioClips(
-            user=self.request.user,
-            is_ec2=os.environ['IS_EC2'],
-            current_context='create_event',
-            unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES,
-            processed_file_extension=settings.AUDIO_CLIP_PROCESSED_FILE_TYPE,
-            event_create_daily_limit=settings.EVENT_CREATE_DAILY_LIMIT,
-            event_reply_daily_limit=settings.EVENT_REPLY_DAILY_LIMIT,
-            event_reply_expiry_seconds=settings.EVENT_REPLY_MAX_DURATION_S,
-        )
-
-        try:
-
-            with transaction.atomic():
-
-                if self.current_context == 'upload':
-
-                    return create_audio_clips_class.create_records_and_return_s3_endpoint_as_originator(
-                        event_name=new_data['event_name'],
-                        audio_clip_tone_id=new_data['audio_clip_tone_id'],
-                        recorded_file_extension=new_data['recorded_file_extension'],
-                    )
-
-                elif self.current_context == 'process':
-
-                    return create_audio_clips_class.normalise_and_update_records(
-                        audio_clip_id=new_data['audio_clip_id'],
-                        unprocessed_upload_key=new_data['unprocessed_upload_key'],
-                    )
-
-        except AudioClipTones.DoesNotExist:
-
-            return Response(
-                data={
-                    'message': 'Your selected tag was not found. Try a different one.',
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        except Exception as e:
 
             return Response(
                 data={

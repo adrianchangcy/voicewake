@@ -179,10 +179,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_audio_clip_0.like_count = 2
@@ -230,10 +230,10 @@ class CoreProcess_TestCase(TestCase):
             "completed"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_audio_clip_1 = self.create_audio_clip(
@@ -290,10 +290,10 @@ class CoreProcess_TestCase(TestCase):
             "completed"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_audio_clip_0.like_count = 2
@@ -366,10 +366,10 @@ class CoreProcess_TestCase(TestCase):
             "completed"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_audio_clip_1 = self.create_audio_clip(
@@ -472,10 +472,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_audio_clip_0.like_count = 2
@@ -553,10 +553,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_audio_clip_0.like_count = 2
@@ -595,10 +595,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_audio_clip_0.like_count = 2
@@ -701,10 +701,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -732,10 +732,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -763,10 +763,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -794,10 +794,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -825,10 +825,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -856,10 +856,10 @@ class CoreProcess_TestCase(TestCase):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
