@@ -14,6 +14,7 @@ from django.core.mail import send_mail
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.core.files.base import ContentFile
 from django.db import connection
+from django.core.cache import cache
 
 #Python libraries
 from datetime import datetime, timezone, timedelta, tzinfo
@@ -40,8 +41,8 @@ import requests
 
 #AWS
 import boto3
-from botocore.config import Config
 from botocore.exceptions import ClientError
+from botocore.config import Config
 
 #app files
 from .models import *
@@ -80,11 +81,20 @@ def get_datetime_now(to_string:bool=False):
     return datetime_now
 
     #to get difference
-    #minutes_passed = (get_datetime_now() - event_reply_queue.when_locked).total_seconds() / 60
-    #hours_passed = (get_datetime_now() - event_reply_queue.when_locked).total_seconds() / 60 / 60
+        #minutes_passed = (get_datetime_now() - event_reply_queue.when_locked).total_seconds() / 60
+        #hours_passed = (get_datetime_now() - event_reply_queue.when_locked).total_seconds() / 60 / 60
 
-    #to format into queryset and/or sql-friendly format:
-    #get_datetime_now().strftime('%Y-%m-%d %H:%M:%S %z')
+
+def get_datetime_from_string(datetime_string:str):
+
+    #follows same format as get_datetime_now
+    return datetime.strptime(datetime_string, '%Y-%m-%d %H:%M:%S %z')
+
+    #datetime.strptime()
+        #for Python >= 3.2, if format has %z, timezone is maintained
+        #deducting then doing .total_seconds() also works
+        #e.g.:
+            #datetime.strptime(get_datetime_now(to_string=True), '%Y-%m-%d %H:%M:%S %z')
 
 
 def get_pretty_datetime(seconds:int)->str:
@@ -243,25 +253,16 @@ def prevent_events_from_queuing_twice_for_reply(user, events:list):
                 UserEvents(
                     user=user,
                     event=event,
+                    when_excluded_for_reply=datetime_now,
                 )
             )
 
             user_ids.append(user.id)
             event_ids.append(event.id)
 
-    #create rows if they don't yet exist
-    #ignore conflict because there's a decent chance that rows already exist, which is fine
     UserEvents.objects.bulk_create(
         bulk_user_events,
         ignore_conflicts=True
-    )
-
-    #do extra update for rows that already exist during bulk_create
-    UserEvents.objects.filter(
-        user=user,
-        event_id__in=event_ids
-    ).update(
-        when_excluded_for_reply=datetime_now
     )
 
 
@@ -908,11 +909,13 @@ class S3PostWrapper:
 
     def generate_unprocessed_object_key(self, user_id:int, file_extension:str):
 
-        #frontend only records as mp4/webm, depending on browser
-
         if file_extension not in self.allowed_unprocessed_file_extensions:
 
-            raise ValueError('Invalid file_extension. Must be one of: ' + str(self.allowed_unprocessed_file_extensions))
+            raise ValueError(
+                file_extension + ' is invalid, must be one of: ' + str(self.allowed_unprocessed_file_extensions)
+            )
+
+        #frontend only records as mp4/webm, depending on browser
 
         datetime_now = get_datetime_now()
 
@@ -936,7 +939,7 @@ class S3PostWrapper:
         for retry in range(0, self.key_exist_retries):
 
             #use secrets.token_hex() to mitigate wrongful possession from random guessing
-            file_key = file_path + secrets.token_hex(16) + '.' + file_extension
+            file_key = file_path + secrets.token_hex(16) + '.' + self.unprocessed_file_extension
 
             if self.check_object_exists(file_key) is False:
 
@@ -945,17 +948,46 @@ class S3PostWrapper:
         raise ValueError('Maximum retries reached on check_object_exists().')
 
 
-    def generate_presigned_post_url(self, key:str):
+    def generate_presigned_post_url(self, key:str, file_extension:str=''):
 
         #HTTP 422 on condition failure, will not upload
         #HTTP 204 on success
         #for file MimeType, e.g. allow only .mp3, must be done at bucket policy, not here
         #key will be available via upload_info['fields']['key']
 
+        #if file_extension is not passed, determine from passed key
+        #this happens when regenerating POST URL
+
+        if len(file_extension) == 0:
+
+            for unprocessed_file_extension in self.allowed_unprocessed_file_extensions:
+
+                current_key_extension = key[
+                    -len(unprocessed_file_extension):len(key)
+                ]
+
+                if current_key_extension == unprocessed_file_extension:
+
+                    file_extension = unprocessed_file_extension
+                    break
+
+            #no match
+            if len(file_extension) == 0:
+
+                raise ValueError(
+                    key + ' is not of ' + str(self.allowed_unprocessed_file_extensions)
+                )
+
+        elif file_extension not in self.allowed_unprocessed_file_extensions:
+
+            raise ValueError(
+                file_extension + ' is invalid, must be one of: ' + str(self.allowed_unprocessed_file_extensions)
+            )
+
         conditions = [
             {'bucket': self.unprocessed_bucket_name},
             {'key': key},
-            ["starts-with", "$Content-Type", "audio/mp4,audio/webm"],
+            ["starts-with", "$Content-Type", f"audio/{file_extension}"],
             ["content-length-range", 1024, self.s3_audio_file_max_size_b],
         ]
 
@@ -964,7 +996,7 @@ class S3PostWrapper:
             return self.s3_client.generate_presigned_post(
                 Bucket=self.unprocessed_bucket_name,
                 Key=key,
-                Fields={"Content-Type": "audio/mp4,audio/webm"},
+                Fields={"Content-Type": f"audio/{file_extension}"},
                 Conditions=conditions,
                 ExpiresIn=self.url_expiry_s
             )
@@ -994,6 +1026,8 @@ class AWSLambdaWrapper:
     def __init__(
         self,
         is_ec2:bool,
+        timeout_s:int=30,
+        max_attempts:int=4,
         region_name:str='',
         aws_access_key_id:str='',
         aws_secret_access_key:str='',
@@ -1002,6 +1036,15 @@ class AWSLambdaWrapper:
         self.is_ec2 = is_ec2
         self.region_name = region_name
 
+        advanced_config = Config(
+            retries={
+                'max_attempts': max_attempts,
+                'mode': 'standard'
+            },
+            read_timeout=timeout_s,
+            connect_timeout=timeout_s,
+        )
+
         try:
 
             if is_ec2 is True:
@@ -1009,6 +1052,7 @@ class AWSLambdaWrapper:
                 self.client = boto3.client(
                     service_name='lambda',
                     region_name=region_name,
+                    config=advanced_config,
                 )
 
             else:
@@ -1016,6 +1060,7 @@ class AWSLambdaWrapper:
                 self.client = boto3.client(
                     service_name='lambda',
                     region_name=region_name,
+                    config=advanced_config,
                     aws_access_key_id=aws_access_key_id,
                     aws_secret_access_key=aws_secret_access_key,
                 )
@@ -1043,6 +1088,7 @@ class AWSLambdaWrapper:
         #get response
 
         #['Payload'] is StreamingBody object, so we use .read() to get bytes
+        #StreamingBody object has no .seek(0), so .read() can only be used once
         #AWS Lambda serializes entire response to JSON
         response_data = response['Payload'].read()
         response_data = bytes(response_data).decode(encoding='utf-8')
@@ -1059,6 +1105,7 @@ class AWSLambdaWrapper:
         processed_object_key:str='',
         unprocessed_bucket_name:str='',
         processed_bucket_name:str='',
+        is_ping:bool=False,
     ):
 
         payload = {
@@ -1067,10 +1114,11 @@ class AWSLambdaWrapper:
             'processed_object_key': processed_object_key,
             'unprocessed_bucket_name': unprocessed_bucket_name,
             'processed_bucket_name': processed_bucket_name,
+            'is_ping': is_ping,
         }
 
         return self._invoke_lambda(
-            function_name=os.environ['normalise_audio_clips'],
+            function_name=os.environ['AWS_LAMBDA_NORMALISE_FUNCTION_NAME'],
             payload=payload
         )
 
@@ -1079,12 +1127,14 @@ class AWSLambdaWrapper:
 class AWSLambdaNormaliseAudioClips:
 
     #context
-        #let backend API decide unprocessed and process keys
-        #just accept both here
+        #let backend API determine file extensions of processed/unprocessed keys
+        #no need to immediately delete unprocessed object
+            #expiry of S3 URL =/= expiry of reply
+            #URL can still be used for upload within their time difference
     #process
-        #normalise --> copy to new bucket --> delete from old bucket --> return info
+        #normalise --> copy to new bucket --> return info
     #how to troubleshoot
-        #do check=False, then get subprocess.run().stderr
+        #at subprocess, do check=False, then get subprocess.run().stderr
 
     def __init__(
         self,
@@ -1096,6 +1146,7 @@ class AWSLambdaNormaliseAudioClips:
         processed_object_key:str='',
         unprocessed_bucket_name:str='',
         processed_bucket_name:str='',
+        processed_file_extension:str='mp3',
     ):
 
         self.is_lambda = is_lambda
@@ -1104,6 +1155,9 @@ class AWSLambdaNormaliseAudioClips:
         self.processed_object_key = processed_object_key
         self.unprocessed_bucket_name = unprocessed_bucket_name
         self.processed_bucket_name = processed_bucket_name
+
+        #use environment variable
+        self.processed_file_extension = processed_file_extension
 
         if is_lambda is True:
 
@@ -1120,8 +1174,8 @@ class AWSLambdaNormaliseAudioClips:
         #in the case of mp3, both codec and format/container are the same
         #mp3 can only choose 32000/44100/48000 sample rate
         #mp3 sample rate of 44100 and 48000 has big difference in quality with minimal size difference, as long as small
-        self.desired_codec = "mp3"
-        self.desired_format = "mp3"
+        self.desired_codec = self.processed_file_extension
+        self.desired_format = self.processed_file_extension
         self.desired_sample_rate = "48k"
 
         #max timeout seconds for subprocess
@@ -1164,6 +1218,17 @@ class AWSLambdaNormaliseAudioClips:
         except ClientError:
 
             raise
+
+
+    @staticmethod
+    def create_return_response_on_ping():
+
+        #check via lambda_event.get('is_ping') is True
+
+        return {
+            'lambda_status_code': 200,
+            'lambda_message': '',
+        }
 
 
     def test_retrieve_unprocessed_audio_file_local(self, audio_file_path:str):
@@ -1493,14 +1558,6 @@ class AWSLambdaNormaliseAudioClips:
         )
 
 
-    def delete_unprocessed_audio_file(self):
-
-        return self.s3_client.delete_object(
-            Bucket=self.unprocessed_bucket_name,
-            Key=self.unprocessed_object_key,
-        )
-
-
     def create_return_response(self, error_object=None):
 
         #error_object is ClientError
@@ -1514,13 +1571,15 @@ class AWSLambdaNormaliseAudioClips:
 
         if error_object is not None:
 
-            response['lambda_status'] = error_object.response['ResponseMetadata']['HTTPStatusCode']
+            response['lambda_status_code'] = error_object.response['ResponseMetadata']['HTTPStatusCode']
             response['lambda_message'] = error_object.response['Error']['Message']
 
         return response
 
 
     def main(self):
+
+        #continue
 
         response = self.create_return_response()
 
@@ -1626,100 +1685,6 @@ class CreateAudioClips():
         return math.ceil(pretty_difference_s)
 
 
-    def _get_event_reply_queue(self, event_id:int):
-
-        try:
-
-            self.event_reply_queue = EventReplyQueues.objects.select_for_update(
-                of=("self",)
-            ).select_related(
-                'event__generic_status'
-            ).get(
-                event_id=event_id,
-                locked_for_user=self.user
-            )
-
-        except EventReplyQueues.DoesNotExist:
-
-            raise custom_error(
-                ValueError,
-                __name__,
-                user_message='Unable to reply to this event.'
-            )
-
-
-    def _check_user_can_create_reply(self)->bool:
-
-        if self.event_reply_queue is None:
-
-            raise custom_error(
-                ValueError,
-                __name__,
-                dev_message="EventReplyQueue not yet retrieved. Call self._get_event_reply_queue()."
-            )
-
-        #deny if not yet replying
-        if self.event_reply_queue.is_replying is False:
-
-            return False
-
-        #is replying, proceed
-
-        #check that event is still ok
-        if self.event_reply_queue.event.generic_status.generic_status_name != 'incomplete':
-
-            #remove expired reply choice
-            self.event_reply_queue.delete()
-            self.event_reply_queue = None
-
-            return False
-
-        #check for expiry
-        if(
-            self.event_reply_queue.when_locked <
-            (self.datetime_now - timedelta(seconds=self.event_reply_expiry_seconds))
-        ):
-
-            #remove expired reply choice
-            self.event_reply_queue.delete()
-            self.event_reply_queue = None
-
-            return False
-
-        return True
-
-
-    def _get_records_for_normalise(self, audio_clip_id:int):
-
-        try:
-
-            self.audio_clip = AudioClips.objects.select_related(
-                'generic_status',
-                'audio_clip_role',
-            ).get(
-                pk=audio_clip_id,
-                user_id=self.user.id,
-            )
-
-            self.event = Events.objects.select_related('generic_status',).get(pk=self.audio_clip.event_id)
-
-        except AudioClips.DoesNotExist:
-
-            raise custom_error(
-                ValueError,
-                __name__,
-                user_message='Recording does not exist.',
-            )
-
-        except Events.DoesNotExist:
-
-            raise custom_error(
-                ValueError,
-                __name__,
-                user_message='Event does not exist.',
-            )
-
-
     def _determine_processed_upload_key(self)->str:
 
         #we simply swap the extension of unprocessed_upload_key
@@ -1731,7 +1696,7 @@ class CreateAudioClips():
             raise custom_error(
                 ValueError,
                 __name__,
-                dev_message='self.audio_clip is None. Call self._get_records_for_normalise().',
+                dev_message='Missing required records.',
             )
 
         current_upload_key = self.audio_clip.audio_file
@@ -1742,24 +1707,25 @@ class CreateAudioClips():
         #when counting position from end, it starts from index -1, not 0
             #index 2 lands you on 0,1,2nd, but -2 lands you on -1,-2
 
-        for file_extension in self.unprocessed_file_extensions:
+        for unprocessed_file_extension in self.unprocessed_file_extensions:
 
-            unprocessed_upload_key_extension = current_upload_key[
-                -len(file_extension):len(current_upload_key)
+            current_upload_key_extension = current_upload_key[
+                -len(unprocessed_file_extension):len(current_upload_key)
             ]
 
-            if unprocessed_upload_key_extension == file_extension:
+            if current_upload_key_extension == unprocessed_file_extension:
 
-                processed_upload_key = current_upload_key[0:-len(file_extension)]
+                processed_upload_key = current_upload_key[0:-len(unprocessed_file_extension)]
 
                 processed_upload_key += self.processed_file_extension
 
                 #return appropriate processed key
                 return processed_upload_key
 
-            elif unprocessed_upload_key_extension == self.processed_file_extension:
+            elif current_upload_key_extension == self.processed_file_extension:
 
                 #already with processed file extension
+                #return '' for better error handling
                 return ''
 
         raise custom_error(
@@ -1770,117 +1736,58 @@ class CreateAudioClips():
         )
 
 
-    def _check_can_normalise(self)->bool:
+    @staticmethod
+    def determine_processing_cache_key(audio_clip_id:int)->str:
 
-        if self.audio_clip is None or self.event is None:
+        return os.environ['AWS_LAMBDA_NORMALISE_FUNCTION_NAME'] + '_' + str(audio_clip_id)
 
-            raise custom_error(
-                ValueError,
-                __name__,
-                dev_message="Missing records. Call self._get_records_for_normalise()."
-            )
 
-        #don't have to check if audio_clip belongs to user
-        #since this is handled at self.get_records_for_normalise()
+    def _get_records_for_upload_responder(self, event_id:int)->None|Response:
 
-        #check event
-
-        if (
-            (
-                self.current_context == 'create_event' and
-                self.event.generic_status.generic_status_name == 'processing'
-            ) or (
-                self.current_context == 'create_reply' and
-                self.event.generic_status.generic_status_name == 'incomplete'
-            )
-        ):
-
-            pass
-
-        else:
+        if self.current_context != 'create_reply':
 
             raise custom_error(
                 ValueError,
                 __name__,
-                user_message='This event is unavailable.',
+                dev_message='Invalid attempt to use function in improper self.current_context.',
             )
 
-        #we don't check AudioClips.audio_file here
-        #it is already checked by self._determine_processed_upload_key()
+        try:
 
-        #check audio_clip
+            self.event_reply_queue = EventReplyQueues.objects.select_for_update(
+                of=("self",)
+            ).select_related(
+                'event__generic_status'
+            ).select_for_update(
+                of=('self',)
+            ).get(
+                event_id=event_id,
+                locked_for_user=self.user
+            )
 
-        if (
-            self.audio_clip.user.id == self.user.id and
-            self.audio_clip.generic_status.generic_status_name == 'processing' and
-            self.audio_clip.audio_duration_s == 0 and
-            len(self.audio_clip.audio_file) == 0 and
-            len(self.audio_clip.audio_volume_peaks) == 0
-        ):
+        except EventReplyQueues.DoesNotExist:
 
-            #not yet processed
-            return True
+            return Response(
+                data={
+                    "message": "Event is unavailable for reply.",
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        elif (
-            self.audio_clip.user.id == self.user.id and
-            self.audio_clip.generic_status.generic_status_name == 'ok' and
-            self.audio_clip.audio_duration_s > 0 and
-            len(self.audio_clip.audio_file) > 0 and
-            len(self.audio_clip.audio_volume_peaks) > 0
-        ):
+        return None
 
-            #already processed
-            return False
 
-        else:
+    def _check_can_upload_originator(self)->None|Response:
+
+        if self.current_context != 'create_event':
 
             raise custom_error(
                 ValueError,
                 __name__,
-                user_message='This recording could not be processed.',
+                dev_message='Invalid attempt to use function in improper self.current_context.',
             )
 
-
-    def _initialise_s3_post_wrapper(self):
-
-        self.s3_post_wrapper = S3PostWrapper(
-            is_ec2=self.is_ec2,
-            allowed_unprocessed_file_extensions=self.unprocessed_file_extensions,
-            region_name=os.environ['AWS_S3_REGION_NAME'],
-            unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
-            s3_audio_file_max_size_b=os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B'],
-            url_expiry_s=os.environ['AWS_S3_UPLOAD_URL_EXPIRY_S'],
-            aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
-            aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
-        )
-
-
-    def _initialise_lambda_wrapper(self):
-
-        self.lambda_wrapper = AWSLambdaWrapper(
-            is_ec2=self.is_ec2,
-            region_name=os.environ['AWS_LAMBDA_REGION_NAME'],
-            aws_access_key_id=os.environ['AWS_LAMBDA_ACCESS_KEY_ID'],
-            aws_secret_access_key=os.environ['AWS_LAMBDA_SECRET_ACCESS_KEY'],
-        )
-
-
-    def create_records_and_return_s3_endpoint_as_originator(
-        self,
-        event_name:str,
-        audio_clip_tone_id:int,
-        recorded_file_extension:str,
-    )->Response:
-
-        if self.current_context != "create_event":
-
-            raise custom_error(
-                ValueError,
-                __name__,
-                dev_message="Invalid current_context."
-            )
-
-        #perform checks
+        #check for upload limit cooldown
 
         cooldown_s = self.get_cooldown_on_audio_clip_create_limit_s()
 
@@ -1893,6 +1800,430 @@ class CreateAudioClips():
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        return None
+
+
+    def _check_can_upload_responder(self)->None|Response:
+
+        if self.current_context != 'create_reply':
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message='Invalid attempt to use function in improper self.current_context.',
+            )
+
+        #check if not yet is_replying=True
+
+        if self.event_reply_queue.is_replying is not True:
+
+            return Response(
+                data={
+                    "message": "Confirm your reply choice first.",
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        #check if event is no longer incomplete
+
+        if self.event_reply_queue.event.generic_status.generic_status_name != 'incomplete':
+
+            self.event_reply_queue.delete()
+            self.event_reply_queue = None
+
+            return Response(
+                data={
+                    "message": "Event is no longer available for reply.",
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        #check whether reply queue has expired
+
+        if(
+            self.event_reply_queue.when_locked <
+            (self.datetime_now - timedelta(seconds=self.event_reply_expiry_seconds))
+        ):
+
+            self.event_reply_queue.delete()
+            self.event_reply_queue = None
+
+            return Response(
+                data={
+                    "message": "Reply choice has just expired.",
+                },
+                status=status.HTTP_205_RESET_CONTENT
+            )
+
+        return None
+
+
+    def _get_records_for_normalise_originator(self, audio_clip_id:int)->None|Response:
+
+        if self.current_context != 'create_event':
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message='Invalid attempt to use function in improper self.current_context.',
+            )
+
+        try:
+
+            self.audio_clip = AudioClips.objects.select_related(
+                'generic_status',
+                'audio_clip_role',
+            ).select_for_update(
+                of=('self',)
+            ).get(
+                pk=audio_clip_id,
+                user_id=self.user.id,
+                audio_clip_role__audio_clip_role_name='originator',
+            )
+
+            self.event = Events.objects.select_related(
+                'generic_status',
+            ).select_for_update(
+                of=('self',)
+            ).get(
+                pk=self.audio_clip.event_id
+            )
+
+        except AudioClips.DoesNotExist:
+
+            return Response(
+                data={
+                    "message": "Recording does not exist.",
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        except Events.DoesNotExist:
+
+            return Response(
+                data={
+                    "message": "Event does not exist.",
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        #ensure user's passed audio_clip_id matches URL's context
+
+        if self.audio_clip.audio_clip_role.audio_clip_role_name != 'originator':
+
+            return Response(
+                data={
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        return None
+
+
+    def _get_records_for_normalise_responder(self, audio_clip_id:int)->None|Response:
+
+        if self.current_context != 'create_reply':
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message='Invalid attempt to use function in improper self.current_context.',
+            )
+
+        try:
+
+            self.audio_clip = AudioClips.objects.select_related(
+                'generic_status',
+                'audio_clip_role',
+            ).select_for_update(
+                of=('self',)
+            ).get(
+                pk=audio_clip_id,
+                user_id=self.user.id,
+                audio_clip_role__audio_clip_role_name='responder',
+            )
+
+            self.event = Events.objects.select_related(
+                'generic_status',
+            ).select_for_update(
+                of=('self',)
+            ).get(
+                pk=self.audio_clip.event_id
+            )
+
+        except AudioClips.DoesNotExist:
+
+            return Response(
+                data={
+                    "message": "Recording does not exist.",
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        except Events.DoesNotExist:
+
+            return Response(
+                data={
+                    "message": "Event does not exist.",
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        return None
+
+
+    def _check_can_normalise_originator(self)->None|Response:
+
+        if self.current_context != 'create_event':
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message='Invalid attempt to use function in improper self.current_context.',
+            )
+
+        if self.audio_clip is None or self.event is None:
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message="Missing required values."
+            )
+
+        #don't have to check if audio_clip belongs to user
+        #since this is handled at self.get_records_for_normalise()
+
+        #check event
+
+        if self.event.generic_status.generic_status_name not in ['processing', 'incomplete']:
+
+            return Response(
+                data={
+                    "message": "Event is unavailable.",
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        #check audio_clip
+
+        if (
+            self.audio_clip.user.id == self.user.id and
+            self.audio_clip.generic_status.generic_status_name == 'processing' and
+            self.audio_clip.audio_duration_s == 0 and
+            len(self.audio_clip.audio_file) > 0 and
+            len(self.audio_clip.audio_volume_peaks) == 0
+        ):
+
+            #not yet processed
+            pass
+
+        elif (
+            self.audio_clip.user.id == self.user.id and
+            self.audio_clip.generic_status.generic_status_name == 'ok' and
+            self.audio_clip.audio_duration_s > 0 and
+            len(self.audio_clip.audio_file) > 0 and
+            len(self.audio_clip.audio_volume_peaks) > 0
+        ):
+
+            #already processed
+            return Response(
+                data={
+                    "message": "Recording is already processed.",
+                    "is_processed": True,
+                },
+                status=status.HTTP_200_OK
+            )
+
+        else:
+
+            #should never reach here
+            raise custom_error(
+                ValueError,
+                __name__,
+                user_message='This recording could not be processed.',
+            )
+
+        #check cache on whether we've called lambda before
+
+        target_cache_key = self.determine_processing_cache_key(self.audio_clip.id)
+
+        lambda_when_last_called = cache.get(target_cache_key, None)
+
+        if (
+            lambda_when_last_called is None or
+            get_datetime_difference_s(
+                self.datetime_now,
+                get_datetime_from_string(lambda_when_last_called)
+            ) >= int(os.environ['AWS_LAMBDA_NORMALISE_TIMEOUT_S'])
+        ):
+
+            #either haven't called, or called quite long ago
+            #can call again
+            return None
+
+        else:
+
+            #call later
+            return Response(
+                data={
+                    "message": "Recording is still processing.",
+                    "is_processed": False,
+                },
+                status=status.HTTP_200_OK
+            )
+
+
+    def _check_can_normalise_responder(self)->None|Response:
+
+        #we don't check EventReplyQueues, as it is irrelevant here, and is not guaranteed to exist
+
+        if self.current_context != 'create_reply':
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message='Invalid attempt to use function in improper self.current_context.',
+            )
+
+        if self.audio_clip is None or self.event is None:
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message="Missing required records."
+            )
+
+        #audio_clip is guaranteed by self.get_records_for_normalise_responder() to belong to request.user
+
+        #check event
+
+        if self.event.generic_status.generic_status_name not in ['incomplete', 'completed']:
+
+            return Response(
+                data={
+                    "message": "Event is unavailable.",
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        #check audio_clip
+
+        if (
+            self.audio_clip.user.id == self.user.id and
+            self.audio_clip.generic_status.generic_status_name == 'processing' and
+            self.audio_clip.audio_duration_s == 0 and
+            len(self.audio_clip.audio_file) > 0 and
+            len(self.audio_clip.audio_volume_peaks) == 0
+        ):
+
+            #not yet processed
+            pass
+
+        elif (
+            self.audio_clip.user.id == self.user.id and
+            self.audio_clip.generic_status.generic_status_name == 'ok' and
+            self.audio_clip.audio_duration_s > 0 and
+            len(self.audio_clip.audio_file) > 0 and
+            len(self.audio_clip.audio_volume_peaks) > 0
+        ):
+
+            #already processed
+            return Response(
+                data={
+                    "message": "Recording is already processed.",
+                    "is_processed": True,
+                },
+                status=status.HTTP_200_OK
+            )
+
+        else:
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                user_message='This recording could not be processed.',
+            )
+
+        #check cache on whether we've called lambda before
+
+        target_cache_key = self.determine_processing_cache_key(self.audio_clip.id)
+
+        lambda_when_last_called = cache.get(target_cache_key, None)
+
+        if (
+            lambda_when_last_called is None or
+            get_datetime_difference_s(
+                self.datetime_now,
+                get_datetime_from_string(lambda_when_last_called)
+            ) >= int(os.environ['AWS_LAMBDA_NORMALISE_TIMEOUT_S'])
+        ):
+
+            #either haven't called, or called quite long ago
+            #can call again
+            return None
+
+        else:
+
+            #call later
+            return Response(
+                data={
+                    "message": "Recording is still processing.",
+                    "is_processed": False,
+                },
+                status=status.HTTP_200_OK
+            )
+
+
+    def _initialise_s3_post_wrapper(self):
+
+        self.s3_post_wrapper = S3PostWrapper(
+            is_ec2=self.is_ec2,
+            allowed_unprocessed_file_extensions=self.unprocessed_file_extensions,
+            region_name=os.environ['AWS_S3_REGION_NAME'],
+            unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
+            s3_audio_file_max_size_b=int(os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B']),
+            url_expiry_s=int(os.environ['AWS_S3_UPLOAD_URL_EXPIRY_S']),
+            aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
+        )
+
+
+    def _initialise_lambda_wrapper(self):
+
+        self.lambda_wrapper = AWSLambdaWrapper(
+            is_ec2=self.is_ec2,
+            timeout_s=int(int(os.environ['AWS_LAMBDA_NORMALISE_TIMEOUT_S'])),
+            region_name=os.environ['AWS_LAMBDA_REGION_NAME'],
+            aws_access_key_id=os.environ['AWS_LAMBDA_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['AWS_LAMBDA_SECRET_ACCESS_KEY'],
+        )
+
+
+    #creates event + audio_clip, returns audio_clip.id
+    #returns 201, every call will create new records
+    def create_records_and_return_s3_endpoint_as_originator(
+        self,
+        event_name:str,
+        audio_clip_tone_id:int,
+        recorded_file_extension:str,
+    )->Response:
+
+        if self.current_context != "create_event":
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message="Invalid self.current_context."
+            )
+
+        #perform checks
+
+        error_response = self._check_can_upload_originator()
+
+        if error_response is not None:
+
+            return error_response
 
         #proceed
 
@@ -1907,19 +2238,6 @@ class CreateAudioClips():
             created_by=self.user,
         )
 
-        #create audio_clip, as "processing"
-        #we update audio_volume_peaks, audio_duration_s, and audio_file later
-        self.audio_clip = AudioClips.objects.create(
-            user=self.user,
-            audio_clip_role=audio_clip_role,
-            audio_clip_tone=audio_clip_tone,
-            event=self.event,
-            audio_volume_peaks=[],
-            audio_duration_s=0,
-            audio_file='',
-            generic_status=generic_status_processing
-        )
-
         #s3
 
         self._initialise_s3_post_wrapper()
@@ -1931,25 +2249,38 @@ class CreateAudioClips():
             file_extension=recorded_file_extension
         )
 
-        upload_info = self.s3_post_wrapper.generate_presigned_post_url(key=upload_key)
+        #create AudioClips
 
-        #save key as audio_file
-        #currently has file extension of unprocessed file
-        self.audio_clip.audio_file = upload_key
-        self.audio_clip.save()
+        #we update audio_volume_peaks and audio_duration_s during processing, not here
+        #audio_file currently has file extension of unprocessed file
+        self.audio_clip = AudioClips.objects.create(
+            user=self.user,
+            audio_clip_role=audio_clip_role,
+            audio_clip_tone=audio_clip_tone,
+            event=self.event,
+            audio_volume_peaks=[],
+            audio_duration_s=0,
+            audio_file=upload_key,
+            generic_status=generic_status_processing
+        )
+
+        upload_info = self.s3_post_wrapper.generate_presigned_post_url(
+            key=upload_key,
+            file_extension=recorded_file_extension,
+        )
 
         return Response(
             data={
-                'data': {
-                    'upload_url': upload_info['url'],
-                    'upload_fields': json.dumps(upload_info['fields']),
-                    'audio_clip_id': self.audio_clip.id,
-                }
+                'upload_url': upload_info['url'],
+                'upload_fields': json.dumps(upload_info['fields']),
+                'audio_clip_id': self.audio_clip.id,
             },
             status=status.HTTP_201_CREATED
         )
 
 
+    #creates event + audio_clip, returns audio_clip.id
+    #returns 201, first call will create new records, or return existing records
     def create_records_and_return_s3_endpoint_as_responder(
         self,
         event_id:int,
@@ -1962,45 +2293,64 @@ class CreateAudioClips():
             raise custom_error(
                 ValueError,
                 __name__,
-                dev_message="Invalid current_context."
+                dev_message="Invalid self.current_context."
             )
 
-        #get queue
+        #get records
 
-        self._get_event_reply_queue(event_id)
+        error_response = self._get_records_for_upload_responder(event_id=event_id)
+
+        if error_response is not None:
+
+            return error_response
 
         #perform checks
 
-        if self._check_user_can_create_reply() is False:
+        error_response = self._check_can_upload_responder()
 
-            return Response(
-                data={
-                    'data': {
-                        'message': 'This event can no longer be replied to.',
-                    }
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        if error_response is not None:
+
+            return error_response
 
         #no need to check for daily reply limit here
         #as that is enforced when listing choices
 
         #can reply, proceed
 
-        audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='responder')
-        audio_clip_tone = AudioClipTones.objects.get(pk=audio_clip_tone_id)
-        generic_status_processing = GenericStatuses.objects.get(generic_status_name='processing')
+        #check if AudioClips has already been created
+        #if exists, we disregard GenericStatus, let frontend call normalise and check there
 
-        self.audio_clip = AudioClips.objects.create(
-            user=self.user,
-            audio_clip_role=audio_clip_role,
-            audio_clip_tone=audio_clip_tone,
-            event_id=event_id,
-            audio_volume_peaks=[],
-            audio_duration_s=0,
-            audio_file='',
-            generic_status=generic_status_processing
-        )
+        try:
+
+            #for idempotency, don't include allowed changes in .get()
+            self.audio_clip = AudioClips.objects.get(
+                user=self.user,
+                audio_clip_role__audio_clip_role_name='responder',
+                event_id=event_id,
+            )
+
+            #row exists
+
+            #save allowed changes
+            if self.audio_clip.audio_clip_tone_id != audio_clip_tone_id:
+
+                self.audio_clip.audio_clip_tone_id = audio_clip_tone_id
+                self.audio_clip.save()
+
+            #return only audio_clip_id, check if other fields exists in frontend
+            #call self.regenerate_s3_endpoint()
+            return Response(
+                data={
+                    'audio_clip_id': self.audio_clip.id,
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except AudioClips.DoesNotExist:
+
+            pass
+
+        #AudioClips does not exist, proceed
 
         #s3
 
@@ -2013,20 +2363,33 @@ class CreateAudioClips():
             file_extension=recorded_file_extension
         )
 
-        upload_info = self.s3_post_wrapper.generate_presigned_post_url(key=upload_key)
+        #create audio_clips
 
-        #save key as audio_file
-        #currently has file extension of unprocessed file
-        self.audio_clip.audio_file = upload_key
-        self.audio_clip.save()
+        generic_status_processing = GenericStatuses.objects.get(generic_status_name='processing')
+        audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='responder')
+        audio_clip_tone = AudioClipTones.objects.get(pk=audio_clip_tone_id)
+
+        self.audio_clip = AudioClips.objects.create(
+            user=self.user,
+            audio_clip_role=audio_clip_role,
+            audio_clip_tone=audio_clip_tone,
+            event_id=event_id,
+            audio_volume_peaks=[],
+            audio_duration_s=0,
+            audio_file=upload_key,
+            generic_status=generic_status_processing
+        )
+
+        upload_info = self.s3_post_wrapper.generate_presigned_post_url(
+            key=upload_key,
+            file_extension=recorded_file_extension,
+        )
 
         return Response(
             data={
-                'data': {
-                    'upload_url': upload_info['url'],
-                    'upload_fields': json.dumps(upload_info['fields']),
-                    'audio_clip_id': self.audio_clip.id,
-                }
+                'upload_url': upload_info['url'],
+                'upload_fields': json.dumps(upload_info['fields']),
+                'audio_clip_id': self.audio_clip.id,
             },
             status=status.HTTP_201_CREATED
         )
@@ -2051,8 +2414,6 @@ class CreateAudioClips():
 
             return Response(
                 data={
-                    'data': {
-                    }
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
@@ -2065,11 +2426,9 @@ class CreateAudioClips():
 
         return Response(
             data={
-                'data': {
-                    'upload_url': upload_info['url'],
-                    'upload_fields': json.dumps(upload_info['fields']),
-                    'audio_clip_id': audio_clip_id,
-                }
+                'upload_url': upload_info['url'],
+                'upload_fields': json.dumps(upload_info['fields']),
+                'audio_clip_id': audio_clip_id,
             },
             status=status.HTTP_200_OK
         )
@@ -2077,36 +2436,64 @@ class CreateAudioClips():
 
     def normalise_and_update_records(self, audio_clip_id:int)->Response:
 
-        #get records, particularly AudioClips and Events
+        #return is_processed=bool in response where appropriate
 
-        self._get_records_for_normalise(audio_clip_id)
+        #get relevant records
+
+        error_response = None
+
+        if self.current_context == 'create_event':
+
+            error_response = self._get_records_for_normalise_originator(audio_clip_id=audio_clip_id)
+
+        elif self.current_context == 'create_reply':
+
+            error_response = self._get_records_for_normalise_responder(audio_clip_id=audio_clip_id)
+
+        if error_response is not None:
+
+            return error_response
+
+        #check
+
+        error_response = None
+
+        if self.current_context == 'create_event':
+
+            error_response = self._check_can_normalise_originator()
+
+        elif self.current_context == 'create_reply':
+
+            error_response = self._check_can_normalise_responder()
+
+        if error_response is not None:
+
+            return error_response
 
         #determine processed upload_key from unprocessed
         #simply by switching extension
 
         determined_processed_upload_key = self._determine_processed_upload_key()
 
-        #check whether can normalise
+        if determined_processed_upload_key == '':
 
-        if (
-            determined_processed_upload_key == '' and
-            self._check_can_normalise() is False
-        ):
-
-            return Response(
-                data={
-                    "message": "Recording was successfully processed.",
-                },
-                status=status.HTTP_201_CREATED
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message="Unexpected unprocessed audio_clip with processed audio_file. AudioClips.id: " + str(self.audio_clip.id),
             )
-
-        #no need to check event_reply_queue,
-        #since most cases would call this directly after part 1, and part 1 does check it
-        #also, Celery tasks will still check it for us
 
         #call Lambda to normalise and transfer file to processed bucket
 
         self._initialise_lambda_wrapper()
+
+        #record when lambda is called
+
+        target_cache_key = self.determine_processing_cache_key(self.audio_clip.id)
+
+        cache.set(target_cache_key, get_datetime_now(to_string=True))
+
+        #call lambda
 
         #refer to AWSLambdaNormaliseAudioClips.create_return_response()
         #when ok, will always return 200
@@ -2118,7 +2505,12 @@ class CreateAudioClips():
             processed_bucket_name=os.environ['AWS_S3_MEDIA_BUCKET_NAME'],
         )
 
+        #delete lambda call record from cache
+
+        cache.delete(target_cache_key)
+
         #validate lambda response
+        #may take a while, so consider cronjobs and race conditions that may affect db rows
 
         serializer = AWSLambdaNormaliseAudioClipsAPISerializer(data=lambda_response_data, many=False)
 
@@ -2153,7 +2545,11 @@ class CreateAudioClips():
         self.audio_clip.audio_file = determined_processed_upload_key
         self.audio_clip.generic_status = generic_status_ok
 
-        self.audio_clip.save()
+        #small chance of still-processing audio_clip to be deleted by cronjob for being overdue
+        #select_for_update() will prevent cronjob's deletion, but force_update=True feels reassuring
+        #use force_update=True to prevent save() from creating new row
+        #will raise a generic DatabaseError if already deleted
+        self.audio_clip.save(force_update=True)
 
         #if originator, update event from 'processing' to 'incomplete'
         #if responder, update event from 'incomplete' to 'completed'
@@ -2161,15 +2557,21 @@ class CreateAudioClips():
         if self.audio_clip.audio_clip_role.audio_clip_role_name == 'originator':
 
             self.event.generic_status = GenericStatuses.objects.get(generic_status_name='incomplete')
+            self.event.save()
 
         elif self.audio_clip.audio_clip_role.audio_clip_role_name == 'responder':
 
             self.event.generic_status = GenericStatuses.objects.get(generic_status_name='completed')
+            self.event.save()
 
-            #remove event_reply_queue
-            self._get_event_reply_queue(self.event.id)
-            self.event_reply_queue.delete()
-            self.event_reply_queue = None
+            #cannot guarantee that EventReplyQueue still exists
+            #not an issue, as processing deals only with AudioClip itself
+            #hence, if EventReplyQueue still exists, just delete
+
+            EventReplyQueues.objects.filter(
+                event_id=self.event.id,
+                locked_for_user=self.user
+            ).delete()
 
         else:
 
@@ -2180,13 +2582,9 @@ class CreateAudioClips():
                 user_message='Something went wrong. Try again later.'
             )
 
-        self.event.save()
-
         return Response(
             data={
-                "data": {
-                    "event_id": self.event.id,
-                },
+                "event_id": self.event.id,
                 "message": "Recording was successfully uploaded.",
             },
             status=status.HTTP_200_OK

@@ -43,12 +43,32 @@ from voicewake.models import *
 from voicewake.serializers import *
 from voicewake.services import *
 import voicewake.decorators as app_decorators
-# import voicewake.factories as app_factories
+import voicewake.factories as app_factories
 from django.conf import settings
 
 #specifically just for error handling
 from psycopg.errors import UniqueViolation
 from django.db.utils import IntegrityError
+
+
+
+#all APIs should stay consistent to this response format:
+    #return Response(
+    #    data={
+    #        'message': '',
+    #        'data': [CustomSerializer(instance=db_rows, many=True).data],
+    #        'arbitrary_value': 1,
+    #    },
+    #    status=status.HTTP_400_BAD_REQUEST
+    #)
+
+
+
+#extra ideas for features
+#increased creative competition
+    #have limited events for this category
+    #24 hours to create + reply, another 24 hours to vote
+    #fun acknowledgement on voting correctly
 
 
 
@@ -1869,30 +1889,30 @@ class CreateEventsAPI(generics.GenericAPIView):
 
         new_data = serializer.validated_data
 
-        #ok, proceed
-
-        create_audio_clips_class = CreateAudioClips(
-            user=self.request.user,
-            is_ec2=os.environ['IS_EC2'],
-            current_context='create_event',
-            unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES,
-            processed_file_extension=settings.AUDIO_CLIP_PROCESSED_FILE_TYPE,
-            event_create_daily_limit=settings.EVENT_CREATE_DAILY_LIMIT,
-            event_reply_daily_limit=settings.EVENT_REPLY_DAILY_LIMIT,
-            event_reply_expiry_seconds=settings.EVENT_REPLY_MAX_DURATION_S,
-        )
-
-        #if regenerate URL, no need .atomic()
-
-        if self.current_context == 'regenerate_upload_url':
-
-            return create_audio_clips_class.regenerate_s3_endpoint(
-                audio_clip_id=new_data['audio_clip_id'],
-            )
-
         #proceed
 
         try:
+
+            create_audio_clips_class = CreateAudioClips(
+                user=self.request.user,
+                is_ec2=os.environ['IS_EC2'],
+                current_context='create_event',
+                unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS,
+                processed_file_extension=os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
+                event_create_daily_limit=settings.EVENT_CREATE_DAILY_LIMIT,
+                event_reply_daily_limit=settings.EVENT_REPLY_DAILY_LIMIT,
+                event_reply_expiry_seconds=settings.EVENT_REPLY_MAX_DURATION_S,
+            )
+
+            #if regenerate URL, no need .atomic()
+
+            if self.current_context == 'regenerate_upload_url':
+
+                return create_audio_clips_class.regenerate_s3_endpoint(
+                    audio_clip_id=new_data['audio_clip_id'],
+                )
+
+            #proceed
 
             with transaction.atomic():
 
@@ -2083,7 +2103,8 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
         bulk_event_reply_queues = EventReplyQueues.objects.bulk_create(bulk_event_reply_queues)
 
         #prevent repeated queue
-        #we do this here to encourage choosing the best audio_clip room, while leaving the other good ones for other users
+        #we do this here to encourage choosing the best audio_clip room,
+        #while leaving the other good ones for other users
         prevent_events_from_queuing_twice_for_reply(
             self.request.user,
             bulk_events
@@ -2222,35 +2243,36 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
                     status=status.HTTP_200_OK
                 )
 
-        #no existing reply choices, so check reply daily limit
-        #borrow the check from CreateAudioClips
-
-        create_audio_clips_class = CreateAudioClips(
-            user=self.request.user,
-            is_ec2=os.environ['IS_EC2'],
-            current_context='create_reply',
-            unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES,
-            processed_file_extension=settings.AUDIO_CLIP_PROCESSED_FILE_TYPE,
-            event_create_daily_limit=settings.EVENT_CREATE_DAILY_LIMIT,
-            event_reply_daily_limit=settings.EVENT_REPLY_DAILY_LIMIT,
-            event_reply_expiry_seconds=settings.EVENT_REPLY_MAX_DURATION_S,
-        )
-
-        cooldown_s = create_audio_clips_class.get_cooldown_on_audio_clip_create_limit_s()
-
-        if cooldown_s > 0:
-
-            return Response(
-                data={
-                    'message': "Come back in " + get_pretty_datetime(cooldown_s) + "!",
-                    'event_reply_daily_limit_reached': True,
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        #proceed with getting new reply choices
+        #no existing reply choices, proceed
 
         try:
+
+            create_audio_clips_class = CreateAudioClips(
+                user=self.request.user,
+                is_ec2=os.environ['IS_EC2'],
+                current_context='create_reply',
+                unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS,
+                processed_file_extension=os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
+                event_create_daily_limit=settings.EVENT_CREATE_DAILY_LIMIT,
+                event_reply_daily_limit=settings.EVENT_REPLY_DAILY_LIMIT,
+                event_reply_expiry_seconds=settings.EVENT_REPLY_MAX_DURATION_S,
+            )
+
+            #check reply daily limit
+
+            cooldown_s = create_audio_clips_class.get_cooldown_on_audio_clip_create_limit_s()
+
+            if cooldown_s > 0:
+
+                return Response(
+                    data={
+                        'message': "Come back in " + get_pretty_datetime(cooldown_s) + "!",
+                        'event_reply_daily_limit_reached': True,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            #proceed with getting new reply choices
 
             with transaction.atomic():
 
@@ -2321,7 +2343,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
         super().__init__(*args, **kwargs)
 
 
-    def check_user_is_replying_in_other_events(self, excluded_event_id:int=None)->bool:
+    def _check_user_is_replying_in_other_events(self, excluded_event_id:int=None)->bool:
 
         if excluded_event_id is not None:
 
@@ -2344,7 +2366,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
         return the_count > 0
 
 
-    def unlock_reply_choices(self, excluded_event_id:int=None):
+    def _unlock_reply_choices(self, excluded_event_id:int=None):
 
         if excluded_event_id is not None:
 
@@ -2366,7 +2388,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
     def start_reply_in_event(self, event_id:int):
 
         #check if user is replying to any other event
-        if self.check_user_is_replying_in_other_events(excluded_event_id=event_id) is True:
+        if self._check_user_is_replying_in_other_events(excluded_event_id=event_id) is True:
 
             return Response(
                 data={
@@ -2445,7 +2467,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
         #not yet expired, proceed
 
         #unlock other reply choices
-        self.unlock_reply_choices(excluded_event_id=target_event_reply_queue.event_id)
+        self._unlock_reply_choices(excluded_event_id=target_event_reply_queue.event_id)
 
         #user is officially replying
         target_event_reply_queue.when_locked = datetime_now
@@ -2467,15 +2489,10 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
 
     #as long as EventReplyQueue for correct locked_for_user and event_id exists, delete
-    #no need to check for further details
+    #don't delete AudioClips that are still processing
+        #let cronjob catch them when overdue
+        #we want to let processing AudioClip to complete, even when user cancels halfway through
     def cancel_reply_in_event(self, event_id:int):
-
-        AudioClips.objects.filter(
-            user_id=self.request.user.id,
-            event_id=event_id,
-            audio_clip_role__audio_clip_role_name='responder',
-            generic_status__generic_status_name='processing',
-        ).delete()
 
         deleted_count, deleted_rows = EventReplyQueues.objects.filter(
             locked_for_user=self.request.user,
@@ -2548,32 +2565,37 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
         #proceed
 
-        create_audio_clips_class = None
-
-        if self.current_context in ['upload', 'regenerate_upload_url', 'process']:
-
-            create_audio_clips_class = CreateAudioClips(
-                user=self.request.user,
-                is_ec2=os.environ['IS_EC2'],
-                current_context='create_event',
-                unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES,
-                processed_file_extension=settings.AUDIO_CLIP_PROCESSED_FILE_TYPE,
-                event_create_daily_limit=settings.EVENT_CREATE_DAILY_LIMIT,
-                event_reply_daily_limit=settings.EVENT_REPLY_DAILY_LIMIT,
-                event_reply_expiry_seconds=settings.EVENT_REPLY_MAX_DURATION_S,
-            )
-
-        #if regenerate URL, no need .atomic()
-
-        if self.current_context == 'regenerate_upload_url':
-
-            return create_audio_clips_class.regenerate_s3_endpoint(
-                audio_clip_id=new_data['audio_clip_id'],
-            )
-
-        #proceed
-
         try:
+
+            create_audio_clips_class = None
+
+            if self.current_context in ['upload', 'regenerate_upload_url', 'process']:
+
+                create_audio_clips_class = CreateAudioClips(
+                    user=self.request.user,
+                    is_ec2=os.environ['IS_EC2'],
+                    current_context='create_reply',
+                    unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS,
+                    processed_file_extension=os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
+                    event_create_daily_limit=settings.EVENT_CREATE_DAILY_LIMIT,
+                    event_reply_daily_limit=settings.EVENT_REPLY_DAILY_LIMIT,
+                    event_reply_expiry_seconds=settings.EVENT_REPLY_MAX_DURATION_S,
+                )
+
+            #actions with no requirement for transaction.atomic()
+
+            if self.current_context == 'regenerate_upload_url':
+
+                return create_audio_clips_class.regenerate_s3_endpoint(
+                    audio_clip_id=new_data['audio_clip_id'],
+                )
+
+            elif self.current_context == "cancel":
+
+                #delete event_reply_queue
+                return self.cancel_reply_in_event(new_data['event_id'])
+
+            #proceed
 
             with transaction.atomic():
 
@@ -2595,11 +2617,6 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                     return create_audio_clips_class.normalise_and_update_records(
                         audio_clip_id=new_data['audio_clip_id'],
                     )
-
-                elif self.current_context == "cancel":
-
-                    #delete event_reply_queue
-                    return self.cancel_reply_in_event(new_data['event_id'])
 
         except AudioClipTones.DoesNotExist:
 
@@ -2629,24 +2646,6 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        except TimeoutError as e:
-
-            return Response(
-                data={
-                    'message': get_user_message_from_custom_error(e),
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        except ValueError as e:
-
-            return Response(
-                data={
-                    'message': get_user_message_from_custom_error(e),
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
         except subprocess.CalledProcessError as e:
 
             return Response(
@@ -2659,6 +2658,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
         except Exception as e:
 
             traceback.print_exc()
+            print(e)
 
             return Response(
                 data={

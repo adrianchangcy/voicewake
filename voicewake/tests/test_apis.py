@@ -11,6 +11,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUpload
 from django.db.models import Count
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
+from django.core.cache import cache
 
 #py packages
 import io
@@ -27,6 +28,7 @@ import inspect, sys
 import dotenv
 import logging
 import requests
+from threading import Thread
 
 #AWS
 import boto3
@@ -53,6 +55,21 @@ def ensure_otp_is_always_wrong(otp):
         otp = str(int(otp[0]) - 1) + otp[1:]
 
     return otp
+
+
+
+@override_settings(
+    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    MEDIA_ROOT = os.path.join(settings.BASE_DIR, 'voicewake/tests'),
+)
+class Random_TestCase(TestCase):
+
+    def test_random(self):
+
+
+
+        pass
+
 
 
 
@@ -126,8 +143,8 @@ class AWS_TestCase(TestCase):
             is_ec2=False,
             region_name=os.environ['AWS_S3_REGION_NAME'],
             unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
-            s3_audio_file_max_size_b=os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B'],
-            url_expiry_s=os.environ['AWS_S3_UPLOAD_URL_EXPIRY_S'],
+            s3_audio_file_max_size_b=int(os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B']),
+            url_expiry_s=int(os.environ['AWS_S3_UPLOAD_URL_EXPIRY_S']),
             aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
             aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
         )
@@ -160,8 +177,8 @@ class AWS_TestCase(TestCase):
             is_ec2=False,
             region_name=os.environ['AWS_S3_REGION_NAME'],
             unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
-            s3_audio_file_max_size_b=os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B'],
-            url_expiry_s=os.environ['AWS_S3_UPLOAD_URL_EXPIRY_S'],
+            s3_audio_file_max_size_b=int(os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B']),
+            url_expiry_s=int(os.environ['AWS_S3_UPLOAD_URL_EXPIRY_S']),
             aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
             aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
         )
@@ -188,50 +205,6 @@ class AWS_TestCase(TestCase):
             print(e)
 
 
-    def test_upload_policy_does_not_validate_payload(self):
-
-        #policy only validates the file extension of key
-        #policy does not validate actual payload
-        #so key of .mp3, with payload of .wav, will still return 204
-
-        upload_key = 'test/test_upload_wrong_file_extension' + '.mp3'
-
-        s3_wrapper_class = S3PostWrapper(
-            is_ec2=False,
-            region_name=os.environ['AWS_S3_REGION_NAME'],
-            unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
-            s3_audio_file_max_size_b=os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B'],
-            url_expiry_s=os.environ['AWS_S3_UPLOAD_URL_EXPIRY_S'],
-            aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
-            aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
-        )
-
-        upload_info = s3_wrapper_class.generate_presigned_post_url(upload_key)
-
-        upload_url = upload_info['url']
-        upload_fields = upload_info['fields']
-
-        try:
-
-            print(self.test_files['audio_not_mp3']['file'])
-
-            response = self.s3_post_upload(upload_url, upload_fields, self.test_files['audio_not_mp3']['file'])
-
-            print(response)
-
-            #if unexpectedly no error, delete stored file
-
-            response = s3_wrapper_class.delete_object(upload_key)
-
-            self.assertEqual(response['ResponseMetadata']['HTTPStatusCode'], 204)
-
-            raise ValueError('Unexpected upload success.')
-
-        except Exception as e:
-
-            print(e)
-
-
     def test_upload_multiple_same_file_to_same_url(self):
 
         upload_key = 'test/test_upload_more_files_same_url' + '.mp3'
@@ -240,8 +213,8 @@ class AWS_TestCase(TestCase):
             is_ec2=False,
             region_name=os.environ['AWS_S3_REGION_NAME'],
             unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
-            s3_audio_file_max_size_b=os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B'],
-            url_expiry_s=os.environ['AWS_S3_UPLOAD_URL_EXPIRY_S'],
+            s3_audio_file_max_size_b=int(os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B']),
+            url_expiry_s=int(os.environ['AWS_S3_UPLOAD_URL_EXPIRY_S']),
             aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
             aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
         )
@@ -279,11 +252,11 @@ class AWS_TestCase(TestCase):
 
         s3_wrapper_class = S3PostWrapper(
             is_ec2=False,
-            allowed_unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES,
+            allowed_unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS,
             region_name=os.environ['AWS_S3_REGION_NAME'],
             unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
-            s3_audio_file_max_size_b=os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B'],
-            url_expiry_s=os.environ['AWS_S3_UPLOAD_URL_EXPIRY_S'],
+            s3_audio_file_max_size_b=int(os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B']),
+            url_expiry_s=int(os.environ['AWS_S3_UPLOAD_URL_EXPIRY_S']),
             aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
             aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
         )
@@ -332,44 +305,9 @@ class AWS_TestCase(TestCase):
         print(response_data)
 
 
-    def test_pass_none_to_use_instance_credentials(self):
-
-        #do this at lambda
-        #AWS_...=None
-        pass
-
-
     def test_production_bucket_cors_policy_rejected(self):
 
         pass
-
-
-
-
-
-
-    def test_lambda_from_local(self):
-
-        #https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/lambda/client/invoke.html#
-
-        lambda_client = boto3.client(
-            service_name='lambda',
-            region_name=os.environ['AWS_S3_REGION_NAME'],
-            aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
-            aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
-        )
-
-        lambda_payload = json.dumps({"name":"name","age":"age"})
-
-        result = lambda_client.invoke(
-            FunctionName=os.environ['AWS_LAMBDA_TEST_ARN'],
-            InvocationType='RequestResponse',
-            Payload=lambda_payload,
-        )
-
-        print(result)
-
-        #at Lambda, use {}.get() for keys to prevent error when not found
 
 
     def test_lambda_ffprobe_from_local(self):
@@ -449,20 +387,70 @@ class AWS_TestCase(TestCase):
         session = boto3.Session(region_name=os.environ['AWS_S3_REGION_NAME'])
         credentials = session.get_credentials()
         credentials = credentials.get_frozen_credentials()
-        ACCESS_KEY_ID = credentials.access_key
-        ACCESS_SECRET_KEY = credentials.secret_key 
+        print(credentials.access_key)
+        print(credentials.secret_key)
 
 
 
-@override_settings(
-    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
-    MEDIA_ROOT = os.path.join(settings.BASE_DIR, 'voicewake/tests'),
-)
-class Random_TestCase(TestCase):
+class AWSConnections_FromEC2_TestCase(TestCase):
 
-    def test_random(self):
+    @classmethod
+    def setUpTestData(cls):
 
-        pass
+        if os.environ['IS_EC2'] is False:
+
+            raise ValueError('Cannot use this test case outside of EC2.')
+
+
+    def test_rds(self):
+
+        #cannot ping RDS, so just use random query
+        #https://stackoverflow.com/questions/22599172/cant-ping-aws-rds-endpoint
+
+        print(GenericStatuses.objects.all().count())
+
+
+    def test_s3(self):
+
+        s3_wrapper_class = S3PostWrapper(
+            is_ec2=os.environ['IS_EC2'],
+            allowed_unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS,
+            region_name=os.environ['AWS_S3_REGION_NAME'],
+            unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
+            s3_audio_file_max_size_b=int(os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B']),
+            url_expiry_s=int(os.environ['AWS_S3_UPLOAD_URL_EXPIRY_S']),
+            aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
+        )
+
+        check_bucket = s3_wrapper_class.s3_client.head_bucket(
+            Bucket=s3_wrapper_class.unprocessed_bucket_name
+        )
+
+        self.assertEqual(check_bucket['ResponseMetadata']['HTTPStatusCode'], 200)
+
+
+    def test_lambda(self):
+
+        lambda_wrapper_class = AWSLambdaWrapper(
+            is_ec2=os.environ['IS_EC2'],
+            timeout_s=int(int(os.environ['AWS_LAMBDA_NORMALISE_TIMEOUT_S'])),
+            region_name=os.environ['AWS_LAMBDA_REGION_NAME'],
+            aws_access_key_id=os.environ['AWS_LAMBDA_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['AWS_LAMBDA_SECRET_ACCESS_KEY'],
+        )
+
+        response = lambda_wrapper_class.invoke_normalise_audio_clips_lambda(is_ping=True)
+
+        print(response['lambda_status_code'])
+
+
+    def test_redis(self):
+
+        #not sure if can ping ElastiCache for Redis
+        #simple .get() will fail if not connected
+
+        print(cache.get('test_key'))
 
 
 
@@ -851,6 +839,7 @@ class AudioClips_TestCase(TestCase):
             processed_bucket_name=os.environ['AWS_S3_MEDIA_BUCKET_NAME'],
             aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
             aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
+            processed_file_extension=os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
         )
 
         handle_audio_file_class.test_retrieve_unprocessed_audio_file_local(
@@ -916,6 +905,7 @@ class CoreProcess_TestCase(TestCase):
     def tearDownClass(cls):
 
         shutil.rmtree(os.path.join(settings.MEDIA_ROOT, 'audio_clips'), ignore_errors=True)
+        cache.clear()
 
         super().tearDownClass()
 
@@ -983,7 +973,7 @@ class CoreProcess_TestCase(TestCase):
         data={
             'event_name': 'yolo',
             'audio_clip_tone_id': 1,
-            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
         }
 
         request = self.client.post(reverse('create_events_upload_api'), data)
@@ -994,7 +984,7 @@ class CoreProcess_TestCase(TestCase):
         #check data
 
         result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)['data']
+        result_data = json.loads(result_data)
 
         self.assertTrue('upload_url' in result_data)
         self.assertTrue('upload_fields' in result_data)
@@ -1037,7 +1027,7 @@ class CoreProcess_TestCase(TestCase):
         data={
             'event_name': 'yolo',
             'audio_clip_tone_id': 1,
-            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
         }
 
         request = self.client.post(reverse('create_events_upload_api'), data)
@@ -1049,7 +1039,7 @@ class CoreProcess_TestCase(TestCase):
         data={
             'event_name': 'yolo',
             'audio_clip_tone_id': 1,
-            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
         }
 
         request = self.client.post(reverse('create_events_upload_api'), data)
@@ -1059,7 +1049,7 @@ class CoreProcess_TestCase(TestCase):
         #check data
 
         result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)['data']
+        result_data = json.loads(result_data)
 
         self.assertTrue('upload_url' in result_data)
         self.assertTrue('upload_fields' in result_data)
@@ -1109,7 +1099,7 @@ class CoreProcess_TestCase(TestCase):
         data={
             'event_name': 'yolo',
             'audio_clip_tone_id': 1,
-            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
         }
 
         request = self.client.post(reverse('create_events_upload_api'), data)
@@ -1128,7 +1118,7 @@ class CoreProcess_TestCase(TestCase):
             data={
                 'event_name': 'yolo',
                 'audio_clip_tone_id': 1,
-                'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+                'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
             }
 
             request = self.client.post(reverse('create_events_upload_api'), data)
@@ -1143,7 +1133,7 @@ class CoreProcess_TestCase(TestCase):
             data={
                 'event_name': 'yolo',
                 'audio_clip_tone_id': 1,
-                'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+                'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
             }
 
             request = self.client.post(reverse('create_events_upload_api'), data)
@@ -1158,7 +1148,7 @@ class CoreProcess_TestCase(TestCase):
             data={
                 'event_name': 'yolo',
                 'audio_clip_tone_id': 1,
-                'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+                'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
             }
 
             request = self.client.post(reverse('create_events_upload_api'), data)
@@ -1172,7 +1162,7 @@ class CoreProcess_TestCase(TestCase):
 
         data={
             'audio_clip_tone_id': 1,
-            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
         }
 
         request = self.client.post(reverse('create_events_upload_api'), data)
@@ -1181,7 +1171,7 @@ class CoreProcess_TestCase(TestCase):
 
         data={
             'event_name': 'yolo',
-            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
         }
 
         request = self.client.post(reverse('create_events_upload_api'), data)
@@ -1205,7 +1195,7 @@ class CoreProcess_TestCase(TestCase):
         data={
             'event_name': '',
             'audio_clip_tone_id': 1,
-            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
         }
 
         request = self.client.post(reverse('create_events_upload_api'), data)
@@ -1215,7 +1205,7 @@ class CoreProcess_TestCase(TestCase):
         data={
             'event_name': '    ',
             'audio_clip_tone_id': 1,
-            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
         }
 
         request = self.client.post(reverse('create_events_upload_api'), data)
@@ -1225,7 +1215,7 @@ class CoreProcess_TestCase(TestCase):
         data={
             'event_name': 'ha   ha',
             'audio_clip_tone_id': 1,
-            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
         }
 
         request = self.client.post(reverse('create_events_upload_api'), data)
@@ -1235,7 +1225,7 @@ class CoreProcess_TestCase(TestCase):
         data={
             'event_name': 'yolo',
             'audio_clip_tone_id': '1',  #fine
-            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
         }
 
         request = self.client.post(reverse('create_events_upload_api'), data)
@@ -1245,7 +1235,7 @@ class CoreProcess_TestCase(TestCase):
         data={
             'event_name': 'yolo',
             'audio_clip_tone_id': 'b',
-            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
         }
 
         request = self.client.post(reverse('create_events_upload_api'), data)
@@ -1276,7 +1266,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
             audio_clip_generic_status_generic_status_name = 'processing',
         )
 
@@ -1305,7 +1295,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
             audio_clip_generic_status_generic_status_name = 'processing',
         )
 
@@ -1343,7 +1333,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_PROCESSED_FILE_TYPE,
+            audio_file_object_key = 'yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
             audio_clip_generic_status_generic_status_name = 'ok',
         )
 
@@ -1386,7 +1376,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
             audio_clip_generic_status_generic_status_name = 'processing',
         )
 
@@ -1415,7 +1405,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
             audio_clip_generic_status_generic_status_name = 'processing',
         )
 
@@ -1442,7 +1432,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
             audio_clip_generic_status_generic_status_name = 'processing',
         )
 
@@ -1457,54 +1447,12 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 400)
 
         data = {
-            'audio_clip_id': '     1     ',
+            'audio_clip_id': '            ',
         }
 
         request = self.client.post(reverse('create_events_regenerate_upload_url_api'), data)
 
-        self.assertEqual(request.status_code, 200)
-
-
-
-
-
-
-
-
-
-    def test_create_event__process__ok(self):
-
-        #involves AWS Lambda
-        #best to do subsequent real-world requests
-
-        self.login(self.users[0])
-
-        sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='processing',
-        )
-        pass
-
-
-    def test_create_event__process__resubmit_ok(self):
-
-        #involves AWS Lambda
-        #best to do subsequent real-world requests
-
-        self.login(self.users[0])
-
-        sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='incomplete',
-        )
-        pass
-
-
-
-
-
-
-
+        self.assertEqual(request.status_code, 400)
 
 
     def test_create_event__process__already_processed(self):
@@ -1520,7 +1468,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_PROCESSED_FILE_TYPE,
+            audio_file_object_key = 'yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
             audio_clip_generic_status_generic_status_name = 'ok',
         )
 
@@ -1533,10 +1481,10 @@ class CoreProcess_TestCase(TestCase):
         request = self.client.post(reverse('create_events_process_api'), data)
 
         print(request.content)
-        self.assertEqual(request.status_code, 400)
+        self.assertEqual(request.status_code, 200)
 
 
-    def test_create_event__process__nothing_to_process(self):
+    def test_create_event__process__no_rows(self):
 
         self.login(self.users[0])
 
@@ -1549,7 +1497,7 @@ class CoreProcess_TestCase(TestCase):
         request = self.client.post(reverse('create_events_process_api'), data)
 
         print(request.content)
-        self.assertEqual(request.status_code, 400)
+        self.assertEqual(request.status_code, 404)
 
 
     def test_create_event__process__only_own_rows_allowed(self):
@@ -1565,7 +1513,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES[0],
+            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
             audio_clip_generic_status_generic_status_name = 'processing',
         )
 
@@ -1578,7 +1526,7 @@ class CoreProcess_TestCase(TestCase):
         request = self.client.post(reverse('create_events_process_api'), data)
 
         print(request.content)
-        self.assertEqual(request.status_code, 400)
+        self.assertEqual(request.status_code, 404)
 
 
     def test_create_event__process__missing_args(self):
@@ -1594,7 +1542,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_PROCESSED_FILE_TYPE,
+            audio_file_object_key = 'yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
             audio_clip_generic_status_generic_status_name = 'processing',
         )
 
@@ -1621,7 +1569,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_PROCESSED_FILE_TYPE,
+            audio_file_object_key = 'yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
             audio_clip_generic_status_generic_status_name = 'processing',
         )
 
@@ -1671,6 +1619,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
         )
 
         sample_event_1 = self.create_event(
@@ -2050,7 +1999,6 @@ class CoreProcess_TestCase(TestCase):
         new_user_event = UserEvents.objects.get(user=self.users[1], event_id=result_data['data'][0]['event']['id'])
 
         self.assertEqual(EventReplyQueues.objects.all().count(), 1)
-        self.assertNotEqual(EventReplyQueues.objects.first().id, result_data['data'][0]['event']['id'])
         self.assertEqual(UserEvents.objects.all().count(), 2)
         self.assertEqual(new_user_event.event_id, sample_event_1.id)
         self.assertIsNotNone(new_user_event.when_excluded_for_reply)
@@ -2115,7 +2063,6 @@ class CoreProcess_TestCase(TestCase):
         new_user_event = UserEvents.objects.get(user=self.users[1], event_id=result_data['data'][0]['event']['id'])
 
         self.assertEqual(EventReplyQueues.objects.all().count(), 1)
-        self.assertNotEqual(EventReplyQueues.objects.first().id, result_data['data'][0]['event']['id'])
         self.assertEqual(UserEvents.objects.all().count(), 2)
         self.assertEqual(new_user_event.event_id, sample_event_1.id)
         self.assertIsNotNone(new_user_event.when_excluded_for_reply)
@@ -2179,10 +2126,155 @@ class CoreProcess_TestCase(TestCase):
         new_user_event = UserEvents.objects.get(user=self.users[1], event_id=result_data['data'][0]['event']['id'])
 
         self.assertEqual(EventReplyQueues.objects.all().count(), 1)
-        self.assertNotEqual(EventReplyQueues.objects.first().id, result_data['data'][0]['event']['id'])
         self.assertEqual(UserEvents.objects.all().count(), 2)
         self.assertEqual(new_user_event.event_id, sample_event_1.id)
         self.assertIsNotNone(new_user_event.when_excluded_for_reply)
+
+
+    def test_list_reply_choices_has_something_locked_no_unlock_but_still_processing(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=False,
+            when_locked=(get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_CHOICE_MAX_DURATION_S * 2)))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_event_1 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
+        )
+
+        #start
+
+        self.login(self.users[1])
+
+        data = {'unlock_all_locked_events': False}
+
+        request = self.client.post(reverse('list_event_reply_choices_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        new_user_event = UserEvents.objects.get(user=self.users[1], event_id=result_data['data'][0]['event']['id'])
+
+        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
+        self.assertEqual(UserEvents.objects.all().count(), 2)
+        self.assertEqual(new_user_event.event_id, sample_event_1.id)
+        self.assertIsNotNone(new_user_event.when_excluded_for_reply)
+
+
+    def test_list_reply_choices_has_something_locked_has_unlock_but_still_processing(self):
+
+        #AudioClips that are still processing should be irrelevant
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_event_1 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_2 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
+        )
+
+        #start
+
+        self.login(self.users[1])
+
+        data = {'unlock_all_locked_events': True}
+
+        request = self.client.post(reverse('list_event_reply_choices_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        new_user_event = UserEvents.objects.get(user=self.users[1], event_id=result_data['data'][0]['event']['id'])
+
+        self.assertEqual(new_user_event.event_id, sample_event_1.id)
+        self.assertIsNotNone(new_user_event.when_excluded_for_reply)
+        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
+        self.assertEqual(UserEvents.objects.all().count(), 2)
+        self.assertEqual(
+            AudioClips.objects.get(pk=sample_audio_clip_1.id).generic_status.generic_status_name,
+            'processing'
+        )
 
 
     def test_start_reply_ok(self):
@@ -2232,12 +2324,12 @@ class CoreProcess_TestCase(TestCase):
         event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.users[1], event_id=sample_event_0.id)
 
         self.assertTrue(event_reply_queue.is_replying)
-        self.assertEqual(result_data['data'][0]['event_id'], event_reply_queue.event_id)
+        self.assertEqual(result_data['data']['event_id'], event_reply_queue.event_id)
         self.assertEqual(
-            datetime.strptime(result_data['data'][0]['when_locked'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=ZoneInfo('UTC')),
+            datetime.strptime(result_data['data']['when_locked'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=ZoneInfo('UTC')),
             event_reply_queue.when_locked
         )
-        self.assertEqual(result_data['data'][0]['is_replying'], event_reply_queue.is_replying)
+        self.assertEqual(result_data['data']['is_replying'], event_reply_queue.is_replying)
 
 
     def test_start_reply_with_missing_args(self):
@@ -2338,117 +2430,6 @@ class CoreProcess_TestCase(TestCase):
         self.assertFalse(event_reply_queue.is_replying)
 
 
-    def test_list_new_event_with_started_reply_no_unlock(self):
-
-        #prepare data
-
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
-        )
-
-        sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=sample_event_0,
-        )
-
-        sample_event_reply_queue_0 = self.create_event_reply_queue(
-            event_id=sample_event_0.id,
-            locked_for_user_id=self.users[1].id,
-            is_replying=True,
-            when_locked=(get_datetime_now() - timedelta(seconds=0))
-        )
-
-        sample_user_event_0 = self.create_user_event(
-            self.users[1].id,
-            sample_event_0.id,
-            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
-        )
-
-        #start
-
-        self.login(self.users[1])
-
-        data = {'unlock_all_locked_events': False}
-
-        request = self.client.post(reverse('list_event_reply_choices_api'), data)
-
-        self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
-
-        #check
-
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
-
-        self.assertEqual(sample_event_0.id, result_data['data'][0]['event']['id'])
-        self.assertEqual(UserEvents.objects.all().count(), 1)
-        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
-        self.assertEqual(EventReplyQueues.objects.first().id, sample_event_reply_queue_0.id)
-
-
-    def test_list_new_event_with_started_reply_has_unlock(self):
-
-        #prepare data
-
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
-        )
-
-        sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=sample_event_0,
-        )
-
-        sample_event_reply_queue_0 = self.create_event_reply_queue(
-            event_id=sample_event_0.id,
-            locked_for_user_id=self.users[1].id,
-            is_replying=True,
-            when_locked=(get_datetime_now() - timedelta(seconds=0))
-        )
-
-        sample_user_event_0 = self.create_user_event(
-            self.users[1].id,
-            sample_event_0.id,
-            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
-        )
-
-        sample_event_1 = self.create_event(
-            self.users[0],
-            "incomplete"
-        )
-
-        sample_audio_clip_1 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=sample_event_1,
-        )
-
-        #start
-
-        self.login(self.users[1])
-
-        data = {'unlock_all_locked_events': True}
-
-        request = self.client.post(reverse('list_event_reply_choices_api'), data)
-
-        self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
-
-        #check
-
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
-
-        self.assertNotEqual(sample_event_0.id, result_data['data'][0]['event']['id'])
-        self.assertEqual(UserEvents.objects.all().count(), 2)
-        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
-        self.assertNotEqual(EventReplyQueues.objects.first().id, sample_event_reply_queue_0.id)
-
-
     def test_start_reply_but_never_queued(self):
 
         #prepare data
@@ -2546,12 +2527,12 @@ class CoreProcess_TestCase(TestCase):
             "deleted"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
-            generic_status_name="deleted",
-            is_banned=True,
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user = self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
+            audio_clip_event = sample_event_0,
+            audio_clip_generic_status_generic_status_name = 'deleted',
+            audio_clip_is_banned = True,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2595,7 +2576,7 @@ class CoreProcess_TestCase(TestCase):
         )
 
 
-    def test_start_reply_for_someone_else(self):
+    def test_start_reply_only_own_rows_allowed(self):
 
         #prepare data
 
@@ -2654,77 +2635,15 @@ class CoreProcess_TestCase(TestCase):
         self.assertFalse(UserEvents.objects.filter(user=self.users[1]).exists())
 
 
+    def test_create_reply__upload__ok(self):
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def test_create_reply__upload__resubmit_deny(self):
-    pass
-
-
-def test_create_reply__upload__never_queued_for_it(self):
-    pass
-
-
-def test_create_reply__upload__not_locked_not_replying(self):
-    pass
-
-
-def test_create_reply__upload__is_locked_not_replying(self):
-    pass
-
-
-def test_create_reply__upload__is_locked_is_replying_ok(self):
-    pass
-
-
-def test_create_reply__upload__is_locked_is_replying_is_expired(self):
-    pass
-
-
-def test_create_reply__upload__event_is_banned(self):
-    pass
-
-
-def test_create_reply__upload__missing_args(self):
-    pass
-
-
-def test_create_reply__upload__faulty_args(self):
-    pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-    def test_create_reply_ok(self):
+        self.login(self.users[1])
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -2748,174 +2667,128 @@ def test_create_reply__upload__faulty_args(self):
 
         #start
 
-        self.login(self.users[1])
-
         data = {
             'event_id': sample_event_0.id,
-            'audio_clip_tone_id': self.audio_clip_tone.id,
-            'audio_file': self.get_audio_file(),
+            'audio_clip_tone_id': 1,
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
         }
 
-        request = self.client.post(reverse('create_replies_api'), data)
+        request = self.client.post(reverse('create_replies_upload_api'), data)
 
-        self.assertEqual(request.status_code, 201)
         print_function_name(request.content)
+        self.assertEqual(request.status_code, 201)
 
         #check
 
         result_data = (bytes(request.content).decode())
         result_data = json.loads(result_data)
 
-        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
-        self.assertEqual(Events.objects.count(), 1)
-        self.assertEqual(AudioClips.objects.count(), 2)
+        self.assertTrue('upload_url' in result_data)
+        self.assertTrue('upload_fields' in result_data)
+        self.assertTrue('key' in json.loads(result_data['upload_fields']))
+        self.assertTrue('audio_clip_id' in result_data)
+
+
+    def test_create_reply__upload__idempotent_ok(self):
+
+        self.login(self.users[1])
+
+        #prepare data
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        #first call
+
+        data = {
+            'event_id': sample_event_0.id,
+            'audio_clip_tone_id': 1,
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+        }
+
+        request = self.client.post(reverse('create_replies_upload_api'), data)
+
+        self.assertEqual(request.status_code, 201)
+
+        #check
+
         self.assertEqual(
-            AudioClips.objects.filter(
-                user_id=self.users[1].id,
-                event_id=sample_event_0.id,
-                audio_clip_role__audio_clip_role_name='responder',
-                audio_clip_tone=self.audio_clip_tone
-            ).count(),
+            AudioClips.objects.filter(user=self.users[1]).count(),
             1
         )
-
-
-    def test_create_reply_with_missing_args(self):
-
-        #prepare data
-
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        self.assertEqual(
+            AudioClips.objects.filter(user=self.users[1]).first().audio_clip_tone_id,
+            data['audio_clip_tone_id']
         )
 
-        sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=sample_event_0,
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        self.assertTrue('upload_url' in result_data)
+        self.assertTrue('upload_fields' in result_data)
+        self.assertTrue('audio_clip_id' in result_data)
+
+        #second call
+
+        data = {
+            'event_id': sample_event_0.id,
+            'audio_clip_tone_id': 2,
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+        }
+
+        request = self.client.post(reverse('create_replies_upload_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+
+        #check
+
+        self.assertEqual(
+            AudioClips.objects.filter(user=self.users[1]).count(),
+            1
+        )
+        self.assertEqual(
+            AudioClips.objects.filter(user=self.users[1]).first().audio_clip_tone_id,
+            data['audio_clip_tone_id']
         )
 
-        sample_event_reply_queue_0 = self.create_event_reply_queue(
-            event_id=sample_event_0.id,
-            locked_for_user_id=self.users[1].id,
-            is_replying=True,
-            when_locked=(get_datetime_now() - timedelta(seconds=0))
-        )
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
 
-        sample_user_event_0 = self.create_user_event(
-            self.users[1].id,
-            sample_event_0.id,
-            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
-        )
+        self.assertFalse('upload_url' in result_data)
+        self.assertFalse('upload_fields' in result_data)
+        self.assertTrue('audio_clip_id' in result_data)
 
-        #start
+
+    def test_create_reply__upload__never_queued_for_it(self):
 
         self.login(self.users[1])
 
-        data = {
-            'audio_clip_tone_id': self.audio_clip_tone.id,
-            'audio_file': self.get_audio_file(),
-        }
-
-        request = self.client.post(reverse('create_replies_api'), data)
-
-        self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
-
-        data = {
-            'event_id': sample_event_0.id,
-            'audio_file': self.get_audio_file(),
-        }
-
-        request = self.client.post(reverse('create_replies_api'), data)
-
-        self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
-
-        data = {
-            'event_id': sample_event_0.id,
-            'audio_clip_tone_id': self.audio_clip_tone.id,
-        }
-
-        request = self.client.post(reverse('create_replies_api'), data)
-
-        self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
-
-
-    def test_create_reply_with_faulty_args(self):
-
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
-        )
-
-        sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=sample_event_0,
-        )
-
-        sample_event_reply_queue_0 = self.create_event_reply_queue(
-            event_id=sample_event_0.id,
-            locked_for_user_id=self.users[1].id,
-            is_replying=True,
-            when_locked=(get_datetime_now() - timedelta(seconds=0))
-        )
-
-        sample_user_event_0 = self.create_user_event(
-            self.users[1].id,
-            sample_event_0.id,
-            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
-        )
-
-        #start
-
-        self.login(self.users[1])
-
-        data = {
-            'event_id': 99999,
-            'audio_clip_tone_id': self.audio_clip_tone.id,
-            'audio_file': self.get_audio_file(),
-        }
-
-        request = self.client.post(reverse('create_replies_api'), data)
-
-        self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
-
-        data = {
-            'event_id': sample_event_0.id,
-            'audio_clip_tone_id': 99999,
-            'audio_file': self.get_audio_file(),
-        }
-
-        request = self.client.post(reverse('create_replies_api'), data)
-
-        self.assertEqual(request.status_code, 404)
-        print_function_name(request.content)
-
-        data = {
-            'event_id': sample_event_0.id,
-            'audio_clip_tone_id': self.audio_clip_tone.id,
-            'audio_file': self.get_bad_file(),
-        }
-
-        request = self.client.post(reverse('create_replies_api'), data)
-
-        self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
-
-
-    def test_create_reply_but_never_queued_for_it(self):
-
-        #prepare data
-
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -2926,27 +2799,27 @@ def test_create_reply__upload__faulty_args(self):
 
         #start
 
-        self.login(self.users[1])
-
         data = {
             'event_id': sample_event_0.id,
-            'audio_clip_tone_id': self.audio_clip_tone.id,
-            'audio_file': self.get_audio_file(),
+            'audio_clip_tone_id': 1,
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
         }
 
-        request = self.client.post(reverse('create_replies_api'), data)
+        request = self.client.post(reverse('create_replies_upload_api'), data)
 
-        self.assertEqual(request.status_code, 400)
         print_function_name(request.content)
+        self.assertEqual(request.status_code, 400)
 
 
-    def test_create_reply_locked_but_not_replying(self):
+    def test_create_reply__upload__is_locked_not_replying(self):
+
+        self.login(self.users[1])
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -2970,36 +2843,125 @@ def test_create_reply__upload__faulty_args(self):
 
         #start
 
-        self.login(self.users[1])
-
         data = {
             'event_id': sample_event_0.id,
-            'audio_clip_tone_id': self.audio_clip_tone.id,
-            'audio_file': self.get_audio_file(),
+            'audio_clip_tone_id': 1,
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
         }
 
-        request = self.client.post(reverse('create_replies_api'), data)
+        request = self.client.post(reverse('create_replies_upload_api'), data)
 
-        self.assertEqual(request.status_code, 400)
         print_function_name(request.content)
-
-        #check
-
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
-
-        self.assertTrue(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
-        self.assertEqual(Events.objects.count(), 1)
-        self.assertEqual(AudioClips.objects.count(), 1)
+        self.assertEqual(request.status_code, 400)
 
 
-    def test_create_reply_for_someone_else(self):
+    def test_create_reply__upload__is_locked_is_replying_is_expired(self):
+
+        self.login(self.users[1])
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_MAX_DURATION_S + 1)))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        #start
+
+        data = {
+            'event_id': sample_event_0.id,
+            'audio_clip_tone_id': 1,
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+        }
+
+        request = self.client.post(reverse('create_replies_upload_api'), data)
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 205)
+
+        #check
+
+        self.assertEqual(EventReplyQueues.objects.all().count(), 0)
+
+
+    def test_create_reply__upload__event_is_banned(self):
+
+        self.login(self.users[1])
+
+        #prepare data
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'deleted',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='deleted',
+            audio_clip_is_banned=True,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        #start
+
+        data = {
+            'event_id': sample_event_0.id,
+            'audio_clip_tone_id': 1,
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+        }
+
+        request = self.client.post(reverse('create_replies_upload_api'), data)
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 400)
+
+        #check
+
+        self.assertEqual(EventReplyQueues.objects.all().count(), 0)
+
+
+    def test_create_reply__upload__for_only_own_rows_allowed(self):
+
+        self.login(self.users[1])
+
+        #prepare data
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -3016,60 +2978,6 @@ def test_create_reply__upload__faulty_args(self):
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.users[2].id,
-            sample_event_0.id,
-            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
-        )
-
-        #start
-
-        self.login(self.users[1])
-
-        data = {
-            'event_id': sample_event_0.id,
-            'audio_clip_tone_id': self.audio_clip_tone.id,
-            'audio_file': self.get_audio_file(),
-        }
-
-        request = self.client.post(reverse('create_replies_api'), data)
-
-        self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
-
-        #check
-
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
-
-        self.assertTrue(EventReplyQueues.objects.filter(locked_for_user=self.users[2], event_id=sample_event_0.id).exists())
-        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
-        self.assertEqual(Events.objects.count(), 1)
-        self.assertEqual(AudioClips.objects.count(), 1)
-
-
-    def test_create_reply_but_expired(self):
-
-        #prepare data
-
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
-        )
-
-        sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=sample_event_0,
-        )
-
-        sample_event_reply_queue_0 = self.create_event_reply_queue(
-            event_id=sample_event_0.id,
-            locked_for_user_id=self.users[1].id,
-            is_replying=True,
-            when_locked=(get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_MAX_DURATION_S * 2)))
-        )
-
-        sample_user_event_0 = self.create_user_event(
             self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
@@ -3077,49 +2985,70 @@ def test_create_reply__upload__faulty_args(self):
 
         #start
 
-        self.login(self.users[1])
+        data = {
+            'event_id': sample_event_0.id,
+            'audio_clip_tone_id': 1,
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+        }
+
+        request = self.client.post(reverse('create_replies_upload_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+
+        #now with current user having own reply
+
+        sample_event_1 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
+        )
+
+        sample_event_reply_queue_1 = self.create_event_reply_queue(
+            event_id=sample_event_1.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_1 = self.create_user_event(
+            self.users[1].id,
+            sample_event_1.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        #start
 
         data = {
             'event_id': sample_event_0.id,
-            'audio_clip_tone_id': self.audio_clip_tone.id,
-            'audio_file': self.get_audio_file(),
+            'audio_clip_tone_id': 1,
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
         }
 
-        request = self.client.post(reverse('create_replies_api'), data)
+        request = self.client.post(reverse('create_replies_upload_api'), data)
 
         self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
-
-        #check
-
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
-
-        self.assertFalse(result_data['can_retry'])
-        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
-        self.assertEqual(Events.objects.count(), 1)
-        self.assertEqual(AudioClips.objects.count(), 1)
-        self.assertEqual(AudioClips.objects.filter(user_id=self.users[1].id).count(), 0)
-        self.assertEqual(UserEvents.objects.filter(user_id=self.users[1].id).count(), 1)
-        sample_event_0.refresh_from_db()
-        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
 
 
-    def test_create_reply_but_event_is_banned(self):
+    def test_create_reply__upload__missing_args(self):
+
+        self.login(self.users[1])
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "deleted"
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
-            generic_status_name="deleted",
-            is_banned=True,
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -3137,30 +3066,655 @@ def test_create_reply__upload__faulty_args(self):
 
         #start
 
-        self.login(self.users[1])
+        data = {
+            'audio_clip_tone_id': 1,
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+        }
+
+        request = self.client.post(reverse('create_replies_upload_api'), data)
+
+        self.assertEqual(request.status_code, 400)
 
         data = {
             'event_id': sample_event_0.id,
-            'audio_clip_tone_id': self.audio_clip_tone.id,
-            'audio_file': self.get_audio_file(),
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
         }
 
-        request = self.client.post(reverse('create_replies_api'), data)
+        request = self.client.post(reverse('create_replies_upload_api'), data)
 
         self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
 
-        #check
+        data = {
+            'event_id': sample_event_0.id,
+            'audio_clip_tone_id': 1,
+        }
+
+        request = self.client.post(reverse('create_replies_upload_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+
+
+    def test_create_reply__upload__faulty_args(self):
+
+        self.login(self.users[1])
+
+        #prepare data
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        #start
+
+        data = {
+            'event_id': 9999,
+            'audio_clip_tone_id': 1,
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+        }
+
+        request = self.client.post(reverse('create_replies_upload_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+
+        data = {
+            'event_id': '',
+            'audio_clip_tone_id': '',
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+        }
+
+        request = self.client.post(reverse('create_replies_upload_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+
+        data = {
+            'event_id': sample_event_0.id,
+            'audio_clip_tone_id': 1,
+            'recorded_file_extension': 'flac',
+        }
+
+        request = self.client.post(reverse('create_replies_upload_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+
+
+    def test_create_reply__regenerate_upload_url__ok(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_replies_regenerate_upload_url_api'), data)
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
+
+
+    def test_create_reply__regenerate_upload_url__resubmit_ok(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_replies_regenerate_upload_url_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+
+        #resubmit
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_replies_regenerate_upload_url_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+
+
+    def test_create_reply__regenerate_upload_url__already_processed(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'completed',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_replies_regenerate_upload_url_api'), data)
+
+        self.assertEqual(request.status_code, 404)
+
+
+    def test_create_reply__regenerate_upload_url__no_rows(self):
+
+        self.login(self.users[0])
+
+        #proceed
+
+        data = {
+            'audio_clip_id': 1,
+        }
+
+        request = self.client.post(reverse('create_replies_regenerate_upload_url_api'), data)
+
+        self.assertEqual(request.status_code, 404)
+
+
+    def test_create_reply__regenerate_upload_url__only_own_rows_allowed(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        #other responder
+
+        sample_event_1 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_2 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_1 = self.create_event_reply_queue(
+            event_id=sample_event_1.id,
+            locked_for_user_id=self.users[2].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_1 = self.create_user_event(
+            self.users[2].id,
+            sample_event_1.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_3 = AudioClipsFactory(
+            audio_clip_user=self.users[2],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_3.id,
+        }
+
+        request = self.client.post(reverse('create_replies_regenerate_upload_url_api'), data)
+
+        print(request.content)
+        self.assertEqual(request.status_code, 404)
+
+
+    def test_create_reply__regenerate_upload_url__missing_args(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        #proceed
+
+        data = {}
+
+        request = self.client.post(reverse('create_replies_regenerate_upload_url_api'), data)
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 400)
+
+
+    def test_create_reply__regenerate_upload_url__faulty_args(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': '1a',
+        }
+
+        request = self.client.post(reverse('create_replies_regenerate_upload_url_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+
+        data = {
+            'audio_clip_id': 9999,
+        }
+
+        request = self.client.post(reverse('create_replies_regenerate_upload_url_api'), data)
+
+        self.assertEqual(request.status_code, 404)
+
+
+    def test_create_reply__process__already_processed(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'completed',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_replies_process_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+
+
+    def test_create_reply__process__no_rows(self):
+
+        self.login(self.users[1])
+
+        #proceed
+
+        data = {
+            'audio_clip_id': 9999,
+        }
+
+        request = self.client.post(reverse('create_replies_process_api'), data)
+
+        self.assertEqual(request.status_code, 404)
+
+
+    def test_create_reply__process__only_own_rows_allowed(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[2].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[2],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_replies_process_api'), data)
+
+        self.assertEqual(request.status_code, 404)
+
+
+    def test_create_reply__process__already_processing(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        target_cache_key = CreateAudioClips.determine_processing_cache_key(sample_audio_clip_1.id)
+        cache.set(target_cache_key, get_datetime_now(to_string=True))
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_replies_process_api'), data)
+
+        self.assertEqual(request.status_code, 200)
 
         result_data = (bytes(request.content).decode())
         result_data = json.loads(result_data)
 
-        self.assertFalse(result_data['can_retry'])
-        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
-        self.assertEqual(Events.objects.count(), 1)
-        self.assertEqual(AudioClips.objects.count(), 1)
-        self.assertEqual(AudioClips.objects.filter(user_id=self.users[1].id).count(), 0)
-        self.assertEqual(UserEvents.objects.filter(user_id=self.users[1].id).count(), 1)
+        self.assertFalse(result_data['is_processed'])
+
+
+    def test_create_reply__process__missing_args(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        #proceed
+
+        data = {}
+
+        request = self.client.post(reverse('create_replies_process_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+
+
+    def test_create_reply__process__faulty_args(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': '1a',
+        }
+
+        request = self.client.post(reverse('create_replies_process_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+
+        data = {
+            'audio_clip_id': 'a',
+        }
+
+        request = self.client.post(reverse('create_replies_process_api'), data)
+
+        self.assertEqual(request.status_code, 400)
 
 
     def test_cancel_reply_ok(self):
@@ -3379,7 +3933,7 @@ def test_create_reply__upload__faulty_args(self):
         self.assertTrue(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0.id).exists())
 
 
-    def test_cancel_reply_for_someone_else(self):
+    def test_cancel_reply_only_own_rows_allowed(self):
 
         #prepare data
 
@@ -3440,12 +3994,12 @@ def test_create_reply__upload__faulty_args(self):
             "deleted"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
-            generic_status_name="deleted",
-            is_banned=True,
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user = self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
+            audio_clip_event = sample_event_0,
+            audio_clip_generic_status_generic_status_name = 'deleted',
+            audio_clip_is_banned = True,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -3485,16 +4039,63 @@ def test_create_reply__upload__faulty_args(self):
         self.assertTrue(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0.id).exists())
 
 
+    def test_cancel_reply_still_processing(self):
 
+        #prepare data
 
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
 
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
 
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
 
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
 
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
 
+        #start
 
+        self.login(self.users[1])
 
+        data = {
+            'event_id': sample_event_0.id,
+        }
 
+        request = self.client.post(reverse('cancel_replies_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
+        self.assertEqual(Events.objects.count(), 1)
+        self.assertEqual(AudioClips.objects.count(), 2)
+        self.assertTrue(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0.id).exists())
 
 
     def test_create_audio_clip_report_ok(self):
@@ -3703,11 +4304,12 @@ def test_create_reply__upload__faulty_args(self):
             "incomplete"
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
-            is_banned=True,
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user = self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
+            audio_clip_event = sample_event_0,
+            audio_clip_generic_status_generic_status_name = 'deleted',
+            audio_clip_is_banned = True,
         )
 
         sample_audio_clip_report_0 = AudioClipReports.objects.create(
@@ -4369,6 +4971,137 @@ def test_create_reply__upload__faulty_args(self):
 
         self.assertEqual(sample_audio_clip_0.like_count, is_liked_total_count['true'])
         self.assertEqual(sample_audio_clip_0.dislike_count, is_liked_total_count['false'])
+
+
+
+#these involve AWS in one way or another
+class CoreProcessWithAWS_TestCase:
+
+
+    def test_create_event__process__ok(self):
+
+        # result_data = (bytes(request.content).decode())
+        # result_data = json.loads(result_data)
+        pass
+
+
+    def test_create_event__process__resubmit_ok(self):
+
+        pass
+
+
+    def test_create_reply__process__ok(self):
+
+        pass
+
+
+    def test_create_reply__process__resubmit_ok(self):
+
+        pass
+
+
+    def test_create_reply__process__replying_expired_ok(self):
+
+        #EventReplyQueue is irrelevant here
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            sample_event_0.id,
+            self.users[1].id,
+            True,
+            when_locked=(get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_MAX_DURATION_S + 1))),
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0)),
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_replies_process_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+
+        sample_audio_clip_1.refresh_from_db()
+
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'ok')
+
+
+    def test_create_reply__process__queue_deleted_ok(self):
+
+        #EventReplyQueue is irrelevant here
+        #EventReplyQueue can be deleted by cronjob
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0)),
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_replies_process_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+
+        sample_audio_clip_1.refresh_from_db()
+
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'ok')
+
+
+
+
+
+
 
 
 

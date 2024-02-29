@@ -242,10 +242,10 @@ class CreateAudioClips_Upload_APISerializer(serializers.Serializer):
 
         #depends on what we asked RecordRTC to record in
 
-        if value not in settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES:
+        if value not in settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS:
 
             raise serializers.ValidationError(
-                "Extension '" + value + "' is not one of: " + str(settings.AUDIO_CLIP_UNPROCESSED_FILE_TYPES)
+                "Extension '" + value + "' is not one of: " + str(settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS)
             )
 
         return value
@@ -264,13 +264,17 @@ class CreateAudioClips_Upload_APISerializer(serializers.Serializer):
 
         #check for required fields per-context
 
-        if audio_clip_role_name == 'originator' and 'event_name' not in data:
+        if audio_clip_role_name == 'originator':
 
-            raise serializers.ValidationError("event_name was not passed.")
+            if 'event_name' not in data:
 
-        if audio_clip_role_name == 'responder' and 'event_id' not in data:
+                raise serializers.ValidationError("event_name was not passed.")
 
-            raise serializers.ValidationError("event_id was not passed.")
+        elif audio_clip_role_name == 'responder':
+
+            if 'event_id' not in data:
+
+                raise serializers.ValidationError("event_id was not passed.")
 
         return data
 

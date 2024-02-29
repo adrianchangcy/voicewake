@@ -91,6 +91,12 @@ class AudioClipsFactory(DjangoModelFactory):
         audio_file_object_key = ''
         audio_clip_generic_status_generic_status_name = 'ok'
         audio_clip_is_banned = False
+        audio_clip_audio_file = 'audio_test.mp3'
+        audio_clip_audio_volume_peaks = [
+            0.32, 0.47, 0.76, 0.75, 0.79, 0.59, 0.78, 0.83, 0.85, 0.77,
+            0.62, 0.69, 0.97, 0.96, 0.97, 0.96, 0.96, 0.63, 0.47, 0.0
+        ]
+        audio_clip_audio_duration_s = 26
 
     user = factory.LazyAttribute(
         lambda o : (
@@ -103,18 +109,21 @@ class AudioClipsFactory(DjangoModelFactory):
         lambda o : AudioClipRoles.objects.get(audio_clip_role_name=o.audio_clip_audio_clip_role_audio_clip_role_name)
     )
     audio_clip_tone = AudioClipTones.objects.all().first()
-    audio_file = factory.LazyAttribute(
+    audio_file = factory.LazyAttribute(lambda o : o.audio_clip_audio_file)
+    audio_volume_peaks = factory.LazyAttribute(
         lambda o : (
-            "audio_test.mp3"
-            if o.audio_file_object_key == ''
-            else o.audio_file_object_key
+            []
+            if o.audio_clip_generic_status_generic_status_name == 'processing'
+            else o.audio_clip_audio_volume_peaks
         )
     )
-    audio_volume_peaks = [
-        0.32, 0.47, 0.76, 0.75, 0.79, 0.59, 0.78, 0.83, 0.85, 0.77,
-        0.62, 0.69, 0.97, 0.96, 0.97, 0.96, 0.96, 0.63, 0.47, 0.0
-    ]
-    audio_duration_s = 26
+    audio_duration_s = factory.LazyAttribute(
+        lambda o : (
+            0
+            if o.audio_clip_generic_status_generic_status_name == 'processing'
+            else o.audio_clip_audio_duration_s
+        )
+    )
     is_banned = factory.LazyAttribute(lambda o : o.audio_clip_is_banned)
     generic_status = factory.LazyAttribute(
         lambda o : GenericStatuses.objects.get(
@@ -128,7 +137,7 @@ class AudioClipsFactory(DjangoModelFactory):
             else (
                 EventsFactory(
                     created_by=(o.audio_clip_user if o.audio_clip_user is not None else UsersFactory()),
-                    generic_status_generic_status_name=('deleted' if o.audio_clip_is_banned is True else 'ok')
+                    event_generic_status_generic_status_name=('deleted' if o.audio_clip_is_banned is True else 'ok')
                 )
             )
         )

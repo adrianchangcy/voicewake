@@ -14,12 +14,6 @@ from decimal import Decimal
 import secrets
 import re
 
-#defaults
-#'any' means randomise later
-#pass others to set it as default
-def get_current_datetime_with_tz():
-
-    return datetime.now().astimezone(tz=ZoneInfo('UTC'))
 
 
 def get_default_generic_status():
@@ -61,7 +55,6 @@ class UserManager(BaseUserManager):
             username = remove_all_whitespace(username)
             username_lowercase = username.lower()
 
-        now = get_current_datetime_with_tz()
         totp_key = secrets.token_bytes(settings.TOTP_KEY_BYTE_SIZE)
 
         user = self.model(
@@ -74,7 +67,6 @@ class UserManager(BaseUserManager):
             is_staff=is_staff,
             is_superuser=is_superuser,
             last_login=None,
-            date_joined=now,
             **extra_fields
         )
 
