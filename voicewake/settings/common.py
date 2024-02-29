@@ -232,7 +232,7 @@ DATABASES = {
         'USER': os.environ['DB_USER'],
         'PASSWORD': os.environ['DB_PASSWORD'],
         'HOST': os.environ['DB_HOST'],
-        'PORT': os.environ['DB_PORT'],
+        'PORT': int(os.environ['DB_PORT']),
     }
 }
 
@@ -322,10 +322,11 @@ CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": os.environ['REDIS_ENDPOINT'] + "/1",    #/1 is database number
+        "KEY_PREFIX": "voicewake",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
-    }
+    },
 }
 
 
@@ -340,12 +341,9 @@ CACHES = {
     #you can set the upload key's file type
     #you cannot actually enforce what file type is uploaded to said upload key
         #we rely on general error handling to manage this
-#lambda
-    #'mp3' is hard-coded in Lambda class
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5000000   #4.77mb
-AUDIO_CLIP_UNPROCESSED_FILE_TYPES = ['webm', 'mp4']
-AUDIO_CLIP_PROCESSED_FILE_TYPE = 'mp3'
-AUDIO_CLIP_UNPROCESSED_EXPIRY_S = 1800  #30 minutes
+AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS = ['webm', 'mp4']
+AUDIO_CLIP_UNPROCESSED_EXPIRY_S = 3600  #1 hour
 
 
 GENERAL_ROW_QUANTITY_PER_PAGE = 20
@@ -368,7 +366,7 @@ MAILER_EMAIL_BACKEND = EMAIL_BACKEND
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_HOST_USER = os.environ['EMAIL_HOST_USER']
 EMAIL_HOST_PASSWORD = os.environ['EMAIL_HOST_PASSWORD']
-EMAIL_PORT = os.environ['EMAIL_PORT']
+EMAIL_PORT = int(os.environ['EMAIL_PORT'])
 EMAIL_USE_SSL = True
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
