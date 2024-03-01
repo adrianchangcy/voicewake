@@ -88,10 +88,9 @@ class AudioClipsFactory(DjangoModelFactory):
         audio_clip_user = None
         audio_clip_audio_clip_role_audio_clip_role_name = 'originator'
         audio_clip_event = None
-        audio_file_object_key = ''
         audio_clip_generic_status_generic_status_name = 'ok'
         audio_clip_is_banned = False
-        audio_clip_audio_file = 'audio_test.mp3'
+        audio_clip_audio_file = 'test/test.webm'
         audio_clip_audio_volume_peaks = [
             0.32, 0.47, 0.76, 0.75, 0.79, 0.59, 0.78, 0.83, 0.85, 0.77,
             0.62, 0.69, 0.97, 0.96, 0.97, 0.96, 0.96, 0.63, 0.47, 0.0

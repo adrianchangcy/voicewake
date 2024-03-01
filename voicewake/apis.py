@@ -1895,7 +1895,7 @@ class CreateEventsAPI(generics.GenericAPIView):
 
             create_audio_clips_class = CreateAudioClips(
                 user=self.request.user,
-                is_ec2=os.environ['IS_EC2'],
+                is_ec2=settings.IS_EC2,
                 current_context='create_event',
                 unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS,
                 processed_file_extension=os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
@@ -2249,7 +2249,7 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
 
             create_audio_clips_class = CreateAudioClips(
                 user=self.request.user,
-                is_ec2=os.environ['IS_EC2'],
+                is_ec2=settings.IS_EC2,
                 current_context='create_reply',
                 unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS,
                 processed_file_extension=os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
@@ -2573,7 +2573,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
                 create_audio_clips_class = CreateAudioClips(
                     user=self.request.user,
-                    is_ec2=os.environ['IS_EC2'],
+                    is_ec2=settings.IS_EC2,
                     current_context='create_reply',
                     unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS,
                     processed_file_extension=os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
