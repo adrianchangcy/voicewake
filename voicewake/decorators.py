@@ -7,8 +7,15 @@ from rest_framework import status
 from typing import Literal
 from voicewake.services import get_datetime_now
 
+
+
 #middleware is not suitable because the 'Accept' header is unreliable
 #not all decorators need to run on every request and response
+
+#reminder
+    #@decorators run from closest decorator to function, to furthest
+    #but if passing decorators as [] in @method_decorator, it runs from first to last in []
+
 
 
 def deny_if_not_logged_in(return_instance:Literal["redirect"]):

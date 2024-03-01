@@ -59,7 +59,7 @@
     //place this file at vue_app/src/...
     //then at vue_app/src/components/small/comp.vue:
         //<script lang="ts">
-            //import '/src/cors_worker_patch';
+            //import '/src/patches/cors_worker_patch';
             //...
     // ```
 typeof window !== "undefined" &&

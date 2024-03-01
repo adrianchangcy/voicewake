@@ -34,6 +34,9 @@ STATIC_CACHE_BUST_VERSION = STATIC_CACHE_BUST_PREFIX + '1.0.0'
 MAINTENANCE_MODE = int(os.environ['MAINTENANCE_MODE']) == 1
 
 
+IS_EC2 = int(os.environ['IS_EC2']) == 1
+
+
 # SECURITY WARNING: keep the secret key used in production secret!
 #must use fixed SECRET_KEY for Django to sign session cookies
 #else if always using new SECRET_KEY, it would kill all existing sessions
@@ -330,19 +333,20 @@ CACHES = {
 }
 
 
+#if file uploaded to Django server is below this, store in memory, else disk
+#not relevant for S3 presigned POST URL
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5000000   #4.77mb
+
+
 #UPLOADS
 #some are in bytes
     #x/(1024*1024)
-#file size
-    #if <= FILE_UPLOAD_MAX_MEMORY_SIZE, it is stored in memory only, and not written to disk
-    #only relevant for local, as file size limit is enforced at S3 via presigned POST URL
 #file types
-    #frontend RecordRTC can record in any of the choices, depending on browser
-    #you can set the upload key's file type
-    #you cannot actually enforce what file type is uploaded to said upload key
-        #we rely on general error handling to manage this
-FILE_UPLOAD_MAX_MEMORY_SIZE = 5000000   #4.77mb
-AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS = ['webm', 'mp4']
+    #check VRecorder.vue
+    #for S3 presigned POST URL, you can set the upload key's file type
+        #at bucket, you can specify allowed extensions, e.g. ".../*.mp3"
+        #however, the file type that end-user has, cannot be enforced, e.g. ".wav" uploading to ".mp3" key
+AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS = ['webm',]
 AUDIO_CLIP_UNPROCESSED_EXPIRY_S = 3600  #1 hour
 
 

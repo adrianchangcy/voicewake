@@ -39,6 +39,7 @@ from voicewake.services import *
 from voicewake.models import *
 from voicewake.tasks import *
 from voicewake.factories import *
+from voicewake.lambdas import *
 from django.conf import settings
 
 
@@ -141,6 +142,7 @@ class AWS_TestCase(TestCase):
 
         s3_wrapper_class = S3PostWrapper(
             is_ec2=False,
+            allowed_unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS,
             region_name=os.environ['AWS_S3_REGION_NAME'],
             unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
             s3_audio_file_max_size_b=int(os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B']),
@@ -149,7 +151,7 @@ class AWS_TestCase(TestCase):
             aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
         )
 
-        upload_info = s3_wrapper_class.generate_presigned_post_url(upload_key)
+        upload_info = s3_wrapper_class.generate_unprocessed_presigned_post_url(upload_key)
 
         upload_url = upload_info['url']
         upload_fields = upload_info['fields']
@@ -175,6 +177,7 @@ class AWS_TestCase(TestCase):
 
         s3_wrapper_class = S3PostWrapper(
             is_ec2=False,
+            allowed_unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS,
             region_name=os.environ['AWS_S3_REGION_NAME'],
             unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
             s3_audio_file_max_size_b=int(os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B']),
@@ -183,7 +186,7 @@ class AWS_TestCase(TestCase):
             aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
         )
 
-        upload_info = s3_wrapper_class.generate_presigned_post_url(upload_key)
+        upload_info = s3_wrapper_class.generate_unprocessed_presigned_post_url(upload_key)
 
         upload_url = upload_info['url']
         upload_fields = upload_info['fields']
@@ -211,6 +214,7 @@ class AWS_TestCase(TestCase):
 
         s3_wrapper_class = S3PostWrapper(
             is_ec2=False,
+            allowed_unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS,
             region_name=os.environ['AWS_S3_REGION_NAME'],
             unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
             s3_audio_file_max_size_b=int(os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B']),
@@ -219,7 +223,7 @@ class AWS_TestCase(TestCase):
             aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
         )
 
-        upload_info = s3_wrapper_class.generate_presigned_post_url(upload_key)
+        upload_info = s3_wrapper_class.generate_unprocessed_presigned_post_url(upload_key)
 
         upload_url = upload_info['url']
         upload_fields = upload_info['fields']
@@ -263,7 +267,7 @@ class AWS_TestCase(TestCase):
 
         if s3_wrapper_class.check_object_exists(upload_key) is False:
 
-            upload_info = s3_wrapper_class.generate_presigned_post_url(upload_key)
+            upload_info = s3_wrapper_class.generate_unprocessed_presigned_post_url(upload_key)
 
             upload_url = upload_info['url']
             upload_fields = upload_info['fields']
@@ -397,7 +401,7 @@ class AWSConnections_FromEC2_TestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
-        if os.environ['IS_EC2'] is False:
+        if settings.IS_EC2 is False:
 
             raise ValueError('Cannot use this test case outside of EC2.')
 
@@ -413,7 +417,7 @@ class AWSConnections_FromEC2_TestCase(TestCase):
     def test_s3(self):
 
         s3_wrapper_class = S3PostWrapper(
-            is_ec2=os.environ['IS_EC2'],
+            is_ec2=settings.IS_EC2,
             allowed_unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS,
             region_name=os.environ['AWS_S3_REGION_NAME'],
             unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
@@ -423,18 +427,18 @@ class AWSConnections_FromEC2_TestCase(TestCase):
             aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
         )
 
-        check_bucket = s3_wrapper_class.s3_client.head_bucket(
-            Bucket=s3_wrapper_class.unprocessed_bucket_name
+        bucket_exists = s3_wrapper_class.check_bucket_exists(
+            s3_wrapper_class.unprocessed_bucket_name
         )
 
-        self.assertEqual(check_bucket['ResponseMetadata']['HTTPStatusCode'], 200)
+        self.assertEqual(bucket_exists, True)
 
 
     def test_lambda(self):
 
         lambda_wrapper_class = AWSLambdaWrapper(
-            is_ec2=os.environ['IS_EC2'],
-            timeout_s=int(int(os.environ['AWS_LAMBDA_NORMALISE_TIMEOUT_S'])),
+            is_ec2=settings.IS_EC2,
+            timeout_s=int(os.environ['AWS_LAMBDA_NORMALISE_TIMEOUT_S']),
             region_name=os.environ['AWS_LAMBDA_REGION_NAME'],
             aws_access_key_id=os.environ['AWS_LAMBDA_ACCESS_KEY_ID'],
             aws_secret_access_key=os.environ['AWS_LAMBDA_SECRET_ACCESS_KEY'],
@@ -801,6 +805,11 @@ class AudioClips_TestCase(TestCase):
             'voicewake/tests/test_file_samples/audio_can_overwrite.mp3'
         )
 
+        cls.audio_file_from_recording = os.path.join(
+            settings.BASE_DIR,
+            'voicewake/tests/test_file_samples/audio_ok_webm.webm'
+        )
+
 
     def get_audio_file(self):
 
@@ -834,16 +843,15 @@ class AudioClips_TestCase(TestCase):
 
         handle_audio_file_class = AWSLambdaNormaliseAudioClips(
             is_lambda=False,
-            region_name=os.environ['AWS_S3_REGION_NAME'],
-            unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
-            processed_bucket_name=os.environ['AWS_S3_MEDIA_BUCKET_NAME'],
-            aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
-            aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
-            processed_file_extension=os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
+            s3_region_name=os.environ['AWS_S3_REGION_NAME'],
+            s3_aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
+            s3_aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
+            processed_file_extension=os.environ.get('AUDIO_CLIP_PROCESSED_FILE_EXTENSION', 'mp3'),
+            use_timer=True,
         )
 
         handle_audio_file_class.test_retrieve_unprocessed_audio_file_local(
-            self.source_audio_file_full_path
+            self.audio_file_from_recording
         )
 
         handle_audio_file_class.prepare_info_before_normalise()
@@ -853,14 +861,16 @@ class AudioClips_TestCase(TestCase):
 
         handle_audio_file_class.normalise_and_overwrite_audio_file()
 
-        handle_audio_file_class.get_peaks_by_buckets()
+        handle_audio_file_class.get_duration_after_normalise()
 
-        new_peaks = handle_audio_file_class.get_peaks_by_buckets()
+        handle_audio_file_class.get_peaks_by_buckets()
 
         #to compare old and new peaks, must manually ensure duration exists first
         #in production, this isn't necessary, and would be redundant
 
-        print(new_peaks)
+        print(handle_audio_file_class.audio_file_duration_s)
+        print(handle_audio_file_class.audio_volume_peaks)
+        print(handle_audio_file_class.create_return_response())
 
 
 
@@ -905,7 +915,11 @@ class CoreProcess_TestCase(TestCase):
     def tearDownClass(cls):
 
         shutil.rmtree(os.path.join(settings.MEDIA_ROOT, 'audio_clips'), ignore_errors=True)
-        cache.clear()
+
+        try:
+            cache.clear()
+        except:
+            pass
 
         super().tearDownClass()
 
@@ -1266,7 +1280,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+            audio_clip_audio_file = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
             audio_clip_generic_status_generic_status_name = 'processing',
         )
 
@@ -1295,7 +1309,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+            audio_clip_audio_file = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
             audio_clip_generic_status_generic_status_name = 'processing',
         )
 
@@ -1333,7 +1347,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
+            audio_clip_audio_file = 'yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
             audio_clip_generic_status_generic_status_name = 'ok',
         )
 
@@ -1376,7 +1390,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+            audio_clip_audio_file = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
             audio_clip_generic_status_generic_status_name = 'processing',
         )
 
@@ -1405,7 +1419,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+            audio_clip_audio_file = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
             audio_clip_generic_status_generic_status_name = 'processing',
         )
 
@@ -1432,7 +1446,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+            audio_clip_audio_file = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
             audio_clip_generic_status_generic_status_name = 'processing',
         )
 
@@ -1468,7 +1482,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
+            audio_clip_audio_file = 'yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
             audio_clip_generic_status_generic_status_name = 'ok',
         )
 
@@ -1513,7 +1527,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+            audio_clip_audio_file = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
             audio_clip_generic_status_generic_status_name = 'processing',
         )
 
@@ -1542,7 +1556,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
+            audio_clip_audio_file = 'yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
             audio_clip_generic_status_generic_status_name = 'processing',
         )
 
@@ -1569,7 +1583,7 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user = self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
-            audio_file_object_key = 'yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
+            audio_clip_audio_file = 'yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
             audio_clip_generic_status_generic_status_name = 'processing',
         )
 
@@ -4975,14 +4989,187 @@ class CoreProcess_TestCase(TestCase):
 
 
 #these involve AWS in one way or another
-class CoreProcessWithAWS_TestCase:
+@override_settings(
+    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    DEBUG=True,
+)
+class CoreProcess_NormaliseAudioClipsLambda_TestCase(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+
+        cls.users = []
+
+        for x in range(0, 6):
+
+            current_user = get_user_model().objects.create_user(
+                username='useR'+str(x),
+                email='user'+str(x)+'@gmail.com',
+            )
+
+            current_user = get_user_model().objects.get(username_lowercase="user"+str(x))
+
+            current_user.is_active = True
+            current_user.save()
+
+            cls.users.append(current_user)
+
+        #audio file
+        cls.audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/test_file_samples/audio_can_overwrite.mp3')
+        cls.audio_file = open(cls.audio_file_full_path, 'rb')
+        cls.audio_file = SimpleUploadedFile(cls.audio_file.name, cls.audio_file.read(), 'audio/mp3')
+
+        #unprocessed/processed files
+        #should exist in s3 before starting tests
+
+        cls.unprocessed_audio_files = []
+        cls.processed_audio_files = []
+
+        for count, ext in enumerate(settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS):
+
+            cls.unprocessed_audio_files.append(
+                f'test/test{count}.{ext}'
+            )
+            cls.processed_audio_files.append(
+                f'test/test{count}.{os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION']}'
+            )
+
+            local_file_path = os.path.join(
+                settings.BASE_DIR,
+                f'voicewake/tests/test_file_samples/audio_ok_{ext}.{ext}'
+            )
+
+            #ensure test files exist in s3 before we run tests
+            cls.prepare_s3_unprocessed_audio_files(
+                cls,
+                audio_file=cls.unprocessed_audio_files[count],
+                file_extension=ext,
+                local_file_path=local_file_path
+            )
+
+
+    @classmethod
+    def tearDownClass(cls):
+
+        shutil.rmtree(os.path.join(settings.MEDIA_ROOT, 'audio_clips'), ignore_errors=True)
+
+        try:
+            cache.clear()
+        except:
+            pass
+
+        super().tearDownClass()
+
+
+    def login(self, user_instance):
+
+        #need this here because @classmethod does not have .client attribute
+        self.client.force_login(user_instance)
+
+
+    def create_event_reply_queue(self, event_id:int, locked_for_user_id:int, is_replying:bool, when_locked:datetime):
+
+        return EventReplyQueues.objects.create(
+            event_id=event_id,
+            locked_for_user_id=locked_for_user_id,
+            is_replying=is_replying,
+            when_locked=when_locked
+        )
+
+
+    def create_user_event(self, user_id:int, event_id:int, when_excluded_for_reply:datetime):
+
+        return UserEvents.objects.create(
+            user_id=user_id,
+            event_id=event_id,
+            when_excluded_for_reply=when_excluded_for_reply
+        )
+
+
+    def prepare_s3_unprocessed_audio_files(self, audio_file:str, file_extension:str, local_file_path:str):
+
+        s3_wrapper_class = S3PostWrapper(
+            is_ec2=False,
+            allowed_unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS,
+            region_name=os.environ['AWS_S3_REGION_NAME'],
+            unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
+            s3_audio_file_max_size_b=int(os.environ['AWS_S3_AUDIO_FILE_MAX_SIZE_B']),
+            url_expiry_s=int(os.environ['AWS_S3_UPLOAD_URL_EXPIRY_S']),
+            aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
+        )
+
+        object_exists = s3_wrapper_class.check_object_exists(key=audio_file)
+
+        if object_exists is True:
+
+            print(audio_file + ' exists. Continuing...')
+            return
+
+        #upload
+
+        upload_info = s3_wrapper_class.generate_unprocessed_presigned_post_url(
+            key=audio_file,
+            file_extension=file_extension,
+        )
+
+        S3PostWrapper.s3_post_upload(
+            url=upload_info['url'],
+            fields=upload_info['fields'],
+            local_file_path=local_file_path,
+        )
+
+
+    def test_lambda_normalise_audio_clips_ok(self):
+
+        lambda_wrapper = AWSLambdaWrapper(
+            is_ec2=False,
+            timeout_s=int(os.environ['AWS_LAMBDA_NORMALISE_TIMEOUT_S']),
+            region_name=os.environ['AWS_LAMBDA_REGION_NAME'],
+            aws_access_key_id=os.environ['AWS_LAMBDA_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['AWS_LAMBDA_SECRET_ACCESS_KEY'],
+        )
+
+        lambda_response_data = lambda_wrapper.invoke_normalise_audio_clips_lambda(
+            s3_region_name=os.environ['AWS_S3_REGION_NAME'],
+            unprocessed_object_key=self.unprocessed_audio_files[0],
+            processed_object_key=self.processed_audio_files[0],
+            unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
+            processed_bucket_name=os.environ['AWS_S3_MEDIA_BUCKET_NAME'],
+        )
+
+        print(lambda_response_data)
 
 
     def test_create_event__process__ok(self):
 
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+            audio_clip_audio_file=self.unprocessed_audio_files[0],
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+
+        request = self.client.post(reverse('create_events_process_api'), data)
+
+        print(request.content)
+
         # result_data = (bytes(request.content).decode())
         # result_data = json.loads(result_data)
-        pass
 
 
     def test_create_event__process__resubmit_ok(self):
@@ -4992,6 +5179,47 @@ class CoreProcessWithAWS_TestCase:
 
     def test_create_reply__process__ok(self):
 
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+            audio_clip_audio_file=self.unprocessed_audio_files[0],
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_replies_process_api'), data)
+
+        self.assertEqual(request.status_code, 404)
+
+
+        # result_data = (bytes(request.content).decode())
+        # result_data = json.loads(result_data)
         pass
 
 

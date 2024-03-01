@@ -101,10 +101,13 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import fixWebmDuration from 'fix-webm-duration';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
-    import '/src/cors_worker_patch';
+    //fixes native recorded webm's missing/buggy duration
+    import fixWebmDuration from 'fix-webm-duration';
+    //fixes web worker import not working when fetched from another origin
+    import '/src/patches/cors_worker_patch';
     const recordRTC = require('/node_modules/recordrtc/RecordRTC.min.js');
+    // import { downloadBlob } from '@/helper_functions';
 
     export default defineComponent({
         data(){
@@ -400,6 +403,8 @@
                     // audio/wav
                     // audio/ogg  -- ONLY Firefox
                     // demo: simple-demos/isTypeSupported.html
+                    //FYI
+                        //audio/webm;codecs=pcm has huge file size
                     mimeType: this.mime_type,
                 
                     // MediaStreamRecorder, StereoAudioRecorder, WebAssemblyRecorder
@@ -407,7 +412,7 @@
                     recorderType: recordRTC.MediaStreamRecorder,
                 
                     // disable logs
-                    disableLogs: true,
+                    disableLogs: process.env.NODE_ENV === 'production',
                 
                     // get intervals based blobs
                     // value in milliseconds
@@ -617,20 +622,18 @@
             },
             chooseMimeType() : void {
 
-                if(MediaRecorder.isTypeSupported("audio/mp4") === true){
+                const default_mime_type = "audio/webm;codec=opus";
 
-                    //Safari
-                    this.mime_type = "audio/mp4";
+                if(MediaRecorder.isTypeSupported(default_mime_type) === true){
 
-                }else if(MediaRecorder.isTypeSupported("audio/webm") === true){
-
-                    //others, also default for RecordRTC
-                    this.mime_type = "audio/webm";
+                    this.mime_type = default_mime_type;
 
                 }else{
 
-                    alert("Your browser does not support mp4/webm. Playback may be unavailable.");
-                    throw new Error("Your browser does not support mp4/webm. Playback may be unavailable.");
+                    const error_message = "Your browser does not support webm. Recording and playback may have issues.";
+
+                    alert(error_message);
+                    throw new Error(error_message);
                 }
             },
         },

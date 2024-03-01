@@ -49,7 +49,6 @@ def test_page(template_name='test.html'):
 
 
 
-# @login_required(login_url='/login')
 @app_decorators.deny_if_banned("redirect")
 @app_decorators.deny_if_no_username("redirect")
 def home(request):
@@ -157,9 +156,9 @@ class GetUserProfile(TemplateView):
 
 @method_decorator(
     [
+        app_decorators.deny_if_not_logged_in("redirect"),
         app_decorators.deny_if_no_username("redirect"),
         app_decorators.deny_if_banned("redirect"),
-        app_decorators.deny_if_not_logged_in("redirect"),
         never_cache
     ],
     name='get'
