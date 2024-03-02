@@ -402,13 +402,11 @@ def decode_cursor_token(token_data:str):
 
 def get_serializer_error_message(serializer)->str:
 
-    error_message = "Invalid data."
-
     for key in serializer.errors:
         for first_error in serializer.errors[key]:
             return key + ": " + first_error
 
-    return error_message
+    raise ValueError("Could not get error message from serializer.")
 
 
 def copy_to_clipboard(full_string:str):
@@ -1554,118 +1552,9 @@ class CreateAudioClips():
         return None
 
 
-    def _check_can_normalise_originator(self)->None|Response:
-
-        if self.current_context != 'create_event':
-
-            raise custom_error(
-                ValueError,
-                __name__,
-                dev_message='Invalid attempt to use function in improper self.current_context.',
-            )
-
-        if self.audio_clip is None or self.event is None:
-
-            raise custom_error(
-                ValueError,
-                __name__,
-                dev_message="Missing required values."
-            )
-
-        #don't have to check if audio_clip belongs to user
-        #since this is handled at self.get_records_for_normalise()
-
-        #check event
-
-        if self.event.generic_status.generic_status_name not in ['processing', 'incomplete']:
-
-            return Response(
-                data={
-                    "message": "Event is unavailable.",
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        #check audio_clip
-
-        if (
-            self.audio_clip.user.id == self.user.id and
-            self.audio_clip.generic_status.generic_status_name == 'processing' and
-            self.audio_clip.audio_duration_s == 0 and
-            len(self.audio_clip.audio_file) > 0 and
-            len(self.audio_clip.audio_volume_peaks) == 0
-        ):
-
-            #not yet processed
-            pass
-
-        elif (
-            self.audio_clip.user.id == self.user.id and
-            self.audio_clip.generic_status.generic_status_name == 'ok' and
-            self.audio_clip.audio_duration_s > 0 and
-            len(self.audio_clip.audio_file) > 0 and
-            len(self.audio_clip.audio_volume_peaks) > 0
-        ):
-
-            #already processed
-            return Response(
-                data={
-                    "message": "Recording is already processed.",
-                    "is_processed": True,
-                },
-                status=status.HTTP_200_OK
-            )
-
-        else:
-
-            #should never reach here
-            raise custom_error(
-                ValueError,
-                __name__,
-                user_message='This recording could not be processed.',
-            )
-
-        #check cache on whether we've called lambda before
-
-        target_cache_key = self.determine_processing_cache_key(self.audio_clip.id)
-
-        lambda_when_last_called = cache.get(target_cache_key, None)
-
-        if (
-            lambda_when_last_called is None or
-            get_datetime_difference_s(
-                self.datetime_now,
-                get_datetime_from_string(lambda_when_last_called)
-            ) >= int(os.environ['AWS_LAMBDA_NORMALISE_TIMEOUT_S'])
-        ):
-
-            #either haven't called, or called quite long ago
-            #can call again
-            return None
-
-        else:
-
-            #call later
-            return Response(
-                data={
-                    "message": "Recording is still processing.",
-                    "is_processed": False,
-                },
-                status=status.HTTP_200_OK
-            )
-
-
-    def _check_can_normalise_responder(self)->None|Response:
+    def _check_can_normalise(self)->None|Response:
 
         #we don't check EventReplyQueues, as it is irrelevant here, and is not guaranteed to exist
-
-        if self.current_context != 'create_reply':
-
-            raise custom_error(
-                ValueError,
-                __name__,
-                dev_message='Invalid attempt to use function in improper self.current_context.',
-            )
 
         if self.audio_clip is None or self.event is None:
 
@@ -1679,7 +1568,15 @@ class CreateAudioClips():
 
         #check event
 
-        if self.event.generic_status.generic_status_name not in ['incomplete', 'completed']:
+        if (
+            (
+                self.current_context == 'create_event' and
+                self.event.generic_status.generic_status_name not in ['processing', 'incomplete']
+            ) or (
+                self.current_context == 'create_reply' and
+                self.event.generic_status.generic_status_name not in ['incomplete', 'completed']
+            )
+        ):
 
             return Response(
                 data={
@@ -2037,15 +1934,7 @@ class CreateAudioClips():
 
         #check
 
-        error_response = None
-
-        if self.current_context == 'create_event':
-
-            error_response = self._check_can_normalise_originator()
-
-        elif self.current_context == 'create_reply':
-
-            error_response = self._check_can_normalise_responder()
+        error_response = self._check_can_normalise()
 
         if error_response is not None:
 
@@ -2096,6 +1985,9 @@ class CreateAudioClips():
         serializer = AWSLambdaNormaliseAudioClipsAPISerializer(data=lambda_response_data, many=False)
 
         if serializer.is_valid() is False:
+
+            print(lambda_response_data)
+            print(get_serializer_error_message(serializer))
 
             return Response(
                 data={

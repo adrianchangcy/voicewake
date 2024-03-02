@@ -107,7 +107,6 @@
     //fixes web worker import not working when fetched from another origin
     import '/src/patches/cors_worker_patch';
     const recordRTC = require('/node_modules/recordrtc/RecordRTC.min.js');
-    // import { downloadBlob } from '@/helper_functions';
 
     export default defineComponent({
         data(){
@@ -120,7 +119,7 @@
                 recorder: null as any | null,   //recordRTC object, but lazy to find a solution
                 recorder_state: null as 'recording' | 'paused' | 'stopped' | null,
                 recording_interval_worker: null as Worker | null,
-                mime_type: "",
+                mime_type: "audio/webm;codec=opus",
 
                 is_recording: false,    //is not affected by pause/resume
                 current_duration: 0,    //milliseconds
@@ -620,15 +619,12 @@
                     console.log(error);
                 }
             },
-            chooseMimeType() : void {
+            checkMimeTypeOk() : void {
 
-                const default_mime_type = "audio/webm;codec=opus";
+                //originally was to provide a few options to best cover all browsers
+                //but now, the default seems ok
 
-                if(MediaRecorder.isTypeSupported(default_mime_type) === true){
-
-                    this.mime_type = default_mime_type;
-
-                }else{
+                if(MediaRecorder.isTypeSupported(this.mime_type) === false){
 
                     const error_message = "Your browser does not support webm. Recording and playback may have issues.";
 
@@ -640,7 +636,7 @@
         mounted(){
 
             //choose proper mime type
-            this.chooseMimeType();
+            this.checkMimeTypeOk();
 
             //create earlier, in case there is a wait time
             //we want the waiting to occur here, and not when user wants to record

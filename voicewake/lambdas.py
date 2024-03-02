@@ -44,6 +44,7 @@ class AWSLambdaNormaliseAudioClips:
         unprocessed_bucket_name:str='',
         processed_bucket_name:str='',
         processed_file_extension:str='mp3',
+        subprocess_timeout_s:int=10,
         use_timer:bool=False,
     ):
 
@@ -53,13 +54,12 @@ class AWSLambdaNormaliseAudioClips:
         self.processed_object_key = processed_object_key
         self.unprocessed_bucket_name = unprocessed_bucket_name
         self.processed_bucket_name = processed_bucket_name
+        self.processed_file_extension = processed_file_extension
+        self.subprocess_timeout_s = subprocess_timeout_s
         self.use_timer = use_timer
 
         #task duration
         self.lambda_timers_s = {}
-
-        #use environment variable
-        self.processed_file_extension = processed_file_extension
 
         if is_lambda is True:
 
@@ -79,9 +79,6 @@ class AWSLambdaNormaliseAudioClips:
         self.desired_codec = self.processed_file_extension
         self.desired_format = self.processed_file_extension
         self.desired_sample_rate = "48k"
-
-        #max timeout seconds for subprocess
-        self.subprocess_timeout_s = 10
 
         #dBFS has max 0dB (loudest), min of approx. 6dB per bit, e.g. 16-bit will have 96dB floor
         # >0 will cause clipping
@@ -146,11 +143,23 @@ class AWSLambdaNormaliseAudioClips:
 
                 return passed_function(*args, **kwargs)
 
-            self._start_task_timer(passed_function.__name__)
-            result = passed_function(*args, **kwargs)
-            self._stop_task_timer(passed_function.__name__)
+            #must make sure _stop_task_timer() is always called after _start_task_timer()
+            #else we end up with just datetime object, and Lambda will fail to serialize it
 
-            return result
+            self._start_task_timer(passed_function.__name__)
+
+            try:
+
+                result = passed_function(*args, **kwargs)
+
+                self._stop_task_timer(passed_function.__name__)
+
+                return result
+
+            except:
+
+                self._stop_task_timer(passed_function.__name__)
+                raise
 
         return inner
 
@@ -479,7 +488,7 @@ class AWSLambdaNormaliseAudioClips:
         response = {
             'lambda_status_code': 200,
             'lambda_message': '',
-            'lambda_dump': None,
+            'lambda_dump': {},
             'lambda_timers_s': self.lambda_timers_s,
             'audio_volume_peaks': self.audio_volume_peaks,
             'audio_duration_s': self.audio_file_duration_s,
@@ -530,6 +539,7 @@ class AWSLambdaNormaliseAudioClips:
                     unprocessed_bucket_name=event.get('unprocessed_bucket_name'),
                     processed_bucket_name=event.get('processed_bucket_name'),
                     processed_file_extension=os.environ.get('AUDIO_CLIP_PROCESSED_FILE_EXTENSION', 'mp3'),
+                    subprocess_timeout_s=int(os.environ.get('AWS_LAMBDA_NORMALISE_TIMEOUT_S', 10)),
                     use_timer=event.get('use_timer', False),
                 )
                 
