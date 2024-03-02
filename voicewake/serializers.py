@@ -292,7 +292,9 @@ class CreateAudioClips_Process_APISerializer(serializers.Serializer):
 
 class AWSLambdaNormaliseAudioClipsAPISerializer(serializers.Serializer):
     lambda_status_code = serializers.IntegerField()
-    lambda_message = serializers.CharField(min_length=0, max_length=300)
+    lambda_message = serializers.CharField(min_length=0, max_length=300, allow_blank=True)
+    lambda_dump = serializers.DictField(allow_empty=True)
+    lambda_timers_s = serializers.DictField(allow_empty=True)
     audio_volume_peaks = serializers.ListField(
         child=serializers.DecimalField(min_value=0, max_value=1, max_digits=3, decimal_places=2, coerce_to_string=False),
         min_length=20,
