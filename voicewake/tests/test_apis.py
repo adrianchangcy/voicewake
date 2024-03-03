@@ -1406,6 +1406,35 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 404)
 
 
+    def test_create_event__regenerate_upload_url__wrong_context_url(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user = self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
+            audio_clip_event = sample_event_0,
+            audio_clip_audio_file = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+            audio_clip_generic_status_generic_status_name = 'processing',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+
+        request = self.client.post(reverse('create_replies_regenerate_upload_url_api'), data)
+
+        print(request.content)
+        self.assertEqual(request.status_code, 404)
+
+
     def test_create_event__regenerate_upload_url__missing_args(self):
 
         self.login(self.users[0])
@@ -1494,8 +1523,53 @@ class CoreProcess_TestCase(TestCase):
 
         request = self.client.post(reverse('create_events_process_api'), data)
 
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        self.assertEqual(request.status_code, 200)
+        self.assertTrue("event_id" in result_data)
+        self.assertTrue("is_processed" in result_data)
+        self.assertTrue(result_data['is_processed'])
+
+
+    def test_create_event__process__still_processing(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        target_cache_key = CreateAudioClips.determine_processing_cache_key(sample_audio_clip_0.id)
+        cache.set(target_cache_key, get_datetime_now(to_string=True))
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+
+        request = self.client.post(reverse('create_events_process_api'), data)
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
         print(request.content)
         self.assertEqual(request.status_code, 200)
+        self.assertTrue("event_id" in result_data)
+        self.assertTrue("is_processed" in result_data)
+        self.assertTrue("cooldown_s" in result_data)
+
+        self.assertFalse(result_data['is_processed'])
+        self.assertGreater(result_data['cooldown_s'], 0)
 
 
     def test_create_event__process__no_rows(self):
@@ -1538,6 +1612,35 @@ class CoreProcess_TestCase(TestCase):
         }
 
         request = self.client.post(reverse('create_events_process_api'), data)
+
+        print(request.content)
+        self.assertEqual(request.status_code, 404)
+
+
+    def test_create_event__process__wrong_context_url(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user = self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
+            audio_clip_event = sample_event_0,
+            audio_clip_audio_file = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+            audio_clip_generic_status_generic_status_name = 'processing',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+
+        request = self.client.post(reverse('create_replies_process_api'), data)
 
         print(request.content)
         self.assertEqual(request.status_code, 404)
@@ -3408,6 +3511,53 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 404)
 
 
+    def test_create_reply__regenerate_upload_url__wrong_context_url(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_events_regenerate_upload_url_api'), data)
+
+        print(request.content)
+        self.assertEqual(request.status_code, 404)
+
+
     def test_create_reply__regenerate_upload_url__missing_args(self):
 
         self.login(self.users[1])
@@ -3543,7 +3693,64 @@ class CoreProcess_TestCase(TestCase):
 
         request = self.client.post(reverse('create_replies_process_api'), data)
 
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
         self.assertEqual(request.status_code, 200)
+        self.assertTrue("event_id" in result_data)
+        self.assertTrue("is_processed" in result_data)
+        self.assertTrue(result_data['is_processed'])
+
+
+    def test_create_reply__process__still_processing(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        target_cache_key = CreateAudioClips.determine_processing_cache_key(sample_audio_clip_1.id)
+        cache.set(target_cache_key, get_datetime_now(to_string=True))
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_replies_process_api'), data)
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        self.assertEqual(request.status_code, 200)
+        self.assertTrue("event_id" in result_data)
+        self.assertTrue("is_processed" in result_data)
+        self.assertTrue("cooldown_s" in result_data)
+
+        self.assertFalse(result_data['is_processed'])
+        self.assertGreater(result_data['cooldown_s'], 0)
 
 
     def test_create_reply__process__no_rows(self):
@@ -3600,13 +3807,13 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 404)
 
 
-    def test_create_reply__process__already_processing(self):
+    def test_create_reply__process__wrong_context_url(self):
 
         self.login(self.users[1])
 
         sample_event_0 = EventsFactory(
             event_created_by = self.users[0],
-            event_generic_status_generic_status_name = 'incomplete',
+            event_generic_status_generic_status_name = 'completed',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -3625,11 +3832,8 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            audio_clip_generic_status_generic_status_name='ok',
         )
-
-        target_cache_key = CreateAudioClips.determine_processing_cache_key(sample_audio_clip_1.id)
-        cache.set(target_cache_key, get_datetime_now(to_string=True))
 
         #proceed
 
@@ -3637,14 +3841,12 @@ class CoreProcess_TestCase(TestCase):
             'audio_clip_id': sample_audio_clip_1.id,
         }
 
-        request = self.client.post(reverse('create_replies_process_api'), data)
-
-        self.assertEqual(request.status_code, 200)
+        request = self.client.post(reverse('create_events_process_api'), data)
 
         result_data = (bytes(request.content).decode())
         result_data = json.loads(result_data)
 
-        self.assertFalse(result_data['is_processed'])
+        self.assertEqual(request.status_code, 404)
 
 
     def test_create_reply__process__missing_args(self):
@@ -4993,7 +5195,7 @@ class CoreProcess_TestCase(TestCase):
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
     DEBUG=True,
 )
-class CoreProcess_NormaliseAudioClipsLambda_TestCase(TestCase):
+class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
@@ -5222,15 +5424,24 @@ class CoreProcess_NormaliseAudioClipsLambda_TestCase(TestCase):
 
         request = self.client.post(reverse('create_events_process_api'), data)
 
-        print(request.content)
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
 
-        # result_data = (bytes(request.content).decode())
-        # result_data = json.loads(result_data)
+        self.assertEqual(request.status_code, 200)
+        self.assertTrue("event_id" in result_data)
+        self.assertTrue("is_processed" in result_data)
+        self.assertTrue(result_data['is_processed'])
 
+        sample_audio_clip_0.refresh_from_db()
 
-    def test_create_event__process__resubmit_ok(self):
-
-        pass
+        self.assertEqual(
+            sample_audio_clip_0.generic_status.generic_status_name,
+            'ok'
+        )
+        self.assertEqual(
+            sample_audio_clip_0.audio_file,
+            self.processed_object_key
+        )
 
 
     def test_create_reply__process__ok(self):
@@ -5246,8 +5457,7 @@ class CoreProcess_NormaliseAudioClipsLambda_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
-            audio_clip_audio_file=self.unprocessed_audio_files[0],
+            audio_clip_generic_status_generic_status_name='ok',
         )
 
         sample_user_event_0 = self.create_user_event(
@@ -5261,6 +5471,7 @@ class CoreProcess_NormaliseAudioClipsLambda_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='processing',
+            audio_clip_audio_file=self.unprocessed_object_key,
         )
 
         #proceed
@@ -5271,20 +5482,27 @@ class CoreProcess_NormaliseAudioClipsLambda_TestCase(TestCase):
 
         request = self.client.post(reverse('create_replies_process_api'), data)
 
-        self.assertEqual(request.status_code, 404)
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        self.assertEqual(request.status_code, 200)
+        self.assertTrue("event_id" in result_data)
+        self.assertTrue("is_processed" in result_data)
+        self.assertTrue(result_data['is_processed'])
+
+        sample_audio_clip_1.refresh_from_db()
+
+        self.assertEqual(
+            sample_audio_clip_1.generic_status.generic_status_name,
+            'ok'
+        )
+        self.assertEqual(
+            sample_audio_clip_1.audio_file,
+            self.processed_object_key
+        )
 
 
-        # result_data = (bytes(request.content).decode())
-        # result_data = json.loads(result_data)
-        pass
-
-
-    def test_create_reply__process__resubmit_ok(self):
-
-        pass
-
-
-    def test_create_reply__process__replying_expired_ok(self):
+    def test_create_reply__process__queue_expired_ok(self):
 
         #EventReplyQueue is irrelevant here
 
@@ -5319,6 +5537,7 @@ class CoreProcess_NormaliseAudioClipsLambda_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='processing',
+            audio_clip_audio_file=self.unprocessed_object_key,
         )
 
         #proceed
@@ -5329,17 +5548,29 @@ class CoreProcess_NormaliseAudioClipsLambda_TestCase(TestCase):
 
         request = self.client.post(reverse('create_replies_process_api'), data)
 
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
         self.assertEqual(request.status_code, 200)
+        self.assertTrue("event_id" in result_data)
+        self.assertTrue("is_processed" in result_data)
+        self.assertTrue(result_data['is_processed'])
 
         sample_audio_clip_1.refresh_from_db()
 
-        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'ok')
+        self.assertEqual(
+            sample_audio_clip_1.generic_status.generic_status_name,
+            'ok'
+        )
+        self.assertEqual(
+            sample_audio_clip_1.audio_file,
+            self.processed_object_key
+        )
 
 
     def test_create_reply__process__queue_deleted_ok(self):
 
         #EventReplyQueue is irrelevant here
-        #EventReplyQueue can be deleted by cronjob
 
         self.login(self.users[1])
 
@@ -5365,6 +5596,7 @@ class CoreProcess_NormaliseAudioClipsLambda_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='processing',
+            audio_clip_audio_file=self.unprocessed_object_key,
         )
 
         #proceed
@@ -5375,12 +5607,24 @@ class CoreProcess_NormaliseAudioClipsLambda_TestCase(TestCase):
 
         request = self.client.post(reverse('create_replies_process_api'), data)
 
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
         self.assertEqual(request.status_code, 200)
+        self.assertTrue("event_id" in result_data)
+        self.assertTrue("is_processed" in result_data)
+        self.assertTrue(result_data['is_processed'])
 
         sample_audio_clip_1.refresh_from_db()
 
-        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'ok')
-
+        self.assertEqual(
+            sample_audio_clip_1.generic_status.generic_status_name,
+            'ok'
+        )
+        self.assertEqual(
+            sample_audio_clip_1.audio_file,
+            self.processed_object_key
+        )
 
 
 
