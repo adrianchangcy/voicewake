@@ -969,7 +969,7 @@ class S3PostWrapper:
         for retry in range(0, self.key_exist_retries):
 
             #use secrets.token_hex() to mitigate wrongful possession from random guessing
-            file_key = file_path + secrets.token_hex(16) + '.' + self.unprocessed_file_extension
+            file_key = file_path + secrets.token_hex(16) + '.' + file_extension
 
             if self.check_object_exists(file_key) is False:
 
@@ -1564,7 +1564,7 @@ class CreateAudioClips():
                 dev_message="Missing required records."
             )
 
-        #audio_clip is guaranteed by self.get_records_for_normalise_responder() to belong to request.user
+        #audio_clip is guaranteed by self.get_records_for_normalise_x() to belong to request.user
 
         #check event
 
@@ -1610,6 +1610,7 @@ class CreateAudioClips():
             return Response(
                 data={
                     "message": "Recording is already processed.",
+                    "event_id": self.event.id,
                     "is_processed": True,
                 },
                 status=status.HTTP_200_OK
@@ -1627,14 +1628,19 @@ class CreateAudioClips():
 
         target_cache_key = self.determine_processing_cache_key(self.audio_clip.id)
 
-        lambda_when_last_called = cache.get(target_cache_key, None)
+        lambda_last_called = cache.get(target_cache_key, None)
+        lambda_last_called_difference_s = 0
+
+        if lambda_last_called is not None:
+
+            lambda_last_called_difference_s = get_datetime_difference_s(
+                self.datetime_now,
+                get_datetime_from_string(lambda_last_called)
+            )
 
         if (
-            lambda_when_last_called is None or
-            get_datetime_difference_s(
-                self.datetime_now,
-                get_datetime_from_string(lambda_when_last_called)
-            ) >= int(os.environ['AWS_LAMBDA_NORMALISE_TIMEOUT_S'])
+            lambda_last_called is None or
+            lambda_last_called_difference_s >= int(os.environ['AWS_LAMBDA_NORMALISE_TIMEOUT_S'])
         ):
 
             #either haven't called, or called quite long ago
@@ -1647,7 +1653,9 @@ class CreateAudioClips():
             return Response(
                 data={
                     "message": "Recording is still processing.",
+                    "event_id": self.event.id,
                     "is_processed": False,
+                    "cooldown_s": lambda_last_called_difference_s,
                 },
                 status=status.HTTP_200_OK
             )
@@ -1875,6 +1883,15 @@ class CreateAudioClips():
 
     def regenerate_s3_endpoint(self, audio_clip_id:int)->Response:
 
+        #enforce strict context matching for audio_clip_role
+
+        audio_clip_role_name = ''
+
+        if self.current_context == 'create_event':
+            audio_clip_role_name = 'originator'
+        elif self.current_context == 'create_reply':
+            audio_clip_role_name = 'responder'
+
         #check if audio_clip exists
         #users can only get their own records
 
@@ -1886,6 +1903,7 @@ class CreateAudioClips():
                 pk=audio_clip_id,
                 user_id=self.user.id,
                 generic_status__generic_status_name='processing',
+                audio_clip_role__audio_clip_role_name=audio_clip_role_name,
             )
 
         except AudioClips.DoesNotExist:
@@ -2057,8 +2075,9 @@ class CreateAudioClips():
 
         return Response(
             data={
-                "event_id": self.event.id,
                 "message": "Recording was successfully uploaded.",
+                "event_id": self.event.id,
+                "is_processed": True,
             },
             status=status.HTTP_200_OK
         )
