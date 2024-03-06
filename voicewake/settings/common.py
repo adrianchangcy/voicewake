@@ -413,7 +413,7 @@ CACHE_OTP_EMAIL_AGE_S = 86400   #1 day
 
 
 #CRONJOBS
-CRONJOB_DEFAULT_ROW_LIMIT = 500
+CRONJOB_DEFAULT_ROW_LIMIT = 100
 CELERY_IMPORTS = ("voicewake.tasks",)
 CELERY_BEAT_SCHEDULE = {
     'cronjob_ban_audio_clips': {
@@ -423,8 +423,8 @@ CELERY_BEAT_SCHEDULE = {
             'expires': 30,    #30 seconds
         },
     },
-    'cronjob_delete_event_reply_choice_overdue': {
-        'task': 'voicewake.tasks.cronjob_delete_event_reply_choice_overdue',
+    'cronjob_delete_event_reply_queue_not_replying_overdue': {
+        'task': 'voicewake.tasks.cronjob_delete_event_reply_queue_not_replying_overdue',
         'schedule': (30 * 60),  #30 minutes
         'options': {
             'expires': 30,    #30 seconds
@@ -437,8 +437,8 @@ CELERY_BEAT_SCHEDULE = {
             'expires': 30,    #30 seconds
         },
     },
-    'cronjob_delete_event_reply_overdue': {
-        'task': 'voicewake.tasks.cronjob_delete_event_reply_overdue',
+    'cronjob_delete_event_reply_queue_is_replying_overdue': {
+        'task': 'voicewake.tasks.cronjob_delete_event_reply_queue_is_replying_overdue',
         'schedule': (30 * 60),  #30 minutes
         'options': {
             'expires': 30,    #30 seconds

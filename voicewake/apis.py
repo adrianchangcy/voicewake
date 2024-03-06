@@ -129,7 +129,11 @@ class AudioClipReportsAPI(generics.GenericAPIView):
         try:
 
             #get audio_clip
-            target_audio_clip = AudioClips.objects.get(pk=new_data['audio_clip_id'])
+            target_audio_clip = AudioClips.objects.select_related(
+                'generic_status',
+            ).get(
+                pk=new_data['audio_clip_id'],
+            )
 
         except AudioClips.DoesNotExist:
 
@@ -152,13 +156,24 @@ class AudioClipReportsAPI(generics.GenericAPIView):
                 status=status.HTTP_200_OK
             )
 
+        #check if audio_clip is eligible to be reported
+        #e.g. cannot report when still processing and not shown publicly
+        if target_audio_clip.generic_status.generic_status_name != 'ok':
+
+            return Response(
+                data={
+                    'message': 'Recording does not exist.',
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
         #add report
-        audio_clip_report, is_created = AudioClipReports.objects.get_or_create(audio_clip_id=new_data['audio_clip_id'])
-
-        if is_created is False:
-
-            audio_clip_report.last_reported = get_datetime_now()
-            audio_clip_report.save()
+        AudioClipReports.objects.update_or_create(
+            audio_clip_id=new_data['audio_clip_id'],
+            defaults={
+                "last_reported": get_datetime_now(),
+            },
+        )
 
         #for edge case where same user reports --> evaluated --> reports again,
         #no need to do anything, otherwise our cronjob can get overwhelmed

@@ -11,6 +11,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUpload
 from django.db.models import Count
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
+from django.core.cache import cache
 
 #apps
 from voicewake.services import *
@@ -51,6 +52,8 @@ class CoreProcess_TestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
+        cls.datetime_now = get_datetime_now()
+
         cls.users = []
 
         for x in range(0, 6):
@@ -72,11 +75,6 @@ class CoreProcess_TestCase(TestCase):
         cls.audio_file = open(cls.audio_file_full_path, 'rb')
         cls.audio_file = SimpleUploadedFile(cls.audio_file.name, cls.audio_file.read(), 'audio/mp3')
 
-        #dummy file
-        cls.dummy_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/dummy_file.txt')
-        cls.dummy_file = open(cls.dummy_file_full_path, 'rb')
-        cls.dummy_file = SimpleUploadedFile(cls.dummy_file.name, cls.dummy_file.read(), 'audio/mp3')
-
         cls.audio_file_path = "/audio_test.mp3"
         cls.audio_volume_peaks = [
             0.32, 0.47, 0.76, 0.75, 0.79, 0.59, 0.78, 0.83, 0.85, 0.77,
@@ -90,6 +88,11 @@ class CoreProcess_TestCase(TestCase):
     def tearDownClass(cls):
 
         shutil.rmtree(os.path.join(settings.MEDIA_ROOT, 'audio_clips'), ignore_errors=True)
+
+        try:
+            cache.clear()
+        except:
+            pass
 
         super().tearDownClass()
 
@@ -112,35 +115,6 @@ class CoreProcess_TestCase(TestCase):
         #need this to auto-reset via seek(0)
         self.dummy_file.seek(0)
         return self.dummy_file
-
-
-    def create_event(self, created_by, generic_status_name="incomplete"):
-
-        return Events.objects.create(
-            event_name="yolo",
-            created_by=created_by,
-            generic_status=GenericStatuses.objects.get(generic_status_name=generic_status_name)
-        )
-
-
-    def create_audio_clip(
-        self,
-        user_id:int, event_id:int, audio_clip_role_name:Literal['originator', 'responder'],
-        audio_clip_tone_id:int=1,
-        generic_status_name:str="ok", is_banned:bool=False,
-    ):
-
-        return AudioClips.objects.create(
-            user_id=user_id,
-            event_id=event_id,
-            audio_clip_role=AudioClipRoles.objects.get(audio_clip_role_name=audio_clip_role_name),
-            audio_clip_tone_id=audio_clip_tone_id,
-            generic_status=GenericStatuses.objects.get(generic_status_name=generic_status_name),
-            audio_duration_s=self.audio_duration_s,
-            audio_volume_peaks=self.audio_volume_peaks,
-            audio_file=self.audio_file_path,
-            is_banned=is_banned,
-        )
 
 
     def create_event_reply_queue(self, event_id:int, locked_for_user_id:int, is_replying:bool, when_locked:datetime):
@@ -170,38 +144,45 @@ class CoreProcess_TestCase(TestCase):
         )
 
 
-    def test_cronjob_ban_audio_clip_originator_ok(self):
+    def test_cronjob_ban_audio_clips__originator_ok(self):
 
-        datetime_now = get_datetime_now()
+        datetime_now = self.datetime_now
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        total_like_dislike_count = settings.BAN_AUDIO_CLIP_DISLIKE_COUNT / (1 - settings.BAN_AUDIO_CLIP_LIKE_RATIO)
+        ban_min_age_s = 10
+
+        #row #1
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
         )
-
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
         )
-
-        sample_audio_clip_0.like_count = 2
-        sample_audio_clip_0.dislike_count = 10
-        sample_audio_clip_0.like_ratio = 0.2
+        #pessimistic like_count to ensure ratio is as desired
+        sample_audio_clip_0.like_count = math.floor(settings.BAN_AUDIO_CLIP_LIKE_RATIO * total_like_dislike_count)
+        sample_audio_clip_0.dislike_count = settings.BAN_AUDIO_CLIP_DISLIKE_COUNT
+        sample_audio_clip_0.like_ratio = settings.BAN_AUDIO_CLIP_LIKE_RATIO
         sample_audio_clip_0.save()
-
         #arbitrary last_evaluated, as long as < last_reported
         sample_audio_clip_report_0 = AudioClipReports.objects.create(
-            last_evaluated=(datetime_now - timedelta(seconds=10)),
+            last_evaluated=(datetime_now - timedelta(seconds=ban_min_age_s)),
             audio_clip_id=sample_audio_clip_0.id,
         )
 
         #start
 
-        with self.settings(
-            BAN_AUDIO_CLIP_LIKE_RATIO=0.2,
-            BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
-            BAN_AUDIO_CLIP_MIN_AGE_S=11
+        with (
+            self.settings(
+                BAN_AUDIO_CLIP_LIKE_RATIO=sample_audio_clip_0.like_ratio,
+                BAN_AUDIO_CLIP_DISLIKE_COUNT=sample_audio_clip_0.dislike_count,
+                BAN_AUDIO_CLIP_MIN_AGE_S=(ban_min_age_s + 1)
+            ),
+            self.assertNumQueries(12)
         ):
 
             cronjob_ban_audio_clips()
@@ -221,13 +202,13 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(self.users[0].ban_count, 1)
 
 
-    def test_cronjob_ban_audio_clip_responder_ok(self):
+    def test_cronjob_ban_audio_clips__responder_ok(self):
 
-        datetime_now = get_datetime_now()
+        datetime_now = self.datetime_now
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "completed"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='completed',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -236,10 +217,10 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
-        sample_audio_clip_1 = self.create_audio_clip(
-            self.users[1].id,
-            sample_event_0.id,
-            "responder",
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
         )
 
         sample_audio_clip_1.like_count = 2
@@ -281,13 +262,13 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(self.users[1].ban_count, 1)
 
 
-    def test_cronjob_ban_audio_clip_same_event_all_users(self):
+    def test_cronjob_ban_audio_clips__same_event_all_users(self):
 
-        datetime_now = get_datetime_now()
+        datetime_now = self.datetime_now
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "completed"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='completed',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -301,10 +282,10 @@ class CoreProcess_TestCase(TestCase):
         sample_audio_clip_0.like_ratio = 0.2
         sample_audio_clip_0.save()
 
-        sample_audio_clip_1 = self.create_audio_clip(
-            self.users[1].id,
-            sample_event_0.id,
-            "responder",
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
         )
 
         sample_audio_clip_1.like_count = 2
@@ -355,15 +336,15 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(self.users[1].ban_count, 1)
 
 
-    def test_cronjob_ban_audio_clip_different_event_different_users(self):
+    def test_cronjob_ban_audio_clips__different_event_different_users(self):
 
-        datetime_now = get_datetime_now()
+        datetime_now = self.datetime_now
 
         #event 0, ban originator
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "completed"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='completed',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -372,10 +353,10 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
-        sample_audio_clip_1 = self.create_audio_clip(
-            self.users[1].id,
-            sample_event_0.id,
-            "responder",
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
         )
 
         sample_audio_clip_0.like_count = 2
@@ -385,21 +366,21 @@ class CoreProcess_TestCase(TestCase):
 
         #event 1, ban responder
 
-        sample_event_1 = self.create_event(
-            self.users[0],
-            "completed"
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='completed',
         )
 
-        sample_audio_clip_2 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_1.id,
-            "originator",
+        sample_audio_clip_2 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
         )
 
-        sample_audio_clip_3 = self.create_audio_clip(
-            self.users[1].id,
-            sample_event_1.id,
-            "responder",
+        sample_audio_clip_3 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_1,
         )
 
         sample_audio_clip_3.like_count = 2
@@ -461,15 +442,15 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(self.users[1].ban_count, 1)
 
 
-    def test_cronjob_ban_audio_clip_different_event_same_user(self):
+    def test_cronjob_ban_audio_clips__different_event_same_user(self):
 
-        datetime_now = get_datetime_now()
+        datetime_now = self.datetime_now
 
         #event 0, ban originator
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -485,15 +466,15 @@ class CoreProcess_TestCase(TestCase):
 
         #event 1, ban responder
 
-        sample_event_1 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
         )
 
-        sample_audio_clip_1 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_1.id,
-            "originator",
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
         )
 
         sample_audio_clip_1.like_count = 2
@@ -546,11 +527,11 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(self.users[0].ban_count, 2)
 
 
-    def test_cronjob_ban_audio_clip_skip_not_reported(self):
+    def test_cronjob_ban_audio_clips__skip_not_reported(self):
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -586,13 +567,13 @@ class CoreProcess_TestCase(TestCase):
         self.assertIsNone(self.users[0].banned_until)
 
 
-    def test_cronjob_ban_audio_clip_skip_already_evaluated(self):
+    def test_cronjob_ban_audio_clips__skip_already_evaluated(self):
 
-        datetime_now = get_datetime_now()
+        datetime_now = self.datetime_now
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -638,21 +619,21 @@ class CoreProcess_TestCase(TestCase):
         self.assertIsNone(self.users[0].banned_until)
 
 
-    def test_cronjob_ban_audio_clip_skip_already_banned(self):
+    def test_cronjob_ban_audio_clips__skip_already_banned(self):
 
-        datetime_now = get_datetime_now()
+        datetime_now = self.datetime_now
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "deleted"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='deleted',
         )
 
-        sample_audio_clip_0 = self.create_audio_clip(
-            self.users[0].id,
-            sample_event_0.id,
-            "originator",
-            generic_status_name='deleted',
-            is_banned=True,
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='deleted',
+            audio_clip_is_banned=True,
         )
 
         sample_audio_clip_0.like_count = 2
@@ -692,13 +673,13 @@ class CoreProcess_TestCase(TestCase):
         self.assertIsNone(self.users[0].banned_until)
 
 
-    def test_cronjob_reset_reply_choice_ok(self):
+    def test_cronjob_delete_event_reply_queue_not_replying_overdue__ok(self):
 
-        datetime_now = get_datetime_now()
+        overdue_s = 10
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='ok',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -708,28 +689,30 @@ class CoreProcess_TestCase(TestCase):
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
-            sample_event_0.id,
-            self.users[1].id,
-            False,
-            (datetime_now - timedelta(seconds=10))
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=False,
+            when_locked=(self.datetime_now - timedelta(seconds=overdue_s))
         )
 
         with self.settings(
-            EVENT_REPLY_CHOICE_MAX_DURATION_S=2,
+            EVENT_REPLY_CHOICE_MAX_DURATION_S=(overdue_s - 1),
         ):
 
-            cronjob_reset_event_reply_choice_overdue()
+            cronjob_delete_event_reply_queue_not_replying_overdue()
 
         self.assertFalse(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
 
 
-    def test_cronjob_reset_reply_choice_not_expired(self):
+    def test_cronjob_delete_event_reply_queue_not_replying_overdue__multiple_ok(self):
 
-        datetime_now = get_datetime_now()
+        overdue_s = 10
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        #row 1
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='ok',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -739,28 +722,80 @@ class CoreProcess_TestCase(TestCase):
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
-            sample_event_0.id,
-            self.users[1].id,
-            False,
-            (datetime_now - timedelta(seconds=10))
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=False,
+            when_locked=(self.datetime_now - timedelta(seconds=overdue_s))
+        )
+
+        #row 2
+
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='ok',
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
+        )
+
+        event_reply_queue_1 = self.create_event_reply_queue(
+            event_id=sample_event_1.id,
+            locked_for_user_id=self.users[2].id,
+            is_replying=False,
+            when_locked=(self.datetime_now - timedelta(seconds=overdue_s))
         )
 
         with self.settings(
-            EVENT_REPLY_CHOICE_MAX_DURATION_S=20,
+            EVENT_REPLY_CHOICE_MAX_DURATION_S=(overdue_s - 1),
         ):
 
-            cronjob_reset_event_reply_choice_overdue()
+            cronjob_delete_event_reply_queue_not_replying_overdue()
+
+        self.assertFalse(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
+        self.assertFalse(EventReplyQueues.objects.filter(event_id=sample_event_1.id).exists())
+
+
+    def test_cronjob_delete_event_reply_queue_not_replying_overdue__ignore_not_overdue(self):
+
+        overdue_s = 10
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='ok',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=False,
+            when_locked=(self.datetime_now)
+        )
+
+        with self.settings(
+            EVENT_REPLY_CHOICE_MAX_DURATION_S=(overdue_s - 1),
+        ):
+
+            cronjob_delete_event_reply_queue_not_replying_overdue()
 
         self.assertTrue(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
 
 
-    def test_cronjob_reset_reply_choice_skip_unrelated_expired_rows(self):
+    def test_cronjob_delete_event_reply_queue_not_replying_overdue__ignore_replying_expired(self):
 
-        datetime_now = get_datetime_now()
+        overdue_s = 10
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='ok',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -770,28 +805,28 @@ class CoreProcess_TestCase(TestCase):
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
-            sample_event_0.id,
-            self.users[1].id,
-            True,
-            (datetime_now - timedelta(seconds=10))
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(self.datetime_now - timedelta(seconds=overdue_s))
         )
 
         with self.settings(
-            EVENT_REPLY_CHOICE_MAX_DURATION_S=2,
+            EVENT_REPLY_CHOICE_MAX_DURATION_S=(overdue_s - 1),
         ):
 
-            cronjob_reset_event_reply_choice_overdue()
+            cronjob_delete_event_reply_queue_not_replying_overdue()
 
         self.assertTrue(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
 
 
-    def test_cronjob_reset_reply_ok(self):
+    def test_cronjob_delete_event_reply_queue_is_replying_overdue__ok(self):
 
-        datetime_now = get_datetime_now()
+        overdue_s = 10
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='ok',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -801,28 +836,30 @@ class CoreProcess_TestCase(TestCase):
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
-            sample_event_0.id,
-            self.users[1].id,
-            True,
-            (datetime_now - timedelta(seconds=10))
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(self.datetime_now - timedelta(seconds=overdue_s))
         )
 
         with self.settings(
-            EVENT_REPLY_MAX_DURATION_S=2,
+            EVENT_REPLY_MAX_DURATION_S=(overdue_s - 1),
         ):
 
-            cronjob_reset_event_reply_overdue()
+            cronjob_delete_event_reply_queue_is_replying_overdue()
 
         self.assertFalse(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
 
 
-    def test_cronjob_reset_reply_not_expired(self):
+    def test_cronjob_delete_event_reply_queue_is_replying_overdue__multiple_ok(self):
 
-        datetime_now = get_datetime_now()
+        overdue_s = 10
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        #row 1
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='ok',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -832,28 +869,50 @@ class CoreProcess_TestCase(TestCase):
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
-            sample_event_0.id,
-            self.users[1].id,
-            True,
-            (datetime_now - timedelta(seconds=10))
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(self.datetime_now - timedelta(seconds=overdue_s))
         )
 
+        #row 2
+
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='ok',
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
+        )
+
+        sample_event_reply_queue_1 = self.create_event_reply_queue(
+            event_id=sample_event_1.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(self.datetime_now - timedelta(seconds=overdue_s))
+        )
+
+
         with self.settings(
-            EVENT_REPLY_MAX_DURATION_S=20,
+            EVENT_REPLY_MAX_DURATION_S=(overdue_s - 1),
         ):
 
-            cronjob_reset_event_reply_overdue()
+            cronjob_delete_event_reply_queue_is_replying_overdue()
 
-        self.assertTrue(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
+        self.assertFalse(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
+        self.assertFalse(EventReplyQueues.objects.filter(event_id=sample_event_1.id).exists())
 
 
-    def test_cronjob_reset_reply_skip_unrelated_expired_rows(self):
+    def test_cronjob_delete_event_reply_queue_is_replying_overdue__ignore_not_overdue(self):
 
-        datetime_now = get_datetime_now()
+        overdue_s = 10
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='ok',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -863,19 +922,400 @@ class CoreProcess_TestCase(TestCase):
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
-            sample_event_0.id,
-            self.users[1].id,
-            False,
-            (datetime_now - timedelta(seconds=10))
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(self.datetime_now)
         )
 
         with self.settings(
-            EVENT_REPLY_MAX_DURATION_S=2,
+            EVENT_REPLY_MAX_DURATION_S=(overdue_s - 1),
         ):
 
-            cronjob_reset_event_reply_overdue()
+            cronjob_delete_event_reply_queue_is_replying_overdue()
 
         self.assertTrue(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
+
+
+    def test_cronjob_delete_event_reply_queue_is_replying_overdue__ignore_not_replying_expired(self):
+
+        overdue_s = 10
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='ok',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=False,
+            when_locked=(self.datetime_now - timedelta(seconds=overdue_s))
+        )
+
+        with self.settings(
+            EVENT_REPLY_MAX_DURATION_S=(overdue_s - 1),
+        ):
+
+            cronjob_delete_event_reply_queue_is_replying_overdue()
+
+        self.assertTrue(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
+
+
+    def test_cronjob_delete_event_reply_queue_is_replying_overdue__ignore_processing_audio_clip(self):
+
+        overdue_s = 10
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(self.datetime_now - timedelta(seconds=overdue_s))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        with self.settings(
+            EVENT_REPLY_MAX_DURATION_S=(overdue_s - 1),
+        ):
+
+            cronjob_delete_event_reply_queue_is_replying_overdue()
+
+        self.assertFalse(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
+        self.assertTrue(AudioClips.objects.filter(pk=sample_audio_clip_1.id).exists())
+
+
+    def test_cronjob_delete_originator_processing_overdue__ok(self):
+
+        overdue_s = 10
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0.when_created = self.datetime_now - timedelta(seconds=overdue_s)
+        sample_audio_clip_0.save()
+
+        cache_key_0 = CreateAudioClips.determine_processing_cache_key(audio_clip_id=sample_audio_clip_0.id)
+        cache.set(cache_key_0, {})
+
+        with self.settings(
+            AUDIO_CLIP_UNPROCESSED_EXPIRY_S=(overdue_s - 1),
+        ):
+
+            cronjob_delete_originator_processing_overdue()
+
+        self.assertFalse(Events.objects.filter(pk=sample_event_0.id).exists())
+        self.assertFalse(AudioClips.objects.filter(pk=sample_audio_clip_0.id).exists())
+        self.assertIsNone(cache.get(cache_key_0, None))
+
+
+    def test_cronjob_delete_originator_processing_overdue__ignore_not_overdue(self):
+
+        overdue_s = 10
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0.when_created = self.datetime_now
+        sample_audio_clip_0.save()
+
+        cache_key_0 = CreateAudioClips.determine_processing_cache_key(audio_clip_id=sample_audio_clip_0.id)
+        cache.set(cache_key_0, {})
+
+        with self.settings(
+            AUDIO_CLIP_UNPROCESSED_EXPIRY_S=(overdue_s - 1),
+        ):
+
+            cronjob_delete_originator_processing_overdue()
+
+        self.assertTrue(Events.objects.filter(pk=sample_event_0.id).exists())
+        self.assertTrue(AudioClips.objects.filter(pk=sample_audio_clip_0.id).exists())
+        self.assertIsNotNone(cache.get(cache_key_0, None))
+
+
+    def test_cronjob_delete_originator_processing_overdue__multiple_ok(self):
+
+        overdue_s = 10
+
+        #row 1
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0.when_created = self.datetime_now - timedelta(seconds=overdue_s)
+        sample_audio_clip_0.save()
+
+        cache_key_0 = CreateAudioClips.determine_processing_cache_key(audio_clip_id=sample_audio_clip_0.id)
+        cache.set(cache_key_0, {})
+
+        #row 2
+
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_1.when_created = self.datetime_now - timedelta(seconds=overdue_s)
+        sample_audio_clip_1.save()
+
+        cache_key_1 = CreateAudioClips.determine_processing_cache_key(audio_clip_id=sample_audio_clip_1.id)
+        cache.set(cache_key_1, {})
+
+        with self.settings(
+            AUDIO_CLIP_UNPROCESSED_EXPIRY_S=(overdue_s - 1),
+        ):
+
+            cronjob_delete_originator_processing_overdue()
+
+        self.assertFalse(Events.objects.filter(pk=sample_event_0.id).exists())
+        self.assertFalse(AudioClips.objects.filter(pk=sample_audio_clip_0.id).exists())
+        self.assertIsNone(cache.get(cache_key_0, None))
+
+        self.assertFalse(Events.objects.filter(pk=sample_event_1.id).exists())
+        self.assertFalse(AudioClips.objects.filter(pk=sample_audio_clip_1.id).exists())
+        self.assertIsNone(cache.get(cache_key_1, None))
+
+
+    def test_cronjob_delete_responder_processing_overdue__ok(self):
+
+        overdue_s = 10
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(self.datetime_now - timedelta(seconds=overdue_s))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_1.when_created = self.datetime_now - timedelta(seconds=overdue_s)
+        sample_audio_clip_1.save()
+
+        cache_key_0 = CreateAudioClips.determine_processing_cache_key(audio_clip_id=sample_audio_clip_1.id)
+        cache.set(cache_key_0, {})
+
+        with self.settings(
+            AUDIO_CLIP_UNPROCESSED_EXPIRY_S=(overdue_s - 1),
+        ):
+
+            cronjob_delete_responder_processing_overdue()
+
+        self.assertTrue(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
+        self.assertTrue(AudioClips.objects.filter(pk=sample_audio_clip_0.id).exists())
+        self.assertFalse(AudioClips.objects.filter(pk=sample_audio_clip_1.id).exists())
+        self.assertIsNone(cache.get(cache_key_0, None))
+
+
+    def test_cronjob_delete_responder_processing_overdue__ignore_not_overdue(self):
+
+        overdue_s = 10
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(self.datetime_now - timedelta(seconds=overdue_s))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_1.when_created = self.datetime_now
+        sample_audio_clip_1.save()
+
+        cache_key_0 = CreateAudioClips.determine_processing_cache_key(audio_clip_id=sample_audio_clip_1.id)
+        cache.set(cache_key_0, {})
+
+        with self.settings(
+            AUDIO_CLIP_UNPROCESSED_EXPIRY_S=(overdue_s - 1),
+        ):
+
+            cronjob_delete_responder_processing_overdue()
+
+        self.assertTrue(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
+        self.assertTrue(AudioClips.objects.filter(pk=sample_audio_clip_0.id).exists())
+        self.assertTrue(AudioClips.objects.filter(pk=sample_audio_clip_1.id).exists())
+        self.assertIsNotNone(cache.get(cache_key_0, None))
+
+
+    def test_cronjob_delete_responder_processing_overdue__multiple_ok(self):
+
+        overdue_s = 10
+
+        #row 1
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(self.datetime_now - timedelta(seconds=overdue_s))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_1.when_created = self.datetime_now - timedelta(seconds=overdue_s)
+        sample_audio_clip_1.save()
+
+        cache_key_0 = CreateAudioClips.determine_processing_cache_key(audio_clip_id=sample_audio_clip_1.id)
+        cache.set(cache_key_0, {})
+
+        #row 2
+
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_2 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
+        )
+
+        sample_event_reply_queue_1 = self.create_event_reply_queue(
+            event_id=sample_event_1.id,
+            locked_for_user_id=self.users[2].id,
+            is_replying=True,
+            when_locked=(self.datetime_now - timedelta(seconds=overdue_s))
+        )
+
+        sample_audio_clip_3 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_1,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_3.when_created = self.datetime_now - timedelta(seconds=overdue_s)
+        sample_audio_clip_3.save()
+
+        cache_key_1 = CreateAudioClips.determine_processing_cache_key(audio_clip_id=sample_audio_clip_1.id)
+        cache.set(cache_key_1, {})
+
+
+        with self.settings(
+            AUDIO_CLIP_UNPROCESSED_EXPIRY_S=(overdue_s - 1),
+        ):
+
+            cronjob_delete_responder_processing_overdue()
+
+        self.assertTrue(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
+        self.assertTrue(AudioClips.objects.filter(pk=sample_audio_clip_0.id).exists())
+        self.assertFalse(AudioClips.objects.filter(pk=sample_audio_clip_1.id).exists())
+        self.assertIsNone(cache.get(cache_key_0, None))
+
+        self.assertTrue(EventReplyQueues.objects.filter(event_id=sample_event_0.id).exists())
+        self.assertTrue(AudioClips.objects.filter(pk=sample_audio_clip_2.id).exists())
+        self.assertFalse(AudioClips.objects.filter(pk=sample_audio_clip_3.id).exists())
+        self.assertIsNone(cache.get(cache_key_1, None))
+
+
+
+
 
 
 
