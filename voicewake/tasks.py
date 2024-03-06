@@ -1,8 +1,12 @@
+#py
+
+#django
 from django.contrib.auth import get_user_model
 from django.db import connection
 from django.db import transaction
-from django.db.models import F, Q
+from django.db.models import F, Q, Prefetch
 from celery import shared_task
+from django.core.cache import cache
 
 #apps
 from voicewake.services import *
@@ -10,30 +14,40 @@ from voicewake.models import *
 from django.conf import settings
 
 
+
+#deletion
+    #deletion via raw query
+        #only used if affected table has no signal to send, and has no FK
+        #can control row quantity, whereas queryset just deletes everything
+            #tested: delete() returns deleted tuples first (i.e. all), and applying [0:1] just filters them
+        #can guarantee not loaded into memory
+        #queryset delete() "is subject to change"
+    #avoiding Django cascade behaviour when deleting
+        #Django emulates cascade at ORM-level
+            #this is to send signals, etc.
+            #however, this can consume a lot of memory as it scales
+
+#1-to-1 cases
+    #commonly the case, i.e. update 1 event based on 1 originator/responder
+    #if this changes in the future, be sure to check whether RETURNING behaves expectedly
+        #i.e. select 2 AudioClips, affect 1 Events, RETURNING info from 2 AudioClips
+
+
+
 @shared_task
 def cronjob_ban_audio_clips():
-
-    datetime_now = get_datetime_now()
 
     #select via last_evaluated where it is >= earliest_datetime
     #which means we prioritise older last_evaluated
     #we may miss those that are < earliest_datetime,
     #but this also ensures that we don't eternally evaluate oldest reports
+
+    datetime_now = get_datetime_now()
+
     earliest_datetime = datetime_now - timedelta(seconds=settings.BAN_AUDIO_CLIP_MIN_AGE_S)
 
-    generic_statuses = GenericStatuses.objects.filter(generic_status_name__in=('deleted', 'incomplete',))
-    generic_status_deleted = None
-    generic_status_incomplete = None
-
-    for row in generic_statuses:
-
-        if row.generic_status_name == 'deleted':
-
-            generic_status_deleted = row
-
-        elif row.generic_status_name == 'incomplete':
-
-            generic_status_incomplete = row
+    generic_status_deleted = GenericStatuses.objects.get(generic_status_name='deleted')
+    generic_status_incomplete = GenericStatuses.objects.get(generic_status_name='incomplete')
 
     with transaction.atomic():
 
@@ -49,7 +63,14 @@ def cronjob_ban_audio_clips():
             'audio_clip__audio_clip_role',
             'audio_clip__user',
         ).filter(
-            Q(last_evaluated__isnull=True) | (Q(last_evaluated__gte=earliest_datetime) & Q(last_reported__gt=F('last_evaluated'))),
+            (
+                Q(last_evaluated__isnull=True) |
+                (
+                    Q(last_evaluated__gte=earliest_datetime) &
+                    Q(last_reported__gt=F('last_evaluated'))
+                )
+            ),
+            audio_clip__generic_status__generic_status_name='ok',
             audio_clip__is_banned=False,
             audio_clip__like_ratio__lte=settings.BAN_AUDIO_CLIP_LIKE_RATIO,
             audio_clip__dislike_count__gte=settings.BAN_AUDIO_CLIP_DISLIKE_COUNT,
@@ -80,6 +101,7 @@ def cronjob_ban_audio_clips():
                 #mark as deleted
 
                 #remove event if added from responder
+                #we prioritise "deleted" over "incomplete" for event
                 if audio_clip_report.audio_clip.event.id in event_ids:
 
                     events.pop(event_ids.index(audio_clip_report.audio_clip.event.id))
@@ -135,42 +157,40 @@ def cronjob_ban_audio_clips():
 
         #update everything
 
-        AudioClipReports.objects.bulk_update(audio_clip_reports, fields=('last_evaluated',))
-        Events.objects.bulk_update(events, fields=('generic_status',))
-        AudioClips.objects.bulk_update(audio_clips, fields=('is_banned', 'last_modified', 'generic_status',))
-        get_user_model().objects.bulk_update(users, fields=('ban_count', 'banned_until',))
+        AudioClipReports.objects.bulk_update(
+            audio_clip_reports,
+            fields=('last_evaluated',),
+            batch_size=100,
+        )
+
+        Events.objects.bulk_update(
+            events,
+            fields=('generic_status',),
+            batch_size=100,
+        )
+
+        AudioClips.objects.bulk_update(
+            audio_clips,
+            fields=('is_banned', 'last_modified', 'generic_status',),
+            batch_size=100,
+        )
+
+        get_user_model().objects.bulk_update(
+            users,
+            fields=('ban_count', 'banned_until',),
+            batch_size=100,
+        )
 
 
 @shared_task
-def cronjob_delete_event_reply_choice_overdue():
-
-    when_locked_checkpoint = get_datetime_now() - timedelta(seconds=settings.EVENT_REPLY_CHOICE_MAX_DURATION_S)
-
-    EventReplyQueues.objects.filter(
-        when_locked__lte=when_locked_checkpoint,
-        is_replying=False,
-    ).order_by(
-        'when_locked',
-    ).delete()[0:settings.CRONJOB_DEFAULT_ROW_LIMIT]
-
-
-@shared_task
-def cronjob_delete_event_reply_overdue():
-
-    #delete only those that does not have AudioClips
+def cronjob_delete_event_reply_queue_not_replying_overdue():
 
     when_locked_checkpoint = get_datetime_now() - timedelta(seconds=settings.EVENT_REPLY_CHOICE_MAX_DURATION_S)
 
     full_sql = '''
         WITH target_rows AS (
             SELECT erq.id FROM event_reply_queues AS erq
-            LEFT JOIN audio_clips AS ac ON erq.event_id = ac.event_id
-                AND ac.audio_clip_role_id = (
-                    SELECT acr.id FROM audio_clip_roles AS acr
-                    WHERE acr.audio_clip_role_name = %s
-                )
-            WHERE erq.is_replying IS TRUE
-            AND ac.id IS NULL
+            WHERE erq.is_replying IS FALSE
             AND erq.when_locked <= %s
             ORDER BY when_locked ASC
             LIMIT %s
@@ -182,73 +202,211 @@ def cronjob_delete_event_reply_overdue():
     '''
 
     full_params = [
-        'responder',
         when_locked_checkpoint,
         settings.CRONJOB_DEFAULT_ROW_LIMIT,
     ]
 
-    EventReplyQueues.objects.raw(
-        raw_query=full_sql,
-        params=full_params
-    )
+    with connection.cursor() as cursor:
+
+        cursor.execute(
+            sql=full_sql,
+            params=full_params,
+        )
+
+
+@shared_task
+def cronjob_delete_event_reply_queue_is_replying_overdue():
+
+    when_locked_checkpoint = get_datetime_now() - timedelta(seconds=settings.EVENT_REPLY_MAX_DURATION_S)
+
+    full_sql = '''
+        WITH target_rows AS (
+            SELECT erq.id FROM event_reply_queues AS erq
+            WHERE erq.is_replying IS TRUE
+            AND erq.when_locked <= %s
+            ORDER BY when_locked ASC
+            LIMIT %s
+        )
+        DELETE FROM event_reply_queues AS erq
+        USING target_rows as tr
+        WHERE erq.id = tr.id
+        ;
+    '''
+
+    full_params = [
+        when_locked_checkpoint,
+        settings.CRONJOB_DEFAULT_ROW_LIMIT,
+    ]
+
+    with connection.cursor() as cursor:
+
+        cursor.execute(
+            sql=full_sql,
+            params=full_params,
+        )
 
 
 @shared_task
 def cronjob_delete_originator_processing_overdue():
 
-    #delete only Events.GenericStatuses.generic_status_name='processing'
-    #as long as AudioClips.event_id FK has delete on CASCADE
-
     when_created_checkpoint = get_datetime_now() - timedelta(seconds=settings.AUDIO_CLIP_UNPROCESSED_EXPIRY_S)
 
-    Events.objects.filter(
-        when_created__lte=when_created_checkpoint,
-        generic_status__generic_status_name='processing',
-    ).order_by(
-        'when_created',
-    ).delete()[0:settings.CRONJOB_DEFAULT_ROW_LIMIT]
-
-
-@shared_task
-def cronjob_delete_responder_processing_overdue():
-
-    #delete from AudioClips first
-    #EventReplyQueues naturally has less rows, so less expensive when sequential scan is used
-
-    when_created_checkpoint = get_datetime_now() - timedelta(seconds=settings.AUDIO_CLIP_UNPROCESSED_EXPIRY_S)
-
+    #delete AudioClips first, then delete Events, and return AudioClips.id
+    #we delete cache via AudioClips.id
     full_sql = '''
         WITH
         target_audio_clips AS (
-            SELECT ac.id FROM audio_clips AS ac
-            INNER JOIN audio_clip_roles AS acr ON ac.audio_clip_role_id = acr.id
-            INNER JOIN generic_statuses AS gs ON ac.generic_status_id = gs.id
+            SELECT ac.id, ac.event_id FROM audio_clips AS ac
+            INNER JOIN generic_statuses AS gs ON gs.id = ac.generic_status_id
+            INNER JOIN audio_clip_roles AS acr ON acr.id = ac.audio_clip_role_id
             WHERE acr.audio_clip_role_name = %s
-            AND gs.generic_status_name = %s
             AND ac.when_created <= %s
+            AND gs.generic_status_name = %s
             ORDER BY ac.when_created ASC
             LIMIT %s
         ),
         deleted_audio_clips AS (
             DELETE FROM audio_clips AS ac
-            USING target_audio_clips as tac
+            USING target_audio_clips AS tac
             WHERE ac.id = tac.id
-            RETURNING ac.event_id
+            RETURNING tac.id, tac.event_id
         )
-        DELETE FROM event_reply_queues AS erq
+        DELETE FROM events AS e
         USING deleted_audio_clips AS dac
-        WHERE erq.event_id = dac.event_id
-        ;
+        WHERE e.id = dac.event_id
+        AND e.generic_status_id = (
+            SELECT id FROM generic_statuses
+            WHERE generic_status_name = %s
+        )
+        RETURNING dac.id
+    '''
+
+    full_params = [
+        'originator',
+        when_created_checkpoint,
+        'processing',
+        settings.CRONJOB_DEFAULT_ROW_LIMIT,
+        'processing',
+    ]
+
+    target_cache_keys = []
+
+    with connection.cursor() as cursor:
+
+        cursor.execute(
+            sql=full_sql,
+            params=full_params,
+        )
+
+        #expect only AudioClips.id as (id,) tuple
+
+        for row in cursor.fetchall():
+
+            target_cache_keys.append(
+                CreateAudioClips.determine_processing_cache_key(
+                    audio_clip_id=row[0]
+                )
+            )
+
+    #delete cache
+    #cache content is irrelevant
+
+    cache.delete_many(target_cache_keys)
+
+
+@shared_task
+def cronjob_delete_responder_processing_overdue():
+
+    when_created_checkpoint = get_datetime_now() - timedelta(seconds=settings.AUDIO_CLIP_UNPROCESSED_EXPIRY_S)
+
+    #delete AudioClips, reset Events to "incomplete", returns AudioClips.id
+    #we delete cache via AudioClips.id
+    #do not touch EventReplyQueues
+    full_sql = '''
+        WITH
+        target_audio_clips AS (
+            SELECT ac.id, ac.event_id FROM audio_clips AS ac
+            INNER JOIN generic_statuses AS gs ON gs.id = ac.generic_status_id
+            INNER JOIN audio_clip_roles AS acr ON acr.id = ac.audio_clip_role_id
+            WHERE acr.audio_clip_role_name = %s
+            AND ac.when_created <= %s
+            AND gs.generic_status_name = %s
+            ORDER BY ac.when_created ASC
+            LIMIT %s
+        ),
+        deleted_audio_clips AS (
+            DELETE FROM audio_clips AS ac
+            USING target_audio_clips AS tac
+            WHERE ac.id = tac.id
+            RETURNING tac.id, tac.event_id
+        )
+        UPDATE events AS e
+        SET generic_status_id = (
+            SELECT id FROM generic_statuses
+            WHERE generic_status_name = %s
+        )
+        FROM deleted_audio_clips AS dac
+        WHERE e.id = dac.event_id
+        AND e.generic_status_id = (
+            SELECT id FROM generic_statuses
+            WHERE generic_status_name = %s
+        )
+        RETURNING dac.id
     '''
 
     full_params = [
         'responder',
-        'processing',
         when_created_checkpoint,
-        settings.CRONJOB_DEFAULT_ROW_LIMIT
+        'processing',
+        settings.CRONJOB_DEFAULT_ROW_LIMIT,
+        'incomplete',
+        'processing',
     ]
 
-    EventReplyQueues.objects.raw(
-        raw_query=full_sql,
-        params=full_params
-    )
+    target_cache_keys = []
+
+    with connection.cursor() as cursor:
+
+        cursor.execute(
+            sql=full_sql,
+            params=full_params,
+        )
+
+        #expect only AudioClips.id as (id,) tuple
+
+        for row in cursor.fetchall():
+
+            target_cache_keys.append(
+                CreateAudioClips.determine_processing_cache_key(
+                    audio_clip_id=row[0]
+                )
+            )
+
+    #delete cache
+    #cache content is irrelevant
+
+    cache.delete_many(target_cache_keys)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
