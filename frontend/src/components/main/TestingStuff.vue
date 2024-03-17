@@ -4,9 +4,7 @@
     <!-- <FontAwesomeIcon icon="fas fa-comments"/> -->
 
 
-
-
-
+        
     </div>
 </template>
 
@@ -27,13 +25,14 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import { notify } from 'notiwind';
+    // import { notify } from 'notiwind';
     // import anime from 'animejs';
     // import VPlayback from '../medium/VPlayback.vue';
     // import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
     import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
     // import { drawCanvasRipples } from '@/helper_functions';
     import AudioClipsTypes from '@/types/AudioClips.interface';
+    import { useTestStore } from '@/stores/TestStore';
     const axios = require('axios');
 
     export default defineComponent({
@@ -42,6 +41,7 @@
                 notifications: [] as any[],
                 event: null as EventsAndAudioClipsTypes|null,
                 is_yolo: false,
+                test_store: useTestStore(),
 
                 sample_audio_clip: {
                     id: 1,
@@ -56,7 +56,7 @@
                         id: 1,
                         audio_clip_tone_name: 'happy',
                         audio_clip_tone_slug: 'happy',
-                        audio_clip_tone_symbol: 'h',
+                        audio_clip_tone_symbol: '🙂',
                     },
                     event_id: 1,
                     generic_status: {
@@ -84,43 +84,13 @@
 
                 await axios.get(window.location.origin + '/api/test', data)
                 .then((result:any) => {
-                    console.log(result.data);                      //native {data:{},message:"testo"}
+                    console.log(result.data);                      //native {keyA:{},keyB:"testo"}
                     console.log(result.request.status);            //number 200
                 }).catch((error:any) => {
                     if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
-                        console.log(error.response.data);               //native {data:{},message:"testo"}
+                        console.log(error.response.data);               //native {keyA:{},keyB:"testo"}
                         console.log(error.request.status);              //number 418
                     }
-                });
-            },
-            async getEvent(event_id:number) : Promise<void> {
-
-                //prepare audio_clips, then separate
-                await axios.get(window.location.origin + '/api/audio_clips/get/event/' + event_id.toString())
-                .then((result:any) => {
-
-                    if(result.data['data'].length === 0){
-
-                        return;
-                    }
-
-                    //API always returns list, even if there is only one event
-                    this.event = result.data['data'][0];
-                })
-                .catch((error:any) => {
-
-                    let error_text = '';
-
-                    if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
-
-                        error_text = error.response.data['message'];
-                    }
-
-                    notify({
-                        title: "AudioClip search failed",
-                        text: error_text,
-                        type: "error"
-                    }, 3000);
                 });
             },
         },
@@ -128,15 +98,37 @@
 
             // this.callTest();
 
-            notify({
-                title: "Keep it up!",
-                text: "You'll finish this project soon. You can do this!",
-                type: "ok"
-            }, 3000);
+            // const yolo = notify({
+            //     title: "Keep it up!",
+            //     text: "You'll finish this project soon. You can do this!",
+            //     type: "ok"
+            // }, 3000);
 
-            window.setInterval(()=>{
+            // console.log(yolo());
+
+            const current_url = new URL(window.location.href);
+            console.log(current_url.searchParams.get(''));
+
+            console.log('current count is: ' + this.test_store.getCount.toString());
+
+            this.test_store.addCount();
+
+
+            window.setTimeout(()=>{
                 this.is_yolo = !this.is_yolo;
             }, 2000);
+
+            //create event/reply --> save every change at store --> upload --> hide "creating" UI --> ...
+            //... --> show "done" UI + "we will let you know once processed" --> ...
+                //... --> if user clicks away, use ping, track pings at store for cross-tabs --> ...
+                //... --> if user not click away, just redirect
+
+            // window.addEventListener('beforeunload', (e:BeforeUnloadEvent)=>{
+
+            //     //pops up the dialog
+            //     //we cannot edit the dialog
+            //     e.preventDefault();
+            // });
         },
     });
 </script>

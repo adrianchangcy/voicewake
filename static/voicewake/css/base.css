@@ -188,6 +188,32 @@ textarea {
     content: '';
 }
 
+/*progress bar*/
+.progress-bar {
+    position: relative;
+    overflow: hidden;
+    opacity: 1;
+}
+@keyframes progress-bar {
+    100% {
+        /*every 100% is .laser::after's own width*/
+        /*e.g. if laser::after's width is 10% of full width, 100% here is that mere 10%, 1000% is 100%*/
+        transform: translateX(1000%);
+    }
+}
+.progress-bar::after {
+    position: absolute;
+    width: 10%;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    transform: translateX(-100%);
+    /*for background-color, can do "after:bg-theme-lead/20"*/
+    animation: progress-bar 1s infinite linear;
+    content: '';
+}
+
 /*pulse audio clip selected*/
 /*visibility here is needed to prevent first-time jolt or starting too early (both not intentional)*/
 /*0% keyframe is to prevent pixelated circle if it were to truly start from scale(0)*/

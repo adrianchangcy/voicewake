@@ -1049,6 +1049,7 @@ class S3PostWrapper:
             object_file.seek(0)
 
             #must be 'file'
+            #must be last field
             fields['file'] = object_file.read()
 
         #at Python, form fields are passed as files={}
@@ -1057,6 +1058,8 @@ class S3PostWrapper:
             files=fields
         )
 
+        #always returns 204, regardless of whether file already exists in S3 or not
+        #tested as of March 2024
         if response.status_code == 204:
 
             return
@@ -2027,7 +2030,11 @@ class CreateAudioClips():
         target_cache['last_attempt'] = get_datetime_now(to_string=True)
         target_cache['attempts'] += 1
 
-        cache.set(target_cache_key, target_cache)
+        cache.set(
+            target_cache_key,
+            target_cache,
+            timeout=settings.AUDIO_CLIP_UNPROCESSED_EXPIRY_S
+        )
 
         #call lambda
 

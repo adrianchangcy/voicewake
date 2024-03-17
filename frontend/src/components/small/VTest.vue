@@ -15,17 +15,19 @@
             };
         },
         watch: {
-            ooga_count(new_value){
-                console.log('new ooga_count from VTest' + new_value.toString());
+            ooga_count(){
+                console.log('new ooga_count from VTest: ' + this.ooga_count.toString());
             },
         },
         methods: {
-            addOogaCount(){
-                this.ooga_count += 1;
+            addOogaCount(new_value:number){
+                this.ooga_count += new_value;
+            },
+            notExposed(){
+                console.log('ooo');
             },
         },
         mounted(){
-
         },
 
     });

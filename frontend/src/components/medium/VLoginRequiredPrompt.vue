@@ -68,8 +68,7 @@
 
 <script lang="ts">
     //we don't keep VAudioClipToneMenu in this component due to the inflexibility of button size =/= menu size
-    import { defineComponent, PropType } from 'vue';
-    import AudioClipToneTypes from '@/types/AudioClipTones.interface';
+    import { defineComponent } from 'vue';
 
     export default defineComponent({
         data(){
@@ -78,11 +77,6 @@
         },
         emits: ['forceClose'],
         props: {
-            propLabel: String,
-            propAudioClipToneChoice: {
-                type: Object as PropType<AudioClipToneTypes> | null,
-                default: null,
-            },
             propIsOpen: {
                 type: Boolean,
                 default: false

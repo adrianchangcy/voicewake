@@ -97,10 +97,10 @@
 
 <script setup lang="ts">
     import TransitionFade from '@/transitions/TransitionFade.vue';
-    import VDialogPlain from '@/components/small/VDialogPlain.vue';
-    import VActionText from '@/components/small/VActionText.vue';
-    import VActionBorder from '@/components/small/VActionBorder.vue';
-    import VLoading from '@/components/small/VLoading.vue';
+    import VDialogPlain from '../components/small/VDialogPlain.vue';
+    import VActionText from '../components/small/VActionText.vue';
+    import VActionBorder from '../components/small/VActionBorder.vue';
+    import VLoading from '../components/small/VLoading.vue';
     import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';

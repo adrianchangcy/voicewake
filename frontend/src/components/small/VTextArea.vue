@@ -26,9 +26,9 @@
                 :id="propElementId"
                 v-model="input_value"
                 :class="[
-                    (propIsOk ? 'border-theme-toast-success' : 'focus:border-theme-black border-theme-gray-4'),
-                    (propIsWarning ? 'border-theme-toast-warning' : 'focus:border-theme-black border-theme-gray-4'),
-                    (propIsError ? 'border-theme-toast-danger' : 'focus:border-theme-black border-theme-gray-4'),
+                    (propIsOk ? 'border-green-700' : 'focus:border-theme-black border-theme-gray-4'),
+                    (propIsWarning ? 'border-yellow-700' : 'focus:border-theme-black border-theme-gray-4'),
+                    (propIsError ? 'border-red-700' : 'focus:border-theme-black border-theme-gray-4'),
                     'block w-full h-10 bg-theme-light border-2 shade-border-when-hover rounded-lg overflow-hidden p-2 pt-1    focus:outline-none'
                 ]"
                 :placeholder="propPlaceholder"
@@ -40,9 +40,9 @@
         <div v-show="propHasStatusText" class="h-5 text-base px-2">
             <span
                 :class="[
-                    (propIsOk ? 'text-theme-toast-success' : ''),
-                    (propIsWarning ? 'text-theme-toast-warning-2' : ''),
-                    (propIsError || propIsRequired ? 'text-theme-toast-danger' : ''),
+                    (propIsOk ? 'text-green-700' : ''),
+                    (propIsWarning ? 'text-yellow-700' : ''),
+                    (propIsError || propIsRequired ? 'text-red-700' : ''),
                     ''
                 ]"
             >

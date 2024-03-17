@@ -1,4 +1,5 @@
 <template>
+    <!--don't add extra border here like we used to, else it'll go out of sync with VRecorderMenu's height-->
     <div
         v-show="is_open"
         class="w-full h-fit"
@@ -10,7 +11,7 @@
             <!--relative fixes the problem where the child buttons overall overflow beyond <html>, causing whitespace-->
             <div
                 v-if="is_loading === true"
-                class="items-center place-items-center grid grid-flow-row grid-cols-4 gap-y-1 relative"
+                class="items-center place-items-center grid grid-flow-row grid-cols-4 relative"
             >
                 <span class="sr-only">audio tones are loading</span>
                 <div
@@ -44,9 +45,10 @@
             </div>
 
             <!--has tones-->
+            <!--better to not have gap, otherwise scrolling the gap scrolls main body-->
             <div
                 v-else-if="hasAudioClipTones === true"
-                class="items-center place-items-center grid grid-flow-row grid-cols-4 gap-y-1 relative"
+                class="items-center place-items-center grid grid-flow-row grid-cols-4 relative"
             >
                 <!--this is for deselect-->
                 <div

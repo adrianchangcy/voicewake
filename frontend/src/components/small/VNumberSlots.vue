@@ -19,11 +19,11 @@
                 :data-index="x"
                 class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 focus:border-theme-black border-theme-gray-4 shade-border-when-hover    focus:outline-none"
             />
-            <FontAwesomeIcon v-show="is_error" icon="fas fa-exclamation" class="px-2 text-theme-toast-danger"/>
+            <FontAwesomeIcon v-show="is_error" icon="fas fa-exclamation" class="px-2 text-red-700"/>
         </div>
         <div class="h-6">
             <TransitionFade>
-                <div v-show="is_error" class="w-full h-fit text-theme-toast-danger text-base whitespace-break-spaces">
+                <div v-show="is_error" class="w-full h-fit text-red-700 text-base whitespace-break-spaces">
                     <span>{{ status_text }}</span>
                 </div>
             </TransitionFade>
@@ -33,7 +33,7 @@
 
 
 <script setup lang="ts">
-    import VInputLabel from '@/components/small/VInputLabel.vue';
+    import VInputLabel from '../small/VInputLabel.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';

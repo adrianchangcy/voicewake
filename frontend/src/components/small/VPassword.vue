@@ -36,9 +36,9 @@
             </button>
         </div>
         <div v-show="propHasStatusText" class="h-6 text-base px-2">
-            <span v-show="is_success" class="text-theme-toast-success">{{ status_text }}</span>
-            <span v-show="is_warning" class="text-theme-toast-warning-2">{{ status_text }}</span>
-            <span v-show="is_error" class="text-theme-toast-danger">{{ status_text }}</span>
+            <span v-show="is_success" class="text-green-700">{{ status_text }}</span>
+            <span v-show="is_warning" class="text-yellow-700">{{ status_text }}</span>
+            <span v-show="is_error" class="text-red-700">{{ status_text }}</span>
         </div>
 
         <!--help-->
