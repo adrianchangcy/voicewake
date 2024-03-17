@@ -34,9 +34,9 @@
             >
             <div class="w-10 h-full absolute right-0 top-0 bottom-0 m-auto">
                 <div class="w-full h-full relative">
-                    <FontAwesomeIcon v-show="propIsOk" icon="fas fa-check" class="text-theme-toast-success absolute inset-0 m-auto"/>
-                    <FontAwesomeIcon v-show="propIsWarning" icon="fas fa-triangle-exclamation" class="text-theme-toast-warning absolute inset-0 m-auto"/>
-                    <FontAwesomeIcon v-show="propIsError" icon="fas fa-exclamation" class="text-theme-toast-danger absolute inset-0 m-auto"/>
+                    <FontAwesomeIcon v-show="propIsOk" icon="fas fa-check" class="text-green-700 absolute inset-0 m-auto"/>
+                    <FontAwesomeIcon v-show="propIsWarning" icon="fas fa-triangle-exclamation" class="text-yellow-700 absolute inset-0 m-auto"/>
+                    <FontAwesomeIcon v-show="propIsError" icon="fas fa-exclamation" class="text-red-700 absolute inset-0 m-auto"/>
                     <VLoading
                         v-show="propIsLoading"
                         prop-element-size="s"
@@ -48,9 +48,9 @@
         <div v-show="propHasStatusText" class="h-6 text-base pl-2">
             <span
                 :class="[
-                    (propIsOk ? 'text-theme-toast-success' : ''),
-                    (propIsWarning ? 'text-theme-toast-warning-2' : ''),
-                    (propIsError ? 'text-theme-toast-danger' : ''),
+                    (propIsOk ? 'text-green-700' : ''),
+                    (propIsWarning ? 'text-yellow-700' : ''),
+                    (propIsError ? 'text-red-700' : ''),
                     (hasPlainStatusText ? 'text-theme-black' : ''),
                     ''
                 ]"

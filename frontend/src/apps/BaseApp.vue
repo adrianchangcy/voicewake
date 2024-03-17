@@ -78,12 +78,12 @@
 
 
 <script setup lang="ts">
-    import VNotiwind from '@/components/medium/VNotiwind.vue';
-    import NavBar from '@/components/main/NavBar.vue';
-    import UserLogInSignUp from '@/components/main/UserLogInSignUp.vue';
+    import VNotiwind from '../components/medium/VNotiwind.vue';
+    import NavBar from '../components/main/NavBar.vue';
+    import UserLogInSignUp from '../components/main/UserLogInSignUp.vue';
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
-    import VLoginRequiredPrompt from '@/components/medium/VLoginRequiredPrompt.vue';
+    import VLoginRequiredPrompt from '../components/medium/VLoginRequiredPrompt.vue';
 </script>
 
 <script lang="ts">
@@ -134,10 +134,12 @@
                     title: 'Cookies Consent',
                     text: 'We use cookies so you can stay logged in.',
                     type: 'generic',
-                    button_1: {
-                        text: 'Accept',
-                        callback: this.setCookiesConsent,
-                    },
+                    buttons: [
+                        {
+                            text: 'Accept',
+                            callback: this.setCookiesConsent,
+                        },
+                    ],
                 }, -1);
             },
             setCookiesConsent() : void {

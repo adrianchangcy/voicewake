@@ -17,7 +17,7 @@
             :prop-has-default-actions="false"
             class="py-8"
         >
-            <span>Likes &#38; dislikes</span>
+            <span>Likes &#38; Dislikes</span>
         </VUserCard>
 
         <!--sorting options-->
@@ -32,115 +32,123 @@
             <!--filter-->
             <div>
 
-                <!--open/close filter menu-->
-                <div
-                    ref="open_close_filter_menu_button"
-                    class="w-fit mx-auto"
-                >
-                    <VAction
-                        @click="toggleFilterMenu()"
-                        prop-element="button"
-                        type="button"
-                        prop-element-size="s"
-                        prop-font-size="s"
-                        :prop-is-icon-only="false"
-                        :prop-is-enabled="true"
-                        class="px-4 flex-row"
+                <div class="flex flex-col gap-2">
+
+                    <!--likes/dislikes-->
+                    <div
+                        v-if="isUserLikesDislikesPage"
+                        class="w-full flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors"
                     >
-                        <span class="pr-2">Filters</span>
-                        <FontAwesomeIcon
-                            icon="fas fa-chevron-down"
-                            :class="[
-                                is_filter_menu_open ? '-rotate-180' : 'rotate-0',
-                                'text-xs transition-transform'
-                            ]"
-                        />
-                    </VAction>
+                        <VActionText
+                            v-for="(filter_type, index) in filtered_events_store.getLikeDislikeChoices"
+                            :key="index"
+                            @click="filtered_events_store.updateCurrentLikeDislikeChoiceIndex(index)"
+                            :disabled="filtered_events_store.isSameCurrentLikeDislikeChoiceIndex(index)"
+                            prop-element="button"
+                            prop-element-size="s"
+                            prop-font-size="s"
+                            :prop-is-icon-only="true"
+                            class="w-full relative focus-visible:-outline-offset-2"
+                        >
+                            <span class="w-fit mx-auto">{{ filter_type }}</span>
+                            <span
+                                v-show="filtered_events_store.isSameCurrentLikeDislikeChoiceIndex(index)"
+                                class="sr-only"
+                            >
+                                selected
+                            </span>
+                            <TransitionFade>
+                                <div
+                                    v-show="filtered_events_store.isSameCurrentLikeDislikeChoiceIndex(index)"
+                                    class="absolute h-0.5 bg-theme-black left-2 right-2 bottom-0"
+                                ></div>
+                            </TransitionFade>
+                        </VActionText>
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-2">
+                        <!--audio_clip_roles-->
+                        <div class="col-span-3 flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors">
+                            <VActionText
+                                v-for="(pretty_audio_clip_role_name, index) in filtered_events_store.getPrettyAudioClipRoleNames"
+                                :key="index"
+                                @click="filtered_events_store.updateCurrentAudioClipRoleNameIndex(index)"
+                                :disabled="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
+                                prop-element="button"
+                                prop-element-size="s"
+                                prop-font-size="s"
+                                :prop-is-icon-only="true"
+                                class="w-full relative focus-visible:-outline-offset-2"
+                            >
+                                <span class="w-fit mx-auto">{{ pretty_audio_clip_role_name }}</span>
+                                <span
+                                    v-show="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
+                                    class="sr-only"
+                                >
+                                    selected
+                                </span>
+                                <TransitionFade>
+                                    <div
+                                        v-show="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
+                                        class="absolute h-0.5 bg-theme-black left-2 right-2 bottom-0"
+                                    ></div>
+                                </TransitionFade>
+                            </VActionText>
+                        </div>
+
+                        <!--audio_clip_tones-->
+                        <div
+                            ref="open_close_audio_clip_tone_menu_button"
+                            class="col-span-1 flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors"
+                        >
+                            <VActionText
+                                @click="toggleFilterMenu()"
+                                prop-element="button"
+                                prop-element-size="s"
+                                prop-font-size="s"
+                                :prop-is-icon-only="false"
+                                class="w-full focus-visible:-outline-offset-2"
+                            >
+                                <span
+                                    v-if="filtered_events_store.getCurrentAudioClipTone === null"
+                                    class="mx-auto"
+                                >
+                                    Any
+                                </span>
+                                <span
+                                    v-else
+                                    class="mx-auto text-2xl"
+                                >
+                                    <span class="sr-only">{{ filtered_events_store.getCurrentAudioClipTone.audio_clip_tone_name }}</span>
+                                    {{ filtered_events_store.getCurrentAudioClipTone.audio_clip_tone_symbol }}
+                                </span>
+                            </VActionText>
+                        </div>
+                    </div>
                 </div>
 
-                <!--filter menu-->
+                <!--audio_clip_tone menu-->
                 <div class="h-0 relative">
 
                     <!--arrow-->
-                    <div
-                        v-show="is_filter_menu_open"
-                        class="z-30 w-2 h-2 absolute top-3 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"
-                    ></div>
+                    <div class="w-full grid grid-cols-4">
+                        <div class="col-start-4 col-span-1 relative">
+                            <div
+                                v-show="is_audio_clip_tone_menu_open"
+                                class="z-30 w-2 h-2 absolute top-3 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"
+                            ></div>
+                        </div>
+                    </div>
 
                     <!--menu-->
                     <div
-                        v-show="is_filter_menu_open"
+                        v-show="is_audio_clip_tone_menu_open"
                         v-click-outside="{
-                            bool_status_variable_or_callback: 'is_filter_menu_open',
-                            refs_to_exclude: ['open_close_filter_menu_button']
+                            bool_status_variable_or_callback: 'is_audio_clip_tone_menu_open',
+                            refs_to_exclude: ['open_close_audio_clip_tone_menu_button']
                         }"
                         class="absolute w-full h-fit top-4 z-20 flex flex-col p-4 gap-4 rounded-lg border-2 border-theme-black bg-theme-light"
                     >
-
-                        <!--get width of widest child, and match all child widths to it-->
-                        <div class="flex flex-col gap-4 w-fit">
-
-                            <!--likes/dislikes-->
-                            <div
-                                v-if="isUserLikesDislikesPage"
-                                class="w-full flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors px-2"
-                            >
-                                <VActionText
-                                    v-for="(filter_type, index) in filtered_events_store.getLikeDislikeChoices"
-                                    :key="index"
-                                    @click="filtered_events_store.updateCurrentLikeDislikeChoiceIndex(index)"
-                                    :disabled="filtered_events_store.isSameCurrentLikeDislikeChoiceIndex(index)"
-                                    prop-element="button"
-                                    prop-element-size="s"
-                                    prop-font-size="s"
-                                    :prop-is-icon-only="true"
-                                    class="w-full p-2 relative"
-                                >
-                                    <span class="w-fit mx-auto">{{ filter_type }}</span>
-                                    <span
-                                        v-show="filtered_events_store.isSameCurrentLikeDislikeChoiceIndex(index)"
-                                        class="sr-only"
-                                    >
-                                        selected
-                                    </span>
-                                    <TransitionFade>
-                                        <div
-                                            v-show="filtered_events_store.isSameCurrentLikeDislikeChoiceIndex(index)"
-                                            class="absolute w-full h-0.5 bg-theme-black left-0 right-0 bottom-0"
-                                        ></div>
-                                    </TransitionFade>
-                                </VActionText>
-                            </div>
-
-                            <!--audio_clip_roles-->
-                            <div class="w-full flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors px-2">
-                                <VActionText
-                                    v-for="(pretty_audio_clip_role_name, index) in filtered_events_store.getPrettyAudioClipRoleNames"
-                                    :key="index"
-                                    @click="filtered_events_store.updateCurrentAudioClipRoleNameIndex(index)"
-                                    :disabled="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
-                                    prop-element="button"
-                                    prop-element-size="s"
-                                    prop-font-size="s"
-                                    :prop-is-icon-only="true"
-                                    class="w-full p-2 relative"
-                                >
-                                    <span class="w-fit mx-auto">{{ pretty_audio_clip_role_name }}</span>
-                                    <span
-                                        v-show="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
-                                        class="sr-only"
-                                    >
-                                        selected
-                                    </span>
-                                    <TransitionFade>
-                                        <div
-                                            v-show="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
-                                            class="absolute w-full h-0.5 bg-theme-black left-0 right-0 bottom-0"
-                                        ></div>
-                                    </TransitionFade>
-                                </VActionText>
-                            </div>
-                        </div>
 
                         <!--audio_clip_tones-->
                         <VAudioClipToneMenu
@@ -151,7 +159,6 @@
                             :prop-initial-audio-clip-tone="filtered_events_store.getCurrentAudioClipTone"
                             :prop-filtered-grouped-audio-clips-store="filtered_events_store"
                             @audioClipToneSelected="filtered_events_store.updateCurrentAudioClipTone($event)"
-                            class="border rounded-l-lg border-theme-gray-2 shade-border-when-hover transition-colors"
                         />
                     </div>
                 </div>
@@ -340,16 +347,15 @@
 
 
 <script setup lang="ts">
-    import EventCard from '@/components/main/EventCard.vue';
-    import EventCardSkeleton from '@/components/skeleton/EventCardSkeleton.vue';
-    import VPlayback from '@/components/medium/VPlayback.vue';
+    import EventCard from '../components/main/EventCard.vue';
+    import EventCardSkeleton from '../components/skeleton/EventCardSkeleton.vue';
+    import VPlayback from '../components/medium/VPlayback.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
-    import VAudioClipToneMenu from '@/components/medium/VAudioClipToneMenu.vue';
-    import VAction from '@/components/small/VAction.vue';
-    import VActionSpecial from '@/components/small/VActionSpecial.vue';
-    import VActionText from '@/components/small/VActionText.vue';
-    import VDialogPlain from '@/components/small/VDialogPlain.vue';
-    import VUserCard from '@/components/medium/VUserCard.vue';
+    import VAudioClipToneMenu from '../components/medium/VAudioClipToneMenu.vue';
+    import VActionSpecial from '../components/small/VActionSpecial.vue';
+    import VActionText from '../components/small/VActionText.vue';
+    import VDialogPlain from '../components/small/VDialogPlain.vue';
+    import VUserCard from '../components/medium/VUserCard.vue';
     import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -383,8 +389,8 @@
                 is_own_page: false,
                 is_blocked: false,
 
-                is_filter_menu_open: false,
-                can_filter_menu_teleport: false,
+                is_audio_clip_tone_menu_open: false,
+                can_audio_clip_tone_menu_teleport: false,
 
                 dynamic_scroller_buffer: 1000, //px, larger means rendered earlier, needed for proper tabbing
                 window_resize_timeout: window.setTimeout(()=>{}, 0),
@@ -701,7 +707,7 @@
             },
             toggleFilterMenu() : void {
 
-                this.is_filter_menu_open = !this.is_filter_menu_open;
+                this.is_audio_clip_tone_menu_open = !this.is_audio_clip_tone_menu_open;
             },
             async handleNewSelectedAudioClip(audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null) : Promise<void> {
 
@@ -827,11 +833,11 @@
                     //compare with current scroll distance
                     if(window.scrollY < this.scrolling_checkpoint_px && window.scrollY > minimum_scroll_distance_px){
 
-                        this.can_filter_menu_teleport = true;
+                        this.can_audio_clip_tone_menu_teleport = true;
 
                     }else{
 
-                        this.can_filter_menu_teleport = false;
+                        this.can_audio_clip_tone_menu_teleport = false;
                     }
 
                     //set checkpoint for next comparison

@@ -142,16 +142,16 @@
 </template>
 
 <script setup lang="ts">
-    import EventCard from '@/components/main/EventCard.vue';
-    import VActionDanger from '@/components/small/VActionDanger.vue';
-    import VActionSpecial from '@/components/small/VActionSpecial.vue';
-    import CreateAudioClips from '@/components/main/CreateAudioClips.vue';
-    import VTitle from '@/components/small/VTitle.vue';
+    import EventCard from '../components/main/EventCard.vue';
+    import VActionDanger from '../components/small/VActionDanger.vue';
+    import VActionSpecial from '../components/small/VActionSpecial.vue';
+    import CreateAudioClips from '../components/main/CreateAudioClips.vue';
+    import VTitle from '../components/small/VTitle.vue';
     import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
-    import VPlayback from '@/components/medium/VPlayback.vue';
-    import VUsernameURL from '@/components/small/VUsernameURL.vue';
-    import VAudioClipCardSkeleton from '@/components/skeleton/VAudioClipCardSkeleton.vue';
-    import VLoading from '@/components/small/VLoading.vue';
+    import VPlayback from '../components/medium/VPlayback.vue';
+    import VUsernameURL from '../components/small/VUsernameURL.vue';
+    import VAudioClipCardSkeleton from '../components/skeleton/VAudioClipCardSkeleton.vue';
+    import VLoading from '../components/small/VLoading.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     import { library } from '@fortawesome/fontawesome-svg-core';

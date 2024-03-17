@@ -362,15 +362,15 @@
 
 
 <script setup lang="ts">
-    import VTitle from '/src/components/small/VTitle.vue';
-    import EventCard from '/src/components/main/EventCard.vue';
-    import EventCardSkeleton from '@/components/skeleton/EventCardSkeleton.vue';
-    import VActionSpecial from '@/components/small/VActionSpecial.vue';
-    import VAction from '@/components/small/VAction.vue';
+    import VTitle from '../components/small/VTitle.vue';
+    import EventCard from '../components/main/EventCard.vue';
+    import EventCardSkeleton from '../components/skeleton/EventCardSkeleton.vue';
+    import VActionSpecial from '../components/small/VActionSpecial.vue';
+    import VAction from '../components/small/VAction.vue';
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
-    import VDialogPlain from '/src/components/small/VDialogPlain.vue';
-    import VLoading from '@/components/small/VLoading.vue';
+    import VDialogPlain from '../components/small/VDialogPlain.vue';
+    import VLoading from '../components/small/VLoading.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     import { library } from '@fortawesome/fontawesome-svg-core';

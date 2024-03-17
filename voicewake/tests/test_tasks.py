@@ -1178,6 +1178,10 @@ class CoreProcess_TestCase(TestCase):
         self.assertFalse(AudioClips.objects.filter(pk=sample_audio_clip_1.id).exists())
         self.assertIsNone(cache.get(cache_key_0, None))
 
+        sample_event_0.refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
+
 
     def test_cronjob_delete_responder_processing_overdue__ignore_not_overdue(self):
 
@@ -1312,6 +1316,12 @@ class CoreProcess_TestCase(TestCase):
         self.assertTrue(AudioClips.objects.filter(pk=sample_audio_clip_2.id).exists())
         self.assertFalse(AudioClips.objects.filter(pk=sample_audio_clip_3.id).exists())
         self.assertIsNone(cache.get(cache_key_1, None))
+
+        sample_event_0.refresh_from_db()
+        sample_event_1.refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_event_1.generic_status.generic_status_name, 'incomplete')
 
 
 

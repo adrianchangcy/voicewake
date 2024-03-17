@@ -35,7 +35,7 @@
 
 
 <script setup lang="ts">
-    import VInputLabel from '/src/components/small/VInputLabel.vue';
+    import VInputLabel from '../small/VInputLabel.vue';
 </script>
 
 <script lang="ts">

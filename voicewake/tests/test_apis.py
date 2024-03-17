@@ -1013,7 +1013,10 @@ class CoreProcess_TestCase(TestCase):
 
         self.assertTrue('upload_url' in result_data)
         self.assertTrue('upload_fields' in result_data)
+        self.assertTrue('event_id' in result_data)
         self.assertTrue('audio_clip_id' in result_data)
+
+        self.assertTrue('key' in json.loads(result_data['upload_fields']))
 
         self.assertEqual(Events.objects.all().count(), 1)
         self.assertEqual(AudioClips.objects.all().count(), 1)
@@ -1165,7 +1168,7 @@ class CoreProcess_TestCase(TestCase):
 
             self.assertEqual(request.status_code, 400)
 
-            #is_banned=True
+            #ensure that audio_clip that is suddenly banned still counts towards limit
 
             target_audio_clip.is_banned = True
             target_audio_clip.save()
@@ -1179,6 +1182,15 @@ class CoreProcess_TestCase(TestCase):
             request = self.client.post(reverse('create_events_upload_api'), data)
 
             self.assertEqual(request.status_code, 400)
+
+            #check
+
+            result_data = (bytes(request.content).decode())
+            result_data = json.loads(result_data)
+
+            self.assertTrue('message' in result_data)
+            self.assertTrue('event_create_daily_limit_reached' in result_data)
+            self.assertTrue(result_data['event_create_daily_limit_reached'])
 
 
     def test_create_event__upload__missing_args(self):
@@ -1305,6 +1317,15 @@ class CoreProcess_TestCase(TestCase):
 
         print_function_name(request.content)
         self.assertEqual(request.status_code, 200)
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        self.assertTrue('upload_url' in result_data)
+        self.assertTrue('upload_fields' in result_data)
+        self.assertTrue('key' in json.loads(result_data['upload_fields']))
+        self.assertFalse('event_id' in result_data)
+        self.assertFalse('audio_clip_id' in result_data)
 
 
     def test_create_event__regenerate_upload_url__resubmit_ok(self):
@@ -1819,19 +1840,49 @@ class CoreProcess_TestCase(TestCase):
             print_function_name(request.content)
             self.assertEqual(request.status_code, 400)
 
-        #check
+            #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+            result_data = (bytes(request.content).decode())
+            result_data = json.loads(result_data)
 
-        self.assertFalse(
-            EventReplyQueues.objects.filter(
-                locked_for_user=self.users[1], event_id=sample_event_1.id, is_replying=False
-            ).exists()
-        )
-        self.assertEqual(result_data['event_reply_daily_limit_reached'], True)
-        self.assertEqual(Events.objects.count(), 2)
-        self.assertEqual(AudioClips.objects.count(), 3)
+            self.assertFalse(
+                EventReplyQueues.objects.filter(
+                    locked_for_user=self.users[1], event_id=sample_event_1.id, is_replying=False
+                ).exists()
+            )
+            self.assertTrue('message' in result_data)
+            self.assertTrue('event_reply_daily_limit_reached' in result_data)
+            self.assertEqual(result_data['event_reply_daily_limit_reached'], True)
+            self.assertEqual(Events.objects.count(), 2)
+            self.assertEqual(AudioClips.objects.count(), 3)
+
+            #ensure that recently banned audio_clips count towards limit
+
+            sample_audio_clip_1.is_banned = True
+            sample_audio_clip_1.save()
+
+            data = {}
+
+            request = self.client.post(reverse('list_event_reply_choices_api'), data)
+
+            print_function_name(request.content)
+            self.assertEqual(request.status_code, 400)
+
+            #check
+
+            result_data = (bytes(request.content).decode())
+            result_data = json.loads(result_data)
+
+            self.assertFalse(
+                EventReplyQueues.objects.filter(
+                    locked_for_user=self.users[1], event_id=sample_event_1.id, is_replying=False
+                ).exists()
+            )
+            self.assertTrue('message' in result_data)
+            self.assertTrue('event_reply_daily_limit_reached' in result_data)
+            self.assertEqual(result_data['event_reply_daily_limit_reached'], True)
+            self.assertEqual(Events.objects.count(), 2)
+            self.assertEqual(AudioClips.objects.count(), 3)
 
 
     def test_list_reply_choices_first_time_no_unlock(self):
@@ -2858,8 +2909,10 @@ class CoreProcess_TestCase(TestCase):
 
         self.assertTrue('upload_url' in result_data)
         self.assertTrue('upload_fields' in result_data)
-        self.assertTrue('key' in json.loads(result_data['upload_fields']))
+        self.assertTrue('event_id' in result_data)
         self.assertTrue('audio_clip_id' in result_data)
+
+        self.assertTrue('key' in json.loads(result_data['upload_fields']))
 
         sample_event_0.refresh_from_db()
 
@@ -3372,6 +3425,15 @@ class CoreProcess_TestCase(TestCase):
 
         print_function_name(request.content)
         self.assertEqual(request.status_code, 200)
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        self.assertTrue('upload_url' in result_data)
+        self.assertTrue('upload_fields' in result_data)
+        self.assertTrue('key' in json.loads(result_data['upload_fields']))
+        self.assertFalse('event_id' in result_data)
+        self.assertFalse('audio_clip_id' in result_data)
 
 
     def test_create_reply__regenerate_upload_url__resubmit_ok(self):

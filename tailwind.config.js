@@ -38,19 +38,13 @@ module.exports = {
                 'theme-green-3': '#31572c',
 
                 'theme-danger': '#fa3515',
-                'theme-soft-danger': '#ff4934',
+                'theme-button-soft-danger': '#ff4934',
 
                 'theme-light': '#F2F4F5',
                 'theme-light-trim': '#FDFDFD',
                 'theme-dark': '#22333B',
 
                 'theme-black': '#404040',   //scaled via shades generator from theme-light
-
-                'theme-toast-success': '#379d00',   //as text, or as bg + text-theme-light
-                'theme-toast-warning': '#ffc500',   //as text, or as bg + text-theme-black
-                'theme-toast-warning-2': '#daa520', //as text only
-                'theme-toast-danger': '#d81a1a',    //as text, or as bg + text-theme-light
-                'theme-toast': '#e6e6e6',           //as text, or as bg + text-theme-black
 
                 //for disabled feature, advised to use opacity on entire element until unreadable, not gray background
                 //these are darker shades of theme-light

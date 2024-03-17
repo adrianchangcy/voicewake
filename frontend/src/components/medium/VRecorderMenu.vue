@@ -34,7 +34,6 @@
             :propIsOpen="propIsOpen"
             @newRecording="handleNewRecording($event)"
             @isRecording="handleIsRecording($event)"
-            @isCancelled="handleIsCancelled()"
             @newVolumeAnalyserPulse="handleNewVolumeAnalyserPulse($event)"
         />
     </div>
@@ -42,8 +41,8 @@
 
 
 <script setup lang="ts">
-    import VRecorder from '/src/components/medium/VRecorder.vue';
-    import VPlayback from '/src/components/medium/VPlayback.vue';
+    import VRecorder from '../medium/VRecorder.vue';
+    import VPlayback from '../medium/VPlayback.vue';
     import VAudioVisualiser from '../small/VAudioVisualiser.vue';
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
 </script>
@@ -82,7 +81,7 @@
                 required: true,
             },
         },
-        emits: ['newRecording'],
+        emits: ['newRecording', 'isRecording'],
         mounted(){
 
         },
@@ -97,10 +96,6 @@
             handleIsPlaybackProcessing(new_value:boolean) : void {
 
                 this.is_playback_processing = new_value;
-            },
-            handleIsCancelled() : void {
-
-                console.log('Recording cancelled.');
             },
             async handleNewRecording(new_value:{'blob':Blob|null, 'blob_duration':number}) : Promise<void> {
 
@@ -129,6 +124,7 @@
             },
             handleIsRecording(new_value:boolean) : void {
                 this.is_recording = new_value;
+                this.$emit('isRecording', new_value);
             },
             handleNewVolumeAnalyserPulse(new_value:number) : void {
                 this.recording_pulse = new_value;

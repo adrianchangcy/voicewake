@@ -287,14 +287,14 @@
                             </VActionText>
                         </div>
 
-                        <!--block list-->
+                        <!--own recordings-->
                         <div
                             v-if="pop_up_manager_store.isLoggedIn === true"
                             class="h-fit grid"
                         >
                             <VActionText
                                 prop-element="a"
-                                href="/block"
+                                :href="getProfileURL()"
                                 prop-font-size="s"
                                 prop-element-size="s"
                                 :prop-is-icon-only="false"
@@ -302,11 +302,11 @@
                             >
                                 <div class="w-full h-full grid grid-cols-4">
                                     <div class="col-span-1 flex items-center">
-                                        <FontAwesomeIcon icon="fas fa-ban" class="pt-0.5 mx-auto"/>
+                                        <FontAwesomeIcon icon="fas fa-microphone-lines" class="pt-0.5 mx-auto text-xl"/>
                                     </div>
                                     <div class="col-span-3 flex items-center">
                                         <span class="text-left break-all">
-                                            Block list
+                                            Recordings
                                         </span>
                                     </div>
                                 </div>
@@ -336,14 +336,54 @@
                             >
                                 <div class="w-full h-full grid grid-cols-4">
                                     <div class="col-span-1 h-full flex items-center">
-                                        <div class="w-fit flex items-center mx-auto">
-                                            <FontAwesomeIcon icon="fas fa-thumbs-up" class="text-theme-lead mx-auto"/>
-                                            <FontAwesomeIcon icon="far fa-thumbs-up" class="absolute mx-auto"/>
+                                        <div class="flex flex-row gap-1 mx-auto">
+                                            <div class="w-fit flex items-center pb-0.5">
+                                                <FontAwesomeIcon icon="fas fa-thumbs-up" class="text-theme-lead mx-auto"/>
+                                                <FontAwesomeIcon icon="far fa-thumbs-up" class="absolute mx-auto"/>
+                                            </div>
+                                            <div class="w-fit flex items-center pt-1">
+                                                <FontAwesomeIcon icon="fas fa-thumbs-down" class="text-theme-lead mx-auto"/>
+                                                <FontAwesomeIcon icon="far fa-thumbs-down" class="absolute mx-auto"/>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="col-span-3 flex items-center">
                                         <span class="text-left break-all">
                                             Likes &#38; dislikes
+                                        </span>
+                                    </div>
+                                </div>
+                            </VActionText>
+                        </div>
+
+                        <!--divider-->
+                        <div
+                            v-if="pop_up_manager_store.isLoggedIn === true"
+                            class="py-4"
+                        >
+                            <div class="w-[75%] h-[1px] bg-theme-gray-2 mx-auto"></div>
+                        </div>
+
+                        <!--block list-->
+                        <div
+                            v-if="pop_up_manager_store.isLoggedIn === true"
+                            class="h-fit grid"
+                        >
+                            <VActionText
+                                prop-element="a"
+                                href="/block"
+                                prop-font-size="s"
+                                prop-element-size="s"
+                                :prop-is-icon-only="false"
+                                class="row-span-1 w-full"
+                            >
+                                <div class="w-full h-full grid grid-cols-4">
+                                    <div class="col-span-1 flex items-center">
+                                        <FontAwesomeIcon icon="fas fa-ban" class="pt-0.5 mx-auto"/>
+                                    </div>
+                                    <div class="col-span-3 flex items-center">
+                                        <span class="text-left break-all">
+                                            Block list
                                         </span>
                                     </div>
                                 </div>
@@ -408,7 +448,7 @@
 <script setup lang="ts">
     // import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
     import TransitionFade from '/src/transitions/TransitionFade.vue';
-    import VActionText from '@/components/small/VActionText.vue';
+    import VActionText from '../small/VActionText.vue';
     import VActionSpecial from '../small/VActionSpecial.vue';
     import VLoading from '../small/VLoading.vue';
 
@@ -422,13 +462,16 @@
     import { faRightToBracket } from '@fortawesome/free-solid-svg-icons/faRightToBracket';
     import { faBan } from '@fortawesome/free-solid-svg-icons/faBan';
     import { faDoorOpen } from '@fortawesome/free-solid-svg-icons/faDoorOpen';
+    import { faMicrophoneLines } from '@fortawesome/free-solid-svg-icons/faMicrophoneLines';
     import { faThumbsUp as farThumbsUp } from '@fortawesome/free-regular-svg-icons/faThumbsUp';
     import { faThumbsUp as fasThumbsUp } from '@fortawesome/free-solid-svg-icons/faThumbsUp';
+    import { faThumbsDown as farThumbsDown } from '@fortawesome/free-regular-svg-icons/faThumbsDown';
+    import { faThumbsDown as fasThumbsDown } from '@fortawesome/free-solid-svg-icons/faThumbsDown';
 
     library.add(
         faWaveSquare, faComment, faComments, faCircleUser,
-        faChevronDown, faRightToBracket, faBan, faDoorOpen,
-        farThumbsUp, fasThumbsUp,
+        faChevronDown, faRightToBracket, faBan, faDoorOpen, faMicrophoneLines,
+        farThumbsUp, fasThumbsUp, farThumbsDown, fasThumbsDown,
     );
 </script>
 
@@ -437,7 +480,10 @@
     import { defineComponent } from 'vue';
     import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
+    import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
     import { useEventReplyChoicesStore } from '@/stores/EventReplyChoicesStore';
+    import { useVPlaybackStore } from '@/stores/VPlaybackStore';
+    import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
     const axios = require('axios');
 
     export default defineComponent({
@@ -446,6 +492,7 @@
             return {
                 page_refresh_trigger_store: usePageRefreshTriggerStore(),
                 pop_up_manager_store: usePopUpManagerStore(),
+                audio_clip_processings_store: useAudioClipProcessingsStore(),
 
                 is_log_out_loading: false,
                 is_currently_log_in_sign_up_static_page: false,
@@ -498,9 +545,20 @@
 
                     //reset user-specific stores
 
-                    //since this is not used in NavBar, maybe only calling here is more performant
-                    const event_reply_choices_store = useEventReplyChoicesStore();
-                    event_reply_choices_store.$reset();
+                    //logged-in users can have extra interactions with certain data
+                    //on logout, we reset all for current logged-in user
+                    const stores_to_reset = [
+                        useEventReplyChoicesStore(),
+                        useFilteredEventsStore('home'),
+                        useFilteredEventsStore('user_likes_dislikes'),
+                        useFilteredEventsStore('user_profile'),
+                        useVPlaybackStore(),
+                    ];
+
+                    for(let x=0; x < stores_to_reset.length; x++){
+
+                        stores_to_reset[x].$reset();
+                    }
 
                     //doing this will refresh all open tabs/pages for us
                     this.page_refresh_trigger_store.$patch({
@@ -533,6 +591,25 @@
         beforeMount(){
 
             this.handleIsLogInSignUpStaticPage();
+
+            //call and check on processing audio_clips until there are none left
+            if(Object.keys(this.audio_clip_processings_store.getAudioClipProcessings).length > 0){
+
+                this.audio_clip_processings_store.doAllAudioClipProcessings();
+
+                const current_interval = window.setInterval(async ()=>{
+
+                    await this.audio_clip_processings_store.doAllAudioClipProcessings().finally(()=>{
+
+                        if(Object.keys(this.audio_clip_processings_store.getAudioClipProcessings).length === 0){
+
+                            window.clearInterval(current_interval);
+                        }
+                    });
+                },
+                20000
+                );
+            }
         },
     });
 </script>

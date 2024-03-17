@@ -64,8 +64,8 @@
 
 <script setup lang="ts">
     import TransitionFade from '/src/transitions/TransitionFade.vue';
-    import VInputLabel from '/src/components/small/VInputLabel.vue';
-    import VBox from '/src/components/small/VBox.vue';
+    import VInputLabel from '../small/VInputLabel.vue';
+    import VBox from '../small/VBox.vue';
 </script>
 
 <script lang="ts">

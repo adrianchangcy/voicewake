@@ -1,7 +1,7 @@
 <template>
     <div
         :class="[
-            source_has_error ? 'border-theme-toast-danger' : 'border-theme-gray-2 shade-border-when-hover',
+            source_has_error ? 'border-red-700' : 'border-theme-gray-2 shade-border-when-hover',
             'h-20 border rounded-lg  transition-colors text-center'
         ]"
     >
@@ -20,7 +20,7 @@
 
         <div
             v-show="playbackHasError"
-            class="w-full h-full flex items-center text-center text-theme-toast-danger"
+            class="w-full h-full flex items-center text-center text-red-700"
         >
             <span class="w-full h-fit text-base">Oops! Recording unavailable.</span>
         </div>
@@ -253,7 +253,7 @@
 
 
 <script setup lang="ts">
-    import VSliderYSmall from '/src/components/small/VSliderYSmall.vue';
+    import VSliderYSmall from '../small/VSliderYSmall.vue';
     import VActionText from '../small/VActionText.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -337,7 +337,7 @@
             };
         },
         emits: [
-            'newFileVolumes', 'isReadyToPlay', 'isProcessing',
+            'isReadyToPlay', 'isProcessing',
         ],
         props: {
             propAudioClip: {

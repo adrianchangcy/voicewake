@@ -5,6 +5,7 @@
         </VInputLabel>
         <button
             id="audio-clip-tone-picker"
+            :disabled="!propIsEnabled"
             @click.stop="[toggleMenu(), emitIsOpen()]"
             :class="[
                 is_open ? 'border-theme-black      focus-visible:outline-offset-0' : 'border-theme-gray-4 shade-border-when-hover   focus-visible:-outline-offset-2',
@@ -31,13 +32,13 @@
 </template>
 
 <script setup lang="ts">
-    import VInputLabel from '/src/components/small/VInputLabel.vue';
+    import VInputLabel from '../small/VInputLabel.vue';
 </script>
 
 <script lang="ts">
     //we don't keep VAudioClipToneMenu in this component due to the inflexibility of button size =/= menu size
     import { defineComponent, PropType } from 'vue';
-    import AudioClipToneTypes from '@/types/AudioClipTones.interface';
+    import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
 
     export default defineComponent({
         data(){
@@ -49,12 +50,17 @@
         props: {
             propLabel: String,
             propAudioClipToneChoice: {
-                type: Object as PropType<AudioClipToneTypes> | null,
+                type: Object as PropType<AudioClipTonesTypes|null>,
+                required: false,
                 default: null,
             },
             propIsOpen: {
                 type: Boolean,
                 default: false
+            },
+            propIsEnabled: {
+                type: Boolean,
+                default: true
             },
         },
         computed: {

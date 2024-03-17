@@ -404,12 +404,7 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
             this.shared_dialog_context = "";
         }
     },
-    persist: {
-        //persist these states
-        paths: [
-            'event_reply_choices', 'replying_event',
-        ],
-    },
+    persist: true,
     share: {
         //array of fields that the plugin will ignore
         omit: [],

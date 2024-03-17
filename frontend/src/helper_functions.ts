@@ -1,6 +1,3 @@
-import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
-
-
 export async function axiosCSRFSetup() : Promise<void> {
 
     //seems like we just have to call this function once and it'll be set globally
@@ -154,9 +151,36 @@ export function prettyTimeRemaining(current_ms:number, max_ms:number) : string {
 
 export function timeFromNowMS(date:Date) : number {
 
-    //to use, simply pass as date arg: new Date(my_datetime_str_from_API)
+    //console.log(new Date()) returns easily readable string
+    //console.log(new Date().toISOString()) returns practical string
+    //either string can be passed into Date() to create new object
+    //e.g.: new Date(datetime_str)
     //we don't do this automatically to enable better reusability
     return Math.floor(new Date().getTime() - date.getTime());
+}
+
+
+export function addSeconds(date:Date, total_s:number) : Date {
+
+    return new Date(
+        date.getTime() + (total_s * 1000)
+    );
+}
+
+
+export function setPiniaDateObject(date:Date) : string {
+
+    //provides consistence for all to-be-stored Date() in Pinia
+    //since Date() --> store into Pinia --> rehydrated --> deserialized into string, not Date()
+    return date.toISOString();
+}
+
+
+export function getPiniaDateObject(iso_string:string) : Date {
+
+    //get Date() from string
+    //Date() can accept and recognise all strings that it would generate
+    return new Date(iso_string);
 }
 
 

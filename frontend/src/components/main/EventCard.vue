@@ -259,11 +259,11 @@
 
 <script setup lang="ts">
     import VTitle from '../small/VTitle.vue';
-    import VPlayback from '/src/components/medium/VPlayback.vue';
-    import VAudioClipCard from '/src/components/medium/VAudioClipCard.vue';
-    import VAudioClipTools from '/src/components/medium/VAudioClipTools.vue';
-    import VUsernameURL from '/src/components/small/VUsernameURL.vue';
-    import VActionText from '/src/components/small/VActionText.vue';
+    import VPlayback from '../medium/VPlayback.vue';
+    import VAudioClipCard from '../medium/VAudioClipCard.vue';
+    import VAudioClipTools from '../medium/VAudioClipTools.vue';
+    import VUsernameURL from '../small/VUsernameURL.vue';
+    import VActionText from '../small/VActionText.vue';
 </script>
 
 

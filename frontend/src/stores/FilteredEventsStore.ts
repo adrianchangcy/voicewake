@@ -669,6 +669,7 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
                 ]['is_fetching'] = is_fetching;
             },
         },
+        //use localStorage, call .$reset() on logout to remove user's interactions
         persist: page_context === 'home' ? true : false,
     })();
 }

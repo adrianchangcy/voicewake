@@ -10,7 +10,7 @@
 </template>
 
 <script setup lang="ts">
-    import CreateAudioClips from '/src/components/main/CreateAudioClips.vue';
+    import CreateAudioClips from '../components/main/CreateAudioClips.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     import { library } from '@fortawesome/fontawesome-svg-core';

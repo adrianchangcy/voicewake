@@ -18,15 +18,32 @@
         we load '1 Jan 2022' here first, then at JS we make it pretty to '1 century ago'
         shouldn't have to adjust '1 Jan 2022' to local timezone, as it's only for SEO
     -->
-    <div
-        data-event-id="{{event.id}}"
-        data-is-deleted="{{is_deleted_json}}"
-        data-when-created="{{event.when_created|date:"Y-m-d H:i:s"}}"
-        data-audio-clip-count="{{audio_clip_count}}"
-        data-event-reply-choice-expiry-seconds="{{event_reply_choice_expiry_seconds}}"
-        data-event-reply-expiry-seconds="{{event_reply_expiry_seconds}}"
-        id="data-container-get-events"
-    >
+    {% if is_reupload %}
+        <div
+            data-event-id="{{event.id}}"
+            data-when-created="{{event.when_created|date:'Y-m-d H:i:s'}}"
+            data-event-reply-choice-expiry-seconds="{{event_reply_choice_expiry_seconds}}"
+            data-event-reply-expiry-seconds="{{event_reply_expiry_seconds}}"
+            data-is-deleted="{{is_deleted_json}}"
+            data-audio-clip-count="{{audio_clip_count_json}}"
+            data-reupload-audio-clip-id="{{reupload_audio_clip_id_json}}"
+            data-reupload-audio-clip-role-name="{{reupload_audio_clip_role_name}}"
+            data-reupload-audio-clip-tone-name="{{reupload_audio_clip_tone_name}}"
+            data-reupload-audio-clip-tone-slug="{{reupload_audio_clip_tone_slug}}"
+            data-reupload-audio-clip-tone-symbol="{{reupload_audio_clip_tone_symbol}}"
+            id="data-container-get-events"
+        >
+    {% else %}
+        <div
+            data-event-id="{{event.id}}"
+            data-when-created="{{event.when_created|date:'Y-m-d H:i:s'}}"
+            data-event-reply-choice-expiry-seconds="{{event_reply_choice_expiry_seconds}}"
+            data-event-reply-expiry-seconds="{{event_reply_expiry_seconds}}"
+            data-is-deleted="{{is_deleted_json}}"
+            data-audio-clip-count="{{audio_clip_count_json}}"
+            id="data-container-get-events"
+        >
+    {% endif %}
 
         <!--follows VTitle-->
         <h1 class="h-fit pt-10 pb-8">
@@ -36,7 +53,7 @@
                 </p>
             {% else %}
                 <!--title-->
-                <p class="text-lg break-words">
+                <p id="event-name" class="text-lg break-words">
                     {{event.event_name}}
                 </p>
                 <!--last updated-->

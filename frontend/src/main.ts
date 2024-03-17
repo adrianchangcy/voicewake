@@ -5,17 +5,17 @@ import { PiniaSharedState } from 'pinia-shared-state';
 import VueVirtualScroller from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 
-import BaseApp from '/src/apps/BaseApp.vue';
-import CreateEventsApp from '/src/apps/CreateEventsApp.vue';
-import ListEventReplyChoicesApp from '/src/apps/ListEventReplyChoicesApp.vue';
-import ListUserBannedAudioClipsApp from '/src/apps/ListUserBannedAudioClipsApp.vue';
-import ListUserBlocksApp from '/src/apps/ListUserBlocksApp.vue';
-import GetEventsApp from '/src/apps/GetEventsApp.vue';
-import BrowseEventsApp from '/src/apps/BrowseEventsApp.vue';
-import UserLogInSignUp from '/src/components/main/UserLogInSignUp.vue';
-import VUserUsername from '/src/components/medium/VUserUsername.vue';
-import VBackdropAnime from '/src/components/small/VBackdropAnime.vue';
-import TestingStuff from '/src/components/main/TestingStuff.vue';
+import BaseApp from '../src/apps/BaseApp.vue';
+import CreateEventsApp from '../src/apps/CreateEventsApp.vue';
+import ListEventReplyChoicesApp from '../src/apps/ListEventReplyChoicesApp.vue';
+import ListUserBannedAudioClipsApp from '../src/apps/ListUserBannedAudioClipsApp.vue';
+import ListUserBlocksApp from '../src/apps/ListUserBlocksApp.vue';
+import GetEventsApp from '../src/apps/GetEventsApp.vue';
+import BrowseEventsApp from '../src/apps/BrowseEventsApp.vue';
+import UserLogInSignUp from '../src/components/main/UserLogInSignUp.vue';
+import VUserUsername from '../src/components/medium/VUserUsername.vue';
+import VBackdropAnime from '../src/components/small/VBackdropAnime.vue';
+import TestingStuff from '../src/components/main/TestingStuff.vue';
 
 
 //Pinia

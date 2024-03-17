@@ -615,14 +615,14 @@
 
 
 <script setup lang="ts">
-    import VInput from '@/components/small/VInput.vue';
-    import VTitle from '@/components/small/VTitle.vue';
-    import VNumberSlots from '@/components/small/VNumberSlots.vue';
-    import VActionText from '@/components/small/VActionText.vue';
+    import VInput from '../small/VInput.vue';
+    import VTitle from '../small/VTitle.vue';
+    import VNumberSlots from '../small/VNumberSlots.vue';
+    import VActionText from '../small/VActionText.vue';
     import TransitionGroupSlide from '@/transitions/TransitionGroupSlide.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
-    import VAction from '@/components/small/VAction.vue';
-    import VActionSpecial from '@/components/small/VActionSpecial.vue';
+    import VAction from '../small/VAction.vue';
+    import VActionSpecial from '../small/VActionSpecial.vue';
     import VLoading from '../small/VLoading.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';

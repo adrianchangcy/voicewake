@@ -1,4 +1,4 @@
-from django.http import JsonResponse, QueryDict
+from django.http import QueryDict
 from django.db.models import Case, Value, When, Sum, Q, F, Count
 from django.shortcuts import render, redirect, get_object_or_404
 from django.template.loader import get_template
@@ -212,6 +212,9 @@ class GetEvents(TemplateView):
 
     def get(self, request, *args, **kwargs):
 
+        #if user is reuploading, user shall be redirected with "?reupload=__", which is AudioClips.id
+        #if user is truly replying, place "reupload_audio_clip_id"
+
         #get event
         try:
 
@@ -219,12 +222,14 @@ class GetEvents(TemplateView):
 
         except Events.DoesNotExist:
 
-            return JsonResponse(
-                data={
-                    'message':'Event does not exist.'
-                },
+            return render(
+                request,
+                template_name='404.html',
                 status=status.HTTP_404_NOT_FOUND
             )
+
+        #check if event is deleted
+        is_deleted = event.generic_status.generic_status_name == 'deleted'
 
         #count how many audio_clips exist for frontend skeleton
         audio_clip_count = AudioClips.objects.filter(
@@ -232,11 +237,7 @@ class GetEvents(TemplateView):
             generic_status__generic_status_name='ok'
         ).count()
 
-        #prepare info
-        is_deleted = event.generic_status.generic_status_name == 'deleted'
-
-        #is event deleted
-
+        #prepare response early, so we can return early and skip "reupload" logic
         response = render(
             request,
             template_name=self.template_name,
@@ -246,9 +247,60 @@ class GetEvents(TemplateView):
             'event': event,
             'is_deleted': is_deleted,
             'is_deleted_json': json.dumps(is_deleted),
-            'audio_clip_count': json.dumps(audio_clip_count),
+            'audio_clip_count_json': json.dumps(audio_clip_count),
             }
         )
+
+        #return if deleted
+        if is_deleted is True:
+
+            return response
+
+        #get audio_clip_id if passed in GET params
+        reupload_audio_clip_id = request.GET.get('reupload', None)
+
+        if reupload_audio_clip_id is None:
+
+            return response
+
+        #user is redirected for the purpose of reupload
+        reupload_audio_clip_id = int(reupload_audio_clip_id)
+
+        #also get AudioClipTones so we can refill form fields, aesthetic reasons only
+        #you can just use Pinia and store + retrieve
+        #but enabling cross-device feels important enough, e.g. user's device0 isn't good, so switch
+        #we add [0:1] to avoid being paranoid with filter()
+        target_audio_clip = AudioClips.objects.select_related(
+            'audio_clip_role',
+            'audio_clip_tone',
+        ).filter(
+            pk=reupload_audio_clip_id,
+            user=request.user,
+            generic_status__generic_status_name='processing',
+        ).only(
+            'audio_clip_role__audio_clip_role_name',
+            'audio_clip_tone__id',
+            'audio_clip_tone__audio_clip_tone_name',
+            'audio_clip_tone__audio_clip_tone_slug',
+            'audio_clip_tone__audio_clip_tone_symbol',
+            'id',
+        )[0:1]
+
+        #user cannot reupload, just return normal page
+        if len(target_audio_clip) == 0:
+
+            return response
+
+        #pass this back to template
+        response.context.update({
+            'is_reupload': True,
+            'reupload_audio_clip_id_json': json.dumps(reupload_audio_clip_id),
+            'reupload_audio_clip_role_name': target_audio_clip[0]['audio_clip_role__audio_clip_role_name'],
+            'reupload_audio_clip_tone_id': target_audio_clip[0]['audio_clip_tone__audio_clip_tone_id'],
+            'reupload_audio_clip_tone_name': target_audio_clip[0]['audio_clip_tone__audio_clip_tone_name'],
+            'reupload_audio_clip_tone_slug': target_audio_clip[0]['audio_clip_tone__audio_clip_tone_slug'],
+            'reupload_audio_clip_tone_symbol': target_audio_clip[0]['audio_clip_tone__audio_clip_tone_symbol'],
+        })
 
         # patch_cache_control(
         #     response,

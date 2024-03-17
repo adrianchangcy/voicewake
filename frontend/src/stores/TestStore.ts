@@ -1,22 +1,23 @@
 import { defineStore } from 'pinia';
+// import { notify } from 'notiwind';
 
 
 //we want to see what happens 
 
-export const useVPlaybackStore = defineStore('test', {
+export const useTestStore = defineStore('test_store', {
     state: ()=>({
-        last_interacted_vplayback_uuid: "",
-        audio_clip_id: [] as number[],   //left to right, oldest to newest
-        stopped_at_s: [] as number[],   //left to right, oldest to newest
+        add_count: 0,
     }),
     getters: {
-        getLastInteractedVPlaybackUUID: (state)=>{
-
-            return state.last_interacted_vplayback_uuid;
+        getCount: (state) => {
+            return state.add_count;
         },
     },
     actions: {
-
+        addCount() : void {
+            this.add_count += 1;
+            console.log('new count is: ' + this.add_count.toString());
+        },
     },
     //all things considered, we get overall better usability with persistence than without
     persist: {

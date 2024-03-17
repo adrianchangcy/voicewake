@@ -1,3 +1,5 @@
+const webpack = require('webpack');
+
 const path = require('path');
 
 const static_dir = '/static/frontend/';
@@ -22,4 +24,13 @@ module.exports = {
             writeToDisk: true, 
         },
     },
+    configureWebpack: {
+        plugins: [
+            //vue-cli-service does not provide this value explicitly for Vue 3.4.4, causing warning
+            //https://stackoverflow.com/q/77752897
+            new webpack.DefinePlugin({
+                __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false',
+            }),
+        ]
+    }
 };

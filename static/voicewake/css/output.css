@@ -1320,10 +1320,6 @@ video {
        column-gap: 0.5rem;
 }
 
-.gap-y-1 {
-  row-gap: 0.25rem;
-}
-
 .divide-y > :not([hidden]) ~ :not([hidden]) {
   --tw-divide-y-reverse: 0;
   border-top-width: calc(1px * calc(1 - var(--tw-divide-y-reverse)));
@@ -1367,6 +1363,10 @@ video {
   text-overflow: ellipsis;
 }
 
+.whitespace-nowrap {
+  white-space: nowrap;
+}
+
 .whitespace-break-spaces {
   white-space: break-spaces;
 }
@@ -1393,11 +1393,6 @@ video {
 
 .rounded-md {
   border-radius: 0.375rem;
-}
-
-.rounded-l-lg {
-  border-top-left-radius: 0.5rem;
-  border-bottom-left-radius: 0.5rem;
 }
 
 .rounded-l-none {
@@ -1460,9 +1455,19 @@ video {
   border-color: rgb(253 138 138 / var(--tw-border-opacity));
 }
 
+.border-green-700 {
+  --tw-border-opacity: 1;
+  border-color: rgb(21 128 61 / var(--tw-border-opacity));
+}
+
 .border-red-500 {
   --tw-border-opacity: 1;
   border-color: rgb(239 68 68 / var(--tw-border-opacity));
+}
+
+.border-red-700 {
+  --tw-border-opacity: 1;
+  border-color: rgb(185 28 28 / var(--tw-border-opacity));
 }
 
 .border-theme-black {
@@ -1499,23 +1504,13 @@ video {
   border-color: rgb(253 253 253 / var(--tw-border-opacity));
 }
 
-.border-theme-toast-danger {
-  --tw-border-opacity: 1;
-  border-color: rgb(216 26 26 / var(--tw-border-opacity));
-}
-
-.border-theme-toast-success {
-  --tw-border-opacity: 1;
-  border-color: rgb(55 157 0 / var(--tw-border-opacity));
-}
-
-.border-theme-toast-warning {
-  --tw-border-opacity: 1;
-  border-color: rgb(255 197 0 / var(--tw-border-opacity));
-}
-
 .border-transparent {
   border-color: transparent;
+}
+
+.border-yellow-700 {
+  --tw-border-opacity: 1;
+  border-color: rgb(161 98 7 / var(--tw-border-opacity));
 }
 
 .border-l-transparent {
@@ -1707,10 +1702,6 @@ video {
   padding-bottom: 1rem;
 }
 
-.pb-5 {
-  padding-bottom: 1.25rem;
-}
-
 .pb-6 {
   padding-bottom: 1.5rem;
 }
@@ -1729,6 +1720,10 @@ video {
 
 .pl-2 {
   padding-left: 0.5rem;
+}
+
+.pl-4 {
+  padding-left: 1rem;
 }
 
 .pl-5 {
@@ -1839,11 +1834,6 @@ video {
   line-height: 1;
 }
 
-.text-6xl {
-  font-size: 3.75rem;
-  line-height: 1;
-}
-
 .text-base {
   font-size: 1rem;
   line-height: 1.5rem;
@@ -1902,14 +1892,14 @@ video {
   color: rgb(0 0 0 / var(--tw-text-opacity));
 }
 
-.text-green-500 {
+.text-green-700 {
   --tw-text-opacity: 1;
-  color: rgb(34 197 94 / var(--tw-text-opacity));
+  color: rgb(21 128 61 / var(--tw-text-opacity));
 }
 
-.text-red-500 {
+.text-red-700 {
   --tw-text-opacity: 1;
-  color: rgb(239 68 68 / var(--tw-text-opacity));
+  color: rgb(185 28 28 / var(--tw-text-opacity));
 }
 
 .text-theme-black {
@@ -1931,29 +1921,14 @@ video {
   color: rgb(242 244 245 / var(--tw-text-opacity));
 }
 
-.text-theme-toast-danger {
-  --tw-text-opacity: 1;
-  color: rgb(216 26 26 / var(--tw-text-opacity));
-}
-
-.text-theme-toast-success {
-  --tw-text-opacity: 1;
-  color: rgb(55 157 0 / var(--tw-text-opacity));
-}
-
-.text-theme-toast-warning {
-  --tw-text-opacity: 1;
-  color: rgb(255 197 0 / var(--tw-text-opacity));
-}
-
-.text-theme-toast-warning-2 {
-  --tw-text-opacity: 1;
-  color: rgb(218 165 32 / var(--tw-text-opacity));
-}
-
 .text-white {
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity));
+}
+
+.text-yellow-700 {
+  --tw-text-opacity: 1;
+  color: rgb(161 98 7 / var(--tw-text-opacity));
 }
 
 .opacity-0 {
@@ -1992,6 +1967,11 @@ video {
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
 }
 
+.shadow-theme-button-soft-danger\/75 {
+  --tw-shadow-color: rgb(255 73 52 / 0.75);
+  --tw-shadow: var(--tw-shadow-colored);
+}
+
 .shadow-theme-gray-4 {
   --tw-shadow-color: #CDCFD1;
   --tw-shadow: var(--tw-shadow-colored);
@@ -1999,11 +1979,6 @@ video {
 
 .shadow-theme-lead\/60 {
   --tw-shadow-color: rgb(250 204 21 / 0.6);
-  --tw-shadow: var(--tw-shadow-colored);
-}
-
-.shadow-theme-soft-danger\/75 {
-  --tw-shadow-color: rgb(255 73 52 / 0.75);
   --tw-shadow: var(--tw-shadow-colored);
 }
 
@@ -2103,6 +2078,10 @@ video {
 
 .ease-out {
   transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+}
+
+.\[audio_clip_id\:number\] {
+  audio_clip_id: number;
 }
 
 .\[audio_clip_tone_id\:number\] {
@@ -2340,6 +2319,35 @@ textarea {
   content: '';
 }
 
+/*progress bar*/
+
+.progress-bar {
+  position: relative;
+  overflow: hidden;
+  opacity: 1;
+}
+
+@keyframes progress-bar {
+  100% {
+    /*every 100% is .laser::after's own width*/
+    /*e.g. if laser::after's width is 10% of full width, 100% here is that mere 10%, 1000% is 100%*/
+    transform: translateX(1000%);
+  }
+}
+
+.progress-bar::after {
+  position: absolute;
+  width: 10%;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  /*for background-color, can do "after:bg-theme-lead/20"*/
+  animation: progress-bar 1s infinite linear;
+  content: '';
+}
+
 /*pulse audio clip selected*/
 
 /*visibility here is needed to prevent first-time jolt or starting too early (both not intentional)*/
@@ -2455,6 +2463,12 @@ canvas {
   }
 }
 
+.after\:bg-theme-lead::after {
+  content: var(--tw-content);
+  --tw-bg-opacity: 1;
+  background-color: rgb(250 204 21 / var(--tw-bg-opacity));
+}
+
 .hover\:scale-105:hover {
   --tw-scale-x: 1.05;
   --tw-scale-y: 1.05;
@@ -2528,11 +2542,6 @@ canvas {
   background-color: rgb(255 232 139 / var(--tw-bg-opacity));
 }
 
-.active\:bg-theme-danger:active {
-  --tw-bg-opacity: 1;
-  background-color: rgb(250 53 21 / var(--tw-bg-opacity));
-}
-
 .active\:bg-theme-gray-1:active {
   --tw-bg-opacity: 1;
   background-color: rgb(237 239 240 / var(--tw-bg-opacity));
@@ -2560,13 +2569,13 @@ canvas {
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
 }
 
-.active\:shadow-theme-lead\/60:active {
-  --tw-shadow-color: rgb(250 204 21 / 0.6);
+.active\:shadow-theme-button-soft-danger\/75:active {
+  --tw-shadow-color: rgb(255 73 52 / 0.75);
   --tw-shadow: var(--tw-shadow-colored);
 }
 
-.active\:shadow-theme-soft-danger\/75:active {
-  --tw-shadow-color: rgb(255 73 52 / 0.75);
+.active\:shadow-theme-lead\/60:active {
+  --tw-shadow-color: rgb(250 204 21 / 0.6);
   --tw-shadow: var(--tw-shadow-colored);
 }
 
