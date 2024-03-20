@@ -1,165 +1,202 @@
 <template>
-    <div
-        class="w-full flex flex-col"
-    >
-        <div
-            spellcheck="false"
-            class="w-full flex flex-col gap-4"
-        >
-            <!--reupload banner-->
-            <span v-if="is_reupload === true" class="text-red-700 text-base border border-red-700 p-2">
-                Your previous recording could not be processed. You may reupload.
-            </span>
+    <div class="w-full flex flex-col">
 
-            <!--title-->
-            <VTextArea
-                v-if="propIsOriginator === true && is_reupload === false"
-                :propIsRequired="true"
-                propElementId="audio-clip-name"
-                propLabel="Title"
-                propPlaceholder=""
-                :propMaxLength="40"
-                :propHasTextCounter="true"
-                :propHasStatusText="false"
-                @newValue="handleNewAudioClipName($event)"
-                @wasInteracted="closeAllMenu()"
-            />
-
-            <!--fields for open/close-->
-            <div class="grid grid-cols-8 gap-2">
-
-                <!--open/close VRecorderMenu-->
-                <div class="col-span-6">
-                    <VRecorderField
-                        propLabel="Recording"
-                        :propIsOpen="is_recorder_menu_open"
-                        :propBucketQuantity="bucket_quantity"
-                        :propHasRecording="final_blob !== null"
-                        :propAudioVolumePeaks="blob_volume_peaks"
-                        @isOpen="handleIsRecorderMenuOpen($event)"
-                    />
-                </div>
-
-                <!--open/close VAudioClipToneMenu-->
-                <div class="col-span-2 relative">
-                    <VAudioClipToneField
-                        v-if="is_reupload === false"
-                        propLabel="Tag"
-                        :propIsEnabled="!is_reupload"
-                        :propAudioClipToneChoice="audio_clip_tone_choice"
-                        :propIsOpen="is_audio_clip_tone_menu_open"
-                        @isOpen="handleIsAudioClipToneMenuOpen($event)"
-                    />
+        <!--we set fixed height here so transitions don't cause malformed borders-->
+        <!--height is sampled from 320px width mobile, with tallest container being the form fields-->
+        <div class="w-full min-h-[14.75rem] relative">
+            <TransitionGroupFadeSlow :prop-has-absolute="true">
+                <div
+                    v-show="is_submitting === false && show_processing_dialog === false"
+                    class="w-full"
+                >
+                    <!--fields-->
                     <div
-                        v-else-if="is_reupload === true && audio_clip_tone_choice !== null"
-                        class="w-full h-20 text-3xl absolute bottom-0 flex items-center"
+                        spellcheck="false"
+                        class="w-full flex flex-col gap-4"
                     >
-                        <span class="sr-only">
-                            {{audio_clip_tone_choice.audio_clip_tone_name}}, cannot be changed during reupload
-                        </span>
-                        <span class="mx-auto">
-                            {{ audio_clip_tone_choice.audio_clip_tone_symbol }}
-                        </span>
+
+                        <!--title-->
+                        <VTextArea
+                            v-if="propIsOriginator === true && isReupload === false"
+                            :propIsEnabled="isFormEnabled"
+                            :propIsRequired="true"
+                            propElementId="audio-clip-name"
+                            propLabel="Title"
+                            propPlaceholder=""
+                            :propMaxLength="40"
+                            :propHasTextCounter="true"
+                            :propHasStatusText="false"
+                            @newValue="handleNewAudioClipName($event)"
+                            @wasInteracted="closeAllMenu()"
+                        />
+
+                        <!--fields for open/close-->
+                        <div class="grid grid-cols-8 gap-2">
+
+                            <!--open/close VRecorderMenu-->
+                            <div class="col-span-6">
+                                <VRecorderField
+                                    propLabel="Recording"
+                                    :propIsEnabled="isFormEnabled"
+                                    :propIsOpen="is_recorder_menu_open"
+                                    :propBucketQuantity="bucket_quantity"
+                                    :propHasRecording="final_blob !== null"
+                                    :propAudioVolumePeaks="blob_volume_peaks"
+                                    @isOpen="handleIsRecorderMenuOpen($event)"
+                                />
+                            </div>
+
+                            <!--open/close VAudioClipToneMenu-->
+                            <div class="col-span-2 relative">
+                                <VAudioClipToneField
+                                    v-if="isReupload === false"
+                                    propLabel="Tag"
+                                    :propIsEnabled="isFormEnabled"
+                                    :propAudioClipToneChoice="audio_clip_tone_choice"
+                                    :propIsOpen="is_audio_clip_tone_menu_open"
+                                    @isOpen="handleIsAudioClipToneMenuOpen($event)"
+                                />
+                                <div
+                                    v-else-if="isReupload === true && audio_clip_tone_choice !== null"
+                                    class="w-full h-20 text-3xl absolute bottom-0 flex items-center"
+                                >
+                                    <span class="sr-only">
+                                        {{audio_clip_tone_choice.audio_clip_tone_name}}, cannot be changed during reupload
+                                    </span>
+                                    <span class="mx-auto">
+                                        {{ audio_clip_tone_choice.audio_clip_tone_symbol }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        </div>
 
-        <!--menus-->
-        <!--must be here on its own, prevents unwanted top-and-bottom gaps if it were in the flexbox above-->
-        <div
-            class="w-full h-fit relative pt-4"
-        >
+                    <!--menus-->
+                    <!--must be here on its own, prevents unwanted top-and-bottom gaps if it were in the flexbox above-->
+                    <div class="w-full h-fit relative pt-4">
 
-            <!--arrows, aesthetics only-->
-            <!--uses padding to represent gap above, because there is always only one element, so gap wouldn't work-->
-            <div class="w-full h-0 grid grid-cols-8">
-                <div
-                    v-show="is_recorder_menu_open || is_audio_clip_tone_menu_open"
-                    :class="[
-                        is_recorder_menu_open ? 'col-span-6 col-start-1 pr-2' : '',
-                        is_audio_clip_tone_menu_open ? 'col-span-2 col-start-7 pl-2' : '',
-                        'relative'
-                    ]"
-                >
+                        <!--arrows, aesthetics only-->
+                        <!--uses padding to represent gap above, because there is always only one element, so gap wouldn't work-->
+                        <div class="w-full h-0 grid grid-cols-8">
+                            <div
+                                v-show="is_recorder_menu_open || is_audio_clip_tone_menu_open"
+                                :class="[
+                                    is_recorder_menu_open ? 'col-span-6 col-start-1 pr-2' : '',
+                                    is_audio_clip_tone_menu_open ? 'col-span-2 col-start-7 pl-2' : '',
+                                    'relative'
+                                ]"
+                            >
+                                <div
+                                    class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"
+                                ></div>
+                            </div>
+                        </div>
+
+                        <!--recorder menu-->
+                        <div>
+                            <VRecorderMenu
+                                :propIsOpen="is_recorder_menu_open"
+                                :propBucketQuantity="bucket_quantity"
+                                :propMaxDurationMs="max_duration_ms"
+                                @isRecording="handleIsRecording($event)"
+                                @newRecording="handleNewRecording($event)"
+                                class="border-2 border-theme-black rounded-lg p-4"
+                            />
+                        </div>
+
+                        <!--audio_clip_tone menu-->
+                        <div :class="is_audio_clip_tone_menu_open ? 'border-2 border-theme-black rounded-lg p-4' : ''">
+                            <VAudioClipToneMenu
+                                :propIsOpen="is_audio_clip_tone_menu_open"
+                                :propMustTrackSelectedOption="true"
+                                @audioClipToneSelected="handleAudioClipToneSelected($event)"
+                            />
+                        </div>
+                    </div>
+
+                    <!--submit-->
+                    <!--sibling above already has padding, so only need pt-4 here to achieve pt-8-->
+                    <!--when sibling above is open, have full padding here-->
                     <div
-                        class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"
-                    ></div>
-                </div>
-            </div>
-
-            <!--recorder menu-->
-            <div>
-                <VRecorderMenu
-                    :propIsOpen="is_recorder_menu_open"
-                    :propBucketQuantity="bucket_quantity"
-                    :propMaxDurationMs="max_duration_ms"
-                    @isRecording="handleIsRecording($event)"
-                    @newRecording="handleNewRecording($event)"
-                    class="border-2 border-theme-black rounded-lg p-4"
-                />
-            </div>
-
-            <!--audio_clip_tone menu-->
-            <div :class="is_audio_clip_tone_menu_open ? 'border-2 border-theme-black rounded-lg p-4' : ''">
-                <VAudioClipToneMenu
-                    :propIsOpen="is_audio_clip_tone_menu_open"
-                    :propMustTrackSelectedOption="true"
-                    @audioClipToneSelected="handleAudioClipToneSelected($event)"
-                />
-            </div>
-        </div>
-
-        <!--submit and progress bar-->
-        <!--sibling above already has padding, so only need pt-4 here to achieve pt-8-->
-        <!--when sibling above is open, have full padding here-->
-        <div
-            :class="[
-                isAnyMenuOpen ? 'pt-8' : 'pt-4',
-                'w-full relative'
-            ]"
-        >
-            <TransitionGroupFade :prop-has-absolute="true">
-                <!--submit-->
-                <div
-                    v-show="!is_submitting"
-                    class="w-full flex flex-col gap-2"
-                >
-                    <VActionSpecial
-                        @click.stop="doSubmit()"
-                        :propIsEnabled="canSubmit || canReupload"
-                        propElement="button"
-                        type="button"
-                        propElementSize="l"
-                        propFontSize="l"
-                        class="w-full"
+                        :class="[
+                            isAnyMenuOpen ? 'pt-8' : 'pt-4',
+                            'w-full relative'
+                        ]"
                     >
-                        <span class="mx-auto">
-                            {{ getIdleSubmitButtonText }}
-                        </span>
-                    </VActionSpecial>
+                        <div
+                            class="w-full flex flex-col gap-2"
+                        >
+                            <VActionSpecial
+                                @click.stop="doSubmit()"
+                                :propIsEnabled="canSubmit || canReupload"
+                                propElement="button"
+                                type="button"
+                                propElementSize="l"
+                                propFontSize="l"
+                                class="w-full"
+                            >
+                                <span class="mx-auto">
+                                    {{ getIdleSubmitText }}
+                                </span>
+                            </VActionSpecial>
+                        </div>
+                    </div>
                 </div>
 
                 <!--submitting-->
                 <div
-                    v-show="is_submitting"
-                    class="w-full flex items-center"
+                    v-show="is_submitting === true && show_processing_dialog === false"
+                    class="w-full flex flex-col"
                 >
+                    <span class="mx-auto pb-1 text-xl font-medium">
+                        {{ getSubmittingLoadingText }}
+                    </span>
                     <VProgressBar
                         :prop-timestamps-ms="progress_bar_timestamps_ms"
                         :prop-step="progress_bar_step"
-                        class="mx-auto"
-                    >
-                        <VLoading
-                            prop-element-size="m"
-                        >
-                            <span class="pl-2 pb-1 text-2xl font-medium">
-                                {{ getSubmittingLoadingText }}
-                            </span>
-                        </VLoading>
-                    </VProgressBar>
+                        class="w-3/4 mx-auto"
+                    />
                 </div>
-            </TransitionGroupFade>
+
+                <!--processing-->
+                <VDialogPlain
+                    v-show="show_processing_dialog === true"
+                    :prop-has-border="false"
+                    :prop-has-auto-space-logo="false"
+                    :prop-has-auto-space-title="false"
+                    :prop-has-auto-space-content="false"
+                    class="w-full"
+                >
+                    <template #logo>
+                        <FontAwesomeIcon icon="fas fa-gear" class="animate-spin"/>
+                    </template>
+                    <template #title>
+                        <span>Processing recording...</span>
+                    </template>
+                    <template #content>
+                        <span>
+                            This may take a minute.
+                            <br>
+                            Explore other content while waiting!
+                        </span>
+                        <div class="pt-2">
+                            <VActionBorder
+                                prop-element="a"
+                                prop-element-size="s"
+                                prop-font-size="s"
+                                :prop-is-icon-only="true"
+                                href="/"
+                                class="w-fit mx-auto"
+                            >
+                                <span class="flex items-center px-4">
+                                    <span class="block pb-0.5">Back to main page</span>
+                                    <FontAwesomeIcon icon="fas fa-arrow-right" class="text-lg pl-2"/>
+                                </span>
+                            </VActionBorder>
+                        </div>
+                    </template>
+                </VDialogPlain>
+            </TransitionGroupFadeSlow>
         </div>
     </div>
 </template>
@@ -168,17 +205,25 @@
 <script setup lang="ts">
     import VActionSpecial from '../small/VActionSpecial.vue';
     import VTextArea from '../small/VTextArea.vue';
+    import VActionBorder from '../small/VActionBorder.vue';
     import VAudioClipToneField from '../medium/VAudioClipToneField.vue';
     import VAudioClipToneMenu from '../medium/VAudioClipToneMenu.vue';
     import VRecorderField from '../medium/VRecorderField.vue';
     import VRecorderMenu from '../medium/VRecorderMenu.vue';
     import VProgressBar from '../small/VProgressBar.vue';
-    import VLoading from '../small/VLoading.vue';
-    import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
+    import VDialogPlain from '../small/VDialogPlain.vue';
+    import TransitionGroupFadeSlow from '@/transitions/TransitionGroupFadeSlow.vue';
+
+    import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+    import { library } from '@fortawesome/fontawesome-svg-core';
+    import { faGear } from '@fortawesome/free-solid-svg-icons/faGear';
+    import { faArrowRight } from '@fortawesome/free-solid-svg-icons/faArrowRight';
+
+    library.add(faGear, faArrowRight);
 </script>
 
 <script lang="ts">
-    import { defineComponent } from 'vue';
+    import { defineComponent, PropType } from 'vue';
     import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
     import { notify } from 'notiwind';
     // import { CreateAudioClips__isSubmitSuccessfulTypes } from '@/types/General.interface';
@@ -214,8 +259,9 @@
                 submit_event_id: null as number|null,
                 submit_audio_clip_id: null as number|null,
 
-                is_reupload: false,
                 is_submitting: false,
+                show_processing_dialog: false,
+                warn_before_unload: false,
 
                 //VProgressBar
                 progress_bar_step: null as number|null,
@@ -232,6 +278,11 @@
             };
         },
         props: {
+            propReuploadAudioClipId: {
+                type: Number as PropType<Number|null>,
+                required: false,
+                default: null
+            },
             propIsOriginator: {
                 type: Boolean,
                 required: true,
@@ -269,9 +320,13 @@
             },
         },
         computed: {
-            getIdleSubmitButtonText() : string {
+            isReupload() : boolean {
 
-                if(this.is_reupload === true){
+                return this.propReuploadAudioClipId !== null;
+            },
+            getIdleSubmitText() : string {
+
+                if(this.isReupload === true){
 
                     return 'Reupload';
                 }
@@ -287,7 +342,7 @@
             },
             getSubmittingLoadingText() : string {
 
-                if(this.is_reupload === true){
+                if(this.isReupload === true){
 
                     return 'Reuploading...';
                 }
@@ -301,6 +356,22 @@
                     return 'Creating reply...';
                 }
             },
+            getSubmitDoneText() : string {
+
+                if(this.isReupload === true){
+
+                    return 'Reuploaded recording.';
+                }
+
+                if(this.propIsOriginator === true){
+
+                    return 'Started event.';
+
+                }else{
+
+                    return 'Created reply.';
+                }
+            },
             isAnyMenuOpen() : boolean {
 
                 return this.is_recorder_menu_open === true || this.is_audio_clip_tone_menu_open === true;
@@ -308,7 +379,7 @@
             canSubmit() : boolean {
 
                 if(
-                    this.is_reupload === false &&
+                    this.isReupload === false &&
                     this.propCanSubmit === true &&
                     this.is_submitting === false &&
                     (
@@ -330,7 +401,7 @@
             },
             canReupload() : boolean {
                 if(
-                    this.is_reupload === true &&
+                    this.isReupload === true &&
                     this.propCanSubmit === true &&
                     this.is_submitting === false &&
                     this.is_recording === false &&
@@ -343,6 +414,10 @@
                 }
 
                 return false;
+            },
+            isFormEnabled() : boolean {
+
+                return this.is_submitting === false && this.show_processing_dialog === false;
             },
         },
         methods: {
@@ -363,13 +438,9 @@
                     type: "error"
                 }, 4000);
             },
-            handleIsReupload() : void {
+            isReuploadSetup() : void {
 
-                //check if URL has get param
-                const current_url = new URL(window.location.href);
-                const reupload_audio_clip_id_from_url = current_url.searchParams.get('reupload');
-
-                if(reupload_audio_clip_id_from_url === null){
+                if(this.isReupload === false){
 
                     return;
                 }
@@ -382,11 +453,11 @@
 
                 if(container === null){
 
-                    throw new Error('container was not found in template.');
+                    throw new Error('Container was not found in template.');
                 }
 
                 const container_data = {
-                    audio_clip_id: container.getAttribute('data-reupload-audio-clip-id'),
+                    audio_clip_id: this.propReuploadAudioClipId,
                     audio_clip_tone_id: container.getAttribute('data-reupload-audio-clip-tone-id'),
                     audio_clip_tone_name: container.getAttribute('data-reupload-audio-clip-tone-name'),
                     audio_clip_tone_slug: container.getAttribute('data-reupload-audio-clip-tone-slug'),
@@ -395,37 +466,26 @@
                     event_name: document.getElementById('event-name'),
                 }
 
-                if(
-                    container_data['audio_clip_id'] === null ||
-                    Number(reupload_audio_clip_id_from_url) !== JSON.parse(container_data['audio_clip_id']) as number
-                ){
-
-                    //not reupload
-                    return;
-                }
-
-                this.is_reupload = true;
-
-                for(const value of Object.values(container_data)){
+                for(const [key, value] of Object.entries(container_data)){
 
                     if(value === null){
 
                         //missing data neede for reupload
-                        throw new Error('Missing required data from template.');
+                        throw new Error('Missing required data from template: ' + key);
                     }
                 }
 
                 const valid_data = {
-                    audio_clip_id: JSON.parse(container_data['audio_clip_id']!) as number,
+                    audio_clip_id: this.propReuploadAudioClipId,
                     audio_clip_tone_id: JSON.parse(container_data['audio_clip_tone_id']!) as number,
-                    audio_clip_tone_name: JSON.parse(container_data['audio_clip_tone_name']!) as string,
-                    audio_clip_tone_slug: JSON.parse(container_data['audio_clip_tone_slug']!) as string,
-                    audio_clip_tone_symbol: JSON.parse(container_data['audio_clip_tone_symbol']!) as string,
+                    audio_clip_tone_name: container_data['audio_clip_tone_name']! as string,
+                    audio_clip_tone_slug: container_data['audio_clip_tone_slug']! as string,
+                    audio_clip_tone_symbol: container_data['audio_clip_tone_symbol']! as string,
                     event_id: JSON.parse(container_data['event_id']!) as number,
-                    event_name: JSON.parse(container_data['event_name']!.textContent!) as string,
+                    event_name: container_data['event_name']!.textContent! as string,
                 };
 
-                //sync values to this component
+                //restore values to this component
                 this.audio_clip_tone_choice = {
                     id: valid_data['audio_clip_tone_id'],
                     audio_clip_tone_name: valid_data['audio_clip_tone_name'],
@@ -433,45 +493,21 @@
                     audio_clip_tone_symbol: valid_data['audio_clip_tone_symbol'],
                 };
                 this.submit_event_id = valid_data['event_id'];
-                this.submit_audio_clip_id = valid_data['audio_clip_id'];
 
-                //check if reupload_audio_clip_id exists in AudioClipProcessingsStore
+                //if prop is Number, TS complains when variable is number
+                this.submit_audio_clip_id = Number(this.propReuploadAudioClipId);
 
-                const current_audio_clip_processing = this.audio_clip_processings_store.getAudioClipProcessing(
-                    valid_data['audio_clip_id']
-                );
-
-                if(current_audio_clip_processing === null){
-
-                    //create new record in store
-                    this.audio_clip_processings_store.storeAudioClipProcessing(
-                        this.propIsOriginator,
-                        valid_data['audio_clip_id'],
-                        {
-                            event_id: valid_data['event_id'],
-                            event_name: valid_data['event_name'],
-                        },
-                        this.audio_clip_tone_choice,
-                        null
-                    );
-
-                }else{
-
-                    //when record already exists in store, it will also have recording
-                    //restore recording
-
-                    this.final_blob = current_audio_clip_processing.recording!.final_blob;
-                    this.blob_duration = current_audio_clip_processing.recording!.blob_duration;
-                    this.blob_volume_peaks = current_audio_clip_processing.recording!.blob_volume_peaks;
-                }
-
-                //restore fake (disabled) audio_clip_tone in form
-                //because it cannot be changed
-
-                //skip this step
+                //prepare this step to be skipped
                 this.submit_steps_done.backend_upload = true;
 
-                //
+                if(
+                    this.audio_clip_processings_store.hasAudioClipId(this.submit_audio_clip_id) === false
+                ){
+
+                    //do not create record in store if it doesn't exist
+                    //we only create when processing
+                    return;
+                }
             },
             async uploadToBackendReceiveS3UploadURL() : Promise<void> {
 
@@ -599,9 +635,15 @@
                     data.append('file', this.final_blob as Blob);
 
                     //submit
+                    //be sure to enable at bucket's CORS policy
                     await axios.post(
                         this.submit_upload_url,
                         data,
+                        {
+                            headers: {
+                                "Access-Control-Allow-Origin": "*",
+                            },
+                        },
                     ).then(() => {
 
                         //AWS S3 is tested to always return 204, regardless of whether file already exists
@@ -611,7 +653,9 @@
                         //ok
                         this.submit_steps_done.aws_upload = true;
 
-                    }).catch(()=>{
+                    }).catch((error:any)=>{
+
+                        console.log(error.response);
 
                         //due to possible retries in a single action, don't notify here
                         return;
@@ -682,14 +726,19 @@
             },
             async doSubmit() : Promise<void> {
 
-                if(this.canSubmit === false){
+                if(this.canSubmit === false && this.canReupload === false){
 
                     return;
                 }
 
+                this.warn_before_unload = true;
                 this.is_submitting = true;
-
                 this.progress_bar_step = 0;
+                this.$emit('isSubmitting', true);
+
+                //close menus
+                this.is_recorder_menu_open = false;
+                this.is_audio_clip_tone_menu_open = false;
 
                 try{
 
@@ -742,20 +791,141 @@
                     if(this.submit_steps_done.aws_upload === false){
 
                         this.notifyGenericFailure(
-                            'Unable to ' + this.getIdleSubmitButtonText.toLowerCase() + '.'
+                            'Unable to ' + this.getIdleSubmitText.toLowerCase() + '.'
                         );
                         return;
                     }
 
-                    //start processing immediately, don't wait
-                    this.audio_clip_processings_store.processAudioClipAPI(this.submit_audio_clip_id);
+                    //prepare event_name if it's supposed to already exist
+                    if(this.event_name.trim() === ''){
 
-                    //show "we will alert you when it's done" dialog
+                        const event_name = document.getElementById('event-name');
+
+                        if(event_name === null || event_name.textContent === null){
+
+                            throw new Error('Missing data.');
+                        }
+
+                        this.event_name = event_name.textContent;
+                    }
+
+                    //ensure these data exist
+                    if(
+                        this.submit_event_id === null ||
+                        this.audio_clip_tone_choice === null
+                    ){
+
+                        throw new Error('Missing data.');
+                    }
+
+                    //store if first time
+                    if(
+                        Object.hasOwn(
+                            this.audio_clip_processings_store.getAudioClipProcessings,
+                            this.submit_audio_clip_id
+                        ) === false
+                    ){
+
+                        this.audio_clip_processings_store.storeAudioClipProcessing(
+                            this.propIsOriginator,
+                            this.submit_audio_clip_id,
+                            {
+                                id: this.submit_event_id,
+                                event_name: this.event_name,
+                            },
+                            this.audio_clip_tone_choice,
+                        );
+                    }
+
+                    //finalise
+                    this.progress_bar_step = null;
+                    this.show_processing_dialog = true;
+                    this.$emit('isSubmitSuccessful', true);
+
+                    //call processing API
+                    //handling success/error is only important if user is still on the same page
+
+                    //get Promise
+                    const processing_call = this.audio_clip_processings_store.processAudioClipAPI(
+                        this.submit_audio_clip_id
+                    );
+
+                    if(processing_call === null){
+
+                        throw new Error('Expected Promise.');
+                    }
+
+                    //set this early, as next API may immediately redirect
+                    this.warn_before_unload = false;
+
+                    await processing_call.then(()=>{
+
+                        //done, redirect
+
+                        let redirect_url = window.location.origin
+                        redirect_url += "/event/" + this.submit_event_id!.toString();
+
+                        window.location.replace(redirect_url);
+
+                    }).catch((error:any)=>{
+
+                        this.$emit('isSubmitSuccessful', false);
+
+                        if(this.isReupload === false){
+
+                            if(error.request.status === 400){
+
+                                //if currently not for reupload, and has error, redirect to reupload
+                                //no need to check for max attempts if 400
+                                let redirect_url = window.location.origin
+                                redirect_url += "/event/" + this.submit_event_id!.toString();
+                                redirect_url += "?reupload=" + this.submit_audio_clip_id!.toString();
+
+                                window.location.replace(redirect_url);
+
+                                return;
+
+                            }else if(error.request.status === 409){
+
+                                //still processing
+                                this.show_processing_dialog = true;
+
+                                const ping_until_done = window.setInterval(()=>{
+
+                                    if(this.show_processing_dialog === false){
+
+                                        window.clearInterval(ping_until_done);
+                                    }
+
+                                    this.doSubmit();
+                                }, 10000);
+
+                                this.show_processing_dialog = false;
+                                return;
+                            }
+
+                        }else{
+
+                            //show message on 404, disallow future uploads
+
+                            //if error when currently is reupload, simply notify
+                            notify({
+                                type: "error",
+                                title: "Recording error",
+                                text: "Unable to process recording. Try again later."
+                            })
+
+                            this.show_processing_dialog = false;
+                            return;
+                        }
+                    });
 
                 }finally{
 
+                    this.$emit('isSubmitting', false);
                     this.progress_bar_step = null;
                     this.is_submitting = false;
+                    this.warn_before_unload = false;
                 }
             },
             handleNewRecording(new_value:{'blob':Blob, 'blob_duration':number, 'blob_volume_peaks':number[]}) : void {
@@ -781,10 +951,25 @@
 
                 this.event_name = new_value;
             },
+            handleBeforeUnload(event:BeforeUnloadEvent) : void {
+
+                if(this.warn_before_unload === true){
+
+                    //this is only effective when user has interacted with page
+                    //e.g. if user opens tab and immediately closes, without scrolling, tab simply closes
+                    event.preventDefault();
+                }
+            },
         },
         beforeMount(){
 
-            this.handleIsReupload();
+            this.isReuploadSetup();
+
+            window.addEventListener('beforeunload', this.handleBeforeUnload);
+        },
+        beforeUnmount(){
+
+            window.removeEventListener('beforeunload', this.handleBeforeUnload);
         },
     });
 </script>

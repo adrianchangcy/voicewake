@@ -62,10 +62,13 @@
                         ]"
                     />
                     <span v-show="isPlaybackReady">
-                        <span v-show="playback_paused" class="sr-only">
+                        <span v-show="is_playback_buffering" class="sr-only">
+                            loading
+                        </span>
+                        <span v-show="!is_playback_buffering && playback_paused" class="sr-only">
                             pause
                         </span>
-                        <span v-show="!playback_paused" class="sr-only">
+                        <span v-show="!is_playback_buffering && !playback_paused" class="sr-only">
                             play
                         </span>
                     </span>
@@ -184,7 +187,7 @@
                             propElement="button"
                             type="button"
                             :propIsIconOnly="true"
-                            class="w-full h-[2.1875rem] absolute bottom-0 focus-visible:-outline-offset-2"
+                            class="w-full h-[2.1875rem] absolute bottom-0 focus-visible:-outline-offset-2 focus-visible:outline-1"
                         >
                             <div class="w-full h-full relative">
                                 <span

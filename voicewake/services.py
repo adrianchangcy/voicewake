@@ -949,15 +949,12 @@ class S3PostWrapper:
         #important in the context of accurate settings + CloudFront origin to handle "/media/"
         #tests should ideally be done entirely in separate buckets, but can't afford 2 CloudFronts for now
 
-        file_path = 'audio_clips/'
-
-        if self.is_ec2 is False:
-
-            file_path = 'test/' + file_path
-
         #no starting slash
         #.format() converts args into str for us
-        file_path += 'year_{0}/month_{1}/day_{2}/user_id_{3}/'.format(
+        #we want to set MEDIAFILES_LOCATION here, instead of dynamically determining
+        #this helps to guarantee the separation between files created in dev and prod
+        file_path = '{0}/audio_clips/year_{1}/month_{2}/day_{3}/user_id_{4}/'.format(
+            settings.MEDIAFILES_LOCATION,
             datetime_now.strftime('%Y'),
             datetime_now.strftime('%m'),
             datetime_now.strftime('%d'),
@@ -1683,7 +1680,7 @@ class CreateAudioClips():
                 data={
                     "is_processing": True,
                 },
-                status=status.HTTP_200_OK
+                status=status.HTTP_409_CONFLICT
             )
 
         #get info for later evaluation
@@ -2019,11 +2016,9 @@ class CreateAudioClips():
         target_cache_key = self.determine_processing_cache_key(self.audio_clip.id)
 
         target_cache = cache.get(target_cache_key, {
-            {
-                'is_processing': False,
-                'last_attempt': '',
-                'attempts': 0,
-            }            
+            'is_processing': False,
+            'last_attempt': '',
+            'attempts': 0,
         })
 
         target_cache['is_processing'] = True

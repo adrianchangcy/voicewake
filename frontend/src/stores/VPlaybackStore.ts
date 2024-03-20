@@ -53,7 +53,7 @@ export const useVPlaybackStore = defineStore('vplayback', {
             this.pause_trigger = !this.pause_trigger;
             this.can_pause_trigger_affect_last_interacted_vplayback = affect_last_interacted_vplayback;
         },
-        updateCanAutoplay(can_autoplay:boolean) : void {
+        autoplayOnChange(can_autoplay:boolean) : void {
 
             this.can_autoplay = can_autoplay;
         },

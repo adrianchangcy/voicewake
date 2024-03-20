@@ -906,13 +906,13 @@
                         ){
 
                             //don't autoplay on filter change
-                            this.vplayback_store.updateCanAutoplay(false);
+                            this.vplayback_store.autoplayOnChange(false);
                             this.handleNewSelectedAudioClip(this.vplayback_store.getPlayingAudioClip);
 
                         }else{
 
                             //not from filter change, can autoplay
-                            this.vplayback_store.updateCanAutoplay(true);
+                            this.vplayback_store.autoplayOnChange(true);
                             this.handleNewSelectedAudioClip(this.vplayback_store.getPlayingAudioClip);
 
                             this.filtered_events_store.updateLastSelectedAudioClip(

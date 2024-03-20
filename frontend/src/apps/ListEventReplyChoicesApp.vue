@@ -463,8 +463,16 @@
 
                 //when has_searched_once is true, all requests auto-unlock previous events
                 //when false, it fetches previous valid events, if any
-                await this.event_reply_choices_store.queueNextEventReplyChoices(null, this.has_searched_once)
-                .finally(()=>{
+                await this.event_reply_choices_store.queueNextEventReplyChoices(
+                    null,
+                    this.has_searched_once
+                ).then(()=>{
+
+                    //put here instead of in "finally" block
+                    //when there are errors not by user's fault, can repeat
+                    this.has_searched_once = true;
+
+                }).finally(()=>{
 
                     if(is_cancelling_reply === true){
                         
@@ -477,12 +485,7 @@
                         this.is_searching = false;
                     }
 
-                    if(this.has_searched_once === false){
-
-                        this.has_searched_once = true;
-                    }
-
-                    //restart expiry interval, if any
+                    //clear interval, and restart if there are events
                     this.startExpiryInterval(false);
                 });
             },

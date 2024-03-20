@@ -88,9 +88,7 @@ class AudioClipsSerializer(serializers.ModelSerializer):
     audio_file = serializers.SerializerMethodField()
 
     def get_audio_file(self, object):
-        if settings.USE_S3 is True:
-            return settings.MEDIA_URL + str(object.audio_file)
-        return '{0}{1}{2}'.format(settings.BASE_URL, settings.MEDIA_URL, str(object.audio_file))
+        return settings.BASE_S3_URL + str(object.audio_file)
 
     class Meta:
         model = AudioClips

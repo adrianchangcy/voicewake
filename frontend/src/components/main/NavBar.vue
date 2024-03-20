@@ -592,24 +592,7 @@
 
             this.handleIsLogInSignUpStaticPage();
 
-            //call and check on processing audio_clips until there are none left
-            if(Object.keys(this.audio_clip_processings_store.getAudioClipProcessings).length > 0){
-
-                this.audio_clip_processings_store.doAllAudioClipProcessings();
-
-                const current_interval = window.setInterval(async ()=>{
-
-                    await this.audio_clip_processings_store.doAllAudioClipProcessings().finally(()=>{
-
-                        if(Object.keys(this.audio_clip_processings_store.getAudioClipProcessings).length === 0){
-
-                            window.clearInterval(current_interval);
-                        }
-                    });
-                },
-                20000
-                );
-            }
+            this.audio_clip_processings_store.processUntilNoneLeft();
         },
     });
 </script>

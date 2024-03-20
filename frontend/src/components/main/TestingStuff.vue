@@ -25,10 +25,11 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    // import { notify } from 'notiwind';
+    import { notify } from 'notiwind';
     // import anime from 'animejs';
     // import VPlayback from '../medium/VPlayback.vue';
     // import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
+    import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
     import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
     // import { drawCanvasRipples } from '@/helper_functions';
     import AudioClipsTypes from '@/types/AudioClips.interface';
@@ -42,6 +43,7 @@
                 event: null as EventsAndAudioClipsTypes|null,
                 is_yolo: false,
                 test_store: useTestStore(),
+                wtf_store: useAudioClipProcessingsStore(),
 
                 sample_audio_clip: {
                     id: 1,
@@ -79,18 +81,21 @@
             async callTest() : Promise<void> {
 
                 let data = new FormData();
-                data.append('email', 'user1@gmail.com');
                 data.append('is_requesting_otp', JSON.stringify(true));
 
                 await axios.get(window.location.origin + '/api/test', data)
                 .then((result:any) => {
+                    window.location.href = window.location.origin;
                     console.log(result.data);                      //native {keyA:{},keyB:"testo"}
                     console.log(result.request.status);            //number 200
                 }).catch((error:any) => {
+                    console.log('error at callTest()');
                     if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
                         console.log(error.response.data);               //native {keyA:{},keyB:"testo"}
                         console.log(error.request.status);              //number 418
                     }
+                }).finally(()=>{
+                    console.log('.finally at callTest');
                 });
             },
         },
@@ -98,37 +103,17 @@
 
             // this.callTest();
 
-            // const yolo = notify({
-            //     title: "Keep it up!",
-            //     text: "You'll finish this project soon. You can do this!",
-            //     type: "ok"
-            // }, 3000);
-
-            // console.log(yolo());
-
-            const current_url = new URL(window.location.href);
-            console.log(current_url.searchParams.get(''));
-
-            console.log('current count is: ' + this.test_store.getCount.toString());
-
-            this.test_store.addCount();
-
+            notify({
+                title: "Keep it up!",
+                text: "You'll finish this project soon. You can do this!",
+                type: "ok"
+            }, 3000);
 
             window.setTimeout(()=>{
                 this.is_yolo = !this.is_yolo;
             }, 2000);
 
-            //create event/reply --> save every change at store --> upload --> hide "creating" UI --> ...
-            //... --> show "done" UI + "we will let you know once processed" --> ...
-                //... --> if user clicks away, use ping, track pings at store for cross-tabs --> ...
-                //... --> if user not click away, just redirect
 
-            // window.addEventListener('beforeunload', (e:BeforeUnloadEvent)=>{
-
-            //     //pops up the dialog
-            //     //we cannot edit the dialog
-            //     e.preventDefault();
-            // });
         },
     });
 </script>
