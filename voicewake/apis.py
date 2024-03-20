@@ -375,7 +375,6 @@ class UserBannedAudioClipsAPI(generics.GenericAPIView):
             data={
                 'next_url': next_url,
                 'back_url': back_url,
-                'message': '',
                 'data': serializer.data,
             },
             status=status.HTTP_200_OK
@@ -554,7 +553,6 @@ class UserBlocksAPI(generics.GenericAPIView):
             data={
                 'next_url': next_url,
                 'back_url': back_url,
-                'message': '',
                 'data': serializer.data,
             },
             status=status.HTTP_200_OK
@@ -663,7 +661,6 @@ class UsersUsernameAPI(generics.GenericAPIView):
                     'username': new_data['username'],
                     'exists': exists
                 },
-                'message': '',
             },
             status.HTTP_200_OK
         )
@@ -922,7 +919,6 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
                             data={
                                 'error_code': 'otp-creation-timeout',
                                 'timeout_s': otp_creation_timeout_s,
-                                'message': '',
                             },
                             status=status.HTTP_400_BAD_REQUEST
                         )
@@ -1006,7 +1002,6 @@ class AudioClipTonesAPI(generics.GenericAPIView):
 
         response = Response(
             data={
-                'message': '',
                 'data': AudioClipTonesSerializer(
                     audio_clip_tones,
                     many=True
@@ -1080,7 +1075,6 @@ class GetEventsAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'message': '',
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
@@ -1110,7 +1104,6 @@ class GetEventsAPI(generics.GenericAPIView):
         response = Response(
             data={
                 'data': events_and_audio_clips,
-                'message': '',
             },
         )
 
@@ -1817,7 +1810,6 @@ class BrowseEventsAPI(generics.GenericAPIView):
             data={
                 'next_url': next_url,
                 'back_url': back_url,
-                'message': '',
                 'data': response_data,
             },
             status=status.HTTP_200_OK
@@ -1956,8 +1948,6 @@ class CreateEventsAPI(generics.GenericAPIView):
 
         except Exception as e:
 
-            print(e)
-
             return Response(
                 data={
                     'message': get_user_message_from_custom_error(e),
@@ -2061,7 +2051,7 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
             'originator',
             'ok',
             'incomplete',
-            settings.EVENT_INCOMPLETE_QUEUE_QUANTITY,
+            1,  #frontend currently can only handle 1
         ]
 
         #start
@@ -2253,7 +2243,6 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
                 return Response(
                     data={
                         'data': serializer.data,
-                        'message': '',
                     },
                     status=status.HTTP_200_OK
                 )
@@ -2299,7 +2288,6 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
                     return Response(
                         data={
                             'data': [],
-                            'message': '',
                         },
                         status=status.HTTP_200_OK
                     )
@@ -2317,7 +2305,6 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
                 return Response(
                     data={
                         'data': serializer.data,
-                        'message': '',
                     },
                     status=status.HTTP_200_OK
                 )
@@ -2522,7 +2509,6 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
         #UI does not need it
         return Response(
             data={
-                'message': '',
             },
             status=status.HTTP_200_OK
         )
@@ -2789,7 +2775,6 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
 
         return Response(
             data={
-                'message': '',
             },
             status=status.HTTP_200_OK
         )

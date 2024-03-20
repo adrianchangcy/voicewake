@@ -111,7 +111,7 @@
         },
         beforeMount(){
 
-            this.vplayback_store.updateCanAutoplay(true);
+            this.vplayback_store.autoplayOnChange(true);
         },
         mounted(){
 

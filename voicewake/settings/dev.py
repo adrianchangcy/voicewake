@@ -2,6 +2,7 @@ from .common import *
 
 
 DEBUG = True
+DEBUG_PROPAGATE_EXCEPTIONS = True   #shows detailed exceptions instead of simple 500
 
 
 REQUEST_TIME_DELAY = 0  #seconds
@@ -30,13 +31,20 @@ MIDDLEWARE = [
 
 
 INSTALLED_APPS = [
-    'debug_toolbar'
+    'debug_toolbar',
 ] + INSTALLED_APPS
 
 
-USE_S3 = False
-MEDIA_URL = 'media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, MEDIA_URL)
+MEDIAFILES_LOCATION = 'media/test'
+AWS_S3_CUSTOM_DOMAIN = os.environ['AWS_S3_CUSTOM_DOMAIN']
+
+
+#for MEDIA, always use S3
+#low cost even for testing, and also due to how integrated the S3 processes are to our code base
+#implementing local file upload procedures would be redundant
+BASE_S3_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{MEDIAFILES_LOCATION}/'
+MEDIA_ROOT = f'https://{AWS_S3_CUSTOM_DOMAIN}/{MEDIAFILES_LOCATION}/'
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'deploy/static')
 

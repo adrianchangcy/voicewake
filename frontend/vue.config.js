@@ -8,7 +8,7 @@ const output_dir = '../static/frontend/';
 function getPublicPath(){
     if(process.env.NODE_ENV === 'production'){
         //AWS_S3_CUSTOM_DOMAIN, i.e. CloudFront, can get from project root env/.env
-        return 'https://d3cej2n7sifsea.cloudfront.net' + static_dir;
+        return 'https://d3fpcqa3tewpp.cloudfront.net' + static_dir;
     }
     return static_dir;
 }

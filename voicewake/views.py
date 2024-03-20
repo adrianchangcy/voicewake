@@ -237,77 +237,96 @@ class GetEvents(TemplateView):
             generic_status__generic_status_name='ok'
         ).count()
 
-        #prepare response early, so we can return early and skip "reupload" logic
-        response = render(
-            request,
-            template_name=self.template_name,
-            context={
+        #prepare context early for consistency
+        template_context = {
             'event_reply_choice_expiry_seconds': settings.EVENT_REPLY_CHOICE_MAX_DURATION_S,
             'event_reply_expiry_seconds': settings.EVENT_REPLY_MAX_DURATION_S,
             'event': event,
             'is_deleted': is_deleted,
             'is_deleted_json': json.dumps(is_deleted),
             'audio_clip_count_json': json.dumps(audio_clip_count),
-            }
-        )
+        }
 
-        #return if deleted
-        if is_deleted is True:
+        #return if deleted, or if nothing is processing
+        if event.generic_status.generic_status_name != 'processing' or is_deleted is True:
 
-            return response
+            return render(
+                request,
+                template_name=self.template_name,
+                context=template_context
+            )
+
+        #has processing
+        #check if user is here to reupload
 
         #get audio_clip_id if passed in GET params
         reupload_audio_clip_id = request.GET.get('reupload', None)
 
         if reupload_audio_clip_id is None:
 
-            return response
+            #not for reupload, show normal page
+            return render(
+                request,
+                template_name=self.template_name,
+                context=template_context
+            )
 
-        #user is redirected for the purpose of reupload
+        #user is here to reupload
+        #prepare needed data at template for reupload
+
         reupload_audio_clip_id = int(reupload_audio_clip_id)
 
         #also get AudioClipTones so we can refill form fields, aesthetic reasons only
         #you can just use Pinia and store + retrieve
         #but enabling cross-device feels important enough, e.g. user's device0 isn't good, so switch
-        #we add [0:1] to avoid being paranoid with filter()
-        target_audio_clip = AudioClips.objects.select_related(
-            'audio_clip_role',
-            'audio_clip_tone',
-        ).filter(
-            pk=reupload_audio_clip_id,
-            user=request.user,
-            generic_status__generic_status_name='processing',
-        ).only(
-            'audio_clip_role__audio_clip_role_name',
-            'audio_clip_tone__id',
-            'audio_clip_tone__audio_clip_tone_name',
-            'audio_clip_tone__audio_clip_tone_slug',
-            'audio_clip_tone__audio_clip_tone_symbol',
-            'id',
-        )[0:1]
+        try:
 
-        #user cannot reupload, just return normal page
-        if len(target_audio_clip) == 0:
+            target_audio_clip = AudioClips.objects.select_related(
+                'audio_clip_role',
+                'audio_clip_tone',
+            ).only(
+                'audio_clip_role__audio_clip_role_name',
+                'audio_clip_tone__id',
+                'audio_clip_tone__audio_clip_tone_name',
+                'audio_clip_tone__audio_clip_tone_slug',
+                'audio_clip_tone__audio_clip_tone_symbol',
+                'id',
+            ).get(
+                pk=reupload_audio_clip_id,
+                user=request.user,
+                generic_status__generic_status_name='processing',
+            )
 
-            return response
+        except AudioClips.DoesNotExist:
+
+            #user cannot reupload, just return normal page
+            return render(
+                request,
+                template_name=self.template_name,
+                context=template_context
+            )
 
         #pass this back to template
-        response.context.update({
+        template_context.update({
             'is_reupload': True,
             'reupload_audio_clip_id_json': json.dumps(reupload_audio_clip_id),
-            'reupload_audio_clip_role_name': target_audio_clip[0]['audio_clip_role__audio_clip_role_name'],
-            'reupload_audio_clip_tone_id': target_audio_clip[0]['audio_clip_tone__audio_clip_tone_id'],
-            'reupload_audio_clip_tone_name': target_audio_clip[0]['audio_clip_tone__audio_clip_tone_name'],
-            'reupload_audio_clip_tone_slug': target_audio_clip[0]['audio_clip_tone__audio_clip_tone_slug'],
-            'reupload_audio_clip_tone_symbol': target_audio_clip[0]['audio_clip_tone__audio_clip_tone_symbol'],
+            'reupload_audio_clip_role_name': target_audio_clip.audio_clip_role.audio_clip_role_name,
+            'reupload_audio_clip_tone_id': target_audio_clip.audio_clip_tone.id,
+            'reupload_audio_clip_tone_name': target_audio_clip.audio_clip_tone.audio_clip_tone_name,
+            'reupload_audio_clip_tone_slug': target_audio_clip.audio_clip_tone.audio_clip_tone_slug,
+            'reupload_audio_clip_tone_symbol': target_audio_clip.audio_clip_tone.audio_clip_tone_symbol,
         })
+
+        return render(
+            request,
+            template_name=self.template_name,
+            context=template_context
+        )
 
         # patch_cache_control(
         #     response,
         #     no_cache=True, no_store=True, must_revalidate=True, max_age=0
         # )
-
-        return response
 
 
 

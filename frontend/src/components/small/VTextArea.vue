@@ -20,6 +20,7 @@
             <!--default inline-block, changed to block to remove bottom spacing-->
             <textarea
                 @click.stop="emitWasInteracted()"
+                :disabled="!propIsEnabled"
                 @input="resize()"
                 ref="nice_textarea"
                 :required="propIsRequired"
@@ -80,6 +81,10 @@
             propIsWarning: Boolean,
             propIsError: Boolean,
             propStatusText: String,
+            propIsEnabled: {
+                type: Boolean,
+                default: true,
+            },
         },
         emits: ['newValue', 'wasInteracted'],
         watch: {

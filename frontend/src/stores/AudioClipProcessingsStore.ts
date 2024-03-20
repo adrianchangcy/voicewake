@@ -16,13 +16,8 @@ import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
 const axios = require('axios');
 
 interface EventsTypes{
-    event_id:number,
+    id:number,
     event_name: string,
-}
-interface RecordingsTypes{
-    final_blob: Blob,
-    blob_duration: number,
-    blob_volume_peaks: number[],
 }
 interface ChecksTypes{
     last_checked: string,
@@ -34,7 +29,6 @@ interface AudioClipProcessingDetailsTypes{
     is_originator: boolean,
     event: EventsTypes,
     audio_clip_tone: AudioClipTonesTypes,
-    recording: RecordingsTypes|null,
     checks: ChecksTypes,
 }
 
@@ -52,7 +46,8 @@ export function useAudioClipProcessingsStore(){
     return defineStore('audio_clip_processings_store', {
         state: ()=>({
             audio_clip_processings: {} as AudioClipProcessingsTypes,
-            api_cooldown_ms: 10000,
+            api_cooldown_ms: 30000,
+            api_call_interval_ms: 10000,
             min_check_attempts_for_reupload: 4,
         }),
         getters: {
@@ -62,6 +57,10 @@ export function useAudioClipProcessingsStore(){
             },
         },
         actions: {
+            hasAudioClipId(audio_clip_id:number) : boolean {
+
+                return Object.hasOwn(this.audio_clip_processings, audio_clip_id);
+            },
             getAudioClipProcessing(audio_clip_id:number) : AudioClipProcessingDetailsTypes|null {
 
                 if(Object.hasOwn(this.audio_clip_processings, audio_clip_id) === false){
@@ -83,7 +82,6 @@ export function useAudioClipProcessingsStore(){
                 passed_audio_clip_id:number,
                 passed_event:EventsTypes,
                 passed_audio_clip_tone:AudioClipTonesTypes,
-                passed_recording:RecordingsTypes|null,
             ) : void {
 
                 //have to add "passed_" to params to avoid setting them as keys
@@ -97,7 +95,6 @@ export function useAudioClipProcessingsStore(){
                     is_originator: passed_is_originator,
                     event: passed_event,
                     audio_clip_tone: passed_audio_clip_tone,
-                    recording: passed_recording,
                     checks: {
                         last_checked: setPiniaDateObject(new Date()),
                         is_checking: false,
@@ -111,7 +108,7 @@ export function useAudioClipProcessingsStore(){
                 
                 const target_object = this.audio_clip_processings[audio_clip_id];
 
-                final_url += '/event/' + target_object.event.event_id.toString();
+                final_url += '/event/' + target_object.event.id.toString();
                 final_url += '?reupload=' + audio_clip_id.toString();
 
                 return final_url;
@@ -120,7 +117,7 @@ export function useAudioClipProcessingsStore(){
 
                 if(Object.hasOwn(this.audio_clip_processings, audio_clip_id) === false){
 
-                    throw new Error('audio_clip_id does not exist.');
+                    return null;
                 }
 
                 //check cooldown
@@ -176,15 +173,6 @@ export function useAudioClipProcessingsStore(){
                     }
 
                     if(
-                        Object.hasOwn(result.data, 'is_processing') === true &&
-                        result.data['is_processing'] === true
-                    ){
-
-                        //if processing, simply return and call later to check
-                        return;
-                    }
-
-                    if(
                         Object.hasOwn(result.data, 'is_processed') === true &&
                         result.data['is_processed'] === true
                     ){
@@ -192,7 +180,7 @@ export function useAudioClipProcessingsStore(){
                         //create URL
                         const event_url = (
                             window.location.origin + '/event/' +
-                            this.audio_clip_processings[audio_clip_id].event.event_id.toString()
+                            this.audio_clip_processings[audio_clip_id].event.id.toString()
                         );
 
                         //notify
@@ -218,6 +206,16 @@ export function useAudioClipProcessingsStore(){
 
                     //determine last_checked
                     let new_last_checked = new Date();
+
+                    if(
+                        error.request.status === 409 &&
+                        Object.hasOwn(error.response.data, 'is_processing') === true &&
+                        error.response.data['is_processing'] === true
+                    ){
+
+                        //if processing, simply return and call later to check
+                        throw error;
+                    }
 
                     if(Object.hasOwn(error.response.data, 'cooldown_s') === true){
 
@@ -258,56 +256,108 @@ export function useAudioClipProcessingsStore(){
                         notify({
                             type: "audio_clip_process_error",
                             title: "Recording error",
-                            text: "Full silence can cause issues. Record again?",
+                            text: this.audio_clip_processings[audio_clip_id].event.event_name,
                             url: this.determineReuploadURL(audio_clip_id),
                             audio_clip_tone_name: this.audio_clip_processings[audio_clip_id].audio_clip_tone.audio_clip_tone_name,
                             audio_clip_tone_symbol: this.audio_clip_processings[audio_clip_id].audio_clip_tone.audio_clip_tone_symbol,
-                            close_callback: ():void=>{
-                                delete this.audio_clip_processings[audio_clip_id];
-                            },
                         }, -1);
+
+                        delete this.audio_clip_processings[audio_clip_id];
                     }
+
+                    //this allows redirect handling
+                    throw error;
 
                 }).finally(()=>{
 
-                    this.audio_clip_processings[audio_clip_id].checks.is_checking = false;
+                    if(Object.hasOwn(this.audio_clip_processings, audio_clip_id) === true){
+
+                        this.audio_clip_processings[audio_clip_id].checks.is_checking = false;
+                    }
                 });
 
                 return api_call;
             },
-            async doAllAudioClipProcessings() : Promise<void> {
+            getReuploadAudioClipId() : number|null {
 
-                //if there are strange bugs, be aware that this function can cause race condition
-                //e.g. at "for" loop, when one tab deletes key:value pair while another tab is still looping
+                //check if URL has get param
+
+                const current_url = new URL(window.location.href);
+                const reupload_audio_clip_id_from_url = current_url.searchParams.get('reupload');
+
+                if(reupload_audio_clip_id_from_url === null){
+
+                    return null;
+                }
+
+                //check if id is passed in template
+
+                const container = (document.getElementById('data-container-get-events') as HTMLElement);
+
+                if(container === null){
+
+                    return null;
+                }
+
+                const reupload_audio_clip_id = container.getAttribute('data-reupload-audio-clip-id');
+
+                if(reupload_audio_clip_id === null){
+
+                    return null;
+                }
+
+                return Number(reupload_audio_clip_id_from_url);
+            },
+            processUntilNoneLeft() : void {
+
+                //processAudioClipAPI() will delete when notified
+                //we prefer worst case of "user missed it" over 1 processing spammed many times
 
                 if(Object.keys(this.audio_clip_processings).length === 0){
 
                     return;
                 }
 
-                //prepare bulk Promises
+                //don't run this at reupload page
+                if(this.getReuploadAudioClipId() !== null){
 
-                const api_calls:Promise<void>[] = [];
+                    return;
+                }
 
-                for(const audio_clip_id in this.audio_clip_processings){
+                console.log('we starting');
 
-                    const api_call = this.processAudioClipAPI(Number(audio_clip_id));
+                const current_interval = window.setInterval(async ()=>{
+
+                    const audio_clip_ids = Object.keys(this.audio_clip_processings);
+                    const target_audio_clip_id = Number(audio_clip_ids[0]);
+
+                    if(audio_clip_ids.length === 0){
+
+                        window.clearInterval(current_interval);
+                    }
+
+                    const api_call = this.processAudioClipAPI(
+                        target_audio_clip_id
+                    );
 
                     if(api_call === null){
 
-                        continue;
+                        return;
                     }
 
-                    //add API call to array
-                    api_calls.push(api_call);
-                }
+                    //if audio_clip_id no longer exists, it means we have notified
+                    //stop interval, otherwise we'd overwhelm the UI
+                    api_call.catch(()=>{
+                        return;
+                    }).finally(()=>{
 
-                //call
-                await Promise.allSettled(
-                    api_calls
-                ).catch(()=>{
-                    return;
-                });
+                        if(Object.hasOwn(this.audio_clip_processings, target_audio_clip_id) === false){
+
+                            window.clearInterval(current_interval);
+                        }
+                    });
+
+                }, this.api_call_interval_ms);
             },
         },
         persist: true,

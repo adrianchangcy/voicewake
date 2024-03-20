@@ -686,6 +686,10 @@ video {
   top: 0.54rem;
 }
 
+.bottom-\[0\.625rem\] {
+  bottom: 0.625rem;
+}
+
 .-z-10 {
   z-index: -10;
 }
@@ -978,6 +982,10 @@ video {
   height: 100%;
 }
 
+.h-\[14\.75rem\] {
+  height: 14.75rem;
+}
+
 .max-h-\[90\%\] {
   max-height: 90%;
 }
@@ -989,6 +997,10 @@ video {
 .min-h-fit {
   min-height: -moz-fit-content;
   min-height: fit-content;
+}
+
+.min-h-\[14\.75rem\] {
+  min-height: 14.75rem;
 }
 
 .w-0 {
@@ -1017,6 +1029,10 @@ video {
 
 .w-24 {
   width: 6rem;
+}
+
+.w-3\/4 {
+  width: 75%;
 }
 
 .w-4 {
@@ -1086,6 +1102,10 @@ video {
 
 .flex-1 {
   flex: 1 1 0%;
+}
+
+.flex-none {
+  flex: none;
 }
 
 .flex-shrink-0 {
@@ -1326,9 +1346,26 @@ video {
   border-bottom-width: calc(1px * var(--tw-divide-y-reverse));
 }
 
+.divide-x-2 > :not([hidden]) ~ :not([hidden]) {
+  --tw-divide-x-reverse: 0;
+  border-right-width: calc(2px * var(--tw-divide-x-reverse));
+  border-left-width: calc(2px * calc(1 - var(--tw-divide-x-reverse)));
+}
+
+.divide-y-2 > :not([hidden]) ~ :not([hidden]) {
+  --tw-divide-y-reverse: 0;
+  border-top-width: calc(2px * calc(1 - var(--tw-divide-y-reverse)));
+  border-bottom-width: calc(2px * var(--tw-divide-y-reverse));
+}
+
 .divide-theme-gray-2 > :not([hidden]) ~ :not([hidden]) {
   --tw-divide-opacity: 1;
   border-color: rgb(232 234 235 / var(--tw-divide-opacity));
+}
+
+.divide-red-700 > :not([hidden]) ~ :not([hidden]) {
+  --tw-divide-opacity: 1;
+  border-color: rgb(185 28 28 / var(--tw-divide-opacity));
 }
 
 .self-end {
@@ -2056,6 +2093,10 @@ video {
   transition-duration: 100ms;
 }
 
+.duration-150 {
+  transition-duration: 150ms;
+}
+
 .duration-200 {
   transition-duration: 200ms;
 }
@@ -2490,6 +2531,10 @@ canvas {
   outline-offset: 2px;
 }
 
+.focus-visible\:border:focus-visible {
+  border-width: 1px;
+}
+
 .focus-visible\:outline-none:focus-visible {
   outline: 2px solid transparent;
   outline-offset: 2px;
@@ -2501,6 +2546,10 @@ canvas {
 
 .focus-visible\:outline-2:focus-visible {
   outline-width: 2px;
+}
+
+.focus-visible\:outline-1:focus-visible {
+  outline-width: 1px;
 }
 
 .focus-visible\:-outline-offset-2:focus-visible {

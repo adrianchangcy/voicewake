@@ -42,7 +42,7 @@
 
                 if(new_value === null){
 
-                    this.endFinalPart(true);
+                    this.endFinalPart();
                     return;
                 }
 
@@ -51,14 +51,7 @@
                     throw new Error('Invalid value: ' + new_value.toString());
                 }
 
-                if(new_value < (this.propTimestampsMs.durations.length - 1)){
-
-                    this.startPart(new_value);
-
-                }else{
-
-                    this.endFinalPart(false);
-                }
+                this.startPart(new_value);
             },
         },
         props: {
@@ -93,6 +86,13 @@
                 //remove
                 anime.remove(target_el);
 
+                //if animating first part, and not first time, reset scale
+                //this is to clean up from previous completion
+                if(part_index === 0){
+
+                    target_el.style.transform = 'scaleX(0)';
+                }
+
                 const current_anime = anime.timeline({
                     targets: target_el,
                     easing: 'linear',
@@ -100,7 +100,8 @@
                     autoplay: false,
                 });
 
-                if(part_index === 0){
+                //for very first time, opacity will be 0
+                if(target_el.style.opacity === '0'){
 
                     //subpixel gap solution
 
@@ -134,13 +135,16 @@
 
                 current_anime.play();
             },
-            endFinalPart(has_reset:boolean) : void {
+            endFinalPart() : void {
 
                 const target_el = this.$refs.progress_bar as HTMLElement;
 
                 //remove
                 anime.remove(target_el);
 
+                //don't reset opacity
+                //when watcher value changes too quickly, it only recognises latest value
+                //i.e. it would skip step 0
                 anime({
                     targets: target_el,
                     easing: 'linear',
@@ -148,12 +152,6 @@
                     autoplay: true,
                     scaleX: 1,
                     duration: 100,
-                    complete: ()=>{
-                        if(has_reset === true){
-                            target_el.style.transform = 'scaleX(0)';
-                            target_el.style.opacity = '0';
-                        }
-                    },
                 });
             },
         },

@@ -14,10 +14,10 @@
                     enter="transform ease-out duration-300 transition"
                     enter-from="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-4"
                     enter-to="translate-y-0 opacity-100 sm:translate-x-0"
-                    leave="transition ease-in duration-500"
+                    leave="transition ease-in duration-150"
                     leave-from="opacity-100"
                     leave-to="opacity-0"
-                    move="transition duration-500"
+                    move="transition duration-150"
                     move-delay="delay-300"
                 >
                     <!--nested v-if inside v-for is bad practice-->
@@ -66,7 +66,7 @@
                             <div class="w-full px-4 py-2 text-theme-black">
                                 <span class="text-base font-semibold">{{ notification.title }}</span>
                                 <p class="text-sm">{{ notification.text }}</p>
-                                <div v-if="(notification as GenericNotificationsTypes).buttons.length > 0" class="w-full pt-2">
+                                <div v-if="hasButtons(notification)" class="w-full pt-2">
                                     <button
                                         @click="[(notification as GenericNotificationsTypes).buttons[0].callback(), close(notification.id)]"
                                         type="button"
@@ -81,9 +81,9 @@
                         <!--when audio_clip is done processing-->
                         <!--as strange as it looks, multiple overflow-hidden is needed-->
                         <div v-else-if="notification.type === 'audio_clip_process_ok'"
-                            class="flex overflow-hidden"
+                            class="w-full flex overflow-hidden"
                         >
-                            <div class="flex flex-col shrink-0 items-center justify-center w-10 bg-green-500 text-white text-xl">
+                            <div class="w-10 shrink-0 flex flex-col items-center justify-center bg-green-500 text-white text-xl">
                                 <span class="sr-only">
                                     {{ (notification as AudioClipNotificationsTypes).audio_clip_tone_name }}
                                 </span>
@@ -91,14 +91,14 @@
                                     {{ (notification as AudioClipNotificationsTypes).audio_clip_tone_symbol }}
                                 </span>
                             </div>
-                            <div class="pl-4 py-2 overflow-hidden">
+                            <div class="flex-1 pl-4 py-2 overflow-hidden">
                                 <span class="text-base font-semibold text-green-700">
                                     {{ notification.title }}
                                 </span>
-                                <p class="pb-1 text-sm text-theme-black text-ellipsis whitespace-nowrap overflow-hidden">
+                                <span class="block text-sm text-theme-black text-ellipsis whitespace-nowrap overflow-hidden">
                                     Event: "<span class="italic">{{ notification.text }}</span>"
-                                </p>
-                                <div class="h-10">
+                                </span>
+                                <div class="h-10 pt-2">
                                     <a
                                         :href="(notification.url as string)"
                                         class="h-full flex flex-row items-center     shade-border-when-hover active:bg-theme-gray-1 transition-colors       border border-theme-gray-2 rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
@@ -114,7 +114,7 @@
                                 prop-element="button"
                                 prop-element-size="s"
                                 :prop-is-icon-only="true"
-                                class="w-10 h-10 flex shrink-0 items-center justify-center focus-visible:-outline-offset-4"
+                                class="w-10 h-10 shrink-0 flex items-center justify-center focus-visible:-outline-offset-4"
                             >
                                 <FontAwesomeIcon icon="fas fa-xmark" class="text-xl mx-auto"/>
                             </VActionText>
@@ -123,9 +123,9 @@
                         <!--when audio_clip has error, offer chance to re-record-->
                         <!--as strange as it looks, multiple overflow-hidden is needed-->
                         <div v-else-if="notification.type === 'audio_clip_process_error'"
-                            class="flex overflow-hidden"
+                            class="w-full flex overflow-hidden"
                         >
-                            <div class="flex flex-col shrink-0 items-center justify-center w-10 bg-red-500 text-white text-xl">
+                            <div class="w-10 shrink-0 flex flex-col items-center justify-center bg-red-500 text-white text-xl">
                                 <span class="sr-only">
                                     {{ (notification as AudioClipNotificationsTypes).audio_clip_tone_name }}
                                 </span>
@@ -133,14 +133,17 @@
                                     {{ (notification as AudioClipNotificationsTypes).audio_clip_tone_symbol }}
                                 </span>
                             </div>
-                            <div class="pl-4 py-2 overflow-hidden">
-                                <span class="text-base font-semibold text-red-700">
+                            <div class="flex-1 pl-4 py-2 overflow-hidden">
+                                <span class="block text-base font-semibold text-red-700">
                                     {{ notification.title }}
                                 </span>
-                                <p class="text-sm pb-2">
-                                    {{ notification.text }}
-                                </p>
-                                <div class="h-10">
+                                <span class="block text-sm text-theme-black text-ellipsis whitespace-nowrap overflow-hidden">
+                                    Event: "<span class="italic">{{ notification.text }}</span>"
+                                </span>
+                                <span class="block text-sm">
+                                    Record again?
+                                </span>
+                                <div class="h-10 pt-2">
                                     <a
                                         :href="(notification.url as string)"
                                         class="h-full flex flex-row items-center     shade-border-when-hover active:bg-theme-gray-1 transition-colors       border border-theme-gray-2 rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
@@ -152,11 +155,11 @@
                                 </div>
                             </div>
                             <VActionText
-                                @click="[(notification as AudioClipNotificationsTypes).close_callback(), close(notification.id)]"
+                                @click="[close(notification.id)]"
                                 prop-element="button"
                                 prop-element-size="s"
                                 :prop-is-icon-only="true"
-                                class="w-10 h-10 flex shrink-0 items-center justify-center focus-visible:-outline-offset-4"
+                                class="w-10 h-10 shrink-0 flex items-center justify-center focus-visible:-outline-offset-4"
                             >
                                 <FontAwesomeIcon icon="fas fa-xmark" class="text-xl mx-auto"/>
                             </VActionText>
@@ -189,6 +192,14 @@
         faExclamation, faCheck, faCookieBite,
         faBatteryEmpty, faFlag, faFaceMehBlank, faXmark,
     );
+
+    const hasButtons = (notification:any)=>{
+
+        return (
+            Object.hasOwn(notification, 'buttons') === true &&
+            Array.isArray(notification!.buttons) === true
+        );
+    };
 </script>
 
 
@@ -215,7 +226,6 @@
         audio_clip_tone_name: string,
         audio_clip_tone_symbol: string,
         url: string,
-        close_callback: () => any,
     }[]
 </script>
 
