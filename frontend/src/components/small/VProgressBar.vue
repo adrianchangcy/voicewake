@@ -1,6 +1,5 @@
 <template>    
     <div class="flex flex-col">
-        <slot></slot>
         <div class="w-full h-4 border-2 border-theme-black relative">
             <!--background-->
             <div class="w-full h-full absolute">

@@ -24,138 +24,110 @@
                     <!--but Notiwind docs show that this is how it's done for this case-->
                     <div
                         class="flex w-full mx-auto mb-4 overflow-hidden backdrop-blur bg-white/60 rounded-lg shadow-xl"
-                        v-for="notification in notifications"
+                        v-for="notification in (notifications as FullNotificationsTypes[])"
                         :key="notification.id"
                     >
-                        <!--error-->
-                        <div
-                            v-if="notification.type === 'error'"
-                            class="flex"
-                        >
-                            <div class="flex shrink-0 items-center justify-center w-10 bg-red-500 text-white">
-                                <FontAwesomeIcon icon="fas fa-exclamation" class="text-xl"/>
-                            </div>
-                            <div class="w-full px-4 py-2">
-                                <span class="text-base font-semibold text-red-700">{{ notification.title }}</span>
-                                <p class="text-sm text-theme-black">{{ notification.text }}</p>
-                            </div>
-                        </div>                        
 
-                        <!--ok-->
-                        <div
-                            v-else-if="notification.type === 'ok'"
-                            class="flex"
-                        >
-                            <div class="flex shrink-0 items-center justify-center w-10 bg-green-500 text-white">
-                                <FontAwesomeIcon icon="fas fa-check" class="text-xl"/>
-                            </div>
-                            <div class="px-4 py-2">
-                                <span class="text-base font-semibold text-green-700">{{ notification.title }}</span>
-                                <p class="text-sm text-theme-black">{{ notification.text }}</p>
-                            </div>
-                        </div>
+                        <div class="w-full flex">
 
-                        <!--generic-->
-                        <div
-                            v-else-if="notification.type === 'generic'"
-                            class="flex"
-                        >
-                            <div class="flex shrink-0 items-center justify-center w-10 bg-theme-black text-white">
-                                <FontAwesomeIcon :icon="notification.icon!" class="text-xl"/>
-                            </div>
-                            <div class="w-full px-4 py-2 text-theme-black">
-                                <span class="text-base font-semibold">{{ notification.title }}</span>
-                                <p class="text-sm">{{ notification.text }}</p>
-                                <div v-if="hasButtons(notification)" class="w-full pt-2">
-                                    <button
-                                        @click="[(notification as GenericNotificationsTypes).buttons[0].callback(), close(notification.id)]"
-                                        type="button"
-                                        class="w-full h-10 flex flex-row items-center     shade-border-when-hover active:bg-theme-gray-1 transition-colors       border border-theme-gray-2 rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
-                                    >
-                                        <span class="px-4 pb-0.5 mx-auto text-sm font-medium">{{ (notification as GenericNotificationsTypes).buttons[0].text }}</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!--when audio_clip is done processing-->
-                        <!--as strange as it looks, multiple overflow-hidden is needed-->
-                        <div v-else-if="notification.type === 'audio_clip_process_ok'"
-                            class="w-full flex overflow-hidden"
-                        >
-                            <div class="w-10 shrink-0 flex flex-col items-center justify-center bg-green-500 text-white text-xl">
-                                <span class="sr-only">
-                                    {{ (notification as AudioClipNotificationsTypes).audio_clip_tone_name }}
-                                </span>
-                                <span>
-                                    {{ (notification as AudioClipNotificationsTypes).audio_clip_tone_symbol }}
-                                </span>
-                            </div>
-                            <div class="flex-1 pl-4 py-2 overflow-hidden">
-                                <span class="text-base font-semibold text-green-700">
-                                    {{ notification.title }}
-                                </span>
-                                <span class="block text-sm text-theme-black text-ellipsis whitespace-nowrap overflow-hidden">
-                                    Event: "<span class="italic">{{ notification.text }}</span>"
-                                </span>
-                                <div class="h-10 pt-2">
-                                    <a
-                                        :href="(notification.url as string)"
-                                        class="h-full flex flex-row items-center     shade-border-when-hover active:bg-theme-gray-1 transition-colors       border border-theme-gray-2 rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
-                                    >
-                                        <span class="px-4 pb-0.5 mx-auto text-sm font-medium">
-                                            Open
-                                        </span>
-                                    </a>
-                                </div>
-                            </div>
-                            <VActionText
-                                @click="close(notification.id)"
-                                prop-element="button"
-                                prop-element-size="s"
-                                :prop-is-icon-only="true"
-                                class="w-10 h-10 shrink-0 flex items-center justify-center focus-visible:-outline-offset-4"
+                            <!--left panel-->
+                            <div
+                                :class="[
+                                    notification.type === 'ok' ? 'bg-green-500' : '',
+                                    notification.type === 'error' ? 'bg-red-500' : '',
+                                    notification.type === 'generic' ? 'bg-theme-black' : '',
+                                    'w-10 shrink-0 flex flex-col items-center justify-center text-white text-xl'
+                                ]"
                             >
-                                <FontAwesomeIcon icon="fas fa-xmark" class="text-xl mx-auto"/>
-                            </VActionText>
-                        </div>
-
-                        <!--when audio_clip has error, offer chance to re-record-->
-                        <!--as strange as it looks, multiple overflow-hidden is needed-->
-                        <div v-else-if="notification.type === 'audio_clip_process_error'"
-                            class="w-full flex overflow-hidden"
-                        >
-                            <div class="w-10 shrink-0 flex flex-col items-center justify-center bg-red-500 text-white text-xl">
-                                <span class="sr-only">
-                                    {{ (notification as AudioClipNotificationsTypes).audio_clip_tone_name }}
+                                <span v-if="hasIcon(notification, 'font_awesome')">
+                                    <FontAwesomeIcon :icon="notification.icon!.font_awesome!" class="text-xl"/>
                                 </span>
-                                <span>
-                                    {{ (notification as AudioClipNotificationsTypes).audio_clip_tone_symbol }}
+                                <span v-else-if="hasIcon(notification, 'audio_clip_tone')">
+                                    <span class="sr-only">
+                                        {{ notification.icon!.audio_clip_tone!.audio_clip_tone_name }}
+                                    </span>
+                                    <span>
+                                        {{ notification.icon!.audio_clip_tone!.audio_clip_tone_symbol }}
+                                    </span>
                                 </span>
                             </div>
-                            <div class="flex-1 pl-4 py-2 overflow-hidden">
-                                <span class="block text-base font-semibold text-red-700">
-                                    {{ notification.title }}
-                                </span>
-                                <span class="block text-sm text-theme-black text-ellipsis whitespace-nowrap overflow-hidden">
-                                    Event: "<span class="italic">{{ notification.text }}</span>"
-                                </span>
-                                <span class="block text-sm">
-                                    Record again?
-                                </span>
-                                <div class="h-10 pt-2">
-                                    <a
-                                        :href="(notification.url as string)"
-                                        class="h-full flex flex-row items-center     shade-border-when-hover active:bg-theme-gray-1 transition-colors       border border-theme-gray-2 rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+
+                            <!--middle panel-->
+                            <!--when hasActions() === false, padding is to balance title's translate-->
+                            <div
+                                :class="[
+                                    hasCloseButton(notification) ? 'pl-4' : 'px-4',
+                                    hasActions(notification) ? 'pb-4' : 'pb-0.5',
+                                    'flex-1'
+                                ]"
+                            >
+                                <!--title, aligning to 'close' button-->
+                                <div class="w-full h-10 flex items-center">
+                                    <span
+                                        :class="[
+                                            notification.type === 'ok' ? 'text-green-700' : '',
+                                            notification.type === 'error' ? 'text-red-700' : '',
+                                            notification.type === 'generic' ? 'text-theme-black' : '',
+                                            'text-base font-semibold pb-0.5 break-words'
+                                        ]"
                                     >
-                                        <span class="px-4 pb-0.5 mx-auto text-sm font-medium">
-                                            Record
-                                        </span>
-                                    </a>
+                                        {{ notification.title }}
+                                    </span>
+                                </div>
+
+                                <!--text and actions-->
+                                <!--translate back into title's space-->
+                                <!--translate conveniently lets us skip padding-top on actions-->
+                                <span class="block text-sm -translate-y-2 break-words">
+                                    {{ notification.text }}
+                                </span>
+                                <div
+                                    v-if="hasActions(notification)"
+                                    :class="[
+                                        notification.actions!.length === 2 ? 'grid-cols-2' : 'grid-cols-1',
+                                        'grid grid-rows-1 gap-1'
+                                    ]"
+                                >
+                                    <div
+                                        v-for="action in notification.actions" :key="action.style"
+                                        class="row-start-1 col-span-1 h-10"
+                                    >
+                                        <a
+                                            v-if="action.type === 'url'"
+                                            :href="action.url"
+                                            :class="[
+                                                action.style === 'primary' ? 'bg-theme-black active:brightness-75 darken-when-hover text-theme-light' : 'border border-theme-gray-2 shade-border-when-hover active:bg-theme-gray-1',
+                                                'w-full h-full flex flex-row items-center rounded-full transition       focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline'
+                                            ]"
+                                        >
+                                            <span class="px-4 pb-0.5 mx-auto text-sm font-medium">
+                                                {{ action.text }}
+                                            </span>
+                                        </a>
+                                        <button
+                                            v-else-if="action.type === 'button'"
+                                            @click="hasActionCallback(action) ? action.callback!() : null"
+                                            type="button"
+                                            :class="[
+                                                action.style === 'primary' ? 'bg-theme-black active:brightness-75 darken-when-hover text-theme-light' : 'border border-theme-gray-2 shade-border-when-hover active:bg-theme-gray-1',
+                                                'w-full h-full flex flex-row items-center rounded-full transition       focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline'
+                                            ]"
+                                        >
+                                            <span class="px-4 pb-0.5 mx-auto text-sm font-medium">
+                                                {{ action.text }}
+                                            </span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
+
+                            <!--right panel-->
                             <VActionText
-                                @click="[close(notification.id)]"
+                                v-if="hasCloseButton(notification)"
+                                @click="[
+                                    close(notification.id),
+                                    hasCloseCallback(notification) ? notification.close_callback!() : null
+                                ]"
                                 prop-element="button"
                                 prop-element-size="s"
                                 :prop-is-icon-only="true"
@@ -188,45 +160,55 @@
     import { faFaceMehBlank } from '@fortawesome/free-regular-svg-icons/faFaceMehBlank';
     import { faXmark } from '@fortawesome/free-solid-svg-icons/faXmark';
 
+    //remember to update Notifications.interface.ts
     library.add(
         faExclamation, faCheck, faCookieBite,
         faBatteryEmpty, faFlag, faFaceMehBlank, faXmark,
     );
 
-    const hasButtons = (notification:any)=>{
-
+    const hasCloseButton = (notification:NotificationsTypes)=>{
         return (
-            Object.hasOwn(notification, 'buttons') === true &&
-            Array.isArray(notification!.buttons) === true
+            Object.hasOwn(notification, 'has_close_button') === true &&
+            notification.has_close_button === true
         );
+    }
+
+    const hasCloseCallback = (notification:NotificationsTypes)=>{
+        return Object.hasOwn(notification, 'close_callback') === true;
+    }
+
+    const hasActions = (notification:NotificationsTypes)=>{
+        return (
+            Object.hasOwn(notification, 'actions') === true &&
+            Array.isArray(notification.actions) === true
+        );
+    }
+
+    const hasActionCallback = (action:{callback?:()=>any})=>{
+        return (
+            Object.hasOwn(action, 'callback') === true
+        );
+    }
+
+    const hasIcon = (notification:NotificationsTypes, icon_type:"font_awesome"|"audio_clip_tone")=>{
+        return (
+            Object.hasOwn(notification, 'icon') === true &&
+            Object.hasOwn(notification.icon, icon_type) === true
+        )
     };
+
 </script>
 
 
 <script lang="ts">
-    //rewrite the first few keys of original type, because could not "extends" properly
-
-    interface MainNotificationsTypes {
+    import NotificationsTypes from '@/types/Notifications.interface';
+    
+    interface FullNotificationsTypes extends NotificationsTypes {
         [x: string]: unknown,
         id: number,
         group: string,
-        //these are not in official types, but always used
-        type: string,
-        title: string,
-        text: string,
-    }[]
-    interface GenericNotificationsTypes extends MainNotificationsTypes{
-        icon: string|undefined,
-        buttons: {
-            text: string,
-            callback: () => any,
-        }[],
-    }[]
-    interface AudioClipNotificationsTypes extends MainNotificationsTypes{
-        audio_clip_tone_name: string,
-        audio_clip_tone_symbol: string,
-        url: string,
-    }[]
+    }
+
 </script>
 
 

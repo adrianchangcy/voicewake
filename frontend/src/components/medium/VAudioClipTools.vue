@@ -188,7 +188,7 @@
     import { defineComponent, PropType } from 'vue';
     import anime from 'animejs';
     import { prettyCount } from '@/helper_functions';
-    import { notify } from 'notiwind';
+    import { notify } from '@/wrappers/notify_wrapper';
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     const axios = require('axios');
@@ -302,8 +302,10 @@
                 navigator.clipboard.writeText(url);
 
                 notify({
-                    title: 'Link copied',
                     type: 'ok',
+                    title: 'Link copied',
+                    text: '',
+                    icon: {'font_awesome': 'fas fa-check'},
                 }, 2000);
 
                 this.has_shared = true;
@@ -356,9 +358,10 @@
                         }
 
                         notify({
+                            type: 'error',
                             title: 'Action failed',
                             text: error_text,
-                            type: 'error',
+                            icon: {'font_awesome': 'fas fa-exclamation'},
                         }, 3000);
                     });
                 }, 500);
@@ -464,10 +467,10 @@
                 .then(() => {
 
                     notify({
-                        icon: 'fas fa-flag',
-                        title: 'Recording reported',
-                        text: 'Thank you for bringing this to our attention.',
                         type: 'generic',
+                        title: 'Recording reported',
+                        text: 'We will evaluate this recording soon.',
+                        icon: {'font_awesome': 'fas fa-flag'},
                     }, 3000);
 
                 }).catch((error:any) => {
@@ -480,9 +483,10 @@
                     }
 
                     notify({
+                        type: 'error',
                         title: 'Report failed',
                         text: error_text,
-                        type: 'error',
+                        icon: {'font_awesome': 'fas fa-exclamation'},
                     }, 3000);
 
                 }).finally(() => {

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-// import { notify } from 'notiwind';
+// import { notify } from '@/wrappers/notify_wrapper';
 
 
 //we want to see what happens 

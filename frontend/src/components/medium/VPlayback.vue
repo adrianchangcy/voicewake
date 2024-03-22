@@ -280,7 +280,7 @@
     import AudioClipsTypes from '@/types/AudioClips.interface';
     // import VSliderTypes from '@/types/values/VSlider';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
-    import { notify } from 'notiwind';
+    import { notify } from '@/wrappers/notify_wrapper';
 
     export default defineComponent({
         data(){
@@ -1347,9 +1347,10 @@
                 if(this.isPlaybackReady === false){
 
                     notify({
-                        icon: "far fa-face-meh-blank",
-                        title: "No recording loaded",
-                        type: "generic",
+                        type: 'generic',
+                        title: 'No recording loaded',
+                        text: '',
+                        icon: {'font_awesome': 'far fa-face-meh-blank'},
                     }, 2000);
 
                     return;

@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
 import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
 import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
-import { notify } from 'notiwind';
+import { notify } from '@/wrappers/notify_wrapper';
 
 const axios = require('axios');
 
@@ -223,19 +223,20 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                     this.updateSharedDialogContext('event_reply_daily_limit_reached');
 
                     notify({
-                        icon: "fas fa-battery-empty",
-                        title: "Reply limit reached",
+                        title: 'Reply limit reached',
                         text: error.response.data['message'],
-                        type: "generic"
+                        type: 'generic',
+                        icon: {'font_awesome': 'fas fa-battery-empty'},
                     }, 4000);
 
                     return;
                 }
 
                 notify({
-                    title: "Error",
+                    title: 'Error',
                     text: error.response.data['message'],
-                    type: "error"
+                    type: 'error',
+                    icon: {'font_awesome': 'fas fa-exclamation'},
                 }, 3000);
             });
         },
@@ -290,18 +291,20 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                     this.softReset();
 
                     notify({
-                        title: "Reply choice skipped",
+                        title: 'Reply choice skipped',
                         text: "The event was unexpectedly unavailable.",
-                        type: "generic"
-                    }, 3000);
+                        type: 'generic',
+                        icon: {'font_awesome': 'far fa-face-meh-blank'},
+                    }, 4000);
 
                     return;
                 }
 
                 notify({
-                    title: "Error",
+                    title: 'Error',
                     text: error.response.data['message'],
-                    type: "error"
+                    type: 'error',
+                    icon: {'font_awesome': 'fas fa-exclamation'},
                 }, 3000);
             });
         },
@@ -366,18 +369,20 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                     this.softReset();
 
                     notify({
-                        title: "Reply choice skipped",
+                        title: 'Reply choice skipped',
                         text: "The event was unexpectedly unavailable.",
-                        type: "generic"
+                        type: 'generic',
+                        icon: {'font_awesome': 'far fa-face-meh-blank'},
                     }, 3000);
 
                     return;
                 }
 
                 notify({
-                    title: "Error",
+                    title: 'Error',
                     text: error.response.data['message'],
-                    type: "error"
+                    type: 'error',
+                    icon: {'font_awesome': 'fas fa-exclamation'},
                 }, 3000);
             });
         },

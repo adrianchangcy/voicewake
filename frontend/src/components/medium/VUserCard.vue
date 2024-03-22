@@ -85,7 +85,7 @@
 
 <script lang="ts">
     import { PropType, defineComponent } from 'vue';
-    import { notify } from 'notiwind';
+    import { notify } from '@/wrappers/notify_wrapper';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     // import anime from 'animejs';
     const axios = require('axios');
@@ -145,18 +145,20 @@
                     this.is_blocked = !this.is_blocked;
 
                     notify({
+                        type: 'ok',
                         title: this.is_blocked === true ? 'Blocked user' : 'Unblocked user',
                         text: result.data['message'],
-                        type: 'ok'
+                        icon: {'font_awesome': 'fas fa-check'},
                     }, 2000);
 
                 }).catch(()=>{
 
                     notify({
-                        title: 'Unable to block',
-                        text: 'Could not block this user. Try again later.',
-                        type: 'error'
-                    }, 4000);
+                        type: 'error',
+                        title: 'Action failed',
+                        text: 'Try again later.',
+                        icon: {'font_awesome': 'fas fa-exclamation'},
+                    }, 2000);
 
                 }).finally(()=>{
 
@@ -174,8 +176,10 @@
                 navigator.clipboard.writeText(url);
 
                 notify({
-                    title: 'Link copied',
                     type: 'ok',
+                    title: 'Link copied',
+                    text: '',
+                    icon: {'font_awesome': 'fas fa-check'},
                 }, 2000);
 
                 this.has_shared = true;
