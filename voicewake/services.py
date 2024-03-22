@@ -1235,8 +1235,11 @@ class CreateAudioClips():
 
         #this is for "X max new posts every __", which in this case is every 24h
 
-        datetime_checkpoint = self.datetime_now.strftime('%Y-%m-%d 00:00:00.%f %z')
-        datetime_checkpoint_raw = datetime.strptime(datetime_checkpoint, '%Y-%m-%d %H:%M:%S.%f %z')
+        passed_midnight_today_string = self.datetime_now.strftime('%Y-%m-%d 00:00:00.%f %z')
+        passed_midnight_today = datetime.strptime(
+            passed_midnight_today_string,
+            '%Y-%m-%d %H:%M:%S.%f %z'
+        )
 
         audio_clip_role_name = ''
         count_limit = 0
@@ -1253,7 +1256,7 @@ class CreateAudioClips():
 
         the_count = AudioClips.objects.filter(
             user=self.user,
-            when_created__gte=datetime_checkpoint,
+            when_created__gte=passed_midnight_today_string,
             audio_clip_role__audio_clip_role_name=audio_clip_role_name
         ).count()
 
@@ -1262,7 +1265,7 @@ class CreateAudioClips():
             return 0
 
         #get next 00:00:00 day, and get difference from now
-        pretty_difference_s = ((datetime_checkpoint_raw + timedelta(days=1)) - self.datetime_now).total_seconds()
+        pretty_difference_s = ((passed_midnight_today + timedelta(days=1)) - self.datetime_now).total_seconds()
 
         return math.ceil(pretty_difference_s)
 
@@ -1588,6 +1591,15 @@ class CreateAudioClips():
         return None
 
 
+    @staticmethod
+    def get_default_processing_cache_object()->dict:
+
+        return {
+            'is_processing': False,
+            'attempts': 0,
+        }
+
+
     def _check_can_normalise(self)->None|Response:
 
         #we don't check EventReplyQueues, as it is irrelevant here, and is not guaranteed to exist
@@ -1600,26 +1612,8 @@ class CreateAudioClips():
                 dev_message="Missing required records."
             )
 
-        #audio_clip is guaranteed by self.get_records_for_normalise_x() to belong to request.user
-
-        #check event
-
-        if (
-            (
-                self.current_context == 'create_event' and
-                self.event.generic_status.generic_status_name not in ['processing', 'incomplete']
-            ) or (
-                self.current_context == 'create_reply' and
-                self.event.generic_status.generic_status_name not in ['processing', 'completed']
-            )
-        ):
-
-            return Response(
-                data={
-                    "message": "Event is unavailable.",
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        #audio_clip is guaranteed by self.get_records_for_normalise_...() to belong to request.user
+        #allow user to process, regardless of event's status
 
         #check combination of event and audio_clip
 
@@ -1664,8 +1658,6 @@ class CreateAudioClips():
         target_cache_key = self.determine_processing_cache_key(self.audio_clip.id)
 
         target_cache = cache.get(target_cache_key, None)
-        lambda_attempts = 0
-        lambda_last_attempt_s = 0
 
         if target_cache is None:
 
@@ -1683,47 +1675,26 @@ class CreateAudioClips():
                 status=status.HTTP_409_CONFLICT
             )
 
-        #get info for later evaluation
-
-        if target_cache is not None:
-
-            lambda_attempts = target_cache['attempts']
-
-            lambda_last_attempt_s = get_datetime_difference_s(
-                self.datetime_now,
-                get_datetime_from_string(target_cache['last_attempt'])
-            )
-
         #evaluate
 
-        if (
-            lambda_attempts < int(os.environ['AWS_LAMBDA_CALL_MAX_ATTEMPTS']) or
-            lambda_last_attempt_s >= int(os.environ['AWS_LAMBDA_CALL_COOLDOWN_S'])
-        ):
+        if target_cache['attempts'] >= int(os.environ['AWS_LAMBDA_CALL_MAX_ATTEMPTS']):
 
-            #when at max attempts and cooldown is over, delete cache
-            #normalise will create cache again
+            #max attempts reached
+            #set as "deleted", delete cache
 
-            if lambda_attempts == int(os.environ['AWS_LAMBDA_CALL_MAX_ATTEMPTS']):
+            self.audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
+            self.audio_clip.save()
 
-                cache.delete(target_cache_key)
+            cache.delete(target_cache_key)
 
-            #can call again
-            return None
-
-        else:
-
-            #inverse last_attempt so we can countdown to 0
-            inverse_lambda_last_attempt_s = int(os.environ['AWS_LAMBDA_CALL_COOLDOWN_S']) - lambda_last_attempt_s
-
-            #call later
             return Response(
                 data={
-                    "is_processed": False,
-                    "cooldown_s": inverse_lambda_last_attempt_s,
                 },
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_404_NOT_FOUND
             )
+
+        #can call again
+        return None
 
 
     def _initialise_s3_post_wrapper(self):
@@ -2015,14 +1986,14 @@ class CreateAudioClips():
 
         target_cache_key = self.determine_processing_cache_key(self.audio_clip.id)
 
-        target_cache = cache.get(target_cache_key, {
-            'is_processing': False,
-            'last_attempt': '',
-            'attempts': 0,
-        })
+        #use default cache if there is no main cache
+        target_cache = cache.get(
+            target_cache_key,
+            self.get_default_processing_cache_object()
+        )
 
+        #increment attempt
         target_cache['is_processing'] = True
-        target_cache['last_attempt'] = get_datetime_now(to_string=True)
         target_cache['attempts'] += 1
 
         cache.set(

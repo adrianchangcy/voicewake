@@ -8,9 +8,9 @@ import {
     timeFromNowMS,
     getPiniaDateObject,
     setPiniaDateObject,
-    addSeconds,
+    getShortenedString,
 } from '@/helper_functions';
-import { notify } from 'notiwind';
+import { notify } from '@/wrappers/notify_wrapper';
 import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
 
 const axios = require('axios');
@@ -113,7 +113,7 @@ export function useAudioClipProcessingsStore(){
 
                 return final_url;
             },
-            processAudioClipAPI(audio_clip_id:number) : Promise<void>|null {
+            processAudioClipAPI(audio_clip_id:number, can_notify:boolean=true) : Promise<void>|null {
 
                 if(Object.hasOwn(this.audio_clip_processings, audio_clip_id) === false){
 
@@ -184,14 +184,35 @@ export function useAudioClipProcessingsStore(){
                         );
 
                         //notify
-                        notify({
-                            type: "audio_clip_process_ok",
-                            title: "Recording processed",
-                            text: this.audio_clip_processings[audio_clip_id].event.event_name,
-                            url: event_url,
-                            audio_clip_tone_name: this.audio_clip_processings[audio_clip_id].audio_clip_tone.audio_clip_tone_name,
-                            audio_clip_tone_symbol: this.audio_clip_processings[audio_clip_id].audio_clip_tone.audio_clip_tone_symbol,
-                        }, -1);
+                        if(can_notify === true){
+
+                            let notify_text = 'Event: "';
+
+                            notify_text += getShortenedString(
+                                this.audio_clip_processings[audio_clip_id].event.event_name,
+                                8
+                            );
+                            notify_text += '"';
+
+                            notify({
+                                type: 'ok',
+                                title: 'Recording processed',
+                                text: notify_text,
+                                icon: {'audio_clip_tone': {
+                                    audio_clip_tone_name: this.audio_clip_processings[audio_clip_id].audio_clip_tone.audio_clip_tone_name,
+                                    audio_clip_tone_symbol: this.audio_clip_processings[audio_clip_id].audio_clip_tone.audio_clip_tone_symbol,
+                                }},
+                                actions: [
+                                    {
+                                        type: 'url',
+                                        style: 'primary',
+                                        text: 'Open',
+                                        url: event_url,
+                                    },
+                                ],
+                                has_close_button: true,
+                            }, -1);
+                        }
 
                         //safe to immediately delete
                         delete this.audio_clip_processings[audio_clip_id];
@@ -204,76 +225,122 @@ export function useAudioClipProcessingsStore(){
 
                 }).catch((error:any)=>{
 
-                    //determine last_checked
-                    let new_last_checked = new Date();
+                    switch(error.request.status){
 
-                    if(
-                        error.request.status === 409 &&
-                        Object.hasOwn(error.response.data, 'is_processing') === true &&
-                        error.response.data['is_processing'] === true
-                    ){
+                        case 400:
 
-                        //if processing, simply return and call later to check
-                        throw error;
+                            if(
+                                this.audio_clip_processings[audio_clip_id].checks.check_attempts >
+                                this.min_check_attempts_for_reupload
+                            ){
+        
+                                //too many processing errors
+        
+                                //notify
+                                //will only notify at tab where function was called
+                                //will not notify at other tabs when this same store is shared
+                                if(can_notify === true){
+
+                                    let notify_text = 'Event: "';
+
+                                    notify_text += getShortenedString(
+                                        this.audio_clip_processings[audio_clip_id].event.event_name,
+                                        8
+                                    );
+                                    notify_text += '"';
+        
+                                    notify({
+                                        type: 'error',
+                                        title: 'Recording error',
+                                        text: notify_text,
+                                        icon: {'audio_clip_tone': {
+                                            audio_clip_tone_name: this.audio_clip_processings[audio_clip_id].audio_clip_tone.audio_clip_tone_name,
+                                            audio_clip_tone_symbol: this.audio_clip_processings[audio_clip_id].audio_clip_tone.audio_clip_tone_symbol,
+                                        }},
+                                        actions: [
+                                            {
+                                                type: 'url',
+                                                style: 'primary',
+                                                text: 'Record again',
+                                                url: this.determineReuploadURL(audio_clip_id),
+                                            },
+                                        ],
+                                        has_close_button: true,
+                                    }, -1);
+                                }
+        
+                                delete this.audio_clip_processings[audio_clip_id];
+                            }
+
+                            break;
+
+                        case 404:
+
+                            //no longer available
+                            //can be caused by:
+                                //dev called the wrong URL, or too many attempts, or cronjob detection
+                            if(can_notify === true){
+
+                                let notify_text = 'Sorry, your recording for event "';
+
+                                notify_text += getShortenedString(
+                                    this.audio_clip_processings[audio_clip_id].event.event_name,
+                                    8
+                                );
+                                notify_text += '" is no longer available.';
+    
+                                notify({
+                                    type: 'error',
+                                    title: 'Recording removed',
+                                    text: notify_text,
+                                    icon: {'audio_clip_tone': {
+                                        audio_clip_tone_name: this.audio_clip_processings[audio_clip_id].audio_clip_tone.audio_clip_tone_name,
+                                        audio_clip_tone_symbol: this.audio_clip_processings[audio_clip_id].audio_clip_tone.audio_clip_tone_symbol,
+                                    }},
+                                    has_close_button: true,
+                                }, -1);
+                            }
+
+                            delete this.audio_clip_processings[audio_clip_id];
+                            break;
+
+                        case 409:
+
+                            if(
+                                Object.hasOwn(error.response.data, 'is_processing') === true &&
+                                error.response.data['is_processing'] === true
+                            ){
+        
+                                //if processing, simply return and call later to check
+                                break;
+                            }
+
+                            break;
+
+                        default:
+
+                            //generic error, do nothing here
+                            break;
                     }
 
-                    if(Object.hasOwn(error.response.data, 'cooldown_s') === true){
-
-                        //not processing, and has cooldown
-                        //we do not reset check_attempts
-                        new_last_checked = addSeconds(
-                            new_last_checked,
-                            error.response.data['cooldown_s'] as number
-                        );
-                    }
-
-                    //update last_checked
-                    this.audio_clip_processings[audio_clip_id].checks.last_checked = (
-                        setPiniaDateObject(new_last_checked)
-                    );
-
-                    //update check
-                    this.audio_clip_processings[audio_clip_id].checks.check_attempts += 1;
-
-                    //handle status
-
-                    if(error.request.status === 404){
-
-                        //can either mean no longer available, or dev called the wrong URL
-
-                        delete this.audio_clip_processings[audio_clip_id];
-
-                    }else if(
-                        error.request.status === 400 &&
-                        this.audio_clip_processings[audio_clip_id].checks.check_attempts > this.min_check_attempts_for_reupload
-                    ){
-
-                        //too many processing errors
-
-                        //notify
-                        //will only notify at tab where function was called
-                        //will not notify at other tabs when this same store is shared
-                        notify({
-                            type: "audio_clip_process_error",
-                            title: "Recording error",
-                            text: this.audio_clip_processings[audio_clip_id].event.event_name,
-                            url: this.determineReuploadURL(audio_clip_id),
-                            audio_clip_tone_name: this.audio_clip_processings[audio_clip_id].audio_clip_tone.audio_clip_tone_name,
-                            audio_clip_tone_symbol: this.audio_clip_processings[audio_clip_id].audio_clip_tone.audio_clip_tone_symbol,
-                        }, -1);
-
-                        delete this.audio_clip_processings[audio_clip_id];
-                    }
-
-                    //this allows redirect handling
                     throw error;
 
                 }).finally(()=>{
 
-                    if(Object.hasOwn(this.audio_clip_processings, audio_clip_id) === true){
+                    if(Object.hasOwn(this.audio_clip_processings, audio_clip_id) === false){
 
-                        this.audio_clip_processings[audio_clip_id].checks.is_checking = false;
+                        return;
                     }
+
+                    //update check details
+
+                    this.audio_clip_processings[audio_clip_id].checks.is_checking = false;
+
+                    this.audio_clip_processings[audio_clip_id].checks.last_checked = (
+                        setPiniaDateObject(new Date())
+                    );
+
+                    this.audio_clip_processings[audio_clip_id].checks.check_attempts += 1;
                 });
 
                 return api_call;
@@ -324,8 +391,6 @@ export function useAudioClipProcessingsStore(){
                     return;
                 }
 
-                console.log('we starting');
-
                 const current_interval = window.setInterval(async ()=>{
 
                     const audio_clip_ids = Object.keys(this.audio_clip_processings);
@@ -337,7 +402,8 @@ export function useAudioClipProcessingsStore(){
                     }
 
                     const api_call = this.processAudioClipAPI(
-                        target_audio_clip_id
+                        target_audio_clip_id,
+                        true
                     );
 
                     if(api_call === null){

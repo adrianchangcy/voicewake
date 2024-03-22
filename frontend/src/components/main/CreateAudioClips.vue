@@ -6,7 +6,7 @@
         <div class="w-full min-h-[14.75rem] relative">
             <TransitionGroupFadeSlow :prop-has-absolute="true">
                 <div
-                    v-show="is_submitting === false && show_processing_dialog === false"
+                    v-show="canShowForm"
                     class="w-full"
                 >
                     <!--fields-->
@@ -145,7 +145,7 @@
 
                 <!--submitting-->
                 <div
-                    v-show="is_submitting === true && show_processing_dialog === false"
+                    v-show="canShowSubmitting"
                     class="w-full flex flex-col"
                 >
                     <span class="mx-auto pb-1 text-xl font-medium">
@@ -160,7 +160,7 @@
 
                 <!--processing-->
                 <VDialogPlain
-                    v-show="show_processing_dialog === true"
+                    v-show="canShowProcessingDialog"
                     :prop-has-border="false"
                     :prop-has-auto-space-logo="false"
                     :prop-has-auto-space-title="false"
@@ -178,6 +178,42 @@
                             This may take a minute.
                             <br>
                             Explore other content while waiting!
+                        </span>
+                        <div class="pt-2">
+                            <VActionBorder
+                                prop-element="a"
+                                prop-element-size="s"
+                                prop-font-size="s"
+                                :prop-is-icon-only="true"
+                                href="/"
+                                class="w-fit mx-auto"
+                            >
+                                <span class="flex items-center px-4">
+                                    <span class="block pb-0.5">Back to main page</span>
+                                    <FontAwesomeIcon icon="fas fa-arrow-right" class="text-lg pl-2"/>
+                                </span>
+                            </VActionBorder>
+                        </div>
+                    </template>
+                </VDialogPlain>
+
+                <VDialogPlain
+                    v-show="canShowUnavailableDialog"
+                    :prop-has-border="false"
+                    :prop-has-auto-space-logo="false"
+                    :prop-has-auto-space-title="false"
+                    :prop-has-auto-space-content="false"
+                    class="w-full"
+                >
+                    <template #logo>
+                        <FontAwesomeIcon icon="far fa-face-frown" class="text-2xl"/>
+                    </template>
+                    <template #title>
+                        <span>Recording unavailable.</span>
+                    </template>
+                    <template #content>
+                        <span>
+                            Either you've reached the maximum processing attempts, or it's been overdue.
                         </span>
                         <div class="pt-2">
                             <VActionBorder
@@ -218,14 +254,15 @@
     import { library } from '@fortawesome/fontawesome-svg-core';
     import { faGear } from '@fortawesome/free-solid-svg-icons/faGear';
     import { faArrowRight } from '@fortawesome/free-solid-svg-icons/faArrowRight';
+    import { faFaceFrown } from '@fortawesome/free-regular-svg-icons/faFaceFrown';
 
-    library.add(faGear, faArrowRight);
+    library.add(faGear, faArrowRight, faFaceFrown);
 </script>
 
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
     import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
-    import { notify } from 'notiwind';
+    import { notify } from '@/wrappers/notify_wrapper';
     // import { CreateAudioClips__isSubmitSuccessfulTypes } from '@/types/General.interface';
     import AWSPresignedPostURLTypes from '@/types/AWSPresignedPostURL.interface';
     import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
@@ -261,6 +298,7 @@
 
                 is_submitting: false,
                 show_processing_dialog: false,
+                show_unavailable_dialog: false,
                 warn_before_unload: false,
 
                 //VProgressBar
@@ -298,7 +336,7 @@
                 default: true
             },
         },
-        emits: ['isSubmitting', 'isSubmitSuccessful'],
+        emits: ['isSubmitting', 'isSubmitSuccessful', 'hasDialog'],
         watch: {
             is_submitting(new_value){
 
@@ -317,6 +355,10 @@
 
                     this.is_audio_clip_tone_menu_open = false;
                 }
+            },
+            hasDialog(new_value){
+
+                this.$emit('hasDialog', new_value);
             },
         },
         computed: {
@@ -417,7 +459,48 @@
             },
             isFormEnabled() : boolean {
 
-                return this.is_submitting === false && this.show_processing_dialog === false;
+                return this.is_submitting === false;
+            },
+            canShowForm() : boolean {
+
+                return (
+                    this.is_submitting === false &&
+                    this.show_processing_dialog === false &&
+                    this.show_unavailable_dialog === false
+                );
+            },
+            canShowSubmitting() : boolean {
+
+                return (
+                    this.is_submitting === true &&
+                    this.show_processing_dialog === false &&
+                    this.show_unavailable_dialog === false
+                );
+            },
+            canShowProcessingDialog() : boolean {
+
+                return (
+                    this.is_submitting === false &&
+                    this.show_processing_dialog === true &&
+                    this.show_unavailable_dialog === false
+                );
+            },
+            canShowUnavailableDialog() : boolean {
+
+                return (
+                    this.is_submitting === false &&
+                    this.show_processing_dialog === false &&
+                    this.show_unavailable_dialog === true
+                );
+            },
+            hasDialog() : boolean {
+
+                //this is used to help parent hide any text
+                //helps to not overwhelm the user with text
+                return (
+                    this.show_processing_dialog === true ||
+                    this.show_unavailable_dialog === true
+                );
             },
         },
         methods: {
@@ -433,10 +516,12 @@
             notifyGenericFailure(error_text:string) : void {
 
                 notify({
-                    title: "Error",
+                    type: 'error',
+                    title: 'Error',
                     text: error_text,
-                    type: "error"
+                    icon: {'font_awesome': 'fas fa-exclamation'},
                 }, 4000);
+
             },
             isReuploadSetup() : void {
 
@@ -590,10 +675,10 @@
 
                         //create limit reached
                         notify({
-                            icon: "fas fa-battery-empty",
+                            type: 'generic',
                             title: 'Creation limit reached',
                             text: error_text,
-                            type: "generic"
+                            icon: {'font_awesome': 'fas fa-battery-empty'},
                         }, 4000);
 
                         return;
@@ -847,7 +932,8 @@
 
                     //get Promise
                     const processing_call = this.audio_clip_processings_store.processAudioClipAPI(
-                        this.submit_audio_clip_id
+                        this.submit_audio_clip_id,
+                        false
                     );
 
                     if(processing_call === null){
@@ -873,49 +959,50 @@
 
                         if(this.isReupload === false){
 
-                            if(error.request.status === 400){
+                            if(error.request.status >= 500){
 
-                                //if currently not for reupload, and has error, redirect to reupload
-                                //no need to check for max attempts if 400
-                                let redirect_url = window.location.origin
-                                redirect_url += "/event/" + this.submit_event_id!.toString();
-                                redirect_url += "?reupload=" + this.submit_audio_clip_id!.toString();
-
-                                window.location.replace(redirect_url);
-
-                                return;
-
-                            }else if(error.request.status === 409){
-
-                                //still processing
-                                this.show_processing_dialog = true;
-
-                                const ping_until_done = window.setInterval(()=>{
-
-                                    if(this.show_processing_dialog === false){
-
-                                        window.clearInterval(ping_until_done);
-                                    }
-
-                                    this.doSubmit();
-                                }, 10000);
-
-                                this.show_processing_dialog = false;
+                                this.notifyGenericFailure('Something may be wrong with our server. Try again later.');
                                 return;
                             }
 
+                            //if currently not for reupload, and has error, redirect to reupload
+                            //no need to check for max attempts if 400
+                            let redirect_url = window.location.origin
+                            redirect_url += "/event/" + this.submit_event_id!.toString();
+                            redirect_url += "?reupload=" + this.submit_audio_clip_id!.toString();
+
+                            window.location.replace(redirect_url);
+                            return;
+
                         }else{
 
-                            //show message on 404, disallow future uploads
+                            switch(error.request.status){
 
-                            //if error when currently is reupload, simply notify
-                            notify({
-                                type: "error",
-                                title: "Recording error",
-                                text: "Unable to process recording. Try again later."
-                            })
+                                case 404:
 
-                            this.show_processing_dialog = false;
+                                    //oh no, no longer available, show dialog
+
+                                    this.show_processing_dialog = false;
+                                    this.show_unavailable_dialog = true;
+                                    break;
+
+                                case 409:
+
+                                    //still processing, keep dialog, start interval
+
+                                    this.show_processing_dialog = true;
+                                    this.show_unavailable_dialog = false;
+
+
+                                    break;
+
+                                default:
+
+                                    this.show_processing_dialog = false;
+                                    this.show_unavailable_dialog = false;
+                                    break;
+                            }
+
                             return;
                         }
                     });
@@ -966,6 +1053,9 @@
             this.isReuploadSetup();
 
             window.addEventListener('beforeunload', this.handleBeforeUnload);
+        },
+        mounted(){
+            this.show_unavailable_dialog = true;
         },
         beforeUnmount(){
 

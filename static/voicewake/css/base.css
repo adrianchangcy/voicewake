@@ -296,6 +296,9 @@ canvas {
     .action-text-hover:hover{
         background-color: theme(colors.theme-gray-1);
     }
+    .darken-when-hover:hover{
+        filter: brightness(0.90);
+    }
 
     /*triggers from parent to all descendants that have classes above*/
     .parent-trigger-double-width-when-hover:hover .double-width-when-hover{

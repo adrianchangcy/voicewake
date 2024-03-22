@@ -115,7 +115,7 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import { notify } from 'notiwind';
+    import { notify } from '@/wrappers/notify_wrapper';
     const axios = require('axios');
 
     interface UserBlocksTypes {
@@ -198,10 +198,13 @@
 
                 }).catch(()=>{
 
+                    const block_text = this.user_blocks[user_block_index].is_blocked === true ? 'unblock' : 'block';
+
                     notify({
+                        type: 'error',
                         title: 'Error',
-                        text: 'Unable to get your list of blocked users.',
-                        type: 'error'
+                        text: 'Unable to ' + block_text + ' that user at the moment.',
+                        icon: {'font_awesome': 'fas fa-exclamation'},
                     }, 2000);
 
                 }).finally(()=>{
@@ -242,10 +245,11 @@
                 }).catch(() => {
 
                     notify({
+                        type: 'error',
                         title: 'Error',
                         text: "Unable to get the list of users you've blocked.",
-                        type: 'error'
-                    });
+                        icon: {'font_awesome': 'fas fa-exclamation'},
+                    }, 4000);
 
                 }).finally(() => {
 

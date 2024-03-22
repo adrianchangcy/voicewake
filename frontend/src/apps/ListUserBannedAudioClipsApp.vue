@@ -48,7 +48,7 @@
     import { prettyTimeRemaining } from '@/helper_functions';
     import AudioClipsTypes from '@/types/AudioClips.interface';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
-    import { notify } from 'notiwind';
+    import { notify } from '@/wrappers/notify_wrapper';
     const axios = require('axios');
 
     interface ScrollableAudioClipsTypes extends AudioClipsTypes {
@@ -122,10 +122,11 @@
                 }).catch(() => {
 
                     notify({
+                        type: 'error',
                         title: 'Error',
-                        text: 'Unable to retrieve your banned recordings.',
-                        type: 'error'
-                    });
+                        text: 'Unable to retrieve your banned recordings',
+                        icon: {'font_awesome': 'fas fa-exclamation'},
+                    }, 4000);
 
                 }).finally(() => {
 

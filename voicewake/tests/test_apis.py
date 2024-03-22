@@ -67,18 +67,10 @@ class Random_TestCase(TestCase):
 
     def test_random(self):
 
-        cache.set(
-            'yolo',
-            {
-                'when_created': '2011-01-01',
-                'attempts': 3
-            }
-        )
 
-        yolo = cache.get('yolo')
 
-        print(type(yolo['when_created']))
-        print(type(yolo['attempts']))
+
+
 
         pass
 
@@ -1582,7 +1574,6 @@ class CoreProcess_TestCase(TestCase):
         target_cache_key = CreateAudioClips.determine_processing_cache_key(sample_audio_clip_0.id)
 
         cache.set(target_cache_key, {
-            'last_attempt': get_datetime_now(to_string=True),
             'attempts': 1,
             'is_processing': True,
         })
@@ -1624,7 +1615,6 @@ class CoreProcess_TestCase(TestCase):
         target_cache_key = CreateAudioClips.determine_processing_cache_key(sample_audio_clip_0.id)
 
         cache.set(target_cache_key, {
-            'last_attempt': get_datetime_now(to_string=True),
             'attempts': int(os.environ['AWS_LAMBDA_CALL_MAX_ATTEMPTS']),
             'is_processing': False,
         })
@@ -1641,12 +1631,7 @@ class CoreProcess_TestCase(TestCase):
         result_data = json.loads(result_data)
 
         print(request.content)
-        self.assertEqual(request.status_code, 400)
-        self.assertTrue("is_processed" in result_data)
-        self.assertTrue("cooldown_s" in result_data)
-
-        self.assertFalse(result_data['is_processed'])
-        self.assertGreater(result_data['cooldown_s'], 0)
+        self.assertEqual(request.status_code, 404)
 
 
     def test_create_event__process__no_rows(self):
@@ -4024,7 +4009,6 @@ class CoreProcess_TestCase(TestCase):
         target_cache_key = CreateAudioClips.determine_processing_cache_key(sample_audio_clip_1.id)
 
         cache.set(target_cache_key, {
-            'last_attempt': get_datetime_now(to_string=True),
             'attempts': 1,
             'is_processing': True,
         })
@@ -4077,7 +4061,6 @@ class CoreProcess_TestCase(TestCase):
         target_cache_key = CreateAudioClips.determine_processing_cache_key(sample_audio_clip_1.id)
 
         cache.set(target_cache_key, {
-            'last_attempt': get_datetime_now(to_string=True),
             'attempts': int(os.environ['AWS_LAMBDA_CALL_MAX_ATTEMPTS']),
             'is_processing': False,
         })
@@ -4093,12 +4076,7 @@ class CoreProcess_TestCase(TestCase):
         result_data = (bytes(request.content).decode())
         result_data = json.loads(result_data)
 
-        self.assertEqual(request.status_code, 400)
-        self.assertTrue("is_processed" in result_data)
-        self.assertTrue("cooldown_s" in result_data)
-
-        self.assertFalse(result_data['is_processed'])
-        self.assertGreater(result_data['cooldown_s'], 0)
+        self.assertEqual(request.status_code, 404)
 
 
     def test_create_reply__process__no_rows(self):

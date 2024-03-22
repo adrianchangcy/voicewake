@@ -429,13 +429,6 @@ CELERY_BEAT_SCHEDULE = {
             'expires': 30,    #30 seconds
         },
     },
-    'reset-expired-reply': {
-        'task': 'voicewake.tasks.cronjob_reset_event_reply_overdue',
-        'schedule': (30 * 60),  #30 minutes
-        'options': {
-            'expires': 30,    #30 seconds
-        },
-    },
     'cronjob_delete_event_reply_queue_is_replying_overdue': {
         'task': 'voicewake.tasks.cronjob_delete_event_reply_queue_is_replying_overdue',
         'schedule': (30 * 60),  #30 minutes
@@ -443,16 +436,23 @@ CELERY_BEAT_SCHEDULE = {
             'expires': 30,    #30 seconds
         },
     },
-    'cronjob_delete_originator_processing_overdue': {
-        'task': 'voicewake.tasks.cronjob_delete_originator_processing_overdue',
+    'cronjob_handle_originator_processing_overdue': {
+        'task': 'voicewake.tasks.cronjob_handle_originator_processing_overdue',
         'schedule': (30 * 60),  #30 minutes
         'options': {
             'expires': 30,    #30 seconds
         },
     },
-    'cronjob_delete_responder_processing_overdue': {
-        'task': 'voicewake.tasks.cronjob_delete_responder_processing_overdue',
+    'cronjob_handle_responder_processing_overdue': {
+        'task': 'voicewake.tasks.cronjob_handle_responder_processing_overdue',
         'schedule': (30 * 60),  #30 minutes
+        'options': {
+            'expires': 30,    #30 seconds
+        },
+    },
+    'cronjob_delete_audio_clip_processing_overdue': {
+        'task': 'voicewake.tasks.cronjob_delete_audio_clip_processing_overdue',
+        'schedule': (2 * 60 * 60),  #2 hours
         'options': {
             'expires': 30,    #30 seconds
         },

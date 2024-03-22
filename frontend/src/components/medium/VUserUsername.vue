@@ -64,7 +64,7 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import { notify } from 'notiwind';
+    import { notify } from '@/wrappers/notify_wrapper';
     import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
     const axios = require('axios');
 
@@ -284,10 +284,11 @@
                     }
 
                     notify({
-                        title: "Username check failed",
+                        title: 'Username check failed',
                         text: error_text,
-                        type: "error"
-                    }, 3000);
+                        type: 'error',
+                        icon: {'font_awesome': 'fas fa-exclamation'},
+                    }, 2000);
                 });
             },
             async submitUsernameChange() : Promise<void> {
@@ -349,10 +350,11 @@
                     }
 
                     notify({
-                        title: "Setting username failed",
+                        title: 'Setting username failed',
                         text: error_text,
-                        type: "error"
-                    }, 3000);
+                        type: 'error',
+                        icon: {'font_awesome': 'fas fa-exclamation'},
+                    }, 2000);
                 });
             },
         },

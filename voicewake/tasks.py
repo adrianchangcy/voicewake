@@ -60,6 +60,7 @@ def cronjob_ban_audio_clips():
             'audio_clip',
         ).prefetch_related(
             'audio_clip__event',
+            'audio_clip__event__generic_status',
             'audio_clip__audio_clip_role',
             'audio_clip__user',
         ).filter(
@@ -247,11 +248,12 @@ def cronjob_delete_event_reply_queue_is_replying_overdue():
 
 
 @shared_task
-def cronjob_delete_originator_processing_overdue():
+def cronjob_handle_originator_processing_overdue():
 
     when_created_checkpoint = get_datetime_now() - timedelta(seconds=settings.AUDIO_CLIP_UNPROCESSED_EXPIRY_S)
 
-    #delete AudioClips first, then delete Events, and return AudioClips.id
+    #set AudioClips to "deleted", then delete Events, and return AudioClips.id
+    #we don't directly delete AudioClips so that create/reply limit can be enforced
     #we delete cache via AudioClips.id
     full_sql = '''
         WITH
@@ -265,20 +267,25 @@ def cronjob_delete_originator_processing_overdue():
             ORDER BY ac.when_created ASC
             LIMIT %s
         ),
-        deleted_audio_clips AS (
-            DELETE FROM audio_clips AS ac
-            USING target_audio_clips AS tac
+        update_deleted_audio_clips AS (
+            UPDATE audio_clips AS ac
+            SET generic_status_id = (
+                SELECT id FROM generic_statuses
+                WHERE generic_status_name = %s
+            ),
+            event_id = NULL
+            FROM target_audio_clips AS tac
             WHERE ac.id = tac.id
             RETURNING tac.id, tac.event_id
         )
         DELETE FROM events AS e
-        USING deleted_audio_clips AS dac
-        WHERE e.id = dac.event_id
+        USING update_deleted_audio_clips AS udac
+        WHERE e.id = udac.event_id
         AND e.generic_status_id = (
             SELECT id FROM generic_statuses
             WHERE generic_status_name = %s
         )
-        RETURNING dac.id
+        RETURNING udac.id
     '''
 
     full_params = [
@@ -286,6 +293,7 @@ def cronjob_delete_originator_processing_overdue():
         when_created_checkpoint,
         'processing',
         settings.CRONJOB_DEFAULT_ROW_LIMIT,
+        'deleted',
         'processing',
     ]
 
@@ -315,12 +323,13 @@ def cronjob_delete_originator_processing_overdue():
 
 
 @shared_task
-def cronjob_delete_responder_processing_overdue():
+def cronjob_handle_responder_processing_overdue():
 
     when_created_checkpoint = get_datetime_now() - timedelta(seconds=settings.AUDIO_CLIP_UNPROCESSED_EXPIRY_S)
 
     #delete AudioClips, reset Events to "incomplete", returns AudioClips.id
-    #we delete cache via AudioClips.id
+    #we don't directly delete AudioClips so that create/reply limit can be enforced
+    #delete cache via AudioClips.id
     #do not touch EventReplyQueues
     full_sql = '''
         WITH
@@ -334,9 +343,13 @@ def cronjob_delete_responder_processing_overdue():
             ORDER BY ac.when_created ASC
             LIMIT %s
         ),
-        deleted_audio_clips AS (
-            DELETE FROM audio_clips AS ac
-            USING target_audio_clips AS tac
+        update_deleted_audio_clips AS (
+            UPDATE audio_clips AS ac
+            SET generic_status_id = (
+                SELECT id FROM generic_statuses
+                WHERE generic_status_name = %s
+            )
+            FROM target_audio_clips AS tac
             WHERE ac.id = tac.id
             RETURNING tac.id, tac.event_id
         )
@@ -345,13 +358,13 @@ def cronjob_delete_responder_processing_overdue():
             SELECT id FROM generic_statuses
             WHERE generic_status_name = %s
         )
-        FROM deleted_audio_clips AS dac
-        WHERE e.id = dac.event_id
+        FROM update_deleted_audio_clips AS udac
+        WHERE e.id = udac.event_id
         AND e.generic_status_id = (
             SELECT id FROM generic_statuses
             WHERE generic_status_name = %s
         )
-        RETURNING dac.id
+        RETURNING udac.id
     '''
 
     full_params = [
@@ -359,6 +372,7 @@ def cronjob_delete_responder_processing_overdue():
         when_created_checkpoint,
         'processing',
         settings.CRONJOB_DEFAULT_ROW_LIMIT,
+        'deleted',
         'incomplete',
         'processing',
     ]
@@ -388,7 +402,45 @@ def cronjob_delete_responder_processing_overdue():
     cache.delete_many(target_cache_keys)
 
 
+def cronjob_delete_audio_clip_processing_overdue():
 
+    #here, truly delete from db
+    #no longer need those "deleted" row to enforce latest create/reply limit
+    #don't delete is_banned=True rows, those are needed for users to view
+    #no need to involve AudioClipReports, as users cannot report when AudioClip isn't "ok"
+    #no need to involve Events, as their relations are already handled
+
+    passed_midnight_today = get_datetime_now().strftime('%Y-%m-%d 00:00:00.%f %z')
+
+    full_sql = '''
+        WITH
+        target_audio_clips AS (
+            SELECT ac.id, ac.event_id FROM audio_clips AS ac
+            INNER JOIN generic_statuses AS gs ON gs.id = ac.generic_status_id
+            INNER JOIN audio_clip_roles AS acr ON acr.id = ac.audio_clip_role_id
+            AND ac.when_created <= %s
+            AND ac.is_banned IS FALSE
+            AND gs.generic_status_name = %s
+            ORDER BY ac.when_created ASC
+            LIMIT %s
+        )
+        DELETE FROM audio_clips AS ac
+        USING target_audio_clips AS tac
+        WHERE ac.id = tac.id
+    '''
+
+    full_params = [
+        passed_midnight_today,
+        'deleted',
+        settings.CRONJOB_DEFAULT_ROW_LIMIT,
+    ]
+
+    with connection.cursor() as cursor:
+
+        cursor.execute(
+            sql=full_sql,
+            params=full_params,
+        )
 
 
 

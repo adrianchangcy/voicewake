@@ -35,7 +35,7 @@
 
                         <div class="relative border border-theme-gray-2 rounded-lg px-2 sm:px-4 py-8">
 
-                            <div class="grid grid-cols-4 gap-2 pb-6">
+                            <div ref="replying_title_section" class="grid grid-cols-4 gap-2 pb-6">
 
                                 <VTitle
                                     propFontSize="m"
@@ -148,24 +148,27 @@
             class="pt-2"
         >
             <div class="flex flex-col rounded-lg divide-y divide-theme-gray-2 border border-theme-gray-2">
-                <VTitle
-                    propFontSize="m"
-                    class="px-2 sm:px-4 py-4"
-                >
-                    <template #title>
-                        <div class="flex items-center">
-                            <span>Reupload recording</span>
-                        </div>
-                    </template>
-                    <template #titleDescription>
-                        <span class="text-sm block text-red-700">
-                            Your previous recording could not be processed.
-                        </span>
-                        <span class="text-sm block text-red-700">
-                            This can happen when it's all silence.
-                        </span>
-                    </template>
-                </VTitle>
+                    
+                <div ref="reupload_title_section">
+                    <VTitle
+                        propFontSize="m"
+                        class="px-2 sm:px-4 py-4"
+                    >
+                        <template #title>
+                            <div class="flex items-center">
+                                <span>Reupload recording</span>
+                            </div>
+                        </template>
+                        <template #titleDescription>
+                            <span class="text-base block text-red-700">
+                                Your previous recording had errors.
+                            </span>
+                            <span class="text-base block text-red-700">
+                                This happens when there's no sound.
+                            </span>
+                        </template>
+                    </VTitle>
+                </div>
                 <CreateAudioClips
                     :propIsOriginator="is_originator"
                     :propReuploadAudioClipId="reupload_audio_clip_id"
@@ -173,6 +176,7 @@
                     :propCanSubmit="!isLoading"
                     @isSubmitting="handleIsSubmitting($event)"
                     @isSubmitSuccessful="handleIsSubmitSuccessful($event)"
+                    @hasDialog="handleHasDialog($event)"
                     class="px-2 sm:px-4 py-8"
                 />
             </div>
@@ -207,12 +211,14 @@
     import { defineComponent, } from 'vue';
     import { timeFromNowMS, getDataFromTemplateJSONScript, prettyTimePassed } from '@/helper_functions';
     import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
-    import { notify } from 'notiwind';
+    import { notify } from '@/wrappers/notify_wrapper';
     import { useEventReplyChoicesStore } from '@/stores/EventReplyChoicesStore';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
     import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
     import { CreateAudioClips__isSubmitSuccessfulTypes } from '@/types/General.interface';
+    
 
+    import anime from 'animejs';
     const axios = require('axios');
 
 
@@ -331,9 +337,10 @@
                     }
 
                     notify({
-                        title: "Error",
-                        text: 'Unable to get the recordings for this event.',
-                        type: "error"
+                        type: 'error',
+                        title: 'Error',
+                        text: 'Unable to get recordings for this event.',
+                        icon: {'font_awesome': 'fas fa-exclamation'},
                     }, 4000);
 
                 }).finally(()=>{
@@ -576,6 +583,58 @@
                 }else{
 
                     throw new Error('Cannot determine originator/responder.');
+                }
+            },
+            handleHasDialog(new_value:boolean) : void {
+
+                //this is to hide when CreateAudioClips.vue has its own dialog
+                //helps to not overwhelm the user with texts, and to shift focus appropriately
+
+                let target_el = null;
+
+                if(this.isReply === true){
+
+                    target_el = (this.$refs.replying_title_section as HTMLElement);
+
+                }else{
+
+                    target_el = (this.$refs.reupload_title_section as HTMLElement);
+                }
+
+                if(target_el === null){
+
+                    return;
+                }
+
+                anime.remove(target_el);
+
+                if(new_value === true){
+
+                    anime({
+                        targets: target_el,
+                        easing: 'linear',
+                        autoplay: true,
+                        loop: false,
+                        opacity: 0,
+                        duration: 150,
+                        complete: ()=>{
+                            target_el.style.visibility = 'hidden';
+                        }
+                    });
+
+                }else{
+
+                    anime({
+                        targets: target_el,
+                        easing: 'linear',
+                        autoplay: true,
+                        loop: false,
+                        opacity: 1,
+                        duration: 150,
+                        begin: ()=>{
+                            target_el.style.visibility = 'visible';
+                        }
+                    });
                 }
             },
         },

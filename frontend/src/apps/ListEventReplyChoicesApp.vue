@@ -387,7 +387,7 @@
 <script lang="ts">
     import { defineComponent } from 'vue';
     import { timeFromNowMS } from '@/helper_functions';
-    // import { notify } from 'notiwind';
+    // import { notify } from '@/wrappers/notify_wrapper';
     import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
     import { useEventReplyChoicesStore } from '@/stores/EventReplyChoicesStore';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';

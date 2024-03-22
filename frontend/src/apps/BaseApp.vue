@@ -91,7 +91,7 @@
     import { getDataFromTemplateJSONScript } from '@/helper_functions';
     import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
-    import { notify } from 'notiwind';
+    import { notify } from '@/wrappers/notify_wrapper';
     import { axiosCSRFSetup } from '@/helper_functions';
 
     export default defineComponent({
@@ -130,16 +130,16 @@
                 }
 
                 notify({
-                    icon: 'fas fa-cookie-bite',
+                    type: 'generic',
                     title: 'Cookies Consent',
                     text: 'We use cookies so you can stay logged in.',
-                    type: 'generic',
-                    buttons: [
-                        {
-                            text: 'Accept',
-                            callback: this.setCookiesConsent,
-                        },
-                    ],
+                    icon: {'font_awesome': 'fas fa-cookie-bite'},
+                    actions: [{
+                        type: 'button',
+                        style: 'primary',
+                        text: 'Accept',
+                        callback: this.setCookiesConsent,
+                    }]
                 }, -1);
             },
             setCookiesConsent() : void {

@@ -25,13 +25,13 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import { notify } from 'notiwind';
+    import { notify } from '@/wrappers/notify_wrapper';
     // import anime from 'animejs';
     // import VPlayback from '../medium/VPlayback.vue';
     // import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
     import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
     import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
-    // import { drawCanvasRipples } from '@/helper_functions';
+    // import { getShortenedString } from '@/helper_functions';
     import AudioClipsTypes from '@/types/AudioClips.interface';
     import { useTestStore } from '@/stores/TestStore';
     const axios = require('axios');
@@ -43,7 +43,7 @@
                 event: null as EventsAndAudioClipsTypes|null,
                 is_yolo: false,
                 test_store: useTestStore(),
-                wtf_store: useAudioClipProcessingsStore(),
+                audio_clip_processings_store: useAudioClipProcessingsStore(),
 
                 sample_audio_clip: {
                     id: 1,
@@ -104,14 +104,20 @@
             // this.callTest();
 
             notify({
-                title: "Keep it up!",
-                text: "You'll finish this project soon. You can do this!",
-                type: "ok"
-            }, 3000);
-
-            window.setTimeout(()=>{
-                this.is_yolo = !this.is_yolo;
+                title: 'Keep it up!',
+                text: "You're so close to the finish line! Keep going!!!",
+                type: 'ok',
+                icon: {'font_awesome': 'fas fa-check'},
             }, 2000);
+
+                // notify({
+                //     type: '',
+                //     title: '',
+                //     text: '',
+                //     icon: {'font_awesome': ''},
+                // }, );
+
+
 
 
         },

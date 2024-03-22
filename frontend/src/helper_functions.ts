@@ -1,4 +1,4 @@
-export async function axiosCSRFSetup() : Promise<void> {
+export function axiosCSRFSetup() : void {
 
     //seems like we just have to call this function once and it'll be set globally
     //this is proven by how we no longer get 403 error when called once at BaseApp
@@ -473,7 +473,7 @@ export async function drawCanvasRipples(
 }
 
 
-export async function downloadBlob(blob:Blob, name:string){
+export async function downloadBlob(blob:Blob, name:string) : Promise<void> {
 
     //downloads Blob into actual file
     //https://dev.to/nombrekeff/download-file-from-blob-21ho
@@ -504,6 +504,26 @@ export async function downloadBlob(blob:Blob, name:string){
     // Remove link from body
     document.body.removeChild(link);
 }
+
+
+export function getShortenedString(passed_string:string, max_character_count:number) : string {
+
+    const trimmed_string = passed_string.trim();
+
+    if(trimmed_string.length === 0 || max_character_count <= 0){
+
+        throw new Error('Invalid.');
+    }
+
+    if(trimmed_string.length <= max_character_count){
+
+        return passed_string;
+    }
+
+    //slice accepts index args, and the character 'end' arg will not be included
+    return trimmed_string.slice(0, max_character_count) + "...";
+}
+
 
 
 
