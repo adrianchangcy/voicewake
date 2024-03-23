@@ -253,7 +253,7 @@ def cronjob_handle_originator_processing_overdue():
     when_created_checkpoint = get_datetime_now() - timedelta(seconds=settings.AUDIO_CLIP_UNPROCESSED_EXPIRY_S)
 
     #set AudioClips to "deleted", then delete Events, and return AudioClips.id
-    #we don't directly delete AudioClips so that create/reply limit can be enforced
+    #we don't immediate delete AudioClips so that create/reply limit can be enforced
     #we delete cache via AudioClips.id
     full_sql = '''
         WITH

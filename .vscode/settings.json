@@ -14,6 +14,9 @@
             "**/.git/objects/**": true,
             "**/.git/subtree-cache/**": true,
             "**/node_modules/**": true,
+            //** works for subdirectories too, if Shell. does it work?
+            //VSCode Volar is the culprit for gradually insanely high memory usage
+            "**/frontend/node_modules/**": true,
             "**/tmp/**": true,
             "**/dist/**": true
     },

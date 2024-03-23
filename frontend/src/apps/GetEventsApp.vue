@@ -33,7 +33,7 @@
                             :propUsername="(getDataFromTemplateJSONScript('data-user-username') as string)"
                         />
 
-                        <div class="relative border border-theme-gray-2 rounded-lg px-2 sm:px-4 py-8">
+                        <div class="relative border border-theme-gray-2 rounded-lg px-2 sm:px-4 pt-8 pb-12">
 
                             <div ref="replying_title_section" class="grid grid-cols-4 gap-2 pb-6">
 
@@ -145,7 +145,6 @@
         <!--add pt-2 to add page title's pt-8 back to pt-10-->
         <div
             v-else-if="isReupload"
-            class="pt-2"
         >
             <VUsernameURL
                 :propUsername="(getDataFromTemplateJSONScript('data-user-username') as string)"
@@ -185,8 +184,8 @@
                     :propCanSubmit="!isLoading"
                     @isSubmitting="handleIsSubmitting($event)"
                     @isSubmitSuccessful="handleIsSubmitSuccessful($event)"
-                    @hasDialog="handleHasDialog($event)"
-                    class="px-2 sm:px-4 py-8"
+                    @hasForm="handleHasForm($event)"
+                    class="px-2 sm:px-4 pt-8 pb-12"
                 />
             </div>
         </div>
@@ -621,7 +620,7 @@
                     throw new Error('Cannot determine originator/responder.');
                 }
             },
-            handleHasDialog(new_value:boolean) : void {
+            handleHasForm(new_value:boolean) : void {
 
                 //this is to hide when CreateAudioClips.vue has its own dialog
                 //helps to not overwhelm the user with texts, and to shift focus appropriately

@@ -1,17 +1,18 @@
 <template>
-    <!--parent div should look like:-->
-    <!--<div class="h-[your_height+all_padding] overflow-hidden relative">-->
-    <TransitionGroup
-        name="transition-group-slide"
-        :enter-from-class="propIsForward ? 'opacity-0 translate-x-full' : 'opacity-0 -translate-x-full'"
-        enter-active-class="transition delay-150"
-        enter-to-class="opacity-100 transition-x-0"
-        leave-from-class="opacity-100 transition-x-0"
-        leave-active-class="transition absolute"
-        :leave-to-class="propIsForward ? 'opacity-0 -translate-x-full' : 'opacity-0 translate-x-full'"
-    >
-        <slot></slot>
-    </TransitionGroup>
+    <!--specify a fixed height at parent, based on tallest possible child-->
+    <div class="relative w-full h-full flex flex-col overflow-hidden">
+        <TransitionGroup
+            name="transition-group-slide"
+            :enter-from-class="propIsForward ? 'opacity-0 translate-x-full' : 'opacity-0 -translate-x-full'"
+            enter-active-class="transition delay-150"
+            enter-to-class="opacity-100 transition-x-0"
+            leave-from-class="opacity-100 transition-x-0"
+            leave-active-class="transition absolute"
+            :leave-to-class="propIsForward ? 'opacity-0 -translate-x-full' : 'opacity-0 translate-x-full'"
+        >
+            <slot></slot>
+        </TransitionGroup>
+    </div>
 </template>
 
 

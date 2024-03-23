@@ -28,7 +28,8 @@
                         >
                             {{ propEvent.event.event_name }}
                         </span>
-                        <span v-show="isEventDeleted"
+                        <span
+                            v-show="isEventDeleted"
                             class="italic"
                         >
                             Event and original recording deleted.

@@ -1,10 +1,7 @@
 <template>
     <div class="flex flex-row gap-8 pt-10">
-    
+
     <!-- <FontAwesomeIcon icon="fas fa-comments"/> -->
-
-
-        
     </div>
 </template>
 
@@ -34,16 +31,19 @@
     // import { getShortenedString } from '@/helper_functions';
     import AudioClipsTypes from '@/types/AudioClips.interface';
     import { useTestStore } from '@/stores/TestStore';
+    import { useDingDongStore } from '@/stores/DingDongStore';
     const axios = require('axios');
 
     export default defineComponent({
         data(){
             return {
+                test_store: useTestStore(),
+                audio_clip_processings_store: useAudioClipProcessingsStore(),
+                ding_dong_store: useDingDongStore(),
+
                 notifications: [] as any[],
                 event: null as EventsAndAudioClipsTypes|null,
                 is_yolo: false,
-                test_store: useTestStore(),
-                audio_clip_processings_store: useAudioClipProcessingsStore(),
 
                 sample_audio_clip: {
                     id: 1,
@@ -108,16 +108,38 @@
                 text: "You're so close to the finish line! Keep going!!!",
                 type: 'ok',
                 icon: {'font_awesome': 'fas fa-check'},
+            }, -1);
+
+            this.ding_dong_store.storeProcessing(
+                99,
+                true,
+                {
+                    id: 99,
+                    event_name: 'hahahe hahaeheaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+                },
+                this.sample_audio_clip.audio_clip_tone
+            );
+
+            window.setTimeout(()=>{
+                this.ding_dong_store.storeProcessing(
+                    100,
+                    true,
+                    {
+                        id: 100,
+                        event_name: 'hehehe',
+                    },
+                    this.sample_audio_clip.audio_clip_tone
+                );
             }, 2000);
 
-                // notify({
-                //     type: '',
-                //     title: '',
-                //     text: '',
-                //     icon: {'font_awesome': ''},
-                // }, );
+            window.setTimeout(()=>{
 
+                this.ding_dong_store.deleteProcessing(100);
+            }, 4000);
 
+            // window.setInterval(()=>{
+            //     this.is_yolo = !this.is_yolo;
+            // }, 2000);
 
 
         },

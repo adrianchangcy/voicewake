@@ -68,10 +68,6 @@ export function useAudioClipProcessingsStore(){
             },
         },
         actions: {
-            hasAudioClipId(audio_clip_id:number) : boolean {
-
-                return Object.hasOwn(this.audio_clip_processings, audio_clip_id);
-            },
             getAudioClipProcessing(audio_clip_id:number) : AudioClipProcessingDetailsTypes|null {
 
                 if(Object.hasOwn(this.audio_clip_processings, audio_clip_id) === false){
@@ -172,6 +168,10 @@ export function useAudioClipProcessingsStore(){
                 const data = new FormData();
                 data.append('audio_clip_id', JSON.stringify(audio_clip_id));
 
+                //reset
+                this.audio_clip_processings[audio_clip_id].status = '';
+                this.audio_clip_processings[audio_clip_id].notification_details = null;
+
                 //make call
                 await axios.post(post_url, data).then((result:any)=>{
 
@@ -243,9 +243,9 @@ export function useAudioClipProcessingsStore(){
 
                 }).catch((error:any)=>{
 
-                    //fresh start
+                    //defaults, only relevant on error
                     this.audio_clip_processings[audio_clip_id].status = 'error';
-                    this.audio_clip_processings[audio_clip_id].notification_details = null;
+                    this.audio_clip_processings[audio_clip_id].can_auto_process = true;
 
                     switch(error.request.status){
 
@@ -426,6 +426,10 @@ export function useAudioClipProcessingsStore(){
             },
             autoEvaluateAllAudioClipProcessings() : void {
 
+                interface hasNotifiedTypes {
+                    [audio_clip_id:number]: boolean,
+                }
+
                 //this will set up an interval on a per-processing basis
                 //i.e. slow and timely
                 //should only use at NavBar
@@ -435,6 +439,9 @@ export function useAudioClipProcessingsStore(){
 
                     return;
                 }
+
+                //all notifications shall only be displayed once
+                const notify_tracker = {} as hasNotifiedTypes
 
                 //do -1 so we can increment early, instead of at the end
                 //this helps us to avoid being stuck at one index on error
@@ -469,6 +476,20 @@ export function useAudioClipProcessingsStore(){
                         return;
                     }
 
+                    //add to notify_tracker first
+                    if(
+                        Object.hasOwn(notify_tracker, audio_clip_ids[index_tracker]) === false
+                    ){
+
+                        notify_tracker[Number(audio_clip_ids[index_tracker])] = false;
+                    }
+
+                    //if already notified, don't continue
+                    if(notify_tracker[Number(audio_clip_ids[index_tracker])] === true){
+
+                        return;
+                    }
+
                     const last_checked_ms:number = timeFromNowMS(
                         getPiniaDateObject(target_audio_clip_processing.checks.last_checked)
                     );
@@ -496,6 +517,8 @@ export function useAudioClipProcessingsStore(){
                         if(
                             target_audio_clip_processing.notification_details !== null
                         ){
+
+                            notify_tracker[Number(audio_clip_ids[index_tracker])] = true;
 
                             notify(
                                 target_audio_clip_processing.notification_details.args,
@@ -531,6 +554,8 @@ export function useAudioClipProcessingsStore(){
                         if(
                             target_audio_clip_processing.notification_details !== null
                         ){
+
+                            notify_tracker[Number(audio_clip_ids[index_tracker])] = true;
 
                             notify(
                                 target_audio_clip_processing.notification_details.args,

@@ -1,10 +1,11 @@
 <template>
     <div class="w-full flex flex-col">
 
-        <!--we set fixed height here so transitions don't cause malformed borders-->
+        <!--min-h allows content to grow, whereas simple h wouldn't, which also wouldn't play nicely with max-h-->
+        <!--this is so that transitions don't cause malformed borders-->
         <!--height is sampled from 320px width mobile, with tallest container being the form fields-->
-        <div class="w-full min-h-[14.75rem] relative">
-            <TransitionGroupFadeSlow :prop-has-absolute="true">
+        <div class="w-full min-h-[14.75rem]">
+            <TransitionGroupFadeSlow :prop-is-swapping="true">
                 <div
                     v-show="canShowForm"
                     class="w-full"
@@ -163,7 +164,12 @@
                     class="w-full"
                 >
                     <template #logo>
-                        <FontAwesomeIcon icon="fas fa-gear" class="animate-spin"/>
+                        <span
+                            v-if="audio_clip_tone_choice !== null"
+                            class="text-xl animate-spin"
+                        >
+                            {{ audio_clip_tone_choice!.audio_clip_tone_symbol }}
+                        </span>
                     </template>
                     <template #title>
                         <span>Processing recording...</span>
@@ -247,11 +253,10 @@
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     import { library } from '@fortawesome/fontawesome-svg-core';
-    import { faGear } from '@fortawesome/free-solid-svg-icons/faGear';
     import { faArrowRight } from '@fortawesome/free-solid-svg-icons/faArrowRight';
     import { faFaceFrown } from '@fortawesome/free-regular-svg-icons/faFaceFrown';
 
-    library.add(faGear, faArrowRight, faFaceFrown);
+    library.add(faArrowRight, faFaceFrown);
 </script>
 
 <script lang="ts">
@@ -331,7 +336,7 @@
                 default: true
             },
         },
-        emits: ['isSubmitting', 'isSubmitSuccessful', 'hasDialog', 'newLambdaAttemptsLeft',],
+        emits: ['isSubmitting', 'isSubmitSuccessful', 'hasForm', 'newLambdaAttemptsLeft',],
         watch: {
             is_submitting(new_value){
 
@@ -351,9 +356,9 @@
                     this.is_audio_clip_tone_menu_open = false;
                 }
             },
-            hasDialog(new_value){
+            isFormEnabled(new_value){
 
-                this.$emit('hasDialog', new_value);
+                this.$emit('hasForm', new_value);
             },
         },
         computed: {
@@ -477,7 +482,8 @@
                 return (
                     this.is_submitting === false &&
                     this.show_processing_dialog === true &&
-                    this.show_unavailable_dialog === false
+                    this.show_unavailable_dialog === false &&
+                    this.audio_clip_tone_choice !== null
                 );
             },
             canShowUnavailableDialog() : boolean {
@@ -518,7 +524,7 @@
                 }, 4000);
 
             },
-            isReuploadSetup() : void {
+            reuploadSetup() : void {
 
                 if(this.isReupload === false){
 
@@ -566,12 +572,15 @@
                 };
 
                 //restore values to this component
+
+                //only need this to remake new processing, if it suddenly does not exist on submit
                 this.audio_clip_tone_choice = {
                     id: valid_data['audio_clip_tone_id'],
                     audio_clip_tone_name: valid_data['audio_clip_tone_name'],
                     audio_clip_tone_slug: valid_data['audio_clip_tone_slug'],
                     audio_clip_tone_symbol: valid_data['audio_clip_tone_symbol'],
                 };
+
                 this.submit_event_id = valid_data['event_id'];
 
                 //if prop is Number, TS complains when variable is number
@@ -580,14 +589,24 @@
                 //prepare this step to be skipped
                 this.submit_steps_done.backend_upload = true;
 
+                const target_audio_clip_processing = this.audio_clip_processings_store.getAudioClipProcessing(
+                    this.submit_audio_clip_id
+                );
+
                 if(
-                    this.audio_clip_processings_store.hasAudioClipId(this.submit_audio_clip_id) === false
+                    target_audio_clip_processing === null
                 ){
 
                     //do not create record in store if it doesn't exist
                     //we only create when processing
                     return;
                 }
+
+                //sync attempts
+                this.$emit(
+                    'newLambdaAttemptsLeft',
+                    target_audio_clip_processing.lambda_attempts_left
+                );
             },
             async uploadToBackendReceiveS3UploadURL() : Promise<void> {
 
@@ -812,7 +831,7 @@
 
                 if(this.submit_audio_clip_id === null){
 
-                    throw new Error('submit_audio_clip_id is null.');
+                    return;
                 }
 
                 const target_audio_clip_processing = this.audio_clip_processings_store.getAudioClipProcessing(
@@ -917,6 +936,12 @@
                             break;
                         }
 
+                        //sync attempts
+                        this.$emit(
+                            'newLambdaAttemptsLeft',
+                            target_audio_clip_processing.lambda_attempts_left
+                        );
+
                         //server can return until 0 attempts left
                         //no need to allow user to reupload if at 0, as server won't process at that point
                         if(
@@ -924,21 +949,10 @@
                             target_audio_clip_processing.lambda_attempts_left === 0
                         ){
 
-                            this.$emit(
-                                'newLambdaAttemptsLeft',
-                                null
-                            );
-
                             this.show_unavailable_dialog = true;
 
                             break;
-
                         }
-
-                        this.$emit(
-                            'newLambdaAttemptsLeft',
-                            target_audio_clip_processing.lambda_attempts_left
-                        );
 
                         break;
 
@@ -1147,7 +1161,7 @@
         },
         beforeMount(){
 
-            this.isReuploadSetup();
+            this.reuploadSetup();
 
             window.addEventListener('beforeunload', this.handleBeforeUnload);
         },

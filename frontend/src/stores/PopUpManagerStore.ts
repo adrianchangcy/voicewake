@@ -77,7 +77,7 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
                 this.is_open[key] = false;
             }
         },
-        async forceCloseOtherPopUps(current_key:string) : Promise<void> {
+        forceCloseOtherPopUps(current_key:string) : void {
 
             for(const key in this.is_open){
 
@@ -93,7 +93,7 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
 
             if(new_store_value === true){
 
-                await this.forceCloseOtherPopUps('is_user_log_in_open');
+                this.forceCloseOtherPopUps('is_user_log_in_open');
             }
 
             this.is_open.is_user_log_in_open = new_store_value;
@@ -104,7 +104,7 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
 
             if(new_store_value === true){
 
-                await this.forceCloseOtherPopUps('is_user_sign_up_open');
+                this.forceCloseOtherPopUps('is_user_sign_up_open');
             }
 
             this.is_open.is_user_sign_up_open = new_store_value;
