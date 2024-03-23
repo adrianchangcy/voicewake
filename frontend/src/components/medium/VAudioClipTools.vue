@@ -88,15 +88,15 @@
             <!--share-->
             <button
                 @click="copyAudioClipURL()"
-                class="h-full col-span-1 relative flex flex-row items-center     shade-border-when-hover active:bg-theme-gray-2 transition-colors      bg-transparent       border border-theme-gray-2 rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                class="h-full col-span-1 flex items-center     shade-border-when-hover active:bg-theme-gray-2 transition-colors      bg-transparent       border border-theme-gray-2 rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                 type="button"
             >
-                <TransitionGroupFade :prop-has-absolute="true">
-                    <span v-show="has_shared === false" class="w-full flex items-center text-center">
+                <TransitionGroupFade :prop-is-swapping="true">
+                    <span v-show="has_shared === false" class="w-full h-full flex items-center text-center">
                         <FontAwesomeIcon icon="fas fa-share" class="text-base mx-auto"/>
                         <span class="sr-only">Copy recording URL to share</span>
                     </span>
-                    <span v-show="has_shared === true" class="w-full flex items-center text-center">
+                    <span v-show="has_shared === true" class="w-full h-full flex items-center text-center">
                         <FontAwesomeIcon icon="fas fa-check" class="text-base mx-auto"/>
                         <span class="sr-only">recording URL copied</span>
                     </span>

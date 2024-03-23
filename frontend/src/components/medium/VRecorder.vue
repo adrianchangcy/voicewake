@@ -1,7 +1,7 @@
 <template>
     <!-- h-[5.5rem] = h-20 + p-2 -->
-    <div class="h-20 text-theme-black text-center place-items-center relative">
-        <TransitionGroupFade :propHasAbsolute="true">
+    <div class="h-20 text-theme-black text-center place-items-center">
+        <TransitionGroupFade :prop-is-swapping="true">
 
             <!--when not recording-->
             <div
@@ -44,7 +44,11 @@
 
                     <!--timer-->
                     <div class="row-start-1 row-span-1 col-span-2 relative">
-                        <span class="absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto text-xl">-{{current_duration_pretty}}</span>
+                        <span
+                            class="absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto text-xl"
+                        >
+                            -{{current_duration_pretty}}
+                        </span>
                     </div>
 
                     <!--pause/resume-->

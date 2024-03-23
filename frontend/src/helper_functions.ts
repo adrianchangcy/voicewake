@@ -521,7 +521,7 @@ export function getShortenedString(passed_string:string, max_character_count:num
     }
 
     //slice accepts index args, and the character 'end' arg will not be included
-    return trimmed_string.slice(0, max_character_count) + "...";
+    return trimmed_string.slice(0, max_character_count).trim() + "...";
 }
 
 

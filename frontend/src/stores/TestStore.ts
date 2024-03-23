@@ -2,7 +2,6 @@ import { defineStore } from 'pinia';
 // import { notify } from '@/wrappers/notify_wrapper';
 
 
-//we want to see what happens 
 
 export const useTestStore = defineStore('test_store', {
     state: ()=>({

@@ -61,7 +61,7 @@
                 <!--log in-->
                 <div
                     v-if="current_section === 'log-in-section'"
-                    class="h-full flex flex-col relative overflow-hidden"
+                    class="h-full"
                 >
 
                     <TransitionGroupSlide
@@ -336,7 +336,7 @@
                 <!--signup-->
                 <div
                     v-else-if="current_section === 'sign-up-section'"
-                    class="h-full flex flex-col relative overflow-hidden"
+                    class="h-full"
                 >
 
                     <TransitionGroupSlide

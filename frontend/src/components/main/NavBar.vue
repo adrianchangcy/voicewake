@@ -483,7 +483,6 @@
     import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
     import { useEventReplyChoicesStore } from '@/stores/EventReplyChoicesStore';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
-    import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
     const axios = require('axios');
 
     export default defineComponent({
@@ -492,7 +491,6 @@
             return {
                 page_refresh_trigger_store: usePageRefreshTriggerStore(),
                 pop_up_manager_store: usePopUpManagerStore(),
-                audio_clip_processings_store: useAudioClipProcessingsStore(),
 
                 is_log_out_loading: false,
                 is_currently_log_in_sign_up_static_page: false,
@@ -508,9 +506,9 @@
             canShowLogInSignUpAtNav() : boolean {
                 return (
                     this.is_currently_log_in_sign_up_static_page === false &&
+                    this.pop_up_manager_store.isLoginRequiredPromptOpen === false &&
                     this.pop_up_manager_store.isUserLogInOpen === false &&
-                    this.pop_up_manager_store.isUserSignUpOpen === false &&
-                    this.pop_up_manager_store.isLoginRequiredPromptOpen === false
+                    this.pop_up_manager_store.isUserSignUpOpen === false
                 );
             },
         },
@@ -591,8 +589,6 @@
         beforeMount(){
 
             this.handleIsLogInSignUpStaticPage();
-
-            this.audio_clip_processings_store.autoEvaluateAllAudioClipProcessings();
         },
     });
 </script>

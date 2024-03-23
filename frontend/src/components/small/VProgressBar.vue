@@ -1,5 +1,8 @@
 <template>    
     <div class="flex flex-col">
+        <span class="sr-only">
+            loading
+        </span>
         <div class="w-full h-4 border-2 border-theme-black relative">
             <!--background-->
             <div class="w-full h-full absolute">
@@ -39,18 +42,7 @@
         watch: {
             propStep(new_value:number|null){
 
-                if(new_value === null){
-
-                    this.endFinalPart();
-                    return;
-                }
-
-                if(new_value >= this.propTimestampsMs.durations.length){
-
-                    throw new Error('Invalid value: ' + new_value.toString());
-                }
-
-                this.startPart(new_value);
+                this.handleStep(new_value);
             },
         },
         props: {
@@ -60,6 +52,11 @@
             },
             propStep: {
                 type: Number as PropType<Number|null>,
+                default: null,
+            },
+            propStartOnMounted: {
+                type: Boolean,
+                default: false,
             },
         },
         methods: {
@@ -153,6 +150,31 @@
                     duration: 100,
                 });
             },
+            handleStep(step:number|null) : void {
+
+                if(step === null){
+
+                    this.endFinalPart();
+                    return;
+                }
+
+                if(step >= this.propTimestampsMs.durations.length){
+
+                    throw new Error('Invalid value: ' + step.toString());
+                }
+
+                this.startPart(step);
+            },
+        },
+        mounted(){
+
+            if(
+                this.propStartOnMounted === true &&
+                this.propStep !== null
+            ){
+
+                this.handleStep(Number(this.propStep));
+            }
         },
     });
 </script>

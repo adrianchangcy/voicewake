@@ -73,12 +73,14 @@
         class="w-0 h-0"
     >
         <VNotiwind/>
+        <VAudioClipProcessings/>
     </div>
 </template>
 
 
 <script setup lang="ts">
     import VNotiwind from '../components/medium/VNotiwind.vue';
+    import VAudioClipProcessings from '@/components/medium/VAudioClipProcessings.vue';
     import NavBar from '../components/main/NavBar.vue';
     import UserLogInSignUp from '../components/main/UserLogInSignUp.vue';
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';

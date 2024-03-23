@@ -1,7 +1,9 @@
 <template>
-    <CreateAudioClips
-        :propIsOriginator="true"
-    />
+    <div class="relative border border-theme-gray-2 rounded-lg px-2 sm:px-4 pt-8 pb-12">
+        <CreateAudioClips
+            :propIsOriginator="true"
+        />
+    </div>
 
     <Teleport to="#create-events-header-logo">
         <FontAwesomeIcon icon="fas fa-comment"/>

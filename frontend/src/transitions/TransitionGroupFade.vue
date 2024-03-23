@@ -1,17 +1,17 @@
 <template>
-    <!--parent div should look like:-->
-    <!--<div class="relative">-->
-    <TransitionGroup
-        name="transition-group-fade"
-        enter-from-class="opacity-0"
-        :enter-active-class="propHasAbsolute ? 'transition-opacity absolute delay-150' : 'transition-opacity'"
-        enter-to-class="opacity-100"
-        leave-from-class="opacity-100"
-        :leave-active-class="propHasAbsolute ? 'transition-opacity absolute' : 'transition-opacity'"
-        leave-to-class="opacity-0"
-    >
-        <slot></slot>
-    </TransitionGroup>
+    <div class="relative w-full h-full">
+        <TransitionGroup
+            name="transition-group-fade"
+            enter-from-class="opacity-0"
+            :enter-active-class="propIsSwapping ? 'absolute transition-opacity delay-150' : 'transition-opacity delay-150'"
+            enter-to-class="opacity-100"
+            leave-from-class="opacity-100"
+            :leave-active-class="propIsSwapping ? 'absolute transition-opacity' : 'transition-opacity'"
+            leave-to-class="opacity-0"
+        >
+            <slot></slot>
+        </TransitionGroup>
+    </div>
 </template>
 
 
@@ -24,7 +24,7 @@
             };
         },
         props: {
-            propHasAbsolute: {
+            propIsSwapping: {
                 type: Boolean,
                 default: false
             },

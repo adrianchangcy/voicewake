@@ -951,7 +951,7 @@ class S3PostWrapper:
 
         #no starting slash
         #.format() converts args into str for us
-        #we want to set MEDIAFILES_LOCATION here, instead of dynamically determining
+        #we want to set MEDIAFILES_LOCATION here, instead of determining via dev/prod at serializer
         #this helps to guarantee the separation between files created in dev and prod
         file_path = '{0}/audio_clips/year_{1}/month_{2}/day_{3}/user_id_{4}/'.format(
             settings.MEDIAFILES_LOCATION,
@@ -965,7 +965,8 @@ class S3PostWrapper:
 
         for retry in range(0, self.key_exist_retries):
 
-            #use secrets.token_hex() to mitigate wrongful possession from random guessing
+            #use secrets.token_hex() instead of AudioClips.id
+            #ensures that all AudioClips have .audio_file
             file_key = file_path + secrets.token_hex(16) + '.' + file_extension
 
             if self.check_object_exists(file_key) is False:
