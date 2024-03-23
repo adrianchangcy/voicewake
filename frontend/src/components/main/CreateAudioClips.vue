@@ -34,12 +34,15 @@
                         <div class="grid grid-cols-8 gap-2">
 
                             <!--open/close VRecorderMenu-->
-                            <div class="col-span-6">
+                            <div
+                                :class="isReupload ? 'col-span-8' : 'col-span-6'"
+                            >
                                 <VRecorderField
                                     propLabel="Recording"
                                     :propIsEnabled="isFormEnabled"
                                     :propIsOpen="is_recorder_menu_open"
                                     :propBucketQuantity="bucket_quantity"
+                                    :propIsRecording="is_recording"
                                     :propHasRecording="final_blob !== null"
                                     :propAudioVolumePeaks="blob_volume_peaks"
                                     @isOpen="handleIsRecorderMenuOpen($event)"
@@ -47,26 +50,17 @@
                             </div>
 
                             <!--open/close VAudioClipToneMenu-->
-                            <div class="col-span-2 relative">
+                            <div
+                                v-if="isReupload === false"
+                                class="col-span-2 relative"
+                            >
                                 <VAudioClipToneField
-                                    v-if="isReupload === false"
                                     propLabel="Tag"
                                     :propIsEnabled="isFormEnabled"
                                     :propAudioClipToneChoice="audio_clip_tone_choice"
                                     :propIsOpen="is_audio_clip_tone_menu_open"
                                     @isOpen="handleIsAudioClipToneMenuOpen($event)"
                                 />
-                                <div
-                                    v-else-if="isReupload === true && audio_clip_tone_choice !== null"
-                                    class="w-full h-20 text-3xl absolute bottom-0 flex items-center"
-                                >
-                                    <span class="sr-only">
-                                        {{audio_clip_tone_choice.audio_clip_tone_name}}, cannot be changed during reupload
-                                    </span>
-                                    <span class="mx-auto">
-                                        {{ audio_clip_tone_choice.audio_clip_tone_symbol }}
-                                    </span>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -81,8 +75,9 @@
                             <div
                                 v-show="is_recorder_menu_open || is_audio_clip_tone_menu_open"
                                 :class="[
-                                    is_recorder_menu_open ? 'col-span-6 col-start-1 pr-2' : '',
-                                    is_audio_clip_tone_menu_open ? 'col-span-2 col-start-7 pl-2' : '',
+                                    isReupload ? 'col-span-8' : '',
+                                    !isReupload && is_recorder_menu_open ? 'col-span-6 col-start-1 pr-2' : '',
+                                    !isReupload && is_audio_clip_tone_menu_open ? 'col-span-2 col-start-7 pl-2' : '',
                                     'relative'
                                 ]"
                             >
@@ -336,7 +331,7 @@
                 default: true
             },
         },
-        emits: ['isSubmitting', 'isSubmitSuccessful', 'hasDialog'],
+        emits: ['isSubmitting', 'isSubmitSuccessful', 'hasDialog', 'newLambdaAttemptsLeft',],
         watch: {
             is_submitting(new_value){
 
@@ -809,6 +804,171 @@
 
                 return is_success;
             },
+            handleAudioClipProcessingStatus() : void {
+
+                //always reset
+                this.show_processing_dialog = false;
+                this.show_unavailable_dialog = false;
+
+                if(this.submit_audio_clip_id === null){
+
+                    throw new Error('submit_audio_clip_id is null.');
+                }
+
+                const target_audio_clip_processing = this.audio_clip_processings_store.getAudioClipProcessing(
+                    this.submit_audio_clip_id
+                );
+
+                if(target_audio_clip_processing === null){
+
+                    if(this.isReupload === false){
+
+                        //if null, then another tab must've done notify() and user had closed it
+                        //when not at reupload page, redirecting sounds better than leaving the user hanging
+
+                        window.location.replace(
+                            window.location.origin +
+                            "/event/" + this.submit_event_id!.toString()
+                        );
+
+                    }
+
+                    return;
+                }
+
+                switch(target_audio_clip_processing.status){
+
+                    case 'processed':
+
+                        //success, redirect
+
+                        window.location.replace(
+                            window.location.origin +
+                            "/event/" + this.submit_event_id!.toString()
+                        );
+
+                        break;
+
+                    case 'processing':{
+
+                        //create interval here
+
+                        this.show_processing_dialog = true;
+                        let has_api_call = false;
+
+                        const processing_interval = window.setInterval(async ()=>{
+
+                            //no need for new interval while a request is still running
+                            if(has_api_call === true){
+
+                                return;
+                            }
+
+                            has_api_call = true;
+
+                            //exit condition, this won't be expected to occur
+                            if(this.submit_audio_clip_id === null){
+
+                                window.clearInterval(processing_interval);
+                                return;
+                            }
+
+                            const target_audio_clip_processing = this.audio_clip_processings_store.getAudioClipProcessing(
+                                this.submit_audio_clip_id
+                            );
+
+                            //exit condition
+                            if(
+                                target_audio_clip_processing === null ||
+                                target_audio_clip_processing.status !== 'processing'
+                            ){
+
+                                window.clearInterval(processing_interval);
+                                this.handleAudioClipProcessingStatus();
+                                return;
+                            }
+
+                            //api call, basically polling
+                            await this.audio_clip_processings_store.processAudioClipAPI(
+                                'user_submit',
+                                this.submit_audio_clip_id!,
+                            ).finally(()=>{
+                                has_api_call = false;
+                            });
+
+                        }, 5000);
+
+                        break;
+                    }
+
+                    case 'lambda_error':
+
+                        //update attempts left
+                        //if user is not at reupload page, redirect
+
+                        if(this.isReupload === false){
+
+                            window.location.replace(
+                                window.location.origin +
+                                "/event/" + this.submit_event_id!.toString() +
+                                "?reupload=" + this.submit_audio_clip_id!.toString()
+                            );
+
+                            break;
+                        }
+
+                        //server can return until 0 attempts left
+                        //no need to allow user to reupload if at 0, as server won't process at that point
+                        if(
+                            target_audio_clip_processing.lambda_attempts_left === null ||
+                            target_audio_clip_processing.lambda_attempts_left === 0
+                        ){
+
+                            this.$emit(
+                                'newLambdaAttemptsLeft',
+                                null
+                            );
+
+                            this.show_unavailable_dialog = true;
+
+                            break;
+
+                        }
+
+                        this.$emit(
+                            'newLambdaAttemptsLeft',
+                            target_audio_clip_processing.lambda_attempts_left
+                        );
+
+                        break;
+
+                    case 'not_found':
+
+                        //no longer available
+
+                        this.show_unavailable_dialog = true;
+
+                        break;
+
+                    case 'error':
+
+                        //generic error
+
+                        notify({
+                            type: 'error',
+                            title: 'Recording error',
+                            text: 'Try again later.',
+                            icon: {'font_awesome': 'fas fa-exclamation'},
+                        }, 4000);
+
+                        break;
+
+                    default:
+
+                        break;
+                }
+
+            },
             async doSubmit() : Promise<void> {
 
                 if(this.canSubmit === false && this.canReupload === false){
@@ -930,82 +1090,19 @@
                     //call processing API
                     //handling success/error is only important if user is still on the same page
 
-                    //get Promise
-                    const processing_call = this.audio_clip_processings_store.processAudioClipAPI(
-                        this.submit_audio_clip_id,
-                        false
-                    );
-
-                    if(processing_call === null){
-
-                        throw new Error('Expected Promise.');
-                    }
-
                     //set this early, as next API may immediately redirect
                     this.warn_before_unload = false;
 
-                    await processing_call.then(()=>{
+                    await this.audio_clip_processings_store.processAudioClipAPI(
+                        'user_submit',
+                        this.submit_audio_clip_id
+                    ).catch(()=>{
 
-                        //done, redirect
-
-                        let redirect_url = window.location.origin
-                        redirect_url += "/event/" + this.submit_event_id!.toString();
-
-                        window.location.replace(redirect_url);
-
-                    }).catch((error:any)=>{
-
-                        this.$emit('isSubmitSuccessful', false);
-
-                        if(this.isReupload === false){
-
-                            if(error.request.status >= 500){
-
-                                this.notifyGenericFailure('Something may be wrong with our server. Try again later.');
-                                return;
-                            }
-
-                            //if currently not for reupload, and has error, redirect to reupload
-                            //no need to check for max attempts if 400
-                            let redirect_url = window.location.origin
-                            redirect_url += "/event/" + this.submit_event_id!.toString();
-                            redirect_url += "?reupload=" + this.submit_audio_clip_id!.toString();
-
-                            window.location.replace(redirect_url);
-                            return;
-
-                        }else{
-
-                            switch(error.request.status){
-
-                                case 404:
-
-                                    //oh no, no longer available, show dialog
-
-                                    this.show_processing_dialog = false;
-                                    this.show_unavailable_dialog = true;
-                                    break;
-
-                                case 409:
-
-                                    //still processing, keep dialog, start interval
-
-                                    this.show_processing_dialog = true;
-                                    this.show_unavailable_dialog = false;
-
-
-                                    break;
-
-                                default:
-
-                                    this.show_processing_dialog = false;
-                                    this.show_unavailable_dialog = false;
-                                    break;
-                            }
-
-                            return;
-                        }
+                        return;
                     });
+
+                    //reflect UI to status
+                    this.handleAudioClipProcessingStatus();
 
                 }finally{
 
@@ -1055,7 +1152,9 @@
             window.addEventListener('beforeunload', this.handleBeforeUnload);
         },
         mounted(){
-            this.show_unavailable_dialog = true;
+
+            this.handleAudioClipProcessingStatus();
+
         },
         beforeUnmount(){
 

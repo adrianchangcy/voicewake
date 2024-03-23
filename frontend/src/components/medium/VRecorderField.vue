@@ -73,6 +73,10 @@
                 type: Boolean,
                 default: true
             },
+            propIsRecording: {
+                type: Boolean,
+                default: false
+            },
         },
         watch: {
             propIsOpen(new_value:boolean){
@@ -82,6 +86,17 @@
             propAudioVolumePeaks(){
 
                 this.drawRipples();
+            },
+            propIsRecording(new_value:boolean){
+
+                if(new_value === true){
+
+                    (this.$refs.canvas_ripples_container as HTMLElement).style.opacity = '0';
+
+                }else{
+
+                    (this.$refs.canvas_ripples_container as HTMLElement).style.opacity = '1';
+                }
             },
         },
         methods: {

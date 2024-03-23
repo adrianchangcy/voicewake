@@ -1070,13 +1070,15 @@ class GetEventsAPI(generics.GenericAPIView):
         audio_clips = self.get_events_by_id(kwargs['event_id'])
 
         #check if there are rows
+        #can have no rows when originator is reuploading
 
         if len(audio_clips) == 0:
 
             return Response(
                 data={
+                    'data': [],
                 },
-                status=status.HTTP_404_NOT_FOUND
+                status=status.HTTP_200_OK
             )
 
         #has audio_clips

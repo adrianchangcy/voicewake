@@ -267,7 +267,7 @@ def cronjob_handle_originator_processing_overdue():
             ORDER BY ac.when_created ASC
             LIMIT %s
         ),
-        update_deleted_audio_clips AS (
+        processing_overdue_audio_clips AS (
             UPDATE audio_clips AS ac
             SET generic_status_id = (
                 SELECT id FROM generic_statuses
@@ -279,13 +279,13 @@ def cronjob_handle_originator_processing_overdue():
             RETURNING tac.id, tac.event_id
         )
         DELETE FROM events AS e
-        USING update_deleted_audio_clips AS udac
-        WHERE e.id = udac.event_id
+        USING processing_overdue_audio_clips AS poac
+        WHERE e.id = poac.event_id
         AND e.generic_status_id = (
             SELECT id FROM generic_statuses
             WHERE generic_status_name = %s
         )
-        RETURNING udac.id
+        RETURNING poac.id
     '''
 
     full_params = [
@@ -293,7 +293,7 @@ def cronjob_handle_originator_processing_overdue():
         when_created_checkpoint,
         'processing',
         settings.CRONJOB_DEFAULT_ROW_LIMIT,
-        'deleted',
+        'processing_overdue',
         'processing',
     ]
 
@@ -343,7 +343,7 @@ def cronjob_handle_responder_processing_overdue():
             ORDER BY ac.when_created ASC
             LIMIT %s
         ),
-        update_deleted_audio_clips AS (
+        processing_overdue_audio_clips AS (
             UPDATE audio_clips AS ac
             SET generic_status_id = (
                 SELECT id FROM generic_statuses
@@ -358,13 +358,13 @@ def cronjob_handle_responder_processing_overdue():
             SELECT id FROM generic_statuses
             WHERE generic_status_name = %s
         )
-        FROM update_deleted_audio_clips AS udac
-        WHERE e.id = udac.event_id
+        FROM processing_overdue_audio_clips AS poac
+        WHERE e.id = poac.event_id
         AND e.generic_status_id = (
             SELECT id FROM generic_statuses
             WHERE generic_status_name = %s
         )
-        RETURNING udac.id
+        RETURNING poac.id
     '''
 
     full_params = [
@@ -372,7 +372,7 @@ def cronjob_handle_responder_processing_overdue():
         when_created_checkpoint,
         'processing',
         settings.CRONJOB_DEFAULT_ROW_LIMIT,
-        'deleted',
+        'processing_overdue',
         'incomplete',
         'processing',
     ]
@@ -406,7 +406,6 @@ def cronjob_delete_audio_clip_processing_overdue():
 
     #here, truly delete from db
     #no longer need those "deleted" row to enforce latest create/reply limit
-    #don't delete is_banned=True rows, those are needed for users to view
     #no need to involve AudioClipReports, as users cannot report when AudioClip isn't "ok"
     #no need to involve Events, as their relations are already handled
 
@@ -419,7 +418,6 @@ def cronjob_delete_audio_clip_processing_overdue():
             INNER JOIN generic_statuses AS gs ON gs.id = ac.generic_status_id
             INNER JOIN audio_clip_roles AS acr ON acr.id = ac.audio_clip_role_id
             AND ac.when_created <= %s
-            AND ac.is_banned IS FALSE
             AND gs.generic_status_name = %s
             ORDER BY ac.when_created ASC
             LIMIT %s
@@ -431,7 +429,7 @@ def cronjob_delete_audio_clip_processing_overdue():
 
     full_params = [
         passed_midnight_today,
-        'deleted',
+        'processing_overdue',
         settings.CRONJOB_DEFAULT_ROW_LIMIT,
     ]
 

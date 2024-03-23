@@ -1205,7 +1205,7 @@ class CoreProcess_TestCase(TestCase):
 
         sample_audio_clip_0.refresh_from_db()
 
-        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'processing_overdue')
 
 
     def test_cronjob_handle_originator_processing_overdue__multiple_ok(self):
@@ -1269,8 +1269,8 @@ class CoreProcess_TestCase(TestCase):
         sample_audio_clip_0.refresh_from_db()
         sample_audio_clip_1.refresh_from_db()
 
-        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
-        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'processing_overdue')
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'processing_overdue')
 
 
     def test_cronjob_handle_originator_processing_overdue__ignore_not_overdue(self):
@@ -1356,7 +1356,7 @@ class CoreProcess_TestCase(TestCase):
         sample_audio_clip_1.refresh_from_db()
 
         self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
-        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'processing_overdue')
 
 
     def test_cronjob_handle_responder_processing_overdue__multiple_ok(self):
@@ -1453,8 +1453,8 @@ class CoreProcess_TestCase(TestCase):
 
         self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
         self.assertEqual(sample_event_1.generic_status.generic_status_name, 'incomplete')
-        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
-        self.assertEqual(sample_audio_clip_3.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'processing_overdue')
+        self.assertEqual(sample_audio_clip_3.generic_status.generic_status_name, 'processing_overdue')
 
 
     def test_cronjob_handle_responder_processing_overdue__ignore_not_overdue(self):
@@ -1528,7 +1528,7 @@ class CoreProcess_TestCase(TestCase):
                     audio_clip_user=self.users[0],
                     audio_clip_audio_clip_role_audio_clip_role_name='originator',
                     audio_clip_event=None,
-                    audio_clip_generic_status_generic_status_name='deleted',
+                    audio_clip_generic_status_generic_status_name='processing_overdue',
                 )
             )
             sample_responder_audio_clips.append(
@@ -1536,7 +1536,7 @@ class CoreProcess_TestCase(TestCase):
                     audio_clip_user=self.users[1],
                     audio_clip_audio_clip_role_audio_clip_role_name='responder',
                     audio_clip_event=None,
-                    audio_clip_generic_status_generic_status_name='deleted',
+                    audio_clip_generic_status_generic_status_name='processing_overdue',
                 )
             )
 
@@ -1581,7 +1581,7 @@ class CoreProcess_TestCase(TestCase):
                     audio_clip_user=self.users[0],
                     audio_clip_audio_clip_role_audio_clip_role_name='originator',
                     audio_clip_event=None,
-                    audio_clip_generic_status_generic_status_name='deleted',
+                    audio_clip_generic_status_generic_status_name='processing_overdue',
                 )
             )
             sample_responder_audio_clips.append(
@@ -1589,7 +1589,7 @@ class CoreProcess_TestCase(TestCase):
                     audio_clip_user=self.users[1],
                     audio_clip_audio_clip_role_audio_clip_role_name='responder',
                     audio_clip_event=None,
-                    audio_clip_generic_status_generic_status_name='deleted',
+                    audio_clip_generic_status_generic_status_name='processing_overdue',
                 )
             )
 
