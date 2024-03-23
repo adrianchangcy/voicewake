@@ -1680,9 +1680,9 @@ class CreateAudioClips():
         if target_cache['attempts'] >= int(os.environ['AWS_LAMBDA_CALL_MAX_ATTEMPTS']):
 
             #max attempts reached
-            #set as "deleted", delete cache
+            #set as "processing_overdue", delete cache
 
-            self.audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
+            self.audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='processing_overdue')
             self.audio_clip.save()
 
             cache.delete(target_cache_key)
@@ -1979,6 +1979,7 @@ class CreateAudioClips():
             )
 
         #call Lambda to normalise and transfer file to processed bucket
+        #we track our attempts before Lambda, rather than after, to prevent "spam invoke on error"
 
         self._initialise_lambda_wrapper()
 
@@ -2032,12 +2033,12 @@ class CreateAudioClips():
 
         if serializer.is_valid() is False:
 
-            print(lambda_response_data)
             print(get_serializer_error_message(serializer))
 
             return Response(
                 data={
-                    'message': 'Unable to process your recording. Try again later.',
+                    'message': 'Unable to process your recording. Try a different recording.',
+                    'attempts_left': int(os.environ['AWS_LAMBDA_CALL_MAX_ATTEMPTS']) - target_cache['attempts'],
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )

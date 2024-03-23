@@ -1035,7 +1035,8 @@ class CoreProcess_TestCase(TestCase):
             kwargs={'event_id': audio_clip.event.id})
         )
 
-        self.assertEqual(request.status_code, 404)
+        self.assertEqual(request.status_code, 200)
+        self.assertEqual(len(json.loads(request.content)['data']), 0)
 
 
     def test_create_event__upload__not_idempotent_ok(self):
@@ -1094,7 +1095,8 @@ class CoreProcess_TestCase(TestCase):
                 kwargs={'event_id': event.id})
             )
 
-            self.assertEqual(request.status_code, 404)
+            self.assertEqual(request.status_code, 200)
+            self.assertEqual(len(json.loads(request.content)['data']), 0)
 
         audio_clips = AudioClips.objects.all()
 
@@ -1632,6 +1634,11 @@ class CoreProcess_TestCase(TestCase):
 
         print(request.content)
         self.assertEqual(request.status_code, 404)
+        self.assertIsNone(cache.get(target_cache_key, None))
+
+        sample_audio_clip_0.refresh_from_db()
+
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'processing_overdue')
 
 
     def test_create_event__process__no_rows(self):
@@ -1946,7 +1953,7 @@ class CoreProcess_TestCase(TestCase):
             )
         )
 
-        self.assertEqual(request.status_code, 404)
+        self.assertEqual(request.status_code, 200)
         print_function_name(request.content)
 
 
@@ -4077,6 +4084,11 @@ class CoreProcess_TestCase(TestCase):
         result_data = json.loads(result_data)
 
         self.assertEqual(request.status_code, 404)
+        self.assertIsNone(cache.get(target_cache_key, None))
+
+        sample_audio_clip_1.refresh_from_db()
+
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'processing_overdue')
 
 
     def test_create_reply__process__no_rows(self):
@@ -5590,6 +5602,10 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
             settings.BASE_DIR,
             'voicewake/tests/test_file_samples/audio_ok_120s.webm'
         )
+        cls.faulty_audio_file_full_path = os.path.join(
+            settings.BASE_DIR,
+            'voicewake/tests/test_file_samples/txt_as_fake_mp3.mp3'
+        )
 
         #files
         with open(cls.shorter_audio_file_full_path, 'rb') as file_stream:
@@ -5603,10 +5619,19 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
 
         #ensure test files exist in s3 before we run tests
         cls._prepare_s3_unprocessed_audio_file(
-            cls,
             unprocessed_object_key=cls.unprocessed_object_key,
             file_extension='webm',
             local_file_path=cls.shorter_audio_file_full_path
+        )
+
+        #ensure faulty file exists
+        cls.faulty_audio_file_unprocessed_object_key = 'test/test1.webm'
+        cls.faulty_audio_file_processed_object_key = 'test/test1.mp3'
+
+        cls._prepare_s3_unprocessed_audio_file(
+            unprocessed_object_key=cls.faulty_audio_file_unprocessed_object_key,
+            file_extension='webm',
+            local_file_path=cls.faulty_audio_file_full_path
         )
 
 
@@ -5648,8 +5673,8 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
         )
 
 
+    @staticmethod
     def _prepare_s3_unprocessed_audio_file(
-        self,
         unprocessed_object_key:str,
         file_extension:str,
         local_file_path:str,
@@ -5808,6 +5833,55 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
         )
 
 
+    def test_create_event__process__lambda_failure(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+            audio_clip_audio_file=self.faulty_audio_file_unprocessed_object_key,
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+
+        request = self.client.post(reverse('create_events_process_api'), data)
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        print(request.content)
+
+        self.assertEqual(request.status_code, 400)
+        self.assertTrue("attempts_left" in result_data)
+        self.assertEqual(
+            result_data['attempts_left'],
+            int(os.environ['AWS_LAMBDA_CALL_MAX_ATTEMPTS']) - 1
+        )
+
+        sample_audio_clip_0.refresh_from_db()
+
+        self.assertEqual(
+            sample_audio_clip_0.generic_status.generic_status_name,
+            'processing'
+        )
+        self.assertEqual(
+            sample_audio_clip_0.audio_file,
+            self.faulty_audio_file_unprocessed_object_key
+        )
+
+
     def test_create_reply__process__ok(self):
 
         self.login(self.users[1])
@@ -5862,6 +5936,62 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
         self.assertEqual(
             sample_audio_clip_1.audio_file,
             self.processed_object_key
+        )
+
+
+    def test_create_reply__process__lambda_failure(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+            audio_clip_audio_file=self.faulty_audio_file_unprocessed_object_key,
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_events_process_api'), data)
+
+        result_data = (bytes(request.content).decode())
+        result_data = json.loads(result_data)
+
+        print(request.content)
+
+        self.assertEqual(request.status_code, 400)
+        self.assertTrue("attempts_left" in result_data)
+        self.assertEqual(
+            result_data['attempts_left'],
+            int(os.environ['AWS_LAMBDA_CALL_MAX_ATTEMPTS']) - 1
+        )
+
+        sample_audio_clip_1.refresh_from_db()
+
+        self.assertEqual(
+            sample_audio_clip_1.generic_status.generic_status_name,
+            'processing'
+        )
+        self.assertEqual(
+            sample_audio_clip_1.audio_file,
+            self.faulty_audio_file_unprocessed_object_key
         )
 
 

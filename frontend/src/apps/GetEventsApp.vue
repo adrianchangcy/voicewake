@@ -43,7 +43,7 @@
                                 >
                                     <template #title>
                                         <div class="h-10 flex items-center">
-                                            <span>Replying...</span>
+                                            <span>Replying</span>
                                         </div>
                                     </template>
                                 </VTitle>
@@ -147,6 +147,9 @@
             v-else-if="isReupload"
             class="pt-2"
         >
+            <VUsernameURL
+                :propUsername="(getDataFromTemplateJSONScript('data-user-username') as string)"
+            />
             <div class="flex flex-col rounded-lg divide-y divide-theme-gray-2 border border-theme-gray-2">
                     
                 <div ref="reupload_title_section">
@@ -165,6 +168,12 @@
                             </span>
                             <span class="text-base block text-red-700">
                                 This happens when there's no sound.
+                            </span>
+                            <span
+                                v-show="canShowLambdaAttemptsLeft"
+                                class="text-sm block py-1"
+                            >
+                                {{ getLambdaAttemptsLeft }}
                             </span>
                         </template>
                     </VTitle>
@@ -248,6 +257,8 @@
                 expiry_interval: null as number|null,
 
                 teleport_id: '',
+
+                lambda_attempts_left: null as number|null,
             };
         },
         computed: {
@@ -289,6 +300,31 @@
                 }
 
                 return this.vplayback_store.getPlayingAudioClip.audio_volume_peaks;
+            },
+            getLambdaAttemptsLeft() : string {
+
+                if(this.lambda_attempts_left === null){
+
+                    return '';
+
+                }else if(
+                    this.lambda_attempts_left > 1 ||
+                    this.lambda_attempts_left === 0
+                ){
+
+                    return this.lambda_attempts_left.toString() + ' attempts left.';
+
+                }else{
+
+                    return '1 attempt left.';
+                }
+            },
+            canShowLambdaAttemptsLeft() : boolean {
+
+                return (
+                    this.lambda_attempts_left !== null &&
+                    this.lambda_attempts_left <= 2
+                );
             },
         },
         watch: {
@@ -636,6 +672,10 @@
                         }
                     });
                 }
+            },
+            updateLambdaAttemptsLeft(new_value:number|null) : void {
+
+                this.lambda_attempts_left = new_value;
             },
         },
         beforeMount(){

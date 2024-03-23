@@ -4,27 +4,25 @@
         class="flex flex-col gap-2 bg-theme-light"
     >
         <div class="h-20 relative">
-            <TransitionGroupFade :prop-has-absolute="true">
-                <VPlayback
-                    v-show="!is_recording"
-                    :propAudio="final_blob"
-                    :propAudioVolumePeaks="blob_volume_peaks"
-                    :propBucketQuantity="propBucketQuantity"
-                    :propIsRecording="is_recording"
-                    :propIsForRecording="true"
-                    :propIsOpen="propIsOpen"
-                    :propHasAudioClipTone="false"
-                    @isProcessing="handleIsPlaybackProcessing($event)"
-                    class="w-full h-full"
-                />
-                <VAudioVisualiser
-                    v-show="is_recording"
-                    :propNewPulse="recording_pulse"
-                    :propIntervalMs="interval_ms"
-                    :propIsRecording="is_recording"
-                    class="w-full h-full"
-                />
-            </TransitionGroupFade>
+            <VPlayback
+                v-show="!is_recording"
+                :propAudio="final_blob"
+                :propAudioVolumePeaks="blob_volume_peaks"
+                :propBucketQuantity="propBucketQuantity"
+                :propIsRecording="is_recording"
+                :propIsForRecording="true"
+                :propIsOpen="propIsOpen"
+                :propHasAudioClipTone="false"
+                @isProcessing="handleIsPlaybackProcessing($event)"
+                class="w-full h-full"
+            />
+            <VAudioVisualiser
+                v-show="is_recording"
+                :propNewPulse="recording_pulse"
+                :propIntervalMs="interval_ms"
+                :propIsRecording="is_recording"
+                class="w-full h-full"
+            />
         </div>
 
         <VRecorder
@@ -44,7 +42,6 @@
     import VRecorder from '../medium/VRecorder.vue';
     import VPlayback from '../medium/VPlayback.vue';
     import VAudioVisualiser from '../small/VAudioVisualiser.vue';
-    import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
 </script>
 
 

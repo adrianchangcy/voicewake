@@ -730,6 +730,10 @@ video {
   grid-column: span 6 / span 6;
 }
 
+.col-span-8 {
+  grid-column: span 8 / span 8;
+}
+
 .col-start-1 {
   grid-column-start: 1;
 }

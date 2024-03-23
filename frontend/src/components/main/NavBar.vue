@@ -592,7 +592,7 @@
 
             this.handleIsLogInSignUpStaticPage();
 
-            this.audio_clip_processings_store.processUntilNoneLeft();
+            this.audio_clip_processings_store.autoEvaluateAllAudioClipProcessings();
         },
     });
 </script>
