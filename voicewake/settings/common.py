@@ -236,7 +236,7 @@ DATABASES = {
         'PASSWORD': os.environ['DB_PASSWORD'],
         'HOST': os.environ['DB_HOST'],
         'PORT': int(os.environ['DB_PORT']),
-    }
+    },
 }
 
 
@@ -354,8 +354,8 @@ GENERAL_ROW_QUANTITY_PER_PAGE = 20
 
 
 #EVENT
-EVENT_CREATE_DAILY_LIMIT = 50      #compares from 00:00:00 UTC
-EVENT_REPLY_DAILY_LIMIT = 100       #compares from 00:00:00 UTC
+EVENT_CREATE_DAILY_LIMIT = 5      #compares from 00:00:00 UTC
+EVENT_REPLY_DAILY_LIMIT = 10       #compares from 00:00:00 UTC
 EVENT_REPLY_CHOICE_MAX_DURATION_S = 1200      #20 mins, when locked but is_replying=False
 EVENT_REPLY_MAX_DURATION_S = 3600       #60 mins, when locked and is_replying=True
 EVENT_QUANTITY_PER_PAGE = 10
@@ -414,6 +414,7 @@ CACHE_OTP_EMAIL_AGE_S = 86400   #1 day
 #CRONJOBS
 CRONJOB_DEFAULT_ROW_LIMIT = 100
 CELERY_IMPORTS = ("voicewake.tasks",)
+#if you have args to pass, specify "'args': (param1, param2)"
 CELERY_BEAT_SCHEDULE = {
     'cronjob_ban_audio_clips': {
         'task': 'voicewake.tasks.cronjob_ban_audio_clips',

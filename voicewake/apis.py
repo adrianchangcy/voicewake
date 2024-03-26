@@ -865,7 +865,8 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
                 settings.OTP_CREATION_TIMEOUT_S, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_S,
                 settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_S
             )
-            handle_user_otp_class.guarantee_user_otp_instance()
+
+            handle_user_otp_class.guarantee_user_otp_instance(select_for_update=True)
 
             #handle request for new OTP
             if new_data['is_requesting_new_otp'] is True:
@@ -1935,7 +1936,7 @@ class CreateEventsAPI(generics.GenericAPIView):
 
                 elif self.current_context == 'process':
 
-                    return create_audio_clips_class.normalise_and_update_records(
+                    return create_audio_clips_class.start_normalisation(
                         audio_clip_id=new_data['audio_clip_id'],
                     )
 
@@ -2057,7 +2058,7 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
         ]
 
         #start
-        audio_clips = AudioClips.objects.select_for_update(of=("self",)).prefetch_related(
+        audio_clips = AudioClips.objects.prefetch_related(
             'audio_clip_role',
             'event__generic_status',
             'event',
@@ -2080,6 +2081,8 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
                 #some of UserBlocks have many incomplete/completed event
 
 
+    #only to produce is_replying=False, i.e. choice
+    #does not involve is_replying=True, a.k.a. replying
     def lock_events_for_reply_choices(self, audio_clips)->list[EventReplyQueues]:
 
         #this is to lock events to show to users as reply choices
@@ -2130,32 +2133,148 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
         return bulk_event_reply_queues
 
 
-    #unlocks all
-    def unlock_events_from_reply_choices(self):
-
-        EventReplyQueues.objects.filter(
-            locked_for_user=self.request.user
-        ).delete()
-
-
-    #only unlocks expired events
-    def unlock_expired_events_from_reply_choices(self):
+    #involves both is_replying=False (choice) and is_replying=True (replying)
+    #pass only_expired_rows=True for "first time searching in UI"
+    #pass only_expired_rows=False for "skipped choice", "skipped replying"
+    def unlock_all_locked_events(self, only_expired_rows:bool):
 
         datetime_now = get_datetime_now()
 
+        when_locked_checkpoint = (
+            datetime_now - timedelta(seconds=settings.EVENT_REPLY_CHOICE_MAX_DURATION_S)
+        )
+
         #is_replying=False, a.k.a. reply choice
-        EventReplyQueues.objects.filter(
-            locked_for_user=self.request.user,
-            is_replying=False,
-            when_locked__lte=(datetime_now - timedelta(seconds=settings.EVENT_REPLY_CHOICE_MAX_DURATION_S))
-        ).delete()
+        #just deleting the queue will do
+
+        if only_expired_rows is True:
+
+            EventReplyQueues.objects.filter(
+                locked_for_user=self.request.user,
+                is_replying=False,
+                when_locked__lte=when_locked_checkpoint
+            ).delete()
+
+        else:
+
+            EventReplyQueues.objects.filter(
+                locked_for_user=self.request.user,
+                is_replying=False,
+            ).delete()
 
         #is_replying=True, a.k.a. replying
-        EventReplyQueues.objects.filter(
-            locked_for_user=self.request.user,
-            is_replying=True,
-            when_locked__lte=(datetime_now - timedelta(seconds=settings.EVENT_REPLY_MAX_DURATION_S))
-        ).delete()
+        #will have audio clips
+
+        when_locked_checkpoint = (
+            datetime_now - timedelta(seconds=settings.EVENT_REPLY_MAX_DURATION_S)
+        )
+
+        #first, get generic_status where generic_status_name is "processing"
+        #select event_reply_queues where:
+            #locked for current user
+            #is replying
+            #choose only expired rows, or disregard expiry
+        #delete selected event_reply_queues, return event_id
+        #update events where:
+            #id matches deleted event_reply_queues
+            #is "processing", i.e. has any 1 audio clip as "processing"
+            #change to "incomplete"
+            #return event_id from deleted event_reply_queues
+        #delete audio_clips where:
+            #belongs to current user
+            #is processing
+            #event_id matches passed event_id from deleted event_reply_queues
+            #return id affected by this deletion
+        #clear cache for processing audio clips
+            #relies on id returned by raw query
+        full_sql = '''
+            WITH
+            generic_status_processing AS (
+                SELECT id FROM generic_statuses AS gs
+                WHERE gs.generic_status_name = %s
+            ),
+            target_event_reply_queues AS (
+                SELECT erq.id, erq.event_id
+                FROM event_reply_queues AS erq
+                WHERE erq.locked_for_user_id = %s
+                AND erq.is_replying IS TRUE
+            '''
+
+        if only_expired_rows is True:
+
+            full_sql += '''
+                AND erq.when_locked <= %s
+            '''
+
+        full_sql += '''
+            ),
+            deleted_event_reply_queues AS (
+                DELETE FROM event_reply_queues AS erq
+                USING target_event_reply_queues AS terq
+                WHERE erq.id = terq.id
+                RETURNING terq.event_id
+            ),
+            updated_events AS (
+                UPDATE events AS e
+                SET generic_status_id = (
+                    SELECT id FROM generic_statuses AS gs
+                    WHERE gs.generic_status_name = %s
+                )
+                FROM deleted_event_reply_queues AS derq
+                WHERE e.generic_status_id = generic_status_processing.id
+                AND e.id = derq.event_id
+                RETURNING derq.event_id
+            )
+            DELETE FROM audio_clips AS ac
+            USING updated_events AS ue
+            WHERE ac.user_id = %s
+            AND ac.generic_status_id = generic_status_processing.id
+            AND ac.event_id = derq.event_id
+            RETURNING ac.id
+            ;
+        '''
+
+        full_params = [
+            'processing',
+            self.request.user.id,
+        ]
+
+        if only_expired_rows is True:
+
+            full_params += [
+                datetime_to_raw_sql_string(when_locked_checkpoint),
+            ]
+
+        full_params += [
+            'incomplete',
+            self.request.user.id,
+        ]
+
+        #clear cache that tracks processing audio clips
+
+        target_cache_keys = []
+
+        with connection.cursor() as cursor:
+
+            cursor.execute(
+                full_sql,
+                full_params
+            )
+
+            #expect only AudioClips.id as (id,) tuple
+
+            for row in cursor.fetchall():
+
+                target_cache_keys.append(
+                    CreateAudioClips.determine_processing_cache_key(
+                        audio_clip_id=row[0]
+                    )
+                )
+
+        #delete cache
+        #cache content is irrelevant
+
+        cache.delete_many(target_cache_keys)
 
 
     #gets both is_replying=True/False events
@@ -2221,13 +2340,13 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
 
         if new_data['unlock_all_locked_events'] is True:
 
-            #auto-remove all reply choices
-            self.unlock_events_from_reply_choices()
+            #auto-remove all locked events
+            self.unlock_all_locked_events(only_expired_rows=False)
 
         elif new_data['unlock_all_locked_events'] is False:
 
-            #auto-remove expired reply choices only
-            self.unlock_expired_events_from_reply_choices()
+            #auto-remove all locked events that are expired only
+            self.unlock_all_locked_events(only_expired_rows=True)
 
             #since user still wants non-expired reply choices, we get, if any
             audio_clips = self.get_audio_clips_from_locked_events()
@@ -2280,36 +2399,34 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
 
             #proceed with getting new reply choices
 
-            with transaction.atomic():
+            audio_clips = self.get_audio_clips_by_incomplete_events(audio_clip_tone_id=new_data['audio_clip_tone_id'])
 
-                audio_clips = self.get_audio_clips_by_incomplete_events(audio_clip_tone_id=new_data['audio_clip_tone_id'])
+            if len(audio_clips) == 0:
 
-                if len(audio_clips) == 0:
-
-                    #no eligible events
-                    return Response(
-                        data={
-                            'data': [],
-                        },
-                        status=status.HTTP_200_OK
-                    )
-
-                #lock events and get event_reply_queues
-                event_reply_queues = self.lock_events_for_reply_choices(audio_clips)
-
-                #return
-                result = group_audio_clips_into_events_and_event_reply_queues(audio_clips, event_reply_queues)
-                serializer = LockedEventsAndAudioClipsAPISerializer(
-                    result,
-                    many=True,
-                )
-
+                #no eligible events
                 return Response(
                     data={
-                        'data': serializer.data,
+                        'data': [],
                     },
                     status=status.HTTP_200_OK
                 )
+
+            #lock events and get event_reply_queues
+            event_reply_queues = self.lock_events_for_reply_choices(audio_clips)
+
+            #return
+            result = group_audio_clips_into_events_and_event_reply_queues(audio_clips, event_reply_queues)
+            serializer = LockedEventsAndAudioClipsAPISerializer(
+                result,
+                many=True,
+            )
+
+            return Response(
+                data={
+                    'data': serializer.data,
+                },
+                status=status.HTTP_200_OK
+            )
 
         except Exception as e:
 
@@ -2405,8 +2522,9 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
         datetime_now = get_datetime_now()
 
-        try:
+        with transaction.atomic():
 
+            #no 'try' here, let main call catch exception
             target_event_reply_queue = EventReplyQueues.objects.select_for_update(
                 of=("self",)
             ).select_related(
@@ -2416,99 +2534,103 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                 event_id=event_id,
             )
 
-        except EventReplyQueues.DoesNotExist:
+            #deny if already replying
+            if target_event_reply_queue.is_replying is True:
 
-            return Response(
-                data={
-                    'message': 'Cannot start replying when this event was not queued.',
-                },
-                status=status.HTTP_400_BAD_REQUEST
+                return Response(
+                    data={
+                        'message': 'You are already replying in this event.',
+                    },
+                    status=status.HTTP_200_OK
+                )
+
+            #not yet replying, proceed
+
+            #check and ensure event availability
+            if target_event_reply_queue.event.generic_status.generic_status_name != 'incomplete':
+
+                #remove expired reply choice
+                target_event_reply_queue.delete()
+
+                return Response(
+                    data={
+                        'message': 'This event is no longer available for reply.',
+                        'can_retry': False,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            #check for expiry
+            if(
+                target_event_reply_queue.when_locked <
+                (datetime_now - timedelta(seconds=settings.EVENT_REPLY_CHOICE_MAX_DURATION_S))
+            ):
+
+                #remove expired reply choice
+                target_event_reply_queue.delete()
+
+                return Response(
+                    data={
+                        'message': 'The choice to reply in this event has expired.',
+                        'can_retry': False,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            #not yet expired, proceed
+
+            #unlock other reply choices
+            self._unlock_reply_choices(excluded_event_id=target_event_reply_queue.event_id)
+
+            #user is officially replying
+            target_event_reply_queue.when_locked = datetime_now
+            target_event_reply_queue.is_replying = True
+            target_event_reply_queue.save()
+
+            serializer = EventReplyQueuesSerializer(
+                target_event_reply_queue,
+                many=False,
             )
 
-        #deny if already replying
-        if target_event_reply_queue.is_replying is True:
-
             return Response(
                 data={
-                    'message': 'You are already replying in this event.',
+                    'data': serializer.data,
+                    'message': 'You are now replying in this event.',
                 },
                 status=status.HTTP_200_OK
             )
 
-        #not yet replying, proceed
 
-        #check and ensure event availability
-        if target_event_reply_queue.event.generic_status.generic_status_name != 'incomplete':
-
-            #remove expired reply choice
-            target_event_reply_queue.delete()
-
-            return Response(
-                data={
-                    'message': 'This event is no longer available for reply.',
-                    'can_retry': False,
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        #check for expiry
-        if(
-            target_event_reply_queue.when_locked <
-            (datetime_now - timedelta(seconds=settings.EVENT_REPLY_CHOICE_MAX_DURATION_S))
-        ):
-
-            #remove expired reply choice
-            target_event_reply_queue.delete()
-
-            return Response(
-                data={
-                    'message': 'The choice to reply in this event has expired.',
-                    'can_retry': False,
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        #not yet expired, proceed
-
-        #unlock other reply choices
-        self._unlock_reply_choices(excluded_event_id=target_event_reply_queue.event_id)
-
-        #user is officially replying
-        target_event_reply_queue.when_locked = datetime_now
-        target_event_reply_queue.is_replying = True
-        target_event_reply_queue.save()
-
-        serializer = EventReplyQueuesSerializer(
-            target_event_reply_queue,
-            many=False,
-        )
-
-        return Response(
-            data={
-                'data': serializer.data,
-                'message': 'You are now replying in this event.',
-            },
-            status=status.HTTP_200_OK
-        )
-
-
-    #as long as EventReplyQueue for correct locked_for_user and event_id exists, delete
-    #don't delete AudioClips that are still processing
-        #let cronjob catch them when overdue
-        #we want to let processing AudioClip to complete, even when user cancels halfway through
+    #only delete if is_replying=True
+    #only mark audio clip as deleted, and not actually delete, so we can enforce daily limit
     def cancel_reply_in_event(self, event_id:int):
 
-        deleted_count, deleted_rows = EventReplyQueues.objects.filter(
+        event_reply_queue = None
+
+        #no 'try' here, let main call catch exception
+        event_reply_queue = EventReplyQueues.objects.get(
             locked_for_user=self.request.user,
             event_id=event_id,
-        ).delete()
+            is_replying=True
+        )
 
-        if deleted_count == 0:
+        #delete event reply queue, then audio clip as "deleted", then reset event to "incomplete"
 
-            raise EventReplyQueues.DoesNotExist
+        EventReplyQueues.objects.filter(pk=event_reply_queue.id).delete()
 
-        #intentionally have no message
-        #UI does not need it
+        AudioClips.objects.filter(
+            user=self.request.user,
+            event_id=event_reply_queue.event_id,
+        ).update(
+            generic_status=GenericStatuses.objects.get(generic_status_name='deleted')
+        )
+
+        Events.objects.filter(
+            pk=event_reply_queue.event_id
+        ).update(
+            generic_status=GenericStatuses.objects.get(generic_status_name='incomplete')
+        )
+
         return Response(
             data={
             },
@@ -2600,26 +2722,24 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
             #proceed
 
-            with transaction.atomic():
+            if self.current_context == "start":
 
-                if self.current_context == "start":
+                #start replying
+                return self.start_reply_in_event(new_data['event_id'])
 
-                    #start replying
-                    return self.start_reply_in_event(new_data['event_id'])
+            elif self.current_context == 'upload':
 
-                elif self.current_context == 'upload':
+                return create_audio_clips_class.create_records_and_return_s3_endpoint_as_responder(
+                    event_id=new_data['event_id'],
+                    audio_clip_tone_id=new_data['audio_clip_tone_id'],
+                    recorded_file_extension=new_data['recorded_file_extension'],
+                )
 
-                    return create_audio_clips_class.create_records_and_return_s3_endpoint_as_responder(
-                        event_id=new_data['event_id'],
-                        audio_clip_tone_id=new_data['audio_clip_tone_id'],
-                        recorded_file_extension=new_data['recorded_file_extension'],
-                    )
+            elif self.current_context == 'process':
 
-                elif self.current_context == 'process':
-
-                    return create_audio_clips_class.normalise_and_update_records(
-                        audio_clip_id=new_data['audio_clip_id'],
-                    )
+                return create_audio_clips_class.start_normalisation(
+                    audio_clip_id=new_data['audio_clip_id'],
+                )
 
         except AudioClipTones.DoesNotExist:
 
