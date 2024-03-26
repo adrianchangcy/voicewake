@@ -15,6 +15,14 @@ from django.conf import settings
 
 
 
+#tight coupling between event_reply_queue and normalising/processing audio clips
+    #easier to maintain/manage when all share the same timeframe
+    #drawback is that when time is nearly up, most likely no chance for reupload
+        #just increase reply duration
+    #tried and failed alternative:
+        #keep processing separate, i.e. only delete queue first
+        #was to allow users more time to process
+        #but this "time is nearly up" is unavoidable, even for this context
 #deletion
     #deletion via raw query
         #only used if affected table has no signal to send, and has no FK
@@ -402,6 +410,7 @@ def cronjob_handle_responder_processing_overdue():
     cache.delete_many(target_cache_keys)
 
 
+@shared_task
 def cronjob_delete_audio_clip_processing_overdue():
 
     #here, truly delete from db
@@ -442,6 +451,14 @@ def cronjob_delete_audio_clip_processing_overdue():
 
 
 
+@shared_task(rate_limit='100/m')
+def test_task(event_id):
+    print('event_name: ' + Events.objects.get(pk=event_id).event_name)
+
+
+@shared_task(rate_limit='100/m')
+def task_add(x,y):
+    print(x+y)
 
 
 

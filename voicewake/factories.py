@@ -58,6 +58,7 @@ class EventsFactory(DjangoModelFactory):
         model = Events
 
     class Params:
+        event_event_name = ''
         event_created_by = None
         event_generic_status_generic_status_name = ''
 
@@ -68,7 +69,11 @@ class EventsFactory(DjangoModelFactory):
             else o.event_created_by
         )
     )
-    event_name = 'test event'
+    event_name = factory.LazyAttribute(
+        lambda o : (
+            'test event' if o.event_event_name == '' else o.event_event_name
+        )
+    )
     generic_status = factory.LazyAttribute(
         lambda o : (
             GenericStatuses.objects.get(

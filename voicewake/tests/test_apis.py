@@ -12,6 +12,8 @@ from django.db.models import Count
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
 from django.core.cache import cache
+from celery.contrib.testing.worker import start_worker
+from celery.result import AsyncResult
 
 #py packages
 import io
@@ -40,7 +42,9 @@ from voicewake.models import *
 from voicewake.tasks import *
 from voicewake.factories import *
 from voicewake.lambdas import *
+from voicewake.celery import app
 from django.conf import settings
+
 
 
 #tests always auto-override DEBUG to False
@@ -61,25 +65,67 @@ def ensure_otp_is_always_wrong(otp):
 
 @override_settings(
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
-    MEDIA_ROOT = os.path.join(settings.BASE_DIR, 'voicewake/tests'),
+    MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'voicewake/tests'),
+    # CELERY_TASK_ALWAYS_EAGER=True,
+    # CELERY_TASK_EAGER_PROPOGATES=True,
 )
 class Random_TestCase(TestCase):
 
     def test_random(self):
 
+        target_event = EventsFactory(
+            event_event_name='yooo Celery!!',
+            event_generic_status_generic_status_name='incomplete'
+        )
+
+        # the_task = test_task.s(target_event.id).delay()
+        the_task = task_add.s(2,2).delay()
+
+        print('before')
+        print(the_task.ready())
+        print('after')
+
+        
 
 
+    @classmethod
+    def setUpTestData(cls):
 
-
-
+        #no need ping in tests, not crucial
+        #would cause error as it tries to find celery.ping and fails
+        cls.celery_worker = start_worker(app, perform_ping_check=False)
+        cls.celery_worker.__enter__()
         pass
+
+
+    @classmethod
+    def tearDownClass(cls):
+
+        time.sleep(10)
+
+        cls.celery_worker.__exit__(None, None, None)
+        cache.clear()
+        pass
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 
 @override_settings(
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
-    MEDIA_ROOT = os.path.join(settings.BASE_DIR, 'voicewake/tests'),
+    MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'voicewake/tests'),
 )
 class AWS_TestCase(TestCase):
 
@@ -880,7 +926,7 @@ class AudioClips_TestCase(TestCase):
 #not yet adjusted to use FactoryBoy
 @override_settings(
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
-    MEDIA_ROOT = os.path.join(settings.BASE_DIR, 'voicewake/tests'),
+    MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'voicewake/tests'),
 )
 class CoreProcess_TestCase(TestCase):
 
@@ -1638,7 +1684,7 @@ class CoreProcess_TestCase(TestCase):
 
         sample_audio_clip_0.refresh_from_db()
 
-        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'processing_overdue')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'processing_max_attempts_reached')
 
 
     def test_create_event__process__no_rows(self):
@@ -4088,7 +4134,7 @@ class CoreProcess_TestCase(TestCase):
 
         sample_audio_clip_1.refresh_from_db()
 
-        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'processing_overdue')
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'processing_max_attempts_reached')
 
 
     def test_create_reply__process__no_rows(self):
@@ -5833,7 +5879,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
         )
 
 
-    def test_create_event__process__lambda_failure(self):
+    def test_create_event__process__lambda_failure_ok(self):
 
         self.login(self.users[0])
 
@@ -5880,6 +5926,54 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
             sample_audio_clip_0.audio_file,
             self.faulty_audio_file_unprocessed_object_key
         )
+
+
+    def test_create_event__process__lambda_failure_on_last_attempt(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+            audio_clip_audio_file=self.faulty_audio_file_unprocessed_object_key,
+        )
+
+        #proceed
+
+        with self.settings(
+            AWS_LAMBDA_CALL_MAX_ATTEMPTS=1,
+        ):
+
+            data = {
+                'audio_clip_id': sample_audio_clip_0.id,
+            }
+
+            request = self.client.post(reverse('create_events_process_api'), data)
+
+            result_data = (bytes(request.content).decode())
+            result_data = json.loads(result_data)
+
+            print(request.content)
+
+            self.assertEqual(request.status_code, 404)
+
+            sample_audio_clip_0.refresh_from_db()
+
+            self.assertEqual(
+                sample_audio_clip_0.generic_status.generic_status_name,
+                'processing_max_attempts_reached'
+            )
+            self.assertEqual(
+                sample_audio_clip_0.audio_file,
+                self.faulty_audio_file_unprocessed_object_key
+            )
 
 
     def test_create_reply__process__ok(self):
@@ -5939,7 +6033,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
         )
 
 
-    def test_create_reply__process__lambda_failure(self):
+    def test_create_reply__process__lambda_failure_ok(self):
 
         self.login(self.users[0])
 
@@ -5957,7 +6051,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='processing',
             audio_clip_audio_file=self.faulty_audio_file_unprocessed_object_key,
@@ -5983,8 +6077,13 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
             int(os.environ['AWS_LAMBDA_CALL_MAX_ATTEMPTS']) - 1
         )
 
+        sample_event_0.refresh_from_db()
         sample_audio_clip_1.refresh_from_db()
 
+        self.assertEqual(
+            sample_event_0.generic_status.generic_status_name,
+            'processing'
+        )
         self.assertEqual(
             sample_audio_clip_1.generic_status.generic_status_name,
             'processing'
@@ -5993,6 +6092,63 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
             sample_audio_clip_1.audio_file,
             self.faulty_audio_file_unprocessed_object_key
         )
+
+
+    def test_create_reply__process__lambda_failure_on_last_attempt(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+            audio_clip_audio_file=self.faulty_audio_file_unprocessed_object_key,
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+            audio_clip_audio_file=self.faulty_audio_file_unprocessed_object_key,
+        )
+
+        #proceed
+
+        with self.settings(
+            AWS_LAMBDA_CALL_MAX_ATTEMPTS=1,
+        ):
+
+            data = {
+                'audio_clip_id': sample_audio_clip_1.id,
+            }
+
+            request = self.client.post(reverse('create_events_process_api'), data)
+
+            result_data = (bytes(request.content).decode())
+            result_data = json.loads(result_data)
+
+            print(request.content)
+
+            self.assertEqual(request.status_code, 404)
+
+            sample_event_0.refresh_from_db()
+            sample_audio_clip_1.refresh_from_db()
+
+            self.assertEqual(
+                sample_audio_clip_1.generic_status.generic_status_name,
+                'processing_max_attempts_reached'
+            )
+            self.assertEqual(
+                sample_audio_clip_1.audio_file,
+                self.faulty_audio_file_unprocessed_object_key
+            )
 
 
     def test_create_reply__process__queue_expired_ok(self):

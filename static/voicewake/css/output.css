@@ -650,6 +650,10 @@ video {
   left: 0.5rem;
 }
 
+.left-6 {
+  left: 1.5rem;
+}
+
 .right-0 {
   right: 0px;
 }
@@ -660,6 +664,10 @@ video {
 
 .right-4 {
   right: 1rem;
+}
+
+.right-6 {
+  right: 1.5rem;
 }
 
 .top-0 {
@@ -684,14 +692,6 @@ video {
 
 .top-\[0\.54rem\] {
   top: 0.54rem;
-}
-
-.left-6 {
-  left: 1.5rem;
-}
-
-.right-6 {
-  right: 1.5rem;
 }
 
 .-z-10 {
@@ -977,10 +977,6 @@ video {
   height: calc(100vh - 4.5rem);
 }
 
-.h-\[your_height\+all_padding\] {
-  height: your height+all padding;
-}
-
 .h-fit {
   height: -moz-fit-content;
   height: fit-content;
@@ -990,16 +986,8 @@ video {
   height: 100%;
 }
 
-.h-\[14\.75rem\] {
-  height: 14.75rem;
-}
-
 .max-h-\[90\%\] {
   max-height: 90%;
-}
-
-.max-h-full {
-  max-height: 100%;
 }
 
 .min-h-\[14\.75rem\] {
@@ -1013,14 +1001,6 @@ video {
 .min-h-fit {
   min-height: -moz-fit-content;
   min-height: fit-content;
-}
-
-.min-h-screen {
-  min-height: 100vh;
-}
-
-.min-h-\[10rem\] {
-  min-height: 10rem;
 }
 
 .w-0 {
@@ -1685,11 +1665,6 @@ video {
   padding-right: 1rem;
 }
 
-.px-6 {
-  padding-left: 1.5rem;
-  padding-right: 1.5rem;
-}
-
 .py-1 {
   padding-top: 0.25rem;
   padding-bottom: 0.25rem;
@@ -1729,6 +1704,10 @@ video {
 
 .pb-10 {
   padding-bottom: 2.5rem;
+}
+
+.pb-12 {
+  padding-bottom: 3rem;
 }
 
 .pb-14 {
@@ -1845,10 +1824,6 @@ video {
 
 .pt-\[1px\] {
   padding-top: 1px;
-}
-
-.pb-12 {
-  padding-bottom: 3rem;
 }
 
 .text-left {
@@ -2101,10 +2076,6 @@ video {
   transition-delay: 500ms;
 }
 
-.delay-1000 {
-  transition-delay: 1000ms;
-}
-
 .duration-150 {
   transition-duration: 150ms;
 }
@@ -2119,10 +2090,6 @@ video {
 
 .duration-500 {
   transition-duration: 500ms;
-}
-
-.duration-1000 {
-  transition-duration: 1000ms;
 }
 
 .ease-in {
