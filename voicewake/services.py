@@ -48,6 +48,7 @@ from botocore.config import Config
 #app files
 from .models import *
 from .serializers import *
+from .tasks import task_normalisation
 
 
 #also deletes uer_x folder if empty after deletion
@@ -413,7 +414,7 @@ def get_serializer_error_message(serializer)->str:
         for first_error in serializer.errors[key]:
             return key + ": " + first_error
 
-    raise ValueError("Could not get error message from serializer.")
+    return ''
 
 
 def copy_to_clipboard(full_string:str):
@@ -793,32 +794,6 @@ class HandleUserOTP(TOTPVerification):
         self.user_otp_instance.delete()
         self.user_otp_instance = None
         return True
-
-
-    def send_otp_email(self, recipient_email, subject, direction, otp):
-
-        #we can freely use math.ceil() as long as TOTP_TOLERANCE_S is sufficient
-        otp_expiry = settings.TOTP_VALIDITY_S / 60
-        otp_expiry = str(math.ceil(otp_expiry))
-
-        email_message = get_template('email/otp.html').render(context={
-            'otp_direction': direction,
-            'otp': otp,
-            'otp_expiry': '%s minutes' % (otp_expiry),
-            'cache_age': settings.CACHE_OTP_EMAIL_AGE_S,
-        })
-
-        send_mail(
-            subject=subject,
-            message='',
-            html_message=email_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[recipient_email],
-            fail_silently=True
-        )
-
-        return True
-
 
 
 
@@ -1295,21 +1270,28 @@ class CreateAudioClips():
         return math.ceil(pretty_difference_s)
 
 
-    def _determine_processed_upload_key(self)->str:
+    @staticmethod
+    def determine_processed_upload_key(
+        unprocessed_upload_key:str,
+        unprocessed_file_extensions:list,
+        processed_file_extension:str,
+    )->str:
 
         #we simply swap the extension of unprocessed_upload_key
         #we don't have to do detailed string checks
             #will compare directly with AudioClips.audio_file for validation
 
-        if self.audio_clip is None:
+        if (
+            len(unprocessed_upload_key) == 0 or
+            len(unprocessed_file_extensions) == 0 or
+            len(processed_file_extension) == 0
+        ):
 
             raise custom_error(
                 ValueError,
                 __name__,
-                dev_message='Missing required records.',
+                dev_message='Invalid.',
             )
-
-        current_upload_key = self.audio_clip.audio_file
 
         #file extension is not yet of processed type
         #we determine what the processed key looks like, by simply swapping the extension properly
@@ -1317,22 +1299,22 @@ class CreateAudioClips():
         #when counting position from end, it starts from index -1, not 0
             #index 2 lands you on 0,1,2nd, but -2 lands you on -1,-2
 
-        for unprocessed_file_extension in self.unprocessed_file_extensions:
+        for unprocessed_file_extension in unprocessed_file_extensions:
 
-            current_upload_key_extension = current_upload_key[
-                -len(unprocessed_file_extension):len(current_upload_key)
+            current_upload_key_extension = unprocessed_upload_key[
+                -len(unprocessed_file_extension):len(unprocessed_upload_key)
             ]
 
             if current_upload_key_extension == unprocessed_file_extension:
 
-                processed_upload_key = current_upload_key[0:-len(unprocessed_file_extension)]
+                processed_upload_key = unprocessed_upload_key[0:-len(unprocessed_file_extension)]
 
-                processed_upload_key += self.processed_file_extension
+                processed_upload_key += processed_file_extension
 
                 #return appropriate processed key
                 return processed_upload_key
 
-            elif current_upload_key_extension == self.processed_file_extension:
+            elif current_upload_key_extension == processed_file_extension:
 
                 #already with processed file extension
                 #return '' for better error handling
@@ -1341,8 +1323,10 @@ class CreateAudioClips():
         raise custom_error(
             ValueError,
             __name__,
-            dev_message='upload_key ' + current_upload_key + ' is not of ' + str(self.unprocessed_file_extensions),
-            user_message='Invalid upload_key.'
+            dev_message=f'''
+                upload_key {unprocessed_upload_key} is not of 
+                {str(unprocessed_file_extensions)}
+            '''
         )
 
 
@@ -1486,9 +1470,7 @@ class CreateAudioClips():
                 dev_message="Missing required records."
             )
 
-        #audio_clip is guaranteed by self.get_records_for_normalise_...() to belong to request.user
-        #do it here again for sanity check
-
+        #sanity check
         if self.audio_clip.user.id != self.user.id:
 
             raise custom_error(
@@ -1509,7 +1491,7 @@ class CreateAudioClips():
 
             #not yet processed
             #ok
-            pass
+            return None
 
         elif (
             self.audio_clip.generic_status.generic_status_name == 'ok' and
@@ -1521,33 +1503,18 @@ class CreateAudioClips():
             #already processed
             return Response(
                 data={
-                    "message": "Recording is already processed.",
                     "is_processed": True,
                 },
                 status=status.HTTP_200_OK
             )
 
-        elif (
-            self.audio_clip.generic_status.generic_status_name == 'processing_max_attempts_reached'
-        ):
+        else:
 
-            #overdue
             return Response(
                 data={
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
-
-        else:
-
-            raise custom_error(
-                ValueError,
-                __name__,
-                user_message='This recording could not be processed.',
-            )
-
-        #ok
-        return None
 
 
     def _ensure_processing_cache_exists(self):
@@ -1579,7 +1546,9 @@ class CreateAudioClips():
             #max attempts reached
             #set as "processing_max_attempts_reached", delete cache
 
-            self.audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='processing_max_attempts_reached')
+            self.audio_clip.generic_status = GenericStatuses.objects.get(
+                generic_status_name='processing_max_attempts_reached'
+            )
             self.audio_clip.save()
 
             cache.delete(self.processing_cache_key)
@@ -1873,8 +1842,6 @@ class CreateAudioClips():
 
             audio_clip_role_name = 'responder'
 
-        #currently no .select_for_update()
-
         self.audio_clip = AudioClips.objects.select_related(
             'generic_status',
             'audio_clip_role',
@@ -1884,9 +1851,7 @@ class CreateAudioClips():
             audio_clip_role__audio_clip_role_name=audio_clip_role_name,
         )
 
-        self.event = Events.objects.select_for_update(
-            of=("self",)
-        ).select_related(
+        self.event = Events.objects.select_related(
             'generic_status',
         ).get(
             pk=self.audio_clip.event_id
@@ -1920,7 +1885,11 @@ class CreateAudioClips():
         #determine processed upload_key from unprocessed
         #simply by switching extension
 
-        determined_processed_upload_key = self._determine_processed_upload_key()
+        determined_processed_upload_key = self.determine_processed_upload_key(
+            self.audio_clip.audio_file,
+            self.unprocessed_file_extensions,
+            self.processed_file_extension
+        )
 
         if determined_processed_upload_key == '':
 
@@ -1933,200 +1902,104 @@ class CreateAudioClips():
                 '''
             )
 
-        #call Lambda to normalise and transfer file to processed bucket
-        #we track our attempts before Lambda, rather than after, to prevent "spam invoke on error"
+        #queue Lambda as task to normalise and transfer file to processed bucket
 
-
-
-        #add normalisation to task queue
-
-
-    def normalisation_task_queue(self):
-
-        #missing row fetch
-
-        self._initialise_lambda_wrapper()
-        self._ensure_processing_cache_exists()
-
-        if self.processing_cache['is_processing'] is True:
-
-            return Response(
-                data={
-                    "is_processing": True,
-                },
-                status=status.HTTP_409_CONFLICT
-            )
-
-        determined_processed_upload_key = self._determine_processed_upload_key()
-
-        if determined_processed_upload_key == '':
-
-            raise custom_error(
-                ValueError,
-                __name__,
-                dev_message=f'''
-                    Unexpected AudioClips.audio_file.
-                    AudioClips.id: {str(self.audio_clip.id)}
-                '''
-            )
-
-        #call lambda
-        #may take a while, so consider cronjobs and race conditions that may affect db rows
-
-        self._ensure_processing_cache_exists()
-
-        #increment attempt
-        self.processing_cache['is_processing'] = True
-        self.processing_cache['attempts'] += 1
-
-        cache.set(
-            self.processing_cache_key,
-            self.processing_cache,
-            timeout=settings.AUDIO_CLIP_UNPROCESSED_EXPIRY_S
-        )
-
-        #refer to AWSLambdaNormaliseAudioClips.create_return_response()
-        #when ok, will always return 200
-        try:
-
-            lambda_response_data = self.lambda_wrapper.invoke_normalise_audio_clips_lambda(
-                s3_region_name=os.environ['AWS_S3_REGION_NAME'],
-                unprocessed_object_key=self.audio_clip.audio_file,
-                processed_object_key=determined_processed_upload_key,
-                unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
-                processed_bucket_name=os.environ['AWS_S3_MEDIA_BUCKET_NAME'],
-            )
-
-        except:
-
-            #unexpected issues
-            #if the cause is malicious file, will probably try again
-            #next API call will evaluate max attempts at beginning, and respond accordingly
-            raise custom_error(
-                ValueError,
-                __name__,
-                dev_message='invoking lambda had unexpectedly failed',
-                user_message='Something went wrong. Try again later.'
-            )
-
-        finally:
-
-            #no longer processing
-            self.processing_cache['is_processing'] = False
-            cache.set(self.processing_cache_key, self.processing_cache)
-
-        #validate lambda response
-
-        serializer = AWSLambdaNormaliseAudioClipsAPISerializer(data=lambda_response_data, many=False)
-
-        if (
-            serializer.is_valid() is False or
-            serializer.validated_data['lambda_status_code'] != 200
-        ):
-
-            print(get_serializer_error_message(serializer))
-
-            #evaluate attempts again
-            #this has better UX, compared to only evaluating attempts at beginning
-
-            error_response = self._check_processing_attempts()
-
-            if error_response is not None:
-
-                return error_response
-
-            else:
-
-                attempts_left = int(os.environ['AWS_LAMBDA_CALL_MAX_ATTEMPTS']) - self.processing_cache['attempts']
-
-                #still has attempts
-                return Response(
-                    data={
-                        'message': 'Unable to process your recording. Try a different one.',
-                        'attempts_left': attempts_left,
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-        #ok, proceed
-
-        #refresh
-        self.audio_clip.refresh_from_db()
-        self.event.refresh_from_db()
-
-        #check again
-        error_response = self._check_can_process_database_rows()
-
-        if error_response is not None:
-
-            return error_response
-
-        #get data
-        lambda_response_data = serializer.validated_data
-        generic_status_ok = GenericStatuses.objects.get(generic_status_name='ok')
-        datetime_now = get_datetime_now()
-
-        #update audio clip
-
-        #.update() and .filter().update() executes immediately
-        #.update() returns rows affected, which we use to check for success
-        AudioClips.objects.filter(
-            pk=self.audio_clip.id,
-            generic_status__generic_status_name='processing',
-        ).update(
-            audio_duration_s=lambda_response_data['audio_duration_s'],
-            audio_volume_peaks=lambda_response_data['audio_volume_peaks'],
-            audio_file=determined_processed_upload_key,
-            generic_status=generic_status_ok,
-            last_modified=datetime_now
-        )
-
-        #update event
-
-        event_generic_status_name = ''
-
-        if self.audio_clip.audio_clip_role.audio_clip_role_name == 'originator':
-
-            event_generic_status_name = 'incomplete'
-
-        elif self.audio_clip.audio_clip_role.audio_clip_role_name == 'responder':
-
-            event_generic_status_name = 'completed'
-
-        Events.objects.filter(
-            pk=self.event.id,
-            generic_status__generic_status_name='processing',
-        ).update(
-            generic_status=GenericStatuses.objects.get(generic_status_name=event_generic_status_name),
-            last_modified=datetime_now
-        )
-
-        #delete queue, if any
-
-        if self.audio_clip.audio_clip_role.audio_clip_role_name == 'responder':
-
-            EventReplyQueues.objects.filter(
-                event_id=self.event.id,
-                locked_for_user=self.user
-            ).delete()
-
-        #delete lambda call record from cache on success
-        cache.delete(self.processing_cache_key)
-        self.processing_cache = None
-
-        #no need to call .refresh_from_db() for self.audio_clip and self.event
-        #this function is the last step
+        task_normalisation.s(
+            user_id=self.user.id,
+            processing_cache_key=self.processing_cache_key,
+            audio_clip_id=self.audio_clip.id,
+            event_id=self.event.id
+        ).delay()
 
         return Response(
             data={
-                "message": "Recording was successfully uploaded.",
-                "is_processed": True,
             },
             status=status.HTTP_200_OK
         )
 
 
+    def check_normalisation_status(self, user_id:int, audio_clip_id:int)->Response:
 
+        #do not create or modify anything here
+        #404 if no longer available
+        #409 if is processing
+        #200 if processing is successful/failed
+
+        target_audio_clip = None
+
+        try:
+
+            target_audio_clip = AudioClips.objects.select_related(
+                'generic_status',
+            ).get(
+                pk=audio_clip_id,
+                user_id=user_id,
+            )
+
+        except AudioClips.DoesNotExist:
+
+            return Response(
+                data={
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        #check
+
+        if target_audio_clip.generic_status.generic_status_name == 'ok':
+
+            #already processed
+            return Response(
+                data={
+                    'is_processed': True
+                },
+                status=status.HTTP_200_OK
+            )
+
+        elif target_audio_clip.generic_status.generic_status_name != 'processing':
+
+            #no longer processing
+            return Response(
+                data={
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        processing_cache = cache.get(
+            self.determine_processing_cache_key(audio_clip_id),
+            None
+        )
+
+        #409 if processing
+        #when cache is not yet created,
+        #it is when normalisation is just about to start
+
+        if (
+            processing_cache is None or
+            processing_cache['is_processing'] is True
+        ):
+
+            return Response(
+                data={
+                    'is_processing': True
+                },
+                status=status.HTTP_409_CONFLICT
+            )
+
+        #not processing
+        #check attempts
+
+        attempts_left = int(os.environ['AWS_LAMBDA_CALL_MAX_ATTEMPTS']) - processing_cache['attempts']
+
+        #still has attempts
+        #frontend will track attempts_left
+        #so if this returns -1 than what is at frontend, means processing failed
+        return Response(
+            data={
+                'attempts_left': attempts_left,
+            },
+            status=status.HTTP_200_OK
+        )
 
 
 

@@ -66,45 +66,25 @@ def ensure_otp_is_always_wrong(otp):
 @override_settings(
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
     MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'voicewake/tests'),
-    # CELERY_TASK_ALWAYS_EAGER=True,
-    # CELERY_TASK_EAGER_PROPOGATES=True,
+    CELERY_TASK_ALWAYS_EAGER=True,
+    CELERY_TASK_EAGER_PROPOGATES=True,
 )
 class Random_TestCase(TestCase):
 
     def test_random(self):
 
-        target_event = EventsFactory(
-            event_event_name='yooo Celery!!',
-            event_generic_status_generic_status_name='incomplete'
-        )
-
-        # the_task = test_task.s(target_event.id).delay()
-        the_task = task_add.s(2,2).delay()
-
-        print('before')
-        print(the_task.ready())
-        print('after')
-
-        
+        pass
 
 
     @classmethod
     def setUpTestData(cls):
 
-        #no need ping in tests, not crucial
-        #would cause error as it tries to find celery.ping and fails
-        cls.celery_worker = start_worker(app, perform_ping_check=False)
-        cls.celery_worker.__enter__()
         pass
 
 
     @classmethod
     def tearDownClass(cls):
 
-        time.sleep(10)
-
-        cls.celery_worker.__exit__(None, None, None)
-        cache.clear()
         pass
 
 
