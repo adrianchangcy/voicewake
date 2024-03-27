@@ -42,6 +42,7 @@ from subprocess import CalledProcessError
 from voicewake.models import *
 from voicewake.serializers import *
 from voicewake.services import *
+from voicewake.tasks import *
 import voicewake.decorators as app_decorators
 import voicewake.factories as app_factories
 from django.conf import settings
@@ -876,22 +877,12 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
                 #only send email if has legitimate new OTP
                 if len(new_otp) == settings.TOTP_NUMBER_OF_DIGITS:
 
-                    template_title = ""
-                    template_title_description = ""
-
-                    if self.current_context == 'log_in':
-                        template_title = "Code for login"
-                        template_title_description = "Login code:"
-                    elif self.current_context == 'sign_up':
-                        template_title = "Code for sign-up"
-                        template_title_description = "Sign-up code:"
-
-                    handle_user_otp_class.send_otp_email(
-                        new_data['email'],
-                        template_title,
-                        template_title_description,
-                        new_otp
-                    )
+                    #add task to Celery
+                    task_send_otp_email().s(
+                        context=self.current_context,
+                        email=new_data['email'],
+                        otp=new_otp
+                    ).delay()
 
                     #email sent
                     message = "%s code has been sent to " + new_data['email'] + "."
@@ -1838,8 +1829,8 @@ class CreateEventsAPI(generics.GenericAPIView):
 
     serializer_class = CreateAudioClips_Upload_APISerializer
     permission_classes = [IsAuthenticated]
-    available_contexts = ['upload', 'regenerate_upload_url', 'process']
-    current_context:Literal['upload', 'regenerate_upload_url', 'process'] = 'upload'
+    available_contexts = ['upload', 'regenerate_upload_url', 'process', 'check_process_status']
+    current_context:Literal['upload', 'regenerate_upload_url', 'process', 'check_process_status'] = 'upload'
 
 
     def __init__(self, *args, **kwargs):
@@ -1914,31 +1905,29 @@ class CreateEventsAPI(generics.GenericAPIView):
                 event_reply_expiry_seconds=settings.EVENT_REPLY_MAX_DURATION_S,
             )
 
-            #if regenerate URL, no need .atomic()
+            if self.current_context == 'check_process_status':
 
-            if self.current_context == 'regenerate_upload_url':
+                pass
+
+            elif self.current_context == 'upload':
+
+                return create_audio_clips_class.create_records_and_return_s3_endpoint_as_originator(
+                    event_name=new_data['event_name'],
+                    audio_clip_tone_id=new_data['audio_clip_tone_id'],
+                    recorded_file_extension=new_data['recorded_file_extension'],
+                )
+
+            elif self.current_context == 'regenerate_upload_url':
 
                 return create_audio_clips_class.regenerate_s3_endpoint(
                     audio_clip_id=new_data['audio_clip_id'],
                 )
 
-            #proceed
+            elif self.current_context == 'process':
 
-            with transaction.atomic():
-
-                if self.current_context == 'upload':
-
-                    return create_audio_clips_class.create_records_and_return_s3_endpoint_as_originator(
-                        event_name=new_data['event_name'],
-                        audio_clip_tone_id=new_data['audio_clip_tone_id'],
-                        recorded_file_extension=new_data['recorded_file_extension'],
-                    )
-
-                elif self.current_context == 'process':
-
-                    return create_audio_clips_class.start_normalisation(
-                        audio_clip_id=new_data['audio_clip_id'],
-                    )
+                return create_audio_clips_class.start_normalisation(
+                    audio_clip_id=new_data['audio_clip_id'],
+                )
 
         except AudioClipTones.DoesNotExist:
 
@@ -2447,8 +2436,16 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
     serializer_class = HandleReplyingEventsAPISerializer
     permission_classes = [IsAuthenticated]
-    available_contexts = ['start', 'upload', 'regenerate_upload_url', 'process', 'cancel']
-    current_context:Literal['start', 'upload', 'regenerate_upload_url', 'process', 'cancel'] = 'start'
+    available_contexts = [
+        'start',
+        'upload', 'regenerate_upload_url', 'process', 'check_process_status',
+        'cancel'
+    ]
+    current_context:Literal[
+        'start',
+        'upload', 'regenerate_upload_url', 'process', 'check_process_status',
+        'cancel'
+    ] = 'start'
 
 
     def __init__(self, *args, **kwargs):
@@ -2647,7 +2644,11 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
         serializer = None
 
-        if self.current_context == 'start' or self.current_context == 'cancel':
+        if self.current_context == 'check_process_status':
+
+            pass
+
+        elif self.current_context == 'start' or self.current_context == 'cancel':
 
             serializer = HandleReplyingEventsAPISerializer(data=request.data, many=False)
 
@@ -2674,7 +2675,6 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                 data=request.data,
                 many=False,
             )
-
 
         #validate
         if serializer.is_valid() is False:
