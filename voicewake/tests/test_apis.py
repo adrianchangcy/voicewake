@@ -62,6 +62,12 @@ def ensure_otp_is_always_wrong(otp):
     return otp
 
 
+def get_request_data(request):
+
+    result_data = (bytes(request.content).decode())
+    return json.loads(result_data)
+
+
 
 @override_settings(
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
@@ -487,6 +493,10 @@ class AWSConnections_FromEC2_TestCase(TestCase):
 
 
 
+@override_settings(
+    CELERY_TASK_ALWAYS_EAGER=True,
+    CELERY_TASK_EAGER_PROPOGATES=True,
+)
 class Users_TestCase(TestCase):
 
     @classmethod
@@ -907,6 +917,8 @@ class AudioClips_TestCase(TestCase):
 @override_settings(
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
     MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'voicewake/tests'),
+    CELERY_TASK_ALWAYS_EAGER=True,
+    CELERY_TASK_EAGER_PROPOGATES=True,
 )
 class CoreProcess_TestCase(TestCase):
 
@@ -1009,7 +1021,7 @@ class CoreProcess_TestCase(TestCase):
         )
 
 
-    def test_create_event__upload__ok(self):
+    def test_create_events__upload__ok(self):
 
         self.login(self.users[0])
 
@@ -1026,8 +1038,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check data
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertTrue('upload_url' in result_data)
         self.assertTrue('upload_fields' in result_data)
@@ -1065,7 +1076,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(len(json.loads(request.content)['data']), 0)
 
 
-    def test_create_event__upload__not_idempotent_ok(self):
+    def test_create_events__upload__not_idempotent_ok(self):
 
         self.login(self.users[0])
 
@@ -1095,8 +1106,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check data
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertTrue('upload_url' in result_data)
         self.assertTrue('upload_fields' in result_data)
@@ -1136,7 +1146,7 @@ class CoreProcess_TestCase(TestCase):
             self.assertEqual(len(audio_clip.audio_volume_peaks), 0)
 
 
-    def test_create_event__upload__daily_limit_reached(self):
+    def test_create_events__upload__daily_limit_reached(self):
 
         #time-based
         #AudioClips.GenericStatuses.generic_status_name is not relevant
@@ -1213,7 +1223,7 @@ class CoreProcess_TestCase(TestCase):
             self.assertTrue(result_data['event_create_daily_limit_reached'])
 
 
-    def test_create_event__upload__missing_args(self):
+    def test_create_events__upload__missing_args(self):
 
         self.login(self.users[0])
 
@@ -1245,7 +1255,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 400)
 
 
-    def test_create_event__upload__faulty_args(self):
+    def test_create_events__upload__faulty_args(self):
 
         self.login(self.users[0])
 
@@ -1310,7 +1320,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 400)
 
 
-    def test_create_event__regenerate_upload_url__ok(self):
+    def test_create_events__regenerate_upload_url__ok(self):
 
         self.login(self.users[0])
 
@@ -1338,8 +1348,7 @@ class CoreProcess_TestCase(TestCase):
         print_function_name(request.content)
         self.assertEqual(request.status_code, 200)
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertTrue('upload_url' in result_data)
         self.assertTrue('upload_fields' in result_data)
@@ -1348,7 +1357,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertFalse('audio_clip_id' in result_data)
 
 
-    def test_create_event__regenerate_upload_url__resubmit_ok(self):
+    def test_create_events__regenerate_upload_url__resubmit_ok(self):
 
         self.login(self.users[0])
 
@@ -1386,7 +1395,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 200)
 
 
-    def test_create_event__regenerate_upload_url__already_processed(self):
+    def test_create_events__regenerate_upload_url__already_processed(self):
 
         self.login(self.users[0])
 
@@ -1414,7 +1423,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 404)
 
 
-    def test_create_event__regenerate_upload_url__no_rows(self):
+    def test_create_events__regenerate_upload_url__no_rows(self):
 
         self.login(self.users[0])
 
@@ -1429,7 +1438,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 404)
 
 
-    def test_create_event__regenerate_upload_url__only_own_rows_allowed(self):
+    def test_create_events__regenerate_upload_url__only_own_rows_allowed(self):
 
         self.login(self.users[0])
 
@@ -1458,7 +1467,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 404)
 
 
-    def test_create_event__regenerate_upload_url__wrong_context_url(self):
+    def test_create_events__regenerate_upload_url__wrong_context_url(self):
 
         self.login(self.users[0])
 
@@ -1484,10 +1493,10 @@ class CoreProcess_TestCase(TestCase):
         request = self.client.post(reverse('create_replies_regenerate_upload_url_api'), data)
 
         print(request.content)
-        self.assertEqual(request.status_code, 404)
+        self.assertEqual(request.status_code, 200)
 
 
-    def test_create_event__regenerate_upload_url__missing_args(self):
+    def test_create_events__regenerate_upload_url__missing_args(self):
 
         self.login(self.users[0])
 
@@ -1514,7 +1523,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 400)
 
 
-    def test_create_event__regenerate_upload_url__faulty_args(self):
+    def test_create_events__regenerate_upload_url__faulty_args(self):
 
         self.login(self.users[0])
 
@@ -1550,7 +1559,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 400)
 
 
-    def test_create_event__process__already_processed(self):
+    def test_create_events__process__already_processed(self):
 
         self.login(self.users[0])
 
@@ -1575,15 +1584,14 @@ class CoreProcess_TestCase(TestCase):
 
         request = self.client.post(reverse('create_events_process_api'), data)
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertEqual(request.status_code, 200)
         self.assertTrue("is_processed" in result_data)
         self.assertTrue(result_data['is_processed'])
 
 
-    def test_create_event__process__still_processing(self):
+    def test_create_events__process__still_processing(self):
 
         self.login(self.users[0])
 
@@ -1599,10 +1607,13 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_generic_status_generic_status_name='processing',
         )
 
-        target_cache_key = CreateAudioClips.determine_processing_cache_key(sample_audio_clip_0.id)
+        target_cache_key = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[0].id,
+            audio_clip_id=sample_audio_clip_0.id,
+        )
 
         cache.set(target_cache_key, {
-            'attempts': 1,
+            'attempts_left': settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1,
             'is_processing': True,
         })
 
@@ -1614,8 +1625,7 @@ class CoreProcess_TestCase(TestCase):
 
         request = self.client.post(reverse('create_events_process_api'), data)
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         print(request.content)
         self.assertEqual(request.status_code, 409)
@@ -1624,7 +1634,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertTrue(result_data['is_processing'])
 
 
-    def test_create_event__process__out_of_attempts(self):
+    def test_create_events__process__out_of_attempts(self):
 
         self.login(self.users[0])
 
@@ -1640,12 +1650,18 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_generic_status_generic_status_name='processing',
         )
 
-        target_cache_key = CreateAudioClips.determine_processing_cache_key(sample_audio_clip_0.id)
+        #cache
 
-        cache.set(target_cache_key, {
-            'attempts': int(os.environ['AWS_LAMBDA_CALL_MAX_ATTEMPTS']),
-            'is_processing': False,
-        })
+        processing_cache_key = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[0].id,
+            audio_clip_id=sample_audio_clip_0.id,
+        )
+        processing_cache = CreateAudioClips.get_default_processing_cache_object()
+
+        processing_cache['attempts_left'] = 0
+        processing_cache['is_processing'] = False
+
+        cache.set(processing_cache_key, processing_cache)
 
         #proceed
 
@@ -1655,19 +1671,18 @@ class CoreProcess_TestCase(TestCase):
 
         request = self.client.post(reverse('create_events_process_api'), data)
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         print(request.content)
         self.assertEqual(request.status_code, 404)
-        self.assertIsNone(cache.get(target_cache_key, None))
+        self.assertIsNone(cache.get(processing_cache_key, None))
 
         sample_audio_clip_0.refresh_from_db()
 
         self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'processing_max_attempts_reached')
 
 
-    def test_create_event__process__no_rows(self):
+    def test_create_events__process__no_rows(self):
 
         self.login(self.users[0])
 
@@ -1683,7 +1698,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 404)
 
 
-    def test_create_event__process__only_own_rows_allowed(self):
+    def test_create_events__process__only_own_rows_allowed(self):
 
         self.login(self.users[0])
 
@@ -1712,7 +1727,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 404)
 
 
-    def test_create_event__process__wrong_context_url(self):
+    def test_create_events__process__wrong_context_url(self):
 
         self.login(self.users[0])
 
@@ -1738,10 +1753,10 @@ class CoreProcess_TestCase(TestCase):
         request = self.client.post(reverse('create_replies_process_api'), data)
 
         print(request.content)
-        self.assertEqual(request.status_code, 404)
+        self.assertEqual(request.status_code, 200)
 
 
-    def test_create_event__process__missing_args(self):
+    def test_create_events__process__missing_args(self):
 
         self.login(self.users[0])
 
@@ -1768,7 +1783,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 400)
 
 
-    def test_create_event__process__faulty_args(self):
+    def test_create_events__process__faulty_args(self):
 
         self.login(self.users[0])
 
@@ -1806,6 +1821,288 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 400)
 
 
+    def test_create_events__check_process_status__still_processing(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        #cache
+
+        processing_cache_key = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[0].id,
+            audio_clip_id=sample_audio_clip_0.id
+        )
+        processing_cache = CreateAudioClips.get_default_processing_cache_object()
+
+        processing_cache['is_processing'] = True
+        processing_cache['attempts_left'] -= 1
+
+        cache.set(
+            processing_cache_key,
+            processing_cache
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+
+        request = self.client.post(reverse('create_events_check_process_status_api'), data)
+
+        result_data = get_request_data(request)
+
+        self.assertEqual(request.status_code, 409)
+        self.assertTrue('is_processing' in result_data)
+        self.assertTrue('attempts_left' in result_data)
+
+        self.assertTrue(result_data['is_processing'])
+        self.assertEqual(
+            result_data['attempts_left'],
+            settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+        )
+
+
+    def test_create_events__check_process_status__failed_can_reattempt(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        #cache
+
+        processing_cache_key = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[0].id,
+            audio_clip_id=sample_audio_clip_0.id
+        )
+        processing_cache = CreateAudioClips.get_default_processing_cache_object()
+
+        processing_cache['is_processing'] = False
+        processing_cache['attempts_left'] -= 1
+
+        cache.set(
+            processing_cache_key,
+            processing_cache
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+
+        request = self.client.post(reverse('create_events_check_process_status_api'), data)
+
+        result_data = get_request_data(request)
+
+        self.assertEqual(request.status_code, 200)
+        self.assertTrue('is_processing' in result_data)
+        self.assertTrue('attempts_left' in result_data)
+
+        self.assertFalse(result_data['is_processing'])
+        self.assertEqual(
+            result_data['attempts_left'],
+            settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+        )
+
+
+    def test_create_events__check_process_status__failed_cannot_reattempt(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='deleted',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='deleted',
+        )
+
+        #no cache
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+
+        request = self.client.post(reverse('create_events_check_process_status_api'), data)
+
+        result_data = get_request_data(request)
+
+        self.assertEqual(request.status_code, 404)
+        print(result_data)
+
+
+    def test_create_events__check_process_status__already_processed(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        #no cache
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+
+        request = self.client.post(reverse('create_events_check_process_status_api'), data)
+
+        result_data = get_request_data(request)
+
+        self.assertEqual(request.status_code, 200)
+        self.assertTrue('is_processed' in result_data)
+        self.assertFalse('attempts_left' in result_data)
+
+
+    def test_create_events__check_process_status__missing_args(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[1],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        #no cache
+
+        #proceed
+
+        data = {}
+
+        request = self.client.post(reverse('create_events_check_process_status_api'), data)
+
+        result_data = get_request_data(request)
+
+        self.assertEqual(request.status_code, 400)
+
+
+    def test_create_events__check_process_status__faulty_args(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[1],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        #no cache
+
+        #proceed
+
+        #not own audio clip
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_events_check_process_status_api'), data)
+
+        result_data = get_request_data(request)
+
+        self.assertEqual(request.status_code, 404)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     def test_get_event_ok(self):
 
         #prepare data
@@ -1839,8 +2136,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)['data']
+        result_data = get_request_data(request)['data']
 
         self.assertEqual(len(result_data), 1)
         self.assertTrue('event' in result_data[0])
@@ -1895,8 +2191,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)['data']
+        result_data = get_request_data(request)['data']
 
         self.assertEqual(len(result_data), 1)
         self.assertTrue('event_reply_queue' in result_data[0])
@@ -1949,8 +2244,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)['data']
+        result_data = get_request_data(request)['data']
 
         self.assertEqual(len(result_data), 1)
         self.assertTrue('event_reply_queue' in result_data[0])
@@ -2108,8 +2402,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check data
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
         result_data = result_data['data'][0]
 
         self.assertTrue('event' in result_data and type(result_data['event']) == dict)
@@ -2158,8 +2451,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check data
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
         result_data = result_data['data'][0]
 
         self.assertTrue('event' in result_data and type(result_data['event']) == dict)
@@ -2209,8 +2501,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
         result_data = result_data['data']
 
         self.assertEqual(result_data, [])
@@ -2248,8 +2539,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check data
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
         result_data = result_data['data']
 
         self.assertEqual(result_data, [])
@@ -2287,8 +2577,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check data
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
         result_data = result_data['data']
 
         self.assertEqual(len(result_data), 0)
@@ -2296,7 +2585,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(UserEvents.objects.all().count(), 0)
 
 
-    def test_list_reply_choices_has_something_locked_no_unlock(self):
+    def test_list_reply_choices_has_something_locked__can_return_existing_locked_rows(self):
 
         #prepare data
 
@@ -2349,8 +2638,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertEqual(sample_event_0.id, result_data['data'][0]['event']['id'])
         self.assertEqual(UserEvents.objects.all().count(), 1)
@@ -2359,7 +2647,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(EventReplyQueues.objects.first().when_locked, sample_event_reply_queue_0.when_locked)
 
 
-    def test_list_reply_choices_has_something_locked_has_unlock(self):
+    def test_list_reply_choices_has_something_locked__skip_existing_locked_rows(self):
 
         #prepare data
 
@@ -2412,19 +2700,19 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
-        new_user_event = UserEvents.objects.get(user=self.users[1], event_id=result_data['data'][0]['event']['id'])
+        new_event_id = result_data['data'][0]['event']['id']
+        new_user_event = UserEvents.objects.get(user=self.users[1], event_id=new_event_id)
 
         self.assertEqual(EventReplyQueues.objects.all().count(), 1)
         self.assertEqual(UserEvents.objects.all().count(), 2)
-        self.assertEqual(new_user_event.event_id, sample_event_1.id)
+        self.assertEqual(result_data['data'][0]['event']['id'], sample_event_1.id)
         self.assertIsNotNone(new_user_event.when_excluded_for_reply)
         self.assertNotEqual(EventReplyQueues.objects.first().when_locked, sample_event_reply_queue_0.when_locked)
 
 
-    def test_list_reply_choices_has_something_locked_but_expired_no_unlock(self):
+    def test_list_reply_choices_has_something_locked__can_return_existing_locked_rows__has_expired(self):
 
         #prepare data
 
@@ -2476,18 +2764,18 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
-        new_user_event = UserEvents.objects.get(user=self.users[1], event_id=result_data['data'][0]['event']['id'])
+        new_event_id = result_data['data'][0]['event']['id']
+        new_user_event = UserEvents.objects.get(user=self.users[1], event_id=new_event_id)
 
         self.assertEqual(EventReplyQueues.objects.all().count(), 1)
         self.assertEqual(UserEvents.objects.all().count(), 2)
-        self.assertEqual(new_user_event.event_id, sample_event_1.id)
+        self.assertEqual(new_event_id, sample_event_1.id)
         self.assertIsNotNone(new_user_event.when_excluded_for_reply)
 
 
-    def test_list_reply_choices_has_something_locked_but_expired_has_unlock(self):
+    def test_list_reply_choices_has_something_locked__skip_existing_locked_rows__has_expired(self):
 
         #prepare data
 
@@ -2539,164 +2827,18 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
-        new_user_event = UserEvents.objects.get(user=self.users[1], event_id=result_data['data'][0]['event']['id'])
-
-        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
-        self.assertEqual(UserEvents.objects.all().count(), 2)
-        self.assertEqual(new_user_event.event_id, sample_event_1.id)
-        self.assertIsNotNone(new_user_event.when_excluded_for_reply)
-
-
-    def test_list_reply_choices_has_something_locked_no_unlock_but_still_processing(self):
-
-        #prepare data
-
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
-        )
-
-        sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=sample_event_0,
-        )
-
-        sample_event_reply_queue_0 = self.create_event_reply_queue(
-            event_id=sample_event_0.id,
-            locked_for_user_id=self.users[1].id,
-            is_replying=False,
-            when_locked=(get_datetime_now() - timedelta(seconds=(settings.EVENT_REPLY_CHOICE_MAX_DURATION_S * 2)))
-        )
-
-        sample_user_event_0 = self.create_user_event(
-            self.users[1].id,
-            sample_event_0.id,
-            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
-        )
-
-        sample_audio_clip_1 = AudioClipsFactory(
-            audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='responder',
-            audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
-        )
-
-        sample_event_1 = self.create_event(
-            self.users[0],
-            "incomplete"
-        )
-
-        sample_audio_clip_1 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=sample_event_1,
-        )
-
-        #start
-
-        self.login(self.users[1])
-
-        data = {'unlock_all_locked_events': False}
-
-        request = self.client.post(reverse('list_event_reply_choices_api'), data)
-
-        self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
-
-        #check
-
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
-
-        new_user_event = UserEvents.objects.get(user=self.users[1], event_id=result_data['data'][0]['event']['id'])
+        new_event_id = result_data['data'][0]['event']['id']
+        new_user_event = UserEvents.objects.get(user=self.users[1], event_id=new_event_id)
 
         self.assertEqual(EventReplyQueues.objects.all().count(), 1)
         self.assertEqual(UserEvents.objects.all().count(), 2)
-        self.assertEqual(new_user_event.event_id, sample_event_1.id)
+        self.assertEqual(new_event_id, sample_event_1.id)
         self.assertIsNotNone(new_user_event.when_excluded_for_reply)
 
 
-    def test_list_reply_choices_has_something_locked_has_unlock_but_still_processing(self):
-
-        #AudioClips that are still processing should be irrelevant
-
-        #prepare data
-
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
-        )
-
-        sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=sample_event_0,
-        )
-
-        sample_event_reply_queue_0 = self.create_event_reply_queue(
-            event_id=sample_event_0.id,
-            locked_for_user_id=self.users[1].id,
-            is_replying=True,
-            when_locked=(get_datetime_now() - timedelta(seconds=0))
-        )
-
-        sample_audio_clip_1 = AudioClipsFactory(
-            audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='responder',
-            audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
-        )
-
-        sample_user_event_0 = self.create_user_event(
-            self.users[1].id,
-            sample_event_0.id,
-            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
-        )
-
-        sample_event_1 = self.create_event(
-            self.users[0],
-            "incomplete"
-        )
-
-        sample_audio_clip_2 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=sample_event_1,
-        )
-
-        #start
-
-        self.login(self.users[1])
-
-        data = {'unlock_all_locked_events': True}
-
-        request = self.client.post(reverse('list_event_reply_choices_api'), data)
-
-        self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
-
-        #check
-
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
-
-        new_user_event = UserEvents.objects.get(user=self.users[1], event_id=result_data['data'][0]['event']['id'])
-
-        self.assertEqual(new_user_event.event_id, sample_event_1.id)
-        self.assertIsNotNone(new_user_event.when_excluded_for_reply)
-        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
-        self.assertEqual(UserEvents.objects.all().count(), 2)
-        self.assertEqual(
-            AudioClips.objects.get(pk=sample_audio_clip_1.id).generic_status.generic_status_name,
-            'processing'
-        )
-
-
-    def test_start_reply_ok(self):
+    def test_start_replies_ok(self):
 
         #prepare data
 
@@ -2737,21 +2879,24 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
-        event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.users[1], event_id=sample_event_0.id)
+        sample_event_reply_queue_0.refresh_from_db()
 
-        self.assertTrue(event_reply_queue.is_replying)
-        self.assertEqual(result_data['data']['event_id'], event_reply_queue.event_id)
+        self.assertTrue(sample_event_reply_queue_0.is_replying)
+        self.assertEqual(result_data['data']['event_id'], sample_event_reply_queue_0.event_id)
         self.assertEqual(
-            datetime.strptime(result_data['data']['when_locked'], "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=ZoneInfo('UTC')),
-            event_reply_queue.when_locked
+            datetime.strptime(
+                result_data['data']['when_locked'], "%Y-%m-%dT%H:%M:%S.%fZ"
+            ).replace(tzinfo=ZoneInfo('UTC')),
+            sample_event_reply_queue_0.when_locked
         )
-        self.assertEqual(result_data['data']['is_replying'], event_reply_queue.is_replying)
+        self.assertEqual(
+            result_data['data']['is_replying'], sample_event_reply_queue_0.is_replying
+        )
 
 
-    def test_start_reply_with_missing_args(self):
+    def test_start_replies_with_missing_args(self):
 
         #prepare data
 
@@ -2792,15 +2937,14 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.users[1], event_id=sample_event_0.id)
 
         self.assertFalse(event_reply_queue.is_replying)
 
 
-    def test_start_reply_with_faulty_args(self):
+    def test_start_replies_with_faulty_args(self):
 
         #prepare data
 
@@ -2841,15 +2985,14 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.users[1], event_id=sample_event_0.id)
 
         self.assertFalse(event_reply_queue.is_replying)
 
 
-    def test_start_reply_but_never_queued(self):
+    def test_start_replies_but_never_queued(self):
 
         #prepare data
 
@@ -2877,11 +3020,10 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
 
-    def test_start_reply_but_expired(self):
+    def test_start_replies_but_expired(self):
 
         #prepare data
 
@@ -2922,8 +3064,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertFalse(result_data['can_retry'])
         self.assertEqual(EventReplyQueues.objects.all().count(), 0)
@@ -2937,7 +3078,7 @@ class CoreProcess_TestCase(TestCase):
         )
 
 
-    def test_start_reply_but_event_is_banned(self):
+    def test_start_replies_but_event_is_banned(self):
 
         #prepare data
 
@@ -2980,8 +3121,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertFalse(result_data['can_retry'])
         self.assertEqual(EventReplyQueues.objects.all().count(), 0)
@@ -2995,7 +3135,7 @@ class CoreProcess_TestCase(TestCase):
         )
 
 
-    def test_start_reply_only_own_rows_allowed(self):
+    def test_start_replies_only_own_rows_allowed(self):
 
         #prepare data
 
@@ -3036,8 +3176,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         event_reply_queue = EventReplyQueues.objects.get(event_id=sample_event_0.id, locked_for_user=self.users[2])
 
@@ -3054,7 +3193,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertFalse(UserEvents.objects.filter(user=self.users[1]).exists())
 
 
-    def test_create_reply__upload__ok(self):
+    def test_create_replies__upload__ok(self):
 
         self.login(self.users[1])
 
@@ -3099,8 +3238,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertTrue('upload_url' in result_data)
         self.assertTrue('upload_fields' in result_data)
@@ -3114,7 +3252,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(sample_event_0.generic_status.generic_status_name, 'processing')
 
 
-    def test_create_reply__upload__idempotent_ok(self):
+    def test_create_replies__upload__idempotent_ok(self):
 
         self.login(self.users[1])
 
@@ -3167,9 +3305,9 @@ class CoreProcess_TestCase(TestCase):
             data['audio_clip_tone_id']
         )
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
+        self.assertTrue('event_id' in result_data)
         self.assertTrue('upload_url' in result_data)
         self.assertTrue('upload_fields' in result_data)
         self.assertTrue('audio_clip_id' in result_data)
@@ -3190,15 +3328,15 @@ class CoreProcess_TestCase(TestCase):
 
         self.assertEqual(AudioClips.objects.filter(user=self.users[1]).count(), 1)
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
-        self.assertFalse('upload_url' in result_data)
-        self.assertFalse('upload_fields' in result_data)
+        self.assertTrue('event_id' in result_data)
+        self.assertTrue('upload_url' in result_data)
+        self.assertTrue('upload_fields' in result_data)
         self.assertTrue('audio_clip_id' in result_data)
 
 
-    def test_create_reply__upload__never_queued_for_it(self):
+    def test_create_replies__upload__never_queued_for_it(self):
 
         self.login(self.users[1])
 
@@ -3229,7 +3367,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 400)
 
 
-    def test_create_reply__upload__is_locked_not_replying(self):
+    def test_create_replies__upload__is_locked_not_replying(self):
 
         self.login(self.users[1])
 
@@ -3273,7 +3411,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 400)
 
 
-    def test_create_reply__upload__is_locked_is_replying_is_expired(self):
+    def test_create_replies__upload__is_locked_is_replying_is_expired(self):
 
         self.login(self.users[1])
 
@@ -3321,7 +3459,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(EventReplyQueues.objects.all().count(), 0)
 
 
-    def test_create_reply__upload__event_is_banned(self):
+    def test_create_replies__upload__event_is_banned(self):
 
         self.login(self.users[1])
 
@@ -3371,7 +3509,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(EventReplyQueues.objects.all().count(), 0)
 
 
-    def test_create_reply__upload__for_only_own_rows_allowed(self):
+    def test_create_replies__upload__for_only_own_rows_allowed(self):
 
         self.login(self.users[1])
 
@@ -3452,7 +3590,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 400)
 
 
-    def test_create_reply__upload__missing_args(self):
+    def test_create_replies__upload__missing_args(self):
 
         self.login(self.users[1])
 
@@ -3512,7 +3650,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 400)
 
 
-    def test_create_reply__upload__faulty_args(self):
+    def test_create_replies__upload__faulty_args(self):
 
         self.login(self.users[1])
 
@@ -3575,7 +3713,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 400)
 
 
-    def test_create_reply__regenerate_upload_url__ok(self):
+    def test_create_replies__regenerate_upload_url__ok(self):
 
         self.login(self.users[1])
 
@@ -3621,8 +3759,7 @@ class CoreProcess_TestCase(TestCase):
         print_function_name(request.content)
         self.assertEqual(request.status_code, 200)
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertTrue('upload_url' in result_data)
         self.assertTrue('upload_fields' in result_data)
@@ -3631,7 +3768,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertFalse('audio_clip_id' in result_data)
 
 
-    def test_create_reply__regenerate_upload_url__resubmit_ok(self):
+    def test_create_replies__regenerate_upload_url__resubmit_ok(self):
 
         self.login(self.users[1])
 
@@ -3687,7 +3824,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 200)
 
 
-    def test_create_reply__regenerate_upload_url__already_processed(self):
+    def test_create_replies__regenerate_upload_url__already_processed(self):
 
         self.login(self.users[1])
 
@@ -3726,7 +3863,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 404)
 
 
-    def test_create_reply__regenerate_upload_url__no_rows(self):
+    def test_create_replies__regenerate_upload_url__no_rows(self):
 
         self.login(self.users[0])
 
@@ -3741,7 +3878,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 404)
 
 
-    def test_create_reply__regenerate_upload_url__only_own_rows_allowed(self):
+    def test_create_replies__regenerate_upload_url__only_own_rows_allowed(self):
 
         self.login(self.users[1])
 
@@ -3821,7 +3958,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 404)
 
 
-    def test_create_reply__regenerate_upload_url__wrong_context_url(self):
+    def test_create_replies__regenerate_upload_url__wrong_context_url(self):
 
         self.login(self.users[1])
 
@@ -3865,10 +4002,10 @@ class CoreProcess_TestCase(TestCase):
         request = self.client.post(reverse('create_events_regenerate_upload_url_api'), data)
 
         print(request.content)
-        self.assertEqual(request.status_code, 404)
+        self.assertEqual(request.status_code, 200)
 
 
-    def test_create_reply__regenerate_upload_url__missing_args(self):
+    def test_create_replies__regenerate_upload_url__missing_args(self):
 
         self.login(self.users[1])
 
@@ -3913,7 +4050,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 400)
 
 
-    def test_create_reply__regenerate_upload_url__faulty_args(self):
+    def test_create_replies__regenerate_upload_url__faulty_args(self):
 
         self.login(self.users[1])
 
@@ -3967,7 +4104,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 404)
 
 
-    def test_create_reply__process__already_processed(self):
+    def test_create_replies__process__already_processed(self):
 
         self.login(self.users[1])
 
@@ -4003,15 +4140,14 @@ class CoreProcess_TestCase(TestCase):
 
         request = self.client.post(reverse('create_replies_process_api'), data)
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertEqual(request.status_code, 200)
         self.assertTrue("is_processed" in result_data)
         self.assertTrue(result_data['is_processed'])
 
 
-    def test_create_reply__process__still_processing(self):
+    def test_create_replies__process__still_processing(self):
 
         self.login(self.users[1])
 
@@ -4039,10 +4175,13 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_generic_status_generic_status_name='processing',
         )
 
-        target_cache_key = CreateAudioClips.determine_processing_cache_key(sample_audio_clip_1.id)
+        target_cache_key = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[1].id,
+            audio_clip_id=sample_audio_clip_1.id,
+        )
 
         cache.set(target_cache_key, {
-            'attempts': 1,
+            'attempts_left': settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1,
             'is_processing': True,
         })
 
@@ -4054,16 +4193,20 @@ class CoreProcess_TestCase(TestCase):
 
         request = self.client.post(reverse('create_replies_process_api'), data)
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertEqual(request.status_code, 409)
         self.assertTrue("is_processing" in result_data)
+        self.assertTrue("attempts_left" in result_data)
 
         self.assertTrue(result_data['is_processing'])
+        self.assertEqual(
+            result_data['attempts_left'],
+            settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+        )
 
 
-    def test_create_reply__process__out_of_attempts(self):
+    def test_create_replies__process__out_of_attempts(self):
 
         self.login(self.users[1])
 
@@ -4091,12 +4234,18 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_generic_status_generic_status_name='processing',
         )
 
-        target_cache_key = CreateAudioClips.determine_processing_cache_key(sample_audio_clip_1.id)
+        #cache
 
-        cache.set(target_cache_key, {
-            'attempts': int(os.environ['AWS_LAMBDA_CALL_MAX_ATTEMPTS']),
-            'is_processing': False,
-        })
+        processing_cache_key = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[1].id,
+            audio_clip_id=sample_audio_clip_1.id,
+        )
+        processing_cache = CreateAudioClips.get_default_processing_cache_object()
+
+        processing_cache['attempts_left'] = 0
+        processing_cache['is_processing'] = False
+
+        cache.set(processing_cache_key, processing_cache)
 
         #proceed
 
@@ -4106,18 +4255,17 @@ class CoreProcess_TestCase(TestCase):
 
         request = self.client.post(reverse('create_replies_process_api'), data)
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertEqual(request.status_code, 404)
-        self.assertIsNone(cache.get(target_cache_key, None))
+        self.assertIsNone(cache.get(processing_cache_key, None))
 
         sample_audio_clip_1.refresh_from_db()
 
         self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'processing_max_attempts_reached')
 
 
-    def test_create_reply__process__no_rows(self):
+    def test_create_replies__process__no_rows(self):
 
         self.login(self.users[1])
 
@@ -4132,7 +4280,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 404)
 
 
-    def test_create_reply__process__only_own_rows_allowed(self):
+    def test_create_replies__process__only_own_rows_allowed(self):
 
         self.login(self.users[1])
 
@@ -4171,7 +4319,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 404)
 
 
-    def test_create_reply__process__wrong_context_url(self):
+    def test_create_replies__process__wrong_context_url(self):
 
         self.login(self.users[1])
 
@@ -4207,13 +4355,12 @@ class CoreProcess_TestCase(TestCase):
 
         request = self.client.post(reverse('create_events_process_api'), data)
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
-        self.assertEqual(request.status_code, 404)
+        self.assertEqual(request.status_code, 200)
 
 
-    def test_create_reply__process__missing_args(self):
+    def test_create_replies__process__missing_args(self):
 
         self.login(self.users[1])
 
@@ -4250,7 +4397,7 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 400)
 
 
-    def test_create_reply__process__faulty_args(self):
+    def test_create_replies__process__faulty_args(self):
 
         self.login(self.users[1])
 
@@ -4297,6 +4444,310 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(request.status_code, 400)
 
 
+    def test_create_replies__check_process_status__still_processing(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        #cache
+
+        processing_cache_key = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[1].id,
+            audio_clip_id=sample_audio_clip_1.id
+        )
+        processing_cache = CreateAudioClips.get_default_processing_cache_object()
+
+        processing_cache['is_processing'] = True
+        processing_cache['attempts_left'] -= 1
+
+        cache.set(
+            processing_cache_key,
+            processing_cache
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_replies_check_process_status_api'), data)
+
+        result_data = get_request_data(request)
+
+        self.assertEqual(request.status_code, 409)
+        self.assertTrue('is_processing' in result_data)
+        self.assertTrue('attempts_left' in result_data)
+
+        self.assertTrue(result_data['is_processing'])
+        self.assertEqual(
+            result_data['attempts_left'],
+            settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+        )
+
+
+    def test_create_replies__check_process_status__failed_can_reattempt(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        #cache
+
+        processing_cache_key = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[1].id,
+            audio_clip_id=sample_audio_clip_1.id
+        )
+        processing_cache = CreateAudioClips.get_default_processing_cache_object()
+
+        processing_cache['is_processing'] = False
+        processing_cache['attempts_left'] -= 1
+
+        cache.set(
+            processing_cache_key,
+            processing_cache
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_replies_check_process_status_api'), data)
+
+        result_data = get_request_data(request)
+
+        self.assertEqual(request.status_code, 200)
+        self.assertTrue('is_processing' in result_data)
+        self.assertTrue('attempts_left' in result_data)
+
+        self.assertFalse(result_data['is_processing'])
+        self.assertEqual(
+            result_data['attempts_left'],
+            settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+        )
+
+
+    def test_create_replies__check_process_status__failed_cannot_reattempt(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing_max_attempts_reached',
+        )
+
+        #no cache
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_replies_check_process_status_api'), data)
+
+        result_data = get_request_data(request)
+
+        self.assertEqual(request.status_code, 404)
+        print(result_data)
+
+
+    def test_create_replies__check_process_status__already_processed(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='completed',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        #no cache
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_replies_check_process_status_api'), data)
+
+        result_data = get_request_data(request)
+
+        self.assertEqual(request.status_code, 200)
+        self.assertTrue('is_processed' in result_data)
+        self.assertFalse('attempts_left' in result_data)
+
+
+    def test_create_replies__check_process_status__missing_args(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='completed',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        #no cache
+
+        #proceed
+
+        data = {}
+
+        request = self.client.post(reverse('create_replies_check_process_status_api'), data)
+
+        result_data = get_request_data(request)
+
+        self.assertEqual(request.status_code, 400)
+
+
+    def test_create_replies__check_process_status__faulty_args(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='completed',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        #no cache
+
+        #proceed
+
+        #not own audio clip
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+
+        request = self.client.post(reverse('create_replies_check_process_status_api'), data)
+
+        result_data = get_request_data(request)
+
+        self.assertEqual(request.status_code, 404)
+
+
     def test_cancel_reply_ok(self):
 
         #prepare data
@@ -4340,8 +4791,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
         self.assertEqual(Events.objects.count(), 1)
@@ -4499,18 +4949,25 @@ class CoreProcess_TestCase(TestCase):
 
         request = self.client.post(reverse('cancel_replies_api'), data)
 
-        self.assertEqual(request.status_code, 200)
+        self.assertEqual(request.status_code, 400)
         print_function_name(request.content)
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
-        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
+        self.assertTrue(
+            EventReplyQueues.objects.filter(
+                locked_for_user=self.users[1],
+                event_id=sample_event_0.id
+            ).exists()
+        )
         self.assertEqual(Events.objects.count(), 1)
         self.assertEqual(AudioClips.objects.count(), 1)
         self.assertTrue(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0.id).exists())
+
+        self.assertTrue('can_retry' in result_data)
+        self.assertFalse(result_data['can_retry'])
 
 
     def test_cancel_reply_only_own_rows_allowed(self):
@@ -4556,8 +5013,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertTrue(EventReplyQueues.objects.filter(locked_for_user=self.users[2], event_id=sample_event_0.id).exists())
         self.assertEqual(Events.objects.count(), 1)
@@ -4610,8 +5066,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
         self.assertEqual(Events.objects.count(), 1)
@@ -4654,6 +5109,22 @@ class CoreProcess_TestCase(TestCase):
             audio_clip_generic_status_generic_status_name='processing',
         )
 
+        #cache
+
+        processing_cache_key = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[1].id,
+            audio_clip_id=sample_audio_clip_1.id,
+        )
+        processing_cache = CreateAudioClips.get_default_processing_cache_object()
+
+        processing_cache['attempts_left'] -= 1
+        processing_cache['is_processing'] = True
+
+        cache.set(
+            processing_cache_key,
+            processing_cache
+        )
+
         #start
 
         self.login(self.users[1])
@@ -4669,13 +5140,16 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        sample_audio_clip_1.refresh_from_db()
+
+        result_data = get_request_data(request)
 
         self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
         self.assertEqual(Events.objects.count(), 1)
         self.assertEqual(AudioClips.objects.count(), 2)
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'processing')
         self.assertTrue(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0.id).exists())
+        self.assertIsNotNone(cache.get(processing_cache_key, None))
 
 
     def test_create_audio_clip_report_ok(self):
@@ -4708,8 +5182,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         audio_clip_report = AudioClipReports.objects.first()
 
@@ -4749,8 +5222,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertEqual(AudioClipReports.objects.all().count(), 0)
 
@@ -4784,8 +5256,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         audio_clip_report = AudioClipReports.objects.first()
 
@@ -4822,8 +5293,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         audio_clip_report = AudioClipReports.objects.first()
 
@@ -4860,8 +5330,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         audio_clip_report = AudioClipReports.objects.first()
 
@@ -4904,8 +5373,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         audio_clip_report = AudioClipReports.objects.first()
 
@@ -4951,8 +5419,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         audio_clip_report = AudioClipReports.objects.first()
 
@@ -4991,8 +5458,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         audio_clip_report = AudioClipReports.objects.first()
 
@@ -5017,8 +5483,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertEqual(UserBlocks.objects.all().count(), 1)
 
@@ -5041,8 +5506,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertEqual(UserBlocks.objects.all().count(), 0)
 
@@ -5059,8 +5523,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertEqual(UserBlocks.objects.all().count(), 0)
 
@@ -5084,8 +5547,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertEqual(UserBlocks.objects.all().count(), 0)
 
@@ -5111,8 +5573,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertEqual(UserBlocks.objects.all().count(), 0)
 
@@ -5244,8 +5705,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         sample_audio_clip_0.refresh_from_db()
         audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(user=self.users[1])
@@ -5270,8 +5730,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         sample_audio_clip_0.refresh_from_db()
         self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[1]).exists())
@@ -5317,8 +5776,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         sample_audio_clip_0.refresh_from_db()
         audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(user=self.users[1])
@@ -5343,8 +5801,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         sample_audio_clip_0.refresh_from_db()
         self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[1]).exists())
@@ -5390,8 +5847,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         sample_audio_clip_0.refresh_from_db()
         audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(user=self.users[1])
@@ -5417,8 +5873,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         sample_audio_clip_0.refresh_from_db()
         audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(user=self.users[1])
@@ -5444,8 +5899,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         sample_audio_clip_0.refresh_from_db()
         audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(user=self.users[1])
@@ -5471,8 +5925,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         sample_audio_clip_0.refresh_from_db()
         self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[1]).exists())
@@ -5495,8 +5948,7 @@ class CoreProcess_TestCase(TestCase):
 
         #check
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         sample_audio_clip_0.refresh_from_db()
         audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(user=self.users[1])
@@ -5592,11 +6044,33 @@ class CoreProcess_TestCase(TestCase):
         self.assertEqual(sample_audio_clip_0.dislike_count, is_liked_total_count['false'])
 
 
+    def test_create_events__check_process_status__ok(self):
+        pass
+
+
+    def test_create_events__check_process_status__still_processing(self):
+        pass
+
+
+    def test_create_events__check_process_status__failed_can_reattempt(self):
+        pass
+
+
+    def test_create_events__check_process_status__failed_cannot_reattempt(self):
+        pass
+
+
+    def test_create_events__check_process_status__already_processed(self):
+        pass
+
+
 
 #these involve AWS in one way or another
 @override_settings(
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
     DEBUG=True,
+    CELERY_TASK_ALWAYS_EAGER=True,
+    CELERY_TASK_EAGER_PROPOGATES=True,
 )
 class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
 
@@ -5815,7 +6289,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
                     #1024mb is the winner
 
 
-    def test_create_event__process__ok(self):
+    def test_create_events__process__ok(self):
 
         self.login(self.users[0])
 
@@ -5840,8 +6314,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
 
         request = self.client.post(reverse('create_events_process_api'), data)
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertEqual(request.status_code, 200)
         self.assertTrue("is_processed" in result_data)
@@ -5859,7 +6332,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
         )
 
 
-    def test_create_event__process__lambda_failure_ok(self):
+    def test_create_events__process__lambda_failure_ok(self):
 
         self.login(self.users[0])
 
@@ -5884,8 +6357,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
 
         request = self.client.post(reverse('create_events_process_api'), data)
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         print(request.content)
 
@@ -5893,7 +6365,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
         self.assertTrue("attempts_left" in result_data)
         self.assertEqual(
             result_data['attempts_left'],
-            int(os.environ['AWS_LAMBDA_CALL_MAX_ATTEMPTS']) - 1
+            settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
         )
 
         sample_audio_clip_0.refresh_from_db()
@@ -5908,7 +6380,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
         )
 
 
-    def test_create_event__process__lambda_failure_on_last_attempt(self):
+    def test_create_events__process__lambda_failure_on_last_attempt(self):
 
         self.login(self.users[0])
 
@@ -5928,7 +6400,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
         #proceed
 
         with self.settings(
-            AWS_LAMBDA_CALL_MAX_ATTEMPTS=1,
+            AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS=1,
         ):
 
             data = {
@@ -5956,7 +6428,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
             )
 
 
-    def test_create_reply__process__ok(self):
+    def test_create_replies__process__ok(self):
 
         self.login(self.users[1])
 
@@ -5994,8 +6466,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
 
         request = self.client.post(reverse('create_replies_process_api'), data)
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertEqual(request.status_code, 200)
         self.assertTrue("is_processed" in result_data)
@@ -6013,7 +6484,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
         )
 
 
-    def test_create_reply__process__lambda_failure_ok(self):
+    def test_create_replies__process__lambda_failure_ok(self):
 
         self.login(self.users[0])
 
@@ -6045,8 +6516,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
 
         request = self.client.post(reverse('create_events_process_api'), data)
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         print(request.content)
 
@@ -6054,7 +6524,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
         self.assertTrue("attempts_left" in result_data)
         self.assertEqual(
             result_data['attempts_left'],
-            int(os.environ['AWS_LAMBDA_CALL_MAX_ATTEMPTS']) - 1
+            settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
         )
 
         sample_event_0.refresh_from_db()
@@ -6074,7 +6544,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
         )
 
 
-    def test_create_reply__process__lambda_failure_on_last_attempt(self):
+    def test_create_replies__process__lambda_failure_on_last_attempt(self):
 
         self.login(self.users[0])
 
@@ -6102,7 +6572,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
         #proceed
 
         with self.settings(
-            AWS_LAMBDA_CALL_MAX_ATTEMPTS=1,
+            AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS=1,
         ):
 
             data = {
@@ -6131,7 +6601,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
             )
 
 
-    def test_create_reply__process__queue_expired_ok(self):
+    def test_create_replies__process__queue_expired_ok(self):
 
         #EventReplyQueue is irrelevant here
 
@@ -6177,8 +6647,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
 
         request = self.client.post(reverse('create_replies_process_api'), data)
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertEqual(request.status_code, 200)
         self.assertTrue("is_processed" in result_data)
@@ -6196,7 +6665,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
         )
 
 
-    def test_create_reply__process__queue_deleted_ok(self):
+    def test_create_replies__process__queue_deleted_ok(self):
 
         #EventReplyQueue is irrelevant here
 
@@ -6235,8 +6704,7 @@ class CoreProcess_NormaliseAudioClips_TestCase(TestCase):
 
         request = self.client.post(reverse('create_replies_process_api'), data)
 
-        result_data = (bytes(request.content).decode())
-        result_data = json.loads(result_data)
+        result_data = get_request_data(request)
 
         self.assertEqual(request.status_code, 200)
         self.assertTrue("is_processed" in result_data)
