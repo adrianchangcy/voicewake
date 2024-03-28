@@ -1231,7 +1231,7 @@ class CreateAudioClips():
         self.processing_cache = None
 
 
-    def _get_cooldown_on_audio_clip_create_limit_s(self)->int:
+    def get_cooldown_on_audio_clip_create_limit_s(self)->int:
 
         #this is for "X max new posts every __", which in this case is every 24h
 
@@ -1331,9 +1331,13 @@ class CreateAudioClips():
 
 
     @staticmethod
-    def determine_processing_cache_key(audio_clip_id:int)->str:
+    def determine_processing_cache_key(user_id:int, audio_clip_id:int)->str:
 
-        return os.environ['AWS_LAMBDA_NORMALISE_FUNCTION_NAME'] + '_' + str(audio_clip_id)
+        return (
+            os.environ['AWS_LAMBDA_NORMALISE_FUNCTION_NAME'] +
+            '_' + str(user_id) +
+            '_' + str(audio_clip_id)
+        )
 
 
     @staticmethod
@@ -1341,11 +1345,11 @@ class CreateAudioClips():
 
         return {
             'is_processing': False,
-            'attempts': 0,
+            'attempts_left': settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS,
         }
 
 
-    def _check_can_upload_originator(self)->None|Response:
+    def _check_can_create_originator(self)->None|Response:
 
         if self.current_context != 'create_event':
 
@@ -1357,7 +1361,7 @@ class CreateAudioClips():
 
         #check for upload limit cooldown
 
-        cooldown_s = self._get_cooldown_on_audio_clip_create_limit_s()
+        cooldown_s = self.get_cooldown_on_audio_clip_create_limit_s()
 
         if cooldown_s > 0:
 
@@ -1372,7 +1376,7 @@ class CreateAudioClips():
         return None
 
 
-    def _check_can_upload_responder(self)->None|Response:
+    def _check_can_create_responder(self)->None|Response:
 
         #no need to check on reply limit
         #reply limit is enforced at reply choice
@@ -1396,7 +1400,7 @@ class CreateAudioClips():
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        #check if event is no longer available
+        #check if queue can still be kept
 
         if self.event.generic_status.generic_status_name not in ['processing', 'incomplete']:
 
@@ -1458,7 +1462,7 @@ class CreateAudioClips():
         return None
 
 
-    def _check_can_process_database_rows(self)->None|Response:
+    def _check_can_do_processing_database_rows(self)->None|Response:
 
         #we don't check EventReplyQueues, as it is irrelevant here, and is not guaranteed to exist
 
@@ -1479,6 +1483,8 @@ class CreateAudioClips():
                 dev_message="Unexpected mismatch of ids."
             )
 
+        #don't check processing countdown here
+        #let cronjob catch it, and if user has extra duration, allow this tolerance
 
         #allow user to process, regardless of event's status
 
@@ -1523,25 +1529,37 @@ class CreateAudioClips():
 
             return
 
-        self.processing_cache_key = self.determine_processing_cache_key(self.audio_clip.id)
-
-        #if key:object does not exist, use default object
-        #default object, when used, will not be saved to cache yet
-        self.processing_cache = cache.get(
-            self.processing_cache_key,
-            self.get_default_processing_cache_object()
+        self.processing_cache_key = self.determine_processing_cache_key(
+            user_id=self.user.id,
+            audio_clip_id=self.audio_clip.id
         )
+
+        #if cache does not exist, create default cache, save, and use it
+        #if cache exists, use the cache
+
+        target_cache = cache.get(self.processing_cache_key, None)
+
+        if target_cache is None:
+
+            self.processing_cache = self.get_default_processing_cache_object()
+
+            #cache must already exist, as task queue will not create on its own
+            cache.set(
+                self.processing_cache_key,
+                self.processing_cache,
+                timeout=settings.AUDIO_CLIP_UNPROCESSED_EXPIRY_S
+            )
+
+        else:
+
+            self.processing_cache = target_cache
 
 
     def _check_processing_attempts(self)->None|Response:
 
-        #check lambda attempts via cache
-
-        self._ensure_processing_cache_exists()
-
         #evaluate attempts
 
-        if self.processing_cache['attempts'] >= int(os.environ['AWS_LAMBDA_CALL_MAX_ATTEMPTS']):
+        if self.processing_cache['attempts_left'] <= 0:
 
             #max attempts reached
             #set as "processing_max_attempts_reached", delete cache
@@ -1607,7 +1625,7 @@ class CreateAudioClips():
 
         #perform checks
 
-        error_response = self._check_can_upload_originator()
+        error_response = self._check_can_create_originator()
 
         if error_response is not None:
 
@@ -1685,14 +1703,58 @@ class CreateAudioClips():
                 dev_message="Invalid self.current_context."
             )
 
+        #idempotency measure
+        #not user's first time, but as long as still processing, return same 200
+
+        try:
+
+            target_audio_clip = AudioClips.objects.get(
+                event_id=event_id,
+                user_id=self.user.id,
+                audio_clip_role__audio_clip_role_name='responder',
+                generic_status__generic_status_name='processing'
+            )
+
+                #s3
+
+            self._initialise_s3_post_wrapper()
+
+            #generate key and presigned URL
+
+            upload_key = self.s3_post_wrapper.generate_unprocessed_object_key(
+                user_id=self.user.id,
+                file_extension=recorded_file_extension
+            )
+
+            upload_info = self.s3_post_wrapper.generate_unprocessed_presigned_post_url(
+                key=upload_key,
+                file_extension=recorded_file_extension,
+            )
+
+            return Response(
+                data={
+                    'upload_url': upload_info['url'],
+                    'upload_fields': json.dumps(upload_info['fields']),
+                    'event_id': event_id,
+                    'audio_clip_id': target_audio_clip.id,
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except AudioClips.DoesNotExist:
+
+            #continue
+            pass
+
+        #user's first time
+        #proceed
+
         try:
 
             with transaction.atomic():
 
-                #don't add event__generic_status constraint, as we have logic to run with it later
-
                 self.event_reply_queue = EventReplyQueues.objects.select_for_update(
-                    of=("self", "event",)
+                    of=("event",)
                 ).select_related(
                     'event',
                     'event__generic_status'
@@ -1705,16 +1767,15 @@ class CreateAudioClips():
 
                 #perform checks
 
-                error_response = self._check_can_upload_responder()
+                error_response = self._check_can_create_responder()
 
                 if error_response is not None:
                 
                     return error_response
 
+                #can reply, proceed
                 #no need to check for daily reply limit here
                 #as that is enforced when listing choices
-
-                #can reply, proceed
 
                 #s3
 
@@ -1754,6 +1815,10 @@ class CreateAudioClips():
                 self.event.generic_status = generic_status_processing
                 self.event.save()
 
+                #no longer need to lock for reply
+
+                self.event_reply_queue.delete()
+
                 return Response(
                     data={
                         'upload_url': upload_info['url'],
@@ -1780,15 +1845,6 @@ class CreateAudioClips():
 
     def regenerate_s3_endpoint(self, audio_clip_id:int)->Response:
 
-        #enforce strict context matching for audio_clip_role
-
-        audio_clip_role_name = ''
-
-        if self.current_context == 'create_event':
-            audio_clip_role_name = 'originator'
-        elif self.current_context == 'create_reply':
-            audio_clip_role_name = 'responder'
-
         #check if audio_clip exists
         #users can only get their own records
 
@@ -1800,7 +1856,6 @@ class CreateAudioClips():
                 pk=audio_clip_id,
                 user_id=self.user.id,
                 generic_status__generic_status_name='processing',
-                audio_clip_role__audio_clip_role_name=audio_clip_role_name,
             )
 
         except AudioClips.DoesNotExist:
@@ -1828,55 +1883,42 @@ class CreateAudioClips():
 
     def start_normalisation(self, audio_clip_id:int)->Response:
 
-        #return is_processed=bool in response where appropriate
-
         #get relevant records
+        #we deal with db first, as cache is not intended for validation
 
-        audio_clip_role_name = ''
+        try:
 
-        if self.current_context == 'create_event':
+            self.audio_clip = AudioClips.objects.select_related(
+                'generic_status',
+                'audio_clip_role',
+            ).get(
+                pk=audio_clip_id,
+                user_id=self.user.id,
+            )
 
-            audio_clip_role_name = 'originator'
+            self.event = Events.objects.select_related(
+                'generic_status',
+            ).get(
+                pk=self.audio_clip.event_id
+            )
 
-        elif self.current_context == 'create_reply':
+        except AudioClips.DoesNotExist:
 
-            audio_clip_role_name = 'responder'
+            return Response(
+                data={},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-        self.audio_clip = AudioClips.objects.select_related(
-            'generic_status',
-            'audio_clip_role',
-        ).get(
-            pk=audio_clip_id,
-            user_id=self.user.id,
-            audio_clip_role__audio_clip_role_name=audio_clip_role_name,
-        )
+        except Events.DoesNotExist:
 
-        self.event = Events.objects.select_related(
-            'generic_status',
-        ).get(
-            pk=self.audio_clip.event_id
-        )
+            return Response(
+                data={},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
         #check db rows can normalise
 
-        error_response = self._check_can_process_database_rows()
-
-        if error_response is not None:
-
-            return error_response
-
-        #check if already processing
-
-        if self.processing_cache['is_processing'] is True:
-
-            return Response(
-                data={
-                    "is_processing": True,
-                },
-                status=status.HTTP_409_CONFLICT
-            )
-
-        error_response = self._check_processing_attempts()
+        error_response = self._check_can_do_processing_database_rows()
 
         if error_response is not None:
 
@@ -1897,10 +1939,30 @@ class CreateAudioClips():
                 ValueError,
                 __name__,
                 dev_message=f'''
-                    Unexpected AudioClips.audio_file.
+                    Unprocessed file unexpectedly have processed extension.
                     AudioClips.id: {str(self.audio_clip.id)}
                 '''
             )
+
+        #check cache
+
+        self._ensure_processing_cache_exists()
+
+        if self.processing_cache['is_processing'] is True:
+
+            return Response(
+                data={
+                    "is_processing": True,
+                    "attempts_left": self.processing_cache['attempts_left'],
+                },
+                status=status.HTTP_409_CONFLICT
+            )
+
+        error_response = self._check_processing_attempts()
+
+        if error_response is not None:
+
+            return error_response
 
         #queue Lambda as task to normalise and transfer file to processed bucket
 
@@ -1918,12 +1980,45 @@ class CreateAudioClips():
         )
 
 
-    def check_normalisation_status(self, user_id:int, audio_clip_id:int)->Response:
+    def check_normalisation_status(self, audio_clip_id:int)->Response:
 
         #do not create or modify anything here
         #404 if no longer available
         #409 if is processing
         #200 if processing is successful/failed
+
+        processing_cache = cache.get(
+            CreateAudioClips.determine_processing_cache_key(
+                user_id=self.user.id,
+                audio_clip_id=audio_clip_id
+            ),
+            None
+        )
+
+        #409 if processing
+        #when cache is not yet created,
+        #it is when normalisation is just about to start
+
+        if processing_cache is not None:
+
+            response_status = status.HTTP_409_CONFLICT
+
+            if processing_cache['is_processing'] is False:
+
+                response_status = status.HTTP_200_OK
+
+            #still has attempts
+            #frontend will track attempts_left
+            #so if this returns -1 than what is at frontend, means processing failed
+            return Response(
+                data={
+                    'is_processing': processing_cache['is_processing'],
+                    'attempts_left': processing_cache['attempts_left'],
+                },
+                status=response_status
+            )
+
+        #no cache, continue to check db
 
         target_audio_clip = None
 
@@ -1933,7 +2028,7 @@ class CreateAudioClips():
                 'generic_status',
             ).get(
                 pk=audio_clip_id,
-                user_id=user_id,
+                user_id=self.user.id,
             )
 
         except AudioClips.DoesNotExist:
@@ -1948,7 +2043,6 @@ class CreateAudioClips():
 
         if target_audio_clip.generic_status.generic_status_name == 'ok':
 
-            #already processed
             return Response(
                 data={
                     'is_processed': True
@@ -1956,52 +2050,11 @@ class CreateAudioClips():
                 status=status.HTTP_200_OK
             )
 
-        elif target_audio_clip.generic_status.generic_status_name != 'processing':
-
-            #no longer processing
-            return Response(
-                data={
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        processing_cache = cache.get(
-            self.determine_processing_cache_key(audio_clip_id),
-            None
-        )
-
-        #409 if processing
-        #when cache is not yet created,
-        #it is when normalisation is just about to start
-
-        if (
-            processing_cache is None or
-            processing_cache['is_processing'] is True
-        ):
-
-            return Response(
-                data={
-                    'is_processing': True
-                },
-                status=status.HTTP_409_CONFLICT
-            )
-
-        #not processing
-        #check attempts
-
-        attempts_left = int(os.environ['AWS_LAMBDA_CALL_MAX_ATTEMPTS']) - processing_cache['attempts']
-
-        #still has attempts
-        #frontend will track attempts_left
-        #so if this returns -1 than what is at frontend, means processing failed
         return Response(
             data={
-                'attempts_left': attempts_left,
             },
-            status=status.HTTP_200_OK
+            status=status.HTTP_404_NOT_FOUND
         )
-
-
 
 
 

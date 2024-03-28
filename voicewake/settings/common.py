@@ -348,6 +348,7 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 5000000   #4.77mb
         #however, the file type that end-user has, cannot be enforced, e.g. ".wav" uploading to ".mp3" key
 AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS = ['webm',]
 AUDIO_CLIP_UNPROCESSED_EXPIRY_S = 3600  #1 hour
+AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS = 5
 
 
 GENERAL_ROW_QUANTITY_PER_PAGE = 20

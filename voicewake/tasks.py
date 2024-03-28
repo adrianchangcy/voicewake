@@ -160,8 +160,9 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
     #to better prevent spam
 
     processing_cache['is_processing'] = True
-    processing_cache['attempts'] += 1
+    processing_cache['attempts_left'] -= 1
 
+    #can't be bothered to properly -- the timeout
     cache.set(
         processing_cache_key,
         processing_cache,
@@ -230,7 +231,7 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
 
         #evaluate attempts again
 
-        if processing_cache['attempts'] >= int(os.environ['AWS_LAMBDA_CALL_MAX_ATTEMPTS']):
+        if processing_cache['attempts_left'] <= 0:
 
             #max attempts reached
             #set as "processing_max_attempts_reached", delete cache

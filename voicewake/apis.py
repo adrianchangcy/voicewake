@@ -102,18 +102,236 @@ class TestAPI(generics.GenericAPIView):
 
 
 
-class AudioClipReportsAPI(generics.GenericAPIView):
+class UsersLogInSignUpAPI(generics.GenericAPIView):
 
-    serializer_class = AudioClipReportsAPISerializer
-    permission_classes = [IsAuthenticated]
+    serializer_class = None
+    permission_classes = []
+    available_contexts = ['log_in', 'sign_up']
+    current_context:Literal['log_in', 'sign_up'] = 'log_in'
 
-    #no get() here, users don't have to see what audio_clips they've reported
 
-    #user wants to report an audio_clip
-    @method_decorator(app_decorators.deny_if_banned("response"))
+    def __init__(self, *args, **kwargs):
+
+        if 'current_context' not in kwargs or kwargs['current_context'] not in self.available_contexts:
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message="Incorrect current_context passed. Check .as_view() at urls.py."
+            )
+    
+        super().__init__(*args, **kwargs)
+
+
+    def verify_and_log_in(self, request, user_instance, handle_user_otp_class:HandleUserOTP, otp):
+
+        #random delay to mitigate single-threaded brute force attack
+        time.sleep(random.uniform(0.7, 3.5))
+
+        #reminder that verify_otp() does all the checks for us
+        if handle_user_otp_class.verify_otp(otp) is False:
+
+            #wanted to not tell users when max attempts have been reached, to prevent email probing
+            #but pros and cons conclude that without at least telling when to try again, UX will be frustrating
+            verify_otp_timeout_s = handle_user_otp_class.get_otp_attempt_timeout_seconds_left()
+
+            if verify_otp_timeout_s > 0:
+
+                #timed out and wrong OTP
+                message = "Timed out from too many %s attempts. Try again in " + get_pretty_datetime(verify_otp_timeout_s) + "."
+
+                if self.current_context == 'log_in':
+                    message = message % ("login")
+                elif self.current_context == 'sign_up':
+                    message = message % ("sign-up")
+
+                return Response(
+                    data={
+                        'message': message,
+                        'verify_otp_success': False
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            #not timed out but wrong OTP
+            message = "Incorrect %s code."
+
+            if self.current_context == 'log_in':
+                message = message % ("login")
+            elif self.current_context == 'sign_up':
+                message = message % ("sign-up")
+
+            return Response(
+                data={
+                    'message': message,
+                    'verify_otp_success': False
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        #OTP verified, continue
+
+        #currently set to True because we have no implication for is_active=False
+        #on is_active=False, login() will fail, as well as force_login() at tests
+        user_instance.is_active = True
+
+        #set last_login
+        user_instance.last_login = get_datetime_now()
+
+        #save
+        user_instance.save()
+
+        #log in
+        login(request, user_instance)
+
+        return Response(
+            data={
+                'message': 'You are now logged in!',
+                'is_logged_in': True
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+    #we let users log in even if banned
+    @method_decorator([
+        app_decorators.deny_if_already_logged_in("response"),
+        csrf_protect
+    ])
     def post(self, request, *args, **kwargs):
 
-        serializer = AudioClipReportsAPISerializer(data=request.data, many=False)
+        serializer = UsersLogInSignUpAPISerializer(data=request.data, many=False)
+
+        #validate
+        if serializer.is_valid() is False:
+
+            return Response(
+                data={
+                    'message': get_serializer_error_message(serializer),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        new_data = serializer.validated_data
+        user_instance = None
+
+        #get user
+
+        try:
+
+            user_instance = get_user_model().objects.get(email_lowercase=new_data['email'].lower())
+
+        except get_user_model().DoesNotExist:
+
+            user_instance = get_user_model().objects.create_user(email=new_data['email'])
+
+        #proceed with valid user_instance
+        
+        with transaction.atomic():
+
+            #prepare
+            handle_user_otp_class = HandleUserOTP(
+                user_instance,
+                settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_S, settings.TOTP_TOLERANCE_S,
+                settings.OTP_CREATION_TIMEOUT_S, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_S,
+                settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_S
+            )
+
+            handle_user_otp_class.guarantee_user_otp_instance(select_for_update=True)
+
+            #handle request for new OTP
+            if new_data['is_requesting_new_otp'] is True:
+
+                new_otp = handle_user_otp_class.generate_otp()
+
+                #only send email if has legitimate new OTP
+                if len(new_otp) == settings.TOTP_NUMBER_OF_DIGITS:
+
+                    #add task to Celery
+                    task_send_otp_email.s(
+                        context=self.current_context,
+                        email=new_data['email'],
+                        otp=new_otp
+                    ).delay()
+
+                    #email sent
+                    message = "%s code has been sent to " + new_data['email'] + "."
+
+                    if self.current_context == 'log_in':
+                        message = message % ("Login")
+                    elif self.current_context == 'sign_up':
+                        message = message % ("Sign-up")
+
+                    return Response(
+                        data={
+                            'message': message,
+                        },
+                        status=status.HTTP_200_OK
+                    )
+
+                else:
+
+                    #could not generate OTP
+
+                    otp_creation_timeout_s = handle_user_otp_class.get_otp_creation_timeout_seconds_left()
+
+                    if otp_creation_timeout_s > 0:
+
+                        return Response(
+                            data={
+                                'error_code': 'otp-creation-timeout',
+                                'timeout_s': otp_creation_timeout_s,
+                            },
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    
+                    else:
+
+                        #not supposed to reach here
+                        raise custom_error(
+                            IntegrityError,
+                            __name__,
+                            dev_message="Could not generate OTP for user, but user is unexpectedly not timed out."
+                        )
+
+            #not requesting for OTP, continue
+
+            return self.verify_and_log_in(request, user_instance, handle_user_otp_class, new_data['otp'])
+
+
+
+class UsersLogOutAPI(generics.GenericAPIView):
+
+    serializer_class = None
+    permission_classes = [IsAuthenticated]
+
+
+    def post(self, request, *args, **kwargs):
+
+        logout(request)
+
+        return Response(
+            data={
+                'data': {
+                    'is_logged_in': False
+                },
+                'message': 'You are now logged out!'
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+
+class UsersUsernameAPI(generics.GenericAPIView):
+
+    serializer_class = UsersUsernameAPISerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    #checks if username exists
+    @method_decorator(app_decorators.deny_if_banned("response"))
+    def get(self, request, *args, **kwargs):
+
+        serializer = UsersUsernameAPISerializer(data=kwargs, many=False)
 
         #validate
         if serializer.is_valid() is False:
@@ -125,63 +343,84 @@ class AudioClipReportsAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        #proceed
+
+        new_data = serializer.validated_data
+        
+        exists = get_user_model().objects.filter(
+            username_lowercase=new_data['username'].lower()
+        ).exists()
+
+        return Response(
+            {
+                'data': {
+                    'username': new_data['username'],
+                    'exists': exists
+                },
+            },
+            status.HTTP_200_OK
+        )
+
+
+    #updates username, but only once, i.e. when username is None
+    @method_decorator(app_decorators.deny_if_banned("response"))
+    def post(self, request, *args, **kwargs):
+
+        #user must not already have a username
+        if request.user.username is not None:
+
+            return Response(
+                {
+                    'message': 'You already have a username.',
+                },
+                status.HTTP_403_FORBIDDEN
+            )
+
+        #validate
+        serializer = UsersUsernameAPISerializer(data=request.data, many=False)
+
+        #validate
+        if serializer.is_valid() is False:
+
+            return Response(
+                data={
+                    'message': get_serializer_error_message(serializer),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         new_data = serializer.validated_data
 
-        try:
+        #check again if it exists
+        username_exists = get_user_model().objects.filter(
+            username_lowercase=new_data['username'].lower()
+        ).exists()
 
-            #get audio_clip
-            target_audio_clip = AudioClips.objects.select_related(
-                'generic_status',
-            ).get(
-                pk=new_data['audio_clip_id'],
-            )
-
-        except AudioClips.DoesNotExist:
+        if username_exists is True:
 
             return Response(
                 data={
-                    'message': 'Recording does not exist.',
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        #no need to check whether audio_clip belongs to user
-
-        #check if already banned
-        if target_audio_clip.is_banned is True:
-
-            return Response(
-                data={
-                    'message': 'This recording has already been banned.',
+                    'data': {
+                        'username': new_data['username'],
+                        'exists': True
+                    },
+                    'message': 'Oops! That username is taken.'
                 },
                 status=status.HTTP_200_OK
             )
-
-        #check if audio_clip is eligible to be reported
-        #e.g. cannot report when still processing and not shown publicly
-        if target_audio_clip.generic_status.generic_status_name != 'ok':
-
-            return Response(
-                data={
-                    'message': 'Recording does not exist.',
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        #add report
-        AudioClipReports.objects.update_or_create(
-            audio_clip_id=new_data['audio_clip_id'],
-            defaults={
-                "last_reported": get_datetime_now(),
-            },
-        )
-
-        #for edge case where same user reports --> evaluated --> reports again,
-        #no need to do anything, otherwise our cronjob can get overwhelmed
+        
+        #apply new username
+        request.user.username = new_data['username']
+        request.user.username_lowercase = new_data['username'].lower()
+        request.user.save()
 
         return Response(
             data={
-                'message': 'The recording is now queued for evaluation.',
+                'data': {
+                    'username': new_data['username'],
+                    'exists': False
+                },
+                'message': 'Your username is now %s!' % (new_data['username'])
             },
             status=status.HTTP_200_OK
         )
@@ -621,331 +860,6 @@ class UserBlocksAPI(generics.GenericAPIView):
         return Response(
             data={
                 'message': user_message
-            },
-            status=status.HTTP_200_OK
-        )
-
-
-
-class UsersUsernameAPI(generics.GenericAPIView):
-
-    serializer_class = UsersUsernameAPISerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
-
-    #checks if username exists
-    @method_decorator(app_decorators.deny_if_banned("response"))
-    def get(self, request, *args, **kwargs):
-
-        serializer = UsersUsernameAPISerializer(data=kwargs, many=False)
-
-        #validate
-        if serializer.is_valid() is False:
-
-            return Response(
-                data={
-                    'message': get_serializer_error_message(serializer),
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        #proceed
-
-        new_data = serializer.validated_data
-        
-        exists = get_user_model().objects.filter(
-            username_lowercase=new_data['username'].lower()
-        ).exists()
-
-        return Response(
-            {
-                'data': {
-                    'username': new_data['username'],
-                    'exists': exists
-                },
-            },
-            status.HTTP_200_OK
-        )
-
-
-    #updates username, but only once, i.e. when username is None
-    @method_decorator(app_decorators.deny_if_banned("response"))
-    def post(self, request, *args, **kwargs):
-
-        #user must not already have a username
-        if request.user.username is not None:
-
-            return Response(
-                {
-                    'message': 'You already have a username.',
-                },
-                status.HTTP_403_FORBIDDEN
-            )
-
-        #validate
-        serializer = UsersUsernameAPISerializer(data=request.data, many=False)
-
-        #validate
-        if serializer.is_valid() is False:
-
-            return Response(
-                data={
-                    'message': get_serializer_error_message(serializer),
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        new_data = serializer.validated_data
-
-        #check again if it exists
-        username_exists = get_user_model().objects.filter(
-            username_lowercase=new_data['username'].lower()
-        ).exists()
-
-        if username_exists is True:
-
-            return Response(
-                data={
-                    'data': {
-                        'username': new_data['username'],
-                        'exists': True
-                    },
-                    'message': 'Oops! That username is taken.'
-                },
-                status=status.HTTP_200_OK
-            )
-        
-        #apply new username
-        request.user.username = new_data['username']
-        request.user.username_lowercase = new_data['username'].lower()
-        request.user.save()
-
-        return Response(
-            data={
-                'data': {
-                    'username': new_data['username'],
-                    'exists': False
-                },
-                'message': 'Your username is now %s!' % (new_data['username'])
-            },
-            status=status.HTTP_200_OK
-        )
-
-
-
-class UsersLogInSignUpAPI(generics.GenericAPIView):
-
-    serializer_class = None
-    permission_classes = []
-    available_contexts = ['log_in', 'sign_up']
-    current_context:Literal['log_in', 'sign_up'] = 'log_in'
-
-
-    def __init__(self, *args, **kwargs):
-
-        if 'current_context' not in kwargs or kwargs['current_context'] not in self.available_contexts:
-
-            raise custom_error(
-                ValueError,
-                __name__,
-                dev_message="Incorrect current_context passed. Check .as_view() at urls.py."
-            )
-    
-        super().__init__(*args, **kwargs)
-
-
-    def verify_and_log_in(self, request, user_instance, handle_user_otp_class:HandleUserOTP, otp):
-
-        #random delay to mitigate single-threaded brute force attack
-        time.sleep(random.uniform(0.7, 3.5))
-
-        #reminder that verify_otp() does all the checks for us
-        if handle_user_otp_class.verify_otp(otp) is False:
-
-            #wanted to not tell users when max attempts have been reached, to prevent email probing
-            #but pros and cons conclude that without at least telling when to try again, UX will be frustrating
-            verify_otp_timeout_s = handle_user_otp_class.get_otp_attempt_timeout_seconds_left()
-
-            if verify_otp_timeout_s > 0:
-
-                #timed out and wrong OTP
-                message = "Timed out from too many %s attempts. Try again in " + get_pretty_datetime(verify_otp_timeout_s) + "."
-
-                if self.current_context == 'log_in':
-                    message = message % ("login")
-                elif self.current_context == 'sign_up':
-                    message = message % ("sign-up")
-
-                return Response(
-                    data={
-                        'message': message,
-                        'verify_otp_success': False
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            #not timed out but wrong OTP
-            message = "Incorrect %s code."
-
-            if self.current_context == 'log_in':
-                message = message % ("login")
-            elif self.current_context == 'sign_up':
-                message = message % ("sign-up")
-
-            return Response(
-                data={
-                    'message': message,
-                    'verify_otp_success': False
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        #OTP verified, continue
-
-        #currently set to True because we have no implication for is_active=False
-        #on is_active=False, login() will fail, as well as force_login() at tests
-        user_instance.is_active = True
-
-        #set last_login
-        user_instance.last_login = get_datetime_now()
-
-        #save
-        user_instance.save()
-
-        #log in
-        login(request, user_instance)
-
-        return Response(
-            data={
-                'message': 'You are now logged in!',
-                'is_logged_in': True
-            },
-            status=status.HTTP_200_OK
-        )
-
-
-    #we let users log in even if banned
-    @method_decorator([
-        app_decorators.deny_if_already_logged_in("response"),
-        csrf_protect
-    ])
-    def post(self, request, *args, **kwargs):
-
-        serializer = UsersLogInSignUpAPISerializer(data=request.data, many=False)
-
-        #validate
-        if serializer.is_valid() is False:
-
-            return Response(
-                data={
-                    'message': get_serializer_error_message(serializer),
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        new_data = serializer.validated_data
-        user_instance = None
-
-        #get user
-
-        try:
-
-            user_instance = get_user_model().objects.get(email_lowercase=new_data['email'].lower())
-
-        except get_user_model().DoesNotExist:
-
-            user_instance = get_user_model().objects.create_user(email=new_data['email'])
-
-        #proceed with valid user_instance
-        
-        with transaction.atomic():
-
-            #prepare
-            handle_user_otp_class = HandleUserOTP(
-                user_instance,
-                settings.TOTP_NUMBER_OF_DIGITS, settings.TOTP_VALIDITY_S, settings.TOTP_TOLERANCE_S,
-                settings.OTP_CREATION_TIMEOUT_S, settings.OTP_MAX_CREATIONS, settings.OTP_MAX_CREATIONS_TIMEOUT_S,
-                settings.OTP_MAX_ATTEMPTS, settings.OTP_MAX_ATTEMPTS_TIMEOUT_S
-            )
-
-            handle_user_otp_class.guarantee_user_otp_instance(select_for_update=True)
-
-            #handle request for new OTP
-            if new_data['is_requesting_new_otp'] is True:
-
-                new_otp = handle_user_otp_class.generate_otp()
-
-                #only send email if has legitimate new OTP
-                if len(new_otp) == settings.TOTP_NUMBER_OF_DIGITS:
-
-                    #add task to Celery
-                    task_send_otp_email().s(
-                        context=self.current_context,
-                        email=new_data['email'],
-                        otp=new_otp
-                    ).delay()
-
-                    #email sent
-                    message = "%s code has been sent to " + new_data['email'] + "."
-
-                    if self.current_context == 'log_in':
-                        message = message % ("Login")
-                    elif self.current_context == 'sign_up':
-                        message = message % ("Sign-up")
-
-                    return Response(
-                        data={
-                            'message': message,
-                        },
-                        status=status.HTTP_200_OK
-                    )
-
-                else:
-
-                    #could not generate OTP
-
-                    otp_creation_timeout_s = handle_user_otp_class.get_otp_creation_timeout_seconds_left()
-
-                    if otp_creation_timeout_s > 0:
-
-                        return Response(
-                            data={
-                                'error_code': 'otp-creation-timeout',
-                                'timeout_s': otp_creation_timeout_s,
-                            },
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
-                    
-                    else:
-
-                        #not supposed to reach here
-                        raise custom_error(
-                            IntegrityError,
-                            __name__,
-                            dev_message="Could not generate OTP for user, but user is unexpectedly not timed out."
-                        )
-
-            #not requesting for OTP, continue
-
-            return self.verify_and_log_in(request, user_instance, handle_user_otp_class, new_data['otp'])
-
-
-
-class UsersLogOutAPI(generics.GenericAPIView):
-
-    serializer_class = None
-    permission_classes = [IsAuthenticated]
-
-
-    def post(self, request, *args, **kwargs):
-
-        logout(request)
-
-        return Response(
-            data={
-                'data': {
-                    'is_logged_in': False
-                },
-                'message': 'You are now logged out!'
             },
             status=status.HTTP_200_OK
         )
@@ -1854,7 +1768,14 @@ class CreateEventsAPI(generics.GenericAPIView):
 
         serializer = None
 
-        if self.current_context == 'upload':
+        if self.current_context == 'check_process_status':
+
+            serializer = CreateAudioClips_CheckProcessStatus_APISerializer(
+                data=request.data,
+                many=False,
+            )
+
+        elif self.current_context == 'upload':
 
             serializer = CreateAudioClips_Upload_APISerializer(
                 data=request.data,
@@ -1907,7 +1828,9 @@ class CreateEventsAPI(generics.GenericAPIView):
 
             if self.current_context == 'check_process_status':
 
-                pass
+                return create_audio_clips_class.check_normalisation_status(
+                    audio_clip_id=new_data['audio_clip_id'],
+                )
 
             elif self.current_context == 'upload':
 
@@ -2127,16 +2050,18 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
     #pass only_expired_rows=False for "skipped choice", "skipped replying"
     def unlock_all_locked_events(self, only_expired_rows:bool):
 
+        #when user has lock, only new EventReplyQueues row is created
+        #nothing is changed for event, hence, on unlocking, no need to deal with events
+
         datetime_now = get_datetime_now()
 
-        when_locked_checkpoint = (
-            datetime_now - timedelta(seconds=settings.EVENT_REPLY_CHOICE_MAX_DURATION_S)
-        )
-
-        #is_replying=False, a.k.a. reply choice
-        #just deleting the queue will do
-
         if only_expired_rows is True:
+
+            #is_replying=False
+
+            when_locked_checkpoint = (
+                datetime_now - timedelta(seconds=settings.EVENT_REPLY_CHOICE_MAX_DURATION_S)
+            )
 
             EventReplyQueues.objects.filter(
                 locked_for_user=self.request.user,
@@ -2144,126 +2069,23 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
                 when_locked__lte=when_locked_checkpoint
             ).delete()
 
+            #is_replying=True
+
+            when_locked_checkpoint = (
+                datetime_now - timedelta(seconds=settings.EVENT_REPLY_MAX_DURATION_S)
+            )
+
+            EventReplyQueues.objects.filter(
+                locked_for_user=self.request.user,
+                is_replying=True,
+                when_locked__lte=when_locked_checkpoint
+            ).delete()
+
         else:
 
             EventReplyQueues.objects.filter(
                 locked_for_user=self.request.user,
-                is_replying=False,
             ).delete()
-
-        #is_replying=True, a.k.a. replying
-        #will have audio clips
-
-        when_locked_checkpoint = (
-            datetime_now - timedelta(seconds=settings.EVENT_REPLY_MAX_DURATION_S)
-        )
-
-        #first, get generic_status where generic_status_name is "processing"
-        #select event_reply_queues where:
-            #locked for current user
-            #is replying
-            #choose only expired rows, or disregard expiry
-        #delete selected event_reply_queues, return event_id
-        #update events where:
-            #id matches deleted event_reply_queues
-            #is "processing", i.e. has any 1 audio clip as "processing"
-            #change to "incomplete"
-            #return event_id from deleted event_reply_queues
-        #delete audio_clips where:
-            #belongs to current user
-            #is processing
-            #event_id matches passed event_id from deleted event_reply_queues
-            #return id affected by this deletion
-        #clear cache for processing audio clips
-            #relies on id returned by raw query
-        full_sql = '''
-            WITH
-            generic_status_processing AS (
-                SELECT id FROM generic_statuses AS gs
-                WHERE gs.generic_status_name = %s
-            ),
-            target_event_reply_queues AS (
-                SELECT erq.id, erq.event_id
-                FROM event_reply_queues AS erq
-                WHERE erq.locked_for_user_id = %s
-                AND erq.is_replying IS TRUE
-            '''
-
-        if only_expired_rows is True:
-
-            full_sql += '''
-                AND erq.when_locked <= %s
-            '''
-
-        full_sql += '''
-            ),
-            deleted_event_reply_queues AS (
-                DELETE FROM event_reply_queues AS erq
-                USING target_event_reply_queues AS terq
-                WHERE erq.id = terq.id
-                RETURNING terq.event_id
-            ),
-            updated_events AS (
-                UPDATE events AS e
-                SET generic_status_id = (
-                    SELECT id FROM generic_statuses AS gs
-                    WHERE gs.generic_status_name = %s
-                )
-                FROM deleted_event_reply_queues AS derq
-                WHERE e.generic_status_id = generic_status_processing.id
-                AND e.id = derq.event_id
-                RETURNING derq.event_id
-            )
-            DELETE FROM audio_clips AS ac
-            USING updated_events AS ue
-            WHERE ac.user_id = %s
-            AND ac.generic_status_id = generic_status_processing.id
-            AND ac.event_id = derq.event_id
-            RETURNING ac.id
-            ;
-        '''
-
-        full_params = [
-            'processing',
-            self.request.user.id,
-        ]
-
-        if only_expired_rows is True:
-
-            full_params += [
-                datetime_to_raw_sql_string(when_locked_checkpoint),
-            ]
-
-        full_params += [
-            'incomplete',
-            self.request.user.id,
-        ]
-
-        #clear cache that tracks processing audio clips
-
-        target_cache_keys = []
-
-        with connection.cursor() as cursor:
-
-            cursor.execute(
-                full_sql,
-                full_params
-            )
-
-            #expect only AudioClips.id as (id,) tuple
-
-            for row in cursor.fetchall():
-
-                target_cache_keys.append(
-                    CreateAudioClips.determine_processing_cache_key(
-                        audio_clip_id=row[0]
-                    )
-                )
-
-        #delete cache
-        #cache content is irrelevant
-
-        cache.delete_many(target_cache_keys)
 
 
     #gets both is_replying=True/False events
@@ -2437,14 +2259,12 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
     serializer_class = HandleReplyingEventsAPISerializer
     permission_classes = [IsAuthenticated]
     available_contexts = [
-        'start',
+        'start', 'cancel',
         'upload', 'regenerate_upload_url', 'process', 'check_process_status',
-        'cancel'
     ]
     current_context:Literal[
-        'start',
+        'start', 'cancel',
         'upload', 'regenerate_upload_url', 'process', 'check_process_status',
-        'cancel'
     ] = 'start'
 
 
@@ -2503,7 +2323,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
     #if user is already locked for event, change (is_replying=False) to (is_replying=True, when_locked!=None)
     #no need to check for daily reply limit here
-    def start_reply_in_event(self, event_id:int):
+    def start_reply_in_event(self, event_id:int)->Response:
 
         #check if user is replying to any other event
         if self._check_user_is_replying_in_other_events(excluded_event_id=event_id) is True:
@@ -2600,33 +2420,19 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
     #only delete if is_replying=True
     #only mark audio clip as deleted, and not actually delete, so we can enforce daily limit
-    def cancel_reply_in_event(self, event_id:int):
-
-        event_reply_queue = None
+    def cancel_reply_in_event(self, event_id:int)->Response:
 
         #no 'try' here, let main call catch exception
-        event_reply_queue = EventReplyQueues.objects.get(
+
+        delete_quantity, delete_quantity_by_model = EventReplyQueues.objects.filter(
             locked_for_user=self.request.user,
             event_id=event_id,
             is_replying=True
-        )
+        ).delete()
 
-        #delete event reply queue, then audio clip as "deleted", then reset event to "incomplete"
+        if delete_quantity == 0:
 
-        EventReplyQueues.objects.filter(pk=event_reply_queue.id).delete()
-
-        AudioClips.objects.filter(
-            user=self.request.user,
-            event_id=event_reply_queue.event_id,
-        ).update(
-            generic_status=GenericStatuses.objects.get(generic_status_name='deleted')
-        )
-
-        Events.objects.filter(
-            pk=event_reply_queue.event_id
-        ).update(
-            generic_status=GenericStatuses.objects.get(generic_status_name='incomplete')
-        )
+            raise EventReplyQueues.DoesNotExist
 
         return Response(
             data={
@@ -2646,7 +2452,10 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
         if self.current_context == 'check_process_status':
 
-            pass
+            serializer = CreateAudioClips_CheckProcessStatus_APISerializer(
+                data=request.data,
+                many=False,
+            )
 
         elif self.current_context == 'start' or self.current_context == 'cancel':
 
@@ -2694,7 +2503,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
             create_audio_clips_class = None
 
-            if self.current_context in ['upload', 'regenerate_upload_url', 'process']:
+            if self.current_context in ['upload', 'regenerate_upload_url', 'process', 'check_process_status']:
 
                 create_audio_clips_class = CreateAudioClips(
                     user=self.request.user,
@@ -2707,9 +2516,13 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                     event_reply_expiry_seconds=settings.EVENT_REPLY_MAX_DURATION_S,
                 )
 
-            #actions with no requirement for transaction.atomic()
+            if self.current_context == 'check_process_status':
 
-            if self.current_context == 'regenerate_upload_url':
+                return create_audio_clips_class.check_normalisation_status(
+                    audio_clip_id=new_data['audio_clip_id'],
+                )
+
+            elif self.current_context == 'regenerate_upload_url':
 
                 return create_audio_clips_class.regenerate_s3_endpoint(
                     audio_clip_id=new_data['audio_clip_id'],
@@ -2910,6 +2723,95 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
             #with/without trigger, both at Locust had yielded the same response times (avg. 17000ms)
             #cannot catch ForeignKeyViolation from update_or_create()
                 #object will be created, end of line will be reached, status 200 is returned
+
+
+
+class AudioClipReportsAPI(generics.GenericAPIView):
+
+    serializer_class = AudioClipReportsAPISerializer
+    permission_classes = [IsAuthenticated]
+
+    #no get() here, users don't have to see what audio_clips they've reported
+
+    #user wants to report an audio_clip
+    @method_decorator(app_decorators.deny_if_banned("response"))
+    def post(self, request, *args, **kwargs):
+
+        serializer = AudioClipReportsAPISerializer(data=request.data, many=False)
+
+        #validate
+        if serializer.is_valid() is False:
+
+            return Response(
+                data={
+                    'message': get_serializer_error_message(serializer),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        new_data = serializer.validated_data
+
+        try:
+
+            #get audio_clip
+            target_audio_clip = AudioClips.objects.select_related(
+                'generic_status',
+            ).get(
+                pk=new_data['audio_clip_id'],
+            )
+
+        except AudioClips.DoesNotExist:
+
+            return Response(
+                data={
+                    'message': 'Recording does not exist.',
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        #no need to check whether audio_clip belongs to user
+
+        #check if already banned
+        if target_audio_clip.is_banned is True:
+
+            return Response(
+                data={
+                    'message': 'This recording has already been banned.',
+                },
+                status=status.HTTP_200_OK
+            )
+
+        #check if audio_clip is eligible to be reported
+        #e.g. cannot report when still processing and not shown publicly
+        if target_audio_clip.generic_status.generic_status_name != 'ok':
+
+            return Response(
+                data={
+                    'message': 'Recording does not exist.',
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        #add report
+        AudioClipReports.objects.update_or_create(
+            audio_clip_id=new_data['audio_clip_id'],
+            defaults={
+                "last_reported": get_datetime_now(),
+            },
+        )
+
+        #for edge case where same user reports --> evaluated --> reports again,
+        #no need to do anything, otherwise our cronjob can get overwhelmed
+
+        return Response(
+            data={
+                'message': 'The recording is now queued for evaluation.',
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+
 
 
 

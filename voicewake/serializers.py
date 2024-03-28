@@ -288,6 +288,11 @@ class CreateAudioClips_Process_APISerializer(serializers.Serializer):
 
 
 
+class CreateAudioClips_CheckProcessStatus_APISerializer(serializers.Serializer):
+    audio_clip_id = serializers.IntegerField(min_value=1,)
+
+
+
 class AWSLambdaNormaliseAudioClipsAPISerializer(serializers.Serializer):
     lambda_status_code = serializers.IntegerField()
     lambda_message = serializers.CharField(min_length=0, max_length=300, allow_blank=True)
