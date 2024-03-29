@@ -481,24 +481,16 @@ class AWSLambdaNormaliseAudioClips:
         )
 
 
-    def create_return_response(self, client_error_object=None):
-
-        #client_error_object is ClientError
+    def get_default_return_response(self):
 
         response = {
             'lambda_status_code': 200,
             'lambda_message': '',
-            'lambda_dump': {},
             'lambda_timers_s': self.lambda_timers_s,
             'audio_volume_peaks': self.audio_volume_peaks,
             'audio_duration_s': self.audio_file_duration_s,
+            'lambda_dump': {},
         }
-
-        if client_error_object is not None:
-
-            response['lambda_status_code'] = client_error_object.response['ResponseMetadata']['HTTPStatusCode']
-            response['lambda_message'] = client_error_object.response['Error']['Message']
-            response['lambda_dump'] = client_error_object.response
 
         return response
 
@@ -563,14 +555,29 @@ class AWSLambdaNormaliseAudioClips:
             self.get_peaks_by_buckets()
             self.store_processed_audio_file()
 
+            return self.get_default_return_response()
+
         except ClientError as e:
 
-            return self.create_return_response(e)
+            error_response = self.get_default_return_response()
+
+            error_response['lambda_status_code'] = e.response['ResponseMetadata']['HTTPStatusCode']
+            error_response['lambda_message'] = e.response['Error']['Message']
+            error_response['lambda_dump'] = e.response
+
+            return error_response
+
+        except subprocess.CalledProcessError as e:
+
+            error_response = self.get_default_return_response()
+
+            error_response['lambda_status_code'] = 400
+            error_response['lambda_message'] = "Uploaded file could not be processed."
+
+            return error_response
 
         except Exception as e:
 
             raise
-
-        return self.create_return_response()
 
 

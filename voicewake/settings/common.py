@@ -417,42 +417,42 @@ CELERY_IMPORTS = ("voicewake.tasks",)
 #if you have args to pass, specify "'args': (param1, param2)"
 CELERY_BEAT_SCHEDULE = {
     'cronjob_ban_audio_clips': {
-        'task': 'voicewake.tasks.cronjob_ban_audio_clips',
+        'task': 'voicewake.cronjobs.cronjob_ban_audio_clips',
         'schedule': (60 * 60),  #1 hour
         'options': {
             'expires': 30,    #30 seconds
         },
     },
     'cronjob_delete_event_reply_queue_not_replying_overdue': {
-        'task': 'voicewake.tasks.cronjob_delete_event_reply_queue_not_replying_overdue',
+        'task': 'voicewake.cronjobs.cronjob_delete_event_reply_queue_not_replying_overdue',
         'schedule': (30 * 60),  #30 minutes
         'options': {
             'expires': 30,    #30 seconds
         },
     },
     'cronjob_delete_event_reply_queue_is_replying_overdue': {
-        'task': 'voicewake.tasks.cronjob_delete_event_reply_queue_is_replying_overdue',
+        'task': 'voicewake.cronjobs.cronjob_delete_event_reply_queue_is_replying_overdue',
         'schedule': (30 * 60),  #30 minutes
         'options': {
             'expires': 30,    #30 seconds
         },
     },
     'cronjob_handle_originator_processing_overdue': {
-        'task': 'voicewake.tasks.cronjob_handle_originator_processing_overdue',
+        'task': 'voicewake.cronjobs.cronjob_handle_originator_processing_overdue',
         'schedule': (30 * 60),  #30 minutes
         'options': {
             'expires': 30,    #30 seconds
         },
     },
     'cronjob_handle_responder_processing_overdue': {
-        'task': 'voicewake.tasks.cronjob_handle_responder_processing_overdue',
+        'task': 'voicewake.cronjobs.cronjob_handle_responder_processing_overdue',
         'schedule': (30 * 60),  #30 minutes
         'options': {
             'expires': 30,    #30 seconds
         },
     },
     'cronjob_delete_audio_clip_processing_overdue': {
-        'task': 'voicewake.tasks.cronjob_delete_audio_clip_processing_overdue',
+        'task': 'voicewake.cronjobs.cronjob_delete_audio_clip_processing_overdue',
         'schedule': (2 * 60 * 60),  #2 hours
         'options': {
             'expires': 30,    #30 seconds
