@@ -16,7 +16,7 @@ from django.core.files.base import ContentFile
 from django.db import connection
 from django.core.cache import cache
 
-#Python libraries
+#Python
 from datetime import datetime, timezone, timedelta, tzinfo
 from genericpath import isfile
 from zoneinfo import ZoneInfo
@@ -48,7 +48,6 @@ from botocore.config import Config
 #app files
 from .models import *
 from .serializers import *
-from .tasks import task_normalisation
 
 
 #also deletes uer_x folder if empty after deletion
@@ -488,6 +487,11 @@ def print_function_name(extra_stuff_to_print)->str:
     calling_function_name = inspect.getframeinfo(cframe.f_back).function + "()"
     print("\n" + calling_function_name + ": " + str(extra_stuff_to_print) + "\n")
 
+
+def get_request_data(request):
+
+    result_data = (bytes(request.content).decode())
+    return json.loads(result_data)
 
 
 #for OTP
@@ -1486,9 +1490,8 @@ class CreateAudioClips():
         #don't check processing countdown here
         #let cronjob catch it, and if user has extra duration, allow this tolerance
 
-        #allow user to process, regardless of event's status
-
         if (
+            self.event.generic_status.generic_status_name == 'processing' and
             self.audio_clip.generic_status.generic_status_name == 'processing' and
             self.audio_clip.audio_duration_s == 0 and
             len(self.audio_clip.audio_file) > 0 and
@@ -1500,6 +1503,7 @@ class CreateAudioClips():
             return None
 
         elif (
+            self.event.generic_status.generic_status_name in ['incomplete', 'completed'] and
             self.audio_clip.generic_status.generic_status_name == 'ok' and
             self.audio_clip.audio_duration_s > 0 and
             len(self.audio_clip.audio_file) > 0 and
@@ -1553,32 +1557,6 @@ class CreateAudioClips():
         else:
 
             self.processing_cache = target_cache
-
-
-    def _check_processing_attempts(self)->None|Response:
-
-        #evaluate attempts
-
-        if self.processing_cache['attempts_left'] <= 0:
-
-            #max attempts reached
-            #set as "processing_max_attempts_reached", delete cache
-
-            self.audio_clip.generic_status = GenericStatuses.objects.get(
-                generic_status_name='processing_max_attempts_reached'
-            )
-            self.audio_clip.save()
-
-            cache.delete(self.processing_cache_key)
-
-            return Response(
-                data={
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        #ok
-        return None
 
 
     def _initialise_s3_post_wrapper(self):
@@ -1881,8 +1859,9 @@ class CreateAudioClips():
         )
 
 
-    def start_normalisation(self, audio_clip_id:int)->Response:
+    def start_normalisation(self, audio_clip_id:int)->None|Response:
 
+        #calling task here would cause circular import error, so we call at apis.py instead
         #get relevant records
         #we deal with db first, as cache is not intended for validation
 
@@ -1958,26 +1937,10 @@ class CreateAudioClips():
                 status=status.HTTP_409_CONFLICT
             )
 
-        error_response = self._check_processing_attempts()
+        #attempts_left will never be 0
+        #cache will be deleted by task when done, be it on success, or 0 attempts_left on failure
 
-        if error_response is not None:
-
-            return error_response
-
-        #queue Lambda as task to normalise and transfer file to processed bucket
-
-        task_normalisation.s(
-            user_id=self.user.id,
-            processing_cache_key=self.processing_cache_key,
-            audio_clip_id=self.audio_clip.id,
-            event_id=self.event.id
-        ).delay()
-
-        return Response(
-            data={
-            },
-            status=status.HTTP_200_OK
-        )
+        return None
 
 
     def check_normalisation_status(self, audio_clip_id:int)->Response:

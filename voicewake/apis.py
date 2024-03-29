@@ -251,7 +251,7 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
                     task_send_otp_email.s(
                         context=self.current_context,
                         email=new_data['email'],
-                        otp=new_otp
+                        otp=new_otp,
                     ).delay()
 
                     #email sent
@@ -1848,8 +1848,27 @@ class CreateEventsAPI(generics.GenericAPIView):
 
             elif self.current_context == 'process':
 
-                return create_audio_clips_class.start_normalisation(
+                error_response = create_audio_clips_class.start_normalisation(
                     audio_clip_id=new_data['audio_clip_id'],
+                )
+
+                if error_response is not None:
+
+                    return error_response
+
+                #add task to queue
+
+                task_normalisation.s(
+                    user_id=create_audio_clips_class.user.id,
+                    processing_cache_key=create_audio_clips_class.processing_cache_key,
+                    audio_clip_id=create_audio_clips_class.audio_clip.id,
+                    event_id=create_audio_clips_class.event.id,
+                ).delay()
+
+                return Response(
+                    data={
+                    },
+                    status=status.HTTP_200_OK
                 )
 
         except AudioClipTones.DoesNotExist:
@@ -2550,8 +2569,27 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
             elif self.current_context == 'process':
 
-                return create_audio_clips_class.start_normalisation(
+                error_response = create_audio_clips_class.start_normalisation(
                     audio_clip_id=new_data['audio_clip_id'],
+                )
+
+                if error_response is not None:
+
+                    return error_response
+
+                #add task to queue
+
+                task_normalisation.s(
+                    user_id=create_audio_clips_class.user.id,
+                    processing_cache_key=create_audio_clips_class.processing_cache_key,
+                    audio_clip_id=create_audio_clips_class.audio_clip.id,
+                    event_id=create_audio_clips_class.event.id,
+                ).delay()
+
+                return Response(
+                    data={
+                    },
+                    status=status.HTTP_200_OK
                 )
 
         except AudioClipTones.DoesNotExist:
