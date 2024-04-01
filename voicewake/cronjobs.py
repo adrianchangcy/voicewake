@@ -270,13 +270,13 @@ def cronjob_handle_originator_processing_overdue():
 
     when_created_checkpoint = get_datetime_now() - timedelta(seconds=settings.AUDIO_CLIP_UNPROCESSED_EXPIRY_S)
 
-    #set AudioClips to "deleted", then delete Events, and return AudioClips.id
-    #we don't immediate delete AudioClips so that create/reply limit can be enforced
-    #we delete cache via AudioClips.id
+    #set AudioClips to "processing_overdue", then delete Events, and return AudioClips.id
+    #don't immediate delete AudioClips so that create/reply limit can be enforced
+    #delete cache
     full_sql = '''
         WITH
         target_audio_clips AS (
-            SELECT ac.id, ac.event_id FROM audio_clips AS ac
+            SELECT ac.id, ac.event_id, ac.user_id FROM audio_clips AS ac
             INNER JOIN generic_statuses AS gs ON gs.id = ac.generic_status_id
             INNER JOIN audio_clip_roles AS acr ON acr.id = ac.audio_clip_role_id
             WHERE acr.audio_clip_role_name = %s
@@ -294,7 +294,7 @@ def cronjob_handle_originator_processing_overdue():
             event_id = NULL
             FROM target_audio_clips AS tac
             WHERE ac.id = tac.id
-            RETURNING tac.id, tac.event_id
+            RETURNING tac.id, tac.event_id, tac.user_id
         )
         DELETE FROM events AS e
         USING processing_overdue_audio_clips AS poac
@@ -303,7 +303,7 @@ def cronjob_handle_originator_processing_overdue():
             SELECT id FROM generic_statuses
             WHERE generic_status_name = %s
         )
-        RETURNING poac.id
+        RETURNING poac.user_id, poac.id
     '''
 
     full_params = [
@@ -328,9 +328,12 @@ def cronjob_handle_originator_processing_overdue():
 
         for row in cursor.fetchall():
 
+            user_id, audio_clip_id = row
+
             target_cache_keys.append(
                 CreateAudioClips.determine_processing_cache_key(
-                    audio_clip_id=row[0]
+                    user_id=user_id,
+                    audio_clip_id=audio_clip_id,
                 )
             )
 
@@ -352,7 +355,7 @@ def cronjob_handle_responder_processing_overdue():
     full_sql = '''
         WITH
         target_audio_clips AS (
-            SELECT ac.id, ac.event_id FROM audio_clips AS ac
+            SELECT ac.id, ac.event_id, ac.user_id FROM audio_clips AS ac
             INNER JOIN generic_statuses AS gs ON gs.id = ac.generic_status_id
             INNER JOIN audio_clip_roles AS acr ON acr.id = ac.audio_clip_role_id
             WHERE acr.audio_clip_role_name = %s
@@ -369,7 +372,7 @@ def cronjob_handle_responder_processing_overdue():
             )
             FROM target_audio_clips AS tac
             WHERE ac.id = tac.id
-            RETURNING tac.id, tac.event_id
+            RETURNING tac.id, tac.event_id, tac.user_id
         )
         UPDATE events AS e
         SET generic_status_id = (
@@ -382,7 +385,7 @@ def cronjob_handle_responder_processing_overdue():
             SELECT id FROM generic_statuses
             WHERE generic_status_name = %s
         )
-        RETURNING poac.id
+        RETURNING poac.user_id, poac.id
     '''
 
     full_params = [
@@ -404,13 +407,14 @@ def cronjob_handle_responder_processing_overdue():
             params=full_params,
         )
 
-        #expect only AudioClips.id as (id,) tuple
-
         for row in cursor.fetchall():
+
+            user_id, audio_clip_id = row
 
             target_cache_keys.append(
                 CreateAudioClips.determine_processing_cache_key(
-                    audio_clip_id=row[0]
+                    user_id=user_id,
+                    audio_clip_id=audio_clip_id,
                 )
             )
 
@@ -426,7 +430,7 @@ def cronjob_delete_audio_clip_processing_overdue():
     #here, truly delete from db
     #no longer need those "deleted" row to enforce latest create/reply limit
     #no need to involve AudioClipReports, as users cannot report when AudioClip isn't "ok"
-    #no need to involve Events, as their relations are already handled
+    #no need to involve Events, as their relations are already handled beforehand
 
     passed_midnight_today = get_datetime_now().strftime('%Y-%m-%d 00:00:00.%f %z')
 
