@@ -1190,7 +1190,10 @@ class Core_TestCase(TestCase):
         sample_audio_clip_0.when_created = self.datetime_now - timedelta(seconds=overdue_s)
         sample_audio_clip_0.save()
 
-        cache_key_0 = CreateAudioClips.determine_processing_cache_key(audio_clip_id=sample_audio_clip_0.id)
+        cache_key_0 = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[0].id,
+            audio_clip_id=sample_audio_clip_0.id,
+        )
         cache.set(cache_key_0, {})
 
         with self.settings(
@@ -1229,7 +1232,10 @@ class Core_TestCase(TestCase):
         sample_audio_clip_0.when_created = self.datetime_now - timedelta(seconds=overdue_s)
         sample_audio_clip_0.save()
 
-        cache_key_0 = CreateAudioClips.determine_processing_cache_key(audio_clip_id=sample_audio_clip_0.id)
+        cache_key_0 = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[0].id,
+            audio_clip_id=sample_audio_clip_0.id,
+        )
         cache.set(cache_key_0, {})
 
         #row 2
@@ -1249,7 +1255,10 @@ class Core_TestCase(TestCase):
         sample_audio_clip_1.when_created = self.datetime_now - timedelta(seconds=overdue_s)
         sample_audio_clip_1.save()
 
-        cache_key_1 = CreateAudioClips.determine_processing_cache_key(audio_clip_id=sample_audio_clip_1.id)
+        cache_key_1 = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[0].id,
+            audio_clip_id=sample_audio_clip_1.id,
+        )
         cache.set(cache_key_1, {})
 
         with self.settings(
@@ -1292,7 +1301,10 @@ class Core_TestCase(TestCase):
         sample_audio_clip_0.when_created = self.datetime_now
         sample_audio_clip_0.save()
 
-        cache_key_0 = CreateAudioClips.determine_processing_cache_key(audio_clip_id=sample_audio_clip_0.id)
+        cache_key_0 = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[0].id,
+            audio_clip_id=sample_audio_clip_0.id,
+        )
         cache.set(cache_key_0, {})
 
         with self.settings(
@@ -1338,7 +1350,10 @@ class Core_TestCase(TestCase):
         sample_audio_clip_1.when_created = self.datetime_now - timedelta(seconds=overdue_s)
         sample_audio_clip_1.save()
 
-        cache_key_0 = CreateAudioClips.determine_processing_cache_key(audio_clip_id=sample_audio_clip_1.id)
+        cache_key_0 = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[1].id,
+            audio_clip_id=sample_audio_clip_1.id,
+        )
         cache.set(cache_key_0, {})
 
         with self.settings(
@@ -1393,7 +1408,10 @@ class Core_TestCase(TestCase):
         sample_audio_clip_1.when_created = self.datetime_now - timedelta(seconds=overdue_s)
         sample_audio_clip_1.save()
 
-        cache_key_0 = CreateAudioClips.determine_processing_cache_key(audio_clip_id=sample_audio_clip_1.id)
+        cache_key_0 = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[1].id,
+            audio_clip_id=sample_audio_clip_1.id,
+        )
         cache.set(cache_key_0, {})
 
         #row 2
@@ -1426,7 +1444,10 @@ class Core_TestCase(TestCase):
         sample_audio_clip_3.when_created = self.datetime_now - timedelta(seconds=overdue_s)
         sample_audio_clip_3.save()
 
-        cache_key_1 = CreateAudioClips.determine_processing_cache_key(audio_clip_id=sample_audio_clip_1.id)
+        cache_key_1 = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[1].id,
+            audio_clip_id=sample_audio_clip_1.id,
+        )
         cache.set(cache_key_1, {})
 
 
@@ -1489,7 +1510,10 @@ class Core_TestCase(TestCase):
         sample_audio_clip_1.when_created = self.datetime_now
         sample_audio_clip_1.save()
 
-        cache_key_0 = CreateAudioClips.determine_processing_cache_key(audio_clip_id=sample_audio_clip_1.id)
+        cache_key_0 = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[1].id,
+            audio_clip_id=sample_audio_clip_1.id,
+        )
         cache.set(cache_key_0, {})
 
         with self.settings(
