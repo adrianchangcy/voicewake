@@ -19,13 +19,7 @@ export const useTestStore = defineStore('test_store', {
         },
     },
     //all things considered, we get overall better usability with persistence than without
-    persist: {
-        //persist these states
-        paths: [
-            'audio_clip_id', 'stopped_at_s',
-        ],
-        debug: true
-    },
+    persist: false,
     share: {
         //array of fields that the plugin will ignore
         omit: [],

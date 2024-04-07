@@ -2,165 +2,155 @@
     <div>
 
         <!--user profile-->
+        <!--px-1 to match scroller-->
         <VUserCard
-            v-if="isUserProfilePage"
+            v-if="isUserProfilePage || isUserLikesDislikesPage"
             :prop-page-context="propPageContext"
-            :prop-has-default-actions="true"
-            @new-username="handleNewUsername($event)"
-            class="py-8"
-        />
-
-        <!--user likes dislikes-->
-        <VUserCard
-            v-else-if="isUserLikesDislikesPage"
-            :prop-page-context="propPageContext"
-            :prop-has-default-actions="false"
-            class="py-8"
+            :prop-has-default-actions="isUserProfilePage"
+            class="py-8 px-1"
         >
-            <span>Likes &#38; Dislikes</span>
+            <span v-if="isUserLikesDislikesPage">Likes &#38; Dislikes</span>
         </VUserCard>
 
         <!--sorting options-->
+        <!--px-1 to match scroller-->
         <div
             ref="sorting_options_container"
             :class="[
                 isUserProfilePage || isUserLikesDislikesPage ? 'pb-8' : 'pb-10',
-                'flex flex-col'
+                'flex flex-col px-1'
             ]"
         >
 
             <!--filter-->
-            <div>
+            <div class="flex flex-col gap-2">
 
-                <div class="flex flex-col gap-2">
-
-                    <!--likes/dislikes-->
-                    <div
-                        v-if="isUserLikesDislikesPage"
-                        class="w-full flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors"
+                <!--likes/dislikes-->
+                <div
+                    v-if="isUserLikesDislikesPage"
+                    class="w-full flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors"
+                >
+                    <VActionText
+                        v-for="(filter_type, index) in filtered_events_store.getLikeDislikeChoices"
+                        :key="index"
+                        @click="filtered_events_store.updateCurrentLikeDislikeChoiceIndex(index)"
+                        :disabled="filtered_events_store.isSameCurrentLikeDislikeChoiceIndex(index)"
+                        prop-element="button"
+                        prop-element-size="s"
+                        prop-font-size="s"
+                        :prop-is-icon-only="true"
+                        class="w-full relative focus-visible:-outline-offset-2"
                     >
+                        <span class="w-fit mx-auto">{{ filter_type }}</span>
+                        <span
+                            v-show="filtered_events_store.isSameCurrentLikeDislikeChoiceIndex(index)"
+                            class="sr-only"
+                        >
+                            selected
+                        </span>
+                        <TransitionFade>
+                            <div
+                                v-show="filtered_events_store.isSameCurrentLikeDislikeChoiceIndex(index)"
+                                class="absolute h-0.5 bg-theme-black left-2 right-2 bottom-0"
+                            ></div>
+                        </TransitionFade>
+                    </VActionText>
+                </div>
+
+                <div class="grid grid-cols-4 gap-2">
+                    <!--audio_clip_roles-->
+                    <div class="col-span-3 flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors">
                         <VActionText
-                            v-for="(filter_type, index) in filtered_events_store.getLikeDislikeChoices"
+                            v-for="(pretty_audio_clip_role_name, index) in filtered_events_store.getPrettyAudioClipRoleNames"
                             :key="index"
-                            @click="filtered_events_store.updateCurrentLikeDislikeChoiceIndex(index)"
-                            :disabled="filtered_events_store.isSameCurrentLikeDislikeChoiceIndex(index)"
+                            @click="filtered_events_store.updateCurrentAudioClipRoleNameIndex(index)"
+                            :disabled="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
                             prop-element="button"
                             prop-element-size="s"
                             prop-font-size="s"
                             :prop-is-icon-only="true"
                             class="w-full relative focus-visible:-outline-offset-2"
                         >
-                            <span class="w-fit mx-auto">{{ filter_type }}</span>
+                            <span class="w-fit mx-auto">{{ pretty_audio_clip_role_name }}</span>
                             <span
-                                v-show="filtered_events_store.isSameCurrentLikeDislikeChoiceIndex(index)"
+                                v-show="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
                                 class="sr-only"
                             >
                                 selected
                             </span>
                             <TransitionFade>
                                 <div
-                                    v-show="filtered_events_store.isSameCurrentLikeDislikeChoiceIndex(index)"
+                                    v-show="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
                                     class="absolute h-0.5 bg-theme-black left-2 right-2 bottom-0"
                                 ></div>
                             </TransitionFade>
                         </VActionText>
                     </div>
 
-                    <div class="grid grid-cols-4 gap-2">
-                        <!--audio_clip_roles-->
-                        <div class="col-span-3 flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors">
-                            <VActionText
-                                v-for="(pretty_audio_clip_role_name, index) in filtered_events_store.getPrettyAudioClipRoleNames"
-                                :key="index"
-                                @click="filtered_events_store.updateCurrentAudioClipRoleNameIndex(index)"
-                                :disabled="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
-                                prop-element="button"
-                                prop-element-size="s"
-                                prop-font-size="s"
-                                :prop-is-icon-only="true"
-                                class="w-full relative focus-visible:-outline-offset-2"
-                            >
-                                <span class="w-fit mx-auto">{{ pretty_audio_clip_role_name }}</span>
-                                <span
-                                    v-show="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
-                                    class="sr-only"
-                                >
-                                    selected
-                                </span>
-                                <TransitionFade>
-                                    <div
-                                        v-show="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
-                                        class="absolute h-0.5 bg-theme-black left-2 right-2 bottom-0"
-                                    ></div>
-                                </TransitionFade>
-                            </VActionText>
-                        </div>
-
-                        <!--audio_clip_tones-->
-                        <div
-                            ref="open_close_audio_clip_tone_menu_button"
-                            class="col-span-1 flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors"
+                    <!--audio_clip_tones-->
+                    <div
+                        ref="open_close_audio_clip_tone_menu_button"
+                        class="col-span-1 flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors"
+                    >
+                        <VActionText
+                            @click="toggleFilterMenu()"
+                            prop-element="button"
+                            prop-element-size="s"
+                            prop-font-size="s"
+                            :prop-is-icon-only="false"
+                            class="w-full focus-visible:-outline-offset-2"
                         >
-                            <VActionText
-                                @click="toggleFilterMenu()"
-                                prop-element="button"
-                                prop-element-size="s"
-                                prop-font-size="s"
-                                :prop-is-icon-only="false"
-                                class="w-full focus-visible:-outline-offset-2"
+                            <span
+                                v-if="filtered_events_store.getCurrentAudioClipTone === null"
+                                class="mx-auto"
                             >
-                                <span
-                                    v-if="filtered_events_store.getCurrentAudioClipTone === null"
-                                    class="mx-auto"
-                                >
-                                    Any
-                                </span>
-                                <span
-                                    v-else
-                                    class="mx-auto text-2xl"
-                                >
-                                    <span class="sr-only">{{ filtered_events_store.getCurrentAudioClipTone.audio_clip_tone_name }}</span>
-                                    {{ filtered_events_store.getCurrentAudioClipTone.audio_clip_tone_symbol }}
-                                </span>
-                            </VActionText>
-                        </div>
+                                Any
+                            </span>
+                            <span
+                                v-else
+                                class="mx-auto text-2xl"
+                            >
+                                <span class="sr-only">{{ filtered_events_store.getCurrentAudioClipTone.audio_clip_tone_name }}</span>
+                                {{ filtered_events_store.getCurrentAudioClipTone.audio_clip_tone_symbol }}
+                            </span>
+                        </VActionText>
+                    </div>
+                </div>
+            </div>
+
+            <!--audio_clip_tone menu-->
+            <div class="h-0 relative">
+
+                <!--arrow-->
+                <div class="w-full grid grid-cols-4">
+                    <div class="col-start-4 col-span-1 relative">
+                        <div
+                            v-show="is_audio_clip_tone_menu_open"
+                            class="z-30 w-2 h-2 absolute top-3 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"
+                        ></div>
                     </div>
                 </div>
 
-                <!--audio_clip_tone menu-->
-                <div class="h-0 relative">
+                <!--menu-->
+                <div
+                    v-show="is_audio_clip_tone_menu_open"
+                    v-click-outside="{
+                        bool_status_variable_or_callback: 'is_audio_clip_tone_menu_open',
+                        refs_to_exclude: ['open_close_audio_clip_tone_menu_button']
+                    }"
+                    class="absolute w-full h-fit top-4 z-20 flex flex-col p-4 gap-4 rounded-lg border-2 border-theme-black bg-theme-light"
+                >
 
-                    <!--arrow-->
-                    <div class="w-full grid grid-cols-4">
-                        <div class="col-start-4 col-span-1 relative">
-                            <div
-                                v-show="is_audio_clip_tone_menu_open"
-                                class="z-30 w-2 h-2 absolute top-3 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"
-                            ></div>
-                        </div>
-                    </div>
-
-                    <!--menu-->
-                    <div
-                        v-show="is_audio_clip_tone_menu_open"
-                        v-click-outside="{
-                            bool_status_variable_or_callback: 'is_audio_clip_tone_menu_open',
-                            refs_to_exclude: ['open_close_audio_clip_tone_menu_button']
-                        }"
-                        class="absolute w-full h-fit top-4 z-20 flex flex-col p-4 gap-4 rounded-lg border-2 border-theme-black bg-theme-light"
-                    >
-
-                        <!--audio_clip_tones-->
-                        <VAudioClipToneMenu
-                            :prop-is-open="true"
-                            :prop-close-when-selected="false"
-                            :prop-has-deselect-option="true"
-                            :prop-must-track-selected-option="true"
-                            :prop-initial-audio-clip-tone="filtered_events_store.getCurrentAudioClipTone"
-                            :prop-filtered-grouped-audio-clips-store="filtered_events_store"
-                            @audioClipToneSelected="filtered_events_store.updateCurrentAudioClipTone($event)"
-                        />
-                    </div>
+                    <!--audio_clip_tones-->
+                    <VAudioClipToneMenu
+                        :prop-is-open="true"
+                        :prop-close-when-selected="false"
+                        :prop-has-deselect-option="true"
+                        :prop-must-track-selected-option="true"
+                        :prop-initial-audio-clip-tone="filtered_events_store.getCurrentAudioClipTone"
+                        :prop-filtered-grouped-audio-clips-store="filtered_events_store"
+                        @audioClipToneSelected="filtered_events_store.updateCurrentAudioClipTone($event)"
+                    />
                 </div>
             </div>
         </div>
@@ -203,130 +193,128 @@
             </DynamicScroller>
         </div>
 
+        <!--loading and dialogs-->
+        <!--px-1 to match scroller-->
         <div class="px-1">
-            <!--loading events-->
-            <TransitionFade>
+
+            <TransitionGroupFade :prop-is-swapping="true">
+
+                <!--fetching-->
                 <EventCardSkeleton
                     v-show="filtered_events_store.isFetching"
                     :prop-has-border="true"
                     :prop-audio-clip-quantity="2"
+                    class="w-full"
                 />
-            </TransitionFade>
 
-            <!--dialogs-->
-            <div class="relative">
+                <!--no events at all-->
+                <VDialogPlain
+                    v-show="canShowEventsEmptyMessage"
+                    :prop-has-border="false"
+                    :prop-has-auto-space-logo="false"
+                    :prop-has-auto-space-title="false"
+                    :prop-has-auto-space-content="false"
+                    class="w-full"
+                >
+                    <template #logo>
+                        <FontAwesomeIcon icon="far fa-face-meh-blank"/>
+                    </template>
+                    <template #title>
+                        <span>No events found.</span>
+                    </template>
+                    <template #content>
+                        <span>The filters can be changed to explore other content!</span>
+                    </template>
+                </VDialogPlain>
 
-                <TransitionFade>
+                <!--no events left to load-->
+                <VDialogPlain
+                    v-show="canShowNoNewEventsMessage"
+                    :prop-has-border="false"
+                    :prop-has-auto-space-logo="false"
+                    :prop-has-auto-space-title="false"
+                    :prop-has-auto-space-content="false"
+                    class="w-full pt-8"
+                >
+                    <template #logo>
+                        <FontAwesomeIcon icon="far fa-face-meh-blank"/>
+                    </template>
+                    <template #title>
+                        <span>You've reached the end.</span>
+                    </template>
+                    <template #content>
+                        <span>The filters can be changed to explore other content!</span>
+                    </template>
+                </VDialogPlain>
 
-                    <!--no events at all-->
-                    <VDialogPlain
-                        v-if="canShowEventsEmptyMessage"
-                        :prop-has-border="false"
-                        :prop-has-auto-space-logo="false"
-                        :prop-has-auto-space-title="false"
-                        :prop-has-auto-space-content="false"
-                        class="w-full"
-                    >
-                        <template #logo>
-                            <FontAwesomeIcon icon="far fa-face-meh-blank"/>
-                        </template>
-                        <template #title>
-                            <span>No events found.</span>
-                        </template>
-                        <template #content>
-                            <span>The filters can be changed to explore other content!</span>
-                        </template>
-                    </VDialogPlain>
-
-                    <!--no events left to load-->
-                    <VDialogPlain
-                        v-else-if="canShowNoNewEventsMessage"
-                        :prop-has-border="false"
-                        :prop-has-auto-space-logo="false"
-                        :prop-has-auto-space-title="false"
-                        :prop-has-auto-space-content="false"
-                        class="w-full pt-8"
-                    >
-                        <template #logo>
-                            <FontAwesomeIcon icon="far fa-face-meh-blank"/>
-                        </template>
-                        <template #title>
-                            <span>You've reached the end.</span>
-                        </template>
-                        <template #content>
-                            <span>The filters can be changed to explore other content!</span>
-                        </template>
-                    </VDialogPlain>
-
-                    <!--reconsider loading more events-->
-                    <VDialogPlain
-                        v-else-if="canPauseScrolling"
-                        :prop-has-border="true"
-                        :prop-has-auto-space-logo="false"
-                        :prop-has-auto-space-title="true"
-                        :prop-has-auto-space-content="true"
-                        class="w-full pt-8"
-                    >
-                        <template #title>
+                <!--reconsider loading more events-->
+                <VDialogPlain
+                    v-show="canPauseScrolling"
+                    :prop-has-border="true"
+                    :prop-has-auto-space-logo="false"
+                    :prop-has-auto-space-title="true"
+                    :prop-has-auto-space-content="true"
+                    class="w-full pt-8"
+                >
+                    <template #title>
+                        <span>
+                            {{ getPlayedAudioClipsLength }} recordings played.
+                        </span>
+                    </template>
+                    <template #content>
+                        <div class="flex flex-col gap-4">
                             <span>
-                                {{ getPlayedAudioClipsLength }} recordings played.
+                                Don't forget to take a break!
                             </span>
-                        </template>
-                        <template #content>
-                            <div class="flex flex-col gap-4">
-                                <span>
-                                    Don't forget to take a break!
-                                </span>
-                                <VActionSpecial
-                                    @click="continueScrolling()"
-                                    prop-element="button"
-                                    prop-element-size="s"
-                                    prop-font-size="s"
-                                    :prop-is-icon-only="false"
-                                    type="button"
-                                    class="w-full"
-                                >
-                                    <span class="mx-auto">Load more events</span>
-                                </VActionSpecial>
-                            </div>
-                        </template>
-                    </VDialogPlain>
+                            <VActionSpecial
+                                @click="continueScrolling()"
+                                prop-element="button"
+                                prop-element-size="s"
+                                prop-font-size="s"
+                                :prop-is-icon-only="false"
+                                type="button"
+                                class="w-full"
+                            >
+                                <span class="mx-auto">Load more events</span>
+                            </VActionSpecial>
+                        </div>
+                    </template>
+                </VDialogPlain>
 
-                    <!--retry-->
-                    <VDialogPlain
-                        v-else-if="canShowManualFetchRetry"
-                        :prop-has-border="true"
-                        :prop-has-auto-space-logo="false"
-                        :prop-has-auto-space-title="true"
-                        :prop-has-auto-space-content="true"
-                        class="w-full pt-8"
-                    >
-                        <template #title>
+                <!--retry-->
+                <VDialogPlain
+                    v-show="canShowManualFetchRetry"
+                    :prop-has-border="true"
+                    :prop-has-auto-space-logo="false"
+                    :prop-has-auto-space-title="true"
+                    :prop-has-auto-space-content="true"
+                    class="w-full pt-8"
+                >
+                    <template #title>
+                        <span>
+                            Unable to load events.
+                        </span>
+                    </template>
+                    <template #content>
+                        <div class="flex flex-col gap-4">
                             <span>
-                                Unable to load events.
+                                An error had occurred.
                             </span>
-                        </template>
-                        <template #content>
-                            <div class="flex flex-col gap-4">
-                                <span>
-                                    An error had occurred.
-                                </span>
-                                <VActionSpecial
-                                    @click="continueScrolling()"
-                                    prop-element="button"
-                                    prop-element-size="s"
-                                    prop-font-size="s"
-                                    :prop-is-icon-only="false"
-                                    type="button"
-                                    class="w-full"
-                                >
-                                    <span class="mx-auto">Load more events</span>
-                                </VActionSpecial>
-                            </div>
-                        </template>
-                    </VDialogPlain>
-                </TransitionFade>
-            </div>
+                            <VActionSpecial
+                                @click="continueScrolling()"
+                                prop-element="button"
+                                prop-element-size="s"
+                                prop-font-size="s"
+                                :prop-is-icon-only="false"
+                                type="button"
+                                class="w-full"
+                            >
+                                <span class="mx-auto">Load more events</span>
+                            </VActionSpecial>
+                        </div>
+                    </template>
+                </VDialogPlain>
+            </TransitionGroupFade>
         </div>
 
         <div id="load-more-events-observer-target"></div>
@@ -351,6 +339,7 @@
     import EventCardSkeleton from '../components/skeleton/EventCardSkeleton.vue';
     import VPlayback from '../components/medium/VPlayback.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
+    import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
     import VAudioClipToneMenu from '../components/medium/VAudioClipToneMenu.vue';
     import VActionSpecial from '../components/small/VActionSpecial.vue';
     import VActionText from '../components/small/VActionText.vue';

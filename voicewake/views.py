@@ -271,10 +271,21 @@ class GetEvents(TemplateView):
                 context=template_context
             )
 
+        #validate
+        serializer = GetEventsViewSerializer(data=request.GET)
+
+        if serializer.is_valid() is False:
+
+            return render(
+                request,
+                template_name=self.template_name,
+                context=template_context
+            )
+
         #user is here to reupload
         #prepare needed data at template for reupload
 
-        reupload_audio_clip_id = int(reupload_audio_clip_id)
+        reupload_audio_clip_id = serializer.validated_data['reupload']
 
         #also get AudioClipTones so we can refill form fields, aesthetic reasons only
         #you can just use Pinia and store + retrieve

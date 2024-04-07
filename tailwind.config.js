@@ -40,7 +40,7 @@ module.exports = {
                 'theme-danger': '#fa3515',
                 'theme-button-soft-danger': '#ff4934',
 
-                'theme-light': '#F2F4F5',
+                'theme-light': '#FFFDE8',
                 'theme-light-trim': '#FDFDFD',
                 'theme-dark': '#22333B',
 

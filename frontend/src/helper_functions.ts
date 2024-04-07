@@ -510,14 +510,9 @@ export function getShortenedString(passed_string:string, max_character_count:num
 
     const trimmed_string = passed_string.trim();
 
-    if(trimmed_string.length === 0 || max_character_count <= 0){
-
-        throw new Error('Invalid.');
-    }
-
     if(trimmed_string.length <= max_character_count){
 
-        return passed_string;
+        return trimmed_string;
     }
 
     //slice accepts index args, and the character 'end' arg will not be included

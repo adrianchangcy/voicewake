@@ -356,7 +356,7 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                     Object.hasOwn(error, 'response') === false
                 ){
 
-                    return;
+                    throw new Error('Unexpected error.');
                 }
 
                 //if we get can_retry=false, we must move on
@@ -378,12 +378,7 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                     return;
                 }
 
-                notify({
-                    title: 'Error',
-                    text: error.response.data['message'],
-                    type: 'error',
-                    icon: {'font_awesome': 'fas fa-exclamation'},
-                }, 3000);
+                throw new Error('Unhandled error.');
             });
         },
         async updateReplyingEvent(replying_event:EventsAndAudioClipsTypes|null) : Promise<void> {

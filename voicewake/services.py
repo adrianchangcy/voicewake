@@ -488,10 +488,10 @@ def print_function_name(extra_stuff_to_print)->str:
     print("\n" + calling_function_name + ": " + str(extra_stuff_to_print) + "\n")
 
 
-def get_request_data(request):
+def get_response_data(request):
 
-    result_data = (bytes(request.content).decode())
-    return json.loads(result_data)
+    response_data = (bytes(request.content).decode())
+    return json.loads(response_data)
 
 
 #for OTP
@@ -1353,178 +1353,76 @@ class CreateAudioClips():
         }
 
 
-    def _check_can_create_originator(self)->None|Response:
+    @staticmethod
+    def check_db_can_normalise(audio_clip, event, event_reply_queue)->bool:
 
-        if self.current_context != 'create_event':
+        #if cannot normalise, only reset those that match normalise conditions
+        #this is to maintain and respect any higher precedence statuses
 
-            raise custom_error(
-                ValueError,
-                __name__,
-                dev_message='Invalid attempt to use function in improper self.current_context.',
+        audio_clip_role_name = audio_clip.audio_clip_role.audio_clip_role_name
+
+        if audio_clip_role_name == 'originator':
+
+            if audio_clip is None or event is None:
+
+                raise custom_error(
+                    ValueError,
+                    __name__,
+                    dev_message="Missing args."
+                )
+
+            can_normalise = (
+                audio_clip.generic_status.generic_status_name == 'processing' and
+                event.generic_status.generic_status_name == 'processing'
             )
 
-        #check for upload limit cooldown
+            if can_normalise is False:
 
-        cooldown_s = self.get_cooldown_on_audio_clip_create_limit_s()
+                if audio_clip.generic_status.generic_status_name == 'processing':
 
-        if cooldown_s > 0:
+                    audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
+                    audio_clip.save()
 
-            return Response(
-                data={
-                    "message": "Come back in " + get_pretty_datetime(cooldown_s) + "!",
-                    "event_create_daily_limit_reached": True,
-                },
-                status=status.HTTP_400_BAD_REQUEST
+                if event.generic_status.generic_status_name == 'processing':
+
+                    event.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
+                    event.save()
+
+            return can_normalise
+
+        elif audio_clip_role_name == 'responder':
+
+            if audio_clip is None or event is None or event_reply_queue is None:
+
+                raise custom_error(
+                    ValueError,
+                    __name__,
+                    dev_message="Missing args."
+                )
+
+            can_normalise = (
+                audio_clip.generic_status.generic_status_name == 'processing' and
+                event.generic_status.generic_status_name == 'incomplete' and
+                event_reply_queue.is_replying is True and
+                get_datetime_now() < (event_reply_queue.when_locked + timedelta(seconds=settings.EVENT_REPLY_MAX_DURATION_S))
             )
 
-        return None
+            if can_normalise is False:
 
+                if audio_clip.generic_status.generic_status_name == 'processing':
 
-    def _check_can_create_responder(self)->None|Response:
+                    audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
+                    audio_clip.save()
 
-        #no need to check on reply limit
-        #reply limit is enforced at reply choice
+                EventReplyQueues.objects.filter(pk=event_reply_queue.id).delete()
 
-        if self.current_context != 'create_reply':
+            return can_normalise
 
-            raise custom_error(
-                ValueError,
-                __name__,
-                dev_message='Invalid attempt to use function in improper self.current_context.',
-            )
-
-        #check if not yet is_replying=True
-
-        if self.event_reply_queue.is_replying is not True:
-
-            return Response(
-                data={
-                    "message": "Confirm your reply choice first.",
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        #check if queue can still be kept
-
-        if self.event.generic_status.generic_status_name not in ['processing', 'incomplete']:
-
-            self.event_reply_queue.delete()
-            self.event_reply_queue = None
-
-            return Response(
-                data={
-                    "message": "Event is no longer available for reply.",
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        #for idempotence, check if AudioClips has already been created
-        #when audio_clip is "processing", event also becomes "processing"
-
-        try:
-
-            #for idempotency, don't include allowed changes in .get()
-            existing_audio_clip = AudioClips.objects.get(
-                user=self.user,
-                audio_clip_role__audio_clip_role_name='responder',
-                event_id=self.event.id,
-            )
-
-            #row exists
-
-            #return only audio_clip_id, check if other fields exists in frontend
-            #call self.regenerate_s3_endpoint()
-            return Response(
-                data={
-                    'event_id': self.event.id,
-                    'audio_clip_id': existing_audio_clip.id,
-                },
-                status=status.HTTP_200_OK
-            )
-
-        except AudioClips.DoesNotExist:
-
-            pass
-
-        #check whether reply queue has expired
-
-        if(
-            self.event_reply_queue.when_locked <
-            (self.datetime_now - timedelta(seconds=self.event_reply_expiry_seconds))
-        ):
-
-            self.event_reply_queue.delete()
-            self.event_reply_queue = None
-
-            return Response(
-                data={
-                    "message": "Reply choice has just expired.",
-                },
-                status=status.HTTP_205_RESET_CONTENT
-            )
-
-        return None
-
-
-    def _check_can_do_processing_database_rows(self)->None|Response:
-
-        #we don't check EventReplyQueues, as it is irrelevant here, and is not guaranteed to exist
-
-        if self.audio_clip is None or self.event is None:
-
-            raise custom_error(
-                ValueError,
-                __name__,
-                dev_message="Missing required records."
-            )
-
-        #sanity check
-        if self.audio_clip.user.id != self.user.id:
-
-            raise custom_error(
-                ValueError,
-                __name__,
-                dev_message="Unexpected mismatch of ids."
-            )
-
-        #don't check processing countdown here
-        #let cronjob catch it, and if user has extra duration, allow this tolerance
-
-        if (
-            self.event.generic_status.generic_status_name == 'processing' and
-            self.audio_clip.generic_status.generic_status_name == 'processing' and
-            self.audio_clip.audio_duration_s == 0 and
-            len(self.audio_clip.audio_file) > 0 and
-            len(self.audio_clip.audio_volume_peaks) == 0
-        ):
-
-            #not yet processed
-            #ok
-            return None
-
-        elif (
-            self.event.generic_status.generic_status_name in ['incomplete', 'completed'] and
-            self.audio_clip.generic_status.generic_status_name == 'ok' and
-            self.audio_clip.audio_duration_s > 0 and
-            len(self.audio_clip.audio_file) > 0 and
-            len(self.audio_clip.audio_volume_peaks) > 0
-        ):
-
-            #already processed
-            return Response(
-                data={
-                    "is_processed": True,
-                },
-                status=status.HTTP_200_OK
-            )
-
-        else:
-
-            return Response(
-                data={
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
+        raise custom_error(
+            ValueError,
+            __name__,
+            dev_message="Not originator/responder."
+        )
 
 
     def _ensure_processing_cache_exists(self):
@@ -1601,13 +1499,19 @@ class CreateAudioClips():
                 dev_message="Invalid self.current_context."
             )
 
-        #perform checks
+        #check if creation limit has been reached
 
-        error_response = self._check_can_create_originator()
+        cooldown_s = self.get_cooldown_on_audio_clip_create_limit_s()
 
-        if error_response is not None:
+        if cooldown_s > 0:
 
-            return error_response
+            return Response(
+                data={
+                    "message": "Come back in " + get_pretty_datetime(cooldown_s) + "!",
+                    "event_create_daily_limit_reached": True,
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         #proceed
 
@@ -1615,7 +1519,7 @@ class CreateAudioClips():
         audio_clip_tone = AudioClipTones.objects.get(pk=audio_clip_tone_id)
         generic_status_processing = GenericStatuses.objects.get(generic_status_name='processing')
 
-        #create event, as "processing"
+        #create event, as "processing", to avoid being queued for responders
         self.event = Events.objects.create(
             event_name=event_name,
             generic_status=generic_status_processing,
@@ -1666,12 +1570,15 @@ class CreateAudioClips():
 
     #creates event + audio_clip, returns audio_clip.id
     #returns 201, first call will create new records, or return existing records
+    #will validate + invalidate
     def create_records_and_return_s3_endpoint_as_responder(
         self,
         event_id:int,
         audio_clip_tone_id:int,
         recorded_file_extension:str,
     )->Response:
+
+        #reply limit is enforced at choice listing, not here
 
         if self.current_context != "create_reply":
 
@@ -1681,146 +1588,171 @@ class CreateAudioClips():
                 dev_message="Invalid self.current_context."
             )
 
-        #idempotency measure
-        #not user's first time, but as long as still processing, return same 200
+        #handle audio clip first so we can immediately return if processed
 
         try:
 
-            target_audio_clip = AudioClips.objects.get(
+            self.audio_clip = AudioClips.objects.select_related(
+                'generic_status',
+            ).get(
                 event_id=event_id,
                 user_id=self.user.id,
                 audio_clip_role__audio_clip_role_name='responder',
-                generic_status__generic_status_name='processing'
             )
 
-                #s3
-
-            self._initialise_s3_post_wrapper()
-
-            #generate key and presigned URL
-
-            upload_key = self.s3_post_wrapper.generate_unprocessed_object_key(
-                user_id=self.user.id,
-                file_extension=recorded_file_extension
-            )
-
-            upload_info = self.s3_post_wrapper.generate_unprocessed_presigned_post_url(
-                key=upload_key,
-                file_extension=recorded_file_extension,
-            )
-
-            return Response(
-                data={
-                    'upload_url': upload_info['url'],
-                    'upload_fields': json.dumps(upload_info['fields']),
-                    'event_id': event_id,
-                    'audio_clip_id': target_audio_clip.id,
-                },
-                status=status.HTTP_200_OK
-            )
-
-        except AudioClips.DoesNotExist:
-
-            #continue
-            pass
-
-        #user's first time
-        #proceed
-
-        try:
-
-            with transaction.atomic():
-
-                self.event_reply_queue = EventReplyQueues.objects.select_for_update(
-                    of=("event",)
-                ).select_related(
-                    'event',
-                    'event__generic_status'
-                ).get(
-                    event_id=event_id,
-                    locked_for_user=self.user,
-                )
-
-                self.event = self.event_reply_queue.event
-
-                #perform checks
-
-                error_response = self._check_can_create_responder()
-
-                if error_response is not None:
-                
-                    return error_response
-
-                #can reply, proceed
-                #no need to check for daily reply limit here
-                #as that is enforced when listing choices
-
-                #s3
-
-                self._initialise_s3_post_wrapper()
-
-                #generate key and presigned URL
-
-                upload_key = self.s3_post_wrapper.generate_unprocessed_object_key(
-                    user_id=self.user.id,
-                    file_extension=recorded_file_extension
-                )
-
-                upload_info = self.s3_post_wrapper.generate_unprocessed_presigned_post_url(
-                    key=upload_key,
-                    file_extension=recorded_file_extension,
-                )
-
-                #create audio_clips
-
-                generic_status_processing = GenericStatuses.objects.get(generic_status_name='processing')
-                audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='responder')
-                audio_clip_tone = AudioClipTones.objects.get(pk=audio_clip_tone_id)
-
-                self.audio_clip = AudioClips.objects.create(
-                    user=self.user,
-                    audio_clip_role=audio_clip_role,
-                    audio_clip_tone=audio_clip_tone,
-                    event_id=event_id,
-                    audio_volume_peaks=[],
-                    audio_duration_s=0,
-                    audio_file=upload_key,
-                    generic_status=generic_status_processing
-                )
-
-                #update event
-
-                self.event.generic_status = generic_status_processing
-                self.event.save()
-
-                #no longer need to lock for reply
-
-                self.event_reply_queue.delete()
+            if self.audio_clip.generic_status.generic_status_name != 'processing':
 
                 return Response(
                     data={
-                        'upload_url': upload_info['url'],
-                        'upload_fields': json.dumps(upload_info['fields']),
-                        'event_id': event_id,
-                        'audio_clip_id': self.audio_clip.id,
                     },
-                    status=status.HTTP_201_CREATED
+                    status=status.HTTP_404_NOT_FOUND
                 )
+
+        except AudioClips.DoesNotExist:
+
+            pass
+
+        except:
+
+            raise
+
+        #check other relevant records
+
+        try:
+
+            #get and check queue
+
+            self.event_reply_queue = EventReplyQueues.objects.select_related(
+                'event',
+                'event__generic_status'
+            ).get(
+                event_id=event_id,
+                locked_for_user=self.user,
+            )
+
+            #get event
+            self.event = self.event_reply_queue.event
 
         except EventReplyQueues.DoesNotExist:
 
+            if self.audio_clip is not None and self.audio_clip.generic_status.generic_status_name == 'processing':
+
+                self.audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
+                self.audio_clip.save()
+
             return Response(
                 data={
-                    "message": "Event is unavailable for reply.",
                 },
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_404_NOT_FOUND
             )
 
         except:
 
             raise
 
+        #check if not yet is_replying=True
+        if self.event_reply_queue.is_replying is not True:
 
+            return Response(
+                data={
+                    "message": "Confirm your reply choice first.",
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        #check whether reply queue has expired
+
+        if(
+            self.datetime_now >=
+            (self.event_reply_queue.when_locked + timedelta(seconds=self.event_reply_expiry_seconds))
+        ):
+
+            #invalidate/reset everything
+
+            if self.audio_clip is not None and self.audio_clip.generic_status.generic_status_name == 'processing':
+
+                self.audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
+                self.audio_clip.save()
+
+            self.event_reply_queue.delete()
+
+            return Response(
+                data={
+                    "message": "Reply choice has just expired.",
+                },
+                status=status.HTTP_205_RESET_CONTENT
+            )
+
+        #get and check event
+
+        if self.event.generic_status.generic_status_name != 'incomplete':
+
+            #invalidate/reset everything
+
+            if self.audio_clip is not None and self.audio_clip.generic_status.generic_status_name == 'processing':
+
+                self.audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
+                self.audio_clip.save()
+
+            self.event_reply_queue.delete()
+
+            return Response(
+                data={
+                    "message": "Event is no longer available for reply.",
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        #proceed
+
+        #s3
+        self._initialise_s3_post_wrapper()
+
+        #generate key and presigned URL
+
+        upload_key = self.s3_post_wrapper.generate_unprocessed_object_key(
+            user_id=self.user.id,
+            file_extension=recorded_file_extension
+        )
+
+        upload_info = self.s3_post_wrapper.generate_unprocessed_presigned_post_url(
+            key=upload_key,
+            file_extension=recorded_file_extension,
+        )
+
+        #create audio clip if it does not exist
+        if self.audio_clip is None:
+
+            generic_status_processing = GenericStatuses.objects.get(generic_status_name='processing')
+            audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='responder')
+            audio_clip_tone = AudioClipTones.objects.get(pk=audio_clip_tone_id)
+
+            self.audio_clip = AudioClips.objects.create(
+                user=self.user,
+                audio_clip_role=audio_clip_role,
+                audio_clip_tone=audio_clip_tone,
+                event_id=event_id,
+                audio_volume_peaks=[],
+                audio_duration_s=0,
+                audio_file=upload_key,
+                generic_status=generic_status_processing
+            )
+
+        #no need to update event to "processing" as responder
+        #otherwise the event cannot be viewed
+
+        return Response(
+            data={
+                'upload_url': upload_info['url'],
+                'upload_fields': json.dumps(upload_info['fields']),
+                'event_id': event_id,
+                'audio_clip_id': self.audio_clip.id,
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+
+    #will minimally validate, no invalidation
     def regenerate_s3_endpoint(self, audio_clip_id:int)->Response:
 
         #check if audio_clip exists
@@ -1859,9 +1791,10 @@ class CreateAudioClips():
         )
 
 
+    #will validate, no invalidation
     def start_normalisation(self, audio_clip_id:int)->None|Response:
 
-        #calling task here would cause circular import error, so we call at apis.py instead
+        #doing "add normalisation to queue" here would cause circular import error, so we call at apis.py instead
         #get relevant records
         #we deal with db first, as cache is not intended for validation
 
@@ -1881,6 +1814,14 @@ class CreateAudioClips():
                 pk=self.audio_clip.event_id
             )
 
+            #when responder is not done processing, queue will still exist
+            if self.audio_clip.audio_clip_role.audio_clip_role_name == 'responder':
+
+                self.event_reply_queue = EventReplyQueues.objects.get(
+                    event_id=self.audio_clip.event_id,
+                    locked_for_user=self.user,
+                )
+
         except AudioClips.DoesNotExist:
 
             return Response(
@@ -1895,13 +1836,34 @@ class CreateAudioClips():
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        #check db rows can normalise
+        except EventReplyQueues.DoesNotExist:
 
-        error_response = self._check_can_do_processing_database_rows()
+            return Response(
+                data={},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-        if error_response is not None:
+        #validate db rows
 
-            return error_response
+        can_normalise = self.check_db_can_normalise(
+            audio_clip=self.audio_clip,
+            event=self.event,
+            event_reply_queue=self.event_reply_queue
+        )
+
+        if can_normalise is False:
+
+            cache.delete(
+                self.determine_processing_cache_key(
+                    user_id=self.user.id,
+                    audio_clip_id=self.audio_clip.id,
+                )
+            )
+
+            return Response(
+                data={},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
         #determine processed upload_key from unprocessed
         #simply by switching extension
@@ -1943,6 +1905,7 @@ class CreateAudioClips():
         return None
 
 
+    #will minimally validate, no invalidation
     def check_normalisation_status(self, audio_clip_id:int)->Response:
 
         #do not create or modify anything here

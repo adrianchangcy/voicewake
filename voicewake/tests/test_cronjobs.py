@@ -71,7 +71,7 @@ class Core_TestCase(TestCase):
             cls.users.append(current_user)
 
         #audio file
-        cls.audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/test_file_samples/audio_can_overwrite.mp3')
+        cls.audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/file_samples/audio_can_overwrite.mp3')
         cls.audio_file = open(cls.audio_file_full_path, 'rb')
         cls.audio_file = SimpleUploadedFile(cls.audio_file.name, cls.audio_file.read(), 'audio/mp3')
 

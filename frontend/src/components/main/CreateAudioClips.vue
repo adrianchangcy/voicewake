@@ -154,50 +154,6 @@
                     />
                 </div>
 
-                <!--processing-->
-                <VDialogPlain
-                    v-show="canShowProcessingDialog"
-                    :prop-has-border="false"
-                    :prop-has-auto-space-logo="false"
-                    :prop-has-auto-space-title="false"
-                    :prop-has-auto-space-content="false"
-                    class="w-full"
-                >
-                    <template #logo>
-                        <span
-                            v-if="audio_clip_tone_choice !== null"
-                            class="text-xl animate-spin"
-                        >
-                            {{ audio_clip_tone_choice!.audio_clip_tone_symbol }}
-                        </span>
-                    </template>
-                    <template #title>
-                        <span>Processing recording...</span>
-                    </template>
-                    <template #content>
-                        <span>
-                            This may take a minute.
-                            <br>
-                            Explore other content while waiting!
-                        </span>
-                        <div class="pt-2">
-                            <VActionBorder
-                                prop-element="a"
-                                prop-element-size="s"
-                                prop-font-size="s"
-                                :prop-is-icon-only="true"
-                                href="/"
-                                class="w-fit mx-auto"
-                            >
-                                <span class="flex items-center px-4">
-                                    <span class="block pb-0.5">Back to main page</span>
-                                    <FontAwesomeIcon icon="fas fa-arrow-right" class="text-lg pl-2"/>
-                                </span>
-                            </VActionBorder>
-                        </div>
-                    </template>
-                </VDialogPlain>
-
                 <VDialogPlain
                     v-show="canShowUnavailableDialog"
                     :prop-has-border="false"
@@ -274,12 +230,11 @@
                 audio_clip_processings_store: useAudioClipProcessingsStore(),
 
                 event_name: "",
+                audio_clip_tone_choice: null as AudioClipTonesTypes|null,
 
                 //updates only from _Field to _Menu
                 is_audio_clip_tone_menu_open: false,
                 is_recorder_menu_open: false,
-
-                audio_clip_tone_choice: null as AudioClipTonesTypes|null,
 
                 is_recording: false,
                 final_blob: null as Blob|null,
@@ -297,9 +252,9 @@
                 submit_audio_clip_id: null as number|null,
 
                 is_submitting: false,
-                show_processing_dialog: false,
-                show_unavailable_dialog: false,
                 warn_before_unload: false,
+
+                show_unavailable_dialog: false,
 
                 //VProgressBar
                 progress_bar_step: null as number|null,
@@ -336,7 +291,7 @@
                 default: true
             },
         },
-        emits: ['isSubmitting', 'isSubmitSuccessful', 'hasForm', 'newLambdaAttemptsLeft',],
+        emits: ['isSubmitting', 'isSubmitSuccessful', 'hasForm',],
         watch: {
             is_submitting(new_value){
 
@@ -356,7 +311,7 @@
                     this.is_audio_clip_tone_menu_open = false;
                 }
             },
-            isFormEnabled(new_value){
+            canShowForm(new_value){
 
                 this.$emit('hasForm', new_value);
             },
@@ -465,7 +420,6 @@
 
                 return (
                     this.is_submitting === false &&
-                    this.show_processing_dialog === false &&
                     this.show_unavailable_dialog === false
                 );
             },
@@ -473,24 +427,13 @@
 
                 return (
                     this.is_submitting === true &&
-                    this.show_processing_dialog === false &&
                     this.show_unavailable_dialog === false
-                );
-            },
-            canShowProcessingDialog() : boolean {
-
-                return (
-                    this.is_submitting === false &&
-                    this.show_processing_dialog === true &&
-                    this.show_unavailable_dialog === false &&
-                    this.audio_clip_tone_choice !== null
                 );
             },
             canShowUnavailableDialog() : boolean {
 
                 return (
                     this.is_submitting === false &&
-                    this.show_processing_dialog === false &&
                     this.show_unavailable_dialog === true
                 );
             },
@@ -499,7 +442,6 @@
                 //this is used to help parent hide any text
                 //helps to not overwhelm the user with text
                 return (
-                    this.show_processing_dialog === true ||
                     this.show_unavailable_dialog === true
                 );
             },
@@ -514,11 +456,16 @@
                 this.is_recorder_menu_open = false;
                 this.is_audio_clip_tone_menu_open = false;
             },
-            notifyGenericFailure(error_text:string) : void {
+            notifyGenericFailure(error_text:string='') : void {
+
+                if(error_text.trim().length === 0){
+
+                    error_text = 'Try again later.';
+                }
 
                 notify({
                     type: 'error',
-                    title: 'Error',
+                    title: 'Unexpected error',
                     text: error_text,
                     icon: {'font_awesome': 'fas fa-exclamation'},
                 }, 4000);
@@ -601,14 +548,8 @@
                     //we only create when processing
                     return;
                 }
-
-                //sync attempts
-                this.$emit(
-                    'newLambdaAttemptsLeft',
-                    target_audio_clip_processing.lambda_attempts_left
-                );
             },
-            async uploadToBackendReceiveS3UploadURL() : Promise<void> {
+            async saveToBackendAndReceiveS3UploadURL() : Promise<void> {
 
                 //step 1
                 //submit form and receive AWS URL for file upload
@@ -815,7 +756,7 @@
                         Object.hasOwn(error.response.data, 'message') === true
                     ){
 
-                        this.notifyGenericFailure(error.response.data['message']);
+                        this.notifyGenericFailure();
                     }
 
                     is_success = false;
@@ -826,7 +767,6 @@
             handleAudioClipProcessingStatus() : void {
 
                 //always reset
-                this.show_processing_dialog = false;
                 this.show_unavailable_dialog = false;
 
                 if(this.submit_audio_clip_id === null){
@@ -839,18 +779,6 @@
                 );
 
                 if(target_audio_clip_processing === null){
-
-                    if(this.isReupload === false){
-
-                        //if null, then another tab must've done notify() and user had closed it
-                        //when not at reupload page, redirecting sounds better than leaving the user hanging
-
-                        window.location.replace(
-                            window.location.origin +
-                            "/event/" + this.submit_event_id!.toString()
-                        );
-
-                    }
 
                     return;
                 }
@@ -870,52 +798,9 @@
 
                     case 'processing':{
 
-                        //create interval here
+                        //redirect to home and wait there
 
-                        this.show_processing_dialog = true;
-                        let has_api_call = false;
-
-                        const processing_interval = window.setInterval(async ()=>{
-
-                            //no need for new interval while a request is still running
-                            if(has_api_call === true){
-
-                                return;
-                            }
-
-                            has_api_call = true;
-
-                            //exit condition, this won't be expected to occur
-                            if(this.submit_audio_clip_id === null){
-
-                                window.clearInterval(processing_interval);
-                                return;
-                            }
-
-                            const target_audio_clip_processing = this.audio_clip_processings_store.getAudioClipProcessing(
-                                this.submit_audio_clip_id
-                            );
-
-                            //exit condition
-                            if(
-                                target_audio_clip_processing === null ||
-                                target_audio_clip_processing.status !== 'processing'
-                            ){
-
-                                window.clearInterval(processing_interval);
-                                this.handleAudioClipProcessingStatus();
-                                return;
-                            }
-
-                            //api call, basically polling
-                            await this.audio_clip_processings_store.processAudioClipAPI(
-                                'user_submit',
-                                this.submit_audio_clip_id!,
-                            ).finally(()=>{
-                                has_api_call = false;
-                            });
-
-                        }, 5000);
+                        window.location.replace(window.location.origin);
 
                         break;
                     }
@@ -936,12 +821,6 @@
                             break;
                         }
 
-                        //sync attempts
-                        this.$emit(
-                            'newLambdaAttemptsLeft',
-                            target_audio_clip_processing.lambda_attempts_left
-                        );
-
                         //server can return until 0 attempts left
                         //no need to allow user to reupload if at 0, as server won't process at that point
                         if(
@@ -961,19 +840,6 @@
                         //no longer available
 
                         this.show_unavailable_dialog = true;
-
-                        break;
-
-                    case 'error':
-
-                        //generic error
-
-                        notify({
-                            type: 'error',
-                            title: 'Recording error',
-                            text: 'Try again later.',
-                            icon: {'font_awesome': 'fas fa-exclamation'},
-                        }, 4000);
 
                         break;
 
@@ -1004,7 +870,7 @@
                     //if never uploaded to backend
                     if(this.submit_steps_done.backend_upload === false){
 
-                        await this.uploadToBackendReceiveS3UploadURL();
+                        await this.saveToBackendAndReceiveS3UploadURL();
                     }
 
                     //if still false, stop here
@@ -1098,7 +964,6 @@
 
                     //finalise
                     this.progress_bar_step = null;
-                    this.show_processing_dialog = true;
                     this.$emit('isSubmitSuccessful', true);
 
                     //call processing API
@@ -1108,9 +973,19 @@
                     this.warn_before_unload = false;
 
                     await this.audio_clip_processings_store.processAudioClipAPI(
-                        'user_submit',
                         this.submit_audio_clip_id
                     ).catch(()=>{
+
+                        //will only reach here on unexpected error
+                        //error is not user's fault
+                        notify({
+                                icon: {
+                                    'font_awesome': 'fas fa-exclamation',
+                                },
+                                text: 'Try again later.',
+                                title: 'Unexpected error',
+                                type: 'error',
+                            }, 4000);
 
                         return;
                     });
@@ -1162,13 +1037,9 @@
         beforeMount(){
 
             this.reuploadSetup();
-
-            window.addEventListener('beforeunload', this.handleBeforeUnload);
-        },
-        mounted(){
-
             this.handleAudioClipProcessingStatus();
 
+            window.addEventListener('beforeunload', this.handleBeforeUnload);
         },
         beforeUnmount(){
 
