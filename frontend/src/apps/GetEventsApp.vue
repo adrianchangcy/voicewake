@@ -1,21 +1,22 @@
 <template>
     <div class="flex flex-col">
 
+        <!--loading-->
         <div v-if="is_fetching_event" class="flex flex-col gap-8">
 
-            <!--loading audio-clips-->
             <div v-for="x in audio_clip_count" :key="x">
                 <VAudioClipCardSkeleton/>
             </div>
         </div>
 
+        <!--not loading-->
         <div v-else-if="event !== null">
 
             <!--audio-clips-->
             <EventCard
                 :prop-event="event"
                 :prop-show-title="false"
-                :prop-load-v-audio-clip-cards-only="!isReply"
+                :prop-load-v-audio-clip-cards-only="!canReply"
                 @new-is-liked="event_reply_choices_store.newAudioClipIsLiked($event)"
                 @new-v-playback-teleport-id="handleNewVPlaybackTeleportId($event)"
             />
@@ -26,11 +27,11 @@
             >
                 <TransitionFadeSlow>
                     <div
-                        v-if="isReply"
+                        v-if="canReply"
                         class="w-full flex flex-col pt-8"
                     >
                         <VUsernameURL
-                            :propUsername="(getDataFromTemplateJSONScript('data-user-username') as string)"
+                            :propUsername="username"
                         />
 
                         <div class="relative border border-theme-gray-2 rounded-lg px-2 sm:px-4 pt-8 pb-12">
@@ -76,7 +77,7 @@
                             </div>
 
                             <CreateAudioClips
-                                :propIsOriginator="is_originator"
+                                :propIsOriginator="false"
                                 :propReuploadAudioClipId="reupload_audio_clip_id"
                                 :propEventId="event.event.id"
                                 :propCanSubmit="!isLoading"
@@ -129,7 +130,7 @@
             </div>
 
             <Teleport
-                v-if="!isReply && teleport_id !== ''"
+                v-if="!canReply && teleport_id !== ''"
                 :to="teleport_id"
             >
                 <VPlayback
@@ -141,7 +142,7 @@
             </Teleport>
         </div>
 
-        <!--for originator reupload-->
+        <!--for reupload, both originator/responder-->
         <!--add pt-2 to add page title's pt-8 back to pt-10-->
         <div
             v-else-if="isReupload"
@@ -163,16 +164,14 @@
                         </template>
                         <template #titleDescription>
                             <span class="text-base block text-red-700">
-                                Your previous recording had errors.
+                                Your previous recording had no sound.
                             </span>
-                            <span class="text-base block text-red-700">
-                                This happens when there's no sound.
-                            </span>
+                            <!--still null on first attempt, as cache is unreliable, since we don't know when task queue starts-->
                             <span
                                 v-show="canShowLambdaAttemptsLeft"
                                 class="text-sm block py-1"
                             >
-                                {{ getLambdaAttemptsLeft }}
+                                {{ getPrettyLambdaAttemptsLeft }}
                             </span>
                         </template>
                     </VTitle>
@@ -238,6 +237,8 @@
                 event_reply_choices_store: useEventReplyChoicesStore(),
                 vplayback_store: useVPlaybackStore(),
 
+                username: '',
+
                 reupload_audio_clip_id: null as number|null,
                 is_originator: false,
 
@@ -256,8 +257,6 @@
                 expiry_interval: null as number|null,
 
                 teleport_id: '',
-
-                lambda_attempts_left: null as number|null,
             };
         },
         computed: {
@@ -278,7 +277,7 @@
                     this.reupload_audio_clip_id !== null
                 );
             },
-            isReply() : boolean {
+            canReply() : boolean {
 
                 //use store instead of this.event
                 //because this.event will still exist when replying is cancelled, but store won't have it
@@ -300,34 +299,25 @@
 
                 return this.vplayback_store.getPlayingAudioClip.audio_volume_peaks;
             },
-            getLambdaAttemptsLeft() : string {
-
-                if(this.lambda_attempts_left === null){
-
-                    return '';
-
-                }else if(
-                    this.lambda_attempts_left > 1 ||
-                    this.lambda_attempts_left === 0
-                ){
-
-                    return this.lambda_attempts_left.toString() + ' attempts left.';
-
-                }else{
-
-                    return '1 attempt left.';
-                }
-            },
             canShowLambdaAttemptsLeft() : boolean {
 
                 return (
-                    this.lambda_attempts_left !== null &&
-                    this.lambda_attempts_left <= 2
+                    this.reupload_audio_clip_id !== null &&
+                    this.getPrettyLambdaAttemptsLeft !== ''
                 );
+            },
+            getPrettyLambdaAttemptsLeft() : string {
+
+                if(this.reupload_audio_clip_id === null){
+
+                    return '';
+                }
+
+                return this.audio_clip_processings_store.getPrettyLambdaAttemptsLeft(this.reupload_audio_clip_id);
             },
         },
         watch: {
-            isReply(new_value){
+            canReply(new_value){
 
                 //don't autoplay when replying
                 this.vplayback_store.autoplayOnChange(!new_value);
@@ -436,7 +426,7 @@
 
                     await this.event_reply_choices_store.cancelEvent(is_replying).finally(()=>{
 
-                        if(this.isReply === false){
+                        if(this.canReply === false){
 
                             this.is_event_expiring = false;
                             this.dialog_context = 'expired';
@@ -488,7 +478,7 @@
 
                         await this.event_reply_choices_store.cancelEvent(is_replying).finally(()=>{
 
-                            if(this.isReply === false){
+                            if(this.canReply === false){
 
                                 this.is_event_expiring = false;
                                 this.dialog_context = 'expired';
@@ -538,7 +528,7 @@
             },
             async handleIsSubmitSuccessful(new_data:CreateAudioClips__isSubmitSuccessfulTypes) : Promise<void> {
 
-                if(this.isReply === false){
+                if(this.canReply === false){
 
                     return;
                 }
@@ -568,7 +558,7 @@
                 await this.event_reply_choices_store.cancelEvent(true, false)
                 .finally(()=>{
 
-                    if(this.isReply === false){
+                    if(this.canReply === false){
 
                         this.dialog_context = "cancelled";
                         document.title = this.original_document_title;
@@ -602,8 +592,7 @@
 
                 if(audio_clip_role_name === null){
 
-                    //responder
-                    this.is_originator = false;
+                    //not reupload
                     return;
                 }
 
@@ -627,7 +616,7 @@
 
                 let target_el = null;
 
-                if(this.isReply === true){
+                if(this.canReply === true){
 
                     target_el = (this.$refs.replying_title_section as HTMLElement);
 
@@ -672,20 +661,25 @@
                     });
                 }
             },
-            updateLambdaAttemptsLeft(new_value:number|null) : void {
-
-                this.lambda_attempts_left = new_value;
-            },
         },
         beforeMount(){
 
+            //username
+            this.username = getDataFromTemplateJSONScript('data-user-username') as string;
+
+            //handle accordingly if reuploading
             this.reupload_audio_clip_id = this.audio_clip_processings_store.getReuploadAudioClipId();
             this.determineIsOriginatorForReupload();
 
             //change when_created
-            document.getElementsByClassName('when-created')[0].textContent = prettyTimePassed(new Date(
-                document.getElementsByClassName('when-created')[0].textContent as string
-            ));
+            const when_created_element = document.getElementById('event-when-created');
+
+            if(when_created_element !== null){
+
+                when_created_element.textContent = prettyTimePassed(
+                    new Date(when_created_element.textContent as string)
+                );
+            }
 
             //get data from SSR template
             const container = (document.getElementById('data-container-get-events') as HTMLElement);
@@ -699,7 +693,7 @@
 
             //if replying or reuploading, don't autoplay
             this.vplayback_store.autoplayOnChange(
-                this.isReply === false && this.isReupload === false
+                this.canReply === false && this.isReupload === false
             );
 
             //if event_reply_choices_store has this event, get from store instead of API
@@ -722,7 +716,7 @@
                 (async ()=>{
                     await this.getEvent().then(()=>{
 
-                        if(this.isReply === true){
+                        if(this.canReply === true){
 
                             //rewrite title
                             document.title = "Replying: " + document.title;

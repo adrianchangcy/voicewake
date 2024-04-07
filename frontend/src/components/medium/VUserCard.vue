@@ -165,7 +165,7 @@
                     this.is_blocking = false;
                 });
             },
-            async copyUserURL() : Promise<void> {
+            copyUserURL() : void {
 
                 if(this.has_shared_timeout !== null){
 

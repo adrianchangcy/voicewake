@@ -483,6 +483,7 @@
     import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
     import { useEventReplyChoicesStore } from '@/stores/EventReplyChoicesStore';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
+    import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
     const axios = require('axios');
 
     export default defineComponent({
@@ -551,6 +552,7 @@
                         useFilteredEventsStore('user_likes_dislikes'),
                         useFilteredEventsStore('user_profile'),
                         useVPlaybackStore(),
+                        useAudioClipProcessingsStore(),
                     ];
 
                     for(let x=0; x < stores_to_reset.length; x++){

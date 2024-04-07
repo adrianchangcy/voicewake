@@ -1,7 +1,10 @@
 <template>
     <!--follow VNotiwind for design choices-->
     <Teleport to="#audio-clip-processings-target">
-        <div class="w-full flex flex-col">
+        <div
+            v-if="canPoll"
+            class="w-full flex flex-col"
+        >
             <TransitionGroup
                 name="audio-clip-processings-transition-group"
                 enter-from-class="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-4"
@@ -12,27 +15,27 @@
                 leave-to-class="opacity-0"
             >
                 <div
-                    v-for="(processing, key) in ding_dong_store.getProcessings"
-                    :key="key"
+                    v-for="(processing, audio_clip_id) in audio_clip_processings_store.getAudioClipProcessings"
+                    :key="audio_clip_id"
                     class="flex w-full mx-auto mb-4 overflow-hidden backdrop-blur bg-white/60 rounded-lg shadow-xl"
                 >
                     <!--left panel-->
                     <div
                         :class="[
-                            isStatusOk(processing.status) ? 'bg-green-500' : '',
-                            isStatusGeneric(processing.status) ? 'bg-theme-black' : '',
-                            isStatusError(processing.status) ? 'bg-red-500' : '',
+                            isStatusOk(processing) ? 'bg-green-500' : '',
+                            isStatusGeneric(processing) ? 'bg-theme-black' : '',
+                            isStatusError(processing) ? 'bg-red-500' : '',
                             'w-10 shrink-0 flex flex-col items-center justify-center text-xl text-white'
                         ]"
                     >
                         <div
-                            v-show="isStatusOk || isStatusGeneric"
+                            v-show="isStatusOk(processing) || isStatusGeneric(processing)"
                         >
                             <span class="sr-only">{{ processing.audio_clip_tone.audio_clip_tone_name }}</span>
                             <span>{{ processing.audio_clip_tone.audio_clip_tone_symbol }}</span>
                         </div>
                         <div
-                            v-show="isStatusError(processing.status)"
+                            v-show="isStatusError(processing)"
                         >
                             <span>
                                 <FontAwesomeIcon icon="fas fa-exclamation"/>
@@ -43,7 +46,7 @@
                     <!--middle panel-->
                     <div
                         :class="[
-                            processing.status === 'processing' || hasActions(processing.status) ? 'pb-4' : 'pb-0.5',
+                            processing.status === 'processing' || hasActions(processing) ? 'pb-4' : 'pb-0.5',
                             'flex-1 pl-4'
                         ]"
                     >
@@ -51,13 +54,13 @@
                         <div class="w-full h-10 flex items-center">
                             <span
                                 :class="[
-                                    isStatusOk(processing.status) ? 'text-green-700' : '',
-                                    isStatusGeneric(processing.status) ? '' : '',
-                                    isStatusError(processing.status) ? 'text-red-700' : '',
+                                    isStatusOk(processing) ? 'text-green-700' : '',
+                                    isStatusGeneric(processing) ? '' : '',
+                                    isStatusError(processing) ? 'text-red-700' : '',
                                     'text-base font-semibold pb-0.5 break-words'
                                 ]"
                             >
-                                {{ getPrettyStatus(processing.status) }}
+                                {{ processing.title }}
                             </span>
                         </div>
 
@@ -65,39 +68,62 @@
                         <!--translate back into title's space-->
                         <!--translate conveniently lets us skip padding-top on actions-->
                         <span class="block text-sm -translate-y-2 break-words">
-                            Event: "{{ getShortenedString(processing.event.event_name, 10) }}"
+                            {{ processing.main_text }}
                         </span>
 
-                        <!--progress bar, action-->
-                        <div class="h-10 flex items-center">
+                        <!--progress bar, actions-->
 
-                            <!--progress bar-->
+                        <!--progress bar-->
+                        <div
+                            v-if="processing.status === 'processing'"
+                            class="h-10 flex items-center"
+                        >
                             <VProgressBar
-                                v-if="processing.status === 'processing'"
                                 :prop-timestamps-ms="processing_timestamps_ms"
                                 :prop-start-on-mounted="true"
-                                :prop-step="determineVProgressBarStep(processing.status)"
+                                :prop-step="determineVProgressBarStep(processing)"
                                 class="w-full"
                             />
+                        </div>
 
-                            <!--action-->
-                            <a
-                                v-else-if="hasActions(processing.status)"
-                                :href="processing.action_url!.url"
-                                class="w-full h-full flex flex-row items-center rounded-full transition       border border-theme-gray-2 shade-border-when-hover active:bg-theme-gray-1       focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                        <!--actions-->
+                        <div
+                            v-else-if="hasActions(processing)"
+                            class="flex flex-row w-full h-10 gap-1"
+                        >
+                            <div
+                                v-for="(action, action_index) in processing.actions!"
+                                :key="action_index"
+                                class="flex-1"
                             >
-                                <span class="px-4 pb-0.5 mx-auto text-sm font-medium">
-                                    {{ processing.action_url!.text }}
-                                </span>
-                            </a>
+                                <a
+                                    v-if="action.type === 'url'"
+                                    :href="action.url"
+                                    class="w-full h-full flex flex-row items-center rounded-full transition       border border-theme-gray-2 shade-border-when-hover active:bg-theme-gray-1       focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                                >
+                                    <span class="px-4 pb-0.5 mx-auto text-sm font-medium">
+                                        {{ action.text }}
+                                    </span>
+                                </a>
+                                <button
+                                    v-else
+                                    @click="audio_clip_processings_store.getActionButtonCallback(audio_clip_id, action_index)"
+                                    type="button"
+                                    class="w-full h-full flex flex-row items-center rounded-full transition       border border-theme-gray-2 shade-border-when-hover active:bg-theme-gray-1       focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                                >
+                                    <span class="px-4 pb-0.5 mx-auto text-sm font-medium">
+                                        {{ action.text }}
+                                    </span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
                     <!--right panel-->
                     <div class="w-10 shrink-0">
                         <VActionText
-                            v-if="hasCloseButton(processing.status)"
-                            @click="processing.close_callback()"
+                            v-if="hasCloseButton(processing)"
+                            @click="audio_clip_processings_store.deleteProcessing(audio_clip_id)"
                             prop-element="button"
                             prop-element-size="s"
                             :prop-is-icon-only="true"
@@ -118,7 +144,7 @@
     import VProgressBar from '../small/VProgressBar.vue';
     import VActionText from '../small/VActionText.vue';
 
-    import AudioClipProcessingStatusesTypes from '@/types/values/AudioClipProcessingStatuses';
+    import { AudioClipProcessingDetailsTypes } from '@/types/AudioClipProcessingDetails.interface';
 
     //this is for notify({icon: "..."}) when allowed to specify
     //search for "icon: ..." folder-wide and import all of it here in advance
@@ -138,73 +164,41 @@
         faBatteryEmpty, faFlag, faFaceMehBlank, faXmark,
     );
 
-    function hasActions(status:AudioClipProcessingStatusesTypes) : boolean {
+    function hasActions(processing:AudioClipProcessingDetailsTypes) : boolean {
+
+        return Object.hasOwn(processing, "actions") && processing.actions!.length > 0;
+    }
+
+    function hasCloseButton(processing:AudioClipProcessingDetailsTypes) : boolean {
+
+        return processing['can_close'];
+    }
+
+    function isStatusError(processing:AudioClipProcessingDetailsTypes) : boolean {
 
         return (
-            status === 'processed' ||
-            status === 'lambda_error'
+            processing.status === 'lambda_error' ||
+            processing.status === 'not_found'
         );
     }
 
-    function hasCloseButton(status:AudioClipProcessingStatusesTypes) : boolean {
+    function isStatusOk(processing:AudioClipProcessingDetailsTypes) : boolean {
 
         return (
-            status === 'processed' ||
-            status === 'lambda_error' ||
-            status === 'not_found'
+            processing.status === 'processed'
         );
     }
 
-    function getPrettyStatus(status:AudioClipProcessingStatusesTypes) : string {
-
-        switch(status){
-
-            case 'processing':
-                return 'Processing recording';
-
-            case 'processed':
-                return 'Recording processed';
-
-            case 'error':
-                return 'Recording error';
-
-            case 'lambda_error':
-                return 'Recording error';
-
-            case 'not_found':
-                return 'Recording removed';
-
-            default:
-                throw new Error('Unrecognised.');
-        }
-    }
-
-    function isStatusError(status:AudioClipProcessingStatusesTypes) : boolean {
+    function isStatusGeneric(processing:AudioClipProcessingDetailsTypes) : boolean {
 
         return (
-            status === 'error' ||
-            status === 'lambda_error' ||
-            status === 'not_found'
+            processing.status === 'processing'
         );
     }
 
-    function isStatusOk(status:AudioClipProcessingStatusesTypes) : boolean {
+    function determineVProgressBarStep(processing:AudioClipProcessingDetailsTypes) : number|null {
 
-        return (
-            status === 'processed'
-        );
-    }
-
-    function isStatusGeneric(status:AudioClipProcessingStatusesTypes) : boolean {
-
-        return (
-            status === 'processing'
-        );
-    }
-
-    function determineVProgressBarStep(status:AudioClipProcessingStatusesTypes) : number|null {
-
-        if(status === 'processing'){
+        if(processing.status === 'processing'){
 
             return 0;
 
@@ -220,14 +214,12 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import { useDingDongStore } from '@/stores/DingDongStore';
-    import { getShortenedString } from '@/helper_functions';
-
+    import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
 
     export default defineComponent({
         data(){
             return {
-                ding_dong_store: useDingDongStore(),
+                audio_clip_processings_store: useAudioClipProcessingsStore(),
 
                 processing_timestamps_ms: {
                     scales: [1],
@@ -235,7 +227,31 @@
                 },
             };
         },
+        computed: {
+            canPoll() : boolean {
+
+                const current_url = window.location.href;
+
+                return (
+                    current_url.includes("login") === false &&
+                    current_url.includes("signup") === false &&
+                    current_url.includes("start") === false &&
+                    current_url.includes("event") === false
+                );
+            },
+        },
         methods: {
+        },
+        beforeMount(){
+
+            if(this.canPoll){
+
+                this.audio_clip_processings_store.startPollingProcessings();
+            }
+        },
+        beforeUnmount(){
+
+            this.audio_clip_processings_store.stopPollingProcessings();
         },
     });
 

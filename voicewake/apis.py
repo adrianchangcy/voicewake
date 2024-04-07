@@ -1867,6 +1867,7 @@ class CreateEventsAPI(generics.GenericAPIView):
 
                 return Response(
                     data={
+                        'attempts_left': create_audio_clips_class.processing_cache['attempts_left'],
                     },
                     status=status.HTTP_200_OK
                 )
@@ -2385,7 +2386,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
             #check and ensure event availability
             if target_event_reply_queue.event.generic_status.generic_status_name != 'incomplete':
 
-                #remove expired reply choice
+                #event is no longer available
                 target_event_reply_queue.delete()
 
                 return Response(
@@ -2393,7 +2394,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                         'message': 'This event is no longer available for reply.',
                         'can_retry': False,
                     },
-                    status=status.HTTP_400_BAD_REQUEST
+                    status=status.HTTP_404_NOT_FOUND
                 )
 
             #check for expiry
@@ -2410,7 +2411,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                         'message': 'The choice to reply in this event has expired.',
                         'can_retry': False,
                     },
-                    status=status.HTTP_400_BAD_REQUEST
+                    status=status.HTTP_404_NOT_FOUND
                 )
 
             #not yet expired, proceed
@@ -2453,6 +2454,34 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
             raise EventReplyQueues.DoesNotExist
 
+        #update audio clip and delete cache, if any
+
+        try:
+
+            audio_clip = AudioClips.objects.select_related(
+                'generic_status'
+            ).get(
+                user_id=self.request.user.id,
+                event_id=event_id,
+                audio_clip_role__audio_clip_role_name='responder',
+            )
+
+            if audio_clip.generic_status.generic_status_name == 'processing':
+
+                audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
+                audio_clip.save()
+
+            cache.delete(
+                CreateAudioClips.determine_processing_cache_key(
+                    user_id=self.request.user.id,
+                    audio_clip_id=audio_clip.id
+                )
+            )
+
+        except AudioClips.DoesNotExist:
+
+            pass
+
         return Response(
             data={
             },
@@ -2478,13 +2507,12 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
         elif self.current_context == 'start' or self.current_context == 'cancel':
 
-            serializer = HandleReplyingEventsAPISerializer(data=request.data, many=False)
+            serializer = HandleReplyingEventsAPISerializer(data=request.data)
 
         elif self.current_context == 'upload':
 
             serializer = CreateAudioClips_Upload_APISerializer(
                 data=request.data,
-                many=False,
                 context={
                     'audio_clip_role_name': 'responder',
                 },
@@ -2492,17 +2520,11 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
         elif self.current_context == 'regenerate_upload_url':
 
-            serializer = CreateAudioClips_Upload_RegenerateURL_APISerializer(
-                data=request.data,
-                many=False,
-            )
+            serializer = CreateAudioClips_Upload_RegenerateURL_APISerializer(data=request.data)
 
         elif self.current_context == 'process':
 
-            serializer = CreateAudioClips_Process_APISerializer(
-                data=request.data,
-                many=False,
-            )
+            serializer = CreateAudioClips_Process_APISerializer(data=request.data)
 
         #validate
         if serializer.is_valid() is False:
@@ -2588,6 +2610,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
                 return Response(
                     data={
+                        'attempts_left': create_audio_clips_class.processing_cache['attempts_left'],
                     },
                     status=status.HTTP_200_OK
                 )
@@ -2614,10 +2637,10 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'message': 'That action is no longer allowed for this event.',
+                    'message': 'Unable to start your reply for this event.',
                     'can_retry': False,
                 },
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_404_NOT_FOUND
             )
         
         except subprocess.CalledProcessError as e:

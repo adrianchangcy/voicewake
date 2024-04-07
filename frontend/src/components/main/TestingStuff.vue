@@ -31,7 +31,6 @@
     // import { getShortenedString } from '@/helper_functions';
     import AudioClipsTypes from '@/types/AudioClips.interface';
     import { useTestStore } from '@/stores/TestStore';
-    import { useDingDongStore } from '@/stores/DingDongStore';
     const axios = require('axios');
 
     export default defineComponent({
@@ -39,7 +38,6 @@
             return {
                 test_store: useTestStore(),
                 audio_clip_processings_store: useAudioClipProcessingsStore(),
-                ding_dong_store: useDingDongStore(),
 
                 notifications: [] as any[],
                 event: null as EventsAndAudioClipsTypes|null,
@@ -110,36 +108,13 @@
                 icon: {'font_awesome': 'fas fa-check'},
             }, -1);
 
-            this.ding_dong_store.storeProcessing(
-                99,
-                true,
-                {
-                    id: 99,
-                    event_name: 'hahahe hahaeheaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-                },
-                this.sample_audio_clip.audio_clip_tone
-            );
-
-            window.setTimeout(()=>{
-                this.ding_dong_store.storeProcessing(
-                    100,
-                    true,
-                    {
-                        id: 100,
-                        event_name: 'hehehe',
-                    },
-                    this.sample_audio_clip.audio_clip_tone
-                );
+            window.setInterval(()=>{
+                this.is_yolo = !this.is_yolo;
             }, 2000);
 
-            window.setTimeout(()=>{
 
-                this.ding_dong_store.deleteProcessing(100);
-            }, 4000);
 
-            // window.setInterval(()=>{
-            //     this.is_yolo = !this.is_yolo;
-            // }, 2000);
+
 
 
         },

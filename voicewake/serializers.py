@@ -132,7 +132,54 @@ class UserBlocksSerializer(serializers.ModelSerializer):
 
 
 
+#===============views=================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class GetEventsViewSerializer(serializers.Serializer):
+
+    reupload  = serializers.IntegerField()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #===============APIs=================
+
 
 
 

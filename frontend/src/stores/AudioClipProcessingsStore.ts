@@ -4,44 +4,12 @@
 //to allow users to not wait too long, as this is the more time-consuming part
 
 import { defineStore } from 'pinia';
-import {
-    timeFromNowMS,
-    getPiniaDateObject,
-    setPiniaDateObject,
-    getShortenedString,
-} from '@/helper_functions';
-import { notify } from '@/wrappers/notify_wrapper';
+import { getShortenedString } from '@/helper_functions';
 import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
-import NotificationsTypes from '@/types/Notifications.interface';
+import AudioClipProcessingStatusesTypes from '@/types/values/AudioClipProcessingStatuses';
+import { AudioClipProcessingDetailsTypes, EventsTypes } from '@/types/AudioClipProcessingDetails.interface';
 
 const axios = require('axios');
-
-interface EventsTypes{
-    id:number,
-    event_name: string,
-}
-interface ChecksTypes{
-    check_again: boolean,
-    last_checked: string,
-    is_checking: boolean,
-}
-//use this for easier state management at parent components
-//otherwise, we'd have to throw the request error, and rewrite the same code at parent components
-type ProcessingStatusesTypes = ''|'error'|'processed'|'processing'|'not_found'|'lambda_error'
-
-interface AudioClipProcessingDetailsTypes{
-    is_originator: boolean,
-    event: EventsTypes,
-    audio_clip_tone: AudioClipTonesTypes,
-    checks: ChecksTypes,
-    notification_details: {
-        args: NotificationsTypes,
-        duration_ms: number
-    }|null,
-    can_auto_process: boolean,
-    status: ProcessingStatusesTypes,
-    lambda_attempts_left: number|null,
-}
 
 //use this when user has uploaded to backend and AWS
 //and all there is left is the processing step
@@ -57,9 +25,9 @@ export function useAudioClipProcessingsStore(){
     return defineStore('audio_clip_processings_store', {
         state: ()=>({
             audio_clip_processings: {} as AudioClipProcessingsTypes,
-            api_cooldown_ms: 20000,
-            api_call_interval_ms: 10000,
-            min_check_attempts_for_reupload: 4,
+            
+            polling_processings_timeout: null as number|null,
+            polling_processings_timeout_delay_ms: 1000,
         }),
         getters: {
             getAudioClipProcessings: (state)=>{
@@ -98,21 +66,24 @@ export function useAudioClipProcessingsStore(){
                     return;
                 }
 
-                const pinia_date_now = setPiniaDateObject(new Date());
+                const main_text = (
+                    'Event: "' +
+                    getShortenedString(
+                        passed_event.event_name,
+                        8
+                    ) +
+                    '"'
+                );
 
                 this.audio_clip_processings[passed_audio_clip_id] = {
                     is_originator: passed_is_originator,
                     event: passed_event,
                     audio_clip_tone: passed_audio_clip_tone,
-                    checks: {
-                        check_again: true,
-                        last_checked: pinia_date_now,
-                        is_checking: false,
-                    },
-                    notification_details: null,
-                    can_auto_process: true,
-                    status: '',
+                    status: 'processing',
+                    title: 'Processing recording',
+                    main_text: main_text,
                     lambda_attempts_left: null,
+                    can_close: false,
                 };
             },
             determineReuploadURL(audio_clip_id:number) : string {
@@ -126,29 +97,15 @@ export function useAudioClipProcessingsStore(){
 
                 return final_url;
             },
-            async processAudioClipAPI(
-                current_context:'user_submit'|'auto_evaluation',
-                audio_clip_id:number,
-            ) : Promise<void> {
+            async processAudioClipAPI(audio_clip_id:number) : Promise<void> {
 
                 //notification_details is only null when there has been no important errors
                 //if there were important errors, they cannot turn back into null
 
                 if(Object.hasOwn(this.audio_clip_processings, audio_clip_id) === false){
 
-                    throw new Error('no recording');
+                    throw new Error('audio clip does not exist in store');
                 }
-
-                if(this.audio_clip_processings[audio_clip_id].checks.check_again === false){
-
-                    return;
-                }
-
-                //check cooldown
-                //can be is_checking=true but user closed app, so it had stayed that way
-                //hence, last_checked is the most important
-
-                this.audio_clip_processings[audio_clip_id].checks.is_checking = true;
 
                 //prepare URL
                 let post_url = window.location.origin + '/api/events';
@@ -168,21 +125,12 @@ export function useAudioClipProcessingsStore(){
                 const data = new FormData();
                 data.append('audio_clip_id', JSON.stringify(audio_clip_id));
 
-                //reset
-                this.audio_clip_processings[audio_clip_id].status = '';
-                this.audio_clip_processings[audio_clip_id].notification_details = null;
-
                 //make call
                 await axios.post(post_url, data).then((result:any)=>{
 
-                    //check if already processed before call was made
-                    //['is_processed'] === true, 200
-                    //['is_processing'] === true, 200
-                    //['is_processing'] === false, ['cooldown_s'] > 0, 200
+                    if(result.request.status !== 200){
 
-                    if(result.status !== 200){
-
-                        throw new Error('Unhandled status code: ' + result.status.toString());
+                        throw new Error('Unhandled success request.');
                     }
 
                     if(
@@ -190,13 +138,233 @@ export function useAudioClipProcessingsStore(){
                         result.data['is_processed'] === true
                     ){
 
-                        //create URL
-                        const event_url = (
-                            window.location.origin + '/event/' +
-                            this.audio_clip_processings[audio_clip_id].event.id.toString()
-                        );
+                        //processed, ok
 
-                        const notify_text = (
+                        this.updateProcessing(audio_clip_id, 'processed');
+                        return;
+                    }
+
+                    if(Object.hasOwn(result.data, 'attempts_left') === true){
+
+                        //ok, added to task queue
+
+                        this.updateProcessing(audio_clip_id, 'processing', result.data['attempts_left']);
+                        return;
+                    }
+
+                    throw new Error('Unhandled success request.');
+
+                }).catch((error:any)=>{
+
+                    if(Object.hasOwn(error, "request") === false){
+
+                        throw new Error('Unhandled success request.');
+                    }
+
+                    switch(error.request.status){
+
+                        case 400: {
+
+                            //simple generic error
+                            //delete from store, as next API call will re-create
+
+                            delete this.audio_clip_processings[audio_clip_id];
+                            break;
+                        }
+
+                        case 404: {
+
+                            //no longer available
+
+                            this.updateProcessing(audio_clip_id, 'not_found');
+                            break;
+                        }
+
+                        case 409:
+
+                            if(
+                                Object.hasOwn(error.response.data, 'is_processing') === true &&
+                                Object.hasOwn(error.response.data, 'attempts_left') === true &&
+                                error.response.data['is_processing'] === true
+                            ){
+
+                                //still processing
+
+                                this.updateProcessing(audio_clip_id, 'processing', error.response.data['attempts_left']);
+                                return;
+                            }
+
+                            throw new Error('Unhandled error request.');
+
+                        default:
+
+                            //delete and recreate later
+
+                            delete this.audio_clip_processings[audio_clip_id];
+                            break;
+                    }
+                });
+            },
+            async checkProcessingStatusAPI(audio_clip_id:number) : Promise<void> {
+
+                if(Object.hasOwn(this.audio_clip_processings, audio_clip_id) === false){
+
+                    throw new Error('audio clip does not exist in store');
+                }
+
+                //prepare URL
+                let post_url = window.location.origin + '/api/events';
+
+                if(this.audio_clip_processings[audio_clip_id].is_originator === true){
+
+                    post_url += '/create';
+
+                }else{
+
+                    post_url += '/replies/create';
+                }
+
+                post_url += '/process/status';
+
+                //prepare data
+                const data = new FormData();
+                data.append('audio_clip_id', JSON.stringify(audio_clip_id));
+
+                //make call
+                await axios.post(post_url, data).then((result:any)=>{
+
+                    if(result.request.status !== 200){
+
+                        throw new Error('Unhandled success request.');
+                    }
+
+                    if(
+                        Object.hasOwn(result.data, 'is_processed') === true &&
+                        result.data['is_processed'] === true
+                    ){
+
+                        //already processed
+
+                        this.updateProcessing(audio_clip_id, 'processed');
+                        return;
+
+                    }else if(
+                        Object.hasOwn(result.data, 'is_processing') === true &&
+                        Object.hasOwn(result.data, 'attempts_left') === true &&
+                        result.data['is_processing'] === false
+                    ){
+
+                        this.updateProcessing(audio_clip_id, 'lambda_error', result.data['attempts_left']);
+                        return;
+                    }
+
+                    throw new Error('Unhandled success request.');
+
+                }).catch((error:any)=>{
+
+                    if(Object.hasOwn(error, "request") === false){
+
+                        throw new Error('Unhandled success request.');
+                    }
+
+                    switch(error.request.status){
+
+                        //don't handle 400 here, since there are no permanent 400 errors
+                        //just silently retry
+
+                        case 404:
+
+                            //no longer available
+
+                            this.updateProcessing(audio_clip_id, 'not_found');
+                            break;
+
+                        case 409:
+
+                            if(
+                                Object.hasOwn(error.response.data, 'is_processing') === true &&
+                                Object.hasOwn(error.response.data, 'attempts_left') === true &&
+                                error.response.data['is_processing'] === true
+                            ){
+
+                                //still processing
+
+                                this.updateProcessing(
+                                    audio_clip_id,
+                                    'processing',
+                                    error.response.data['attempts_left']
+                                );
+                                return;
+                            }
+
+                            throw new Error('Unhandled error request.');
+
+                        default:
+
+                            //do nothing
+                            break;
+                    }
+                });
+            },
+            startPollingProcessings() : void {
+
+                this.polling_processings_timeout = window.setTimeout(()=>{
+
+                    const audio_clip_ids = Object.keys(this.audio_clip_processings);
+
+                    const processing_promises = [];
+
+                    for(let x=0; x < audio_clip_ids.length; x++){
+
+                        const audio_clip_id = Number(audio_clip_ids[x]);
+
+                        if(
+                            this.audio_clip_processings[audio_clip_id].status !== 'processing'
+                        ){
+
+                            continue;
+                        }
+
+                        processing_promises.push(
+                            this.checkProcessingStatusAPI(audio_clip_id)
+                        );
+                    }
+
+                    //handles [] just fine
+                    Promise.allSettled(processing_promises).finally(()=>{
+
+                        //loop again
+                        this.startPollingProcessings();
+                    });
+
+                }, this.polling_processings_timeout_delay_ms);
+            },
+            stopPollingProcessings() : void {
+
+                if(this.polling_processings_timeout === null){
+
+                    return;
+                }
+
+                window.clearTimeout(this.polling_processings_timeout);
+                this.polling_processings_timeout = null;
+            },
+            updateProcessing(
+                audio_clip_id:number,
+                status:AudioClipProcessingStatusesTypes,
+                lambda_attempts_left:number|null=null,
+            ) : void {
+
+                if(Object.hasOwn(this.audio_clip_processings, audio_clip_id) === false){
+
+                    throw new Error('audio clip does not exist in store');
+                }
+
+                switch(status){
+
+                    case 'processing': {
+
+                        const main_text = (
                             'Event: "' +
                             getShortenedString(
                                 this.audio_clip_processings[audio_clip_id].event.event_name,
@@ -205,194 +373,99 @@ export function useAudioClipProcessingsStore(){
                             '"'
                         );
 
-                        this.audio_clip_processings[audio_clip_id].notification_details = {
-                            args: {
-                                type: 'ok',
-                                title: 'Recording processed',
-                                text: notify_text,
-                                icon: {'audio_clip_tone': {
-                                    audio_clip_tone_name: this.audio_clip_processings[audio_clip_id].audio_clip_tone.audio_clip_tone_name,
-                                    audio_clip_tone_symbol: this.audio_clip_processings[audio_clip_id].audio_clip_tone.audio_clip_tone_symbol,
-                                }},
-                                actions: [
-                                    {
-                                        type: 'url',
-                                        style: 'primary',
-                                        text: 'Open',
-                                        url: event_url,
-                                    },
-                                ],
-                                has_close_button: true,
-                                close_callback: ()=>{
-                                    delete this.audio_clip_processings[audio_clip_id];
-                                },
-                            },
-                            duration_ms: -1
-                        };
+                        this.audio_clip_processings[audio_clip_id].status = 'processing';
+                        this.audio_clip_processings[audio_clip_id].title = 'Processing recording';
+                        this.audio_clip_processings[audio_clip_id].main_text = main_text;
+                        this.audio_clip_processings[audio_clip_id].lambda_attempts_left = lambda_attempts_left;
+                        this.audio_clip_processings[audio_clip_id].can_close = false;
 
-                        this.audio_clip_processings[audio_clip_id].status = 'processed';
-
-                        //no need any further checks
-                        this.audio_clip_processings[audio_clip_id].checks.check_again = false;
-
-                        return;
+                        break;
                     }
 
-                    //should not reach here
-                    throw new Error('Unhandled success request.');
+                    case 'processed': {
 
-                }).catch((error:any)=>{
-
-                    //defaults, only relevant on error
-                    this.audio_clip_processings[audio_clip_id].status = 'error';
-                    this.audio_clip_processings[audio_clip_id].can_auto_process = true;
-
-                    switch(error.request.status){
-
-                        case 400:
-
-                            if(
-                                Object.hasOwn(error.response.data, 'attempts_left') === true
-                            ){
-
-                                //when attempts_left is 0, next call will permanently remove recording from db
-
-                                //create URL
-                                const event_url = (
-                                    window.location.origin + '/event/' +
-                                    this.audio_clip_processings[audio_clip_id].event.id.toString() +
-                                    '?reupload=' +
-                                    audio_clip_id.toString()
-                                );
-
-                                const notify_text = (
-                                    'Event: "' +
-                                    getShortenedString(
-                                        this.audio_clip_processings[audio_clip_id].event.event_name,
-                                        8
-                                    ) +
-                                    '"'
-                                );
-
-                                this.audio_clip_processings[audio_clip_id].notification_details = {
-                                    args: {
-                                        type: 'error',
-                                        title: 'Recording error',
-                                        text: notify_text,
-                                        icon: {'audio_clip_tone': {
-                                            audio_clip_tone_name: this.audio_clip_processings[audio_clip_id].audio_clip_tone.audio_clip_tone_name,
-                                            audio_clip_tone_symbol: this.audio_clip_processings[audio_clip_id].audio_clip_tone.audio_clip_tone_symbol,
-                                        }},
-                                        actions: [
-                                            {
-                                                type: 'url',
-                                                style: 'primary',
-                                                text: 'Reupload',
-                                                url: event_url,
-                                            },
-                                        ],
-                                        has_close_button: true,
-                                        close_callback: ()=>{
-                                            delete this.audio_clip_processings[audio_clip_id];
-                                        },
-                                    },
-                                    duration_ms: -1
-                                };
-
-                                this.audio_clip_processings[audio_clip_id].status = 'lambda_error';
-                                this.audio_clip_processings[audio_clip_id].lambda_attempts_left = error.response.data['attempts_left'];
-
-                                //only user submit can perform processing from now on
-                                this.audio_clip_processings[audio_clip_id].can_auto_process = false;
-                            }
-
-                            break;
-
-                        case 404: {
-
-                            //no longer available
-                            //can be caused by:
-                                //dev called the wrong URL, or too many attempts, or cronjob auto-expire
-                            const notify_text = (
-                                'Sorry, your recording for event "' +
-                                getShortenedString(
-                                    this.audio_clip_processings[audio_clip_id].event.event_name,
-                                    8
-                                ) +
-                                '" is no longer available.'
-                            );
-
-                            this.audio_clip_processings[audio_clip_id].notification_details = {
-                                args: {
-                                    type: 'error',
-                                    title: 'Recording removed',
-                                    text: notify_text,
-                                    icon: {'audio_clip_tone': {
-                                        audio_clip_tone_name: this.audio_clip_processings[audio_clip_id].audio_clip_tone.audio_clip_tone_name,
-                                        audio_clip_tone_symbol: this.audio_clip_processings[audio_clip_id].audio_clip_tone.audio_clip_tone_symbol,
-                                    }},
-                                    has_close_button: true,
-                                    close_callback: ()=>{
-                                        delete this.audio_clip_processings[audio_clip_id];
-                                    },
-                                },
-                                duration_ms: -1
-                            };
-
-                            this.audio_clip_processings[audio_clip_id].status = 'not_found';
-                            this.audio_clip_processings[audio_clip_id].checks.check_again = false;
-                            break;
-                        }
-
-                        case 409:
-
-                            if(
-                                Object.hasOwn(error.response.data, 'is_processing') === true &&
-                                error.response.data['is_processing'] === true
-                            ){
-
-                                //still processing
-                                this.audio_clip_processings[audio_clip_id].status = 'processing';
-                            }
-
-                            break;
-
-                        default:
-
-                            break;
-                    }
-
-                    //notify
-
-                    if(
-                        current_context === 'auto_evaluation' &&
-                        this.audio_clip_processings[audio_clip_id].notification_details !== null
-                    ){
-
-                        //notify
-                        notify(
-                            this.audio_clip_processings[audio_clip_id].notification_details!.args,
-                            this.audio_clip_processings[audio_clip_id].notification_details!.duration_ms
+                        const event_url = (
+                            window.location.origin + '/event/' +
+                            this.audio_clip_processings[audio_clip_id].event.id.toString()
                         );
 
-                        return;
+                        const main_text = (
+                            'Event: "' +
+                            getShortenedString(
+                                this.audio_clip_processings[audio_clip_id].event.event_name,
+                                8
+                            ) +
+                            '"'
+                        );
+
+                        this.audio_clip_processings[audio_clip_id].status = 'processed';
+                        this.audio_clip_processings[audio_clip_id].title = 'Recording processed';
+                        this.audio_clip_processings[audio_clip_id].main_text = main_text;
+                        this.audio_clip_processings[audio_clip_id].lambda_attempts_left = null;
+                        this.audio_clip_processings[audio_clip_id].actions = [
+                            {
+                                type: 'url',
+                                text: 'Open',
+                                url: event_url,
+                            },
+                        ];
+                        this.audio_clip_processings[audio_clip_id].can_close = true;
+
+                        break;
                     }
 
-                }).finally(()=>{
+                    case 'not_found' : {
 
-                    if(Object.hasOwn(this.audio_clip_processings, audio_clip_id) === false){
+                        const main_text = (
+                            'Your recording for event "' +
+                            getShortenedString(
+                                this.audio_clip_processings[audio_clip_id].event.event_name,
+                                8
+                            ) +
+                            '" could not be fixed.'
+                        );
 
-                        return;
+                        this.audio_clip_processings[audio_clip_id].status = 'not_found';
+                        this.audio_clip_processings[audio_clip_id].title = 'Recording removed';
+                        this.audio_clip_processings[audio_clip_id].main_text = main_text;
+                        this.audio_clip_processings[audio_clip_id].lambda_attempts_left = null;
+                        this.audio_clip_processings[audio_clip_id].actions = [];
+                        this.audio_clip_processings[audio_clip_id].can_close = true;
+
+                        break;
                     }
 
-                    //update check details
+                    case 'lambda_error': {
 
-                    this.audio_clip_processings[audio_clip_id].checks.is_checking = false;
+                        const main_text = (
+                            'Your recording for event "' +
+                            getShortenedString(
+                                this.audio_clip_processings[audio_clip_id].event.event_name,
+                                8
+                            ) +
+                            '" has issues.'
+                        );
 
-                    this.audio_clip_processings[audio_clip_id].checks.last_checked = (
-                        setPiniaDateObject(new Date())
-                    );
-                });
+                        this.audio_clip_processings[audio_clip_id].status = 'lambda_error';
+                        this.audio_clip_processings[audio_clip_id].title = 'Recording error';
+                        this.audio_clip_processings[audio_clip_id].main_text = main_text;
+                        this.audio_clip_processings[audio_clip_id].lambda_attempts_left = lambda_attempts_left;
+                        this.audio_clip_processings[audio_clip_id].actions = [
+                            {
+                                type: 'url',
+                                text: 'Reupload',
+                                url: this.determineReuploadURL(audio_clip_id),
+                            },
+                        ];
+                        this.audio_clip_processings[audio_clip_id].can_close = true;
+
+                        break;
+                    }
+
+                    default:
+
+                        throw new Error('Invalid status for updateProcessing().');
+                }
             },
             getReuploadAudioClipId() : number|null {
 
@@ -424,149 +497,56 @@ export function useAudioClipProcessingsStore(){
 
                 return Number(reupload_audio_clip_id_from_url);
             },
-            autoEvaluateAllAudioClipProcessings() : void {
+            deleteProcessing(audio_clip_id:number) : void {
 
-                interface hasNotifiedTypes {
-                    [audio_clip_id:number]: boolean,
-                }
+                delete this.audio_clip_processings[audio_clip_id];
+            },
+            getActionButtonCallback(audio_clip_id:number, action_index:number) : (()=>void)|void {
 
-                //this will set up an interval on a per-processing basis
-                //i.e. slow and timely
-                //should only use at NavBar
+                //not yet needed
+                //just a proof of concept for action callbacks
+                //since Pinia will remove callbacks on persist
 
-                //if user is at reupload page, do nothing
-                if(this.getReuploadAudioClipId() !== null){
+                if(
+                    Object.hasOwn(this.audio_clip_processings, audio_clip_id) === false ||
+                    Object.hasOwn(this.audio_clip_processings[audio_clip_id], "actions") === false ||
+                    this.audio_clip_processings[audio_clip_id].actions!.length < (action_index + 1) ||
+                    Object.hasOwn(this.audio_clip_processings[audio_clip_id].actions![action_index], "callback_context") === false
+                ){
 
                     return;
                 }
 
-                //all notifications shall only be displayed once
-                const notify_tracker = {} as hasNotifiedTypes
+                return ()=>{
 
-                //do -1 so we can increment early, instead of at the end
-                //this helps us to avoid being stuck at one index on error
-                let index_tracker = -1;
-                let is_calling_api = false;
-
-                //every 10s, check entire store
-                window.setInterval(async()=>{
-
-                    const audio_clip_ids = Object.keys(this.audio_clip_processings);
-
-                    if(audio_clip_ids.length === 0 || is_calling_api === true){
-
+                    if(this.audio_clip_processings[audio_clip_id].actions![action_index].callback_context === ''){
+                        
                         return;
                     }
 
-                    index_tracker += 1;
+                    return;
+                };
+            },
+            getPrettyLambdaAttemptsLeft(audio_clip_id:number) : string {
 
-                    if(index_tracker >= audio_clip_ids.length){
+                if(Object.hasOwn(this.audio_clip_processings, audio_clip_id) === false){
 
-                        //some processings were removed in-between intervals by external actions
-                        //readjust
-                        index_tracker = 0;
-                    }
+                    return '';
+                }
 
-                    const target_audio_clip_processing = this.getAudioClipProcessing(
-                        Number(audio_clip_ids[index_tracker])
-                    );
+                const attempts_left = this.audio_clip_processings[audio_clip_id].lambda_attempts_left;
 
-                    if(target_audio_clip_processing === null){
+                if(attempts_left === null){
 
-                        return;
-                    }
+                    return '0 attempts left.';
+                }
 
-                    //add to notify_tracker first
-                    if(
-                        Object.hasOwn(notify_tracker, audio_clip_ids[index_tracker]) === false
-                    ){
+                if(attempts_left === 1){
 
-                        notify_tracker[Number(audio_clip_ids[index_tracker])] = false;
-                    }
+                    return '1 attempt left.';
+                }
 
-                    //if already notified, don't continue
-                    if(notify_tracker[Number(audio_clip_ids[index_tracker])] === true){
-
-                        return;
-                    }
-
-                    const last_checked_ms:number = timeFromNowMS(
-                        getPiniaDateObject(target_audio_clip_processing.checks.last_checked)
-                    );
-
-                    //if is already checking since not too long ago, skip
-                    if(
-                        target_audio_clip_processing.checks.is_checking === true &&
-                        last_checked_ms >= 0 &&
-                        last_checked_ms < this.api_cooldown_ms
-                    ){
-        
-                        return;
-                    }
-
-                    //for processings that cannot be evaluated here, we just notify
-                    //since the reason they still exist is because user has not acnkwowledged/closed them
-
-                    if(
-                        target_audio_clip_processing.can_auto_process === false ||
-                        target_audio_clip_processing.checks.check_again === false
-                    ){
-
-                        //notification_details is only null when there has been no important errors
-                        //if there were important errors, they cannot turn back into null
-                        if(
-                            target_audio_clip_processing.notification_details !== null
-                        ){
-
-                            notify_tracker[Number(audio_clip_ids[index_tracker])] = true;
-
-                            notify(
-                                target_audio_clip_processing.notification_details.args,
-                                target_audio_clip_processing.notification_details.duration_ms,
-                            )
-                        }
-
-                        return;
-                    }
-
-                    //current audio_clip_processing can be auto-evaluated
-                    //we evaluate only one for every interval
-
-                    is_calling_api = true;
-
-                    await this.processAudioClipAPI(
-                        'auto_evaluation',
-                        Number(audio_clip_ids[index_tracker])
-                    ).catch(()=>{
-                        return;
-                    }).finally(()=>{
-                        is_calling_api = false;
-                    });
-
-                    if(
-
-                        (target_audio_clip_processing.can_auto_process as boolean) === false ||
-                        (target_audio_clip_processing.checks.check_again as boolean) === false
-                    ){
-
-                        //notification_details is only null when there has been no important errors
-                        //if there were important errors, they cannot turn back into null
-                        if(
-                            target_audio_clip_processing.notification_details !== null
-                        ){
-
-                            notify_tracker[Number(audio_clip_ids[index_tracker])] = true;
-
-                            notify(
-                                target_audio_clip_processing.notification_details.args,
-                                target_audio_clip_processing.notification_details.duration_ms,
-                            )
-                        }
-
-                        return;
-                    }
-
-                }, this.api_call_interval_ms);
+                return attempts_left.toString() + ' attempts left.';
             },
         },
         persist: true,

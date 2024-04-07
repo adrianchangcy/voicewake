@@ -71,7 +71,7 @@ class Core_TestCase(TestCase):
             cls.users.append(current_user)
 
         #audio file
-        cls.audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/test_file_samples/audio_can_overwrite.mp3')
+        cls.audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/file_samples/audio_can_overwrite.mp3')
         cls.audio_file = open(cls.audio_file_full_path, 'rb')
         cls.audio_file = SimpleUploadedFile(cls.audio_file.name, cls.audio_file.read(), 'audio/mp3')
 
@@ -82,6 +82,20 @@ class Core_TestCase(TestCase):
         ]
         cls.audio_duration_s = 26
         cls.audio_clip_tone = AudioClipTones.objects.first()
+
+        #file paths
+        cls.shorter_audio_file_full_path = os.path.join(
+            settings.BASE_DIR,
+            'voicewake/tests/file_samples/audio_ok_10s.webm'
+        )
+        cls.longer_audio_file_full_path = os.path.join(
+            settings.BASE_DIR,
+            'voicewake/tests/file_samples/audio_ok_120s.webm'
+        )
+        cls.faulty_audio_file_full_path = os.path.join(
+            settings.BASE_DIR,
+            'voicewake/tests/file_samples/txt_as_fake_mp3.mp3'
+        )
 
 
     @classmethod
@@ -112,6 +126,16 @@ class Core_TestCase(TestCase):
         )
 
 
+    def create_event_reply_queue(self, event_id:int, locked_for_user_id:int, is_replying:bool, when_locked:datetime):
+
+        return EventReplyQueues.objects.create(
+            event_id=event_id,
+            locked_for_user_id=locked_for_user_id,
+            is_replying=is_replying,
+            when_locked=when_locked
+        )
+
+
     def task_normalisation_expect_error(self, user_id:int, processing_cache_key:str, audio_clip_id:int, event_id:int):
 
         has_error = False
@@ -128,6 +152,8 @@ class Core_TestCase(TestCase):
         except Exception as e:
 
             has_error = True
+
+            print(e)
 
         if has_error is False:
 
@@ -188,6 +214,7 @@ class Core_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='processing',
+            audio_clip_audio_file=self.faulty_audio_file_full_path,
         )
 
         #cache
@@ -253,7 +280,7 @@ class Core_TestCase(TestCase):
 
         sample_event_0 = EventsFactory(
             event_created_by=self.users[0],
-            event_generic_status_generic_status_name='processing',
+            event_generic_status_generic_status_name='incomplete',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -273,6 +300,13 @@ class Core_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #cache
@@ -307,7 +341,7 @@ class Core_TestCase(TestCase):
 
         sample_event_0 = EventsFactory(
             event_created_by=self.users[0],
-            event_generic_status_generic_status_name='processing',
+            event_generic_status_generic_status_name='incomplete',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -327,6 +361,14 @@ class Core_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='processing',
+            audio_clip_audio_file=self.faulty_audio_file_full_path,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #cache
@@ -361,7 +403,7 @@ class Core_TestCase(TestCase):
 
         sample_event_0 = EventsFactory(
             event_created_by=self.users[0],
-            event_generic_status_generic_status_name='processing',
+            event_generic_status_generic_status_name='incomplete',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -381,6 +423,13 @@ class Core_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         #cache
