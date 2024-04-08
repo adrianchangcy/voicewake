@@ -3351,6 +3351,9 @@ class Core_TestCase(TestCase):
             AudioClips.objects.filter(user=self.users[1]).first().audio_clip_tone_id,
             data['audio_clip_tone_id']
         )
+        self.assertTrue(
+            EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
+        )
 
         response_data = get_response_data(request)
 
@@ -3360,6 +3363,7 @@ class Core_TestCase(TestCase):
         self.assertTrue('audio_clip_id' in response_data)
 
         #second call
+        #expected to ignore if different audio_clip_tone_id is passed
 
         data = {
             'event_id': sample_event_0.id,
@@ -3374,6 +3378,9 @@ class Core_TestCase(TestCase):
         #check
 
         self.assertEqual(AudioClips.objects.filter(user=self.users[1]).count(), 1)
+        self.assertTrue(
+            EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
+        )
 
         response_data = get_response_data(request)
 
@@ -4253,6 +4260,9 @@ class Core_TestCase(TestCase):
         self.assertEqual(
             response_data['attempts_left'],
             settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+        )
+        self.assertTrue(
+            EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
         )
 
 
@@ -6586,6 +6596,9 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
             sample_audio_clip_1.audio_file,
             self.processed_object_key
         )
+        self.assertFalse(
+            EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
+        )
 
         #don't evaluate actual value, as it is always -1 in test, but has late -1 in prod due to the nature of task queue
         self.assertTrue('attempts_left' in request_data)
@@ -6641,6 +6654,9 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
 
         self.assertEqual(request.status_code, 200)
         self.assertIsNone(cache.get(target_cache_key, None))
+        self.assertFalse(
+            EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
+        )
 
 
     def test_create_replies__process__last_reattempt_failed(self):
@@ -6704,7 +6720,9 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
             sample_audio_clip_1.generic_status.generic_status_name,
             'processing_max_attempts_reached'
         )
-
+        self.assertFalse(
+            EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
+        )
 
 
 
