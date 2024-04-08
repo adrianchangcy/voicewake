@@ -444,16 +444,9 @@ CELERY_BEAT_SCHEDULE = {
             'expires': 30,    #30 seconds
         },
     },
-    'cronjob_handle_responder_processing_overdue': {
-        'task': 'voicewake.cronjobs.cronjob_handle_responder_processing_overdue',
-        'schedule': (30 * 60),  #30 minutes
-        'options': {
-            'expires': 30,    #30 seconds
-        },
-    },
     'cronjob_delete_audio_clip_processing_overdue': {
         'task': 'voicewake.cronjobs.cronjob_delete_audio_clip_processing_overdue',
-        'schedule': (2 * 60 * 60),  #2 hours
+        'schedule': (12 * 60 * 60),  #12 hours
         'options': {
             'expires': 30,    #30 seconds
         },

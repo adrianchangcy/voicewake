@@ -202,70 +202,6 @@ def cronjob_ban_audio_clips():
 
 
 @shared_task
-def cronjob_delete_event_reply_queue_not_replying_overdue():
-
-    when_locked_checkpoint = get_datetime_now() - timedelta(seconds=settings.EVENT_REPLY_CHOICE_MAX_DURATION_S)
-
-    full_sql = '''
-        WITH target_rows AS (
-            SELECT erq.id FROM event_reply_queues AS erq
-            WHERE erq.is_replying IS FALSE
-            AND erq.when_locked <= %s
-            ORDER BY when_locked ASC
-            LIMIT %s
-        )
-        DELETE FROM event_reply_queues AS erq
-        USING target_rows as tr
-        WHERE erq.id = tr.id
-        ;
-    '''
-
-    full_params = [
-        when_locked_checkpoint,
-        settings.CRONJOB_DEFAULT_ROW_LIMIT,
-    ]
-
-    with connection.cursor() as cursor:
-
-        cursor.execute(
-            sql=full_sql,
-            params=full_params,
-        )
-
-
-@shared_task
-def cronjob_delete_event_reply_queue_is_replying_overdue():
-
-    when_locked_checkpoint = get_datetime_now() - timedelta(seconds=settings.EVENT_REPLY_MAX_DURATION_S)
-
-    full_sql = '''
-        WITH target_rows AS (
-            SELECT erq.id FROM event_reply_queues AS erq
-            WHERE erq.is_replying IS TRUE
-            AND erq.when_locked <= %s
-            ORDER BY when_locked ASC
-            LIMIT %s
-        )
-        DELETE FROM event_reply_queues AS erq
-        USING target_rows as tr
-        WHERE erq.id = tr.id
-        ;
-    '''
-
-    full_params = [
-        when_locked_checkpoint,
-        settings.CRONJOB_DEFAULT_ROW_LIMIT,
-    ]
-
-    with connection.cursor() as cursor:
-
-        cursor.execute(
-            sql=full_sql,
-            params=full_params,
-        )
-
-
-@shared_task
 def cronjob_handle_originator_processing_overdue():
 
     when_created_checkpoint = get_datetime_now() - timedelta(seconds=settings.AUDIO_CLIP_UNPROCESSED_EXPIRY_S)
@@ -303,7 +239,7 @@ def cronjob_handle_originator_processing_overdue():
             SELECT id FROM generic_statuses
             WHERE generic_status_name = %s
         )
-        RETURNING poac.user_id, poac.id
+        RETURNING poac.id, poac.user_id
     '''
 
     full_params = [
@@ -324,11 +260,11 @@ def cronjob_handle_originator_processing_overdue():
             params=full_params,
         )
 
-        #expect only AudioClips.id as (id,) tuple
+        #expect tuple based on last RETURNING
 
         for row in cursor.fetchall():
 
-            user_id, audio_clip_id = row
+            audio_clip_id, user_id = row
 
             target_cache_keys.append(
                 CreateAudioClips.determine_processing_cache_key(
@@ -344,58 +280,78 @@ def cronjob_handle_originator_processing_overdue():
 
 
 @shared_task
-def cronjob_handle_responder_processing_overdue():
+def cronjob_delete_event_reply_queue_not_replying_overdue():
 
-    when_created_checkpoint = get_datetime_now() - timedelta(seconds=settings.AUDIO_CLIP_UNPROCESSED_EXPIRY_S)
+    when_locked_checkpoint = get_datetime_now() - timedelta(seconds=settings.EVENT_REPLY_CHOICE_MAX_DURATION_S)
 
-    #delete AudioClips, reset Events to "incomplete", returns AudioClips.id
-    #we don't directly delete AudioClips so that create/reply limit can be enforced
-    #delete cache via AudioClips.id
-    #do not touch EventReplyQueues
     full_sql = '''
-        WITH
-        target_audio_clips AS (
-            SELECT ac.id, ac.event_id, ac.user_id FROM audio_clips AS ac
-            INNER JOIN generic_statuses AS gs ON gs.id = ac.generic_status_id
-            INNER JOIN audio_clip_roles AS acr ON acr.id = ac.audio_clip_role_id
-            WHERE acr.audio_clip_role_name = %s
-            AND ac.when_created <= %s
-            AND gs.generic_status_name = %s
-            ORDER BY ac.when_created ASC
+        WITH target_rows AS (
+            SELECT erq.id FROM event_reply_queues AS erq
+            WHERE erq.is_replying IS FALSE
+            AND erq.when_locked <= %s
+            ORDER BY when_locked ASC
             LIMIT %s
-        ),
-        processing_overdue_audio_clips AS (
-            UPDATE audio_clips AS ac
-            SET generic_status_id = (
-                SELECT id FROM generic_statuses
-                WHERE generic_status_name = %s
-            )
-            FROM target_audio_clips AS tac
-            WHERE ac.id = tac.id
-            RETURNING tac.id, tac.event_id, tac.user_id
         )
-        UPDATE events AS e
-        SET generic_status_id = (
-            SELECT id FROM generic_statuses
-            WHERE generic_status_name = %s
-        )
-        FROM processing_overdue_audio_clips AS poac
-        WHERE e.id = poac.event_id
-        AND e.generic_status_id = (
-            SELECT id FROM generic_statuses
-            WHERE generic_status_name = %s
-        )
-        RETURNING poac.user_id, poac.id
+        DELETE FROM event_reply_queues AS erq
+        USING target_rows as tr
+        WHERE erq.id = tr.id
+        ;
     '''
 
     full_params = [
-        'responder',
-        when_created_checkpoint,
-        'processing',
+        when_locked_checkpoint,
+        settings.CRONJOB_DEFAULT_ROW_LIMIT,
+    ]
+
+    with connection.cursor() as cursor:
+
+        cursor.execute(
+            sql=full_sql,
+            params=full_params,
+        )
+
+
+@shared_task
+def cronjob_delete_event_reply_queue_is_replying_overdue():
+
+    #deleted event reply queues that are replying, update audio clip
+    #audio clip is updated, instead of deleted, to enforce reply limit
+    #delete cache
+
+    when_locked_checkpoint = get_datetime_now() - timedelta(seconds=settings.EVENT_REPLY_MAX_DURATION_S)
+
+    full_sql = '''
+        WITH
+        target_event_reply_queues AS (
+            SELECT erq.id, erq.locked_for_user_id, erq.event_id
+            FROM event_reply_queues AS erq
+            WHERE erq.is_replying IS TRUE
+            AND erq.when_locked <= %s
+            ORDER BY when_locked ASC
+            LIMIT %s
+        ),
+        deleted_event_reply_queues AS (
+            DELETE FROM event_reply_queues AS erq
+            USING target_event_reply_queues as terq
+            WHERE erq.id = terq.id
+            RETURNING terq.locked_for_user_id, terq.event_id
+        )
+        UPDATE audio_clips AS ac
+        SET generic_status_id = (
+            SELECT id FROM generic_statuses AS gs
+            WHERE gs.generic_status_name = %s
+        )
+        FROM deleted_event_reply_queues AS derq
+        WHERE ac.user_id = derq.locked_for_user_id
+        AND ac.event_id = derq.event_id
+        RETURNING ac.id, ac.user_id
+        ;
+    '''
+
+    full_params = [
+        when_locked_checkpoint,
         settings.CRONJOB_DEFAULT_ROW_LIMIT,
         'processing_overdue',
-        'incomplete',
-        'processing',
     ]
 
     target_cache_keys = []
@@ -407,9 +363,11 @@ def cronjob_handle_responder_processing_overdue():
             params=full_params,
         )
 
+        #expect tuple based on last RETURNING
+
         for row in cursor.fetchall():
 
-            user_id, audio_clip_id = row
+            audio_clip_id, user_id = row
 
             target_cache_keys.append(
                 CreateAudioClips.determine_processing_cache_key(
