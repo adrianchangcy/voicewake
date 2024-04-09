@@ -1385,8 +1385,8 @@ class CreateAudioClips():
 
                 if event.generic_status.generic_status_name == 'processing':
 
-                    event.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
-                    event.save()
+                    #we don't need event to enforce limit
+                    event.delete()
 
             return can_normalise
 
@@ -1414,7 +1414,7 @@ class CreateAudioClips():
                     audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
                     audio_clip.save()
 
-                EventReplyQueues.objects.filter(pk=event_reply_queue.id).delete()
+                event_reply_queue.delete()
 
             return can_normalise
 
@@ -1600,8 +1600,22 @@ class CreateAudioClips():
                 audio_clip_role__audio_clip_role_name='responder',
             )
 
-            if self.audio_clip.generic_status.generic_status_name != 'processing':
+            #check if already processed
+            #queue no longer exists when true
+            #also more manageable than having frontend call "check status" API every time
+            if self.audio_clip.generic_status.generic_status_name == 'ok':
 
+                return Response(
+                    data={
+                        'is_processed': True,
+                    },
+                    status=status.HTTP_200_OK
+                )
+
+            elif self.audio_clip.generic_status.generic_status_name != 'processing':
+
+                #audio clip exists, but is not processing
+                #do nothing
                 return Response(
                     data={
                     },
@@ -1635,11 +1649,8 @@ class CreateAudioClips():
 
         except EventReplyQueues.DoesNotExist:
 
-            if self.audio_clip is not None and self.audio_clip.generic_status.generic_status_name == 'processing':
-
-                self.audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
-                self.audio_clip.save()
-
+            #no need to do anything
+            #audio clip wouldn't exist without queue
             return Response(
                 data={
                 },
@@ -1683,7 +1694,7 @@ class CreateAudioClips():
                 status=status.HTTP_205_RESET_CONTENT
             )
 
-        #get and check event
+        #check event
 
         if self.event.generic_status.generic_status_name != 'incomplete':
 
@@ -1814,6 +1825,18 @@ class CreateAudioClips():
                 pk=self.audio_clip.event_id
             )
 
+            #check if already processed
+            #queue no longer exists when true
+            #also more manageable than having frontend call "check status" API every time
+            if self.audio_clip.generic_status.generic_status_name == 'ok':
+
+                return Response(
+                    data={
+                        'is_processed': True,
+                    },
+                    status=status.HTTP_200_OK
+                )
+
             #when responder is not done processing, queue will still exist
             if self.audio_clip.audio_clip_role.audio_clip_role_name == 'responder':
 
@@ -1843,7 +1866,7 @@ class CreateAudioClips():
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        #validate db rows
+        #validate db rows, reset if cannot normalise
 
         can_normalise = self.check_db_can_normalise(
             audio_clip=self.audio_clip,

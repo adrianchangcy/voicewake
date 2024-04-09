@@ -1574,8 +1574,11 @@ class Core_TestCase(TestCase):
         }
 
         request = self.client.post(reverse('create_events_process_api'), data)
+        response_data = get_response_data(request)
 
-        self.assertEqual(request.status_code, 404)
+        self.assertEqual(request.status_code, 200)
+        self.assertTrue('is_processed' in response_data)
+        self.assertTrue(response_data['is_processed'])
 
 
     def test_create_events__process__still_processing(self):
@@ -3390,6 +3393,43 @@ class Core_TestCase(TestCase):
         self.assertTrue('audio_clip_id' in response_data)
 
 
+    def test_create_replies__upload__already_processed(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='completed',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user = self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
+            audio_clip_event = sample_event_0,
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user = self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name = 'responder',
+            audio_clip_event = sample_event_0,
+        )
+
+        #proceed
+
+        data = {
+            'event_id': sample_event_0.id,
+            'audio_clip_tone_id': 1,
+            'recorded_file_extension': settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+        }
+
+        request = self.client.post(reverse('create_replies_upload_api'), data)
+        response_data = get_response_data(request)
+
+        self.assertEqual(request.status_code, 200)
+        self.assertTrue('is_processed' in response_data)
+        self.assertTrue(response_data['is_processed'])
+
+
     def test_create_replies__upload__never_queued_for_it(self):
 
         self.login(self.users[1])
@@ -4193,8 +4233,11 @@ class Core_TestCase(TestCase):
         }
 
         request = self.client.post(reverse('create_replies_process_api'), data)
+        response_data = get_response_data(request)
 
-        self.assertEqual(request.status_code, 404)
+        self.assertEqual(request.status_code, 200)
+        self.assertTrue('is_processed' in response_data)
+        self.assertTrue(response_data['is_processed'])
 
 
     def test_create_replies__process__still_processing(self):
