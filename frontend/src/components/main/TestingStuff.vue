@@ -1,7 +1,110 @@
 <template>
-    <div class="flex flex-row gap-8 pt-10">
-
+    <div class="flex flex-row gap-8 pt-20">
     <!-- <FontAwesomeIcon icon="fas fa-comments"/> -->
+
+        <!--light mode, -->
+        <div class="w-full bg-theme-light flex flex-col gap-6 py-20">
+
+            <!--normal-->
+            <div class="flex flex-col mx-auto light">
+                <VActionDanger
+                    prop-element="button"
+                    type="button"
+                    prop-element-size="s"
+                    prop-font-size="s"
+                    :prop-is-icon-only="false"
+                    :prop-is-enabled="true"
+                    class="w-fit px-2"
+                >
+                    <span class="mx-auto">
+                        Delete
+                    </span>
+                </VActionDanger>
+            </div>
+        </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        <!--BLANK STATE, DON'T MODIFY THIS -->
+        <!--light mode, -->
+        <div v-show="false" class="w-full bg-theme-light flex flex-col gap-6">
+
+            <!--normal-->
+            <div class="flex flex-col mx-auto">
+                <span class="mx-auto">normal</span>
+                <button
+                    type="button"
+                    class="w-20 h-20 flex items-center border-t-2 rounded-lg shadow-lg"
+                >
+                    <span class="mx-auto pb-0.5 text-xl font-medium">
+                        Teapot
+                    </span>
+                </button>
+            </div>
+
+            <!--hover-->
+            <div class="flex flex-col mx-auto">
+                <span class="mx-auto">hover</span>
+                <button
+                    type="button"
+                    class="w-20 h-20 flex items-center border-t-2 rounded-lg shadow-lg"
+                >
+                    <span class="mx-auto pb-0.5 text-xl font-medium">
+                        Teapot
+                    </span>
+                </button>
+            </div>
+
+            <!--active (clicked)-->
+            <div class="flex flex-col mx-auto">
+                <span class="mx-auto">active</span>
+                <button
+                    type="button"
+                    class="w-20 h-20 flex items-center border-t-2 rounded-lg shadow-lg"
+                >
+                    <span class="mx-auto pb-0.5 text-xl font-medium">
+                        Teapot
+                    </span>
+                </button>
+            </div>
+
+            <!--disable-->
+            <div class="flex flex-col mx-auto">
+                <span class="mx-auto">disable</span>
+                <button
+                    type="button"
+                    class="w-20 h-20 flex items-center border-t-2 rounded-lg shadow-lg"
+                >
+                    <span class="mx-auto pb-0.5 text-xl font-medium">
+                        Teapot
+                    </span>
+                </button>
+            </div>
+        </div>
+
+
+
+
+
     </div>
 </template>
 
@@ -9,6 +112,7 @@
 <script setup lang="ts">
     // import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
     // import VActionText from '../small/VActionText.vue';
+    import VActionDanger from '../small/VActionDanger.vue';
     // import VTest from '../small/VTest.vue';
     // import VPlayback from '../medium/VPlayback.vue';
 
@@ -22,7 +126,7 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import { notify } from '@/wrappers/notify_wrapper';
+    // import { notify } from '@/wrappers/notify_wrapper';
     // import anime from 'animejs';
     // import VPlayback from '../medium/VPlayback.vue';
     // import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
@@ -101,16 +205,16 @@
 
             // this.callTest();
 
-            notify({
-                title: 'Keep it up!',
-                text: "You're so close to the finish line! Keep going!!!",
-                type: 'ok',
-                icon: {'font_awesome': 'fas fa-check'},
-            }, -1);
+            // notify({
+            //     title: 'Keep it up!',
+            //     text: "You're so close to the finish line! Keep going!!!",
+            //     type: 'ok',
+            //     icon: {'font_awesome': 'fas fa-check'},
+            // }, -1);
 
-            window.setInterval(()=>{
-                this.is_yolo = !this.is_yolo;
-            }, 2000);
+            // window.setInterval(()=>{
+            //     this.is_yolo = !this.is_yolo;
+            // }, 2000);
 
 
 

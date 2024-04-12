@@ -356,12 +356,13 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                     Object.hasOwn(error, 'response') === false
                 ){
 
-                    throw new Error('Unexpected error.');
+                    throw error;
                 }
 
                 //if we get can_retry=false, we must move on
 
                 if(
+                    error.request.status === 404 &&
                     Object.hasOwn(error.response.data, 'can_retry') === true &&
                     error.response.data['can_retry'] === false
                 ){
@@ -369,8 +370,8 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                     this.softReset();
 
                     notify({
-                        title: 'Reply choice skipped',
-                        text: "The event was unexpectedly unavailable.",
+                        title: 'Reply choice removed',
+                        text: "The event is no longer unavailable.",
                         type: 'generic',
                         icon: {'font_awesome': 'far fa-face-meh-blank'},
                     }, 3000);
@@ -378,10 +379,15 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                     return;
                 }
 
-                throw new Error('Unhandled error.');
+                notify({
+                    title: 'Unexpected error',
+                    text: "Try again later.",
+                    type: 'error',
+                    icon: {'font_awesome': 'fas fa-exclamation'},
+                }, 3000);
             });
         },
-        async updateReplyingEvent(replying_event:EventsAndAudioClipsTypes|null) : Promise<void> {
+        updateReplyingEvent(replying_event:EventsAndAudioClipsTypes|null) : void {
 
             if(replying_event === null){
 

@@ -19,175 +19,178 @@
                 :prop-load-v-audio-clip-cards-only="!canReply"
                 @new-is-liked="event_reply_choices_store.newAudioClipIsLiked($event)"
                 @new-v-playback-teleport-id="handleNewVPlaybackTeleportId($event)"
+                class="pb-8"
             />
 
-            <!--reply area-->
-            <div
-                v-if="hasReplyingMenu"
+            <!--use custom transition with delay, as more complex v-else-if has race condition-->
+            <!--causing new element to appear early-->
+            <Transition
+                name="transition-get-events-app"
+                enter-from-class="opacity-0"
+                enter-active-class="transition-opacity duration-500 ease-in-out delay-500"
+                enter-to-class="opacity-100"
+                leave-from-class="opacity-100"
+                leave-active-class="transition-opacity duration-500 ease-in-out"
+                leave-to-class="opacity-0"
             >
-                <TransitionFadeSlow>
-                    <div
-                        v-if="canReply"
-                        class="w-full flex flex-col pt-8"
-                    >
-                        <VUsernameURL
-                            :propUsername="username"
-                        />
 
-                        <div class="relative border border-theme-gray-2 rounded-lg px-2 sm:px-4 pt-8 pb-12">
+                <!--dialogs and reply choice URL-->
+                <div v-if="hasDialog">
 
-                            <div ref="replying_title_section" class="grid grid-cols-4 gap-2 pb-6">
-
-                                <VTitle
-                                    propFontSize="m"
-                                    class="col-span-3"
-                                >
-                                    <template #title>
-                                        <div class="h-10 flex items-center">
-                                            <span>Replying</span>
-                                        </div>
-                                    </template>
-                                </VTitle>
-
-                                <div class="col-span-1">
-                                    <VActionDanger
-                                        @click="cancelReply()"
-                                        prop-element="button"
-                                        type="button"
-                                        prop-element-size="s"
-                                        prop-font-size="s"
-                                        :prop-is-icon-only="is_event_cancelling"
-                                        :prop-is-enabled="!isLoading"
-                                        class="w-full"
-                                    >
-                                        <VLoading
-                                            v-show="is_event_cancelling"
-                                            propElementSize="s"
-                                            propColourClass="border-theme-light"
-                                            class="mx-auto"
-                                        />
-                                        <span
-                                            v-show="!is_event_cancelling"
-                                            class="mx-auto"
-                                        >
-                                            Delete
-                                        </span>
-                                    </VActionDanger>
-                                </div>
-                            </div>
-
-                            <CreateAudioClips
-                                :propIsOriginator="false"
-                                :propReuploadAudioClipId="reupload_audio_clip_id"
-                                :propEventId="event.event.id"
-                                :propCanSubmit="!isLoading"
-                                @isSubmitting="handleIsSubmitting($event)"
-                                @isSubmitSuccessful="handleIsSubmitSuccessful($event)"
-                            />
+                    <!--dialogs-->
+                    <div class="w-full h-fit pt-14 flex flex-col items-center text-xl font-medium">
+                        <div
+                            v-show="dialog_context === 'cancelled'"
+                            class="w-full flex flex-col"
+                        >
+                            <FontAwesomeIcon icon="fas fa-eraser" class="mx-auto"/>
+                            <span class="block mx-auto">Reply was cancelled.</span>
+                        </div>
+                        <div
+                            v-show="dialog_context === 'expired'"
+                            class="w-full flex flex-col"
+                        >
+                            <FontAwesomeIcon icon="fas fa-hourglass-end" class="mx-auto"/>
+                            <span class="block mx-auto">Reply has expired.</span>
                         </div>
                     </div>
 
-                    <!--just cancelled while replying-->
-                    <div
-                        v-else
-                        class="w-full"
-                    >
-                        <div class="w-full h-fit pt-14 flex flex-col items-center text-xl font-medium">
-                            <div
-                                v-show="dialog_context === 'cancelled'"
-                                class="w-full flex flex-col"
-                            >
-                                <FontAwesomeIcon icon="fas fa-eraser" class="mx-auto"/>
-                                <span class="block mx-auto">Reply was cancelled.</span>
-                            </div>
-                            <div
-                                v-show="dialog_context === 'expired'"
-                                class="w-full flex flex-col"
-                            >
-                                <FontAwesomeIcon icon="fas fa-hourglass-end" class="mx-auto"/>
-                                <span class="block mx-auto">Reply has expired.</span>
-                            </div>
-                        </div>
-
-                        <!--URL back to more reply choices-->
-                        <div class="pt-2">
-                            <VActionSpecial
-                                propElement="a"
-                                href="/reply"
-                                propElementSize="s"
-                                propFontSize="s"
-                                :prop-is-icon-only="true"
-                                class="w-fit mx-auto"
-                            >
-                                <span class="flex items-center px-4">
-                                    <span class="block pb-0.5">More reply choices</span>
-                                    <FontAwesomeIcon icon="fas fa-arrow-right" class="text-lg pl-2"/>
-                                </span>
-                            </VActionSpecial>
-                        </div>
+                    <!--URL back to more reply choices-->
+                    <div class="pt-2">
+                        <VActionSpecial
+                            propElement="a"
+                            href="/reply"
+                            propElementSize="s"
+                            propFontSize="s"
+                            :prop-is-icon-only="true"
+                            class="w-fit mx-auto"
+                        >
+                            <span class="flex items-center px-4">
+                                <span class="block pb-0.5">More reply choices</span>
+                                <FontAwesomeIcon icon="fas fa-arrow-right" class="text-lg pl-2"/>
+                            </span>
+                        </VActionSpecial>
                     </div>
-                </TransitionFadeSlow>
-            </div>
-
-            <Teleport
-                v-if="!canReply && teleport_id !== ''"
-                :to="teleport_id"
-            >
-                <VPlayback
-                    :prop-audio-clip="vplayback_store.getPlayingAudioClip"
-                    :prop-is-open="true"
-                    :prop-audio-volume-peaks="getSelectedAudioClipAudioVolumePeaks"
-                    :prop-bucket-quantity="20"
-                />
-            </Teleport>
-        </div>
-
-        <!--for reupload, both originator/responder-->
-        <!--add pt-2 to add page title's pt-8 back to pt-10-->
-        <div
-            v-else-if="isReupload"
-        >
-            <VUsernameURL
-                :propUsername="(getDataFromTemplateJSONScript('data-user-username') as string)"
-            />
-            <div class="flex flex-col rounded-lg divide-y divide-theme-gray-2 border border-theme-gray-2">
-                    
-                <div ref="reupload_title_section">
-                    <VTitle
-                        propFontSize="m"
-                        class="px-2 sm:px-4 py-4"
-                    >
-                        <template #title>
-                            <div class="flex items-center">
-                                <span>Reupload recording</span>
-                            </div>
-                        </template>
-                        <template #titleDescription>
-                            <span class="text-base block text-red-700">
-                                Your previous recording had no sound.
-                            </span>
-                            <!--still null on first attempt, as cache is unreliable, since we don't know when task queue starts-->
-                            <span
-                                v-show="canShowLambdaAttemptsLeft"
-                                class="text-sm block py-1"
-                            >
-                                {{ getPrettyLambdaAttemptsLeft }}
-                            </span>
-                        </template>
-                    </VTitle>
                 </div>
-                <CreateAudioClips
-                    :propIsOriginator="is_originator"
-                    :propReuploadAudioClipId="reupload_audio_clip_id"
-                    :propEventId="event_id!"
-                    :propCanSubmit="!isLoading"
-                    @isSubmitting="handleIsSubmitting($event)"
-                    @isSubmitSuccessful="handleIsSubmitSuccessful($event)"
-                    @hasForm="handleHasForm($event)"
-                    class="px-2 sm:px-4 pt-8 pb-12"
-                />
-            </div>
+
+                <!--reply-->
+                <div v-else-if="!hasDialog && !isReupload && hasReplyingMenu && canReply">
+
+                    <VUsernameURL
+                        :propUsername="username"
+                    />
+
+                    <div class="relative border border-theme-gray-2 rounded-lg px-2 sm:px-4 pt-8 pb-12">
+
+                        <div ref="replying_title_section" class="grid grid-cols-4 gap-2 pb-6">
+
+                            <VTitle
+                                propFontSize="m"
+                                class="col-span-3"
+                            >
+                                <template #title>
+                                    <div class="h-10 flex items-center">
+                                        <span>Replying</span>
+                                    </div>
+                                </template>
+                            </VTitle>
+
+                            <div class="col-span-1">
+                                <VActionDanger
+                                    @click="cancelReply()"
+                                    prop-element="button"
+                                    type="button"
+                                    prop-element-size="s"
+                                    prop-font-size="s"
+                                    :prop-is-icon-only="is_event_cancelling"
+                                    :prop-is-enabled="!isLoading"
+                                    class="w-full"
+                                >
+                                    <VLoading
+                                        v-show="is_event_cancelling"
+                                        propElementSize="s"
+                                        propColourClass="border-theme-light"
+                                        class="mx-auto"
+                                    />
+                                    <span
+                                        v-show="!is_event_cancelling"
+                                        class="mx-auto"
+                                    >
+                                        Delete
+                                    </span>
+                                </VActionDanger>
+                            </div>
+                        </div>
+
+                        <CreateAudioClips
+                            :propIsOriginator="false"
+                            :propReuploadAudioClipId="reupload_audio_clip_id"
+                            :propEventId="event.event.id"
+                            :propCanSubmit="!isLoading"
+                            @isSubmitting="handleIsSubmitting($event)"
+                            @isSubmitSuccessful="handleIsSubmitSuccessful($event)"
+                        />
+                    </div>
+                </div>
+
+                <!--reupload-->
+                <div v-else-if="isReupload">
+                    <VUsernameURL
+                        :propUsername="username"
+                    />
+                    <div class="flex flex-col rounded-lg divide-y divide-theme-gray-2 border border-theme-gray-2">
+                            
+                        <div ref="reupload_title_section">
+                            <VTitle
+                                propFontSize="m"
+                                class="px-2 sm:px-4 py-4"
+                            >
+                                <template #title>
+                                    <div class="flex items-center">
+                                        <span>Reupload recording</span>
+                                    </div>
+                                </template>
+                                <template #titleDescription>
+                                    <span class="text-base block text-red-700">
+                                        Your previous recording had no sound.
+                                    </span>
+                                    <!--still null on first attempt, as cache is unreliable, since we don't know when task queue starts-->
+                                    <span
+                                        v-show="canShowLambdaAttemptsLeft"
+                                        class="text-sm block py-1"
+                                    >
+                                        {{ getPrettyLambdaAttemptsLeft }}
+                                    </span>
+                                </template>
+                            </VTitle>
+                        </div>
+                        <CreateAudioClips
+                            :propIsOriginator="is_originator"
+                            :propReuploadAudioClipId="reupload_audio_clip_id"
+                            :propEventId="event_id!"
+                            :propCanSubmit="!isLoading"
+                            @isSubmitting="handleIsSubmitting($event)"
+                            @isSubmitSuccessful="handleIsSubmitSuccessful($event)"
+                            @hasForm="handleHasForm($event)"
+                            class="px-2 sm:px-4 pt-8 pb-12"
+                        />
+                    </div>
+                </div>
+            </Transition>
         </div>
+
+        <!--playback for normal view-->
+        <Teleport
+            v-if="!canReply && teleport_id !== ''"
+            :to="teleport_id"
+        >
+            <VPlayback
+                :prop-audio-clip="vplayback_store.getPlayingAudioClip"
+                :prop-is-open="true"
+                :prop-audio-volume-peaks="getSelectedAudioClipAudioVolumePeaks"
+                :prop-bucket-quantity="20"
+            />
+        </Teleport>
     </div>
 </template>
 
@@ -197,7 +200,6 @@
     import VActionSpecial from '../components/small/VActionSpecial.vue';
     import CreateAudioClips from '../components/main/CreateAudioClips.vue';
     import VTitle from '../components/small/VTitle.vue';
-    import TransitionFadeSlow from '@/transitions/TransitionFadeSlow.vue';
     import VPlayback from '../components/medium/VPlayback.vue';
     import VUsernameURL from '../components/small/VUsernameURL.vue';
     import VAudioClipCardSkeleton from '../components/skeleton/VAudioClipCardSkeleton.vue';
@@ -222,8 +224,6 @@
     import { useEventReplyChoicesStore } from '@/stores/EventReplyChoicesStore';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
     import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
-    import { CreateAudioClips__isSubmitSuccessfulTypes } from '@/types/General.interface';
-    
 
     import anime from 'animejs';
     const axios = require('axios');
@@ -290,6 +290,10 @@
                 return this.event !== null &&
                     Object.hasOwn(this.event, 'event_reply_queue') === true;
             },
+            hasDialog() : boolean {
+
+                return this.dialog_context !== '';
+            },
             getSelectedAudioClipAudioVolumePeaks() : number[] {
 
                 if(this.vplayback_store.getPlayingAudioClip === null){
@@ -350,7 +354,7 @@
                         //store this to store
                         //although we now have two separate locations,
                         //it being an object makes the locations refer to one singular object
-                        await this.event_reply_choices_store.updateReplyingEvent(this.event!);
+                        this.event_reply_choices_store.updateReplyingEvent(this.event!);
                     }
                 })
                 .catch((error:any) => {
@@ -424,16 +428,31 @@
 
                     this.is_event_expiring = true;
 
-                    await this.event_reply_choices_store.cancelEvent(is_replying).finally(()=>{
+                    await this.event_reply_choices_store.cancelEvent(
+                        is_replying
+                    ).then(()=>{
 
-                        if(this.canReply === false){
+                        //success
 
-                            this.is_event_expiring = false;
-                            this.dialog_context = 'expired';
-                            document.title = this.original_document_title;
+                        //get audio_clip_id, delete processing
 
-                        }else{
+                        const audio_clip_id = this.audio_clip_processings_store.getAudioClipIdByEventId(this.event_id!);
 
+                        if(audio_clip_id !== null){
+
+                            this.audio_clip_processings_store.deleteAudioClipProcessing(audio_clip_id);
+                        }
+
+                        this.dialog_context = 'expired';
+                        document.title = this.original_document_title;
+
+                    }).finally(()=>{
+
+                        this.is_event_expiring = false;
+
+                        if(this.canReply === true){
+
+                            //cancellation failed, restart expiry
                             this.startExpiryInterval(true);
                         }
                     });
@@ -476,16 +495,31 @@
 
                         this.is_event_expiring = true;
 
-                        await this.event_reply_choices_store.cancelEvent(is_replying).finally(()=>{
+                        await this.event_reply_choices_store.cancelEvent(
+                            is_replying
+                        ).then(()=>{
 
-                            if(this.canReply === false){
+                            //success
 
-                                this.is_event_expiring = false;
-                                this.dialog_context = 'expired';
-                                document.title = this.original_document_title;
+                            //get audio_clip_id, delete processing
 
-                            }else{
+                            const audio_clip_id = this.audio_clip_processings_store.getAudioClipIdByEventId(this.event_id!);
 
+                            if(audio_clip_id !== null){
+
+                                this.audio_clip_processings_store.deleteAudioClipProcessing(audio_clip_id);
+                            }
+
+                            this.dialog_context = 'expired';
+                            document.title = this.original_document_title;
+
+                        }).finally(()=>{
+
+                            this.is_event_expiring = false;
+
+                            if(this.canReply === true){
+
+                                //cancellation failed, restart expiry
                                 this.startExpiryInterval(true);
                             }
                         });
@@ -516,7 +550,7 @@
                 //start interval
                 this.expiry_interval = window.setInterval(interval_function, interval_ms);
             },
-            async handleIsSubmitting(new_value:boolean) : Promise<void> {
+            handleIsSubmitting(new_value:boolean) : void {
 
                 this.is_event_submitting = new_value;
 
@@ -526,22 +560,23 @@
                     this.expiry_interval = null;
                 }
             },
-            async handleIsSubmitSuccessful(new_data:CreateAudioClips__isSubmitSuccessfulTypes) : Promise<void> {
+            handleIsSubmitSuccessful(is_successful:boolean) : void {
 
                 if(this.canReply === false){
 
                     return;
                 }
 
-                if(new_data['is_successful'] === true){
+                if(is_successful === false){
 
-                    this.event_reply_choices_store.softReset();
-
-                }else{
-
+                    //restart expiry
                     this.is_event_submitting = false;
                     this.startExpiryInterval(true);
+                    return;
                 }
+
+                //don't reset reply choice here, now is not the time
+                //only reset when processing is done
             },
             async cancelReply() : Promise<void> {
 
@@ -556,19 +591,29 @@
                 this.expiry_interval = null;
 
                 await this.event_reply_choices_store.cancelEvent(true, false)
-                .finally(()=>{
+                .then(()=>{
 
-                    if(this.canReply === false){
+                    //get audio_clip_id, delete processing
 
-                        this.dialog_context = "cancelled";
-                        document.title = this.original_document_title;
+                    const audio_clip_id = this.audio_clip_processings_store.getAudioClipIdByEventId(this.event_id!);
 
-                    }else{
+                    if(audio_clip_id !== null){
 
-                        this.is_event_cancelling = false;
-                        this.startExpiryInterval(true);
+                        this.audio_clip_processings_store.deleteAudioClipProcessing(audio_clip_id);
                     }
 
+                    this.dialog_context = 'cancelled';
+                    document.title = this.original_document_title;
+
+                }).finally(()=>{
+
+                    this.is_event_cancelling = false;
+
+                    if(this.canReply === true){
+
+                        //failed, restart expiry
+                        this.startExpiryInterval(true);
+                    }
                 });
             },
             handleNewVPlaybackTeleportId(teleport_id:string) : void {
@@ -665,9 +710,11 @@
         beforeMount(){
 
             //username
+            //empty string if not found
             this.username = getDataFromTemplateJSONScript('data-user-username') as string;
 
-            //handle accordingly if reuploading
+            //check if reuploading
+            //does not rely on persisted store to know if user is reuploading
             this.reupload_audio_clip_id = this.audio_clip_processings_store.getReuploadAudioClipId();
             this.determineIsOriginatorForReupload();
 
@@ -705,28 +752,25 @@
                 this.event = this.event_reply_choices_store.getReplyingEvent;
                 
                 //rewrite title
-                document.title = "Replying: " + document.title;
+                document.title = "Replying: " + this.original_document_title;
 
                 this.startExpiryInterval(true);
-
-            }else{
-
-                //get event from API
-                //getEvent() will also update store's replying_event
-                (async ()=>{
-                    await this.getEvent().then(()=>{
-
-                        if(this.canReply === true){
-
-                            //rewrite title
-                            document.title = "Replying: " + document.title;
-
-                            this.startExpiryInterval(true);
-                            this.vplayback_store.autoplayOnChange(false);
-                        }
-                    });
-                })();
+                return;
             }
+
+            //get event from API
+            //getEvent() will also update store's replying_event
+            this.getEvent().then(()=>{
+
+                if(this.canReply === true){
+
+                    //rewrite title
+                    document.title = "Replying: " + this.original_document_title;
+
+                    this.startExpiryInterval(true);
+                    this.vplayback_store.autoplayOnChange(false);
+                }
+            });
         },
     });
 </script>

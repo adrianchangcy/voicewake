@@ -1,7 +1,7 @@
 <template>
-    <!--your v-if and v-else-if or v-else must be straightforward-->
-    <!--at GetEventsApp, v-if="isReplying" and v-else-if="!isReplying && dialog_context !== ''" made mode out-in fail-->
-    <!--might have been due to dialog_context race condition being at .finally(), while isReplying was updated at .then()-->
+    <!--for v-if and v-else-if, particularly with more than 1 single variable, mode="out-in" seems unreliable-->
+    <!--next element consistently appears early before current element disappears-->
+    <!--solution is to create custom <Transition> and add delay for enter-active, but only for these cases, not for generic-->
     <Transition
         name="transition-fade-slow"
         mode="out-in"

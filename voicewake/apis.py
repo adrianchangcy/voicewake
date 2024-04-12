@@ -932,11 +932,20 @@ class GetEventsAPI(generics.GenericAPIView):
 
     def get_events_by_id(self, event_id):
 
+        #to check whether event__eventreplyqueues has rows, use hasattr(audio_clips[0].event, 'eventreplyqueues')
+
         audio_clips = AudioClips.objects.prefetch_related(
             'audio_clip_role',
             'event',
             'event__generic_status',
-            'event__eventreplyqueues',
+            #join any event_reply_queue row to event, not the normal FK prefetch
+            Prefetch(
+                'event__eventreplyqueues',
+                EventReplyQueues.objects.filter(
+                    locked_for_user_id=self.request.user.id,
+                    event_id=event_id,
+                ),
+            ),
             'audio_clip_tone',
             'generic_status',
             'user',
@@ -950,7 +959,6 @@ class GetEventsAPI(generics.GenericAPIView):
                 audio_clip_likes_dislikes.is_liked AS is_liked_by_user
             FROM audio_clips
             LEFT JOIN events ON audio_clips.event_id = events.id
-            LEFT JOIN event_reply_queues ON events.id = event_reply_queues.event_id
             LEFT JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
             LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
                 AND audio_clip_likes_dislikes.user_id = %s
@@ -973,7 +981,17 @@ class GetEventsAPI(generics.GenericAPIView):
 
         #handle singular events view
 
-        audio_clips = self.get_events_by_id(kwargs['event_id'])
+        serializer = GetEventsAPISerializer(data=kwargs)
+
+        if serializer.is_valid() is False:
+
+            return Response(
+                data={
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        audio_clips = self.get_events_by_id(serializer.validated_data['event_id'])
 
         #check if there are rows
         #can have no rows when originator is reuploading
@@ -2637,7 +2655,6 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'message': 'Unable to start your reply for this event.',
                     'can_retry': False,
                 },
                 status=status.HTTP_404_NOT_FOUND
@@ -2870,11 +2887,6 @@ class AudioClipReportsAPI(generics.GenericAPIView):
             },
             status=status.HTTP_200_OK
         )
-
-
-
-
-
 
 
 

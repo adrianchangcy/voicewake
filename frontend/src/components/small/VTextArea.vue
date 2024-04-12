@@ -27,9 +27,9 @@
                 :id="propElementId"
                 v-model="input_value"
                 :class="[
-                    (propIsOk ? 'border-green-700' : 'focus:border-theme-black border-theme-gray-4'),
-                    (propIsWarning ? 'border-yellow-700' : 'focus:border-theme-black border-theme-gray-4'),
-                    (propIsError ? 'border-red-700' : 'focus:border-theme-black border-theme-gray-4'),
+                    (propIsOk ? 'border-green-700' : 'focus:border-theme-black border-theme-gray-3'),
+                    (propIsWarning ? 'border-yellow-700' : 'focus:border-theme-black border-theme-gray-3'),
+                    (propIsError ? 'border-red-700' : 'focus:border-theme-black border-theme-gray-3'),
                     'block w-full h-10 bg-theme-light border-2 shade-border-when-hover rounded-lg overflow-hidden p-2 pt-1    focus:outline-none'
                 ]"
                 :placeholder="propPlaceholder"

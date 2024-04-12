@@ -7,7 +7,7 @@
             @click.stop="changeToggle()"
         >
             <div
-                :class="is_toggled ? 'bg-theme-lead/75 hover:shadow-theme-lead' : 'bg-theme-gray-4/75 shadow-theme-gray-4'"
+                :class="is_toggled ? 'bg-theme-lead/75 hover:shadow-theme-lead' : 'bg-theme-gray-3/75 shadow-theme-gray-3'"
                 class="relative my-1 inline-flex h-7 w-14 shrink-0 shadow-inner rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out"
             >
                 <span class="sr-only">{{ propScreenReaderText }} {{ is_toggled }}</span>

@@ -17,7 +17,7 @@
                 <!--like-->
                 <button
                     @click="handleLikeDislike(true)"
-                    class="col-span-1 h-full     shade-border-when-hover active:bg-theme-gray-2 transition-colors      bg-transparent       border border-r-0 border-theme-gray-2 rounded-full rounded-r-none    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                    class="col-span-1 h-full     shade-border-when-hover transition-colors      bg-transparent       border border-r-0 border-theme-gray-2 rounded-full rounded-r-none    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                     type="button"
                 >
                     <span class="sr-only">like button</span>
@@ -52,7 +52,7 @@
                 <!--dislike-->
                 <button
                     @click="handleLikeDislike(false)"
-                    class="col-span-1 h-full     shade-border-when-hover active:bg-theme-gray-2 transition-colors      bg-transparent       border border-l-0 border-theme-gray-2 rounded-full rounded-l-none     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                    class="col-span-1 h-full     shade-border-when-hover transition-colors      bg-transparent       border border-l-0 border-theme-gray-2 rounded-full rounded-l-none     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                     type="button"
                 >
                     <span class="sr-only">dislike button</span>
@@ -88,7 +88,7 @@
             <!--share-->
             <button
                 @click="copyAudioClipURL()"
-                class="h-full col-span-1 flex items-center     shade-border-when-hover active:bg-theme-gray-2 transition-colors      bg-transparent       border border-theme-gray-2 rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                class="h-full col-span-1 flex items-center     shade-border-when-hover transition-colors      bg-transparent       border border-theme-gray-2 rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                 type="button"
             >
                 <TransitionGroupFade :prop-is-swapping="true">
@@ -107,7 +107,10 @@
             <button
                 ref="open_close_extra_options_menu_button"
                 @click="toggleExtraOptionsMenu()"
-                class="h-full col-span-1 relative flex items-center     transition-colors shade-border-when-hover active:bg-theme-gray-2 border-theme-gray-2      bg-transparent       border rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                :class="[
+                    is_extra_options_menu_open ? 'border-2 border-theme-black' : 'border border-theme-gray-2 shade-border-when-hover',
+                    'h-full col-span-1 relative flex items-center     transition-colors       bg-transparent       rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline'
+                ]"
                 type="button"
             >
                 <FontAwesomeIcon icon="fas fa-ellipsis-vertical" class="text-base mx-auto"/>
@@ -116,26 +119,17 @@
             </button>
         </div>
 
-        <!--arrows-->
-        <div class="w-full h-0 grid grid-cols-6 gap-1">
-            <div class="col-start-6 col-span-1 relative">
-                <div
-                    v-show="is_extra_options_menu_open"
-                    class="z-30 w-2 h-2 absolute top-3 left-0 right-0 m-auto bg-transparent border-l-2 border-t-2 border-theme-black rotate-45"
-                ></div>
-            </div>
-        </div>
-
-        <!--menu-->
+        <!--arrow and menu-->
         <div class="w-full h-0 relative">
 
+            <!--menu-->
             <div
                 v-show="is_extra_options_menu_open"
                 v-click-outside="{
                     bool_status_variable_or_callback: forceCloseExtraOptionsMenu,
                     refs_to_exclude: ['open_close_extra_options_menu_button']
                 }"
-                class="absolute w-fit h-fit right-0 m-auto p-2 top-4 z-20 flex flex-col rounded-lg border-2 border-theme-black bg-transparent"
+                class="absolute top-3 w-28 h-fit right-0 m-auto p-2 flex flex-col rounded-lg border-2 border-theme-black bg-theme-light"
             >
                 <VActionText
                     @click="submitReport()"
@@ -145,21 +139,37 @@
                     propFontSize="s"
                     propElementSize="s"
                     :prop-is-icon-only="true"
-                    class="w-fit px-2"
+                    class="w-full"
                 >
 
-                    <span v-if="is_reporting">
-                        <VLoading prop-element-size="s">
-                            <span class="pl-2">Reporting...</span>
-                        </VLoading>
-                    </span>
-                    <span v-else>
-                        <FontAwesomeIcon icon="fas fa-flag" class="text-sm"/>
-                        <span class="pl-2">Report</span>
+                    <span class="w-fit mx-auto">
+                        <VLoading
+                            v-if="is_reporting"
+                            prop-element-size="s"
+                        />
+                        <span v-else>
+                            <FontAwesomeIcon icon="fas fa-flag" class="text-sm"/>
+                            <span class="pl-2">Report</span>
+                        </span>
                     </span>
                 </VActionText>
             </div>
+
+            <!--arrow-->
+            <div class="grid grid-cols-6 gap-1">
+                <div class="col-start-6 col-span-1 relative">
+                    <div
+                        v-show="is_extra_options_menu_open"
+                        class="w-2 h-2 absolute top-2 left-0 right-0 mx-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"
+                    ></div>
+                </div>
+            </div>
         </div>
+
+
+
+
+
     </div>
 </template>
 
