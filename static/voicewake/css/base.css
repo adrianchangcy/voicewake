@@ -128,7 +128,7 @@ TIPS
 	width: 12px;
 }
 ::-webkit-scrollbar-track-piece{
-	background-color: theme(colors.theme-gray-3);
+	background-color: theme(colors.theme-gray-2);
 }
 ::-webkit-scrollbar-thumb{
 	background-color: theme(colors.theme-black);
@@ -272,7 +272,7 @@ canvas {
 
     /*from theme-black to theme-dark-gray*/
     .shade-border-when-hover:hover{
-        border-color: theme(colors.theme-gray-6);
+        border-color: theme(colors.theme-gray-4);
     }
     .border-solid-when-hover:hover{
         border-style: solid;
@@ -290,7 +290,7 @@ canvas {
         background-color: #FFF2C0;
     }
     .action-danger-hover:hover{
-        filter: brightness(0.90);
+        background-color: #b91c1c;  /*bg-red-700*/
     }
     /*cannot use text-decoration, due to the nature of SVGs*/
     .action-text-hover:hover{
@@ -308,9 +308,9 @@ canvas {
         transform: scaleY(2);
     }
     .parent-trigger-shade-fake-border-when-hover:hover .shade-fake-border-when-hover{
-        background-color: theme(colors.theme-black);
+        background-color: theme(colors.theme-gray-4);
     }
     .parent-trigger-shade-background-when-hover:hover .shade-background-when-hover{
-        background-color: theme(colors.theme-gray-6);
+        background-color: theme(colors.theme-gray-4);
     }
 }

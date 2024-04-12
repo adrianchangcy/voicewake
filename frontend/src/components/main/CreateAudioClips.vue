@@ -66,11 +66,11 @@
                         </div>
                     </div>
 
-                    <!--menus-->
+                    <!--arrows and menus-->
                     <!--must be here on its own, prevents unwanted top-and-bottom gaps if it were in the flexbox above-->
                     <div class="w-full h-fit relative pt-4">
 
-                        <!--arrows, aesthetics only-->
+                        <!--arrows-->
                         <!--uses padding to represent gap above, because there is always only one element, so gap wouldn't work-->
                         <div class="w-full h-0 grid grid-cols-8">
                             <div
@@ -219,7 +219,6 @@
     import { defineComponent, PropType } from 'vue';
     import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
     import { notify } from '@/wrappers/notify_wrapper';
-    // import { CreateAudioClips__isSubmitSuccessfulTypes } from '@/types/General.interface';
     import AWSPresignedPostURLTypes from '@/types/AWSPresignedPostURL.interface';
     import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
     const axios = require('axios');
@@ -471,12 +470,7 @@
                 }, 4000);
 
             },
-            reuploadSetup() : void {
-
-                if(this.isReupload === false){
-
-                    return;
-                }
+            setupFromTemplate() : void {
 
                 //see if reupload_audio_clip_id exists in template
                 //we separate .getAttribute() and JSON.parse() data to avoid TS variable nightmare
@@ -486,17 +480,29 @@
 
                 if(container === null){
 
-                    throw new Error('Container was not found in template.');
+                    return;
                 }
 
                 const container_data = {
-                    audio_clip_id: this.propReuploadAudioClipId,
-                    audio_clip_tone_id: container.getAttribute('data-reupload-audio-clip-tone-id'),
-                    audio_clip_tone_name: container.getAttribute('data-reupload-audio-clip-tone-name'),
-                    audio_clip_tone_slug: container.getAttribute('data-reupload-audio-clip-tone-slug'),
-                    audio_clip_tone_symbol: container.getAttribute('data-reupload-audio-clip-tone-symbol'),
                     event_id: container.getAttribute('data-event-id'),
                     event_name: document.getElementById('event-name'),
+                };
+
+                const container_reupload_data = {
+                    audio_clip_id: null as number|null,
+                    audio_clip_tone_id: null as string|null,
+                    audio_clip_tone_name: null as string|null,
+                    audio_clip_tone_slug: null as string|null,
+                    audio_clip_tone_symbol: null as string|null,
+                };
+
+                if(this.isReupload === true){
+
+                    container_reupload_data['audio_clip_id'] = Number(this.propReuploadAudioClipId);
+                    container_reupload_data['audio_clip_tone_id'] = container.getAttribute('data-reupload-audio-clip-tone-id');
+                    container_reupload_data['audio_clip_tone_name'] = container.getAttribute('data-reupload-audio-clip-tone-name');
+                    container_reupload_data['audio_clip_tone_slug'] = container.getAttribute('data-reupload-audio-clip-tone-slug');
+                    container_reupload_data['audio_clip_tone_symbol'] = container.getAttribute('data-reupload-audio-clip-tone-symbol');
                 }
 
                 for(const [key, value] of Object.entries(container_data)){
@@ -508,45 +514,35 @@
                     }
                 }
 
-                const valid_data = {
-                    audio_clip_id: this.propReuploadAudioClipId,
-                    audio_clip_tone_id: JSON.parse(container_data['audio_clip_tone_id']!) as number,
-                    audio_clip_tone_name: container_data['audio_clip_tone_name']! as string,
-                    audio_clip_tone_slug: container_data['audio_clip_tone_slug']! as string,
-                    audio_clip_tone_symbol: container_data['audio_clip_tone_symbol']! as string,
-                    event_id: JSON.parse(container_data['event_id']!) as number,
-                    event_name: container_data['event_name']!.textContent! as string,
-                };
+                if(this.isReupload === true){
+
+                    for(const [key, value] of Object.entries(container_reupload_data)){
+
+                        if(value === null){
+
+                            //missing data neede for reupload
+                            throw new Error('Missing required data from template: ' + key);
+                        }
+                    }
+                }
 
                 //restore values to this component
 
-                //only need this to remake new processing, if it suddenly does not exist on submit
-                this.audio_clip_tone_choice = {
-                    id: valid_data['audio_clip_tone_id'],
-                    audio_clip_tone_name: valid_data['audio_clip_tone_name'],
-                    audio_clip_tone_slug: valid_data['audio_clip_tone_slug'],
-                    audio_clip_tone_symbol: valid_data['audio_clip_tone_symbol'],
-                };
-
-                this.submit_event_id = valid_data['event_id'];
-
-                //if prop is Number, TS complains when variable is number
+                this.submit_event_id = JSON.parse(container_data['event_id']!) as number;
                 this.submit_audio_clip_id = Number(this.propReuploadAudioClipId);
 
-                //prepare this step to be skipped
-                this.submit_steps_done.backend_upload = true;
+                //only need this to remake new processing, if it suddenly does not exist on submit
+                if(this.isReupload === true){
 
-                const target_audio_clip_processing = this.audio_clip_processings_store.getAudioClipProcessing(
-                    this.submit_audio_clip_id
-                );
+                    this.audio_clip_tone_choice = {
+                        id: JSON.parse(container_reupload_data['audio_clip_tone_id']!) as number,
+                        audio_clip_tone_name: container_reupload_data['audio_clip_tone_name']! as string,
+                        audio_clip_tone_slug: container_reupload_data['audio_clip_tone_slug']! as string,
+                        audio_clip_tone_symbol: container_reupload_data['audio_clip_tone_symbol']! as string,
+                    };
 
-                if(
-                    target_audio_clip_processing === null
-                ){
-
-                    //do not create record in store if it doesn't exist
-                    //we only create when processing
-                    return;
+                    //prepare this step to be skipped
+                    this.submit_steps_done.backend_upload = true;
                 }
             },
             async saveToBackendAndReceiveS3UploadURL() : Promise<void> {
@@ -928,7 +924,7 @@
 
                         if(event_name === null || event_name.textContent === null){
 
-                            throw new Error('Missing data.');
+                            throw new Error('Missing event_name data.');
                         }
 
                         this.event_name = event_name.textContent;
@@ -940,7 +936,7 @@
                         this.audio_clip_tone_choice === null
                     ){
 
-                        throw new Error('Missing data.');
+                        throw new Error('Missing form data.');
                     }
 
                     //store if first time
@@ -1036,7 +1032,7 @@
         },
         beforeMount(){
 
-            this.reuploadSetup();
+            this.setupFromTemplate();
             this.handleAudioClipProcessingStatus();
 
             window.addEventListener('beforeunload', this.handleBeforeUnload);

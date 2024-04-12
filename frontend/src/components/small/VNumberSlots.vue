@@ -10,14 +10,14 @@
                 type="text" inputmode="numeric" maxlength="1" autocomplete="off"
                 name="number-slot-field"
                 :data-index="0"
-                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 focus:border-theme-black border-theme-gray-4 shade-border-when-hover    focus:outline-none"
+                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 focus:border-theme-black border-theme-gray-3 shade-border-when-hover    focus:outline-none"
             />
             <input
                 v-for="x in propExtraSlots" :key="x"
                 type="text" inputmode="numeric" maxlength="1" autocomplete="off"
                 name="number-slot-field"
                 :data-index="x"
-                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 focus:border-theme-black border-theme-gray-4 shade-border-when-hover    focus:outline-none"
+                class="w-10 h-full bg-theme-light text-center py-1 rounded-lg border-2 focus:border-theme-black border-theme-gray-3 shade-border-when-hover    focus:outline-none"
             />
             <FontAwesomeIcon v-show="is_error" icon="fas fa-exclamation" class="px-2 text-red-700"/>
         </div>

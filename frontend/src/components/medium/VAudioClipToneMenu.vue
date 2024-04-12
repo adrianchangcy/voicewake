@@ -55,12 +55,12 @@
                     v-if="propHasDeselectOption === true"
                     class="col-span-1"                    
                 >
-                    <!--text-black has great contrast for bg-theme-gray-5, whereas text-theme-black has bad contrast-->
+                    <!--text-black has great contrast for bg-theme-gray-4, whereas text-theme-black has bad contrast-->
                     <button
                         @click="handleAudioClipToneSelected(null)"
                         type="button"
                         :class="[
-                            isSelected(null) === true ? 'bg-theme-gray-5 active:bg-theme-gray-6 text-black' : 'active:bg-theme-gray-2 text-theme-black',
+                            isSelected(null) === true ? 'bg-theme-gray-4 active:bg-theme-gray-5 text-black' : 'active:bg-theme-gray-3 text-theme-black',
                             'w-10 h-10 pb-0.5 flex items-center border border-transparent shade-border-when-hover rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline'
                         ]"
                     >
@@ -77,7 +77,7 @@
                         @click="handleAudioClipToneSelected(index)"
                         type="button"
                         :class="[
-                            isSelected(index) === true ? 'bg-theme-gray-5 active:bg-theme-gray-6' : 'active:bg-theme-gray-2',
+                            isSelected(index) === true ? 'bg-theme-gray-4 active:bg-theme-gray-5' : 'active:bg-theme-gray-3',
                             'w-10 h-10 pb-0.5 border border-transparent shade-border-when-hover rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline'
                         ]"
                     >

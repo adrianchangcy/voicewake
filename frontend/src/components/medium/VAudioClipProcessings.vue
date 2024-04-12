@@ -57,7 +57,7 @@
                                     isStatusOk(processing) ? 'text-green-700' : '',
                                     isStatusGeneric(processing) ? '' : '',
                                     isStatusError(processing) ? 'text-red-700' : '',
-                                    'text-base font-semibold pb-0.5 break-words'
+                                    'text-base font-semibold break-words'
                                 ]"
                             >
                                 {{ processing.title }}
@@ -99,7 +99,7 @@
                                 <a
                                     v-if="action.type === 'url'"
                                     :href="action.url"
-                                    class="w-full h-full flex flex-row items-center rounded-full transition       border border-theme-gray-2 shade-border-when-hover active:bg-theme-gray-1       focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                                    class="w-full h-full flex flex-row items-center rounded-full transition       border-2 border-theme-gray-2 shade-border-when-hover active:bg-theme-gray-1       focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                                 >
                                     <span class="px-4 pb-0.5 mx-auto text-sm font-medium">
                                         {{ action.text }}
@@ -109,7 +109,7 @@
                                     v-else
                                     @click="audio_clip_processings_store.getActionButtonCallback(audio_clip_id, action_index)"
                                     type="button"
-                                    class="w-full h-full flex flex-row items-center rounded-full transition       border border-theme-gray-2 shade-border-when-hover active:bg-theme-gray-1       focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                                    class="w-full h-full flex flex-row items-center rounded-full transition       border-2 border-theme-gray-2 shade-border-when-hover active:bg-theme-gray-1       focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
                                 >
                                     <span class="px-4 pb-0.5 mx-auto text-sm font-medium">
                                         {{ action.text }}
@@ -120,14 +120,14 @@
                     </div>
 
                     <!--right panel-->
-                    <div class="w-10 shrink-0">
+                    <div class="w-11 shrink-0 relative">
                         <VActionText
                             v-if="hasCloseButton(processing)"
-                            @click="audio_clip_processings_store.deleteProcessing(audio_clip_id)"
+                            @click="audio_clip_processings_store.deleteAudioClipProcessing(audio_clip_id)"
                             prop-element="button"
                             prop-element-size="s"
                             :prop-is-icon-only="true"
-                            class="w-10 h-10 shrink-0 flex items-center justify-center focus-visible:-outline-offset-4"
+                            class="w-10 h-10 absolute left-0 right-0 top-0.5 m-auto flex items-center justify-center focus-visible:-outline-offset-4"
                         >
                             <FontAwesomeIcon icon="fas fa-xmark" class="text-xl mx-auto"/>
                         </VActionText>
@@ -215,11 +215,13 @@
 <script lang="ts">
     import { defineComponent } from 'vue';
     import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
+    import { useEventReplyChoicesStore } from '@/stores/EventReplyChoicesStore';
 
     export default defineComponent({
         data(){
             return {
                 audio_clip_processings_store: useAudioClipProcessingsStore(),
+                event_reply_choices_store: useEventReplyChoicesStore(),
 
                 processing_timestamps_ms: {
                     scales: [1],
@@ -248,6 +250,43 @@
 
                 this.audio_clip_processings_store.startPollingProcessings();
             }
+
+            this.audio_clip_processings_store.$onAction(
+                ({
+                    name, // name of the action
+                    args, // array of parameters passed to the action
+                    after, // hook after the action returns or resolves
+                }) => {
+
+                    if(name === 'updateLastProcessedAudioClipId'){
+
+                        //on every processed audio clip, check if it matches replying event
+                        //if true, do softReset()
+
+                        after(()=>{
+
+                            const processed_audio_clip_id = args[0];
+
+                            const processed_audio_clip = this.audio_clip_processings_store.getAudioClipProcessing(
+                                processed_audio_clip_id
+                            );
+
+                            if(
+                                processed_audio_clip === null ||
+                                this.event_reply_choices_store.getReplyingEvent === null
+                            ){
+
+                                return;
+                            }
+
+                            if(processed_audio_clip.event.id === this.event_reply_choices_store.getReplyingEvent.event.id){
+
+                                this.event_reply_choices_store.softReset();
+                            }
+                        });
+                    }
+                }
+            );
         },
         beforeUnmount(){
 

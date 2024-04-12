@@ -2144,7 +2144,7 @@ class Core_TestCase(TestCase):
         self.assertFalse('event_reply_queue' in response_data[0])
 
 
-    def test_get_event_has_queue_not_replying(self):
+    def test_get_event_has_queue__same_request_user__not_replying(self):
 
         #prepare data
 
@@ -2197,7 +2197,7 @@ class Core_TestCase(TestCase):
         self.assertFalse(response_data[0]['event_reply_queue']['is_replying'])
 
 
-    def test_get_event_has_queue_is_replying(self):
+    def test_get_event_has_queue__same_request_user__is_replying(self):
 
         #prepare data
 
@@ -2248,6 +2248,210 @@ class Core_TestCase(TestCase):
         self.assertEqual(len(response_data), 1)
         self.assertTrue('event_reply_queue' in response_data[0])
         self.assertTrue(response_data[0]['event_reply_queue']['is_replying'])
+
+
+    def test_get_event_has_queue__different_request_user__not_replying(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=False,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        #start
+
+        self.login(self.users[2])
+
+        data = {'event_id': sample_event_0.id}
+
+        request = self.client.get(
+            reverse(
+                'get_events_api',
+                kwargs=data
+            )
+        )
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)['data']
+
+        self.assertEqual(len(response_data), 1)
+        self.assertFalse('event_reply_queue' in response_data[0])
+
+
+    def test_get_event_has_queue__different_request_user__is_replying(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        #start
+
+        self.login(self.users[2])
+
+        data = {'event_id': sample_event_0.id}
+
+        request = self.client.get(
+            reverse(
+                'get_events_api',
+                kwargs=data
+            )
+        )
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)['data']
+
+        self.assertEqual(len(response_data), 1)
+        self.assertFalse('event_reply_queue' in response_data[0])
+
+
+    def test_get_event_has_queue__anonymous_request_user__not_replying(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=False,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        #start
+
+        data = {'event_id': sample_event_0.id}
+
+        request = self.client.get(
+            reverse(
+                'get_events_api',
+                kwargs=data
+            )
+        )
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)['data']
+
+        self.assertEqual(len(response_data), 1)
+        self.assertFalse('event_reply_queue' in response_data[0])
+
+
+    def test_get_event_has_queue__anonymous_request_user__is_replying(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        #start
+
+        data = {'event_id': sample_event_0.id}
+
+        request = self.client.get(
+            reverse(
+                'get_events_api',
+                kwargs=data
+            )
+        )
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)['data']
+
+        self.assertEqual(len(response_data), 1)
+        self.assertFalse('event_reply_queue' in response_data[0])
 
 
     def test_get_event_no_audio_clips(self):

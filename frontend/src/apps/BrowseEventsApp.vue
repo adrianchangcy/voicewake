@@ -28,7 +28,7 @@
                 <!--likes/dislikes-->
                 <div
                     v-if="isUserLikesDislikesPage"
-                    class="w-full flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors"
+                    class="w-full flex flex-row items-center border-2 rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors"
                 >
                     <VActionText
                         v-for="(filter_type, index) in filtered_events_store.getLikeDislikeChoices"
@@ -59,7 +59,7 @@
 
                 <div class="grid grid-cols-4 gap-2">
                     <!--audio_clip_roles-->
-                    <div class="col-span-3 flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors">
+                    <div class="col-span-3 flex flex-row items-center border-2 rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors">
                         <VActionText
                             v-for="(pretty_audio_clip_role_name, index) in filtered_events_store.getPrettyAudioClipRoleNames"
                             :key="index"
@@ -90,7 +90,10 @@
                     <!--audio_clip_tones-->
                     <div
                         ref="open_close_audio_clip_tone_menu_button"
-                        class="col-span-1 flex flex-row items-center border rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors"
+                        :class="[
+                            is_audio_clip_tone_menu_open ? 'border-theme-black' : 'border-theme-gray-2 shade-border-when-hover',
+                            'col-span-1 flex flex-row items-center border-2 rounded-lg transition-colors'
+                        ]"
                     >
                         <VActionText
                             @click="toggleFilterMenu()"
@@ -176,7 +179,7 @@
                         :index="index"
                         :active="active"
                     >
-                        <div class="px-1 pb-4">
+                        <div class="px-1 pb-6">
                             <EventCard
                                 :prop-guaranteed-event-generic-status="isHomePage ? 'completed' : ''"
                                 :prop-show-title="true"

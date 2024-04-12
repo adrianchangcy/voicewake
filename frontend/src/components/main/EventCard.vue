@@ -1,7 +1,7 @@
 <template>
     <div
         :class="[
-            propHasBorder === true ? 'px-2 sm:px-4 pt-8 pb-10      border border-theme-gray-2 rounded-lg shade-border-when-hover transition-colors' : '',
+            propHasBorder === true ? 'px-2 sm:px-4 pt-8 pb-12      border border-theme-gray-2 rounded-lg shade-border-when-hover transition-colors' : '',
             'flex flex-col'
         ]"
     >
@@ -16,27 +16,26 @@
                 prop-element="a"
                 :href="getEventURL"
                 rel="ugc"
-                class="w-full h-fit"
+                class="w-fit"
             >
                 <VTitle
-                    propFontSize="s"
-                    class="w-full"
+                    prop-font-size="s"
                 >
                     <template #title>
                         <span
-                            v-show="!isEventDeleted"
+                            v-if="!isEventDeleted"
                         >
                             {{ propEvent.event.event_name }}
                         </span>
                         <span
-                            v-show="isEventDeleted"
+                            v-else
                             class="italic"
                         >
                             Event and original recording deleted.
                         </span>
                     </template>
                     <template #titleDescription>
-                        <span v-show="!isEventDeleted">
+                        <span v-if="!isEventDeleted">
                             {{ prettyWhenCreated }}
                         </span>
                     </template>

@@ -9,8 +9,8 @@
         @click.stop="[toggleMenu(), emitIsOpen()]"
         :disabled="!propIsEnabled"
         :class="[
-            is_open ? 'border-theme-black      focus-visible:outline-offset-0' : 'border-theme-gray-4 shade-border-when-hover   focus-visible:-outline-offset-2',
-            'w-full h-20 px-4 py-2 relative border-2 rounded-lg     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-theme-gray-5'
+            is_open ? 'border-theme-black      focus-visible:outline-offset-0' : 'border-theme-gray-3 shade-border-when-hover   focus-visible:-outline-offset-2',
+            'w-full h-20 px-4 py-2 relative border-2 rounded-lg     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-theme-black'
         ]"
         id="click-to-record"
         type="button"

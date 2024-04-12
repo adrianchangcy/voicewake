@@ -18,6 +18,10 @@ interface AudioClipProcessingsTypes{
     [audio_clip_id:number]: AudioClipProcessingDetailsTypes
 }
 
+interface EventIdKeyAudioClipIdValue{
+    [event_id:number]: number,
+}
+
 
 
 export function useAudioClipProcessingsStore(){
@@ -25,7 +29,13 @@ export function useAudioClipProcessingsStore(){
     return defineStore('audio_clip_processings_store', {
         state: ()=>({
             audio_clip_processings: {} as AudioClipProcessingsTypes,
-            
+
+            //allows cancel/expire reply to also remove records from this store
+            event_id_key_audio_clip_id_value: {} as EventIdKeyAudioClipIdValue,
+
+            //allows watcher to remove reply choice once processed
+            last_processed_audio_clip_id: null as number|null,
+
             polling_processings_timeout: null as number|null,
             polling_processings_timeout_delay_ms: 1000,
         }),
@@ -36,6 +46,15 @@ export function useAudioClipProcessingsStore(){
             },
         },
         actions: {
+            getAudioClipIdByEventId(event_id:number) : number|null {
+
+                if(Object.hasOwn(this.event_id_key_audio_clip_id_value, event_id) === false){
+
+                    return null;
+                }
+
+                return this.event_id_key_audio_clip_id_value[event_id];
+            },
             getAudioClipProcessing(audio_clip_id:number) : AudioClipProcessingDetailsTypes|null {
 
                 if(Object.hasOwn(this.audio_clip_processings, audio_clip_id) === false){
@@ -47,10 +66,19 @@ export function useAudioClipProcessingsStore(){
             },
             deleteAudioClipProcessing(audio_clip_id:number) : void {
 
-                if(Object.hasOwn(this.audio_clip_processings, audio_clip_id) === false){
+                delete this.audio_clip_processings[audio_clip_id];
 
-                    delete this.audio_clip_processings[audio_clip_id];
+                const event_ids = Object.keys(this.event_id_key_audio_clip_id_value);
+                const audio_clip_ids = Object.values(this.event_id_key_audio_clip_id_value);
+
+                const event_id_index = audio_clip_ids.indexOf(audio_clip_id);
+
+                if(event_id_index === -1){
+
+                    return;
                 }
+
+                delete this.event_id_key_audio_clip_id_value[Number(event_ids[event_id_index])];
             },
             storeAudioClipProcessing(
                 passed_is_originator:boolean,
@@ -97,6 +125,10 @@ export function useAudioClipProcessingsStore(){
 
                 return final_url;
             },
+            updateLastProcessedAudioClipId(audio_clip_id:number) : void {
+
+                this.last_processed_audio_clip_id = audio_clip_id;
+            },
             async processAudioClipAPI(audio_clip_id:number) : Promise<void> {
 
                 //notification_details is only null when there has been no important errors
@@ -140,6 +172,7 @@ export function useAudioClipProcessingsStore(){
 
                         //processed, ok
 
+                        this.updateLastProcessedAudioClipId(audio_clip_id);
                         this.updateProcessing(audio_clip_id, 'processed');
                         return;
                     }
@@ -169,7 +202,7 @@ export function useAudioClipProcessingsStore(){
                             //delete from store, as next API call will re-create
 
                             delete this.audio_clip_processings[audio_clip_id];
-                            break;
+                            throw error;
                         }
 
                         case 404: {
@@ -308,11 +341,12 @@ export function useAudioClipProcessingsStore(){
             },
             startPollingProcessings() : void {
 
+                //for processing, we do 1 by 1 so we don't overwhelm server
+                //even though Promise.allSettled() is most elegant
+
                 this.polling_processings_timeout = window.setTimeout(()=>{
 
                     const audio_clip_ids = Object.keys(this.audio_clip_processings);
-
-                    const processing_promises = [];
 
                     for(let x=0; x < audio_clip_ids.length; x++){
 
@@ -325,17 +359,14 @@ export function useAudioClipProcessingsStore(){
                             continue;
                         }
 
-                        processing_promises.push(
-                            this.checkProcessingStatusAPI(audio_clip_id)
-                        );
+                        this.checkProcessingStatusAPI(audio_clip_id).finally(()=>{
+
+                            //loop again when done
+                            this.startPollingProcessings();
+                        });
+
+                        break;
                     }
-
-                    //handles [] just fine
-                    Promise.allSettled(processing_promises).finally(()=>{
-
-                        //loop again
-                        this.startPollingProcessings();
-                    });
 
                 }, this.polling_processings_timeout_delay_ms);
             },
@@ -496,10 +527,6 @@ export function useAudioClipProcessingsStore(){
                 }
 
                 return Number(reupload_audio_clip_id_from_url);
-            },
-            deleteProcessing(audio_clip_id:number) : void {
-
-                delete this.audio_clip_processings[audio_clip_id];
             },
             getActionButtonCallback(audio_clip_id:number, action_index:number) : (()=>void)|void {
 

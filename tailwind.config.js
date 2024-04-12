@@ -1,5 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+    //use parent .dark to enable dark mode for child elements
+    darkMode: 'selector',
     //mode: 'jit', //so far not needed
     content: [
         "./voicewake/templates/**/*.html",
@@ -31,29 +33,29 @@ module.exports = {
                 'theme-soft-lead': '#f5f5dc',   //for background yellow
 
                 //for small but high attention items, e.g. focus, highlight, etc.
-                'theme-outline': '#A8A29E',
+                'theme-outline': '#7a7973',
 
                 'theme-green-1': '#90a955',
                 'theme-green-2': '#4f772d',
                 'theme-green-3': '#31572c',
 
-                'theme-danger': '#fa3515',
-                'theme-button-soft-danger': '#ff4934',
+                'theme-danger': '#FA1414',
+                'theme-soft-danger': '#F5DCDC',
 
-                'theme-light': '#FFFDE8',
+                'theme-light': '#FEFAE6',
                 'theme-light-trim': '#FDFDFD',
-                'theme-dark': '#22333B',
+
+                'theme-dark': '#010a14',
 
                 'theme-black': '#404040',   //scaled via shades generator from theme-light
 
                 //for disabled feature, advised to use opacity on entire element until unreadable, not gray background
                 //these are darker shades of theme-light
-                'theme-gray-1': '#EDEFF0',
-                'theme-gray-2': '#E8EAEB',
-                'theme-gray-3': '#D5D8DA',
-                'theme-gray-4': '#CDCFD1',
-                'theme-gray-5': '#C5C7C8',
-                'theme-gray-6': '#A8A29E',
+                'theme-gray-1': '#e6e8da',
+                'theme-gray-2': '#e1e3d5',
+                'theme-gray-3': '#dee0d3',
+                'theme-gray-4': '#94928b',
+                'theme-gray-5': '#7a7973',
                 // 'theme-gray-1': '#eeeeee',
                 // 'theme-gray-2': '#e7e5e4',
                 // 'theme-gray-3': '',

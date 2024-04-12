@@ -156,7 +156,7 @@ class UserBlocksSerializer(serializers.ModelSerializer):
 
 class GetEventsViewSerializer(serializers.Serializer):
 
-    reupload  = serializers.IntegerField()
+    reupload = serializers.IntegerField()
 
 
 
@@ -220,6 +220,12 @@ class TestAPISerializer(serializers.Serializer):
     def validate(self, data):
 
         return data
+
+
+
+class GetEventsAPISerializer(serializers.Serializer):
+
+    event_id = serializers.IntegerField()
 
 
 

@@ -200,11 +200,10 @@
                             bool_status_variable_or_callback: forceCloseNavMenu,
                             refs_to_exclude: ['nav_menu_button_1', 'nav_menu_button_2']
                         }"
-                        class="absolute w-full h-[calc(100vh-4.5rem)] flex flex-col overflow-hidden p-2 border-l border-theme-gray-2 bg-theme-light"
+                        class="absolute w-full h-[calc(100vh-4.5rem)] px-2 pb-2 border-l border-theme-gray-2 bg-theme-light overflow-auto"
                     >
-
                         <!--profile area-->
-                        <div class="pt-12 pb-14">
+                        <div class="py-2">
 
                             <!--logged in, can click to view profile-->
                             <VActionText
@@ -212,6 +211,7 @@
                                 prop-element="a"
                                 :prop-is-icon-only="false"
                                 :href="getProfileURL()"
+                                class="w-full h-fit py-10"
                             >
                                 <div class="w-full flex flex-col">
                                     <FontAwesomeIcon icon="fas fa-circle-user" class="text-2xl mx-auto"/>
@@ -224,7 +224,7 @@
                             <!--not logged in-->
                             <div
                                 v-else
-                                class="flex flex-col"
+                                class="w-full flex flex-col py-10"
                             >
                                 <FontAwesomeIcon icon="fas fa-circle-user" class="text-2xl mx-auto"/>
                                 <span class="max-w-full h-fit mx-auto text-xl font-light break-words">
@@ -234,7 +234,7 @@
                         </div>
 
                         <!--divider-->
-                        <div class="pb-4">
+                        <div class="pb-2">
                             <div class="w-[75%] h-[1px] bg-theme-gray-2 mx-auto"></div>
                         </div>
 
@@ -316,7 +316,7 @@
                         <!--divider-->
                         <div
                             v-if="pop_up_manager_store.isLoggedIn === true"
-                            class="py-4"
+                            class="py-2"
                         >
                             <div class="w-[75%] h-[1px] bg-theme-gray-2 mx-auto"></div>
                         </div>
@@ -337,13 +337,9 @@
                                 <div class="w-full h-full grid grid-cols-4">
                                     <div class="col-span-1 h-full flex items-center">
                                         <div class="flex flex-row gap-1 mx-auto">
-                                            <div class="w-fit flex items-center pb-0.5">
+                                            <div class="w-fit flex items-center">
                                                 <FontAwesomeIcon icon="fas fa-thumbs-up" class="text-theme-lead mx-auto"/>
                                                 <FontAwesomeIcon icon="far fa-thumbs-up" class="absolute mx-auto"/>
-                                            </div>
-                                            <div class="w-fit flex items-center pt-1">
-                                                <FontAwesomeIcon icon="fas fa-thumbs-down" class="text-theme-lead mx-auto"/>
-                                                <FontAwesomeIcon icon="far fa-thumbs-down" class="absolute mx-auto"/>
                                             </div>
                                         </div>
                                     </div>
@@ -359,7 +355,7 @@
                         <!--divider-->
                         <div
                             v-if="pop_up_manager_store.isLoggedIn === true"
-                            class="py-4"
+                            class="py-2"
                         >
                             <div class="w-[75%] h-[1px] bg-theme-gray-2 mx-auto"></div>
                         </div>
@@ -393,7 +389,7 @@
                         <!--divider-->
                         <div
                             v-if="pop_up_manager_store.isLoggedIn === true"
-                            class="py-4"
+                            class="py-2"
                         >
                             <div class="w-[75%] h-[1px] bg-theme-gray-2 mx-auto"></div>
                         </div>
@@ -465,13 +461,11 @@
     import { faMicrophoneLines } from '@fortawesome/free-solid-svg-icons/faMicrophoneLines';
     import { faThumbsUp as farThumbsUp } from '@fortawesome/free-regular-svg-icons/faThumbsUp';
     import { faThumbsUp as fasThumbsUp } from '@fortawesome/free-solid-svg-icons/faThumbsUp';
-    import { faThumbsDown as farThumbsDown } from '@fortawesome/free-regular-svg-icons/faThumbsDown';
-    import { faThumbsDown as fasThumbsDown } from '@fortawesome/free-solid-svg-icons/faThumbsDown';
 
     library.add(
         faWaveSquare, faComment, faComments, faCircleUser,
         faChevronDown, faRightToBracket, faBan, faDoorOpen, faMicrophoneLines,
-        farThumbsUp, fasThumbsUp, farThumbsDown, fasThumbsDown,
+        farThumbsUp, fasThumbsUp,
     );
 </script>
 
