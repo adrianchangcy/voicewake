@@ -157,16 +157,22 @@ textarea {
 }
 
 /*skeleton*/
-.skeleton {
-    position: relative;
-    overflow: hidden;
-    opacity: 1;
-    background-color: theme(colors.theme-gray-2);
-}
 @keyframes shimmer {
     100% {
         transform: translateX(100%);
     }
+}
+.skeleton {
+    position: relative;
+    overflow: hidden;
+    opacity: 1;
+    background-color: theme(colors.theme-gray-1);
+}
+.dark .skeleton {
+    position: relative;
+    overflow: hidden;
+    opacity: 1;
+    background-color: theme(colors.dark-theme-gray-1);
 }
 .skeleton::after {
     position: absolute;
@@ -181,7 +187,26 @@ textarea {
         /*for opacity, do it like #facc15xx, (00...99...FF lowest to highest)*/
         /*last colour must not have coma symbol, else it breaks*/
         theme(colors.transparent),
-        theme(colors.theme-gray-1),
+        theme(colors.theme-gray-3),
+        theme(colors.transparent)
+    );
+    animation: shimmer 1s infinite linear;
+    content: '';
+}
+.dark .skeleton::after {
+    position: absolute;
+    width: 200%;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+        90deg,
+        /*for opacity, do it like #facc15xx, (00...99...FF lowest to highest)*/
+        /*last colour must not have coma symbol, else it breaks*/
+        theme(colors.transparent),
+        theme(colors.dark-theme-gray-3),
         theme(colors.transparent)
     );
     animation: shimmer 1s infinite linear;
@@ -274,6 +299,10 @@ canvas {
     .shade-border-when-hover:hover{
         border-color: theme(colors.theme-gray-4);
     }
+    .dark .shade-border-when-hover:hover{
+        border-color: theme(colors.dark-theme-gray-4);
+    }
+
     .border-solid-when-hover:hover{
         border-style: solid;
     }
@@ -283,9 +312,14 @@ canvas {
     .double-height-when-hover:hover{
         transform: scaleY(2);
     }
+
     .action-hover:hover{
         background-color: theme(colors.theme-gray-1);
     }
+    .dark .action-hover:hover{
+        background-color: theme(colors.theme-gray-1);
+    }
+
     .action-special-hover:hover{
         background-color: #FFF2C0;
     }
@@ -296,6 +330,10 @@ canvas {
     .action-text-hover:hover{
         background-color: theme(colors.theme-gray-1);
     }
+    .dark .action-text-hover:hover{
+        background-color: theme(colors.dark-theme-gray-1);
+    }
+
     .darken-when-hover:hover{
         filter: brightness(0.90);
     }

@@ -1,6 +1,6 @@
 <template>
     <div
-        class="text-theme-black pb-10"
+        class="pb-10"
     >
 
         <!--close button, also functioning as pt-10-->
@@ -243,7 +243,7 @@
                             />
 
                             <!--resend OTP-->
-                            <div class="h-10 flex flex-row items-center shrink-0 text-theme-black">
+                            <div class="h-10 flex flex-row items-center shrink-0">
 
                                 <div
                                     v-show="is_otp_request_loading"
@@ -517,7 +517,7 @@
                             />
 
                             <!--resend OTP-->
-                            <div class="h-10 flex flex-row items-center shrink-0 text-theme-black">
+                            <div class="h-10 flex flex-row items-center shrink-0">
 
                                 <div
                                     v-show="is_otp_request_loading"

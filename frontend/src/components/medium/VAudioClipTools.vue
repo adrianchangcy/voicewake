@@ -4,20 +4,20 @@
         <!--put ref here to target closest vue virtual scroller-->
         <div
             ref="main_ref"
-            class="h-10 grid grid-cols-6 gap-1 text-xl text-theme-black"
+            class="h-10 grid grid-cols-6 gap-1 text-xl"
         >
 
             <!--like/dislike-->
             <div class="h-full col-span-4 grid grid-cols-2 relative parent-trigger-shade-fake-border-when-hover">
 
                 <!--fake border-->
-                <div class="absolute w-[1px] h-[50%] left-0 right-0 top-0 bottom-0 m-auto bg-theme-gray-2 shade-fake-border-when-hover transition-colors">
+                <div class="absolute w-[1px] h-[50%] left-0 right-0 top-0 bottom-0 m-auto bg-theme-gray-2 dark:bg-dark-theme-gray-2 shade-fake-border-when-hover transition-colors">
                 </div>
 
                 <!--like-->
                 <button
                     @click="handleLikeDislike(true)"
-                    class="col-span-1 h-full     shade-border-when-hover transition-colors      bg-transparent       border border-r-0 border-theme-gray-2 rounded-full rounded-r-none    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                    class="col-span-1 h-full     shade-border-when-hover transition-colors      bg-transparent       border border-r-0 border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-full rounded-r-none active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline"
                     type="button"
                 >
                     <span class="sr-only">like button</span>
@@ -35,7 +35,13 @@
                                     'mx-auto transition-colors'
                                 ]"
                             />
-                            <FontAwesomeIcon icon="far fa-thumbs-up" class="absolute mx-auto"/>
+                            <FontAwesomeIcon
+                                icon="far fa-thumbs-up"
+                                :class="[
+                                    is_liked === true ? 'text-theme-lead' : '',
+                                    'absolute mx-auto transition-colors'
+                                ]"
+                            />
                         </div>
                         <!--like count-->
                         <div
@@ -52,7 +58,7 @@
                 <!--dislike-->
                 <button
                     @click="handleLikeDislike(false)"
-                    class="col-span-1 h-full     shade-border-when-hover transition-colors      bg-transparent       border border-l-0 border-theme-gray-2 rounded-full rounded-l-none     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                    class="col-span-1 h-full     shade-border-when-hover transition-colors      bg-transparent       border border-l-0 border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-full rounded-l-none active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline"
                     type="button"
                 >
                     <span class="sr-only">dislike button</span>
@@ -70,7 +76,13 @@
                                     'mx-auto transition-colors'
                                 ]"
                             />
-                            <FontAwesomeIcon icon="far fa-thumbs-down" class="absolute mx-auto"/>
+                            <FontAwesomeIcon
+                                icon="far fa-thumbs-down"
+                                :class="[
+                                    is_liked === false ? 'text-theme-lead' : '',
+                                    'absolute mx-auto transition-colors'
+                                ]"
+                            />
                         </div>
                         <!--dislike count-->
                         <div
@@ -88,7 +100,7 @@
             <!--share-->
             <button
                 @click="copyAudioClipURL()"
-                class="h-full col-span-1 flex items-center     shade-border-when-hover transition-colors      bg-transparent       border border-theme-gray-2 rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                class="h-full col-span-1 flex items-center     shade-border-when-hover transition-colors      bg-transparent       border border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-full active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline"
                 type="button"
             >
                 <TransitionGroupFade :prop-is-swapping="true">
@@ -108,8 +120,8 @@
                 ref="open_close_extra_options_menu_button"
                 @click="toggleExtraOptionsMenu()"
                 :class="[
-                    is_extra_options_menu_open ? 'border-2 border-theme-black' : 'border border-theme-gray-2 shade-border-when-hover',
-                    'h-full col-span-1 relative flex items-center     transition-colors       bg-transparent       rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline'
+                    is_extra_options_menu_open ? 'border-2 border-theme-black dark:border-dark-theme-white' : 'border border-theme-gray-2 dark:border-dark-theme-gray-2 shade-border-when-hover',
+                    'h-full col-span-1 relative flex items-center   active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3     transition-colors       bg-transparent       rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline'
                 ]"
                 type="button"
             >
@@ -129,7 +141,7 @@
                     bool_status_variable_or_callback: forceCloseExtraOptionsMenu,
                     refs_to_exclude: ['open_close_extra_options_menu_button']
                 }"
-                class="absolute top-3 w-28 h-fit right-0 m-auto p-2 flex flex-col rounded-lg border-2 border-theme-black bg-theme-light"
+                class="absolute top-3 w-28 h-fit right-0 m-auto p-2 flex flex-col rounded-lg border-2 border-theme-black dark:border-dark-theme-white bg-theme-light dark:bg-theme-dark"
             >
                 <VActionText
                     @click="submitReport()"
@@ -160,7 +172,7 @@
                 <div class="col-start-6 col-span-1 relative">
                     <div
                         v-show="is_extra_options_menu_open"
-                        class="w-2 h-2 absolute top-2 left-0 right-0 mx-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"
+                        class="w-2 h-2 absolute top-2 left-0 right-0 mx-auto bg-theme-light dark:bg-theme-dark border-l-2 border-t-2 border-theme-black dark:border-dark-theme-white rotate-45"
                     ></div>
                 </div>
             </div>

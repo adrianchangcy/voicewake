@@ -1,8 +1,8 @@
 <template>
-    <div class="h-full text-theme-black text-center">
+    <div class="h-full text-center">
 
         <!--main nav-->
-        <nav class="h-full grid grid-cols-4 sm:grid-cols-8 p-2 gap-x-2      backdrop-blur bg-theme-light/60 border-b border-theme-gray-2/50">
+        <nav class="h-full grid grid-cols-4 sm:grid-cols-8 p-2 gap-x-2       bg-theme-light/90 dark:bg-theme-dark/90">
 
             <!--home-->
             <div class="col-start-1 col-span-1">
@@ -69,21 +69,21 @@
                         <div
                             :class="[
                                 pop_up_manager_store.isNavMenuOpen ? 'mb-0 rotate-45' : 'mb-4 rotate-0',
-                                'nav-burger-line row-span-1 bg-theme-black absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
+                                'nav-burger-line row-span-1 bg-theme-black dark:bg-dark-theme-white absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
                             ]"
                         >
                         </div>
                         <div
                             :class="[
                                 pop_up_manager_store.isNavMenuOpen ? 'opacity-0' : 'opacity-100',
-                                'nav-burger-line row-span-1 bg-theme-black absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
+                                'nav-burger-line row-span-1 bg-theme-black dark:bg-dark-theme-white absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
                             ]"
                         >
                         </div>
                         <div
                             :class="[
                                 pop_up_manager_store.isNavMenuOpen ? 'mt-0 -rotate-45' : 'mt-4 rotate-0',
-                                'nav-burger-line row-span-1 bg-theme-black absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
+                                'nav-burger-line row-span-1 bg-theme-black dark:bg-dark-theme-white absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
                             ]"
                         >
                         </div>
@@ -180,7 +180,7 @@
                 <TransitionFade>
                     <div
                         v-show="pop_up_manager_store.isNavMenuOpen"
-                        class="absolute w-full h-[calc(100vh-4.5rem)] bg-theme-light/60 backdrop-blur"
+                        class="absolute w-full h-[calc(100vh-4.5rem)] bg-theme-light/80 dark:bg-theme-dark/90"
                     >
                     </div>
                 </TransitionFade>
@@ -200,7 +200,7 @@
                             bool_status_variable_or_callback: forceCloseNavMenu,
                             refs_to_exclude: ['nav_menu_button_1', 'nav_menu_button_2']
                         }"
-                        class="absolute w-full h-[calc(100vh-4.5rem)] px-2 pb-2 border-l border-theme-gray-2 bg-theme-light overflow-auto"
+                        class="absolute w-full h-[calc(100vh-4.5rem)] px-4 bg-theme-light dark:bg-theme-dark overflow-auto"
                     >
                         <!--profile area-->
                         <div class="py-2">
@@ -234,14 +234,14 @@
                         </div>
 
                         <!--divider-->
-                        <div class="pb-2">
-                            <div class="w-[75%] h-[1px] bg-theme-gray-2 mx-auto"></div>
+                        <div class="pb-6">
+                            <div class="w-full h-[1px] bg-theme-gray-2 dark:bg-dark-theme-gray-2 mx-auto"></div>
                         </div>
 
                         <!--log in / sign up-->
                         <div
                             v-if="pop_up_manager_store.isLoggedIn === false"
-                            class="h-fit grid"
+                            class="h-fit flex flex-col gap-1"
                         >
 
                             <!--log in-->
@@ -251,13 +251,12 @@
                                 prop-font-size="s"
                                 prop-element-size="s"
                                 :prop-is-icon-only="false"
-                                class="row-span-1 w-full"
                             >
-                                <div class="w-full h-full grid grid-cols-4">
-                                    <div class="col-span-1 flex items-center">
+                                <div class="h-full flex flex-row">
+                                    <div class="px-4 flex items-center">
                                         <FontAwesomeIcon icon="fas fa-circle-user" class="pt-0.5 mx-auto"/>
                                     </div>
-                                    <div class="col-span-3 flex items-center">
+                                    <div class="flex items-center">
                                         <span class="text-left break-all">
                                             Log in
                                         </span>
@@ -272,13 +271,12 @@
                                 prop-font-size="s"
                                 prop-element-size="s"
                                 :prop-is-icon-only="false"
-                                class="row-span-1 w-full"
                             >
-                                <div class="w-full h-full grid grid-cols-4">
-                                    <div class="col-span-1 flex items-center">
+                                <div class="h-full flex flex-row">
+                                    <div class="px-4 flex items-center">
                                         <FontAwesomeIcon icon="fas fa-right-to-bracket" class="pt-0.5 mx-auto"/>
                                     </div>
-                                    <div class="col-span-3 flex items-center">
+                                    <div class="flex items-center">
                                         <span class="text-left break-all">
                                             Sign up
                                         </span>
@@ -287,117 +285,101 @@
                             </VActionText>
                         </div>
 
-                        <!--own recordings-->
+                        <!--main URLs-->
                         <div
                             v-if="pop_up_manager_store.isLoggedIn === true"
-                            class="h-fit grid"
+                            class="flex flex-col gap-1"
                         >
-                            <VActionText
-                                prop-element="a"
-                                :href="getProfileURL()"
-                                prop-font-size="s"
-                                prop-element-size="s"
-                                :prop-is-icon-only="false"
-                                class="row-span-1 w-full"
-                            >
-                                <div class="w-full h-full grid grid-cols-4">
-                                    <div class="col-span-1 flex items-center">
-                                        <FontAwesomeIcon icon="fas fa-microphone-lines" class="pt-0.5 mx-auto text-xl"/>
-                                    </div>
-                                    <div class="col-span-3 flex items-center">
-                                        <span class="text-left break-all">
-                                            Recordings
-                                        </span>
-                                    </div>
-                                </div>
-                            </VActionText>
-                        </div>
 
-                        <!--divider-->
-                        <div
-                            v-if="pop_up_manager_store.isLoggedIn === true"
-                            class="py-2"
-                        >
-                            <div class="w-[75%] h-[1px] bg-theme-gray-2 mx-auto"></div>
-                        </div>
-
-                        <!--likes/dislikes-->
-                        <div
-                            v-if="pop_up_manager_store.isLoggedIn === true"
-                            class="h-fit grid"
-                        >
-                            <VActionText
-                                prop-element="a"
-                                href="/likes"
-                                prop-font-size="s"
-                                prop-element-size="s"
-                                :prop-is-icon-only="false"
-                                class="row-span-1 w-full"
+                            <!--own recordings-->
+                            <div
+                                class="h-fit"
                             >
-                                <div class="w-full h-full grid grid-cols-4">
-                                    <div class="col-span-1 h-full flex items-center">
-                                        <div class="flex flex-row gap-1 mx-auto">
-                                            <div class="w-fit flex items-center">
-                                                <FontAwesomeIcon icon="fas fa-thumbs-up" class="text-theme-lead mx-auto"/>
-                                                <FontAwesomeIcon icon="far fa-thumbs-up" class="absolute mx-auto"/>
-                                            </div>
+                                <VActionText
+                                    prop-element="a"
+                                    :href="getProfileURL()"
+                                    prop-font-size="s"
+                                    prop-element-size="s"
+                                    :prop-is-icon-only="false"
+                                >
+                                    <div class="h-full flex flex-row">
+                                        <div class="px-4 flex items-center">
+                                            <FontAwesomeIcon icon="fas fa-microphone-lines" class="pt-0.5 mx-auto text-xl"/>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="text-left break-all">
+                                                Recordings
+                                            </span>
                                         </div>
                                     </div>
-                                    <div class="col-span-3 flex items-center">
-                                        <span class="text-left break-all">
-                                            Likes &#38; dislikes
-                                        </span>
-                                    </div>
-                                </div>
-                            </VActionText>
-                        </div>
+                                </VActionText>
+                            </div>
 
-                        <!--divider-->
-                        <div
-                            v-if="pop_up_manager_store.isLoggedIn === true"
-                            class="py-2"
-                        >
-                            <div class="w-[75%] h-[1px] bg-theme-gray-2 mx-auto"></div>
-                        </div>
-
-                        <!--block list-->
-                        <div
-                            v-if="pop_up_manager_store.isLoggedIn === true"
-                            class="h-fit grid"
-                        >
-                            <VActionText
-                                prop-element="a"
-                                href="/block"
-                                prop-font-size="s"
-                                prop-element-size="s"
-                                :prop-is-icon-only="false"
-                                class="row-span-1 w-full"
+                            <!--likes/dislikes-->
+                            <div
+                                class="h-fit grid"
                             >
-                                <div class="w-full h-full grid grid-cols-4">
-                                    <div class="col-span-1 flex items-center">
-                                        <FontAwesomeIcon icon="fas fa-ban" class="pt-0.5 mx-auto"/>
+                                <VActionText
+                                    prop-element="a"
+                                    href="/likes"
+                                    prop-font-size="s"
+                                    prop-element-size="s"
+                                    :prop-is-icon-only="false"
+                                >
+                                    <div class="h-full flex flex-row">
+                                        <div class="px-4 flex items-center">
+                                            <div class="flex flex-row mx-auto">
+                                                <div class="w-fit flex items-center">
+                                                    <FontAwesomeIcon icon="fas fa-thumbs-up" class="text-theme-light dark:text-theme-dark mx-auto"/>
+                                                    <FontAwesomeIcon icon="far fa-thumbs-up" class="absolute mx-auto"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="text-left break-all">
+                                                Likes &#38; dislikes
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div class="col-span-3 flex items-center">
-                                        <span class="text-left break-all">
-                                            Block list
-                                        </span>
+                                </VActionText>
+                            </div>
+
+                            <!--block list-->
+                            <div
+                                class="h-fit grid"
+                            >
+                                <VActionText
+                                    prop-element="a"
+                                    href="/block"
+                                    prop-font-size="s"
+                                    prop-element-size="s"
+                                    :prop-is-icon-only="false"
+                                >
+                                    <div class="h-full flex flex-row">
+                                        <div class="px-4 flex items-center">
+                                            <FontAwesomeIcon icon="fas fa-ban" class="pt-0.5 mx-auto"/>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="text-left break-all">
+                                                Block list
+                                            </span>
+                                        </div>
                                     </div>
-                                </div>
-                            </VActionText>
+                                </VActionText>
+                            </div>
                         </div>
 
                         <!--divider-->
                         <div
-                            v-if="pop_up_manager_store.isLoggedIn === true"
-                            class="py-2"
+                            class="py-6"
                         >
-                            <div class="w-[75%] h-[1px] bg-theme-gray-2 mx-auto"></div>
+                            <div class="w-full h-[1px] bg-theme-gray-2 dark:bg-dark-theme-gray-2 mx-auto"></div>
                         </div>
 
                         <!--log out-->
                         <div
                             v-if="pop_up_manager_store.isLoggedIn === true"
-                            class="h-fit grid gap-2"
+                            class="h-fit flex flex-col"
                         >
                             <VActionText
                                 v-if="pop_up_manager_store.isLoggedIn === true"
@@ -406,12 +388,12 @@
                                 prop-element="button"
                                 prop-font-size="s"
                                 prop-element-size="s"
-                                :prop-is-icon-only="true"
+                                :prop-is-icon-only="false"
                                 type="button"
                                 class="w-full"
                             >
-                                <div class="w-full h-full grid grid-cols-4">
-                                    <div class="col-span-1 flex items-center">
+                                <div class="h-full flex flex-row">
+                                    <div class="px-4 flex items-center">
                                         <VLoading
                                             v-if="is_log_out_loading"
                                             prop-element-size="s"
@@ -421,7 +403,7 @@
                                             <FontAwesomeIcon icon="fas fa-door-open"/>
                                         </span>
                                     </div>
-                                    <div class="col-span-3 flex items-center">
+                                    <div class="flex items-center">
                                         <span class="text-left break-all">
                                             <span v-if="is_log_out_loading">
                                                 Logging out...
