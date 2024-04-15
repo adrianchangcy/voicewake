@@ -1,7 +1,6 @@
 <template>
     <!--don't add extra border here like we used to, else it'll go out of sync with VRecorderMenu's height-->
     <div
-        v-show="is_open"
         class="w-full h-fit"
     >
         <!--py-1 allows us to match VRecorderMenu.vue's size via its elements' border-->
@@ -60,11 +59,11 @@
                         @click="handleAudioClipToneSelected(null)"
                         type="button"
                         :class="[
-                            isSelected(null) === true ? 'bg-theme-gray-4 active:bg-theme-gray-5 text-black' : 'active:bg-theme-gray-3 text-theme-black',
-                            'w-10 h-10 pb-0.5 flex items-center border border-transparent shade-border-when-hover rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline'
+                            isSelected(null) === true ? 'bg-theme-gray-4 dark:bg-dark-theme-gray-4 active:bg-theme-gray-5 dark:active:bg-dark-theme-gray-5' : 'active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3',
+                            'w-10 h-10 pb-0.5 flex items-center border border-transparent shade-border-when-hover rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline'
                         ]"
                     >
-                        <span class="text-sm font-medium mx-auto">Any</span>
+                        <span class="w-fit text-sm font-medium mx-auto">Any</span>
                     </button>
                 </div>
 
@@ -77,8 +76,8 @@
                         @click="handleAudioClipToneSelected(index)"
                         type="button"
                         :class="[
-                            isSelected(index) === true ? 'bg-theme-gray-4 active:bg-theme-gray-5' : 'active:bg-theme-gray-3',
-                            'w-10 h-10 pb-0.5 border border-transparent shade-border-when-hover rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline'
+                            isSelected(index) === true ? 'bg-theme-gray-4 dark:bg-dark-theme-gray-4 active:bg-theme-gray-5 dark:active:bg-dark-theme-gray-5' : 'active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3',
+                            'w-10 h-10 pb-0.5 border border-transparent shade-border-when-hover rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline'
                         ]"
                     >
                         <span class="has-emoji" aria-hidden="true">{{audio_clip_tone.audio_clip_tone_symbol}}</span>
@@ -121,10 +120,6 @@
             propIsOpen: {
                 type: Boolean,
                 default: false
-            },
-            propCloseWhenSelected: {
-                type: Boolean,
-                default: true
             },
             propHasDeselectOption: {
                 type: Boolean,
@@ -179,11 +174,6 @@
                 return this.selected_audio_clip_tone_index === audio_clip_tone_index;
             },
             async handleAudioClipToneSelected(audio_clip_tone_index:number|null) : Promise<void> {
-
-                if(this.propCloseWhenSelected === true){
-
-                    this.is_open = false;
-                }
 
                 if(audio_clip_tone_index === this.selected_audio_clip_tone_index){
 

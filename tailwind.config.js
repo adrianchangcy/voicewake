@@ -51,7 +51,8 @@ module.exports = {
                 'theme-outline': '#7a7973',
 
                 'theme-dark': '#010a14',
-                'dark-theme-black': '#18191a',
+                'theme-dark-trim': '#2a2b2e',
+                'dark-theme-black': '#0d131a',
                 'dark-theme-white': '#d9d9d9',
                 'dark-theme-gray-1': '#212224',
                 'dark-theme-gray-2': '#2f3033',

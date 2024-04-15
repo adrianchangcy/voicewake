@@ -1,7 +1,7 @@
 <template>
     <div
         v-show="propIsOpen"
-        class="flex flex-col gap-2 bg-theme-light"
+        class="flex flex-col gap-2"
     >
         <div class="h-20 relative">
             <VPlayback

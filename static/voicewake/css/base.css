@@ -317,7 +317,7 @@ canvas {
         background-color: theme(colors.theme-gray-1);
     }
     .dark .action-hover:hover{
-        background-color: theme(colors.theme-gray-1);
+        background-color: theme(colors.dark-theme-gray-1);
     }
 
     .action-special-hover:hover{

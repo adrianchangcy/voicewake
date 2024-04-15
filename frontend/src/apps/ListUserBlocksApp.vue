@@ -21,7 +21,7 @@
                     :active="active"
                 >
                     <div class="px-1 pb-2">
-                        <div class="w-full flex flex-row items-center p-2 gap-4 border border-theme-gray-2 transition-colors shade-border-when-hover rounded-lg text-theme-black">
+                        <div class="w-full flex flex-row items-center p-2 gap-4 border border-theme-gray-2 dark:border-dark-theme-gray-2 active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3 transition-colors shade-border-when-hover rounded-lg">
                             <!--user-->
                             <VActionText
                                 prop-element="a"
