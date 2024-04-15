@@ -29,14 +29,14 @@
                 :maxlength="propMaxLength"
                 :class="[
                     propHasStatusText ? 'pr-10' : '',
-                    'w-full h-10 p-2 bg-theme-light border-2 focus:border-theme-black border-theme-gray-3 shade-border-when-hover rounded-lg   focus:outline-none'
+                    'w-full h-10 p-2 bg-theme-light dark:bg-theme-dark border-2 focus:border-theme-black dark:focus:border-dark-theme-white border-theme-gray-3 dark:border-dark-theme-gray-3 shade-border-when-hover rounded-lg   focus:outline-none'
                 ]"
             >
             <div class="w-10 h-full absolute right-0 top-0 bottom-0 m-auto">
                 <div class="w-full h-full relative">
-                    <FontAwesomeIcon v-show="propIsOk" icon="fas fa-check" class="text-green-700 absolute inset-0 m-auto"/>
-                    <FontAwesomeIcon v-show="propIsWarning" icon="fas fa-triangle-exclamation" class="text-yellow-700 absolute inset-0 m-auto"/>
-                    <FontAwesomeIcon v-show="propIsError" icon="fas fa-exclamation" class="text-red-700 absolute inset-0 m-auto"/>
+                    <FontAwesomeIcon v-show="propIsOk" icon="fas fa-check" class="text-green-700 dark:text-green-400 absolute inset-0 m-auto"/>
+                    <FontAwesomeIcon v-show="propIsWarning" icon="fas fa-triangle-exclamation" class="text-yellow-700 dark:text-yellow-400 absolute inset-0 m-auto"/>
+                    <FontAwesomeIcon v-show="propIsError" icon="fas fa-exclamation" class="text-red-700 dark:text-red-400 absolute inset-0 m-auto"/>
                     <VLoading
                         v-show="propIsLoading"
                         prop-element-size="s"
@@ -48,9 +48,9 @@
         <div v-show="propHasStatusText" class="h-6 text-base pl-2">
             <span
                 :class="[
-                    (propIsOk ? 'text-green-700' : ''),
-                    (propIsWarning ? 'text-yellow-700' : ''),
-                    (propIsError ? 'text-red-700' : ''),
+                    (propIsOk ? 'text-green-700 dark:text-green-400' : ''),
+                    (propIsWarning ? 'text-yellow-700 dark:text-yellow-400' : ''),
+                    (propIsError ? 'text-red-700 dark:text-red-400' : ''),
                     (hasPlainStatusText ? 'text-theme-black' : ''),
                     ''
                 ]"

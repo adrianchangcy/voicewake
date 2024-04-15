@@ -27,10 +27,10 @@
                 :id="propElementId"
                 v-model="input_value"
                 :class="[
-                    (propIsOk ? 'border-green-700' : 'focus:border-theme-black border-theme-gray-3'),
-                    (propIsWarning ? 'border-yellow-700' : 'focus:border-theme-black border-theme-gray-3'),
-                    (propIsError ? 'border-red-700' : 'focus:border-theme-black border-theme-gray-3'),
-                    'block w-full h-10 bg-theme-light border-2 shade-border-when-hover rounded-lg overflow-hidden p-2 pt-1    focus:outline-none'
+                    (propIsOk ? 'border-green-700 dark:border-green-400' : 'focus:border-theme-black dark:focus:border-dark-theme-white border-theme-gray-3 dark:border-dark-theme-gray-3'),
+                    (propIsWarning ? 'border-yellow-700 dark:border-yellow-400' : 'focus:border-theme-black dark:focus:border-dark-theme-white border-theme-gray-3 dark:border-dark-theme-gray-3'),
+                    (propIsError ? 'border-red-700 dark:border-red-400' : 'focus:border-theme-black dark:focus:border-dark-theme-white border-theme-gray-3 dark:border-dark-theme-gray-3'),
+                    'block w-full h-10 bg-theme-light dark:bg-theme-dark border-2 shade-border-when-hover rounded-lg overflow-hidden p-2 pt-1    focus:outline-none'
                 ]"
                 :placeholder="propPlaceholder"
                 autocomplete="off"
@@ -41,9 +41,9 @@
         <div v-show="propHasStatusText" class="h-5 text-base px-2">
             <span
                 :class="[
-                    (propIsOk ? 'text-green-700' : ''),
-                    (propIsWarning ? 'text-yellow-700' : ''),
-                    (propIsError || propIsRequired ? 'text-red-700' : ''),
+                    (propIsOk ? 'text-green-700 dark:text-green-400' : ''),
+                    (propIsWarning ? 'text-yellow-700 dark:text-yellow-400' : ''),
+                    (propIsError || propIsRequired ? 'text-red-700 dark:text-red-400' : ''),
                     ''
                 ]"
             >

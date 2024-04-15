@@ -8,8 +8,8 @@
             :disabled="!propIsEnabled"
             @click.stop="[toggleMenu(), emitIsOpen()]"
             :class="[
-                is_open ? 'border-theme-black      focus-visible:outline-offset-0' : 'border-theme-gray-3 shade-border-when-hover   focus-visible:-outline-offset-2',
-                'w-full h-20 relative border-2 rounded-lg text-3xl text-theme-black text-center     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-theme-black'
+                is_open ? 'border-theme-black dark:border-dark-theme-white      focus-visible:outline-offset-0' : 'border-theme-gray-3 dark:border-dark-theme-gray-3 shade-border-when-hover   focus-visible:-outline-offset-2',
+                'w-full h-20 relative border-2 rounded-lg text-3xl text-center     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-theme-black dark:focus-visible:outline-dark-theme-white'
             ]"
             type="button"
         >
@@ -21,10 +21,10 @@
                 <span class="sr-only">{{propAudioClipToneChoice.audio_clip_tone_name}}</span>
             </span>
             <span v-else class="sr-only">No audio tag selected</span>
-            <span v-if="propIsOpen" class="sr-only">
+            <span v-show="propIsOpen" class="sr-only">
                 Close audio tag menu
             </span>
-            <span v-else class="sr-only">
+            <span v-show="!propIsOpen" class="sr-only">
                 Open audio tag menu
             </span>
         </button>

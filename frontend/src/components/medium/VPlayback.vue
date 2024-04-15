@@ -1,8 +1,8 @@
 <template>
     <div
         :class="[
-            source_has_error ? 'border-red-700' : 'border-theme-gray-2 shade-border-when-hover',
-            'h-20 border rounded-lg  transition-colors text-center'
+            source_has_error ? 'border-red-700 dark:border-red-400' : 'border-theme-gray-2 dark:border-dark-theme-gray-2 shade-border-when-hover',
+            'h-20 border rounded-lg  transition-colors text-center text-theme-black dark:text-dark-theme-white'
         ]"
     >
         <!--add @timeupdate at mounted(), not here, as beforeUnmount() cannot remove it, and it'll still fire after unmount-->
@@ -20,7 +20,7 @@
 
         <div
             v-show="playbackHasError"
-            class="w-full h-full flex items-center text-center text-red-700"
+            class="w-full h-full flex items-center text-center text-red-700 dark:text-red-400"
         >
             <span class="w-full h-fit text-base">Oops! Recording unavailable.</span>
         </div>
@@ -130,7 +130,7 @@
                             v-show="!is_playback_buffering"
                             :class="[
                                 isPlaybackReady === true ? 'double-height-when-hover' : '',
-                                'h-1 absolute bg-theme-gray-3 left-0 right-0 bottom-2 m-auto transition-transform'
+                                'h-1 absolute bg-theme-gray-3 dark:bg-dark-theme-gray-3 left-0 right-0 bottom-2 m-auto transition-transform'
                             ]"
                         ></div>
 
@@ -141,7 +141,7 @@
                         <!--cannot apply scale to knob for some reason-->
                         <div
                             ref="playback_slider_knob"
-                            class="w-4 h-4 absolute bottom-0.5 m-auto rounded-full   bg-theme-black"
+                            class="w-4 h-4 absolute bottom-0.5 m-auto rounded-full   bg-theme-black dark:bg-dark-theme-white"
                         >
                         </div>
 
@@ -173,7 +173,7 @@
                     <!--volume content-->
                     <div
                         :class="[
-                            is_playback_volume_open ? 'h-32 z-10 bg-theme-light border-theme-black' : 'h-full border-transparent',
+                            is_playback_volume_open ? 'h-32 z-10 bg-theme-light dark:bg-theme-dark border-theme-black dark:border-dark-theme-white' : 'h-full border-transparent',
                             'absolute w-full bottom-0 m-auto border-2 rounded-lg'
                         ]"
                         @pointerenter.stop="handlePlaybackVolumeHoverIn($event)"

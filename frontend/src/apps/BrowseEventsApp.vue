@@ -91,7 +91,7 @@
                     <div
                         ref="open_close_audio_clip_tone_menu_button"
                         :class="[
-                            is_audio_clip_tone_menu_open ? 'border-theme-black' : 'border-theme-gray-2 dark:border-dark-theme-gray-2 shade-border-when-hover',
+                            is_audio_clip_tone_menu_open ? 'border-theme-black dark:border-dark-theme-white' : 'border-theme-gray-2 dark:border-dark-theme-gray-2 shade-border-when-hover',
                             'col-span-1 flex flex-row items-center border-2 rounded-lg transition-colors'
                         ]"
                     >
@@ -129,7 +129,7 @@
                     <div class="col-start-4 col-span-1 relative">
                         <div
                             v-show="is_audio_clip_tone_menu_open"
-                            class="z-30 w-2 h-2 absolute top-3 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"
+                            class="z-30 w-2 h-2 absolute top-3 left-0 right-0 m-auto bg-theme-light dark:bg-theme-dark border-l-2 border-t-2 border-theme-black dark:border-dark-theme-white rotate-45"
                         ></div>
                     </div>
                 </div>
@@ -141,7 +141,7 @@
                         bool_status_variable_or_callback: 'is_audio_clip_tone_menu_open',
                         refs_to_exclude: ['open_close_audio_clip_tone_menu_button']
                     }"
-                    class="absolute w-full h-fit top-4 z-20 flex flex-col p-4 gap-4 rounded-lg border-2 border-theme-black bg-theme-light"
+                    class="absolute w-full h-fit top-4 z-20 flex flex-col p-4 gap-4 rounded-lg border-2 border-theme-black dark:border-dark-theme-white bg-theme-light dark:bg-theme-dark"
                 >
 
                     <!--audio_clip_tones-->

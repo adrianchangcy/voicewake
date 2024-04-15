@@ -83,7 +83,7 @@
                                 ]"
                             >
                                 <div
-                                    class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light border-l-2 border-t-2 border-theme-black rotate-45"
+                                    class="z-10 w-2 h-2 absolute -top-1 left-0 right-0 m-auto bg-theme-light dark:bg-theme-dark border-l-2 border-t-2 border-theme-black dark:border-dark-theme-white rotate-45"
                                 ></div>
                             </div>
                         </div>
@@ -96,14 +96,16 @@
                                 :propMaxDurationMs="max_duration_ms"
                                 @isRecording="handleIsRecording($event)"
                                 @newRecording="handleNewRecording($event)"
-                                class="border-2 border-theme-black rounded-lg p-4"
+                                class="border-2 border-theme-black dark:border-dark-theme-white rounded-lg p-4"
                             />
                         </div>
 
                         <!--audio_clip_tone menu-->
-                        <div :class="is_audio_clip_tone_menu_open ? 'border-2 border-theme-black rounded-lg p-4' : ''">
+                        <div
+                            v-show="is_audio_clip_tone_menu_open"
+                            :class="is_audio_clip_tone_menu_open ? 'border-2 border-theme-black dark:border-dark-theme-white rounded-lg p-4' : ''"
+                        >
                             <VAudioClipToneMenu
-                                :propIsOpen="is_audio_clip_tone_menu_open"
                                 :propMustTrackSelectedOption="true"
                                 @audioClipToneSelected="handleAudioClipToneSelected($event)"
                             />

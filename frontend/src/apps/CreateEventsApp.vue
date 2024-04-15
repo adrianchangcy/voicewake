@@ -1,5 +1,5 @@
 <template>
-    <div class="relative border border-theme-gray-2 rounded-lg px-2 sm:px-4 pt-8 pb-12">
+    <div class="relative border border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-lg px-2 sm:px-4 pt-8 pb-12">
         <CreateAudioClips
             :propIsOriginator="true"
         />

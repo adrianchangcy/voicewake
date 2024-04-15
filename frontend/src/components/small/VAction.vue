@@ -14,7 +14,7 @@
             propElementSize === 's' ? 'h-10 shadow-md active:shadow-sm' : '',
             propIsEnabled ? '' : 'opacity-30',
             propIsRound ? 'rounded-full' : 'rounded-lg',
-            'block transition       text-theme-black border-t-2     action-hover    bg-theme-light active:bg-theme-gray-3 border-theme-light-trim active:border-theme-gray-1      focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline'
+            'block transition       border-t-2     action-hover    bg-theme-light dark:bg-dark-theme-black active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3 border-theme-light-trim dark:border-theme-dark-trim active:border-theme-gray-1 dark:active:border-dark-theme-gray-1      focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline'
         ]"
         :disabled="!propIsEnabled"
     >

@@ -1,7 +1,7 @@
 <template>
 
     <!--h-20 as all relevant components will be h-20, which prevents content shifting-->
-    <div class="text-theme-black h-20">
+    <div class="h-20">
 
         <!--label, ripples, total duration-->
         <div

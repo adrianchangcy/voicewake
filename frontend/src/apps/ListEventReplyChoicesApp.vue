@@ -1,5 +1,5 @@
 <template>
-    <div class="text-theme-black">
+    <div class="">
 
         <!--title-->
         <!--logo only here, since "Reply" goes away for certain parts, and putting it here would make things jolt-->
