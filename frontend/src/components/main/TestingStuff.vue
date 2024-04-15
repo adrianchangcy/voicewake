@@ -2,26 +2,6 @@
     <div class="flex flex-row gap-8 pt-20">
     <!-- <FontAwesomeIcon icon="fas fa-comments"/> -->
 
-        <!--light mode, -->
-        <div class="w-full bg-theme-light flex flex-col gap-6 py-20">
-
-            <!--normal-->
-            <div class="flex flex-col mx-auto light">
-                <VActionDanger
-                    prop-element="button"
-                    type="button"
-                    prop-element-size="s"
-                    prop-font-size="s"
-                    :prop-is-icon-only="false"
-                    :prop-is-enabled="true"
-                    class="w-fit px-2"
-                >
-                    <span class="mx-auto">
-                        Delete
-                    </span>
-                </VActionDanger>
-            </div>
-        </div>
 
 
 
@@ -112,7 +92,6 @@
 <script setup lang="ts">
     // import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
     // import VActionText from '../small/VActionText.vue';
-    import VActionDanger from '../small/VActionDanger.vue';
     // import VTest from '../small/VTest.vue';
     // import VPlayback from '../medium/VPlayback.vue';
 

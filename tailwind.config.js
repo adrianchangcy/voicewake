@@ -1,7 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
     //use parent .dark to enable dark mode for child elements
-    darkMode: 'selector',
+    darkMode: ['class', '[class="dark"]'],
     //mode: 'jit', //so far not needed
     content: [
         "./voicewake/templates/**/*.html",
@@ -28,12 +28,9 @@ module.exports = {
             colors: {
 
                 
-                // 'theme-lead': '#FFD645',    //this yellow isn't as nice as yellow-300
-                'theme-lead': '#facc15', //yellow-400, for highlight
-                'theme-soft-lead': '#f5f5dc',   //for background yellow
+                'theme-lead': '#facc15', //yellow-400
 
                 //for small but high attention items, e.g. focus, highlight, etc.
-                'theme-outline': '#7a7973',
 
                 'theme-green-1': '#90a955',
                 'theme-green-2': '#4f772d',
@@ -44,24 +41,24 @@ module.exports = {
 
                 'theme-light': '#FEFAE6',
                 'theme-light-trim': '#FDFDFD',
-
-                'theme-dark': '#010a14',
-
                 'theme-black': '#404040',   //scaled via shades generator from theme-light
-
                 //for disabled feature, advised to use opacity on entire element until unreadable, not gray background
-                //these are darker shades of theme-light
                 'theme-gray-1': '#e6e8da',
                 'theme-gray-2': '#e1e3d5',
                 'theme-gray-3': '#dee0d3',
                 'theme-gray-4': '#94928b',
                 'theme-gray-5': '#7a7973',
-                // 'theme-gray-1': '#eeeeee',
-                // 'theme-gray-2': '#e7e5e4',
-                // 'theme-gray-3': '',
-                // 'theme-gray-4': '#d6d3d1',
-                // 'theme-gray-5': '#a8a29e',
+                'theme-outline': '#7a7973',
 
+                'theme-dark': '#010a14',
+                'dark-theme-black': '#18191a',
+                'dark-theme-white': '#d9d9d9',
+                'dark-theme-gray-1': '#212224',
+                'dark-theme-gray-2': '#2f3033',
+                'dark-theme-gray-3': '#3B3C40',
+                'dark-theme-gray-4': '#4B4C52',
+                'dark-theme-gray-5': '#61636B',
+                'dark-theme-outline': '#61636B',
 
                 'theme-cream': '#F8F9F0',
                 'theme-red': '#A4243B',

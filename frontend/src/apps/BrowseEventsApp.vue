@@ -28,7 +28,7 @@
                 <!--likes/dislikes-->
                 <div
                     v-if="isUserLikesDislikesPage"
-                    class="w-full flex flex-row items-center border-2 rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors"
+                    class="w-full flex flex-row items-center border-2 rounded-lg border-theme-gray-2 dark:border-dark-theme-gray-2 shade-border-when-hover transition-colors"
                 >
                     <VActionText
                         v-for="(filter_type, index) in filtered_events_store.getLikeDislikeChoices"
@@ -51,7 +51,7 @@
                         <TransitionFade>
                             <div
                                 v-show="filtered_events_store.isSameCurrentLikeDislikeChoiceIndex(index)"
-                                class="absolute h-0.5 bg-theme-black left-2 right-2 bottom-0"
+                                class="absolute h-0.5 bg-theme-black dark:bg-dark-theme-white left-2 right-2 bottom-0"
                             ></div>
                         </TransitionFade>
                     </VActionText>
@@ -59,7 +59,7 @@
 
                 <div class="grid grid-cols-4 gap-2">
                     <!--audio_clip_roles-->
-                    <div class="col-span-3 flex flex-row items-center border-2 rounded-lg border-theme-gray-2 shade-border-when-hover transition-colors">
+                    <div class="col-span-3 flex flex-row items-center border-2 rounded-lg border-theme-gray-2 dark:border-dark-theme-gray-2 shade-border-when-hover transition-colors">
                         <VActionText
                             v-for="(pretty_audio_clip_role_name, index) in filtered_events_store.getPrettyAudioClipRoleNames"
                             :key="index"
@@ -81,7 +81,7 @@
                             <TransitionFade>
                                 <div
                                     v-show="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
-                                    class="absolute h-0.5 bg-theme-black left-2 right-2 bottom-0"
+                                    class="absolute h-0.5 bg-theme-black dark:bg-dark-theme-white left-2 right-2 bottom-0"
                                 ></div>
                             </TransitionFade>
                         </VActionText>
@@ -91,7 +91,7 @@
                     <div
                         ref="open_close_audio_clip_tone_menu_button"
                         :class="[
-                            is_audio_clip_tone_menu_open ? 'border-theme-black' : 'border-theme-gray-2 shade-border-when-hover',
+                            is_audio_clip_tone_menu_open ? 'border-theme-black' : 'border-theme-gray-2 dark:border-dark-theme-gray-2 shade-border-when-hover',
                             'col-span-1 flex flex-row items-center border-2 rounded-lg transition-colors'
                         ]"
                     >

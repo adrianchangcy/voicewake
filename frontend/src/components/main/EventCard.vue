@@ -1,7 +1,7 @@
 <template>
     <div
         :class="[
-            propHasBorder === true ? 'px-2 sm:px-4 pt-8 pb-12      border border-theme-gray-2 rounded-lg shade-border-when-hover transition-colors' : '',
+            propHasBorder === true ? 'px-2 sm:px-4 pt-8 pb-12      border border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-lg shade-border-when-hover transition-colors' : '',
             'flex flex-col'
         ]"
     >
@@ -34,13 +34,17 @@
                             Event and original recording deleted.
                         </span>
                     </template>
-                    <template #titleDescription>
-                        <span v-if="!isEventDeleted">
-                            {{ prettyWhenCreated }}
-                        </span>
-                    </template>
                 </VTitle>
             </VActionText>
+            <VTitle
+                prop-font-size="s"
+            >
+                <template #titleDescription>
+                    <span v-if="!isEventDeleted">
+                        {{ prettyWhenCreated }}
+                    </span>
+                </template>
+            </VTitle>
         </div>
 
         <div
