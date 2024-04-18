@@ -14,7 +14,7 @@
             propElementSize === 's' ? 'h-10 shadow-md active:shadow-sm' : '',
             propIsEnabled ? '' : 'opacity-30',
             propIsRound ? 'rounded-full' : 'rounded-lg',
-            'block text-theme-light action-danger-hover border-t-2       bg-red-600 border-red-400       active:bg-[#ad1a1a] active:border-red-600    shadow-red-500      transition      focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline'
+            'block text-theme-light action-danger-hover border-t-2       bg-red-600 border-red-400       active:bg-[#ad1a1a] active:border-red-600    shadow-red-500      transition      focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline'
         ]"
         :disabled="!propIsEnabled"
     >
@@ -29,7 +29,7 @@
             v-else
             :class="[
                 propElementSize === 's' ? 'pb-0.5' : '',
-                propElementSize === 'm' ? 'pb-1' : '',
+                propElementSize === 'm' ? 'pb-1.5' : '',
                 propElementSize === 'l' ? 'pb-2' : '',
                 propElementSize === 'xl' ? 'pb-2' : '',
                 propElementSize === '2xl' ? 'pb-2' : '',

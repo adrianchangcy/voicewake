@@ -1,5 +1,5 @@
 <template>
-    <div class="text-theme-black dark:text-dark-theme-white">
+    <div class="">
         <h1
             :class="[
                 propFontSize === 'xl' ? 'text-5xl' : '',

@@ -1,22 +1,22 @@
 <template>
-    <div class="flex flex-row pr-4 items-center relative">
-        <slot></slot>
+    <div>
         <button
-            class="absolute w-fit h-10 right-4 top-0 bottom-0 m-auto cursor-pointer hover:scale-105 transition-transform"
+            class="w-fit h-10 px-1 rounded-lg flex items-center cursor-pointer action-hover transition   focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline"
             type="button"
             @click.stop="changeToggle()"
         >
             <div
-                :class="is_toggled ? 'bg-theme-lead/75 hover:shadow-theme-lead' : 'bg-theme-gray-3/75 shadow-theme-gray-3'"
-                class="relative my-1 inline-flex h-7 w-14 shrink-0 shadow-inner rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out"
+                :class="is_toggled ? 'border-theme-lead dark:border-dark-theme-lead' : 'border-transparent'"
+                class="inline-flex w-14 h-7 shrink-0 rounded-full transition border-2 bg-theme-gray-3 dark:bg-dark-theme-gray-3"
             >
-                <span class="sr-only">{{ propScreenReaderText }} {{ is_toggled }}</span>
+                <!--knob size is after removing border-->
                 <span
                     aria-hidden="true"
                     :class="is_toggled ? 'translate-x-7' : 'translate-x-0'"
-                    class="pointer-events-none inline-block h-6 w-6 transform rounded-full bg-theme-light border-t-2 border-theme-light-trim shadow-lg ring-0 transition duration-200 ease-in-out"
-                />
+                    class="inline-block w-6 h-6 transition rounded-full bg-theme-black dark:bg-dark-theme-white-2"
+                ></span>
             </div>
+            <span class="sr-only">{{ propScreenReaderText }} {{ is_toggled }}</span>
         </button>
     </div>
 </template>
@@ -36,6 +36,10 @@
                 type: String,
                 required: true
             },
+            propDefaultToggle: {
+                type: Boolean,
+                default: false,
+            },
         },
         watch: {
             is_toggled(new_value){
@@ -47,6 +51,10 @@
             changeToggle(){
                 this.is_toggled = !this.is_toggled;
             },
-        }
+        },
+        beforeMount(){
+
+            this.is_toggled = this.propDefaultToggle;
+        },
     });
 </script>

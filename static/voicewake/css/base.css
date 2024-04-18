@@ -123,7 +123,6 @@ TIPS
 
 
 /*scroll bar*/
-/*colours follow VActionTextOnly*/
 ::-webkit-scrollbar{
 	width: 12px;
 }
@@ -133,10 +132,32 @@ TIPS
 ::-webkit-scrollbar-thumb{
 	background-color: theme(colors.theme-black);
 }
-::-webkit-scrollbar-thumb:hover{
-	background-color: black;
+.dark ::-webkit-scrollbar-track-piece{
+	background-color: theme(colors.dark-theme-black);
+}
+.dark ::-webkit-scrollbar-thumb{
+	background-color: theme(colors.dark-theme-white-2);
 }
 
+/*before_footer_mountain*/
+#before-footer-mountain > .layer-0 {
+    fill:#90A955;
+}
+#before-footer-mountain > .layer-1 {
+    fill:#50772E;
+}
+#before-footer-mountain > .layer-2 {
+    fill:#30582C;
+}
+.dark #before-footer-mountain .layer-0 {
+    fill:#13170e;
+}
+.dark #before-footer-mountain .layer-1 {
+    fill:#141a0d;
+}
+.dark #before-footer-mountain .layer-2 {
+    fill:#141c0d;
+}
 
 /* remove highlight on tap */
 button, a, div {
@@ -286,6 +307,16 @@ canvas {
     image-rendering: crisp-edges;
 }
 
+/*prevent autocomplete from applying its own css*/
+/*https://stackoverflow.com/a/69364368*/
+input:-webkit-autofill,
+input:-webkit-autofill:focus{
+    transition: background-color 600000s 0s, color 600000s 0s;
+}
+input[data-autocompleted]{
+    background-color: transparent !important;
+}
+
 
 
 @media(hover: hover){
@@ -295,12 +326,16 @@ canvas {
     also use rounded-md
     */
 
-    /*from theme-black to theme-dark-gray*/
+    /*borders, on hover/active, from gray-2 to gray-4*/
+    /*bg, on hover/active, from gray-1 to gray-3*/
     .shade-border-when-hover:hover{
         border-color: theme(colors.theme-gray-4);
     }
     .dark .shade-border-when-hover:hover{
         border-color: theme(colors.dark-theme-gray-4);
+    }
+    .parent-trigger-shade-fake-border-when-hover:hover .shade-fake-border-when-hover{
+        background-color: theme(colors.theme-gray-4);
     }
 
     .border-solid-when-hover:hover{
@@ -344,11 +379,5 @@ canvas {
     }
     .parent-trigger-double-height-when-hover:hover .double-height-when-hover{
         transform: scaleY(2);
-    }
-    .parent-trigger-shade-fake-border-when-hover:hover .shade-fake-border-when-hover{
-        background-color: theme(colors.theme-gray-4);
-    }
-    .parent-trigger-shade-background-when-hover:hover .shade-background-when-hover{
-        background-color: theme(colors.theme-gray-4);
     }
 }

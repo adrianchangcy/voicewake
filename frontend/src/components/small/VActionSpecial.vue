@@ -7,14 +7,14 @@
             propFontSize === 'l' ? 'text-2xl font-medium' : '',
             propFontSize === 'm' ? 'text-xl font-medium' : '',
             propFontSize === 's' ? 'text-base font-medium' : '',
-            propElementSize === '2xl' ? 'h-40 shadow-lg active:shadow-md' : '',
-            propElementSize === 'xl' ? 'h-32 shadow-lg active:shadow-md' : '',
-            propElementSize === 'l' ? 'h-24 shadow-lg active:shadow-md' : '',
-            propElementSize === 'm' ? 'h-20 shadow-lg active:shadow-md' : '',
-            propElementSize === 's' ? 'h-10 shadow-md active:shadow-sm' : '',
+            propElementSize === '2xl' ? 'h-40 shadow-lg dark:shadow-surround-lg active:shadow-md dark:active:shadow-surround-md' : '',
+            propElementSize === 'xl' ? 'h-32 shadow-lg dark:shadow-surround-lg active:shadow-md dark:active:shadow-surround-md' : '',
+            propElementSize === 'l' ? 'h-24 shadow-lg dark:shadow-surround-lg active:shadow-md dark:active:shadow-surround-md' : '',
+            propElementSize === 'm' ? 'h-20 shadow-lg dark:shadow-surround-lg active:shadow-md dark:active:shadow-surround-md' : '',
+            propElementSize === 's' ? 'h-10 shadow-md dark:shadow-surround-md active:shadow-sm dark:active:shadow-surround-sm' : '',
             propIsEnabled ? '' : 'opacity-30',
             propIsRound ? 'rounded-full' : 'rounded-lg',
-            'block transition   text-theme-black border-t-2     action-special-hover    bg-[#ffffd1] active:bg-[#FFE88B]     shadow-[#fadc64] active:shadow-[#fadc64]      border-theme-light-trim active:border-[#faedbb]     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline'
+            'block transition   text-theme-black border-t-2     action-special-hover    bg-[#ffffd1] active:bg-[#FFE88B]     shadow-[#fadc64] dark:shadow-[#fadc64] active:shadow-[#fadc64] dark:active:shadow-[#fadc64]      border-theme-light-trim active:border-[#faedbb]     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline'
         ]"
         :disabled="!propIsEnabled"
     >
@@ -29,7 +29,7 @@
             v-else
             :class="[
                 propElementSize === 's' ? 'pb-0.5' : '',
-                propElementSize === 'm' ? 'pb-1' : '',
+                propElementSize === 'm' ? 'pb-1.5' : '',
                 propElementSize === 'l' ? 'pb-2' : '',
                 propElementSize === 'xl' ? 'pb-2' : '',
                 propElementSize === '2xl' ? 'pb-2' : '',

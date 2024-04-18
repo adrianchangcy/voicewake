@@ -16,16 +16,14 @@
         <div id="v-backdrop-anime-target" class="absolute w-full h-full -z-10 pb-14"></div>
 
         <!--title-->
-        <!--needs padding for more area to smoothen the transparent part, the bigger the better, else a faint cutoff/border is visible-->
-        <div class="w-fit h-fit mx-auto px-4 sm:px-8 pt-8 pb-2 flex items-center rounded-lg bg-gradient-radial from-theme-light to-transparent">
-            <div class="text-theme-black text-center">
-                <h1 class="text-5xl h-fit break-words">
-                    <span>Voicewake</span>
-                </h1>
-                <h2 class="text-4xl h-fit break-words">
-                    <span>Log in</span>
-                </h2>
-            </div>
+        <!--play with "to-x%" until the edges at div is smooth, and not stopped abruptly-->
+        <div class="w-fit h-fit mx-auto px-4 sm:px-8 py-8 flex flex-col items-center text-center rounded-full bg-gradient-radial from-theme-light dark:from-theme-dark from-0% to-70%">
+            <h1 class="text-5xl h-fit break-words">
+                <span>Voicewake</span>
+            </h1>
+            <h2 class="text-4xl h-fit break-words">
+                <span>Log in</span>
+            </h2>
         </div>
     </div>
 

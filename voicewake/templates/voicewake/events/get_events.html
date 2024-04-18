@@ -49,12 +49,12 @@
         <!--follows VTitle-->
         <h1 class="h-fit pt-10 pb-8">
             {% if is_deleted %}
-                <p class="text-lg italic">
+                <p class="text-lg italic dark:text-dark-theme-white-1">
                     Event and original recording deleted.
                 </p>
             {% else %}
                 <!--title-->
-                <p id="event-name" class="text-lg break-words">
+                <p id="event-name" class="text-lg break-words dark:text-dark-theme-white-1">
                     {{event.event_name}}
                 </p>
                 <!--when_created-->

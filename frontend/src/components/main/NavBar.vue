@@ -69,21 +69,21 @@
                         <div
                             :class="[
                                 pop_up_manager_store.isNavMenuOpen ? 'mb-0 rotate-45' : 'mb-4 rotate-0',
-                                'nav-burger-line row-span-1 bg-theme-black dark:bg-dark-theme-white absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
+                                'nav-burger-line row-span-1 bg-theme-black dark:bg-dark-theme-white-2 absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
                             ]"
                         >
                         </div>
                         <div
                             :class="[
                                 pop_up_manager_store.isNavMenuOpen ? 'opacity-0' : 'opacity-100',
-                                'nav-burger-line row-span-1 bg-theme-black dark:bg-dark-theme-white absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
+                                'nav-burger-line row-span-1 bg-theme-black dark:bg-dark-theme-white-2 absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
                             ]"
                         >
                         </div>
                         <div
                             :class="[
                                 pop_up_manager_store.isNavMenuOpen ? 'mt-0 -rotate-45' : 'mt-4 rotate-0',
-                                'nav-burger-line row-span-1 bg-theme-black dark:bg-dark-theme-white absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
+                                'nav-burger-line row-span-1 bg-theme-black dark:bg-dark-theme-white-2 absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
                             ]"
                         >
                         </div>
@@ -153,14 +153,16 @@
                 class="hidden lg:block lg:col-start-8 col-span-1"
             >
                 <TransitionFade>
+                    <!--using size "m" everything, but "s" shadow-->
                     <VActionSpecial
                         v-show="canShowLogInSignUpAtNav"
                         @click.stop="openUserLogInSignUp('sign-up-section')"
                         prop-element="button"
+                        prop-font-size="m"
                         type="button"
-                        class="w-full h-full pb-1 shadow-md active:shadow-sm -translate-y-[1px]"
+                        class="w-full h-full shadow-md dark:shadow-surround-md active:shadow-sm dark:active:shadow-surround-sm      pb-1.5"
                     >
-                        <span class="block mx-auto text-xl font-medium">
+                        <span class="block mx-auto">
                             <FontAwesomeIcon icon="fas fa-right-to-bracket" class="sm:pr-2"/>
                             <span>Sign up</span>
                         </span>
@@ -180,7 +182,7 @@
                 <TransitionFade>
                     <div
                         v-show="pop_up_manager_store.isNavMenuOpen"
-                        class="absolute w-full h-[calc(100vh-4.5rem)] bg-theme-light/80 dark:bg-theme-dark/90"
+                        class="absolute w-full h-[calc(100vh-4.5rem)] bg-theme-light/90 dark:bg-theme-dark/90"
                     >
                     </div>
                 </TransitionFade>
@@ -190,17 +192,19 @@
             <!--don't show when lg and pop_up_manager_store.isLoggedIn, because the button to open will become a URL-->
             <div
                 :class="pop_up_manager_store.isLoggedIn === false ? 'lg:hidden' : ''"
-                class="relative col-start-2 col-span-3 sm:col-start-6 sm:col-span-3 xl:col-start-7 xl:col-span-2"
+                class="h-0 relative col-start-2 col-span-3 sm:col-start-6 sm:col-span-3 xl:col-start-7 xl:col-span-2"
             >
+
                 <TransitionFade>
-                    <!--uses calc to minus fixed height of navbar at base.html-->
+                    <!--menu itself-->
+                    <!--has pb simply for better UI, i.e. allows user to scroll to eye-level-->
                     <div
                         v-show="pop_up_manager_store.isNavMenuOpen"
                         v-click-outside="{
                             bool_status_variable_or_callback: forceCloseNavMenu,
                             refs_to_exclude: ['nav_menu_button_1', 'nav_menu_button_2']
                         }"
-                        class="absolute w-full h-[calc(100vh-4.5rem)] px-4 bg-theme-light dark:bg-theme-dark overflow-auto"
+                        class="absolute w-full h-[calc(100vh-4.5rem)] overflow-auto px-4 pb-20 bg-theme-light dark:bg-theme-dark"
                     >
                         <!--profile area-->
                         <div class="py-2">
@@ -328,12 +332,7 @@
                                 >
                                     <div class="h-full flex flex-row">
                                         <div class="px-4 flex items-center">
-                                            <div class="flex flex-row mx-auto">
-                                                <div class="w-fit flex items-center">
-                                                    <FontAwesomeIcon icon="fas fa-thumbs-up" class="text-theme-light dark:text-theme-dark mx-auto"/>
-                                                    <FontAwesomeIcon icon="far fa-thumbs-up" class="absolute mx-auto"/>
-                                                </div>
-                                            </div>
+                                            <FontAwesomeIcon icon="far fa-thumbs-up" class="mx-auto text-lg"/>
                                         </div>
                                         <div class="flex items-center">
                                             <span class="text-left break-all">
@@ -367,54 +366,79 @@
                                     </div>
                                 </VActionText>
                             </div>
-                        </div>
 
-                        <!--divider-->
-                        <div
-                            class="py-6"
-                        >
-                            <div class="w-full h-[1px] bg-theme-gray-2 dark:bg-dark-theme-gray-2 mx-auto"></div>
-                        </div>
-
-                        <!--log out-->
-                        <div
-                            v-if="pop_up_manager_store.isLoggedIn === true"
-                            class="h-fit flex flex-col"
-                        >
-                            <VActionText
-                                v-if="pop_up_manager_store.isLoggedIn === true"
-                                :prop-is-enabled="!is_log_out_loading"
-                                @click.stop="logOut()"
-                                prop-element="button"
-                                prop-font-size="s"
-                                prop-element-size="s"
-                                :prop-is-icon-only="false"
-                                type="button"
-                                class="w-full"
+                            <!--divider-->
+                            <div
+                                class="py-6"
                             >
-                                <div class="h-full flex flex-row">
-                                    <div class="px-4 flex items-center">
-                                        <VLoading
-                                            v-if="is_log_out_loading"
-                                            prop-element-size="s"
-                                            class="mx-auto"
-                                        />
-                                        <span v-else class="mx-auto">
-                                            <FontAwesomeIcon icon="fas fa-door-open"/>
-                                        </span>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <span class="text-left break-all">
-                                            <span v-if="is_log_out_loading">
-                                                Logging out...
-                                            </span>
-                                            <span v-else>
-                                                Log out
-                                            </span>
-                                        </span>
-                                    </div>
+                                <div class="w-full h-[1px] bg-theme-gray-2 dark:bg-dark-theme-gray-2 mx-auto"></div>
+                            </div>
+
+                            <!--light/dark theme-->
+                            <div class="h-full flex flex-row">
+                                <div class="px-4 flex items-center">
+                                    <FontAwesomeIcon icon="far fa-moon" class="mx-auto text-lg"/>
                                 </div>
-                            </VActionText>
+                                <!--follows "s" size action-->
+                                <div class="w-full flex items-center text-base font-medium pb-0.5">
+                                    <span class="text-left break-all">
+                                        Dark mode
+                                    </span>
+                                </div>
+                                <VSwitch
+                                    prop-screen-reader-text="Currently in light mode. Click to switch."
+                                    class=""
+                                />
+                            </div>
+
+                            <!--divider-->
+                            <div
+                                v-if="pop_up_manager_store.isLoggedIn === true"
+                                class="py-6"
+                            >
+                                <div class="w-full h-[1px] bg-theme-gray-2 dark:bg-dark-theme-gray-2 mx-auto"></div>
+                            </div>
+
+                            <!--log out-->
+                            <div
+                                v-if="pop_up_manager_store.isLoggedIn === true"
+                                class="h-fit flex flex-col"
+                            >
+                                <VActionText
+                                    v-if="pop_up_manager_store.isLoggedIn === true"
+                                    :prop-is-enabled="!is_log_out_loading"
+                                    @click.stop="logOut()"
+                                    prop-element="button"
+                                    prop-font-size="s"
+                                    prop-element-size="s"
+                                    :prop-is-icon-only="false"
+                                    type="button"
+                                    class="w-full"
+                                >
+                                    <div class="h-full flex flex-row">
+                                        <div class="px-4 flex items-center">
+                                            <VLoading
+                                                v-if="is_log_out_loading"
+                                                prop-element-size="s"
+                                                class="mx-auto"
+                                            />
+                                            <span v-else class="mx-auto">
+                                                <FontAwesomeIcon icon="fas fa-door-open"/>
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="text-left break-all">
+                                                <span v-if="is_log_out_loading">
+                                                    Logging out...
+                                                </span>
+                                                <span v-else>
+                                                    Log out
+                                                </span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </VActionText>
+                            </div>
                         </div>
                     </div>
                 </TransitionFade>
@@ -429,6 +453,7 @@
     import VActionText from '../small/VActionText.vue';
     import VActionSpecial from '../small/VActionSpecial.vue';
     import VLoading from '../small/VLoading.vue';
+    import VSwitch from '../small/VSwitch.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     import { library } from '@fortawesome/fontawesome-svg-core';
@@ -442,12 +467,12 @@
     import { faDoorOpen } from '@fortawesome/free-solid-svg-icons/faDoorOpen';
     import { faMicrophoneLines } from '@fortawesome/free-solid-svg-icons/faMicrophoneLines';
     import { faThumbsUp as farThumbsUp } from '@fortawesome/free-regular-svg-icons/faThumbsUp';
-    import { faThumbsUp as fasThumbsUp } from '@fortawesome/free-solid-svg-icons/faThumbsUp';
+    import { faMoon } from '@fortawesome/free-regular-svg-icons/faMoon';
 
     library.add(
         faWaveSquare, faComment, faComments, faCircleUser,
         faChevronDown, faRightToBracket, faBan, faDoorOpen, faMicrophoneLines,
-        farThumbsUp, fasThumbsUp,
+        farThumbsUp, faMoon,
     );
 </script>
 

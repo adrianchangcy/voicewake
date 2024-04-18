@@ -22,8 +22,6 @@
 
 
 
-
-
         <!--BLANK STATE, DON'T MODIFY THIS -->
         <!--light mode, -->
         <div v-show="false" class="w-full bg-theme-light flex flex-col gap-6">
