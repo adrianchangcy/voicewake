@@ -233,7 +233,7 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
             },
         },
         actions: {
-            async updateCurrentLikeDislikeChoiceIndex(new_index:number) : Promise<void> {
+            updateCurrentLikeDislikeChoiceIndex(new_index:number) : void {
 
                 if(new_index >= this.like_dislike_choices.length){
 
@@ -246,7 +246,7 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
 
                 return this.current_like_dislike_choice_index === index;
             },
-            async updateCurrentEventGenericStatusNameIndex(new_index:number) : Promise<void> {
+            updateCurrentEventGenericStatusNameIndex(new_index:number) : void {
 
                 if(new_index >= this.event_generic_status_names.length){
 
@@ -259,7 +259,7 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
 
                 return this.current_event_generic_status_name_index === index;
             },
-            async updateCurrentMainFilterIndex(new_index:number) : Promise<void> {
+            updateCurrentMainFilterIndex(new_index:number) : void {
 
                 if(new_index >= this.main_filters.length){
 
@@ -276,7 +276,7 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
 
                 return this.main_filters[current_main_filter_index];
             },
-            async updateCurrentTimeframeIndex(new_index:number) : Promise<void> {
+            updateCurrentTimeframeIndex(new_index:number) : void {
 
                 if(new_index >= this.timeframes.length){
 
@@ -289,11 +289,16 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
 
                 return this.current_timeframe_index === index;
             },
-            async updateCurrentAudioClipRoleNameIndex(new_index:number) : Promise<void> {
+            updateCurrentAudioClipRoleNameIndex(new_index:number) : void {
 
                 if(new_index >= this.audio_clip_role_names.length){
 
                     throw new Error('Index out of range.');
+                }
+
+                if(this.current_audio_clip_role_name_index === new_index){
+
+                    return;
                 }
 
                 this.current_audio_clip_role_name_index = new_index;
@@ -302,7 +307,7 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
 
                 return this.current_audio_clip_role_name_index === index;
             },
-            async updateCurrentAudioClipTone(audio_clip_tone:AudioClipTonesTypes|null) : Promise<void> {
+            updateCurrentAudioClipTone(audio_clip_tone:AudioClipTonesTypes|null) : void {
 
                 this.current_audio_clip_tone = audio_clip_tone;
                 this.current_audio_clip_tone_id = audio_clip_tone === null ? this.default_audio_clip_tone_id_when_null : audio_clip_tone.id;

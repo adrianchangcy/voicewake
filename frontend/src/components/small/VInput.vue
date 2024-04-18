@@ -29,7 +29,7 @@
                 :maxlength="propMaxLength"
                 :class="[
                     propHasStatusText ? 'pr-10' : '',
-                    'w-full h-10 p-2 bg-theme-light dark:bg-theme-dark border-2 focus:border-theme-black dark:focus:border-dark-theme-white border-theme-gray-3 dark:border-dark-theme-gray-3 shade-border-when-hover rounded-lg   focus:outline-none'
+                    'w-full h-10 p-2 bg-theme-light dark:bg-theme-dark border-2 focus:border-theme-black dark:focus:border-dark-theme-white-2 border-theme-gray-form-field dark:border-dark-theme-gray-form-field shade-border-when-hover rounded-lg   focus:outline-none'
                 ]"
             >
             <div class="w-10 h-full absolute right-0 top-0 bottom-0 m-auto">

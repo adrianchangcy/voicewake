@@ -413,8 +413,8 @@ export async function drawCanvasRipples(
     canvas_element.width = new_canvas_width;
     canvas_element.style.width = (new_canvas_width / dpi).toString() + 'px';
 
-    //use text-theme-black or text-dark-theme-white
-    const peak_colour = isDarkMode() ? '#d9d9d9' : '#404040';
+    //use text-theme-black or text-dark-theme-white-2
+    const peak_colour = isDarkMode() ? '#b4b1a6' : '#404040';
 
     //canvas must have valid and latest width and height, else this won't be applied
     canvas_context.fillStyle = peak_colour;

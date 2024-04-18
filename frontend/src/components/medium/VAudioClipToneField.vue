@@ -8,8 +8,8 @@
             :disabled="!propIsEnabled"
             @click.stop="[toggleMenu(), emitIsOpen()]"
             :class="[
-                is_open ? 'border-theme-black dark:border-dark-theme-white      focus-visible:outline-offset-0' : 'border-theme-gray-3 dark:border-dark-theme-gray-3 shade-border-when-hover   focus-visible:-outline-offset-2',
-                'w-full h-20 relative border-2 rounded-lg text-3xl text-center     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-theme-black dark:focus-visible:outline-dark-theme-white'
+                is_open ? 'border-theme-black dark:border-dark-theme-white-2      focus-visible:outline-offset-0' : 'border-theme-gray-form-field dark:border-dark-theme-gray-form-field shade-border-when-hover   focus-visible:-outline-offset-2',
+                'w-full h-20 relative border-2 rounded-lg text-3xl text-center     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-theme-black dark:focus-visible:outline-dark-theme-white-2'
             ]"
             type="button"
         >

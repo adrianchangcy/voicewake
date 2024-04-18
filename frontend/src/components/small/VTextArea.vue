@@ -27,9 +27,9 @@
                 :id="propElementId"
                 v-model="input_value"
                 :class="[
-                    (propIsOk ? 'border-green-700 dark:border-green-400' : 'focus:border-theme-black dark:focus:border-dark-theme-white border-theme-gray-3 dark:border-dark-theme-gray-3'),
-                    (propIsWarning ? 'border-yellow-700 dark:border-yellow-400' : 'focus:border-theme-black dark:focus:border-dark-theme-white border-theme-gray-3 dark:border-dark-theme-gray-3'),
-                    (propIsError ? 'border-red-700 dark:border-red-400' : 'focus:border-theme-black dark:focus:border-dark-theme-white border-theme-gray-3 dark:border-dark-theme-gray-3'),
+                    (propIsOk ? 'border-green-700 dark:border-green-400' : 'focus:border-theme-black dark:focus:border-dark-theme-white-2 border-theme-gray-form-field dark:border-dark-theme-gray-form-field'),
+                    (propIsWarning ? 'border-yellow-700 dark:border-yellow-400' : 'focus:border-theme-black dark:focus:border-dark-theme-white-2 border-theme-gray-form-field dark:border-dark-theme-gray-form-field'),
+                    (propIsError ? 'border-red-700 dark:border-red-400' : 'focus:border-theme-black dark:focus:border-dark-theme-white-2 border-theme-gray-form-field dark:border-dark-theme-gray-form-field'),
                     'block w-full h-10 bg-theme-light dark:bg-theme-dark border-2 shade-border-when-hover rounded-lg overflow-hidden p-2 pt-1    focus:outline-none'
                 ]"
                 :placeholder="propPlaceholder"

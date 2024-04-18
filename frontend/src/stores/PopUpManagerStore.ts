@@ -14,7 +14,7 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
 
         is_open: {
             is_login_required_prompt_open: false,
-            is_nav_menu_open: false,
+            is_nav_menu_open: true,
 
             //two identical components, but separate state
             //allows for <keep-alive> and better UX

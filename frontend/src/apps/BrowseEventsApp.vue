@@ -28,7 +28,7 @@
                 <!--likes/dislikes-->
                 <div
                     v-if="isUserLikesDislikesPage"
-                    class="w-full flex flex-row items-center border-2 rounded-lg border-theme-gray-2 dark:border-dark-theme-gray-2 shade-border-when-hover transition-colors"
+                    class="w-full flex flex-row items-center border-2 rounded-lg border-theme-gray-form-field dark:border-dark-theme-gray-form-field shade-border-when-hover transition-colors"
                 >
                     <VActionText
                         v-for="(filter_type, index) in filtered_events_store.getLikeDislikeChoices"
@@ -51,7 +51,7 @@
                         <TransitionFade>
                             <div
                                 v-show="filtered_events_store.isSameCurrentLikeDislikeChoiceIndex(index)"
-                                class="absolute h-0.5 bg-theme-black dark:bg-dark-theme-white left-2 right-2 bottom-0"
+                                class="absolute h-0.5 bg-theme-black dark:bg-dark-theme-white-2 left-2 right-2 bottom-0"
                             ></div>
                         </TransitionFade>
                     </VActionText>
@@ -59,12 +59,11 @@
 
                 <div class="grid grid-cols-4 gap-2">
                     <!--audio_clip_roles-->
-                    <div class="col-span-3 flex flex-row items-center border-2 rounded-lg border-theme-gray-2 dark:border-dark-theme-gray-2 shade-border-when-hover transition-colors">
+                    <div class="col-span-3 flex flex-row items-center border-2 rounded-lg border-theme-gray-form-field dark:border-dark-theme-gray-2 shade-border-when-hover transition-colors">
                         <VActionText
                             v-for="(pretty_audio_clip_role_name, index) in filtered_events_store.getPrettyAudioClipRoleNames"
                             :key="index"
                             @click="filtered_events_store.updateCurrentAudioClipRoleNameIndex(index)"
-                            :disabled="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
                             prop-element="button"
                             prop-element-size="s"
                             prop-font-size="s"
@@ -81,7 +80,7 @@
                             <TransitionFade>
                                 <div
                                     v-show="filtered_events_store.isSameCurrentAudioClipRoleNameIndex(index)"
-                                    class="absolute h-0.5 bg-theme-black dark:bg-dark-theme-white left-2 right-2 bottom-0"
+                                    class="absolute h-0.5 bg-theme-black dark:bg-dark-theme-white-2 left-2 right-2 bottom-0"
                                 ></div>
                             </TransitionFade>
                         </VActionText>
@@ -91,7 +90,7 @@
                     <div
                         ref="open_close_audio_clip_tone_menu_button"
                         :class="[
-                            is_audio_clip_tone_menu_open ? 'border-theme-black dark:border-dark-theme-white' : 'border-theme-gray-2 dark:border-dark-theme-gray-2 shade-border-when-hover',
+                            is_audio_clip_tone_menu_open ? 'border-theme-black dark:border-dark-theme-white-2' : 'border-theme-gray-form-field dark:border-dark-theme-gray-form-field shade-border-when-hover',
                             'col-span-1 flex flex-row items-center border-2 rounded-lg transition-colors'
                         ]"
                     >
@@ -129,7 +128,7 @@
                     <div class="col-start-4 col-span-1 relative">
                         <div
                             v-show="is_audio_clip_tone_menu_open"
-                            class="z-30 w-2 h-2 absolute top-3 left-0 right-0 m-auto bg-theme-light dark:bg-theme-dark border-l-2 border-t-2 border-theme-black dark:border-dark-theme-white rotate-45"
+                            class="z-30 w-2 h-2 absolute top-3 left-0 right-0 m-auto bg-theme-light dark:bg-theme-dark border-l-2 border-t-2 border-theme-black dark:border-dark-theme-white-2 rotate-45"
                         ></div>
                     </div>
                 </div>
@@ -141,7 +140,7 @@
                         bool_status_variable_or_callback: 'is_audio_clip_tone_menu_open',
                         refs_to_exclude: ['open_close_audio_clip_tone_menu_button']
                     }"
-                    class="absolute w-full h-fit top-4 z-20 flex flex-col p-4 gap-4 rounded-lg border-2 border-theme-black dark:border-dark-theme-white bg-theme-light dark:bg-theme-dark"
+                    class="absolute w-full h-fit top-4 z-20 flex flex-col p-4 gap-4 rounded-lg border-2 border-theme-black dark:border-dark-theme-white-2 bg-theme-light dark:bg-theme-dark"
                 >
 
                     <!--audio_clip_tones-->

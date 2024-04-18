@@ -2,7 +2,7 @@
     <div
         :class="[
             source_has_error ? 'border-red-700 dark:border-red-400' : 'border-theme-gray-2 dark:border-dark-theme-gray-2 shade-border-when-hover',
-            'h-20 border rounded-lg  transition-colors text-center text-theme-black dark:text-dark-theme-white'
+            'h-20 border rounded-lg  transition-colors text-center text-theme-black dark:text-dark-theme-white-2'
         ]"
     >
         <!--add @timeupdate at mounted(), not here, as beforeUnmount() cannot remove it, and it'll still fire after unmount-->
@@ -136,12 +136,12 @@
 
                         <div
                             ref="playback_slider_progress"
-                            class="h-1 absolute bg-theme-lead left-0 right-0 bottom-2 m-auto scale-x-0 origin-left"
+                            class="h-1 absolute bg-theme-lead dark:bg-dark-theme-lead left-0 right-0 bottom-2 m-auto scale-x-0 origin-left"
                         ></div>
                         <!--cannot apply scale to knob for some reason-->
                         <div
                             ref="playback_slider_knob"
-                            class="w-4 h-4 absolute bottom-0.5 m-auto rounded-full   bg-theme-black dark:bg-dark-theme-white"
+                            class="w-4 h-4 absolute bottom-0.5 m-auto rounded-full   bg-theme-black dark:bg-dark-theme-white-2"
                         >
                         </div>
 
@@ -173,7 +173,7 @@
                     <!--volume content-->
                     <div
                         :class="[
-                            is_playback_volume_open ? 'h-32 z-10 bg-theme-light dark:bg-theme-dark border-theme-black dark:border-dark-theme-white' : 'h-full border-transparent',
+                            is_playback_volume_open ? 'h-32 z-10 bg-theme-light dark:bg-theme-dark border-theme-black dark:border-dark-theme-white-2' : 'h-full border-transparent',
                             'absolute w-full bottom-0 m-auto border-2 rounded-lg'
                         ]"
                         @pointerenter.stop="handlePlaybackVolumeHoverIn($event)"

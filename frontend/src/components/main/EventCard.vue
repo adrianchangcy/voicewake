@@ -1,7 +1,7 @@
 <template>
     <div
         :class="[
-            propHasBorder === true ? 'px-2 sm:px-4 pt-8 pb-12      border border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-lg shade-border-when-hover transition-colors' : '',
+            propHasBorder === true ? 'px-2 sm:px-4 pt-8 pb-12      border border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-lg transition-colors' : '',
             'flex flex-col'
         ]"
     >
@@ -20,6 +20,7 @@
             >
                 <VTitle
                     prop-font-size="s"
+                    class="dark:text-dark-theme-white-1"
                 >
                     <template #title>
                         <span

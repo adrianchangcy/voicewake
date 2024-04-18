@@ -44,44 +44,46 @@
             </div>
 
             <!--has tones-->
-            <!--better to not have gap, otherwise scrolling the gap scrolls main body-->
+            <!--better to not have y-axis gap, otherwise scrolling the gap scrolls main body-->
+            <!--use is-above-button and is-inner-button to know where to traverse for <button>, which has :data-index-->
             <div
                 v-else-if="hasAudioClipTones === true"
-                class="items-center place-items-center grid grid-flow-row grid-cols-4 relative"
+                @click="handleAudioClipToneSelected($event)"
+                class="is-audio-clip-tone-button-container   items-center place-items-center grid grid-flow-row grid-cols-4 relative"
             >
                 <!--this is for deselect-->
                 <div
                     v-if="propHasDeselectOption === true"
-                    class="col-span-1"                    
+                    class="is-outer-audio-clip-tone-button  col-span-1"
                 >
-                    <!--text-black has great contrast for bg-theme-gray-4, whereas text-theme-black has bad contrast-->
+                    <!--must be "" else attribute wouldn't exist-->
                     <button
-                        @click="handleAudioClipToneSelected(null)"
+                        data-audio-clip-tone-index=""
                         type="button"
                         :class="[
-                            isSelected(null) === true ? 'bg-theme-gray-4 dark:bg-dark-theme-gray-4 active:bg-theme-gray-5 dark:active:bg-dark-theme-gray-5' : 'active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3',
-                            'w-10 h-10 pb-0.5 flex items-center border border-transparent shade-border-when-hover rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline'
+                            isSelected(null) === true ? 'bg-theme-black text-theme-light dark:bg-dark-theme-white-2 dark:text-dark-theme-black' : 'action-hover active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3',
+                            'is-audio-clip-tone-button      w-10 h-10 pb-0.5 flex items-center border-2 border-transparent rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline'
                         ]"
                     >
-                        <span class="w-fit text-sm font-medium mx-auto">Any</span>
+                        <span class="is-inner-audio-clip-tone-button   w-fit text-sm font-medium mx-auto">Any</span>
                     </button>
                 </div>
 
                 <!--tones-->
                 <div
-                    class="col-span-1"
                     v-for="(audio_clip_tone, index) in audio_clip_tones" :key="audio_clip_tone.id"
+                    class="is-outer-audio-clip-tone-button     col-span-1"
                 >
                     <button
-                        @click="handleAudioClipToneSelected(index)"
+                        :data-audio-clip-tone-index="index"
                         type="button"
                         :class="[
-                            isSelected(index) === true ? 'bg-theme-gray-4 dark:bg-dark-theme-gray-4 active:bg-theme-gray-5 dark:active:bg-dark-theme-gray-5' : 'active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3',
-                            'w-10 h-10 pb-0.5 border border-transparent shade-border-when-hover rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline'
+                            isSelected(index) === true ? 'bg-theme-black text-theme-light dark:bg-dark-theme-white-2 dark:text-dark-theme-black' : 'action-hover active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3',
+                            'is-audio-clip-tone-button      w-10 h-10 pb-0.5 border-2 border-transparent rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline'
                         ]"
                     >
-                        <span class="has-emoji" aria-hidden="true">{{audio_clip_tone.audio_clip_tone_symbol}}</span>
-                        <span class="sr-only">{{audio_clip_tone.audio_clip_tone_name}}</span>
+                        <span class="is-inner-audio-clip-tone-button    has-emoji" aria-hidden="true">{{audio_clip_tone.audio_clip_tone_symbol}}</span>
+                        <span class="is-inner-audio-clip-tone-button    sr-only">{{audio_clip_tone.audio_clip_tone_name}}</span>
                     </button>
                 </div>
             </div>
@@ -173,30 +175,106 @@
 
                 return this.selected_audio_clip_tone_index === audio_clip_tone_index;
             },
-            async handleAudioClipToneSelected(audio_clip_tone_index:number|null) : Promise<void> {
+            emitAudioClipToneSelected(passed_attribute:string|null) : void {
 
-                if(audio_clip_tone_index === this.selected_audio_clip_tone_index){
+                let target_attribute = null;
+
+                if(passed_attribute === "" || passed_attribute === null){
+
+                    target_attribute = null;
+
+                }else{
+
+                    target_attribute = passed_attribute;
+                }
+
+                //do nothing if no change
+
+                if(
+                    (target_attribute === null && this.selected_audio_clip_tone_index === null) ||
+                    (target_attribute !== null && this.selected_audio_clip_tone_index === Number(target_attribute))
+                ){
 
                     return;
                 }
 
-                //update selected index
-                this.selected_audio_clip_tone_index = audio_clip_tone_index;
+                //has change
 
-                //emit
+                if(target_attribute === null){
+
+                    this.selected_audio_clip_tone_index = null;
+
+                }else{
+
+                    this.selected_audio_clip_tone_index = Number(target_attribute);
+                }
+
                 this.$emit(
                     'audioClipToneSelected',
-                    audio_clip_tone_index === null ? null : this.audio_clip_tones![audio_clip_tone_index]
+                    target_attribute === null ? null : this.audio_clip_tones![Number(target_attribute)]
                 );
+            },
+            handleAudioClipToneSelected(event:MouseEvent) : void {
+
+                const current_element = event.target as HTMLElement;
+
+                if(current_element.hasAttribute('data-audio-clip-tone-index') === true){
+
+                    //element is target button
+
+                    const target_attribute = current_element.getAttribute('data-audio-clip-tone-index');
+
+                    this.emitAudioClipToneSelected(target_attribute);
+
+                }else if(current_element.classList.contains('is-audio-clip-tone-button-container') === true){
+
+                    //since this is just the full container that holds the actual smaller button, we ignore
+
+                    return;
+
+                }else if(current_element.classList.contains('is-outer-audio-clip-tone-button') === true){
+
+                    //element is outside button, i.e. ancestor
+                    //use querySelector to get nearest child that has our index, i.e. our button
+
+                    const target_element = current_element.querySelector('.is-audio-clip-tone-button');
+
+                    if(target_element === null){
+
+                        throw new Error('Could not find target button from the "outside".');
+                    }
+
+                    const target_attribute = target_element.getAttribute('data-audio-clip-tone-index');
+
+                    this.emitAudioClipToneSelected(target_attribute);
+
+                }else if(current_element.classList.contains('is-inner-audio-clip-tone-button') === true){
+
+                    //element is inside button, i.e. child
+                    //use .closest() to get nearest ancestor
+
+                    const target_element = current_element.closest('.is-audio-clip-tone-button');
+
+                    if(target_element === null){
+
+                        throw new Error('Could not find target button from the "inside".');
+                    }
+
+                    const target_attribute = target_element.getAttribute('data-audio-clip-tone-index');
+
+                    this.emitAudioClipToneSelected(target_attribute);
+
+                }else{
+
+                    throw new Error('Element is not properly integrated with the classes.');
+                }
             },
         },
         beforeMount(){
 
             this.is_open = this.propIsOpen;
 
-            (async ()=>{
-
-                await this.getAudioClipTonesData();
+            this.getAudioClipTonesData().then(()=>{
 
                 //find index if we have preselected audio_clip_tone
                 if(this.propInitialAudioClipTone !== null){
@@ -211,7 +289,7 @@
                         this.selected_audio_clip_tone_index = audio_clip_tone_index;
                     }
                 }
-            })();
+            });
         },
     });
 </script>

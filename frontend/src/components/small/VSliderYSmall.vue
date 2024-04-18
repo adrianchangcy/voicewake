@@ -13,15 +13,15 @@
             </div>
             <!--this is just to patch up grey spot-->
             <div
-                class="w-2 h-3 absolute bg-theme-lead left-0 right-0 mx-auto bottom-0"
+                class="w-2 h-3 absolute bg-theme-lead dark:bg-dark-theme-lead left-0 right-0 mx-auto bottom-0"
             ></div>
             <div
                 ref="slider_progress"
-                class="w-2 absolute bg-theme-lead left-0 right-0 mx-auto top-2 bottom-2 origin-bottom"
+                class="w-2 absolute bg-theme-lead dark:bg-dark-theme-lead left-0 right-0 mx-auto top-2 bottom-2 origin-bottom"
             >
                 <div
                     ref="slider_knob"
-                    class="w-4 h-4 absolute -top-2 -left-1  bg-theme-black dark:bg-dark-theme-white"
+                    class="w-4 h-4 absolute -top-2 -left-1  bg-theme-black dark:bg-dark-theme-white-2"
                 ></div>
             </div>
         </div>

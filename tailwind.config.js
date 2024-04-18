@@ -24,42 +24,34 @@ module.exports = {
             //open/close, e.g. menu, is duration-200
             //long animation is duration-1000
 
-            //remember to change the values in animeJS if you make changes here
+            //remember to change the values in helper_functions.drawCanvasRipples() if you make changes here
             colors: {
-
-                
-                'theme-lead': '#facc15', //yellow-400
-
-                //for small but high attention items, e.g. focus, highlight, etc.
-
-                'theme-green-1': '#90a955',
-                'theme-green-2': '#4f772d',
-                'theme-green-3': '#31572c',
-
-                'theme-danger': '#FA1414',
-                'theme-soft-danger': '#F5DCDC',
-
                 'theme-light': '#FEFAE6',
                 'theme-light-trim': '#FDFDFD',
+                'theme-lead': '#facc15', //yellow-400
                 'theme-black': '#404040',   //scaled via shades generator from theme-light
                 //for disabled feature, advised to use opacity on entire element until unreadable, not gray background
                 'theme-gray-1': '#e6e8da',
                 'theme-gray-2': '#e1e3d5',
-                'theme-gray-3': '#dee0d3',
-                'theme-gray-4': '#94928b',
-                'theme-gray-5': '#7a7973',
-                'theme-outline': '#7a7973',
+                'theme-gray-form-field': '#caccc0',    //for normal borders, hover to
+                'theme-gray-3': '#c5c7bb',
+                'theme-gray-4': '#807e78',
+                'theme-gray-5': '#6b6a65',
+                'theme-outline': '#6b6a65',
 
-                'theme-dark': '#010a14',
+                'theme-dark': '#121212',
                 'theme-dark-trim': '#2a2b2e',
-                'dark-theme-black': '#0d131a',
-                'dark-theme-white': '#d9d9d9',
-                'dark-theme-gray-1': '#212224',
-                'dark-theme-gray-2': '#2f3033',
-                'dark-theme-gray-3': '#3B3C40',
-                'dark-theme-gray-4': '#4B4C52',
-                'dark-theme-gray-5': '#61636B',
-                'dark-theme-outline': '#61636B',
+                'dark-theme-lead': '#cca610',
+                'dark-theme-black': '#1a1a1a',
+                'dark-theme-white-1': '#e0e0d7',
+                'dark-theme-white-2': '#a5a59f',
+                'dark-theme-gray-1': '#242424',
+                'dark-theme-gray-2': '#3d3d3d',
+                'dark-theme-gray-form-field': '#424242',
+                'dark-theme-gray-3': '#474747',
+                'dark-theme-gray-4': '#7a7a7a',
+                'dark-theme-gray-5': '#999999',
+                'dark-theme-outline': '#999999',
 
                 'theme-cream': '#F8F9F0',
                 'theme-red': '#A4243B',
@@ -74,6 +66,14 @@ module.exports = {
             backgroundImage: {
                 'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
             },
+            boxShadow: {
+                //Tailwind has two shadows, the second being for more shadow
+                //the 4th value is based on Tailwind's second shadow's 3rd value, basically second shadow's thickness
+                //smaller than Tailwind's, due to width space constraint at VUserLogInSignUp
+                'surround-sm': '0 0 2px 0 rgb(0 0 0 / 0.05)',
+                'surround-md': '0 0 4px 0 rgb(0 0 0 / 0.1)',
+                'surround-lg': '0 0 8px 0 rgb(0 0 0 / 0.1)',
+            }
         },
     },
     plugins: [],

@@ -12,7 +12,7 @@
             <!--progress-->
             <div
                 ref="progress_bar"
-                class="w-full h-full absolute inset-0 origin-left progress-bar bg-theme-black after:bg-theme-lead"
+                class="w-full h-full absolute inset-0 origin-left progress-bar bg-theme-black after:bg-theme-lead dark:after:bg-dark-theme-lead"
                 style="opacity: 0; transform: scaleX(0);"
             >
             </div>

@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <div class="">
 
         <!--put ref here to target closest vue virtual scroller-->
         <div
@@ -31,14 +31,14 @@
                             <FontAwesomeIcon
                                 icon="fas fa-thumbs-up"
                                 :class="[
-                                    is_liked === true ? 'text-theme-lead' : 'text-theme-lead/0',
+                                    is_liked === true ? 'text-theme-lead dark:text-dark-theme-lead' : 'text-theme-lead/0',
                                     'mx-auto transition-colors'
                                 ]"
                             />
                             <FontAwesomeIcon
                                 icon="far fa-thumbs-up"
                                 :class="[
-                                    is_liked === true ? 'text-theme-lead' : '',
+                                    is_liked === true ? 'text-theme-lead dark:text-dark-theme-lead' : '',
                                     'absolute mx-auto transition-colors'
                                 ]"
                             />
@@ -72,14 +72,14 @@
                             <FontAwesomeIcon
                                 icon="fas fa-thumbs-down"
                                 :class="[
-                                    is_liked === false ? 'text-theme-lead' : 'text-theme-lead/0',
+                                    is_liked === false ? 'text-theme-lead dark:text-dark-theme-lead' : 'text-theme-lead/0',
                                     'mx-auto transition-colors'
                                 ]"
                             />
                             <FontAwesomeIcon
                                 icon="far fa-thumbs-down"
                                 :class="[
-                                    is_liked === false ? 'text-theme-lead' : '',
+                                    is_liked === false ? 'text-theme-lead dark:text-dark-theme-lead' : '',
                                     'absolute mx-auto transition-colors'
                                 ]"
                             />
@@ -120,7 +120,7 @@
                 ref="open_close_extra_options_menu_button"
                 @click="toggleExtraOptionsMenu()"
                 :class="[
-                    is_extra_options_menu_open ? 'border-2 border-theme-black dark:border-dark-theme-white' : 'border border-theme-gray-2 dark:border-dark-theme-gray-2 shade-border-when-hover',
+                    is_extra_options_menu_open ? 'border-2 border-theme-black dark:border-dark-theme-white-2' : 'border border-theme-gray-2 dark:border-dark-theme-gray-2 shade-border-when-hover',
                     'h-full col-span-1 relative flex items-center   active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3     transition-colors       bg-transparent       rounded-full     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline'
                 ]"
                 type="button"
@@ -141,7 +141,7 @@
                     bool_status_variable_or_callback: forceCloseExtraOptionsMenu,
                     refs_to_exclude: ['open_close_extra_options_menu_button']
                 }"
-                class="absolute top-3 w-28 h-fit right-0 m-auto p-2 flex flex-col rounded-lg border-2 border-theme-black dark:border-dark-theme-white bg-theme-light dark:bg-theme-dark"
+                class="absolute top-3 w-28 h-fit right-0 m-auto p-2 flex flex-col rounded-lg border-2 border-theme-black dark:border-dark-theme-white-2 bg-theme-light dark:bg-theme-dark"
             >
                 <VActionText
                     @click="submitReport()"
@@ -172,7 +172,7 @@
                 <div class="col-start-6 col-span-1 relative">
                     <div
                         v-show="is_extra_options_menu_open"
-                        class="w-2 h-2 absolute top-2 left-0 right-0 mx-auto bg-theme-light dark:bg-theme-dark border-l-2 border-t-2 border-theme-black dark:border-dark-theme-white rotate-45"
+                        class="w-2 h-2 absolute top-2 left-0 right-0 mx-auto bg-theme-light dark:bg-theme-dark border-l-2 border-t-2 border-theme-black dark:border-dark-theme-white-2 rotate-45"
                     ></div>
                 </div>
             </div>
