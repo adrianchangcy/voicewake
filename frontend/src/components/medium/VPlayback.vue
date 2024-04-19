@@ -1657,7 +1657,6 @@
             window.removeEventListener('pointerdown', this.determineInstanceHasFocus);
             window.removeEventListener('pointermove', this.doPlaybackDrag);
             window.removeEventListener('pointerup', this.stopPlaybackDrag);
-            window.removeEventListener('resize', this.doRedraw);
             this.propIsRecording === false ? window.removeEventListener('keydown', this.handleKeyboardEvent) : null;
             document.removeEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
             audio_element.removeEventListener('timeupdate', this.updateCurrentPlaybackTime);
