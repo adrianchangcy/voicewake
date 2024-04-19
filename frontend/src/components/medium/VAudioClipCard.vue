@@ -71,10 +71,14 @@
     import AudioClipsTypes from '@/types/AudioClips.interface';
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
     import { prettyDuration, drawCanvasRipples } from '@/helper_functions';
+    import { useRedrawCanvasesStore } from '@/stores/RedrawCanvasesStore';
 
     export default defineComponent({
         data(){
             return {
+                redraw_canvases_store: useRedrawCanvasesStore(),
+                redraw_canvases_store_index: null as number|null,
+
                 main_anime: null as InstanceType<typeof anime> | null,
             };
         },
@@ -163,7 +167,7 @@
 
                 this.$emit('selectedAudioClip', this.propAudioClip);
             },
-            async drawRipples() : Promise<void> {
+            drawRipples() : void {
 
                 this.$nextTick(()=>{
 
@@ -175,7 +179,7 @@
                     );
                 });
             },
-            async redrawCanvasRipplesOnResize() : Promise<void> {
+            redrawCanvasRipples() : void {
 
                 this.drawRipples();
 
@@ -195,7 +199,9 @@
 
             this.drawRipples();
 
-            window.addEventListener('resize', this.redrawCanvasRipplesOnResize);
+            this.redraw_canvases_store_index = this.redraw_canvases_store.addAudioVolumePeakCanvas(
+                this.redrawCanvasRipples
+            );
         },
         beforeUnmount(){
 
@@ -204,7 +210,10 @@
                 this.emitNewVPlaybackTeleportId(false);
             }
 
-            window.removeEventListener('resize', this.redrawCanvasRipplesOnResize);
+            if(this.redraw_canvases_store_index !== null){
+
+                this.redraw_canvases_store.deleteAudioVolumePeakCanvas(this.redraw_canvases_store_index);
+            }
         },
     });
 </script>

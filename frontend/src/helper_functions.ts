@@ -359,12 +359,6 @@ export function isPageAccessedByBackForward() : boolean {
 }
 
 
-export function isDarkMode() : boolean {
-
-    return document.documentElement.classList.contains('dark');
-}
-
-
 export async function drawCanvasRipples(
     canvas_container_rect:DOMRect,
     canvas_element:HTMLCanvasElement,
@@ -383,6 +377,10 @@ export async function drawCanvasRipples(
 
         return;
     }
+
+    //get font colour for canvas later
+    //when dark mode, colour will change accordingly
+    const peak_colour_rgb = getComputedStyle(document.documentElement.getElementsByTagName('body')[0])['color'];
 
     //use DPI to maintain canvas resolution
     //depending on device, or whether user is zoomed in, DPI can be different
@@ -413,11 +411,8 @@ export async function drawCanvasRipples(
     canvas_element.width = new_canvas_width;
     canvas_element.style.width = (new_canvas_width / dpi).toString() + 'px';
 
-    //use text-theme-black or text-dark-theme-white-2
-    const peak_colour = isDarkMode() ? '#b4b1a6' : '#404040';
-
     //canvas must have valid and latest width and height, else this won't be applied
-    canvas_context.fillStyle = peak_colour;
+    canvas_context.fillStyle = peak_colour_rgb;
 
     //use this function to ensure that peaks stay within our range
     function getRipple(

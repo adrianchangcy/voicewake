@@ -280,6 +280,7 @@
     import AudioClipsTypes from '@/types/AudioClips.interface';
     // import VSliderTypes from '@/types/values/VSlider';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
+    import { useRedrawCanvasesStore } from '@/stores/RedrawCanvasesStore';
     import { notify } from '@/wrappers/notify_wrapper';
 
     export default defineComponent({
@@ -287,8 +288,10 @@
             return {
                 source_has_error: false,
 
-                instance_uuid: "",    //uuid, to identify between multiple VPlayback instances, and to manage focus
                 vplayback_store: useVPlaybackStore(),
+                redraw_canvases_store: useRedrawCanvasesStore(),
+                instance_uuid: "",    //uuid, to identify between multiple VPlayback instances, and to manage focus
+                redraw_canvases_store_index: null as number|null,
 
                 pretty_current_playback_time: '00:00',
                 pretty_playback_duration: '00:00',
@@ -853,7 +856,7 @@
                         break;
                 }
             },
-            async handleWindowResize() : Promise<void> {
+            async doRedraw() : Promise<void> {
 
                 //during hot reload (change html/css --> save --> DOM changes without refresh), JS parts get slightly buggy
                 //e.g. all playback skips just lead to seek(0)
@@ -1636,11 +1639,15 @@
             window.addEventListener('pointerdown', this.determineInstanceHasFocus);
             window.addEventListener('pointermove', this.doPlaybackDrag);
             window.addEventListener('pointerup', this.stopPlaybackDrag);
-            window.addEventListener('resize', this.handleWindowResize);
             this.propIsRecording === false ? window.addEventListener('keydown', this.handleKeyboardEvent) : null;
             document.addEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
             audio_element.addEventListener('timeupdate', this.updateCurrentPlaybackTime);
             audio_element.addEventListener('error', this.setPlaybackSourceHasError);
+
+            //resize and dark mode change
+            this.redraw_canvases_store_index = this.redraw_canvases_store.addAudioVolumePeakCanvas(
+                this.doRedraw
+            );
         },
         beforeUnmount(){
 
@@ -1650,11 +1657,17 @@
             window.removeEventListener('pointerdown', this.determineInstanceHasFocus);
             window.removeEventListener('pointermove', this.doPlaybackDrag);
             window.removeEventListener('pointerup', this.stopPlaybackDrag);
-            window.removeEventListener('resize', this.handleWindowResize);
+            window.removeEventListener('resize', this.doRedraw);
             this.propIsRecording === false ? window.removeEventListener('keydown', this.handleKeyboardEvent) : null;
             document.removeEventListener('visibilitychange', this.syncSliderAnimeAfterSuspend);
             audio_element.removeEventListener('timeupdate', this.updateCurrentPlaybackTime);
             audio_element.removeEventListener('error', this.setPlaybackSourceHasError);
+
+            if(this.redraw_canvases_store_index !== null){
+
+                this.redraw_canvases_store.deleteAudioVolumePeakCanvas(this.redraw_canvases_store_index);
+            }
+
 
             //record last stopped
             if(this.propAudioClip !== null){

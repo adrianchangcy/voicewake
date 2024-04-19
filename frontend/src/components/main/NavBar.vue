@@ -386,8 +386,9 @@
                                     </span>
                                 </div>
                                 <VSwitch
-                                    prop-screen-reader-text="Currently in light mode. Click to switch."
-                                    class=""
+                                    :prop-screen-reader-text="getDarkModeScreenReaderText"
+                                    :prop-default-toggle="isDarkMode"
+                                    @is-toggled="handleDarkMode($event)"
                                 />
                             </div>
 
@@ -485,6 +486,7 @@
     import { useEventReplyChoicesStore } from '@/stores/EventReplyChoicesStore';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
     import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
+    import { useRedrawCanvasesStore } from '@/stores/RedrawCanvasesStore';
     const axios = require('axios');
 
     export default defineComponent({
@@ -493,6 +495,7 @@
             return {
                 page_refresh_trigger_store: usePageRefreshTriggerStore(),
                 pop_up_manager_store: usePopUpManagerStore(),
+                redraw_canvases_store: useRedrawCanvasesStore(),
 
                 is_log_out_loading: false,
                 is_currently_log_in_sign_up_static_page: false,
@@ -512,6 +515,25 @@
                     this.pop_up_manager_store.isUserLogInOpen === false &&
                     this.pop_up_manager_store.isUserSignUpOpen === false
                 );
+            },
+            getDarkModeScreenReaderText() : string {
+
+                if(localStorage.getItem('dark_mode') === null){
+
+                    return '';
+
+                }else if(Boolean(localStorage.getItem('dark_mode')) === true){
+
+                    return 'Currently in dark mode. Click to change to light mode.';
+
+                }else{
+
+                    return 'Currently in light mode. Click to change to dark mode.';
+                }
+            },
+            isDarkMode() : boolean {
+
+                return localStorage.getItem('dark_mode') !== null && JSON.parse(localStorage.getItem('dark_mode')!) === true;
             },
         },
         watch: {
@@ -586,6 +608,30 @@
                 }else{
 
                     this.is_currently_log_in_sign_up_static_page = false;
+                }
+            },
+            handleDarkMode(is_dark_mode:boolean) : void {
+
+                localStorage.setItem('dark_mode', JSON.stringify(is_dark_mode));
+
+                //add/remove "dark"
+
+                const target_element = document.documentElement;
+
+                //dark
+                if(is_dark_mode === true && target_element.classList.contains('dark') === false){
+
+                    target_element.classList.add('dark');
+                    this.redraw_canvases_store.redrawAllAudioVolumePeakCanvases();
+                    return;
+                }
+
+                //not dark
+                if(is_dark_mode === false && target_element.classList.contains('dark') === true){
+
+                    target_element.classList.remove('dark');
+                    this.redraw_canvases_store.redrawAllAudioVolumePeakCanvases();
+                    return;
                 }
             },
         },

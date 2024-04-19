@@ -2130,6 +2130,10 @@ video {
   key: string;
 }
 
+.\[index\:number\] {
+  index: number;
+}
+
 /*enable this to troubleshoot css errors*/
 
 /* * {

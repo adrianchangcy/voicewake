@@ -93,6 +93,7 @@
     import { getDataFromTemplateJSONScript } from '@/helper_functions';
     import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
+    import { useRedrawCanvasesStore } from '@/stores/RedrawCanvasesStore';
     import { notify } from '@/wrappers/notify_wrapper';
     import { axiosCSRFSetup } from '@/helper_functions';
 
@@ -102,6 +103,7 @@
             return {
                 page_refresh_trigger_store: usePageRefreshTriggerStore(),
                 pop_up_manager_store: usePopUpManagerStore(),
+                redraw_canvases_store: useRedrawCanvasesStore(),
 
                 username: "",
             };
@@ -177,11 +179,13 @@
 
             //allow use of ESC key to close popups
             window.addEventListener('keydown', this.pop_up_manager_store.forceCloseAllPopUps);
+            window.addEventListener('resize', this.redraw_canvases_store.redrawAllAudioVolumePeakCanvases);
 
         },
         beforeUnmount(){
 
             window.removeEventListener('keydown', this.pop_up_manager_store.forceCloseAllPopUps);
+            window.removeEventListener('resize', this.redraw_canvases_store.redrawAllAudioVolumePeakCanvases);
         }
     });
 </script>
