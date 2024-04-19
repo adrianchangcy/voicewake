@@ -23,7 +23,7 @@
         >
 
             <!--filter-->
-            <div class="flex flex-col gap-2">
+            <div class="flex flex-col gap-2 dark:text-dark-theme-white-1">
 
                 <!--likes/dislikes-->
                 <div

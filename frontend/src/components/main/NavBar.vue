@@ -137,7 +137,7 @@
                         type="button"
                         prop-font-size="m"
                         :prop-is-icon-only="true"
-                        class="w-full h-full pb-1"
+                        class="w-full h-full pb-1 dark:text-dark-theme-white-1"
                     >
                         <span class="block mx-auto">
                             <FontAwesomeIcon icon="fas fa-circle-user" class="sm:pr-2"/>
@@ -207,7 +207,7 @@
                         class="absolute w-full h-[calc(100vh-4.5rem)] overflow-auto px-4 pb-20 bg-theme-light dark:bg-theme-dark"
                     >
                         <!--profile area-->
-                        <div class="py-2">
+                        <div class="py-2 dark:text-dark-theme-white-1">
 
                             <!--logged in, can click to view profile-->
                             <VActionText
@@ -245,7 +245,7 @@
                         <!--log in / sign up-->
                         <div
                             v-if="pop_up_manager_store.isLoggedIn === false"
-                            class="h-fit flex flex-col gap-1"
+                            class="h-fit flex flex-col gap-1 dark:text-dark-theme-white-1"
                         >
 
                             <!--log in-->
