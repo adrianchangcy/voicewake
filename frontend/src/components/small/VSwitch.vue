@@ -41,15 +41,12 @@
                 default: false,
             },
         },
-        watch: {
-            is_toggled(new_value){
-
-                this.$emit('isToggled', new_value);
-            }
-        },
+        emits: ['isToggled'],
         methods: {
             changeToggle(){
+
                 this.is_toggled = !this.is_toggled;
+                this.$emit('isToggled', this.is_toggled);
             },
         },
         beforeMount(){

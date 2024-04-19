@@ -41,12 +41,16 @@
 
 <script lang="ts">
     //we don't keep VRecorderMenu in this component due to the inflexibility of button size =/= menu size
+    import { useRedrawCanvasesStore } from '@/stores/RedrawCanvasesStore';
     import { defineComponent, PropType } from 'vue';
     import { drawCanvasRipples } from '@/helper_functions';
 
     export default defineComponent({
         data(){
             return{
+                redraw_canvases_store: useRedrawCanvasesStore(),
+                redraw_canvases_store_index: null as number|null,
+
                 is_open: false,
             };
         },
@@ -110,17 +114,7 @@
 
                 this.$emit('isOpen', this.is_open);
             },
-            async redrawCanvasRipplesOnResize() : Promise<void> {
-
-                await this.drawRipples();
-
-                //redraw again after 200ms
-                //resize can sometimes fire before final dimension is known
-                window.setTimeout(async ()=>{
-                    await this.drawRipples();
-                }, 200);
-            },
-            async drawRipples() : Promise<void> {
+            drawRipples() : void {
 
                 //can be 0
                 if(this.propAudioVolumePeaks.length === this.propBucketQuantity){
@@ -136,14 +130,29 @@
                     });
                 }
             },
+            redrawCanvasRipples() : void {
+
+                this.drawRipples();
+
+                //redraw again after 200ms
+                //resize can sometimes fire before final dimension is known
+                window.setTimeout(()=>{
+                    this.drawRipples();
+                }, 200);
+            },
         },
         mounted(){
 
-            window.addEventListener('resize', this.redrawCanvasRipplesOnResize);
+            this.redraw_canvases_store_index = this.redraw_canvases_store.addAudioVolumePeakCanvas(
+                this.redrawCanvasRipples
+            );
         },
         beforeUnmount(){
 
-            window.removeEventListener('resize', this.redrawCanvasRipplesOnResize);
+            if(this.redraw_canvases_store_index !== null){
+
+                this.redraw_canvases_store.deleteAudioVolumePeakCanvas(this.redraw_canvases_store_index);
+            }
         },
     });
 </script>
