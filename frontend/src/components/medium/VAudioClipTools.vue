@@ -86,7 +86,7 @@
                         </div>
                         <!--dislike count-->
                         <div
-                            v-show="prettyDislikeCount !== ''"
+                            v-show="canShowDislikeCount"
                             class="w-fit h-full pl-1 lg:pl-2 flex items-center text-sm lg:text-base font-medium"
                         >
                             <span class="w-fit h-fit mx-auto">

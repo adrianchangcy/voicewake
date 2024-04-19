@@ -358,6 +358,10 @@ input[data-autocompleted]{
     .action-special-hover:hover{
         background-color: #FFF2C0;
     }
+    .dark .action-special-hover:hover{
+        background-color: #ffe680;
+    }
+
     .action-danger-hover:hover{
         background-color: #b91c1c;  /*bg-red-700*/
     }
