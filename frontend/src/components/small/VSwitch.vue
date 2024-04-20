@@ -7,13 +7,13 @@
         >
             <div
                 :class="is_toggled ? 'border-theme-lead dark:border-dark-theme-lead' : 'border-transparent'"
-                class="inline-flex w-14 h-7 shrink-0 rounded-full transition border-2 bg-theme-gray-3 dark:bg-dark-theme-gray-3"
+                class="inline-flex items-center w-12 h-6 shrink-0 rounded-full transition border-2 bg-theme-gray-3 dark:bg-dark-theme-gray-3"
             >
                 <!--knob size is after removing border-->
                 <span
                     aria-hidden="true"
-                    :class="is_toggled ? 'translate-x-7' : 'translate-x-0'"
-                    class="inline-block w-6 h-6 transition rounded-full bg-theme-black dark:bg-dark-theme-white-2"
+                    :class="is_toggled ? 'translate-x-6' : 'translate-x-0'"
+                    class="inline-block w-5 h-5 transition rounded-full bg-theme-black dark:bg-dark-theme-white-2"
                 ></span>
             </div>
             <span class="sr-only">{{ propScreenReaderText }} {{ is_toggled }}</span>
