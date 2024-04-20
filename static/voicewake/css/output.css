@@ -1918,11 +1918,6 @@ video {
   font-style: italic;
 }
 
-.text-dark-theme-white-2 {
-  --tw-text-opacity: 1;
-  color: rgb(173 171 160 / var(--tw-text-opacity));
-}
-
 .text-green-700 {
   --tw-text-opacity: 1;
   color: rgb(21 128 61 / var(--tw-text-opacity));
@@ -2126,12 +2121,12 @@ video {
   event_id: number;
 }
 
-.\[key\:string\] {
-  key: string;
-}
-
 .\[index\:number\] {
   index: number;
+}
+
+.\[key\:string\] {
+  key: string;
 }
 
 /*enable this to troubleshoot css errors*/

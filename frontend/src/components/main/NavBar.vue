@@ -218,7 +218,7 @@
                                 class="w-full h-fit py-10"
                             >
                                 <div class="w-full flex flex-col">
-                                    <FontAwesomeIcon icon="fas fa-circle-user" class="text-2xl mx-auto"/>
+                                    <FontAwesomeIcon fixed-width icon="fas fa-circle-user" class="text-2xl mx-auto"/>
                                     <span class="max-w-full h-fit mx-auto text-xl font-medium break-words">
                                         <span>{{ propUsername }}</span>
                                     </span>
@@ -230,7 +230,7 @@
                                 v-else
                                 class="w-full flex flex-col py-10"
                             >
-                                <FontAwesomeIcon icon="fas fa-circle-user" class="text-2xl mx-auto"/>
+                                <FontAwesomeIcon fixed-width icon="fas fa-circle-user" class="text-2xl mx-auto"/>
                                 <span class="max-w-full h-fit mx-auto text-xl font-light break-words">
                                     <span>Not logged in</span>
                                 </span>
@@ -258,7 +258,7 @@
                             >
                                 <div class="h-full flex flex-row">
                                     <div class="px-4 flex items-center">
-                                        <FontAwesomeIcon icon="fas fa-circle-user" class="pt-0.5 mx-auto"/>
+                                        <FontAwesomeIcon fixed-width icon="fas fa-circle-user" class="pt-0.5 mx-auto"/>
                                     </div>
                                     <div class="flex items-center">
                                         <span class="text-left break-all">
@@ -278,7 +278,7 @@
                             >
                                 <div class="h-full flex flex-row">
                                     <div class="px-4 flex items-center">
-                                        <FontAwesomeIcon icon="fas fa-right-to-bracket" class="pt-0.5 mx-auto"/>
+                                        <FontAwesomeIcon fixed-width icon="fas fa-right-to-bracket" class="pt-0.5 mx-auto"/>
                                     </div>
                                     <div class="flex items-center">
                                         <span class="text-left break-all">
@@ -308,7 +308,7 @@
                                 >
                                     <div class="h-full flex flex-row">
                                         <div class="px-4 flex items-center">
-                                            <FontAwesomeIcon icon="fas fa-microphone-lines" class="pt-0.5 mx-auto text-xl"/>
+                                            <FontAwesomeIcon fixed-width icon="fas fa-microphone-lines" class="pt-0.5 mx-auto"/>
                                         </div>
                                         <div class="flex items-center">
                                             <span class="text-left break-all">
@@ -332,7 +332,7 @@
                                 >
                                     <div class="h-full flex flex-row">
                                         <div class="px-4 flex items-center">
-                                            <FontAwesomeIcon icon="far fa-thumbs-up" class="mx-auto text-lg"/>
+                                            <FontAwesomeIcon fixed-width icon="far fa-thumbs-up" class="mx-auto"/>
                                         </div>
                                         <div class="flex items-center">
                                             <span class="text-left break-all">
@@ -356,7 +356,7 @@
                                 >
                                     <div class="h-full flex flex-row">
                                         <div class="px-4 flex items-center">
-                                            <FontAwesomeIcon icon="fas fa-ban" class="pt-0.5 mx-auto"/>
+                                            <FontAwesomeIcon fixed-width icon="fas fa-ban" class="pt-0.5 mx-auto"/>
                                         </div>
                                         <div class="flex items-center">
                                             <span class="text-left break-all">
@@ -377,7 +377,7 @@
                             <!--light/dark theme-->
                             <div class="h-full flex flex-row">
                                 <div class="px-4 flex items-center">
-                                    <FontAwesomeIcon icon="far fa-moon" class="mx-auto text-lg"/>
+                                    <FontAwesomeIcon fixed-width icon="far fa-moon" class="mx-auto"/>
                                 </div>
                                 <!--follows "s" size action-->
                                 <div class="w-full flex items-center text-base font-medium pb-0.5">
@@ -424,7 +424,7 @@
                                                 class="mx-auto"
                                             />
                                             <span v-else class="mx-auto">
-                                                <FontAwesomeIcon icon="fas fa-door-open"/>
+                                                <FontAwesomeIcon fixed-width icon="fas fa-door-open"/>
                                             </span>
                                         </div>
                                         <div class="flex items-center">
