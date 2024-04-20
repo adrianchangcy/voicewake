@@ -1667,7 +1667,6 @@
                 this.redraw_canvases_store.deleteAudioVolumePeakCanvas(this.redraw_canvases_store_index);
             }
 
-
             //record last stopped
             if(this.propAudioClip !== null){
 
