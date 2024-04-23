@@ -23,16 +23,16 @@
                     <!--nested v-if inside v-for is bad practice-->
                     <!--but Notiwind docs show that this is how it's done for this case-->
                     <div
-                        class="flex w-full mx-auto mb-4 overflow-hidden backdrop-blur bg-white/60 rounded-lg shadow-xl"
+                        class="flex w-full mx-auto mb-4 overflow-hidden bg-white dark:bg-dark-theme-gray-1 rounded-lg shadow-xl dark:shadow-none"
                         v-for="notification in (notifications as FullNotificationsTypes[])"
                         :key="notification.id"
                     >
                         <!--left panel-->
                         <div
                             :class="[
-                                notification.type === 'ok' ? 'bg-green-500' : '',
-                                notification.type === 'error' ? 'bg-red-500' : '',
-                                notification.type === 'generic' ? 'bg-theme-black' : '',
+                                notification.type === 'ok' ? 'bg-green-500 dark:text-dark-theme-gray-1' : '',
+                                notification.type === 'error' ? 'bg-red-500 dark:text-dark-theme-gray-1' : '',
+                                notification.type === 'generic' ? 'bg-theme-black dark:bg-dark-theme-gray-3 dark:text-dark-theme-white-1' : '',
                                 'w-10 shrink-0 flex flex-col items-center justify-center text-white text-xl'
                             ]"
                         >
@@ -62,9 +62,9 @@
                             <div class="w-full h-10 flex items-center">
                                 <span
                                     :class="[
-                                        notification.type === 'ok' ? 'text-green-700' : '',
-                                        notification.type === 'error' ? 'text-red-700' : '',
-                                        notification.type === 'generic' ? 'text-theme-black' : '',
+                                        notification.type === 'ok' ? 'text-green-700 dark:text-green-400' : '',
+                                        notification.type === 'error' ? 'text-red-700 dark:text-red-400' : '',
+                                        notification.type === 'generic' ? 'text-theme-black dark:text-dark-theme-white-1' : '',
                                         'text-base font-semibold pb-0.5 break-words'
                                     ]"
                                 >
@@ -75,7 +75,7 @@
                             <!--text and actions-->
                             <!--translate back into title's space-->
                             <!--translate conveniently lets us skip padding-top on actions-->
-                            <span class="block text-sm -translate-y-2 break-words">
+                            <span class="block text-sm -translate-y-2 break-words text-theme-black dark:text-dark-theme-white-2">
                                 {{ notification.text }}
                             </span>
                             <div
@@ -89,31 +89,34 @@
                                     v-for="action in notification.actions" :key="action.style"
                                     class="row-start-1 col-span-1 h-10"
                                 >
-                                    <a
+
+                                    <VActionBorder
                                         v-if="action.type === 'url'"
                                         :href="action.url"
-                                        :class="[
-                                            action.style === 'primary' ? 'bg-theme-black active:brightness-75 darken-when-hover text-theme-light' : 'border border-theme-gray-2 shade-border-when-hover active:bg-theme-gray-1',
-                                            'w-full h-full flex flex-row items-center rounded-full transition       focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline'
-                                        ]"
+                                        prop-element="button"
+                                        prop-element-size="s"
+                                        prop-font-size="s"
+                                        type="button"
+                                        class="w-full"
                                     >
-                                        <span class="px-4 pb-0.5 mx-auto text-sm font-medium">
+                                        <span class="mx-auto px-2">
                                             {{ action.text }}
                                         </span>
-                                    </a>
-                                    <button
+                                    </VActionBorder>
+
+                                    <VActionBorder
                                         v-else-if="action.type === 'button'"
                                         @click="hasActionCallback(action) ? action.callback!() : null"
+                                        prop-element="button"
+                                        prop-element-size="s"
+                                        prop-font-size="s"
                                         type="button"
-                                        :class="[
-                                            action.style === 'primary' ? 'bg-theme-black active:brightness-75 darken-when-hover text-theme-light' : 'border border-theme-gray-2 shade-border-when-hover active:bg-theme-gray-1',
-                                            'w-full h-full flex flex-row items-center rounded-full transition       focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline'
-                                        ]"
+                                        class="w-full"
                                     >
-                                        <span class="px-4 pb-0.5 mx-auto text-sm font-medium">
+                                        <span class="mx-auto px-2">
                                             {{ action.text }}
                                         </span>
-                                    </button>
+                                    </VActionBorder>
                                 </div>
                             </div>
                         </div>
@@ -143,6 +146,7 @@
 <script setup lang="ts">
     import {Notification, NotificationGroup} from 'notiwind';
     import VActionText from '../small/VActionText.vue';
+    import VActionBorder from '../small/VActionBorder.vue';
 
     //this is for notify({icon: "..."}) when allowed to specify
     //search for "icon: ..." folder-wide and import all of it here in advance

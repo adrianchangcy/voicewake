@@ -392,7 +392,7 @@
 
                 if(this.pop_up_manager_store.isLoggedIn === false){
 
-                    this.pop_up_manager_store.toggleIsLoginRequiredPromptOpen(true);
+                    this.pop_up_manager_store.openPopUp('login_required');
                     return false;
                 }
 

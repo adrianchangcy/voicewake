@@ -1,9 +1,8 @@
 import { defineStore } from 'pinia';
 
-type IsOpenTypes = {
-    [key:string]: boolean
-}
 
+
+type PopUpContextsTypes = ""|"nav_menu"|"login_required"|"log_in"|"sign_up";
 
 //helps us manage pop-ups
 //currently using redundant way of ensuring other pop-ups are closed when one opens
@@ -11,138 +10,73 @@ type IsOpenTypes = {
 export const usePopUpManagerStore = defineStore('pop_up_manager', {
     state: ()=>({
         is_logged_in: false,
-
-        is_open: {
-            is_login_required_prompt_open: false,
-            is_nav_menu_open: true,
-
-            //two identical components, but separate state
-            //allows for <keep-alive> and better UX
-            is_user_log_in_open: false,
-            is_user_sign_up_open: false,
-        } as IsOpenTypes,
-
-        login_required_prompt_text: "",
-
+        current_popup_context: "" as PopUpContextsTypes,
     }),    
     getters: {
-        isLoggedIn: (state)=>{
-
-            return state.is_logged_in;
+        isLoggedIn() : boolean {
+            return this.is_logged_in;
         },
-        hasPopUpOpen: (state)=>{
-
-            return (
-                state.is_open.is_login_required_prompt_open === true ||
-                state.is_open.is_nav_menu_open === true ||
-                state.is_open.is_user_log_in_open === true ||
-                state.is_open.is_user_sign_up_open === true
-            );
+        isNavMenuOpen() : boolean {
+            return this.current_popup_context === 'nav_menu';
         },
-        isUserLogInOpen: (state)=>{
-
-            return state.is_open.is_user_log_in_open;
+        isLoginRequiredOpen() : boolean {
+            return this.current_popup_context === 'login_required';
         },
-        isUserSignUpOpen: (state)=>{
-
-            return state.is_open.is_user_sign_up_open;
+        isLogInOpen() : boolean {
+            return this.current_popup_context === 'log_in';
         },
-        isLoginRequiredPromptOpen: (state)=>{
-
-            return state.is_open.is_login_required_prompt_open;
-        },
-        isNavMenuOpen: (state)=>{
-
-            return state.is_open.is_nav_menu_open;
-        },
-        getLoginRequiredPromptText: (state)=>{
-
-            return state.login_required_prompt_text;
+        isSignUpOpen() : boolean {
+            return this.current_popup_context === 'sign_up';
         },
     },
     actions: {
-        async setIsLoggedIn(new_value:boolean) : Promise<void> {
+        setIsLoggedIn(new_value:boolean) : void {
             
             this.is_logged_in = new_value;
         },
-        async forceCloseAllPopUps(event:KeyboardEvent|null=null) : Promise<void> {
+        openPopUp(new_value:PopUpContextsTypes) : void {
 
-            if(event !== null && event.key !== 'Escape'){
+            if(new_value === this.current_popup_context){
 
-                return;
-            }
-
-            for(const key in this.is_open){
-
-                this.is_open[key] = false;
-            }
-        },
-        forceCloseOtherPopUps(current_key:string) : void {
-
-            for(const key in this.is_open){
-
-                if(key !== current_key){
-
-                    this.is_open[key] = false;
-                }
-            }
-        },
-        async toggleIsUserLogInOpen(is_open:boolean|null=null) : Promise<void> {
-
-            const new_store_value = is_open === null ? !this.is_open.is_user_log_in_open : is_open;
-
-            if(new_store_value === true){
-
-                this.forceCloseOtherPopUps('is_user_log_in_open');
-            }
-
-            this.is_open.is_user_log_in_open = new_store_value;
-        },
-        async toggleIsUserSignUpOpen(is_open:boolean|null=null) : Promise<void> {
-
-            const new_store_value = is_open === null ? !this.is_open.is_user_sign_up_open : is_open;
-
-            if(new_store_value === true){
-
-                this.forceCloseOtherPopUps('is_user_sign_up_open');
-            }
-
-            this.is_open.is_user_sign_up_open = new_store_value;
-        },
-        async toggleIsLoginRequiredPromptOpen(
-            forced_state:boolean|null=null,
-            prompt_text:string="",
-        ) : Promise<void> {
-
-            const new_store_value = forced_state === null ? !this.is_open.is_login_required_prompt_open : forced_state;
-
-            if(new_store_value === true){
-
-                this.forceCloseOtherPopUps('is_login_required_prompt_open');
-            }
-
-            this.is_open.is_login_required_prompt_open = new_store_value;
-
-            if(prompt_text === ""){
-
-                this.login_required_prompt_text = "Log in to perform that action.";
+                this.current_popup_context = '';
 
             }else{
 
-                this.login_required_prompt_text = prompt_text;
+                this.current_popup_context = new_value;
             }
         },
-        async toggleIsNavMenuOpen(forced_state:boolean|null=null) : Promise<void> {
+        //doesn't seem like.bind() works as callbacks for Vue, so we have individual functions for every pop-up
+        closeNavMenuPopUp() : void {
 
-            const new_store_value = forced_state === null ? !this.is_open.is_nav_menu_open : forced_state;
+            if(this.current_popup_context === 'nav_menu'){
 
-            //this is bad at scaling
-            if(new_store_value === true){
-
-                this.forceCloseOtherPopUps('is_nav_menu_open');
+                this.current_popup_context = '';
             }
+        },
+        closeLoginRequiredPopUp() : void {
 
-            this.is_open.is_nav_menu_open = new_store_value;
+            if(this.current_popup_context === 'login_required'){
+
+                this.current_popup_context = '';
+            }
+        },
+        closeLogInPopUp() : void {
+
+            if(this.current_popup_context === 'log_in'){
+
+                this.current_popup_context = '';
+            }
+        },
+        closeSignUpPopUp() : void {
+
+            if(this.current_popup_context === 'sign_up'){
+
+                this.current_popup_context = '';
+            }
+        },
+        closeAllPopUps() : void {
+
+            this.current_popup_context = "";
         },
     },
 });

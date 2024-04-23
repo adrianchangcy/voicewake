@@ -18,6 +18,7 @@
         <div class="text-lg relative">
             <input
                 ref="v_input_field"
+                :key="propRerenderKey"
                 :required="propIsRequired"
                 :type="propType"
                 :inputmode="propInputmode"
@@ -123,14 +124,23 @@
                 type: String as PropType<InputHTMLAttributes["autocomplete"]>,
                 default: 'off'
             },
-            propName: {     //you need name="email" and autocomplete="on" for drop-down menu of emails
+            propName: {
+                //you need name="email" and autocomplete="on" for drop-down menu of emails
                 type: String as PropType<InputHTMLAttributes["name"]>,
                 default: ''
+            },
+            propValue: {
+                type: String,
+                default: ''
+            },
+            propRerenderKey: {
+                //this is needed if user uses autocomplete value
+                //fixes: when parent becomes display:none, then reverted, webkit css properties get removed and autocomplete styling comes back
+                type: Number,
             },
         },
         emits: ['hasNewValue'],
         computed: {
-
             hasPlainStatusText() : boolean {
 
                 return this.propIsOk === false &&
@@ -138,6 +148,16 @@
                     this.propIsError === false &&
                     this.propStatusText.length > 0
                 ;
+            },
+        },
+        watch: {
+            propRerenderKey() : void {
+
+                //this is needed
+                this.$nextTick(()=>{
+
+                    (this.$refs.v_input_field as HTMLInputElement).value = this.input_value;
+                });
             },
         },
         methods: {

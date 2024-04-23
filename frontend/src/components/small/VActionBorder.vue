@@ -27,8 +27,8 @@
         <div
             v-else
             :class="[
-                propElementSize === 's' ? 'pb-0.5' : '',
-                propElementSize === 'm' ? 'pb-1' : '',
+                propElementSize === 's' ? 'pb-1' : '',
+                propElementSize === 'm' ? 'pb-1.5' : '',
                 propElementSize === 'l' ? 'pb-2' : '',
                 propElementSize === 'xl' ? 'pb-2' : '',
                 propElementSize === '2xl' ? 'pb-2' : '',
