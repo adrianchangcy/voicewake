@@ -10,7 +10,7 @@
         >
             <VActionText
                 :propIsIconOnly="true"
-                @click="forceClose()"
+                @click.stop="forceClose()"
                 propElement="button"
                 propElementSize="s"
                 type="button"
@@ -21,12 +21,6 @@
                 <span v-show="current_section === 'sign-up-section'" class="sr-only">close sign-up menu</span>
             </VActionText>
         </div>
-
-        <!--
-            currently, title has pb-2, and the steps have pt-6
-            the steps have pt-6 so the "back" button can do -top-4 without its outline being clipped
-            these are ultimately to space "back" button more appropriately, while keeping overall height constraint
-        -->
 
         <!--title-->
         <VTitle
@@ -128,12 +122,6 @@
                             v-show="current_step === 'log-in-step-1'"
                         >
 
-                            <VTitle propFontSize="l">
-                                <template #titleDescription>
-                                    <span>Log in and rejoin the fun!</span>
-                                </template>
-                            </VTitle>
-
                             <VInput
                                 propElementId="user-log-in-email-input"
                                 propLabel="Email"
@@ -149,8 +137,8 @@
                                 :propIsError="email_validation_has_error"
                                 :propIsOk="email_is_ok === true"
                                 :propAllowWhitespace="false"
+                                :propRerenderKey="email_rerender_key"
                                 @hasNewValue="handleNewEmail($event)"
-                                class="mt-6"
                             />
 
                             <!--main action-->
@@ -205,31 +193,26 @@
                             v-show="current_step === 'log-in-step-2'"
                         >
 
-                            <div class="h-10 relative">
-                                <VActionText
-                                    :propIsIconOnly="true"
-                                    @click="doNavigation('log-in-section', 'log-in-step-1', false)"
-                                    propElement="button"
-                                    propElementSize="s"
-                                    propFontSize="s"
-                                    type="button"
-                                    class="w-fit absolute -top-4"
-                                >
-                                    <div class="flex items-center">
-                                        <FontAwesomeIcon icon="fas fa-arrow-left" class="text-lg pr-2"/>
-                                        <span class="font-bold break-words">Back</span>
-                                    </div>
-                                </VActionText>
-                            </div>
+                            <VActionText
+                                :propIsIconOnly="true"
+                                @click="[doNavigation('log-in-section', 'log-in-step-1', false), rerenderEmailField()]"
+                                propElement="button"
+                                propElementSize="s"
+                                propFontSize="s"
+                                type="button"
+                                class="w-fit"
+                            >
+                                <div class="w-full h-full flex flex-row items-center">
+                                    <FontAwesomeIcon icon="fas fa-arrow-left" class="text-lg pr-2"/>
+                                    <span>Back to email</span>
+                                </div>
+                            </VActionText>
 
                             <VTitle propFontSize="l">
                                 <template #titleDescription>
                                     <span>Enter the login code.</span>
                                 </template>
                             </VTitle>
-                            <p class="text-base block">
-                                <span class="break-words">{{ email_string }}</span> 
-                            </p>
 
                             <VNumberSlots
                                 @hasNewValue="handleNewOTP($event)"
@@ -239,7 +222,7 @@
                                 :prop-trigger-reset="otp_fields_reset_trigger"
                                 :prop-is-error="otp_validation_has_error"
                                 :prop-status-text="otp_validation_status_text"
-                                class="mt-6"
+                                class="pt-6"
                             />
 
                             <!--resend OTP-->
@@ -403,12 +386,6 @@
                             v-show="current_step === 'sign-up-step-1'"
                         >
 
-                            <VTitle propFontSize="l">
-                                <template #titleDescription>
-                                    <span>Sign up and chat with others!</span>
-                                </template>
-                            </VTitle>
-
                             <VInput
                                 propElementId="user-sign-up-email-input"
                                 propLabel="Email"
@@ -424,8 +401,8 @@
                                 :propIsError="email_validation_has_error"
                                 :propIsOk="email_is_ok === true"
                                 :propAllowWhitespace="false"
+                                :propRerenderKey="email_rerender_key"
                                 @hasNewValue="handleNewEmail($event)"
-                                class="mt-6"
                             />
 
                             <!--main action-->
@@ -479,31 +456,27 @@
                             class="w-full h-full flex flex-col p-2 pt-6"
                             v-show="current_step === 'sign-up-step-2'"
                         >
-                            <div class="h-10 relative">
-                                <VActionText
-                                    :propIsIconOnly="true"
-                                    @click="[doNavigation('sign-up-section', 'sign-up-step-1', false)]"
-                                    propElement="button"
-                                    propElementSize="s"
-                                    propFontSize="s"
-                                    type="button"
-                                    class="w-fit absolute -top-4"
-                                >
-                                    <div class="flex items-center">
-                                        <FontAwesomeIcon icon="fas fa-arrow-left" class="text-lg pr-2"/>
-                                        <span class="font-bold break-words">Back</span>
-                                    </div>
-                                </VActionText>
-                            </div>
+
+                            <VActionText
+                                :propIsIconOnly="true"
+                                @click="[doNavigation('sign-up-section', 'sign-up-step-1', false), rerenderEmailField()]"
+                                propElement="button"
+                                propElementSize="s"
+                                propFontSize="s"
+                                type="button"
+                                class="w-fit"
+                            >
+                                <div class="w-full h-full flex flex-row items-center">
+                                    <FontAwesomeIcon icon="fas fa-arrow-left" class="text-lg pr-2"/>
+                                    <span>Back to email</span>
+                                </div>
+                            </VActionText>
 
                             <VTitle propFontSize="l">
                                 <template #titleDescription>
                                     <span>Enter the sign-up code.</span>
                                 </template>
                             </VTitle>
-                            <p class="text-base block">
-                                <span class="break-words">{{ email_string }}</span>
-                            </p>
 
                             <VNumberSlots
                                 @hasNewValue="handleNewOTP($event)"
@@ -513,7 +486,7 @@
                                 :prop-trigger-reset="otp_fields_reset_trigger"
                                 :prop-is-error="otp_validation_has_error"
                                 :prop-status-text="otp_validation_status_text"
-                                class="mt-6"
+                                class="pt-6"
                             />
 
                             <!--resend OTP-->
@@ -660,6 +633,7 @@
                 email_is_ok: false,
                 email_validation_has_error: false,
                 email_validation_status_text: "",
+                email_rerender_key: 0,
 
                 otp_string: "",
                 otp_length: 6,
@@ -766,22 +740,17 @@
                 );
                 this.submitEmailAndRequestOTP(section_type);
             },
-            async forceClose() : Promise<void> {
-
-                this.pop_up_manager_store.toggleIsUserLogInOpen(false);
-                this.pop_up_manager_store.toggleIsUserSignUpOpen(false);
-            },
-            async switchContextInstance(new_section:SectionsValues) : Promise<void> {
+            switchContextInstance(new_section:SectionsValues) : void {
 
                 //close current section, open new section
 
                 if(new_section === 'log-in-section'){
 
-                    await this.pop_up_manager_store.toggleIsUserLogInOpen(true);
+                    this.pop_up_manager_store.openPopUp('log_in');
 
                 }else if(new_section === 'sign-up-section'){
 
-                    await this.pop_up_manager_store.toggleIsUserSignUpOpen(true);
+                    this.pop_up_manager_store.openPopUp('sign_up');
                 }
 
             },
@@ -1083,7 +1052,22 @@
             resetOTPFields() : void {
 
                 this.otp_fields_reset_trigger = !this.otp_fields_reset_trigger;
-            }
+            },
+            rerenderEmailField() : void {
+
+                this.email_rerender_key += 1;
+            },
+            forceClose() : void {
+
+                if(this.current_section === 'log-in-section'){
+
+                    this.pop_up_manager_store.closeLogInPopUp();
+
+                }else if(this.current_section === 'sign-up-section'){
+
+                    this.pop_up_manager_store.closeSignUpPopUp();
+                }
+            },
         },
         beforeMount(){
 

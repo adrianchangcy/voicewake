@@ -26,7 +26,6 @@
                 href="login"
                 prop-element-size="s"
                 prop-font-size="s"
-                :prop-is-icon-only="false"
                 class="w-full"
             >
                 <div class="w-full h-full flex items-center">
@@ -42,7 +41,6 @@
                 href="signup"
                 prop-element-size="s"
                 prop-font-size="s"
-                :prop-is-icon-only="false"
                 class="w-full"
             >
                 <div class="w-full h-full flex items-center">
@@ -83,7 +81,7 @@
             },
             propPromptText: {
                 type: String,
-                default: ""
+                default: "Log in to perform that action.",
             },
         },
         computed: {

@@ -3,16 +3,14 @@
         <span class="sr-only">
             loading
         </span>
-        <div class="w-full h-4 border-2 border-theme-black relative">
+        <div class="w-full h-4 border-2 border-theme-black dark:border-dark-theme-gray-2 relative">
             <!--background-->
-            <div class="w-full h-full absolute">
-                <div class="w-full h-full skeleton">
-                </div>
+            <div class="w-full h-full absolute bg-theme-light dark:bg-theme-dark">
             </div>
             <!--progress-->
             <div
                 ref="progress_bar"
-                class="w-full h-full absolute inset-0 origin-left progress-bar bg-theme-black after:bg-theme-lead dark:after:bg-dark-theme-lead"
+                class="w-full h-full absolute inset-0 origin-left progress-bar bg-theme-black dark:bg-dark-theme-gray-2 after:bg-theme-lead dark:after:bg-dark-theme-lead"
                 style="opacity: 0; transform: scaleX(0);"
             >
             </div>

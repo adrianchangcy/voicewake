@@ -17,15 +17,15 @@
                 <div
                     v-for="(processing, audio_clip_id) in audio_clip_processings_store.getAudioClipProcessings"
                     :key="audio_clip_id"
-                    class="flex w-full mx-auto mb-4 overflow-hidden backdrop-blur bg-white/60 rounded-lg shadow-xl"
+                    class="flex w-full mx-auto mb-4 overflow-hidden bg-white dark:bg-dark-theme-gray-1 rounded-lg shadow-xl dark:shadow-none"
                 >
                     <!--left panel-->
                     <div
                         :class="[
-                            isStatusOk(processing) ? 'bg-green-500' : '',
-                            isStatusGeneric(processing) ? 'bg-theme-black' : '',
-                            isStatusError(processing) ? 'bg-red-500' : '',
-                            'w-10 shrink-0 flex flex-col items-center justify-center text-xl text-white'
+                            isStatusOk(processing) ? 'bg-green-500 dark:text-dark-theme-gray-1' : '',
+                            isStatusError(processing) ? 'bg-red-500 dark:text-dark-theme-gray-1' : '',
+                            isStatusGeneric(processing) ? 'bg-theme-black dark:text-dark-theme-white-1' : '',
+                            'w-10 shrink-0 flex flex-col items-center justify-center text-white text-xl'
                         ]"
                     >
                         <div
@@ -47,16 +47,17 @@
                     <div
                         :class="[
                             processing.status === 'processing' || hasActions(processing) ? 'pb-4' : 'pb-0.5',
-                            'flex-1 pl-4'
+                            hasCloseButton(processing) ? 'pl-4' : 'px-4',
+                            'flex-1'
                         ]"
                     >
                         <!--title, aligning to 'close' button-->
                         <div class="w-full h-10 flex items-center">
                             <span
                                 :class="[
-                                    isStatusOk(processing) ? 'text-green-700' : '',
-                                    isStatusGeneric(processing) ? '' : '',
-                                    isStatusError(processing) ? 'text-red-700' : '',
+                                    isStatusOk(processing) ? 'text-green-700 dark:text-green-400' : '',
+                                    isStatusError(processing) ? 'text-red-700 dark:text-red-400' : '',
+                                    isStatusGeneric(processing) ? 'text-theme-black dark:text-dark-theme-white-1' : '',
                                     'text-base font-semibold break-words'
                                 ]"
                             >
@@ -67,7 +68,7 @@
                         <!--text and actions-->
                         <!--translate back into title's space-->
                         <!--translate conveniently lets us skip padding-top on actions-->
-                        <span class="block text-sm -translate-y-2 break-words">
+                        <span class="block text-sm -translate-y-2 break-words text-theme-black dark:text-dark-theme-white-2">
                             {{ processing.main_text }}
                         </span>
 
@@ -96,42 +97,49 @@
                                 :key="action_index"
                                 class="flex-1"
                             >
-                                <a
+
+                                <VActionBorder
                                     v-if="action.type === 'url'"
                                     :href="action.url"
-                                    class="w-full h-full flex flex-row items-center rounded-full transition       border-2 border-theme-gray-2 shade-border-when-hover active:bg-theme-gray-1       focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
-                                >
-                                    <span class="px-4 pb-0.5 mx-auto text-sm font-medium">
-                                        {{ action.text }}
-                                    </span>
-                                </a>
-                                <button
-                                    v-else
-                                    @click="audio_clip_processings_store.getActionButtonCallback(audio_clip_id, action_index)"
+                                    prop-element="button"
+                                    prop-element-size="s"
+                                    prop-font-size="s"
                                     type="button"
-                                    class="w-full h-full flex flex-row items-center rounded-full transition       border-2 border-theme-gray-2 shade-border-when-hover active:bg-theme-gray-1       focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline"
+                                    class="w-full"
                                 >
-                                    <span class="px-4 pb-0.5 mx-auto text-sm font-medium">
+                                    <span class="mx-auto px-2">
                                         {{ action.text }}
                                     </span>
-                                </button>
+                                </VActionBorder>
+
+                                <VActionBorder
+                                    v-else-if="action.type === 'button'"
+                                    @click="audio_clip_processings_store.getActionButtonCallback(audio_clip_id, action_index)"
+                                    prop-element="button"
+                                    prop-element-size="s"
+                                    prop-font-size="s"
+                                    type="button"
+                                    class="w-full"
+                                >
+                                    <span class="mx-auto px-2">
+                                        {{ action.text }}
+                                    </span>
+                                </VActionBorder>
                             </div>
                         </div>
                     </div>
 
                     <!--right panel-->
-                    <div class="w-11 shrink-0 relative">
-                        <VActionText
-                            v-if="hasCloseButton(processing)"
-                            @click="audio_clip_processings_store.deleteAudioClipProcessing(audio_clip_id)"
-                            prop-element="button"
-                            prop-element-size="s"
-                            :prop-is-icon-only="true"
-                            class="w-10 h-10 absolute left-0 right-0 top-0.5 m-auto flex items-center justify-center focus-visible:-outline-offset-4"
-                        >
-                            <FontAwesomeIcon icon="fas fa-xmark" class="text-xl mx-auto"/>
-                        </VActionText>
-                    </div>
+                    <VActionText
+                        v-if="hasCloseButton(processing)"
+                        @click="audio_clip_processings_store.deleteAudioClipProcessing(audio_clip_id)"
+                        prop-element="button"
+                        prop-element-size="s"
+                        :prop-is-icon-only="true"
+                        class="w-10 h-10 focus-visible:-outline-offset-4"
+                    >
+                        <FontAwesomeIcon icon="fas fa-xmark" class="text-xl mx-auto"/>
+                    </VActionText>
                 </div>
             </TransitionGroup>
         </div>
@@ -143,6 +151,7 @@
     // import VActionText from '../small/VActionText.vue';
     import VProgressBar from '../small/VProgressBar.vue';
     import VActionText from '../small/VActionText.vue';
+    import VActionBorder from '../small/VActionBorder.vue';
 
     import { AudioClipProcessingDetailsTypes } from '@/types/AudioClipProcessingDetails.interface';
 

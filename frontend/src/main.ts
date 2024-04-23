@@ -17,6 +17,11 @@ import VUserUsername from '../src/components/medium/VUserUsername.vue';
 import VBackdropAnime from '../src/components/small/VBackdropAnime.vue';
 import TestingStuff from '../src/components/main/TestingStuff.vue';
 
+interface BindingValueTypes {
+    refs_to_exclude: string[],
+    bool_status_variable_or_callback: boolean|(()=>any),
+}
+
 
 //Pinia
 const pinia = createPinia();
@@ -47,23 +52,23 @@ const clickOutside = {
 
         //2022-12-28
         //QUESTION: where did event come from?
-        element.clickOutsideAudioClip = (event:any) => {
+        element.clickOutsideEventHandler = (event:any) => {
 
             //unpack passed arguments
             //bool_status_variable_or_callback, string, is the bool status variable, in charge of your element
             //refs_to_exclude, [], means elements that already handle the same bool_status_variable_or_callback variable on their own
-            const {bool_status_variable_or_callback, refs_to_exclude} = binding.value;
+            const binding_value:BindingValueTypes = binding.value;
 
             //contains() on this ref element always returns true when event.target refers to ref child or itself
             //if true, we don't do anything, because excluded element already runs handler at @click
             let is_clicked_element_excluded = false;
 
-            refs_to_exclude.forEach((ref_name:any)=>{
+            for(let x = 0; x < binding_value.refs_to_exclude.length; x++){
 
                 try{
 
-                    if(binding.instance.$refs[ref_name].contains(event.target)){
-                        
+                    if(binding.instance.$refs[binding_value.refs_to_exclude[x]].contains(event.target)){
+
                         is_clicked_element_excluded = true;
                     }
 
@@ -77,7 +82,7 @@ const clickOutside = {
                         +" With this now-sibling div, avoid styling it so it wraps its child completely."
                     );
                 }
-            });
+            }
 
             //finally, also check if event.target is outside of our element with this directive attached
             if(
@@ -88,25 +93,25 @@ const clickOutside = {
                 
                 //change element's is_open to false manually, because no other way to run methods without binding.value()
                 //binding.value() requires that you pass only the method name to the directive
-                if(typeof bool_status_variable_or_callback === 'string'){
+                if(typeof binding_value.bool_status_variable_or_callback === 'string'){
 
-                    binding.instance.$data[bool_status_variable_or_callback] = false;
+                    binding.instance.$data[binding_value.bool_status_variable_or_callback] = false;
 
-                }else{
+                }else if(typeof binding_value.bool_status_variable_or_callback === 'function'){
 
                     //callback
-                    bool_status_variable_or_callback();
+                    binding_value.bool_status_variable_or_callback();
                 }
             }
         };
 
         //use mousedown and not click, since click also listens to mouseup
         //we don't want to trigger mouseup on window drag (e.g. slider)
-        document.addEventListener("pointerup", element.clickOutsideAudioClip);
+        document.addEventListener("pointerup", element.clickOutsideEventHandler);
     },
     unmounted: (element:any) => {
 
-        document.removeEventListener("pointerup", element.clickOutsideAudioClip);
+        document.removeEventListener("pointerup", element.clickOutsideEventHandler);
     },
 };
 

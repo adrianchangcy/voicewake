@@ -113,24 +113,12 @@
                             class="h-0 absolute opacity-0 left-2 right-2 top-0 bottom-0 m-auto"
                         ></div>
 
-                        <!--loading-->
+                        <!--background-->
                         <div
-                            v-show="is_playback_buffering"
-                            class="h-1 absolute left-0 right-0 bottom-2 m-auto"
-                        >
-                            <div
-                                :class="[
-                                    isPlaybackReady === true ? 'double-height-when-hover' : '',
-                                    'w-full h-full skeleton transform'
-                                ]"
-                            ></div>
-                        </div>
-                        <!--not loading-->
-                        <div
-                            v-show="!is_playback_buffering"
                             :class="[
                                 isPlaybackReady === true ? 'double-height-when-hover' : '',
-                                'h-1 absolute bg-theme-gray-3 dark:bg-dark-theme-gray-3 left-0 right-0 bottom-2 m-auto transition-transform'
+                                is_playback_buffering === true ? 'bg-pink-400' : 'bg-theme-gray-3 dark:bg-dark-theme-gray-3',
+                                'h-1 absolute left-0 right-0 bottom-2 m-auto transition-transform'
                             ]"
                         ></div>
 

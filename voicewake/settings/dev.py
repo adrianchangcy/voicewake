@@ -43,8 +43,15 @@ AWS_S3_CUSTOM_DOMAIN = os.environ['AWS_S3_CUSTOM_DOMAIN']
 #low cost even for testing, and also due to how integrated the S3 processes are to our code base
 #implementing local file upload procedures would be redundant
 BASE_S3_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
-MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{MEDIAFILES_LOCATION}/'
-MEDIA_ROOT = f'https://{AWS_S3_CUSTOM_DOMAIN}/{MEDIAFILES_LOCATION}/'
+
+#from S3
+# MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{MEDIAFILES_LOCATION}/'
+# MEDIA_ROOT = f'https://{AWS_S3_CUSTOM_DOMAIN}/{MEDIAFILES_LOCATION}/'
+
+#from local files
+MEDIA_URL = 'media/'
+MEDIA_ROOT = 'voicewake/tests/file_samples'
+
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'deploy/static')
 
