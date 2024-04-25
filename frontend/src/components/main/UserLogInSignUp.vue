@@ -34,13 +34,13 @@
                         v-if="current_section === 'log-in-section'"
                         class="block text-center"
                     >
-                        Log in
+                        Log In
                     </span>
                     <span
                         v-else-if="current_section === 'sign-up-section'"
                         class="block text-center"
                     >
-                        Sign up
+                        Sign Up
                     </span>
                 </TransitionFade>
             </template>

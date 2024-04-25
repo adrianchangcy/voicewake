@@ -54,24 +54,38 @@
                     :propIsIconOnly="true"
                     class="absolute left-2 right-2 top-2 bottom-2 focus-visible:-outline-offset-2"
                 >
-                    <FontAwesomeIcon
-                        :icon="playback_paused ? 'fas fa-play' : 'fas fa-pause'"
-                        :class="[
-                            playback_paused ? 'pl-[2px]' : '',
-                            'pt-[1px] mx-auto'
-                        ]"
-                    />
-                    <span v-show="isPlaybackReady">
-                        <span v-show="is_playback_buffering" class="sr-only">
-                            loading
-                        </span>
-                        <span v-show="!is_playback_buffering && playback_paused" class="sr-only">
+
+                    <!--pt 1px to point right to the middle of slider-->
+                    <!--show loading when still initialising-->
+                    <div
+                        v-show="!is_initialised_on_new_audio"
+                        class="w-full h-full pt-[1px] flex items-center"
+                    >
+                        <VLoading
+                            prop-element-size="l"
+                            class="mx-auto"
+                        />
+                        <span class="sr-only">loading audio</span>
+                    </div>
+
+                    <!--can play/pause-->
+                    <div
+                        v-show="is_initialised_on_new_audio"
+                        class="w-full h-full pt-[1px] flex items-center"
+                    >
+                        <FontAwesomeIcon
+                            fixed-width
+                            :icon="playback_paused ? 'fas fa-play' : 'fas fa-pause'"
+                            class="mx-auto"
+                        />
+                        <span v-show="playback_paused" class="sr-only">
                             pause
                         </span>
-                        <span v-show="!is_playback_buffering && !playback_paused" class="sr-only">
+                        <span v-show="!playback_paused" class="sr-only">
                             play
                         </span>
-                    </span>
+                    </div>
+
                     <span v-show="!isPlaybackReady">
                         <span class="sr-only">Cannot play, no recording loaded</span>
                     </span>
@@ -85,7 +99,11 @@
 
                 <!--ripples-->
                 <!--need inline CSS to prevent jolting from anime if without it-->
-                <div ref="canvas_ripples_container" class="h-6 absolute top-4 left-2 right-2 pb-2">
+                <div
+                    v-show="is_initialised_on_new_audio"
+                    ref="canvas_ripples_container"
+                    class="h-6 absolute top-4 left-2 right-2 pb-2"
+                >
                     <canvas ref="canvas_ripples" class="w-full h-full mx-auto"></canvas>
                 </div>
 
@@ -117,8 +135,7 @@
                         <div
                             :class="[
                                 isPlaybackReady === true ? 'double-height-when-hover' : '',
-                                is_playback_buffering === true ? 'bg-pink-400' : 'bg-theme-gray-3 dark:bg-dark-theme-gray-3',
-                                'h-1 absolute left-0 right-0 bottom-2 m-auto transition-transform'
+                                'h-1 absolute left-0 right-0 bottom-2 m-auto transition-transform bg-theme-gray-3 dark:bg-dark-theme-gray-3'
                             ]"
                         ></div>
 
@@ -146,7 +163,10 @@
             >
 
                 <!--current duration-->
-                <div class="row-start-1 row-span-1 col-start-1 col-span-1 relative text-xs sm:text-sm">
+                <div
+                    v-show="isPlaybackReady"
+                    class="row-start-1 row-span-1 col-start-1 col-span-1 relative text-xs sm:text-sm"
+                >
                     <span class="sr-only">current duration</span>
                     <span class="absolute w-fit h-fit left-0 -top-2 bottom-0 m-auto">{{pretty_current_playback_time}}</span>
                 </div>
@@ -217,7 +237,10 @@
                 </div>
 
                 <!--total duration-->
-                <div class="row-start-1 row-span-1 col-start-3 col-span-1 relative text-xs sm:text-sm">
+                <div
+                    v-show="isPlaybackReady"
+                    class="row-start-1 row-span-1 col-start-3 col-span-1 relative text-xs sm:text-sm"
+                >
                     <span class="absolute w-fit h-fit right-0 -top-2 bottom-0 m-auto">
                         <span class="sr-only">total duration</span>
                         {{pretty_playback_duration}}
@@ -246,6 +269,7 @@
 <script setup lang="ts">
     import VSliderYSmall from '../small/VSliderYSmall.vue';
     import VActionText from '../small/VActionText.vue';
+    import VLoading from '../small/VLoading.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     import { library } from '@fortawesome/fontawesome-svg-core';
@@ -390,6 +414,8 @@
             },
             propAudio(new_value){
 
+                this.is_initialised_on_new_audio = false;
+
                 this.attachAudioToPlayback(new_value);
 
                 //apply focus on source change
@@ -402,9 +428,6 @@
 
                 //reminder that with v-if and props already supplied, first time will not trigger watchers
 
-                //reset
-                this.is_initialised_on_new_audio = false;
-
                 //store where the previous audio was stopped
                 //must do this before <audio> changes via attachAudioToPlayback()
                 if(old_value !== null){
@@ -412,14 +435,28 @@
                     this.storeCurrentAudioClipLastStopped(old_value);
                 }
 
+                //reset
+
+                this.is_initialised_on_new_audio = false;
+                this.pretty_current_playback_time = '00:00';
+                this.pretty_playback_duration = '00:00';
+                this.playback_slider_value = 0;
+
+                if(
+                    this.playback_slider_knob_anime !== null &&
+                    this.playback_slider_progress_anime !== null)
+                {
+
+                    this.playback_slider_knob_anime.completed = false;
+                    this.playback_slider_progress_anime.completed = false;
+
+                    this.playback_slider_knob_anime.seek(0);
+                    this.playback_slider_progress_anime.seek(0);
+                }
+
                 if(new_value === null){
 
-                    //reset
-                    this.pretty_current_playback_time = '00:00';
-                    this.pretty_playback_duration = '00:00';
-                    this.playback_slider_value = 0;
-                    this.seekPlayback();
-
+                    this.is_initialised_on_new_audio = true;
                     return;
                 }
 
@@ -458,11 +495,11 @@
 
                             this.handleHasMetadata();
 
-                        }else if(await this.adjustPlaybackSliderDimension() === true && this.isPlaybackReady === true){
+                        }else if(this.adjustPlaybackSliderDimension() === true && this.isPlaybackReady === true){
 
-                            await this.createPlaybackSliderAnime();
+                            this.createPlaybackSliderAnime();
                             await this.syncSliderAnimeAfterSuspend();
-                            await this.drawRipples();
+                            this.drawRipples();
                         }
                     });
 
@@ -532,7 +569,7 @@
             },
         },
         methods: {
-            async setInitialPlaybackSliderValue() : Promise<void> {
+            setInitialPlaybackSliderValue() : void {
                 
                 //initial
                 this.playback_slider_value = 0;
@@ -542,7 +579,7 @@
                     return;
                 }
 
-                const last_stopped_s = await this.vplayback_store.getAudioClipLastStoppedS(this.propAudioClip.id);
+                const last_stopped_s = this.vplayback_store.getAudioClipLastStoppedS(this.propAudioClip.id);
 
                 //not stored
                 if(last_stopped_s === null){
@@ -857,14 +894,14 @@
                 const handler = async ()=>{
 
                     //for audio_clip listener 'resize', this recreates slider anime and syncs it
-                    await this.adjustPlaybackSliderDimension();
+                    this.adjustPlaybackSliderDimension();
 
                     //redraw canvas
-                    await this.drawRipples();
+                    this.drawRipples();
 
                     if(this.isPlaybackReady === true && isNaN((this.$refs.audio_element as HTMLAudioElement).duration) === false){
                         
-                        await this.createPlaybackSliderAnime();
+                        this.createPlaybackSliderAnime();
                         await this.syncSliderAnimeAfterSuspend();
                     }
 
@@ -912,7 +949,7 @@
                     }
                 }
             },
-            async createPlaybackSliderAnime() : Promise<void> {
+            createPlaybackSliderAnime() : void {
 
                 //to be called during handleHasMetadata(), window resize, changePlaybackRate()
                 //we can then use .play/.pause/.seek
@@ -970,7 +1007,7 @@
                 this.is_playback_slider_ready = true;
                 this.is_playback_slider_processing = false;
             },
-            async adjustPlaybackSliderDimension() : Promise<boolean> {
+            adjustPlaybackSliderDimension() : boolean {
 
                 //returns true if there is change
 
@@ -1109,7 +1146,6 @@
 
                     return;
                 }
-
                 //duration is the same regardless of playbackRate
                 const jumped_anime_duration = this.playback_slider_value * this.playback_slider_knob_anime.duration;
                 //duration changes when playbackRate changes
@@ -1236,7 +1272,7 @@
                 localStorage.setItem('playback_rate', JSON.stringify(new_value));
 
                 //adjust anime
-                await this.createPlaybackSliderAnime();
+                this.createPlaybackSliderAnime();
                 this.playback_slider_knob_anime.seek(this.playback_slider_value * this.playback_slider_knob_anime.duration);
                 this.playback_slider_progress_anime.seek(this.playback_slider_value * this.playback_slider_progress_anime.duration);
 
@@ -1428,7 +1464,7 @@
                 this.is_playback_attached = true;
                 this.is_playback_attaching = false;
             },
-            async handleHasMetadata() : Promise<void> {
+            handleHasMetadata() : void {
 
                 //@loadedmetadata fires when <audio>.duration is finally available
 
@@ -1445,7 +1481,7 @@
                 //this is how we fix it, which still applies after the fixWebmDuration solution
                 //https://stackoverflow.com/a/69512775
 
-                const handler = async () => {
+                const handler = () => {
 
                     audio_element.currentTime = 0;
                     audio_element.removeEventListener('timeupdate', handler);
@@ -1456,10 +1492,10 @@
                         audio_element.duration
                     );
 
-                    await this.adjustPlaybackSliderDimension();
-                    await this.drawRipples();
-                    await this.createPlaybackSliderAnime();
-                    await this.setInitialPlaybackSliderValue();
+                    this.adjustPlaybackSliderDimension();
+                    this.drawRipples();
+                    this.createPlaybackSliderAnime();
+                    this.setInitialPlaybackSliderValue();
                     this.seekPlayback();
                     this.handleInitialAutoplay();
 
@@ -1473,7 +1509,7 @@
                 //you'll get 0, but if you check via watch, the value does change
                 //put your code in handler instead if you need to run something else
             },
-            async drawRipples() : Promise<void> {
+            drawRipples() : void {
 
                 this.$nextTick(()=>{
 
@@ -1491,6 +1527,11 @@
             },
         },
         beforeMount(){
+
+            if(this.propAudio === null && this.propAudioClip === null){
+
+                this.is_initialised_on_new_audio = true;
+            }
 
             this.vplayback_store.$onAction(({
                 name,

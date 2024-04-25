@@ -8,8 +8,8 @@
                 propElementSize === 'l' ? 'w-6 h-6 border-2' : '',
                 propElementSize === 'm' ? 'w-5 h-5 border-2' : '',
                 propElementSize === 's' ? 'w-4 h-4 border-2' : '',
-                propColourClass === '' ? 'border-theme-black' : propColourClass,
-                'rounded-full border-theme-black border-l-transparent animate-spin'
+                propColourClass === '' ? 'border-theme-black dark:border-dark-theme-white-2' : propColourClass,
+                'rounded-full border-l-transparent dark:border-l-transparent animate-spin'
             ]"
         ></div>
         <slot></slot>
