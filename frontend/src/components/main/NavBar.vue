@@ -5,7 +5,7 @@
         <nav
             :class="[
                 pop_up_manager_store.isNavMenuOpen ? 'bg-theme-light dark:bg-theme-dark' : 'bg-theme-light/90 dark:bg-theme-dark/90',
-                'h-full grid grid-cols-4 lg:grid-cols-8 p-2 gap-x-2'
+                'h-full grid grid-cols-4 lg:grid-cols-8 p-2'
             ]"
         >
 
@@ -58,28 +58,30 @@
             </div>
 
             <!--show on deskstop when not logged in-->
-            <!--have to use class to hide this element, so when users click it, the ref is not used by v-click-outside-->
             <div
                 ref="nav_big_sign_up_button"
                 :class="[
-                    !pop_up_manager_store.isLoggedIn && canShowLogInSignUpAtNav ? 'lg:block lg:col-start-7 col-span-1' : '',
+                    canShowLogInSignUpAtNav ? 'lg:block lg:col-start-7 col-span-1' : '',
                     'hidden'
                 ]"
             >
-                <!--using size "m" everything, but "s" shadow-->
-                <VActionSpecial
-                    v-if="!pop_up_manager_store.isLoggedIn"
-                    @click="openUserLogInSignUp('sign-up-section')"
-                    prop-element="button"
-                    prop-font-size="m"
-                    type="button"
-                    class="w-full h-full shadow-md dark:shadow-surround-md active:shadow-sm dark:active:shadow-surround-sm      pb-1.5"
+                <div
+                    class="h-full flex items-center"
                 >
-                    <span class="block mx-auto">
-                        <FontAwesomeIcon icon="fas fa-right-to-bracket" class="sm:pr-2"/>
-                        <span>Sign up</span>
-                    </span>
-                </VActionSpecial>
+                    <VActionSpecial
+                        @click.stop="openUserLogInSignUp('sign-up-section')"
+                        prop-element="button"
+                        prop-font-size="s"
+                        prop-element-size="s"
+                        type="button"
+                        class="w-full"
+                    >
+                        <span class="mx-auto px-2">
+                            <FontAwesomeIcon icon="fas fa-right-to-bracket" class="sm:pr-2"/>
+                            <span>Sign up</span>
+                        </span>
+                    </VActionSpecial>
+                </div>
             </div>
 
             <!--nav menu opener-->
@@ -89,7 +91,6 @@
             >
                 <!--not logged in-->
                 <VActionText
-                    v-if="pop_up_manager_store.is_logged_in === false"
                     @click.stop="pop_up_manager_store.openPopUp('nav_menu')"
                     prop-element="button"
                     type="button"
@@ -121,31 +122,6 @@
                         </div>
                         <span class="sr-only">more navigation options</span>
                     </div>
-                </VActionText>
-
-                <!--logged in-->
-                <VActionText
-                    v-else
-                    @click.stop="pop_up_manager_store.openPopUp('nav_menu')"
-                    prop-element="button"
-                    type="button"
-                    :propIsIconOnly="true"
-                    class="w-full h-full"
-                >
-                    <span class="mx-auto">
-                        <FontAwesomeIcon icon="fas fa-circle-user" class="text-xl"/>
-                        <!--do this so user icon stays truly centered-->
-                        <span class="relative w-0">
-                            <FontAwesomeIcon
-                                icon="fas fa-chevron-down"
-                                :class="[
-                                    pop_up_manager_store.isNavMenuOpen ? '-rotate-180' : 'rotate-0',
-                                    'text-xs transition-transform absolute top-0 bottom-0 left-2 m-auto'
-                                ]"
-                            />
-                        </span>
-                    </span>
-                    <span class="sr-only">you are logged in, more navigation options</span>
                 </VActionText>
             </div>
         </nav>
@@ -425,7 +401,7 @@
                 </div>
             </TransitionFade>
 
-            <!--login/signup popup-->
+            <!--login/signup popup, login required popup-->
             <div
                 v-if="!pop_up_manager_store.isLoggedIn"
                 class="h-0 relative"
@@ -438,7 +414,7 @@
                         v-show="pop_up_manager_store.isLogInOpen"
                         v-click-outside="{
                             bool_status_variable_or_callback: pop_up_manager_store.closeLogInPopUp,
-                            refs_to_exclude: ['nav_big_sign_up_button',]
+                            refs_to_exclude: ['nav_big_sign_up_button']
                         }"
                         class="sm:w-3/4 md:w-2/4 xl:w-5/12 2xl:w-4/12 max-h-[90%] min-h-fit m-auto px-4 border border-theme-gray-2 dark:border-dark-theme-gray-2 bg-theme-light dark:bg-theme-dark rounded-lg overflow-y-auto"
                     >
@@ -456,7 +432,7 @@
                         v-show="pop_up_manager_store.isSignUpOpen"
                         v-click-outside="{
                             bool_status_variable_or_callback: pop_up_manager_store.closeSignUpPopUp,
-                            refs_to_exclude: ['nav_big_sign_up_button',]
+                            refs_to_exclude: ['nav_big_sign_up_button']
                         }"
                         class="sm:w-3/4 md:w-2/4 xl:w-5/12 2xl:w-4/12 max-h-[90%] min-h-fit m-auto px-4 border border-theme-gray-2 dark:border-dark-theme-gray-2 bg-theme-light dark:bg-theme-dark rounded-lg overflow-y-auto"
                     >
@@ -509,7 +485,6 @@
     import { faComment } from '@fortawesome/free-solid-svg-icons/faComment';
     import { faComments } from '@fortawesome/free-solid-svg-icons/faComments';
     import { faCircleUser } from '@fortawesome/free-solid-svg-icons/faCircleUser';
-    import { faChevronDown } from '@fortawesome/free-solid-svg-icons/faChevronDown';
     import { faRightToBracket } from '@fortawesome/free-solid-svg-icons/faRightToBracket';
     import { faBan } from '@fortawesome/free-solid-svg-icons/faBan';
     import { faDoorOpen } from '@fortawesome/free-solid-svg-icons/faDoorOpen';
@@ -519,7 +494,7 @@
 
     library.add(
         faWaveSquare, faComment, faComments, faCircleUser,
-        faChevronDown, faRightToBracket, faBan, faDoorOpen, faMicrophoneLines,
+        faRightToBracket, faBan, faDoorOpen, faMicrophoneLines,
         farThumbsUp, faMoon,
     );
 </script>
@@ -557,6 +532,7 @@
         computed: {
             canShowLogInSignUpAtNav() : boolean {
                 return (
+                    this.pop_up_manager_store.isLoggedIn === false &&
                     this.is_currently_log_in_sign_up_static_page === false &&
                     this.pop_up_manager_store.current_popup_context !== 'log_in' &&
                     this.pop_up_manager_store.current_popup_context !== 'sign_up'

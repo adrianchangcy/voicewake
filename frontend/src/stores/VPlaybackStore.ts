@@ -89,7 +89,7 @@ export const useVPlaybackStore = defineStore('vplayback', {
             //simply update existing record
             this.stopped_at_s[target_index] = stopped_at_s;
         },
-        async getAudioClipLastStoppedS(audio_clip_id:number) : Promise<number|null> {
+        getAudioClipLastStoppedS(audio_clip_id:number) : number|null {
 
             const target_index = this.audio_clip_id.indexOf(audio_clip_id);
 

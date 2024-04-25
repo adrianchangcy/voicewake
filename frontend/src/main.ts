@@ -70,6 +70,7 @@ const clickOutside = {
                     if(binding.instance.$refs[binding_value.refs_to_exclude[x]].contains(event.target)){
 
                         is_clicked_element_excluded = true;
+                        break;
                     }
 
                 }catch(error){
@@ -105,13 +106,14 @@ const clickOutside = {
             }
         };
 
-        //use mousedown and not click, since click also listens to mouseup
-        //we don't want to trigger mouseup on window drag (e.g. slider)
-        document.addEventListener("pointerup", element.clickOutsideEventHandler);
+        //initially used pointerup instead of click, for preventing v-click-outside on drag
+        //but ran into "is_open=true" firing before v-click-outside closes
+        //so use click, no issues so far
+        document.addEventListener("click", element.clickOutsideEventHandler);
     },
     unmounted: (element:any) => {
 
-        document.removeEventListener("pointerup", element.clickOutsideEventHandler);
+        document.removeEventListener("click", element.clickOutsideEventHandler);
     },
 };
 

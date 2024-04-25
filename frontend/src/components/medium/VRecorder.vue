@@ -338,8 +338,15 @@
                 try{
 
                     //getUserMedia is a Promise
-                    this.stream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
-                    
+                    await navigator.mediaDevices.getUserMedia({
+                        video: false,
+                        audio: true,
+                    }).then((stream:MediaStream)=>{
+
+                        this.stream = stream;
+                        this.stream.addTrack(stream.getTracks()[0]);
+                    });
+
                 }catch(error:any|unknown){
 
                     switch(error.name){
