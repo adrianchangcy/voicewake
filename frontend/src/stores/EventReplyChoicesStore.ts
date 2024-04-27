@@ -402,13 +402,13 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                 this.replying_event = replying_event;
             }
         },
-        async softReset() : Promise<void> {
+        softReset() : void {
 
             this.event_reply_choices = [];
             this.replying_event = null;
 
             this.shared_dialog_context = "";
-        }
+        },
     },
     persist: true,
     share: {

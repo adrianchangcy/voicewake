@@ -5,7 +5,7 @@
         <!--this is so that transitions don't cause malformed borders-->
         <!--height is sampled from 320px width mobile, with tallest container being the form fields-->
         <div class="w-full min-h-[14.75rem]">
-            <TransitionGroupFadeSlow :prop-is-swapping="true">
+            <TransitionGroupFadeSlow>
                 <div
                     v-show="canShowForm"
                     class="w-full"

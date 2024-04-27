@@ -73,6 +73,11 @@ module.exports = {
                 'surround-sm': '0 0 2px 0 rgb(0 0 0 / 0.05)',
                 'surround-md': '0 0 4px 0 rgb(0 0 0 / 0.1)',
                 'surround-lg': '0 0 8px 0 rgb(0 0 0 / 0.1)',
+            },
+            fontWeight: {
+                //for default font, medium at 500 and 501 are ok for Chrome, but Firefox needs 501
+                'medium': '501',
+                'bold': '601',
             }
         },
     },

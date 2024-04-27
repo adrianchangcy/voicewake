@@ -18,9 +18,7 @@
 
         <!--content-->
         <!--we want to do is_reply_confirming here to prevent any UI surprises when redirecting-->
-        <TransitionGroupFade
-            :prop-is-swapping="true"
-        >
+        <TransitionGroupFade>
 
             <!--search, loading dialogs, other dialogs-->
             <div
@@ -43,9 +41,7 @@
                 </VTitle>
 
                 <!--content-->
-                <TransitionGroupFade
-                    :prop-is-swapping="true"
-                >
+                <TransitionGroupFade>
 
                     <!--can search-->
                     <div
@@ -225,7 +221,7 @@
                     <!--loading dialogs-->
                     <div
                         v-show="isLoading && !is_searching"
-                        class="w-full flex flex-col"
+                        class="w-full h-fit flex flex-col"
                     >
 
                         <div class="h-40 flex items-center text-xl font-medium">
@@ -306,9 +302,7 @@
                     </div>
                 </div>
 
-                <TransitionGroupFade
-                    :prop-is-swapping="true"
-                >
+                <TransitionGroupFade>
 
                     <!--event preview-->
                     <div

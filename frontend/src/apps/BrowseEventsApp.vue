@@ -199,7 +199,7 @@
         <!--px-1 to match scroller-->
         <div class="px-1">
 
-            <TransitionGroupFade :prop-is-swapping="true">
+            <TransitionGroupFade>
 
                 <!--fetching-->
                 <EventCardSkeleton

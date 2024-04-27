@@ -103,7 +103,7 @@
                 class="h-full col-span-1 flex items-center     shade-border-when-hover transition-colors      bg-transparent       border border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-full active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3     focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline"
                 type="button"
             >
-                <TransitionGroupFade :prop-is-swapping="true">
+                <TransitionGroupFade>
                     <span v-show="has_shared === false" class="w-full h-full flex items-center text-center">
                         <FontAwesomeIcon icon="fas fa-share" class="text-base mx-auto"/>
                         <span class="sr-only">Copy recording URL to share</span>
