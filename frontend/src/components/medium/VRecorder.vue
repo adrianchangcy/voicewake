@@ -1,7 +1,7 @@
 <template>
     <!-- h-[5.5rem] = h-20 + p-2 -->
     <div class="h-20 text-center place-items-center">
-        <TransitionGroupFade :prop-is-swapping="true">
+        <TransitionGroupFade>
 
             <!--when not recording-->
             <div

@@ -103,7 +103,7 @@
                                     <div v-else>
                                         <VActionText
                                             :propIsIconOnly="true"
-                                            @click="switchContextInstance('sign-up-section')"
+                                            @click="doNavigation('sign-up-section', 'sign-up-step-1')"
                                             propElement="button"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -174,7 +174,7 @@
                                     <div v-else>
                                         <VActionText
                                             :propIsIconOnly="true"
-                                            @click="switchContextInstance('sign-up-section')"
+                                            @click="doNavigation('sign-up-section', 'sign-up-step-1')"
                                             propElement="button"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -208,7 +208,7 @@
                                 </div>
                             </VActionText>
 
-                            <VTitle propFontSize="l">
+                            <VTitle propFontSize="l" class="w-fit">
                                 <template #titleDescription>
                                     <span>Enter the login code.</span>
                                 </template>
@@ -301,7 +301,7 @@
                                     <div v-else>
                                         <VActionText
                                             :propIsIconOnly="true"
-                                            @click="switchContextInstance('sign-up-section')"
+                                            @click="doNavigation('sign-up-section', 'sign-up-step-1')"
                                             propElement="button"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -367,7 +367,7 @@
                                     <div v-else>
                                         <VActionText
                                             :propIsIconOnly="true"
-                                            @click="switchContextInstance('log-in-section')"
+                                            @click="doNavigation('log-in-section', 'log-in-step-1')"
                                             propElement="button"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -438,7 +438,7 @@
                                     <div v-else>
                                         <VActionText
                                             :propIsIconOnly="true"
-                                            @click="switchContextInstance('log-in-section')"
+                                            @click="doNavigation('log-in-section', 'log-in-step-1')"
                                             propElement="button"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -472,7 +472,7 @@
                                 </div>
                             </VActionText>
 
-                            <VTitle propFontSize="l">
+                            <VTitle propFontSize="l" class="w-fit">
                                 <template #titleDescription>
                                     <span>Enter the sign-up code.</span>
                                 </template>
@@ -563,7 +563,7 @@
                                     <div v-else>
                                         <VActionText
                                             :propIsIconOnly="true"
-                                            @click="switchContextInstance('log-in-section')"
+                                            @click="doNavigation('log-in-section', 'log-in-step-1')"
                                             propElement="button"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -739,20 +739,6 @@
                     section_type+'-step-2'
                 );
                 this.submitEmailAndRequestOTP(section_type);
-            },
-            switchContextInstance(new_section:SectionsValues) : void {
-
-                //close current section, open new section
-
-                if(new_section === 'log-in-section'){
-
-                    this.pop_up_manager_store.openPopUp('log_in');
-
-                }else if(new_section === 'sign-up-section'){
-
-                    this.pop_up_manager_store.openPopUp('sign_up');
-                }
-
             },
             async resetOTPRelatedValues() : Promise<void> {
 

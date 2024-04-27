@@ -44,7 +44,7 @@
             <!--play/pause-->
             <!--must use click-->
             <!--because pointerdown doesn't tell browser that user has interacted with document for media.play()-->
-            <div class="row-start-1 row-span-2 col-start-1 col-span-1 text-4xl relative">
+            <div class="row-start-1 row-span-2 col-start-1 col-span-1 text-4xl relative p-2">
                 <VActionText
                     @click="userTogglePlaybackPlayPause()"
                     @keydown.enter="userTogglePlaybackPlayPause()"
@@ -52,7 +52,7 @@
                     propElement="button"
                     type="button"
                     :propIsIconOnly="true"
-                    class="absolute left-2 right-2 top-2 bottom-2 focus-visible:-outline-offset-2"
+                    class="w-full h-full focus-visible:-outline-offset-2"
                 >
 
                     <!--pt 1px to point right to the middle of slider-->

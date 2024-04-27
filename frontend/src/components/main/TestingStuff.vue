@@ -2,16 +2,6 @@
     <div class="flex flex-col gap-8 pt-20">
     <!-- <FontAwesomeIcon icon="fas fa-comments"/> -->
 
-        <VPlayback
-            :prop-audio-volume-peaks="sample_audio_clip.audio_volume_peaks"
-            :prop-bucket-quantity="20"
-            :prop-is-for-recording="false"
-            :prop-is-open="true"
-            :prop-is-recording="false"
-            :prop-audio-clip="sample_audio_clip"
-            class="w-full"
-        />
-
 
 
 
@@ -43,7 +33,7 @@
     // import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
     // import VActionText from '../small/VActionText.vue';
     // import VTest from '../small/VTest.vue';
-    import VPlayback from '../medium/VPlayback.vue';
+    // import VPlayback from '../medium/VPlayback.vue';
 
     // import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     // import { library } from '@fortawesome/fontawesome-svg-core';
