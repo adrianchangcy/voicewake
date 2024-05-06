@@ -66,11 +66,13 @@ class GenericStatusesSerializer(serializers.ModelSerializer):
 
 
 #instead of when_locked, do when_locked_for_this_user on request.user basis for obscurity
-class EventsSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    event_name = serializers.CharField()
-    when_created = serializers.DateTimeField()
+class EventsSerializer(serializers.ModelSerializer):
+
     generic_status = GenericStatusesSerializer()
+
+    class Meta:
+        model = Events
+        fields = ['id', 'event_name', 'generic_status', 'when_created']
 
 
 
@@ -612,7 +614,42 @@ class UserBannedAudioClipsAPISerializer(serializers.Serializer):
 
 
 
+class ProcessingCacheEventsSerializer(serializers.Serializer):
 
+    id = serializers.IntegerField()
+    event_name = serializers.CharField()
+
+
+
+class ProcessingCacheProcessingsSerializer(serializers.Serializer):
+
+    audio_clip_role_name = serializers.CharField()
+    audio_clip_tone = AudioClipTonesSerializer()
+    event = ProcessingCacheEventsSerializer()
+    is_processing = serializers.BooleanField()
+    attempts_left = serializers.IntegerField()
+
+
+
+class ListAudioClipProcessingsAPISerializer(serializers.Serializer):
+
+    processings = serializers.DictField(
+        child=ProcessingCacheProcessingsSerializer(),
+        allow_empty=True,
+    )
+    last_updated = serializers.DateTimeField()
+
+
+
+class CheckAudioClipProcessingsAPISerializer(serializers.Serializer):
+
+    audio_clip_id = serializers.IntegerField()
+
+
+
+class DeleteAudioClipProcessingsAPISerializer(serializers.Serializer):
+
+    audio_clip_id = serializers.IntegerField()
 
 
 

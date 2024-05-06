@@ -322,6 +322,16 @@
                                 @new-is-liked="event_reply_choices_store.newAudioClipIsLiked($event)"
                             />
                         </keep-alive>
+
+                        <VTitle
+                            v-show="expiry_string !== ''"
+                            prop-font-size="l"
+                            class="block py-2 w-fit mx-auto"
+                        >
+                            <template #titleDescription>
+                                Choice expires in {{ expiry_string }}.
+                            </template>
+                        </VTitle>
                     </div>
 
                     <!--searching-->
@@ -377,7 +387,7 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import { timeFromNowMS } from '@/helper_functions';
+    import { timeFromNowMS, prettyTimeRemaining } from '@/helper_functions';
     // import { notify } from '@/wrappers/notify_wrapper';
     import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
     import { useEventReplyChoicesStore } from '@/stores/EventReplyChoicesStore';
@@ -401,8 +411,13 @@
                 is_event_expiring: false,
 
                 expiry_interval: null as number|null,
+                expiry_string: '',
 
                 vplayback_canvas_ripple_callback: null as Function|null,
+
+                expiry_interval_checkpoint_ms: 80000, //when to switch from slowest_expiry_interval_ms to fastest_expiry_interval_ms
+                slowest_expiry_interval_ms: 10000,
+                fastest_expiry_interval_ms: 1000,
             };
         },
         computed: {
@@ -439,6 +454,7 @@
                 //remove expiry to prevent race condition
                 this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                 this.expiry_interval = null;
+                this.expiry_string = '';
 
                 //do is_cancelling_reply=true if we are cancelling + searching instead of just searching
                 //does not affect API itself
@@ -492,6 +508,7 @@
                 //remove expiry to prevent race condition
                 this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                 this.expiry_interval = null;
+                this.expiry_string = '';
 
                 await this.event_reply_choices_store.confirmEventReplyChoice(index)
                 .then(()=>{
@@ -516,6 +533,7 @@
 
                 this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                 this.expiry_interval = null;
+                this.expiry_string = '';
 
                 let target_event: EventsAndAudioClipsTypes|null = null;
                 let target_max_ms = 0;
@@ -526,7 +544,7 @@
                 ){
 
                     target_event = this.event_reply_choices_store.getReplyingEvent;
-                    target_max_ms = this.event_reply_choices_store.event_reply_expiry_max_ms;
+                    target_max_ms = this.event_reply_choices_store.event_reply_expiry_ms;
 
                 }else if(
                     is_replying === false &&
@@ -534,7 +552,7 @@
                 ){
 
                     target_event = this.event_reply_choices_store.getEventReplyChoices[0];
-                    target_max_ms = this.event_reply_choices_store.event_reply_choice_expiry_max_ms;
+                    target_max_ms = this.event_reply_choices_store.event_reply_choice_expiry_ms;
 
                 }else{
 
@@ -555,6 +573,7 @@
                     //remove expiry to prevent race condition
                     this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                     this.expiry_interval = null;
+                    this.expiry_string = '';
 
                     this.is_event_expiring = true;
 
@@ -572,14 +591,17 @@
                 //change this again once sped up
                 let interval_ms:number = 0;
 
-                if((target_max_ms - time_elapsed_ms) <= this.event_reply_choices_store.expiry_interval_checkpoint_ms){
+                if((target_max_ms - time_elapsed_ms) <= this.expiry_interval_checkpoint_ms){
 
-                    interval_ms = this.event_reply_choices_store.fastest_expiry_interval_ms;
+                    interval_ms = this.fastest_expiry_interval_ms;
 
                 }else{
 
-                    interval_ms = this.event_reply_choices_store.slowest_expiry_interval_ms;
+                    interval_ms = this.slowest_expiry_interval_ms;
                 }
+
+                //get pretty time remaining on first time
+                this.expiry_string = prettyTimeRemaining(time_elapsed_ms, target_max_ms);
 
                 //declare this here for reusability
                 const interval_function = async ()=>{
@@ -592,12 +614,16 @@
                     //get time difference
                     const time_elapsed_ms = timeFromNowMS(when_locked_ms);
 
+                    //get pretty time remaining
+                    this.expiry_string = prettyTimeRemaining(time_elapsed_ms, target_max_ms);
+
                     //time is up
                     if (time_elapsed_ms >= target_max_ms) {
 
                         //remove expiry to prevent race condition
                         this.expiry_interval !== null ? clearInterval(this.expiry_interval) : null;
                         this.expiry_interval = null;
+                        this.expiry_string = '';
 
                         this.is_event_expiring = true;
 
@@ -611,8 +637,8 @@
 
                     //if interval started with >1000, reinitialise itself for new interval with shorter time
                     if (
-                        interval_ms === this.event_reply_choices_store.slowest_expiry_interval_ms &&
-                        (target_max_ms - time_elapsed_ms) <= this.event_reply_choices_store.expiry_interval_checkpoint_ms
+                        interval_ms === this.slowest_expiry_interval_ms &&
+                        (target_max_ms - time_elapsed_ms) <= this.expiry_interval_checkpoint_ms
                     ){
 
                         //remove expiry to prevent race condition
@@ -621,11 +647,11 @@
 
                         this.expiry_interval = window.setInterval(
                             interval_function,
-                            this.event_reply_choices_store.fastest_expiry_interval_ms
+                            this.fastest_expiry_interval_ms
                         );
 
                         //change interval_ms as a lazy way to ensure this 'if' block runs once only
-                        interval_ms = this.event_reply_choices_store.fastest_expiry_interval_ms;
+                        interval_ms = this.fastest_expiry_interval_ms;
                     }
                 };
 
@@ -635,32 +661,29 @@
         },
         beforeMount(){
 
-            (async ()=>{
+            const container = document.getElementById('data-container-list-event-choices') as HTMLElement;
 
-                //always get expiry static values from template
-                await this.event_reply_choices_store.getStaticValuesFromTemplate(
-                    'data-container-list-event-choices'
-                ).then(()=>{
+            if(container === null){
 
-                    //check if we have existing event in store
-                    //if we do, start expiry
+                throw new Error('Data container element was not found.');
+            }
 
-                    if(this.event_reply_choices_store.hasEventReplyChoices === true){
+            //always get expiry static values from template
+            this.event_reply_choices_store.getStaticValuesFromTemplate(container);
 
-                        this.startExpiryInterval(false);
-                        this.has_searched_once = true;
+            //check if we have existing event in store
+            //if we do, start expiry
 
-                    }else if(this.event_reply_choices_store.isReplying === true){
+            if(this.event_reply_choices_store.hasEventReplyChoices === true){
 
-                        this.startExpiryInterval(true);
-                        this.has_searched_once = true;
-                    }
+                this.startExpiryInterval(false);
+                this.has_searched_once = true;
 
-                });
+            }else if(this.event_reply_choices_store.isReplying === true){
 
-                //listen to status changes triggered possibly by other pages
-
-            })();
+                this.startExpiryInterval(true);
+                this.has_searched_once = true;
+            }
         },
     });
 </script>

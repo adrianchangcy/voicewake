@@ -7,14 +7,14 @@
             propFontSize === 'l' ? 'text-2xl font-medium' : '',
             propFontSize === 'm' ? 'text-xl font-medium' : '',
             propFontSize === 's' ? 'text-base font-medium' : '',
-            propElementSize === '2xl' ? 'h-40 shadow-lg active:shadow-md' : '',
-            propElementSize === 'xl' ? 'h-32 shadow-lg active:shadow-md' : '',
-            propElementSize === 'l' ? 'h-24 shadow-lg active:shadow-md' : '',
-            propElementSize === 'm' ? 'h-20 shadow-lg active:shadow-md' : '',
-            propElementSize === 's' ? 'h-10 shadow-md active:shadow-sm' : '',
+            propElementSize === '2xl' ? 'h-40 shadow-lg dark:shadow-surround-lg active:shadow-md dark:active:shadow-surround-md' : '',
+            propElementSize === 'xl' ? 'h-32 shadow-lg dark:shadow-surround-lg active:shadow-md dark:active:shadow-surround-md' : '',
+            propElementSize === 'l' ? 'h-24 shadow-lg dark:shadow-surround-lg active:shadow-md dark:active:shadow-surround-md' : '',
+            propElementSize === 'm' ? 'h-20 shadow-lg dark:shadow-surround-lg active:shadow-md dark:active:shadow-surround-md' : '',
+            propElementSize === 's' ? 'h-10 shadow-md dark:shadow-surround-md active:shadow-sm dark:active:shadow-surround-sm' : '',
             propIsEnabled ? '' : 'opacity-30',
             propIsRound ? 'rounded-full' : 'rounded-lg',
-            'block text-theme-light action-danger-hover border-t-2       bg-red-600 border-red-400       active:bg-[#ad1a1a] active:border-red-600    shadow-red-500      transition      focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline'
+            'block text-theme-light action-danger-hover border-t-2       bg-red-600 border-red-400 dark:border-transparent       active:bg-[#ad1a1a] active:border-red-600    shadow-red-500 dark:shadow-red-500      transition      focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline'
         ]"
         :disabled="!propIsEnabled"
     >

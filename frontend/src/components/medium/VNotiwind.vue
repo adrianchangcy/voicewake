@@ -23,16 +23,16 @@
                     <!--nested v-if inside v-for is bad practice-->
                     <!--but Notiwind docs show that this is how it's done for this case-->
                     <div
-                        class="flex w-full mx-auto mb-4 overflow-hidden bg-white dark:bg-dark-theme-gray-1 rounded-lg shadow-xl dark:shadow-none"
+                        class="flex w-full mx-auto mb-4 overflow-hidden bg-white dark:bg-dark-theme-black-2 rounded-lg shadow-xl dark:shadow-none"
                         v-for="notification in (notifications as FullNotificationsTypes[])"
                         :key="notification.id"
                     >
                         <!--left panel-->
                         <div
                             :class="[
-                                notification.type === 'ok' ? 'bg-green-500 dark:text-dark-theme-gray-1' : '',
-                                notification.type === 'error' ? 'bg-red-500 dark:text-dark-theme-gray-1' : '',
-                                notification.type === 'generic' ? 'bg-theme-black dark:bg-dark-theme-gray-3 dark:text-dark-theme-white-1' : '',
+                                notification.type === 'ok' ? 'bg-green-500 dark:text-dark-theme-black-2' : '',
+                                notification.type === 'error' ? 'bg-red-500 dark:text-dark-theme-black-2' : '',
+                                notification.type === 'generic' ? 'bg-theme-black dark:text-dark-theme-white-1' : '',
                                 'w-10 shrink-0 flex flex-col items-center justify-center text-white text-xl'
                             ]"
                         >

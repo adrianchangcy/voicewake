@@ -10,6 +10,7 @@ module.exports = {
         //attempt to fix Tailwind requiring hard refresh for new class uses
         //https://stackoverflow.com/a/75099477
         "!./node_modules",
+        "!./frontend/node_modules",
     ],
     // experimental: {
         //may help with slow Tailwind when item list is huge
@@ -40,12 +41,13 @@ module.exports = {
                 'theme-outline': '#6b6a65',
 
                 'theme-dark': '#121212',
-                'theme-dark-trim': '#2a2b2e',
+                'theme-dark-trim': '#2e2e2e',
                 'dark-theme-lead': '#cca610',
-                'dark-theme-black': '#1a1a1a',
+                'dark-theme-black-1': '#1a1a1a',
+                'dark-theme-black-2': '#1f1f1f',
                 'dark-theme-white-1': '#e0dece',
                 'dark-theme-white-2': '#adaba0',
-                'dark-theme-gray-1': '#242424',
+                'dark-theme-gray-1': '#292929',
                 'dark-theme-gray-2': '#3d3d3d',
                 'dark-theme-gray-form-field': '#424242',
                 'dark-theme-gray-3': '#474747',

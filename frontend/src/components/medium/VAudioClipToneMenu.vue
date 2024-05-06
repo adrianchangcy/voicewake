@@ -61,7 +61,7 @@
                         data-audio-clip-tone-index=""
                         type="button"
                         :class="[
-                            isSelected(null) === true ? 'bg-theme-black text-theme-light dark:bg-dark-theme-white-2 dark:text-dark-theme-black' : 'action-hover active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3',
+                            isSelected(null) === true ? 'bg-theme-black text-theme-light dark:bg-dark-theme-white-2 dark:text-dark-theme-black-1' : 'action-hover active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3',
                             'is-audio-clip-tone-button      w-10 h-10 pb-0.5 flex items-center border-2 border-transparent rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline'
                         ]"
                     >
@@ -78,7 +78,7 @@
                         :data-audio-clip-tone-index="index"
                         type="button"
                         :class="[
-                            isSelected(index) === true ? 'bg-theme-black text-theme-light dark:bg-dark-theme-white-2 dark:text-dark-theme-black' : 'action-hover active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3',
+                            isSelected(index) === true ? 'bg-theme-black text-theme-light dark:bg-dark-theme-white-2 dark:text-dark-theme-black-1' : 'action-hover active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3',
                             'is-audio-clip-tone-button      w-10 h-10 pb-0.5 border-2 border-transparent rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline'
                         ]"
                     >

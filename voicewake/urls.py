@@ -37,7 +37,7 @@ if settings.DEBUG is True:
     urlpatterns += [
         path('admin', admin.site.urls),
         path('__debug__/', include('debug_toolbar.urls')),
-        path('api/test', apis.TestAPI.as_view(), name='test_api'),
+        path('api/test/<int:wtf>', apis.TestAPI.as_view(), name='test_api'),
         path('test', views.test_page(template_name='test.html'), name='test_page'),
     ]
 
@@ -73,6 +73,10 @@ urlpatterns += [
     path('api/events/replies/create/process/status', apis.HandleReplyingEventsAPI.as_view(current_context="check_process_status"), name="create_replies_check_process_status_api"),
     path('api/events/replies/cancel', apis.HandleReplyingEventsAPI.as_view(current_context="cancel"), name="cancel_replies_api"),
     path('api/events/get/<int:event_id>', apis.GetEventsAPI.as_view(), name='get_events_api'),
+
+    path('api/audio-clips/processings/list', apis.AudioClipProcessingsAPI.as_view(current_context="list"), name='list_audio_clip_processings_api'),
+    path('api/audio-clips/processings/check/<int:audio_clip_id>', apis.AudioClipProcessingsAPI.as_view(current_context="check"), name='check_audio_clip_processings_api'),
+    path('api/audio-clips/processings/delete', apis.AudioClipProcessingsAPI.as_view(current_context="delete"), name='delete_audio_clip_processings_api'),
 
     path('api/audio-clips/reports', apis.AudioClipReportsAPI.as_view(), name="create_audio_clip_reports_api"),
     path('api/audio-clips/tones/list', apis.AudioClipTonesAPI.as_view(), name='audio_clip_tones_api'),

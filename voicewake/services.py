@@ -1335,24 +1335,70 @@ class CreateAudioClips():
 
 
     @staticmethod
-    def determine_processing_cache_key(user_id:int, audio_clip_id:int)->str:
+    def determine_processing_cache_key(user_id:int)->str:
 
         return (
-            os.environ['AWS_LAMBDA_NORMALISE_FUNCTION_NAME'] +
-            '_' + str(user_id) +
-            '_' + str(audio_clip_id)
+            'audio_clip_processing_store_' + str(user_id)
         )
 
 
+    #main cache, every user has one
     @staticmethod
-    def get_default_processing_cache_object()->dict:
+    def get_default_processing_cache_main_object()->dict:
+
+        #use audio_clip.id as key for processings
+        #frontend can call this to sync its store at 1-to-1 at any time
+        #frontend can refer to last_updated to check whether it is out of sync
+        return {
+            'processings': {},
+            'last_updated': get_datetime_now(),
+        }
+
+
+    #get default processing, with audio_clip and event data filled in
+    @staticmethod
+    def get_default_processing_cache_processing_object(event:Events, audio_clip:AudioClips)->dict:
+
+        if event is None:
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message="Missing event when it is needed to add to processing."
+            )
+
+        if audio_clip is None:
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message="Missing audio_clip when it is needed to add to processing."
+            )
 
         return {
+            'audio_clip_role_name': audio_clip.audio_clip_role.audio_clip_role_name,
+            'event': {
+                'id': event.id,
+                'event_name': event.event_name,
+            },
+            'audio_clip_tone': {
+                'id': audio_clip.audio_clip_tone.id,
+                'audio_clip_tone_name': audio_clip.audio_clip_tone.audio_clip_tone_name,
+                'audio_clip_tone_symbol': audio_clip.audio_clip_tone.audio_clip_tone_symbol,
+            },
             'is_processing': False,
             'attempts_left': settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS,
         }
 
 
+    #extract processing from cache
+    @staticmethod
+    def get_processing_cache_processing_object(processing_cache:dict, audio_clip_id:int)->dict|None:
+
+        return processing_cache['processings'].get(str(audio_clip_id), None)
+
+
+    #validate db side of things
     @staticmethod
     def check_db_can_normalise(audio_clip, event, event_reply_queue)->bool:
 
@@ -1425,36 +1471,72 @@ class CreateAudioClips():
         )
 
 
+    #use this when setting cache, so we can consistently update last_updated
+    #last_updated is important to check whether frontend store is in sync
+    @staticmethod
+    def set_processing_cache(processing_cache_key:str, processing_cache:dict):
+
+        processing_cache['last_updated'] = get_datetime_now()
+
+        cache.set(
+            processing_cache_key,
+            processing_cache,
+            timeout=None,
+        )
+
+
     def _ensure_processing_cache_exists(self):
 
-        if self.processing_cache_key != '' and self.processing_cache is not None:
+        if (
+            self.processing_cache_key != '' and
+            self.processing_cache is not None and
+            self.processing_cache['processings'].get(str(self.audio_clip.id), None) is not None
+        ):
 
             return
 
-        self.processing_cache_key = self.determine_processing_cache_key(
-            user_id=self.user.id,
-            audio_clip_id=self.audio_clip.id
-        )
+        self.processing_cache_key = self.determine_processing_cache_key(user_id=self.user.id)
 
         #if cache does not exist, create default cache, save, and use it
         #if cache exists, use the cache
 
         target_cache = cache.get(self.processing_cache_key, None)
+        must_set_cache = False
 
         if target_cache is None:
 
-            self.processing_cache = self.get_default_processing_cache_object()
+            self.processing_cache = self.get_default_processing_cache_main_object()
 
-            #cache must already exist, as task queue will not create on its own
-            cache.set(
-                self.processing_cache_key,
-                self.processing_cache,
-                timeout=settings.AUDIO_CLIP_UNPROCESSED_EXPIRY_S
-            )
+            must_set_cache = True
 
         else:
 
             self.processing_cache = target_cache
+
+        #add processing if it does not exist
+
+        if self.processing_cache['processings'].get(str(self.audio_clip.id), None) is None:
+
+            self.processing_cache['processings'].update({
+                str(self.audio_clip.id): self.get_default_processing_cache_processing_object(
+                    event=self.event,
+                    audio_clip=self.audio_clip,
+                ),
+            })
+
+            self.processing_cache['last_updated'] = get_datetime_now()
+
+            must_set_cache = True
+
+        #set cache if needed
+
+        if must_set_cache is True:
+
+            #cache must already exist, as task queue will not create on its own
+            self.set_processing_cache(
+                processing_cache_key=self.processing_cache_key,
+                processing_cache=self.processing_cache
+            )
 
 
     def _initialise_s3_post_wrapper(self):
@@ -1866,6 +1948,10 @@ class CreateAudioClips():
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        #get cache first
+
+        self._ensure_processing_cache_exists()
+
         #validate db rows, reset if cannot normalise
 
         can_normalise = self.check_db_can_normalise(
@@ -1874,14 +1960,17 @@ class CreateAudioClips():
             event_reply_queue=self.event_reply_queue
         )
 
+        processing_exists = self.processing_cache['processings'].get(str(self.audio_clip.id), None) is not None
+
         if can_normalise is False:
 
-            cache.delete(
-                self.determine_processing_cache_key(
-                    user_id=self.user.id,
-                    audio_clip_id=self.audio_clip.id,
-                )
-            )
+            #immediately delete processing if can no longer normalise
+
+            if processing_exists is True:
+
+                self.processing_cache['processings'].pop(str(self.audio_clip.id))
+
+                cache.set(self.processing_cache_key, self.processing_cache)
 
             return Response(
                 data={},
@@ -1910,14 +1999,14 @@ class CreateAudioClips():
 
         #check cache
 
-        self._ensure_processing_cache_exists()
+        is_processing = self.processing_cache['processings'][str(self.audio_clip.id)]['is_processing']
 
-        if self.processing_cache['is_processing'] is True:
+        if processing_exists is True and is_processing is True:
 
             return Response(
                 data={
                     "is_processing": True,
-                    "attempts_left": self.processing_cache['attempts_left'],
+                    "attempts_left": self.processing_cache['processings'][str(self.audio_clip.id)]['attempts_left'],
                 },
                 status=status.HTTP_409_CONFLICT
             )
@@ -1926,85 +2015,6 @@ class CreateAudioClips():
         #cache will be deleted by task when done, be it on success, or 0 attempts_left on failure
 
         return None
-
-
-    #will minimally validate, no invalidation
-    def check_normalisation_status(self, audio_clip_id:int)->Response:
-
-        #do not create or modify anything here
-        #404 if no longer available
-        #409 if is processing
-        #200 if processing is successful/failed
-
-        processing_cache = cache.get(
-            CreateAudioClips.determine_processing_cache_key(
-                user_id=self.user.id,
-                audio_clip_id=audio_clip_id
-            ),
-            None
-        )
-
-        #409 if processing
-        #when cache is not yet created,
-        #it is when normalisation is just about to start
-
-        if processing_cache is not None:
-
-            response_status = status.HTTP_409_CONFLICT
-
-            if processing_cache['is_processing'] is False:
-
-                response_status = status.HTTP_200_OK
-
-            #still has attempts
-            #frontend will track attempts_left
-            #so if this returns -1 than what is at frontend, means processing failed
-            return Response(
-                data={
-                    'is_processing': processing_cache['is_processing'],
-                    'attempts_left': processing_cache['attempts_left'],
-                },
-                status=response_status
-            )
-
-        #no cache, continue to check db
-
-        target_audio_clip = None
-
-        try:
-
-            target_audio_clip = AudioClips.objects.select_related(
-                'generic_status',
-            ).get(
-                pk=audio_clip_id,
-                user_id=self.user.id,
-            )
-
-        except AudioClips.DoesNotExist:
-
-            return Response(
-                data={
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        #check
-
-        if target_audio_clip.generic_status.generic_status_name == 'ok':
-
-            return Response(
-                data={
-                    'is_processed': True
-                },
-                status=status.HTTP_200_OK
-            )
-
-        return Response(
-            data={
-            },
-            status=status.HTTP_404_NOT_FOUND
-        )
-
 
 
 

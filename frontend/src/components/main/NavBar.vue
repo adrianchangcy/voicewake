@@ -3,10 +3,7 @@
 
         <!--main nav-->
         <nav
-            :class="[
-                pop_up_manager_store.isNavMenuOpen ? 'bg-theme-light dark:bg-theme-dark' : 'bg-theme-light/90 dark:bg-theme-dark/90',
-                'h-full grid grid-cols-4 lg:grid-cols-8 p-2'
-            ]"
+            class="h-full grid grid-cols-4 lg:grid-cols-8 p-2 bg-theme-light dark:bg-theme-dark border-b border-theme-gray-2 dark:border-dark-theme-gray-2"
         >
 
             <!--home-->
@@ -35,7 +32,7 @@
                     :propIsIconOnly="false"
                     class="w-full h-full pb-0.5"
                 >
-                    <FontAwesomeIcon icon="fas fa-comment" class="mx-auto"/>
+                    <FontAwesomeIcon icon="fas fa-comment" class="mx-auto text-lg"/>
                     <span class="sr-only">start event</span>
                 </VActionText>
             </div>
@@ -52,7 +49,7 @@
                     :propIsIconOnly="false"
                     class="w-full h-full pb-0.5"
                 >
-                    <FontAwesomeIcon icon="fas fa-comments" class="mx-auto"/>
+                    <FontAwesomeIcon icon="fas fa-comments" class="mx-auto text-lg"/>
                     <span class="sr-only">reply in events</span>
                 </VActionText>
             </div>

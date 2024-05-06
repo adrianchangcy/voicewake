@@ -20,11 +20,8 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
 
         shared_dialog_context: "" as CurrentStatuses,
 
-        event_reply_choice_expiry_max_ms: 0,   //will be replaced with SSR data on beforeMount()
-        event_reply_expiry_max_ms: 0,   //will be replaced with SSR data on beforeMount()
-        expiry_interval_checkpoint_ms: 80000, //when to switch from slowest_expiry_interval_ms to fastest_expiry_interval_ms
-        slowest_expiry_interval_ms: 10000,
-        fastest_expiry_interval_ms: 1000,
+        event_reply_choice_expiry_ms: 0,   //will be replaced with SSR data on beforeMount()
+        event_reply_expiry_ms: 0,   //will be replaced with SSR data on beforeMount()
     }),    
     getters: {
         isReplying: (state)=>{
@@ -85,13 +82,11 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
 
             return this.replying_event !== null && this.replying_event.event.id === event_id;
         },
-        async getStaticValuesFromTemplate(target_element_id:string) : Promise<void> {
-
-            const container = (document.getElementById(target_element_id) as HTMLElement);
+        getStaticValuesFromTemplate(data_container_element:HTMLElement) : void {
 
             //get essential data first, where we don't proceed if they don't exist
-            const event_reply_choice_expiry_seconds = (container.getAttribute('data-event-reply-choice-expiry-seconds') as string);
-            const event_reply_expiry_seconds = (container.getAttribute('data-event-reply-expiry-seconds') as string);
+            const event_reply_choice_expiry_seconds = (data_container_element.getAttribute('data-event-reply-choice-expiry-seconds') as string);
+            const event_reply_expiry_seconds = (data_container_element.getAttribute('data-event-reply-expiry-seconds') as string);
 
             if(event_reply_choice_expiry_seconds === null || event_reply_expiry_seconds === null){
 
@@ -100,8 +95,8 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
             }
 
             //get data from SSR template
-            this.event_reply_choice_expiry_max_ms = parseInt(event_reply_choice_expiry_seconds) * 1000;
-            this.event_reply_expiry_max_ms = parseInt(event_reply_expiry_seconds) * 1000;
+            this.event_reply_choice_expiry_ms = parseInt(event_reply_choice_expiry_seconds) * 1000;
+            this.event_reply_expiry_ms = parseInt(event_reply_expiry_seconds) * 1000;
         },
         async updateSharedDialogContext(shared_dialog_context:CurrentStatuses) : Promise<void> {
 

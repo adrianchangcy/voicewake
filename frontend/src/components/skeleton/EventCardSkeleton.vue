@@ -1,14 +1,14 @@
 <template>
     <div
         :class="[
-            propHasBorder === true ? 'px-2 sm:px-4 pt-8 pb-10      border border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-lg' : '',
+            propHasBorder === true ? 'px-2 sm:px-4 pt-8 pb-12      border border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-lg' : '',
             'flex flex-col'
         ]"
     >
         <span class="sr-only">loading audio clips</span>
         <!--title and datetime-->
         <!--<div> seems to have bigger height than the inner <span>, and doing it all in <span> didn't work-->
-        <div class="flex flex-col pb-8">
+        <div class="flex flex-col pb-6">
             <div class="w-[75%] h-6 flex items-center">
                 <div class="w-full h-5 rounded-lg skeleton"></div>
             </div>

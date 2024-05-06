@@ -12,10 +12,11 @@ export interface ActionsTypes{
     callback_context?: '',  //at VAudioClipProcessings, have a function return a callback that evaluates this
 }
 export interface AudioClipProcessingDetailsTypes{
-    is_originator: boolean,
+    audio_clip_role_name: 'originator'|'responder',
     event: EventsTypes,
     audio_clip_tone: AudioClipTonesTypes,
     status: AudioClipProcessingStatusesTypes,
+    last_lambda_attempt: string,
     lambda_attempts_left: number|null,
     title: string,
     main_text: string,
