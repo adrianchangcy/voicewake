@@ -17,13 +17,13 @@
                 <div
                     v-for="(processing, audio_clip_id) in audio_clip_processings_store.getAudioClipProcessings"
                     :key="audio_clip_id"
-                    class="flex w-full mx-auto mb-4 overflow-hidden bg-white dark:bg-dark-theme-gray-1 rounded-lg shadow-xl dark:shadow-none"
+                    class="flex w-full mx-auto mb-4 overflow-hidden bg-white dark:bg-dark-theme-black-2 rounded-lg shadow-xl dark:shadow-none"
                 >
                     <!--left panel-->
                     <div
                         :class="[
-                            isStatusOk(processing) ? 'bg-green-500 dark:text-dark-theme-gray-1' : '',
-                            isStatusError(processing) ? 'bg-red-500 dark:text-dark-theme-gray-1' : '',
+                            isStatusOk(processing) ? 'bg-green-500 dark:text-dark-theme-black-2' : '',
+                            isStatusError(processing) ? 'bg-red-500 dark:text-dark-theme-black-2' : '',
                             isStatusGeneric(processing) ? 'bg-theme-black dark:text-dark-theme-white-1' : '',
                             'w-10 shrink-0 flex flex-col items-center justify-center text-white text-xl'
                         ]"
@@ -101,10 +101,9 @@
                                 <VActionBorder
                                     v-if="action.type === 'url'"
                                     :href="action.url"
-                                    prop-element="button"
+                                    prop-element="a"
                                     prop-element-size="s"
                                     prop-font-size="s"
-                                    type="button"
                                     class="w-full"
                                 >
                                     <span class="mx-auto px-2">

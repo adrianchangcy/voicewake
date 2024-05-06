@@ -251,8 +251,6 @@ def cronjob_handle_originator_processing_overdue():
         'processing',
     ]
 
-    target_cache_keys = []
-
     with connection.cursor() as cursor:
 
         cursor.execute(
@@ -261,22 +259,54 @@ def cronjob_handle_originator_processing_overdue():
         )
 
         #expect tuple based on last RETURNING
+        cursor_rows = cursor.fetchall()
 
-        for row in cursor.fetchall():
+        datetime_now = get_datetime_now()
+
+        processing_caches = {}
+
+        #prepare cache keys first, so we can use cache.get_many()
+
+        for row in cursor_rows:
 
             audio_clip_id, user_id = row
 
-            target_cache_keys.append(
-                CreateAudioClips.determine_processing_cache_key(
-                    user_id=user_id,
-                    audio_clip_id=audio_clip_id,
-                )
-            )
+            #if processing_cache for this user already exists in this cronjob, use it
 
-    #delete cache
-    #cache content is irrelevant
+            processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
 
-    cache.delete_many(target_cache_keys)
+            if processing_cache_key not in processing_caches:
+
+                processing_caches.update({
+                    processing_cache_key: None
+                })
+
+        #get caches
+
+        processing_cache_keys = list(processing_caches.keys())
+        processing_caches = cache.get_many(processing_cache_keys)
+
+        #remove processings
+
+        for row in cursor_rows:
+
+            audio_clip_id, user_id = row
+
+            processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
+
+            try:
+
+                processing_caches[processing_cache_key]['processings'].pop(str(audio_clip_id))
+
+            except KeyError:
+
+                pass
+
+            processing_caches[processing_cache_key]['last_updated'] = datetime_now
+
+        #save
+
+        cache.set_many(processing_caches)
 
 
 @shared_task
@@ -364,22 +394,54 @@ def cronjob_delete_event_reply_queue_is_replying_overdue():
         )
 
         #expect tuple based on last RETURNING
+        cursor_rows = cursor.fetchall()
 
-        for row in cursor.fetchall():
+        datetime_now = get_datetime_now()
+
+        processing_caches = {}
+
+        #prepare cache keys first, so we can use cache.get_many()
+
+        for row in cursor_rows:
 
             audio_clip_id, user_id = row
 
-            target_cache_keys.append(
-                CreateAudioClips.determine_processing_cache_key(
-                    user_id=user_id,
-                    audio_clip_id=audio_clip_id,
-                )
-            )
+            #if processing_cache for this user already exists in this cronjob, use it
 
-    #delete cache
-    #cache content is irrelevant
+            processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
 
-    cache.delete_many(target_cache_keys)
+            if processing_cache_key not in processing_caches:
+
+                processing_caches.update({
+                    processing_cache_key: None
+                })
+
+        #get caches
+
+        processing_cache_keys = list(processing_caches.keys())
+        processing_caches = cache.get_many(processing_cache_keys)
+
+        #remove processings
+
+        for row in cursor_rows:
+
+            audio_clip_id, user_id = row
+
+            processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
+
+            try:
+
+                processing_caches[processing_cache_key]['processings'].pop(str(audio_clip_id))
+
+            except KeyError:
+
+                pass
+
+            processing_caches[processing_cache_key]['last_updated'] = datetime_now
+
+        #save
+
+        cache.set_many(processing_caches)
 
 
 @shared_task

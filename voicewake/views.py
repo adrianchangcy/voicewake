@@ -241,14 +241,14 @@ class GetEvents(TemplateView):
         template_context = {
             'event_reply_choice_expiry_seconds': settings.EVENT_REPLY_CHOICE_MAX_DURATION_S,
             'event_reply_expiry_seconds': settings.EVENT_REPLY_MAX_DURATION_S,
+            'audio_clip_unprocessed_expiry_seconds': settings.AUDIO_CLIP_UNPROCESSED_EXPIRY_S,
             'event': event,
             'is_deleted': is_deleted,
             'is_deleted_json': json.dumps(is_deleted),
             'audio_clip_count_json': json.dumps(audio_clip_count),
         }
 
-        #return if deleted, or if nothing is processing
-        if event.generic_status.generic_status_name != 'processing' or is_deleted is True:
+        if event.generic_status.generic_status_name not in ['processing', 'incomplete'] or is_deleted is True:
 
             return render(
                 request,
@@ -362,6 +362,7 @@ class ListEventReplyChoices(TemplateView):
             context={
             'event_reply_choice_expiry_seconds': settings.EVENT_REPLY_CHOICE_MAX_DURATION_S,
             'event_reply_expiry_seconds': settings.EVENT_REPLY_MAX_DURATION_S,
+            'audio_clip_unprocessed_expiry_seconds': settings.AUDIO_CLIP_UNPROCESSED_EXPIRY_S,
             }
         )
 

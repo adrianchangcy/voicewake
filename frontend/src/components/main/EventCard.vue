@@ -9,7 +9,7 @@
         <!--title and datetime-->
         <div
             v-if="propShowTitle === true"
-            class="pb-8"
+            class="pb-5"
         >
             <!--ugc tells crawlers that it is user-generated content-->
             <VActionText

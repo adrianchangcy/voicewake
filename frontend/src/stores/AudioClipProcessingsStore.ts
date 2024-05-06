@@ -4,7 +4,7 @@
 //to allow users to not wait too long, as this is the more time-consuming part
 
 import { defineStore } from 'pinia';
-import { getShortenedString } from '@/helper_functions';
+import { getShortenedString, setPiniaDateObject } from '@/helper_functions';
 import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
 import AudioClipProcessingStatusesTypes from '@/types/values/AudioClipProcessingStatuses';
 import { AudioClipProcessingDetailsTypes, EventsTypes } from '@/types/AudioClipProcessingDetails.interface';
@@ -15,7 +15,7 @@ const axios = require('axios');
 //and all there is left is the processing step
 //if API has error due to deletion by cronjob, expect 404
 interface AudioClipProcessingsTypes{
-    [audio_clip_id:number]: AudioClipProcessingDetailsTypes
+    [audio_clip_id:number]: AudioClipProcessingDetailsTypes,
 }
 
 interface EventIdKeyAudioClipIdValue{
@@ -38,6 +38,8 @@ export function useAudioClipProcessingsStore(){
 
             polling_processings_timeout: null as number|null,
             polling_processings_timeout_delay_ms: 1000,
+
+            audio_clip_unprocessed_expiry_s: 0,
         }),
         getters: {
             getAudioClipProcessings: (state)=>{
@@ -46,6 +48,20 @@ export function useAudioClipProcessingsStore(){
             },
         },
         actions: {
+            getStaticValuesFromTemplate(data_container_element:HTMLElement) : void {
+
+                //get essential data first, where we don't proceed if they don't exist
+                const audio_clip_unprocessed_expiry_seconds = data_container_element.getAttribute('data-audio-clip-unprocessed-expiry-seconds') as string;
+    
+                if(audio_clip_unprocessed_expiry_seconds === null){
+    
+                    //don't proceed because we lack essential data
+                    throw new Error('Essential data was not passed into template.');
+                }
+    
+                //get data from SSR template
+                this.audio_clip_unprocessed_expiry_s = parseInt(audio_clip_unprocessed_expiry_seconds) * 1000;
+            },
             getAudioClipIdByEventId(event_id:number) : number|null {
 
                 if(Object.hasOwn(this.event_id_key_audio_clip_id_value, event_id) === false){
@@ -81,7 +97,7 @@ export function useAudioClipProcessingsStore(){
                 delete this.event_id_key_audio_clip_id_value[Number(event_ids[event_id_index])];
             },
             storeAudioClipProcessing(
-                passed_is_originator:boolean,
+                passed_audio_clip_role_name:'originator'|'responder',
                 passed_audio_clip_id:number,
                 passed_event:EventsTypes,
                 passed_audio_clip_tone:AudioClipTonesTypes,
@@ -104,12 +120,13 @@ export function useAudioClipProcessingsStore(){
                 );
 
                 this.audio_clip_processings[passed_audio_clip_id] = {
-                    is_originator: passed_is_originator,
+                    audio_clip_role_name: passed_audio_clip_role_name,
                     event: passed_event,
                     audio_clip_tone: passed_audio_clip_tone,
                     status: 'processing',
                     title: 'Processing recording',
                     main_text: main_text,
+                    last_lambda_attempt: '',
                     lambda_attempts_left: null,
                     can_close: false,
                 };
@@ -142,13 +159,17 @@ export function useAudioClipProcessingsStore(){
                 //prepare URL
                 let post_url = window.location.origin + '/api/events';
 
-                if(this.audio_clip_processings[audio_clip_id].is_originator === true){
+                if(this.audio_clip_processings[audio_clip_id].audio_clip_role_name === 'originator'){
 
                     post_url += '/create';
 
-                }else{
+                }else if(this.audio_clip_processings[audio_clip_id].audio_clip_role_name === 'responder'){
 
                     post_url += '/replies/create';
+
+                }else{
+
+                    throw new Error('Unrecognised audio_clip_role_name');
                 }
 
                 post_url += '/process';
@@ -248,13 +269,17 @@ export function useAudioClipProcessingsStore(){
                 //prepare URL
                 let post_url = window.location.origin + '/api/events';
 
-                if(this.audio_clip_processings[audio_clip_id].is_originator === true){
+                if(this.audio_clip_processings[audio_clip_id].audio_clip_role_name === 'originator'){
 
                     post_url += '/create';
 
-                }else{
+                }else if(this.audio_clip_processings[audio_clip_id].audio_clip_role_name === 'responder'){
 
                     post_url += '/replies/create';
+
+                }else{
+
+                    throw new Error('Unrecognised audio_clip_role_name');
                 }
 
                 post_url += '/process/status';
@@ -432,6 +457,7 @@ export function useAudioClipProcessingsStore(){
                         this.audio_clip_processings[audio_clip_id].status = 'processed';
                         this.audio_clip_processings[audio_clip_id].title = 'Recording processed';
                         this.audio_clip_processings[audio_clip_id].main_text = main_text;
+                        this.audio_clip_processings[audio_clip_id].last_lambda_attempt = '';
                         this.audio_clip_processings[audio_clip_id].lambda_attempts_left = null;
                         this.audio_clip_processings[audio_clip_id].actions = [
                             {
@@ -459,6 +485,7 @@ export function useAudioClipProcessingsStore(){
                         this.audio_clip_processings[audio_clip_id].status = 'not_found';
                         this.audio_clip_processings[audio_clip_id].title = 'Recording removed';
                         this.audio_clip_processings[audio_clip_id].main_text = main_text;
+                        this.audio_clip_processings[audio_clip_id].last_lambda_attempt = '';
                         this.audio_clip_processings[audio_clip_id].lambda_attempts_left = null;
                         this.audio_clip_processings[audio_clip_id].actions = [];
                         this.audio_clip_processings[audio_clip_id].can_close = true;
@@ -480,6 +507,7 @@ export function useAudioClipProcessingsStore(){
                         this.audio_clip_processings[audio_clip_id].status = 'lambda_error';
                         this.audio_clip_processings[audio_clip_id].title = 'Recording error';
                         this.audio_clip_processings[audio_clip_id].main_text = main_text;
+                        this.audio_clip_processings[audio_clip_id].last_lambda_attempt = setPiniaDateObject(new Date());
                         this.audio_clip_processings[audio_clip_id].lambda_attempts_left = lambda_attempts_left;
                         this.audio_clip_processings[audio_clip_id].actions = [
                             {
@@ -499,6 +527,9 @@ export function useAudioClipProcessingsStore(){
                 }
             },
             getReuploadAudioClipId() : number|null {
+
+                //this is only used to verify that reupload is allowed, when user wants to reupload
+                //only used at GetEventsApp, when user is at reupload-specific URL
 
                 //check if URL has get param
 

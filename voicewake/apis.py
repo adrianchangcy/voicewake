@@ -1761,8 +1761,8 @@ class CreateEventsAPI(generics.GenericAPIView):
 
     serializer_class = CreateAudioClips_Upload_APISerializer
     permission_classes = [IsAuthenticated]
-    available_contexts = ['upload', 'regenerate_upload_url', 'process', 'check_process_status']
-    current_context:Literal['upload', 'regenerate_upload_url', 'process', 'check_process_status'] = 'upload'
+    available_contexts = ['upload', 'regenerate_upload_url', 'process']
+    current_context:Literal['upload', 'regenerate_upload_url', 'process'] = 'upload'
 
 
     def __init__(self, *args, **kwargs):
@@ -1786,14 +1786,7 @@ class CreateEventsAPI(generics.GenericAPIView):
 
         serializer = None
 
-        if self.current_context == 'check_process_status':
-
-            serializer = CreateAudioClips_CheckProcessStatus_APISerializer(
-                data=request.data,
-                many=False,
-            )
-
-        elif self.current_context == 'upload':
+        if self.current_context == 'upload':
 
             serializer = CreateAudioClips_Upload_APISerializer(
                 data=request.data,
@@ -1844,13 +1837,7 @@ class CreateEventsAPI(generics.GenericAPIView):
                 event_reply_expiry_seconds=settings.EVENT_REPLY_MAX_DURATION_S,
             )
 
-            if self.current_context == 'check_process_status':
-
-                return create_audio_clips_class.check_normalisation_status(
-                    audio_clip_id=new_data['audio_clip_id'],
-                )
-
-            elif self.current_context == 'upload':
+            if self.current_context == 'upload':
 
                 return create_audio_clips_class.create_records_and_return_s3_endpoint_as_originator(
                     event_name=new_data['event_name'],
@@ -1883,9 +1870,14 @@ class CreateEventsAPI(generics.GenericAPIView):
                     event_id=create_audio_clips_class.event.id,
                 ).delay()
 
+                processing_cache_processing = create_audio_clips_class.get_processing_cache_processing_object(
+                    create_audio_clips_class.processing_cache,
+                    new_data['audio_clip_id']
+                )
+
                 return Response(
                     data={
-                        'attempts_left': create_audio_clips_class.processing_cache['attempts_left'],
+                        'attempts_left': processing_cache_processing['attempts_left'],
                     },
                     status=status.HTTP_200_OK
                 )
@@ -2298,11 +2290,11 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
     available_contexts = [
         'start', 'cancel',
-        'upload', 'regenerate_upload_url', 'process', 'check_process_status',
+        'upload', 'regenerate_upload_url', 'process',
     ]
     current_context:Literal[
         'start', 'cancel',
-        'upload', 'regenerate_upload_url', 'process', 'check_process_status',
+        'upload', 'regenerate_upload_url', 'process',
     ] = 'start'
 
 
@@ -2474,6 +2466,8 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
         #update audio clip and delete cache, if any
 
+        audio_clip = None
+
         try:
 
             audio_clip = AudioClips.objects.select_related(
@@ -2484,21 +2478,51 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                 audio_clip_role__audio_clip_role_name='responder',
             )
 
-            if audio_clip.generic_status.generic_status_name == 'processing':
-
-                audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
-                audio_clip.save()
-
-            cache.delete(
-                CreateAudioClips.determine_processing_cache_key(
-                    user_id=self.request.user.id,
-                    audio_clip_id=audio_clip.id
-                )
-            )
-
         except AudioClips.DoesNotExist:
 
-            pass
+            return Response(
+                data={
+                },
+                status=status.HTTP_200_OK
+            )
+        
+        #update audio_clip
+
+        if audio_clip.generic_status.generic_status_name == 'processing':
+
+            audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
+            audio_clip.save()
+
+        #update cache
+
+        processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=self.request.user.id)
+
+        processing_cache = cache.get(
+            processing_cache_key,
+            None
+        )
+
+        if processing_cache is None:
+
+            return Response(
+                data={
+                },
+                status=status.HTTP_200_OK
+            )
+
+        processing_cache_processing = CreateAudioClips.get_processing_cache_processing_object(
+            processing_cache=processing_cache,
+            audio_clip_id=audio_clip.id
+        )
+
+        if processing_cache_processing is not None:
+
+            processing_cache['processings'].pop(str(audio_clip.id))
+
+            CreateAudioClips.set_processing_cache(
+                processing_cache_key=processing_cache_key,
+                processing_cache=processing_cache
+            )
 
         return Response(
             data={
@@ -2516,14 +2540,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
         serializer = None
 
-        if self.current_context == 'check_process_status':
-
-            serializer = CreateAudioClips_CheckProcessStatus_APISerializer(
-                data=request.data,
-                many=False,
-            )
-
-        elif self.current_context == 'start' or self.current_context == 'cancel':
+        if self.current_context == 'start' or self.current_context == 'cancel':
 
             serializer = HandleReplyingEventsAPISerializer(data=request.data)
 
@@ -2562,7 +2579,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
             create_audio_clips_class = None
 
-            if self.current_context in ['upload', 'regenerate_upload_url', 'process', 'check_process_status']:
+            if self.current_context in ['upload', 'regenerate_upload_url', 'process']:
 
                 create_audio_clips_class = CreateAudioClips(
                     user=self.request.user,
@@ -2575,25 +2592,6 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                     event_reply_expiry_seconds=settings.EVENT_REPLY_MAX_DURATION_S,
                 )
 
-            if self.current_context == 'check_process_status':
-
-                return create_audio_clips_class.check_normalisation_status(
-                    audio_clip_id=new_data['audio_clip_id'],
-                )
-
-            elif self.current_context == 'regenerate_upload_url':
-
-                return create_audio_clips_class.regenerate_s3_endpoint(
-                    audio_clip_id=new_data['audio_clip_id'],
-                )
-
-            elif self.current_context == "cancel":
-
-                #delete event_reply_queue
-                return self.cancel_reply_in_event(new_data['event_id'])
-
-            #proceed
-
             if self.current_context == "start":
 
                 #start replying
@@ -2605,6 +2603,13 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                     event_id=new_data['event_id'],
                     audio_clip_tone_id=new_data['audio_clip_tone_id'],
                     recorded_file_extension=new_data['recorded_file_extension'],
+                )
+
+
+            elif self.current_context == 'regenerate_upload_url':
+
+                return create_audio_clips_class.regenerate_s3_endpoint(
+                    audio_clip_id=new_data['audio_clip_id'],
                 )
 
             elif self.current_context == 'process':
@@ -2626,12 +2631,22 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                     event_id=create_audio_clips_class.event.id,
                 ).delay()
 
+                processing_cache_processing = CreateAudioClips.get_processing_cache_processing_object(
+                    processing_cache=create_audio_clips_class.processing_cache,
+                    audio_clip_id=new_data['audio_clip_id']
+                )
+
                 return Response(
                     data={
-                        'attempts_left': create_audio_clips_class.processing_cache['attempts_left'],
+                        'attempts_left': processing_cache_processing['attempts_left'],
                     },
                     status=status.HTTP_200_OK
                 )
+
+            elif self.current_context == "cancel":
+
+                #delete event_reply_queue
+                return self.cancel_reply_in_event(new_data['event_id'])
 
         except AudioClipTones.DoesNotExist:
 
@@ -2888,6 +2903,269 @@ class AudioClipReportsAPI(generics.GenericAPIView):
             status=status.HTTP_200_OK
         )
 
+
+
+class AudioClipProcessingsAPI(generics.GenericAPIView):
+
+    serializer_class = CheckAudioClipProcessingsAPISerializer
+    permission_classes = [IsAuthenticated]
+    available_contexts = ['list', 'check', 'delete']
+    current_context:Literal['list', 'check', 'delete'] = 'check'
+
+
+    #will minimally validate, no invalidation
+    def check_normalisation_status(self, audio_clip_id:int)->Response:
+
+        #do not create or modify anything here
+        #404 if no longer available
+        #409 if is processing
+        #200 if processing is successful/failed
+
+        processing_cache = cache.get(
+            CreateAudioClips.determine_processing_cache_key(
+                user_id=self.request.user.id,
+            ),
+            None
+        )
+
+        processing_cache_processing = None
+
+        if processing_cache is not None:
+
+            processing_cache_processing = CreateAudioClips.get_processing_cache_processing_object(
+                processing_cache=processing_cache,
+                audio_clip_id=audio_clip_id
+            )
+
+        #409 if processing
+        #when cache is not yet created,
+        #it is when normalisation is just about to start
+
+        if processing_cache_processing is not None:
+
+            response_status = status.HTTP_409_CONFLICT
+
+            if processing_cache_processing['is_processing'] is False:
+
+                response_status = status.HTTP_200_OK
+
+            #still has attempts
+            #frontend will track attempts_left
+            #so if this returns -1 than what is at frontend, means processing failed
+            return Response(
+                data={
+                    'is_processing': processing_cache_processing['is_processing'],
+                    'attempts_left': processing_cache_processing['attempts_left'],
+                },
+                status=response_status
+            )
+
+        #no cache, continue to check db
+
+        target_audio_clip = None
+
+        try:
+
+            target_audio_clip = AudioClips.objects.select_related(
+                'generic_status',
+            ).get(
+                pk=audio_clip_id,
+                user_id=self.request.user.id,
+            )
+
+        except AudioClips.DoesNotExist:
+
+            return Response(
+                data={
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        #check
+
+        if target_audio_clip.generic_status.generic_status_name == 'ok':
+
+            return Response(
+                data={
+                    'is_processed': True
+                },
+                status=status.HTTP_200_OK
+            )
+
+        return Response(
+            data={
+            },
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+
+    def __init__(self, *args, **kwargs):
+
+        #self.request is not available here
+
+        if 'current_context' not in kwargs or kwargs['current_context'] not in self.available_contexts:
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message="Incorrect current_context. Check .as_view() at urls.py."
+            )
+
+        super().__init__(*args, **kwargs)
+
+
+    @method_decorator(app_decorators.deny_if_banned("response"))
+    def get(self, request, *args, **kwargs):
+
+        #list is just to sync data at frontend
+        #keep list and check separate, to allow us to check only specific processings as desired
+
+        if self.current_context == 'check':
+
+            serializer = CheckAudioClipProcessingsAPISerializer(data=kwargs)
+
+            if serializer.is_valid() is False:
+
+                return Response(
+                    data={
+                        'message': get_serializer_error_message(serializer),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            new_data = serializer.validated_data
+
+            return self.check_normalisation_status(audio_clip_id=new_data['audio_clip_id'])
+
+        elif self.current_context == 'list':
+
+            processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=request.user.id)
+            processing_cache = cache.get(processing_cache_key, None)
+
+            if processing_cache is None:
+
+                #ensure main cache exists
+                processing_cache = CreateAudioClips.get_default_processing_cache_main_object()
+
+                cache.set(processing_cache_key, processing_cache)
+
+            final_data = ListAudioClipProcessingsAPISerializer(processing_cache).data
+
+            return Response(
+                data={
+                    'data': final_data,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        else:
+
+            return Response(
+                data={
+                },
+                status=status.HTTP_405_METHOD_NOT_ALLOWED
+            )
+
+
+    @method_decorator(app_decorators.deny_if_banned("response"))
+    def post(self, request, *args, **kwargs):
+
+        if self.current_context != 'delete':
+
+            return Response(
+                data={
+                },
+                status=status.HTTP_405_METHOD_NOT_ALLOWED
+            )
+
+        serializer = DeleteAudioClipProcessingsAPISerializer(data=request.data)
+
+        if serializer.is_valid() is False:
+
+            return Response(
+                data={
+                    'message': get_serializer_error_message(serializer),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        new_data = serializer.validated_data
+
+        #delete from audio_clip, event_reply_queue, and cache
+
+        audio_clip = None
+
+        try:
+
+            audio_clip = AudioClips.objects.select_related('audio_clip_role').get(
+                pk=new_data['audio_clip_id'],
+                user_id=request.user.id,
+                generic_status__generic_status_name='processing'
+            )
+
+        except AudioClips.DoesNotExist:
+
+            return Response(
+                data={
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        #start deleting
+
+        #delete queue, if responder
+
+        if audio_clip.audio_clip_role.audio_clip_role_name == 'responder':
+
+            EventReplyQueues.objects.filter(
+                locked_for_user_id=request.user.id,
+                event_id=audio_clip.event_id,
+                is_replying=True,
+            ).delete()
+
+        #delete processing from cache
+
+        processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=request.user.id)
+        processing_cache = cache.get(processing_cache_key, None)
+
+        if processing_cache is None:
+
+            #if unexpectedly no cache, auto-create
+
+            processing_cache = CreateAudioClips.get_default_processing_cache_main_object()
+
+            cache.set(processing_cache_key, processing_cache)
+
+        processing_cache_processing = CreateAudioClips.get_processing_cache_processing_object(
+            processing_cache=processing_cache,
+            audio_clip_id=audio_clip.id
+        )
+
+        if processing_cache_processing is not None:
+
+            processing_cache['processings'].pop(str(audio_clip.id))
+
+            CreateAudioClips.set_processing_cache(
+                processing_cache_key=processing_cache_key,
+                processing_cache=processing_cache
+            )
+
+        #delete event for originators
+
+        if audio_clip.audio_clip_role.audio_clip_role_name == 'originator':
+
+            #we can delete event early because we've implemented CASCADE
+            Events.objects.filter(pk=audio_clip.event.id).delete()
+
+        #delete audio_clip
+
+        audio_clip.delete()
+
+        return Response(
+            data={
+            },
+            status=status.HTTP_200_OK
+        )
 
 
 

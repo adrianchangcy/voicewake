@@ -7,7 +7,7 @@
         <div class="w-full min-h-[14.75rem]">
             <TransitionGroupFadeSlow>
                 <div
-                    v-show="canShowForm"
+                    v-show="!canShowSubmitting && !canShowUnavailableDialog"
                     class="w-full"
                 >
                     <!--fields-->
@@ -312,10 +312,6 @@
                     this.is_audio_clip_tone_menu_open = false;
                 }
             },
-            canShowForm(new_value){
-
-                this.$emit('hasForm', new_value);
-            },
         },
         computed: {
             isReupload() : boolean {
@@ -416,13 +412,6 @@
             isFormEnabled() : boolean {
 
                 return this.is_submitting === false;
-            },
-            canShowForm() : boolean {
-
-                return (
-                    this.is_submitting === false &&
-                    this.show_unavailable_dialog === false
-                );
             },
             canShowSubmitting() : boolean {
 

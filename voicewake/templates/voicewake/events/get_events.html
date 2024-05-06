@@ -24,6 +24,7 @@
             data-when-created="{{event.when_created|date:'Y-m-d H:i:s'}}"
             data-event-reply-choice-expiry-seconds="{{event_reply_choice_expiry_seconds}}"
             data-event-reply-expiry-seconds="{{event_reply_expiry_seconds}}"
+            data-audio-clip-unprocessed-expiry-seconds="{{audio_clip_unprocessed_expiry_seconds}}"
             data-is-deleted="{{is_deleted_json}}"
             data-audio-clip-count="{{audio_clip_count_json}}"
             data-reupload-audio-clip-id="{{reupload_audio_clip_id_json}}"
@@ -40,6 +41,7 @@
             data-when-created="{{event.when_created|date:'Y-m-d H:i:s'}}"
             data-event-reply-choice-expiry-seconds="{{event_reply_choice_expiry_seconds}}"
             data-event-reply-expiry-seconds="{{event_reply_expiry_seconds}}"
+            data-audio-clip-unprocessed-expiry-seconds="{{audio_clip_unprocessed_expiry_seconds}}"
             data-is-deleted="{{is_deleted_json}}"
             data-audio-clip-count="{{audio_clip_count_json}}"
             id="data-container-get-events"
@@ -47,7 +49,7 @@
     {% endif %}
 
         <!--follows VTitle-->
-        <h1 class="h-fit pt-10 pb-8">
+        <h1 class="h-fit pt-10 pb-5">
             {% if is_deleted %}
                 <p class="text-lg italic dark:text-dark-theme-white-1">
                     Event and original recording deleted.

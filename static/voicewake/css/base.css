@@ -133,7 +133,7 @@ TIPS
 	background-color: theme(colors.theme-black);
 }
 .dark ::-webkit-scrollbar-track-piece{
-	background-color: theme(colors.dark-theme-black);
+	background-color: theme(colors.dark-theme-black-1);
 }
 .dark ::-webkit-scrollbar-thumb{
 	background-color: theme(colors.dark-theme-white-2);

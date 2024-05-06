@@ -91,7 +91,18 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
             dev_message="No cache found."
         )
 
-    if processing_cache['is_processing'] is True:
+    if processing_cache['processings'].get(str(audio_clip_id), None) is None:
+
+        #processing must exist
+        raise custom_error(
+            ValueError,
+            __name__,
+            dev_message="No processing found."
+        )
+
+    processing_cache_processing = processing_cache['processings'][str(audio_clip_id)]
+
+    if processing_cache_processing['is_processing'] is True:
 
         #already processing
         raise custom_error(
@@ -156,11 +167,13 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
 
     if can_normalise is False:
 
-        cache.delete(
-            CreateAudioClips.determine_processing_cache_key(
-                user_id=user_id,
-                audio_clip_id=target_audio_clip.id,
-            )
+        #remove processing
+
+        processing_cache['processings'].pop(processing_cache_key)
+
+        CreateAudioClips.set_processing_cache(
+            processing_cache_key=processing_cache_key,
+            processing_cache=processing_cache
         )
 
         raise custom_error(
@@ -193,14 +206,12 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
     #increment attempt early
     #to better prevent spam
 
-    processing_cache['is_processing'] = True
-    processing_cache['attempts_left'] -= 1
+    processing_cache['processings'][str(audio_clip_id)]['is_processing'] = True
+    processing_cache['processings'][str(audio_clip_id)]['attempts_left'] -= 1
 
-    #can't be bothered to properly -- the timeout
-    cache.set(
-        processing_cache_key,
-        processing_cache,
-        timeout=settings.AUDIO_CLIP_UNPROCESSED_EXPIRY_S
+    CreateAudioClips.set_processing_cache(
+        processing_cache_key=processing_cache_key,
+        processing_cache=processing_cache
     )
 
     lambda_response_data = None
@@ -240,10 +251,14 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
     finally:
 
         #no longer processing
-        processing_cache['is_processing'] = False
-        cache.set(processing_cache_key, processing_cache)
+        processing_cache['processings'][str(audio_clip_id)]['is_processing'] = False
 
-    #refetch rows from db
+        CreateAudioClips.set_processing_cache(
+            processing_cache_key=processing_cache_key,
+            processing_cache=processing_cache
+        )
+
+    #refetch rows from db to prevent race condition
     #will raise DoesNotExist if they've been deleted
 
     try:
@@ -290,11 +305,11 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
 
     if can_normalise is False:
 
-        cache.delete(
-            CreateAudioClips.determine_processing_cache_key(
-                user_id=user_id,
-                audio_clip_id=target_audio_clip.id,
-            )
+        processing_cache['processings'].pop(str(audio_clip_id))
+
+        CreateAudioClips.set_processing_cache(
+            processing_cache_key=processing_cache_key,
+            processing_cache=processing_cache
         )
 
         raise custom_error(
@@ -314,13 +329,18 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
 
         #evaluate attempts again
 
-        if processing_cache['attempts_left'] > 0:
+        if processing_cache['processings'][str(audio_clip_id)]['attempts_left'] > 0:
 
             return
 
         #max attempts reached
 
-        cache.delete(processing_cache_key)
+        processing_cache['processings'].pop(str(audio_clip_id))
+
+        CreateAudioClips.set_processing_cache(
+            processing_cache_key=processing_cache_key,
+            processing_cache=processing_cache
+        )
 
         #update audio clip
 
@@ -411,8 +431,24 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
         ).delete()
 
     #delete lambda call record from cache on success
-    cache.delete(processing_cache_key)
-    processing_cache = None
+
+    #ensure cache is up-to-date to avoid race condition
+    processing_cache = cache.get(processing_cache_key, None)
+
+    if processing_cache is None:
+
+        raise custom_error(
+            ValueError,
+            __name__,
+            dev_message="Cache is unexpectedly None after normalisation success."
+        )
+
+    processing_cache['processings'].pop(str(audio_clip_id))
+
+    CreateAudioClips.set_processing_cache(
+        processing_cache_key=processing_cache_key,
+        processing_cache=processing_cache
+    )
 
     return
 
