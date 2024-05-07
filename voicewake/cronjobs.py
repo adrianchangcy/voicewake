@@ -263,7 +263,7 @@ def cronjob_handle_originator_processing_overdue():
 
         datetime_now = get_datetime_now()
 
-        processing_caches = {}
+        processing_cache_keys = []
 
         #prepare cache keys first, so we can use cache.get_many()
 
@@ -275,15 +275,12 @@ def cronjob_handle_originator_processing_overdue():
 
             processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
 
-            if processing_cache_key not in processing_caches:
+            if processing_cache_key not in processing_cache_keys:
 
-                processing_caches.update({
-                    processing_cache_key: None
-                })
+                processing_cache_keys.append(processing_cache_key)
 
         #get caches
 
-        processing_cache_keys = list(processing_caches.keys())
         processing_caches = cache.get_many(processing_cache_keys)
 
         #remove processings
@@ -294,15 +291,10 @@ def cronjob_handle_originator_processing_overdue():
 
             processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
 
-            try:
+            if processing_cache_key in processing_cache_keys:
 
                 processing_caches[processing_cache_key]['processings'].pop(str(audio_clip_id))
-
-            except KeyError:
-
-                pass
-
-            processing_caches[processing_cache_key]['last_updated'] = datetime_now
+                processing_caches[processing_cache_key]['last_updated'] = datetime_now
 
         #save
 
@@ -384,8 +376,6 @@ def cronjob_delete_event_reply_queue_is_replying_overdue():
         'processing_overdue',
     ]
 
-    target_cache_keys = []
-
     with connection.cursor() as cursor:
 
         cursor.execute(
@@ -398,7 +388,7 @@ def cronjob_delete_event_reply_queue_is_replying_overdue():
 
         datetime_now = get_datetime_now()
 
-        processing_caches = {}
+        processing_cache_keys = []
 
         #prepare cache keys first, so we can use cache.get_many()
 
@@ -410,15 +400,12 @@ def cronjob_delete_event_reply_queue_is_replying_overdue():
 
             processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
 
-            if processing_cache_key not in processing_caches:
+            if processing_cache_key not in processing_cache_keys:
 
-                processing_caches.update({
-                    processing_cache_key: None
-                })
+                processing_cache_keys.append(processing_cache_key)
 
         #get caches
 
-        processing_cache_keys = list(processing_caches.keys())
         processing_caches = cache.get_many(processing_cache_keys)
 
         #remove processings
@@ -429,15 +416,10 @@ def cronjob_delete_event_reply_queue_is_replying_overdue():
 
             processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
 
-            try:
+            if processing_cache_key in processing_caches:
 
                 processing_caches[processing_cache_key]['processings'].pop(str(audio_clip_id))
-
-            except KeyError:
-
-                pass
-
-            processing_caches[processing_cache_key]['last_updated'] = datetime_now
+                processing_caches[processing_cache_key]['last_updated'] = datetime_now
 
         #save
 
@@ -454,10 +436,12 @@ def cronjob_delete_audio_clip_processing_overdue():
 
     passed_midnight_today = get_datetime_now().strftime('%Y-%m-%d 00:00:00.%f %z')
 
+    #delete AudioClips
+
     full_sql = '''
         WITH
         target_audio_clips AS (
-            SELECT ac.id, ac.event_id FROM audio_clips AS ac
+            SELECT ac.id FROM audio_clips AS ac
             INNER JOIN generic_statuses AS gs ON gs.id = ac.generic_status_id
             INNER JOIN audio_clip_roles AS acr ON acr.id = ac.audio_clip_role_id
             AND ac.when_created <= %s
@@ -465,9 +449,8 @@ def cronjob_delete_audio_clip_processing_overdue():
             ORDER BY ac.when_created ASC
             LIMIT %s
         )
-        DELETE FROM audio_clips AS ac
-        USING target_audio_clips AS tac
-        WHERE ac.id = tac.id
+        SELECT tac.id FROM target_audio_clips AS tac
+        ;
     '''
 
     full_params = [
@@ -482,6 +465,22 @@ def cronjob_delete_audio_clip_processing_overdue():
             sql=full_sql,
             params=full_params,
         )
+
+        #delete all child relations
+
+        cursor_rows = cursor.fetchall()
+
+        audio_clip_ids = []
+
+        for row in cursor_rows:
+
+            (audio_clip_id,) = row
+            audio_clip_ids.append(audio_clip_id)
+
+        AudioClipLikesDislikes.objects.filter(audio_clip_id__in=audio_clip_ids).delete()
+        AudioClips.objects.filter(pk__in=audio_clip_ids).delete()
+
+
 
 
 

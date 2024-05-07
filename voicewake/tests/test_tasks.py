@@ -176,25 +176,29 @@ class Core_TestCase(TestCase):
             audio_clip_generic_status_generic_status_name='processing',
         )
 
-        #cache
+        #set cache
 
-        processing_cache_key = CreateAudioClips.determine_processing_cache_key(
+        target_cache_key = CreateAudioClips.determine_processing_cache_key(
             user_id=self.users[0].id,
-            audio_clip_id=sample_audio_clip_0.id
         )
-        processing_cache = CreateAudioClips.get_default_processing_cache_object()
 
-        processing_cache['is_processing'] = True
-        processing_cache['attempts_left'] -= 1
+        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
 
-        cache.set(
-            processing_cache_key,
-            processing_cache
-        )
+        target_cache['processings'].update({
+            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_cache_processing_object(
+                event=sample_event_0,
+                audio_clip=sample_audio_clip_0,
+            ),
+        })
+
+        target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = True
+
+        cache.set(target_cache_key, target_cache)
 
         self.task_normalisation_expect_error(
             user_id=self.users[0].id,
-            processing_cache_key=processing_cache_key,
+            processing_cache_key=target_cache_key,
             audio_clip_id=sample_audio_clip_0.id,
             event_id=sample_event_0.id,
         )
@@ -217,27 +221,31 @@ class Core_TestCase(TestCase):
             audio_clip_audio_file=self.faulty_audio_file_full_path,
         )
 
-        #cache
+        #set cache
 
-        processing_cache_key = CreateAudioClips.determine_processing_cache_key(
+        target_cache_key = CreateAudioClips.determine_processing_cache_key(
             user_id=self.users[0].id,
-            audio_clip_id=sample_audio_clip_0.id
         )
-        processing_cache = CreateAudioClips.get_default_processing_cache_object()
 
-        processing_cache['is_processing'] = False
-        processing_cache['attempts_left'] -= 1
+        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
 
-        cache.set(
-            processing_cache_key,
-            processing_cache
-        )
+        target_cache['processings'].update({
+            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_cache_processing_object(
+                event=sample_event_0,
+                audio_clip=sample_audio_clip_0,
+            ),
+        })
+
+        target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = False
+
+        cache.set(target_cache_key, target_cache)
 
         #proceed
 
         self.task_normalisation_expect_error(
             user_id=self.users[0].id,
-            processing_cache_key=processing_cache_key,
+            processing_cache_key=target_cache_key,
             audio_clip_id=sample_audio_clip_0.id,
             event_id=sample_event_0.id,
         )
@@ -259,11 +267,10 @@ class Core_TestCase(TestCase):
             audio_clip_generic_status_generic_status_name='processing',
         )
 
-        #cache
+        #no need to create cache
 
         processing_cache_key = CreateAudioClips.determine_processing_cache_key(
             user_id=self.users[0].id,
-            audio_clip_id=sample_audio_clip_0.id
         )
 
         self.task_normalisation_expect_error(
@@ -309,27 +316,31 @@ class Core_TestCase(TestCase):
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
-        #cache
+        #set cache
 
-        processing_cache_key = CreateAudioClips.determine_processing_cache_key(
+        target_cache_key = CreateAudioClips.determine_processing_cache_key(
             user_id=self.users[1].id,
-            audio_clip_id=sample_audio_clip_1.id
         )
-        processing_cache = CreateAudioClips.get_default_processing_cache_object()
 
-        processing_cache['is_processing'] = True
-        processing_cache['attempts_left'] -= 1
+        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
 
-        cache.set(
-            processing_cache_key,
-            processing_cache
-        )
+        target_cache['processings'].update({
+            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_cache_processing_object(
+                event=sample_audio_clip_1.event,
+                audio_clip=sample_audio_clip_1,
+            ),
+        })
+
+        target_cache['processings'][str(sample_audio_clip_1.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+        target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'] = True
+
+        cache.set(target_cache_key, target_cache)
 
         #proceed
 
         self.task_normalisation_expect_error(
             user_id=self.users[1].id,
-            processing_cache_key=processing_cache_key,
+            processing_cache_key=target_cache_key,
             audio_clip_id=sample_audio_clip_1.id,
             event_id=sample_event_0.id,
         )
@@ -371,27 +382,31 @@ class Core_TestCase(TestCase):
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
-        #cache
+        #set cache
 
-        processing_cache_key = CreateAudioClips.determine_processing_cache_key(
+        target_cache_key = CreateAudioClips.determine_processing_cache_key(
             user_id=self.users[1].id,
-            audio_clip_id=sample_audio_clip_1.id
         )
-        processing_cache = CreateAudioClips.get_default_processing_cache_object()
 
-        processing_cache['is_processing'] = False
-        processing_cache['attempts_left'] -= 1
+        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
 
-        cache.set(
-            processing_cache_key,
-            processing_cache
-        )
+        target_cache['processings'].update({
+            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_cache_processing_object(
+                event=sample_audio_clip_1.event,
+                audio_clip=sample_audio_clip_1,
+            ),
+        })
+
+        target_cache['processings'][str(sample_audio_clip_1.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+        target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'] = False
+
+        cache.set(target_cache_key, target_cache)
 
         #proceed
 
         self.task_normalisation_expect_error(
             user_id=self.users[1].id,
-            processing_cache_key=processing_cache_key,
+            processing_cache_key=target_cache_key,
             audio_clip_id=sample_audio_clip_1.id,
             event_id=sample_event_0.id,
         )
@@ -432,11 +447,10 @@ class Core_TestCase(TestCase):
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
-        #cache
+        #no need to create cache
 
         processing_cache_key = CreateAudioClips.determine_processing_cache_key(
             user_id=self.users[1].id,
-            audio_clip_id=sample_audio_clip_1.id
         )
 
         self.task_normalisation_expect_error(

@@ -6760,6 +6760,15 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
         super().tearDownClass()
 
 
+    @classmethod
+    def tearDown(cls):
+
+        try:
+            cache.clear()
+        except:
+            pass
+
+
     def login(self, user_instance):
 
         #need this here because @classmethod does not have .client attribute
@@ -6992,7 +7001,11 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
         request = self.client.post(reverse('create_events_process_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        self.assertIsNone(cache.get(target_cache_key, None))
+
+        target_cache = cache.get(target_cache_key, None)
+
+        self.assertIsNotNone(target_cache)
+        self.assertEqual(len(target_cache['processings']), 0)
 
 
     def test_create_events__process__last_reattempt_failed(self):
@@ -7044,7 +7057,6 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
         sample_audio_clip_0.refresh_from_db()
 
         self.assertEqual(request.status_code, 200)
-        self.assertIsNone(cache.get(target_cache_key, None))
         self.assertEqual(
             sample_event_0.generic_status.generic_status_name,
             'deleted'
@@ -7053,6 +7065,11 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
             sample_audio_clip_0.generic_status.generic_status_name,
             'processing_max_attempts_reached'
         )
+
+        target_cache = cache.get(target_cache_key, None)
+
+        self.assertIsNotNone(target_cache)
+        self.assertEqual(len(target_cache['processings']), 0)
 
 
     def test_create_replies__process__ok(self):
@@ -7182,10 +7199,14 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
         request = self.client.post(reverse('create_replies_process_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        self.assertIsNone(cache.get(target_cache_key, None))
         self.assertFalse(
             EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
         )
+
+        target_cache = cache.get(target_cache_key, None)
+
+        self.assertIsNotNone(target_cache)
+        self.assertEqual(len(target_cache['processings']), 0)
 
 
     def test_create_replies__process__last_reattempt_failed(self):
@@ -7250,7 +7271,6 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
         sample_audio_clip_1.refresh_from_db()
 
         self.assertEqual(request.status_code, 200)
-        self.assertIsNone(cache.get(target_cache_key, None))
         self.assertEqual(
             sample_event_0.generic_status.generic_status_name,
             'incomplete'
@@ -7262,6 +7282,11 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
         self.assertFalse(
             EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
         )
+
+        target_cache = cache.get(target_cache_key, None)
+
+        self.assertIsNotNone(target_cache)
+        self.assertEqual(len(target_cache['processings']), 0)
 
 
 

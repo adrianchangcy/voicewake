@@ -856,11 +856,27 @@ class Core_TestCase(TestCase):
         sample_audio_clip_0.when_created = self.datetime_now - timedelta(seconds=overdue_s)
         sample_audio_clip_0.save()
 
-        cache_key_0 = CreateAudioClips.determine_processing_cache_key(
+        #set cache
+
+        target_cache_key = CreateAudioClips.determine_processing_cache_key(
             user_id=self.users[0].id,
-            audio_clip_id=sample_audio_clip_0.id,
         )
-        cache.set(cache_key_0, {})
+
+        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+
+        target_cache['processings'].update({
+            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_cache_processing_object(
+                event=sample_event_0,
+                audio_clip=sample_audio_clip_0,
+            ),
+        })
+
+        target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = False
+
+        cache.set(target_cache_key, target_cache)
+
+        #proceed
 
         with self.settings(
             AUDIO_CLIP_UNPROCESSED_EXPIRY_S=(overdue_s - 1),
@@ -870,7 +886,11 @@ class Core_TestCase(TestCase):
 
         self.assertFalse(Events.objects.filter(pk=sample_event_0.id).exists())
         self.assertTrue(AudioClips.objects.filter(pk=sample_audio_clip_0.id).exists())
-        self.assertIsNone(cache.get(cache_key_0, None))
+
+        target_cache = cache.get(target_cache_key, None)
+
+        self.assertIsNotNone(target_cache)
+        self.assertEqual(len(target_cache['processings']), 0)
 
         sample_audio_clip_0.refresh_from_db()
 
@@ -898,11 +918,25 @@ class Core_TestCase(TestCase):
         sample_audio_clip_0.when_created = self.datetime_now - timedelta(seconds=overdue_s)
         sample_audio_clip_0.save()
 
-        cache_key_0 = CreateAudioClips.determine_processing_cache_key(
+        #set cache
+
+        target_cache_key = CreateAudioClips.determine_processing_cache_key(
             user_id=self.users[0].id,
-            audio_clip_id=sample_audio_clip_0.id,
         )
-        cache.set(cache_key_0, {})
+
+        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+
+        target_cache['processings'].update({
+            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_cache_processing_object(
+                event=sample_event_0,
+                audio_clip=sample_audio_clip_0,
+            ),
+        })
+
+        target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = False
+
+        cache.set(target_cache_key, target_cache)
 
         #row 2
 
@@ -921,11 +955,19 @@ class Core_TestCase(TestCase):
         sample_audio_clip_1.when_created = self.datetime_now - timedelta(seconds=overdue_s)
         sample_audio_clip_1.save()
 
-        cache_key_1 = CreateAudioClips.determine_processing_cache_key(
-            user_id=self.users[0].id,
-            audio_clip_id=sample_audio_clip_1.id,
-        )
-        cache.set(cache_key_1, {})
+        #set cache
+
+        target_cache['processings'].update({
+            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_cache_processing_object(
+                event=sample_audio_clip_1.event,
+                audio_clip=sample_audio_clip_1,
+            ),
+        })
+
+        target_cache['processings'][str(sample_audio_clip_1.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+        target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'] = False
+
+        cache.set(target_cache_key, target_cache)
 
         with self.settings(
             AUDIO_CLIP_UNPROCESSED_EXPIRY_S=(overdue_s - 1),
@@ -935,11 +977,14 @@ class Core_TestCase(TestCase):
 
         self.assertFalse(Events.objects.filter(pk=sample_event_0.id).exists())
         self.assertTrue(AudioClips.objects.filter(pk=sample_audio_clip_0.id).exists())
-        self.assertIsNone(cache.get(cache_key_0, None))
+
+        target_cache = cache.get(target_cache_key, None)
+
+        self.assertIsNotNone(target_cache)
+        self.assertEqual(len(target_cache['processings']), 0)
 
         self.assertFalse(Events.objects.filter(pk=sample_event_1.id).exists())
         self.assertTrue(AudioClips.objects.filter(pk=sample_audio_clip_1.id).exists())
-        self.assertIsNone(cache.get(cache_key_1, None))
 
         sample_audio_clip_0.refresh_from_db()
         sample_audio_clip_1.refresh_from_db()
@@ -967,11 +1012,25 @@ class Core_TestCase(TestCase):
         sample_audio_clip_0.when_created = self.datetime_now
         sample_audio_clip_0.save()
 
-        cache_key_0 = CreateAudioClips.determine_processing_cache_key(
+        #set cache
+
+        target_cache_key = CreateAudioClips.determine_processing_cache_key(
             user_id=self.users[0].id,
-            audio_clip_id=sample_audio_clip_0.id,
         )
-        cache.set(cache_key_0, {})
+
+        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+
+        target_cache['processings'].update({
+            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_cache_processing_object(
+                event=sample_event_0,
+                audio_clip=sample_audio_clip_0,
+            ),
+        })
+
+        target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = False
+
+        cache.set(target_cache_key, target_cache)
 
         with self.settings(
             AUDIO_CLIP_UNPROCESSED_EXPIRY_S=(overdue_s - 1),
@@ -981,7 +1040,11 @@ class Core_TestCase(TestCase):
 
         self.assertTrue(Events.objects.filter(pk=sample_event_0.id).exists())
         self.assertTrue(AudioClips.objects.filter(pk=sample_audio_clip_0.id).exists())
-        self.assertIsNotNone(cache.get(cache_key_0, None))
+
+        target_cache = cache.get(target_cache_key, None)
+
+        self.assertIsNotNone(target_cache)
+        self.assertIsNotNone(target_cache['processings'].get(str(sample_audio_clip_0.id), None))
 
 
     def test_cronjob_delete_event_reply_queue_not_replying_overdue__ok(self):
@@ -1459,6 +1522,8 @@ class Core_TestCase(TestCase):
 
         for x in range(audio_clips_quantity):
 
+            #event is immediately deleted when cronjob discovers overdue processings
+
             sample_originator_audio_clips.append(
                 AudioClipsFactory(
                     audio_clip_user=self.users[0],
@@ -1481,6 +1546,12 @@ class Core_TestCase(TestCase):
             sample_responder_audio_clips[x].when_created = target_when_created
             sample_responder_audio_clips[x].save()
 
+        sample_audio_clip_likes_dislikes_0 = AudioClipLikesDislikes.objects.create(
+            audio_clip_id=sample_responder_audio_clips[0].id,
+            is_liked=True,
+            user_id=self.users[1].id,
+        )
+
         #start
 
         cronjob_delete_audio_clip_processing_overdue()
@@ -1491,6 +1562,8 @@ class Core_TestCase(TestCase):
 
             self.assertFalse(AudioClips.objects.filter(pk=sample_originator_audio_clips[x].id).exists())
             self.assertFalse(AudioClips.objects.filter(pk=sample_responder_audio_clips[x].id).exists())
+
+        self.assertFalse(AudioClipLikesDislikes.objects.filter(pk=sample_audio_clip_likes_dislikes_0.id).exists())
 
 
     def test_cronjob_delete_audio_clip_processing_overdue__multiple_ok(self):
