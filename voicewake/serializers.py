@@ -628,6 +628,7 @@ class ProcessingCacheProcessingsSerializer(serializers.Serializer):
     event = ProcessingCacheEventsSerializer()
     is_processing = serializers.BooleanField()
     attempts_left = serializers.IntegerField()
+    status = serializers.CharField()
 
 
 

@@ -811,8 +811,8 @@
                         //server can return until 0 attempts left
                         //no need to allow user to reupload if at 0, as server won't process at that point
                         if(
-                            target_audio_clip_processing.lambda_attempts_left === null ||
-                            target_audio_clip_processing.lambda_attempts_left === 0
+                            target_audio_clip_processing.attempts_left === null ||
+                            target_audio_clip_processing.attempts_left === 0
                         ){
 
                             this.show_unavailable_dialog = true;
@@ -930,24 +930,17 @@
                         throw new Error('Missing form data.');
                     }
 
-                    //store if first time
-                    if(
-                        Object.hasOwn(
-                            this.audio_clip_processings_store.getAudioClipProcessings,
-                            this.submit_audio_clip_id
-                        ) === false
-                    ){
+                    //update store
 
-                        this.audio_clip_processings_store.storeAudioClipProcessing(
-                            this.propIsOriginator,
-                            this.submit_audio_clip_id,
-                            {
-                                id: this.submit_event_id,
-                                event_name: this.event_name,
-                            },
-                            this.audio_clip_tone_choice,
-                        );
-                    }
+                    this.audio_clip_processings_store.handleCreateAudioClipsSubmitSuccess(
+                        this.propIsOriginator,
+                        this.submit_audio_clip_id,
+                        {
+                            id: this.submit_event_id,
+                            event_name: this.event_name,
+                        },
+                        this.audio_clip_tone_choice,
+                    );
 
                     //finalise
                     this.progress_bar_step = null;

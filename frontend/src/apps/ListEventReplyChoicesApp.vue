@@ -165,16 +165,16 @@
                                         <span>Reached daily reply limit.</span>
                                     </template>
                                     <template #content>
-                                        <span>Come back soon!</span>
+                                        <span>Come back later!</span>
                                     </template>
                                 </VDialogPlain>
                             </TransitionFade>
                         </div>
                     </div>
 
-                    <!--is_replying dialog-->
+                    <!--is_replying, no reupload dialog-->
                     <div
-                        v-show="!isLoading && event_reply_choices_store.isReplying"
+                        v-show="!isLoading && event_reply_choices_store.isReplying && !hasReupload"
                         class="w-full h-fit flex flex-col"
                     >
 
@@ -216,6 +216,80 @@
                                 </div>
                             </template>
                         </VDialogPlain>
+                    </div>
+
+                    <!--is_replying, has reupload dialog-->
+                    <div
+                        v-show="!isLoading && event_reply_choices_store.isReplying && hasReupload"
+                        class="w-full h-fit flex flex-col"
+                    >
+
+                        <TransitionFade>
+                            <!--if processing, just make user wait-->
+                            <VDialogPlain
+                                v-if="reuploadStatus === 'processing'"
+                                class="w-full h-fit"
+                                :prop-has-auto-space-logo="false"
+                            >
+                                <template #title>
+                                    <span class="block">Processing reply...</span>
+                                </template>
+                                <template #content>
+                                    <VProgressBar
+                                        :prop-timestamps-ms="{
+                                            durations: [40000],
+                                            scales: [1],
+                                        }"
+                                        :prop-start-on-mounted="true"
+                                        :prop-step="0"
+                                        class="w-full"
+                                    />
+                                    <span class="block text-center">
+                                        Once your reply has been processed, you can start searching again.
+                                    </span>
+                                </template>
+                            </VDialogPlain>
+
+                            <!--error, can reupload or cancel-->
+                            <VDialogPlain
+                                v-else-if="reuploadStatus === 'lambda_error'"
+                                class="w-full h-fit"
+                                :prop-has-auto-space-logo="false"
+                            >
+                                <template #title>
+                                    <span class="block">Your reply had issues.</span>
+                                </template>
+                                <template #content>
+                                    <span class="block text-center">
+                                        You can reupload to fix it, or skip to cancel the reply.
+                                    </span>
+                                    <div
+                                        class="grid grid-rows-1 grid-cols-2 pt-4 gap-2"
+                                    >
+                                        <VActionSpecial
+                                            propElement="a"
+                                            :href="determineReuploadURL"
+                                            propElementSize="s"
+                                            propFontSize="s"
+                                            class="col-span-1"
+                                        >
+                                            <span class="block mx-auto">Reupload</span>
+                                        </VActionSpecial>
+                                        <VAction
+                                            @click="skipReupload()"
+                                            :propIsEnabled="!isLoading"
+                                            propElement="button"
+                                            type="button"
+                                            propElementSize="s"
+                                            propFontSize="s"
+                                            class="col-span-1"
+                                        >
+                                            <span class="block mx-auto">Skip</span>
+                                        </VAction>
+                                    </div>
+                                </template>
+                            </VDialogPlain>
+                        </TransitionFade>
                     </div>
 
                     <!--loading dialogs-->
@@ -372,6 +446,7 @@
     import TransitionFade from '@/transitions/TransitionFade.vue';
     import VDialogPlain from '../components/small/VDialogPlain.vue';
     import VLoading from '../components/small/VLoading.vue';
+    import VProgressBar from '@/components/small/VProgressBar.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     import { library } from '@fortawesome/fontawesome-svg-core';
@@ -392,7 +467,9 @@
     import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
     import { useEventReplyChoicesStore } from '@/stores/EventReplyChoicesStore';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
-    // import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
+    import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
+
+    import { AudioClipProcessingStatusesTypes } from '@/types/AudioClipProcessingDetails.interface';
 
 
     export default defineComponent({
@@ -401,6 +478,7 @@
             return {
                 event_reply_choices_store: useEventReplyChoicesStore(),
                 pop_up_manager_store: usePopUpManagerStore(),
+                audio_clip_processings_store: useAudioClipProcessingsStore(),
 
                 //if false, then queue without removing previous locks
                 has_searched_once: false,
@@ -441,6 +519,37 @@
                     (this.isLoading === false || this.is_reply_confirming === true) &&
                     this.event_reply_choices_store.isReplying === false
                 );
+            },
+            hasReupload() : boolean {
+
+                return this.audio_clip_processings_store.getResponderProcessing !== null;
+            },
+            reuploadStatus() : ''|AudioClipProcessingStatusesTypes {
+
+                const processing = this.audio_clip_processings_store.getResponderProcessing;
+
+                if(processing === null){
+
+                    return '';
+                }
+
+                return processing.status;
+            },
+            determineReuploadURL() : string {
+
+                const processing = this.audio_clip_processings_store.getResponderProcessing;
+
+                if(
+                    processing === null ||
+                    this.audio_clip_processings_store.responder_processing_audio_clip_id === null
+                ){
+
+                    return '';
+                }
+
+                return this.audio_clip_processings_store.determineReuploadURL(
+                    this.audio_clip_processings_store.responder_processing_audio_clip_id
+                )
             },
         },
         methods: {
@@ -657,6 +766,35 @@
 
                 //start interval
                 this.expiry_interval = window.setInterval(interval_function, interval_ms);
+            },
+            async skipReupload() : Promise<void> {
+
+                if(this.is_event_cancelling === true){
+
+                    return;
+                }
+
+                this.is_event_cancelling = true;
+
+                const api_calls = [];
+
+                if(this.audio_clip_processings_store.responder_processing_audio_clip_id !== null){
+
+                    api_calls.push(
+                        this.audio_clip_processings_store.deleteAudioClipProcessing(
+                            this.audio_clip_processings_store.responder_processing_audio_clip_id
+                        )
+                    );
+                }
+
+                api_calls.push(
+                    this.queueNextEventReplyChoices(true)
+                );
+
+                await Promise.allSettled(api_calls).finally(()=>{
+
+                    this.is_event_cancelling = false;
+                })
             },
         },
         beforeMount(){
