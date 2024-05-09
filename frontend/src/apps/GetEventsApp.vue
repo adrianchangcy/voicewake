@@ -255,7 +255,7 @@
                 username: '',
 
                 reupload_audio_clip_id: null as number|null,
-                is_originator: false,
+                is_originator: true,
 
                 event_id: null as number|null,
                 event: null as EventsAndAudioClipsTypes|null,
@@ -423,8 +423,8 @@
                     this.event_reply_choices_store.getReplyingEvent !== null
                 ){
 
-                    //is_replying=True
-                    //don't handle is_replying=False here, i.e. locked only for choice
+                    //user is replying, just use event_reply_queue's when_locked
+
                     target_event = this.event_reply_choices_store.getReplyingEvent;
                     target_max_ms = this.event_reply_choices_store.event_reply_expiry_ms;
                     start_date = getPiniaDateObject(target_event.event_reply_queue!.when_locked);
@@ -435,8 +435,9 @@
                     this.reupload_audio_clip_id !== null
                 ){
 
-                    //is not replying, is reupload
-                    target_max_ms = this.audio_clip_processings_store.audio_clip_unprocessed_expiry_s;
+                    //user is not replying, use processing's last_attempt
+
+                    target_max_ms = this.audio_clip_processings_store.audio_clip_unprocessed_expiry_ms;
                     expiry_context = 'not_replying_and_reupload';
 
                     const target_audio_clip_processing = this.audio_clip_processings_store.getAudioClipProcessing(
@@ -446,7 +447,7 @@
                     if(target_audio_clip_processing !== null){
 
                         start_date = getPiniaDateObject(
-                            target_audio_clip_processing.last_lambda_attempt
+                            target_audio_clip_processing.last_attempt
                         );
                     }
 
@@ -518,11 +519,18 @@
 
                         //not replying, and reuploading
 
-                        const audio_clip_id = this.audio_clip_processings_store.getAudioClipIdByEventId(this.event_id!);
+                        const current_processing = this.audio_clip_processings_store.getAudioClipProcessing(this.reupload_audio_clip_id!);
 
-                        if(audio_clip_id !== null){
+                        if(current_processing !== null){
 
-                            this.audio_clip_processings_store.deleteAudioClipProcessing(audio_clip_id);
+                            const new_processing = this.audio_clip_processings_store.updateProcessing(
+                                this.reupload_audio_clip_id!,
+                                current_processing,
+                                'not_found',
+                                null
+                            );
+
+                            this.audio_clip_processings_store.audio_clip_processings[this.reupload_audio_clip_id!] = new_processing;
                         }
 
                         this.dialog_context = 'not_replying_reupload_expired';
@@ -682,26 +690,37 @@
 
                 this.teleport_id = teleport_id;
             },
-            determineIsOriginatorForReupload() : void {
+            getReuploadDetailsFromTemplate(data_container_element:HTMLElement) : void {
 
-                //this only matters during reupload
-                //when not for reupload, is responder
+                //determines reupload_audio_clip_id, is_originator
 
-                //get data from SSR template
-                const container = (document.getElementById('data-container-get-events') as HTMLElement);
+                //this is only used to verify that reupload is allowed, when user wants to reupload
+                //only used at GetEventsApp, when user is at reupload-specific URL
 
-                if(container === null){
+                //check if URL has get param
 
-                    throw new Error('container was not found in template.');
-                }
+                const current_url = new URL(window.location.href);
+                const reupload_audio_clip_id = data_container_element.getAttribute('data-reupload-audio-clip-id');
+                const reupload_audio_clip_id_from_url = current_url.searchParams.get('reupload');
 
-                const audio_clip_role_name = container.getAttribute('data-reupload-audio-clip-role-name');
+                if(
+                    reupload_audio_clip_id !== null &&
+                    reupload_audio_clip_id_from_url !== null &&
+                    reupload_audio_clip_id === reupload_audio_clip_id_from_url
+                ){
 
-                if(audio_clip_role_name === null){
+                    //is reupload
+                    this.reupload_audio_clip_id = Number(reupload_audio_clip_id);
 
-                    //not reupload
+                }else{
+
+                    //not reupload, just return
                     return;
                 }
+
+                //check role
+
+                const audio_clip_role_name = data_container_element.getAttribute('data-reupload-audio-clip-role-name') as 'originator'|'responder';
 
                 if(audio_clip_role_name === 'originator'){
 
@@ -713,7 +732,7 @@
 
                 }else{
 
-                    throw new Error('Cannot determine originator/responder.');
+                    throw new Error('Missing or unrecognised data.');
                 }
             },
         },
@@ -722,11 +741,6 @@
             //username
             //empty string if not found
             this.username = getDataFromTemplateJSONScript('data-user-username') as string;
-
-            //check if reuploading
-            //does not rely on persisted store to know if user is reuploading
-            this.reupload_audio_clip_id = this.audio_clip_processings_store.getReuploadAudioClipId();
-            this.determineIsOriginatorForReupload();
 
             //change when_created
             const when_created_element = document.getElementById('event-when-created');
@@ -746,6 +760,7 @@
                 throw new Error('Data container element was not found.');
             }
 
+            this.getReuploadDetailsFromTemplate(container);
             this.event_reply_choices_store.getStaticValuesFromTemplate(container);
             this.audio_clip_processings_store.getStaticValuesFromTemplate(container);
 
@@ -762,12 +777,13 @@
 
             //if event_reply_choices_store has this event, get from store instead of API
 
-            if(this.event_reply_choices_store.getReplyingEvent !== null){
+            if(this.canReply === true){
 
                 //get event from store
 
                 //cannot refer to same object across multiple tabs, so like/dislike will be out of sync
                 this.event = this.event_reply_choices_store.getReplyingEvent;
+                this.is_originator = false;
                 
                 //rewrite title
                 document.title = "Replying: " + this.original_document_title;
@@ -782,6 +798,8 @@
                 this.getEvent().then(()=>{
 
                     if(this.canReply === true){
+
+                        this.is_originator = false;
 
                         //rewrite title
                         document.title = "Replying: " + this.original_document_title;

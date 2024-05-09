@@ -2,7 +2,7 @@
     <!--follow VNotiwind for design choices-->
     <Teleport to="#audio-clip-processings-target">
         <div
-            v-if="canPoll"
+            v-if="canShowNotifications"
             class="w-full flex flex-col"
         >
             <TransitionGroup
@@ -114,6 +114,7 @@
                                 <VActionBorder
                                     v-else-if="action.type === 'button'"
                                     @click="audio_clip_processings_store.getActionButtonCallback(audio_clip_id, action_index)"
+                                    :prop-is-enabled="!isClosing(processing)"
                                     prop-element="button"
                                     prop-element-size="s"
                                     prop-font-size="s"
@@ -132,12 +133,23 @@
                     <VActionText
                         v-if="hasCloseButton(processing)"
                         @click="audio_clip_processings_store.deleteAudioClipProcessing(audio_clip_id)"
+                        :prop-is-enabled="!isClosing(processing)"
                         prop-element="button"
                         prop-element-size="s"
                         :prop-is-icon-only="true"
-                        class="w-10 h-10 focus-visible:-outline-offset-4"
+                        class="w-10 h-10 flex items-center focus-visible:-outline-offset-4"
                     >
-                        <FontAwesomeIcon icon="fas fa-xmark" class="text-xl mx-auto"/>
+                        <VLoading
+                            v-show="isClosing(processing)"
+                            prop-element-size="s"
+                            class="mx-auto"
+                        >
+                            <span class="sr-only">Deleting reupload message.</span>
+                        </VLoading>
+                        <FontAwesomeIcon
+                            v-show="!isClosing(processing)"
+                            icon="fas fa-xmark" class="text-xl mx-auto"
+                        />
                     </VActionText>
                 </div>
             </TransitionGroup>
@@ -151,6 +163,7 @@
     import VProgressBar from '../small/VProgressBar.vue';
     import VActionText from '../small/VActionText.vue';
     import VActionBorder from '../small/VActionBorder.vue';
+    import VLoading from '../small/VLoading.vue';
 
     import { AudioClipProcessingDetailsTypes } from '@/types/AudioClipProcessingDetails.interface';
 
@@ -217,6 +230,11 @@
         }
     }
 
+    function isClosing(processing:AudioClipProcessingDetailsTypes) : boolean {
+
+        return processing.is_closing;
+    }
+
 </script>
 
 
@@ -249,14 +267,36 @@
                     current_url.includes("event") === false
                 );
             },
+            canShowNotifications() : boolean {
+
+                const current_url = window.location.href;
+
+                return (
+                    current_url.includes("login") === false &&
+                    current_url.includes("signup") === false &&
+                    current_url.includes("start") === false &&
+                    current_url.includes("reply") === false &&
+                    current_url.includes("event") === false
+                );
+            },
         },
         methods: {
         },
         beforeMount(){
 
-            if(this.canPoll){
+            if(this.canPoll === true){
 
-                this.audio_clip_processings_store.startPollingProcessings();
+                window.setTimeout(async ()=>{
+
+                    //sync store before polling
+                    //we use .finally() as we do not prioritise sync's success
+
+                    await this.audio_clip_processings_store.syncProcessingsAPI().finally(()=>{
+
+                        this.audio_clip_processings_store.startPollingProcessings();
+                    });
+
+                }, 1000);
             }
 
             this.audio_clip_processings_store.$onAction(
@@ -266,7 +306,7 @@
                     after, // hook after the action returns or resolves
                 }) => {
 
-                    if(name === 'updateLastProcessedAudioClipId'){
+                    if(name === 'updateLastRemovableAudioClipId'){
 
                         //on every processed audio clip, check if it matches replying event
                         //if true, do softReset()

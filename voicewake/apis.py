@@ -2911,22 +2911,24 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
     available_contexts = ['list', 'check', 'delete']
     current_context:Literal['list', 'check', 'delete'] = 'check'
+    processing_statuses = ['processing', 'processed', 'not_found', 'lambda_error']
 
 
     #will minimally validate, no invalidation
-    def check_normalisation_status(self, audio_clip_id:int)->Response:
+    def check_normalisation_status(self, processing_cache:dict, audio_clip_id:int, return_type:Literal['string', 'response'])->str|Response:
 
         #do not create or modify anything here
         #404 if no longer available
         #409 if is processing
         #200 if processing is successful/failed
 
-        processing_cache = cache.get(
-            CreateAudioClips.determine_processing_cache_key(
-                user_id=self.request.user.id,
-            ),
-            None
-        )
+        if return_type not in ['string', 'response']:
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message='Invalid return_type.',
+            )
 
         processing_cache_processing = None
 
@@ -2943,22 +2945,39 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
 
         if processing_cache_processing is not None:
 
-            response_status = status.HTTP_409_CONFLICT
+            response_status = None
 
-            if processing_cache_processing['is_processing'] is False:
+            if processing_cache_processing['is_processing'] is True:
+
+                response_status = status.HTTP_409_CONFLICT
+
+            else:
 
                 response_status = status.HTTP_200_OK
 
             #still has attempts
             #frontend will track attempts_left
             #so if this returns -1 than what is at frontend, means processing failed
-            return Response(
-                data={
-                    'is_processing': processing_cache_processing['is_processing'],
-                    'attempts_left': processing_cache_processing['attempts_left'],
-                },
-                status=response_status
-            )
+
+            if return_type == 'string':
+
+                if processing_cache_processing['is_processing'] is True:
+
+                    return 'processing'
+
+                else:
+
+                    return 'lambda_error'
+
+            else:
+
+                return Response(
+                    data={
+                        'is_processing': processing_cache_processing['is_processing'],
+                        'attempts_left': processing_cache_processing['attempts_left'],
+                    },
+                    status=response_status
+                )
 
         #no cache, continue to check db
 
@@ -2975,28 +2994,46 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
 
         except AudioClips.DoesNotExist:
 
-            return Response(
-                data={
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
+            if return_type == 'string':
+
+                return 'not_found'
+
+            else:
+
+                return Response(
+                    data={
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
 
         #check
 
         if target_audio_clip.generic_status.generic_status_name == 'ok':
 
+            if return_type == 'string':
+
+                return 'processed'
+            
+            else:
+
+                return Response(
+                    data={
+                        'is_processed': True
+                    },
+                    status=status.HTTP_200_OK
+                )
+
+        if return_type == 'string':
+
+            return 'not_found'
+
+        else:
+
             return Response(
                 data={
-                    'is_processed': True
                 },
-                status=status.HTTP_200_OK
+                status=status.HTTP_404_NOT_FOUND
             )
-
-        return Response(
-            data={
-            },
-            status=status.HTTP_404_NOT_FOUND
-        )
 
 
     def __init__(self, *args, **kwargs):
@@ -3035,19 +3072,53 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
 
             new_data = serializer.validated_data
 
-            return self.check_normalisation_status(audio_clip_id=new_data['audio_clip_id'])
+            processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=request.user.id)
+            processing_cache = cache.get(processing_cache_key, None)
+
+            #ensure main cache exists
+            if processing_cache is None:
+
+                processing_cache = CreateAudioClips.get_default_processing_cache_main_object()
+                cache.set(processing_cache_key, processing_cache)
+
+            return self.check_normalisation_status(
+                processing_cache=processing_cache,
+                audio_clip_id=new_data['audio_clip_id'],
+                return_type='response'
+            )
 
         elif self.current_context == 'list':
 
             processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=request.user.id)
             processing_cache = cache.get(processing_cache_key, None)
 
+            #ensure main cache exists
             if processing_cache is None:
 
-                #ensure main cache exists
                 processing_cache = CreateAudioClips.get_default_processing_cache_main_object()
-
                 cache.set(processing_cache_key, processing_cache)
+
+            #add "status" to processing
+
+            for audio_clip_id in processing_cache['processings']:
+
+                processing_status = self.check_normalisation_status(
+                    processing_cache=processing_cache,
+                    audio_clip_id=int(audio_clip_id),
+                    return_type='string'
+                )
+
+                if processing_status not in self.processing_statuses:
+
+                    raise custom_error(
+                        ValueError,
+                        __name__,
+                        dev_message="Invalid status.",
+                    )
+
+                processing_cache['processings'][str(audio_clip_id)].update({
+                    'status': processing_status
+                })
 
             final_data = ListAudioClipProcessingsAPISerializer(processing_cache).data
 
