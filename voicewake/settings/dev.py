@@ -6,7 +6,7 @@ DEBUG_PROPAGATE_EXCEPTIONS = True   #shows detailed exceptions instead of simple
 
 
 REQUEST_TIME_DELAY = 0  #seconds
-SHOW_DJANGO_DEBUG_TOOLBAR = True
+SHOW_DJANGO_DEBUG_TOOLBAR = False
 
 
 ALLOWED_HOSTS = ['*']

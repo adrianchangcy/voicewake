@@ -33,7 +33,7 @@
                 required: true
             },
             propColourClass: {
-                type: String,
+                type: String as PropType<''|'border-theme-black'|'border-theme-light'>,
                 default: ''
             },
         },

@@ -438,8 +438,10 @@ export function useAudioClipProcessingsStore(){
                 const target_url = window.location.origin + '/api/audio-clips/processings/delete';
 
                 //prepare data
+                //use Number() as temporary fix for the mistake "declare key in {} as number type"
+                //API will error if we JSON.stringify() a string
                 const data = new FormData();
-                data.append('audio_clip_id', JSON.stringify(audio_clip_id));
+                data.append('audio_clip_id', JSON.stringify(Number(audio_clip_id)));
 
                 //make call
                 await axios.post(target_url, data).catch((error:any)=>{
@@ -451,7 +453,7 @@ export function useAudioClipProcessingsStore(){
 
                     if(error.request.status === 404){
 
-                        //allow 404
+                        //404 is treated as success
                         return;
                     }
 
@@ -597,13 +599,11 @@ export function useAudioClipProcessingsStore(){
                     });
                 }
             },
-            determineReuploadURL(audio_clip_id:number) : string {
+            determineReuploadURL(event_id:number, audio_clip_id:number) : string {
 
                 let final_url = window.location.origin;
-                
-                const target_object = this.audio_clip_processings[audio_clip_id];
 
-                final_url += '/event/' + target_object.event.id.toString();
+                final_url += '/event/' + event_id.toString();
                 final_url += '?reupload=' + audio_clip_id.toString();
 
                 return final_url;
@@ -757,7 +757,10 @@ export function useAudioClipProcessingsStore(){
                             {
                                 type: 'url',
                                 text: 'Reupload',
-                                url: this.determineReuploadURL(audio_clip_id),
+                                url: this.determineReuploadURL(
+                                    processing['event'].id,
+                                    audio_clip_id
+                                ),
                             },
                         ];
                         processing.can_close = true;

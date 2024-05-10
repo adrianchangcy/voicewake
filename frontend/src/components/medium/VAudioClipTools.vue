@@ -3,7 +3,7 @@
 
         <!--put ref here to target closest vue virtual scroller-->
         <div
-            ref="main_ref"
+            ref="v_audio_clip_tools_main"
             class="h-10 grid grid-cols-6 gap-1 text-xl"
         >
 
@@ -306,7 +306,7 @@
 
                 if(this.propHasVirtualScroll === true){
 
-                    const closest_virtual_scroll_view = (this.$refs.main_ref as HTMLElement).closest('.vue-recycle-scroller__item-view');
+                    const closest_virtual_scroll_view = (this.$refs.v_audio_clip_tools_main as HTMLElement).closest('.vue-recycle-scroller__item-view');
 
                     (closest_virtual_scroll_view as HTMLElement).style.zIndex = final_state === true ? '1' : '';
                 }
@@ -321,6 +321,8 @@
                 }
 
                 const url = window.location.origin + "/event/" + this.propAudioClip.event_id;
+
+                //this will raise error in insecure context, i.e. not HTTPS
                 navigator.clipboard.writeText(url);
 
                 notify({
@@ -388,7 +390,7 @@
                     });
                 }, 500);
             },
-            async isLoggedIn() : Promise<boolean> {
+            checkIsLoggedIn() : boolean {
 
                 if(this.pop_up_manager_store.isLoggedIn === false){
 
@@ -400,7 +402,7 @@
             },
             async handleLikeDislike(is_liked_action:boolean) : Promise<void> {
 
-                if(await this.isLoggedIn() === false){
+                if(this.checkIsLoggedIn() === false){
 
                     return;
                 }
@@ -474,7 +476,7 @@
             },
             async submitReport() : Promise<void> {
 
-                if(await this.isLoggedIn() === false){
+                if(this.checkIsLoggedIn() === false){
 
                     return;
                 }

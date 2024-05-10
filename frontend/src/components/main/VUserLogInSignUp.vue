@@ -232,7 +232,7 @@
                                     v-show="is_otp_request_loading"
                                     class="text-base"
                                 >
-                                    <VLoading propElementSize="s">
+                                    <VLoading prop-element-size="s">
                                         <span class="pl-1">Sending login code...</span>
                                     </VLoading>
                                 </div>
@@ -271,7 +271,8 @@
                                     <!--i.e. renders v-if and v-else once then permanently disappearing-->
                                     <VLoading
                                         v-if="is_main_action_loading"
-                                        propElementSize="m"
+                                        prop-element-size="m"
+                                        prop-colour-class="border-theme-black"
                                         class="mx-auto"
                                     >
                                         <span class="pl-2">Logging in...</span>
@@ -496,7 +497,7 @@
                                     v-show="is_otp_request_loading"
                                     class="text-base"
                                 >
-                                    <VLoading propElementSize="s">
+                                    <VLoading prop-element-size="s">
                                         <span class="pl-1">Sending sign-up code...</span>
                                     </VLoading>
                                 </div>
@@ -533,7 +534,8 @@
                                 >
                                     <VLoading
                                         v-if="is_main_action_loading"
-                                        propElementSize="m"
+                                        prop-element-size="m"
+                                        prop-colour-class="border-theme-black"
                                         class="mx-auto"
                                     >
                                         <span class="pl-2">Signing up...</span>

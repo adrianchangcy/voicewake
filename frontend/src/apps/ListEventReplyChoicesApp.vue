@@ -224,7 +224,9 @@
                         class="w-full h-fit flex flex-col"
                     >
 
+                        <!--use v-if as these are unlikely to happen, so no need to render in advance-->
                         <TransitionFade>
+
                             <!--if processing, just make user wait-->
                             <VDialogPlain
                                 v-if="reuploadStatus === 'processing'"
@@ -354,6 +356,7 @@
                             <VLoading
                                 v-show="is_reply_confirming"
                                 prop-element-size="m"
+                                prop-colour-class="border-theme-black"
                                 class="block mx-auto"
                             ></VLoading>
                         </VActionSpecial>
@@ -538,18 +541,19 @@
             determineReuploadURL() : string {
 
                 const processing = this.audio_clip_processings_store.getResponderProcessing;
+                const audio_clip_id = this.audio_clip_processings_store.responder_processing_audio_clip_id;
 
                 if(
-                    processing === null ||
-                    this.audio_clip_processings_store.responder_processing_audio_clip_id === null
+                    processing === null || audio_clip_id === null
                 ){
 
                     return '';
                 }
 
                 return this.audio_clip_processings_store.determineReuploadURL(
-                    this.audio_clip_processings_store.responder_processing_audio_clip_id
-                )
+                    processing['event'].id,
+                    audio_clip_id
+                );
             },
         },
         methods: {
