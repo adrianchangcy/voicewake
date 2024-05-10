@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "runDevelopment",
+            "label": "runAllDevTasks",
             "runOptions": {
                 "runOn": "folderOpen"
             },
