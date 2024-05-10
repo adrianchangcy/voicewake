@@ -68,7 +68,7 @@
 
                     <!--arrows and menus-->
                     <!--must be here on its own, prevents unwanted top-and-bottom gaps if it were in the flexbox above-->
-                    <div class="w-full h-fit relative pt-4">
+                    <div class="w-full h-fit pt-4">
 
                         <!--arrows-->
                         <!--uses padding to represent gap above, because there is always only one element, so gap wouldn't work-->

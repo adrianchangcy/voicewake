@@ -1,9 +1,10 @@
 <template>
-    <div class="h-full text-center">
+    <div class="h-full">
 
         <!--main nav-->
+        <!--px-5 to align with main content-->
         <nav
-            class="h-full grid grid-cols-4 lg:grid-cols-8 p-2 bg-theme-light dark:bg-theme-dark border-b border-theme-gray-2 dark:border-dark-theme-gray-2"
+            class="h-full text-center grid grid-cols-4 lg:grid-cols-8 gap-2 p-2 bg-theme-light dark:bg-theme-dark border-b border-theme-gray-2 dark:border-dark-theme-gray-2"
         >
 
             <!--home-->
@@ -95,25 +96,25 @@
                     class="w-full h-full"
                 >
                     <!--burger-->
-                    <div class="w-full h-full grid grid-rows-3 grid-flow-row      justify-items-center place-items-center">
+                    <div class="w-full h-full relative">
                         <div
                             :class="[
-                                pop_up_manager_store.isNavMenuOpen ? 'mb-0 rotate-45' : 'mb-4 rotate-0',
-                                'nav-burger-line row-span-1 bg-theme-black dark:bg-dark-theme-white-2 absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
+                                pop_up_manager_store.isNavMenuOpen ? 'rotate-45' : 'translate-y-2 rotate-0',
+                                'absolute left-0 right-0 top-0 bottom-0 m-auto w-5 h-0.5 bg-theme-black dark:bg-dark-theme-white-2 transition-all',
                             ]"
                         >
                         </div>
                         <div
                             :class="[
                                 pop_up_manager_store.isNavMenuOpen ? 'opacity-0' : 'opacity-100',
-                                'nav-burger-line row-span-1 bg-theme-black dark:bg-dark-theme-white-2 absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
+                                'absolute left-0 right-0 top-0 bottom-0 m-auto w-5 h-0.5 bg-theme-black dark:bg-dark-theme-white-2 transition-all',
                             ]"
                         >
                         </div>
                         <div
                             :class="[
-                                pop_up_manager_store.isNavMenuOpen ? 'mt-0 -rotate-45' : 'mt-4 rotate-0',
-                                'nav-burger-line row-span-1 bg-theme-black dark:bg-dark-theme-white-2 absolute   w-5 h-0.5     transition-all duration-200 ease-in-out',
+                                pop_up_manager_store.isNavMenuOpen ? '-rotate-45' : '-translate-y-2 rotate-0',
+                                'absolute left-0 right-0 top-0 bottom-0 m-auto w-5 h-0.5 bg-theme-black dark:bg-dark-theme-white-2 transition-all',
                             ]"
                         >
                         </div>
@@ -131,7 +132,7 @@
             <TransitionFade>
                 <div
                     v-show="pop_up_manager_store.isNavMenuOpen"
-                    class="h-0 grid grid-cols-4 sm:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12"
+                    class="w-full h-0 absolute grid grid-cols-4 sm:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12"
                 >
 
                     <!--extra area to click when nav menu is open-->
@@ -399,6 +400,8 @@
             </TransitionFade>
 
             <!--login/signup popup, login required popup-->
+            <!--no v-click-outside, because these are more important-->
+            <!--furthermore, v-click-outside here cannot target VAudioClipTools for login_required-->
             <div
                 v-if="!pop_up_manager_store.isLoggedIn"
                 class="h-0 relative"
@@ -409,10 +412,6 @@
                 >
                     <div
                         v-show="pop_up_manager_store.isLogInOpen"
-                        v-click-outside="{
-                            bool_status_variable_or_callback: pop_up_manager_store.closeLogInPopUp,
-                            refs_to_exclude: ['nav_big_sign_up_button']
-                        }"
                         class="sm:w-3/4 md:w-2/4 xl:w-5/12 2xl:w-4/12 max-h-[90%] min-h-fit m-auto px-4 border border-theme-gray-2 dark:border-dark-theme-gray-2 bg-theme-light dark:bg-theme-dark rounded-lg overflow-y-auto"
                     >
                         <TransitionFade>
@@ -427,10 +426,6 @@
                     </div>
                     <div
                         v-show="pop_up_manager_store.isSignUpOpen"
-                        v-click-outside="{
-                            bool_status_variable_or_callback: pop_up_manager_store.closeSignUpPopUp,
-                            refs_to_exclude: ['nav_big_sign_up_button']
-                        }"
                         class="sm:w-3/4 md:w-2/4 xl:w-5/12 2xl:w-4/12 max-h-[90%] min-h-fit m-auto px-4 border border-theme-gray-2 dark:border-dark-theme-gray-2 bg-theme-light dark:bg-theme-dark rounded-lg overflow-y-auto"
                     >
                         <TransitionFade>
@@ -449,10 +444,6 @@
                     class="absolute flex items-center w-full h-[calc(100vh-4.5rem)] bg-theme-light/90 dark:bg-theme-dark/90"
                 >
                     <div
-                        v-click-outside="{
-                            bool_status_variable_or_callback: pop_up_manager_store.closeLoginRequiredPopUp,
-                            refs_to_exclude: []
-                        }"
                         class="w-5/6 sm:w-fit max-h-[90%] min-h-fit m-auto px-4 pb-14 border border-theme-gray-2 dark:border-dark-theme-gray-2 bg-theme-light dark:bg-theme-dark rounded-lg"
                     >
                         <VLoginRequiredPrompt

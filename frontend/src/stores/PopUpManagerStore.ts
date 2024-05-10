@@ -13,20 +13,20 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
         current_popup_context: "" as PopUpContextsTypes,
     }),    
     getters: {
-        isLoggedIn() : boolean {
-            return this.is_logged_in;
+        isLoggedIn: (state)=>{
+            return state.is_logged_in;
         },
-        isNavMenuOpen() : boolean {
-            return this.current_popup_context === 'nav_menu';
+        isNavMenuOpen: (state)=>{
+            return state.current_popup_context === 'nav_menu';
         },
-        isLoginRequiredOpen() : boolean {
-            return this.current_popup_context === 'login_required';
+        isLoginRequiredOpen: (state)=>{
+            return state.current_popup_context === 'login_required';
         },
-        isLogInOpen() : boolean {
-            return this.current_popup_context === 'log_in';
+        isLogInOpen: (state)=>{
+            return state.current_popup_context === 'log_in';
         },
-        isSignUpOpen() : boolean {
-            return this.current_popup_context === 'sign_up';
+        isSignUpOpen: (state)=>{
+            return state.current_popup_context === 'sign_up';
         },
     },
     actions: {
@@ -51,6 +51,7 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
             if(this.current_popup_context === 'nav_menu'){
 
                 this.current_popup_context = '';
+                console.log('closed0');
             }
         },
         closeLoginRequiredPopUp() : void {
@@ -58,6 +59,7 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
             if(this.current_popup_context === 'login_required'){
 
                 this.current_popup_context = '';
+                console.log('closed1');
             }
         },
         closeLogInPopUp() : void {
@@ -65,6 +67,7 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
             if(this.current_popup_context === 'log_in'){
 
                 this.current_popup_context = '';
+                console.log('closed2');
             }
         },
         closeSignUpPopUp() : void {
@@ -72,11 +75,13 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
             if(this.current_popup_context === 'sign_up'){
 
                 this.current_popup_context = '';
+                console.log('closed3');
             }
         },
         closeAllPopUps() : void {
 
             this.current_popup_context = "";
+            console.log('closed4');
         },
     },
 });

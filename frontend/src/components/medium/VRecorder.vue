@@ -338,6 +338,7 @@
                 try{
 
                     //getUserMedia is a Promise
+                    //navigator.mediaDevices is unefined in insecure context, i.e. not HTTPS
                     await navigator.mediaDevices.getUserMedia({
                         video: false,
                         audio: true,

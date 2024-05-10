@@ -28,8 +28,8 @@
         <div
             v-else
             :class="[
-                propElementSize === 's' ? 'pb-1' : '',
-                propElementSize === 'm' ? 'pb-1.5' : '',
+                propElementSize === 's' ? 'pb-[0.1875rem]' : '',
+                propElementSize === 'm' ? 'pb-[0.3125rem]' : '',
                 propElementSize === 'l' ? 'pb-2' : '',
                 propElementSize === 'xl' ? 'pb-2' : '',
                 propElementSize === '2xl' ? 'pb-2' : '',

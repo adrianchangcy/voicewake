@@ -23,7 +23,7 @@
         </div>
         <div class="h-6">
             <TransitionFade>
-                <div v-show="is_error" class="w-full h-fit text-red-700 dark:text-red-400 text-base whitespace-break-spaces">
+                <div v-show="is_error" class="h-fit text-red-700 dark:text-red-400 text-base whitespace-break-spaces">
                     <span>{{ status_text }}</span>
                 </div>
             </TransitionFade>

@@ -40,7 +40,8 @@
             >
                 <VLoading
                     v-if="is_submitting"
-                    propElementSize="m"
+                    prop-element-size="m"
+                    prop-colour-class="border-theme-black"
                     class="mx-auto"
                 >
                     <span class="pl-2">Saving...</span>
