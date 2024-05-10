@@ -380,19 +380,19 @@
 
                     <!--event preview-->
                     <div
-                        v-show="isEventCardOpen"
+                        v-show="isVEventCardOpen"
                         class="w-full"
                     >
-                        <!--must use v-if since EventCard cannot exist with null-->
+                        <!--must use v-if since VEventCard cannot exist with null-->
                         <!--keep-alive prevents unmounting when choices are suddenly null-->
                         <keep-alive>
-                            <EventCard
+                            <VEventCard
                                 v-if="event_reply_choices_store.getMainEvent !== null"
                                 :prop-event="event_reply_choices_store.getMainEvent"
                                 prop-guaranteed-event-generic-status="incomplete"
                                 :prop-show-title="true"
                                 :prop-has-border="true"
-                                :prop-is-v-playback-open="isEventCardOpen"
+                                :prop-is-v-playback-open="isVEventCardOpen"
                                 @new-is-liked="event_reply_choices_store.newAudioClipIsLiked($event)"
                             />
                         </keep-alive>
@@ -409,7 +409,7 @@
                     </div>
 
                     <!--searching-->
-                    <EventCardSkeleton
+                    <VEventCardSkeleton
                         v-show="isLoading && is_searching"
                         :prop-audio-clip-quantity="1"
                         :prop-has-border="true"
@@ -438,8 +438,8 @@
 
 <script setup lang="ts">
     import VTitle from '../components/small/VTitle.vue';
-    import EventCard from '../components/main/EventCard.vue';
-    import EventCardSkeleton from '../components/skeleton/EventCardSkeleton.vue';
+    import VEventCard from '../components/main/VEventCard.vue';
+    import VEventCardSkeleton from '../components/skeleton/VEventCardSkeleton.vue';
     import VActionSpecial from '../components/small/VActionSpecial.vue';
     import VAction from '../components/small/VAction.vue';
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
@@ -512,7 +512,7 @@
 
                 return this.isLoading === false;
             },
-            isEventCardOpen() : boolean {
+            isVEventCardOpen() : boolean {
 
                 //keep this open even when reply is confirming
                 return (

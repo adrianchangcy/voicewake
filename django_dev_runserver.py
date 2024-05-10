@@ -28,6 +28,7 @@ if __name__ == '__main__':
                     'py',
                     'manage.py',
                     'runserver',
+                    '0.0.0.0:8000',
                     '--settings=voicewake.settings.dev',
                 ],
             )

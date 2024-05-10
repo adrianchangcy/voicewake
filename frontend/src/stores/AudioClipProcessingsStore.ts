@@ -492,7 +492,7 @@ export function useAudioClipProcessingsStore(){
 
                 return this.audio_clip_processings[audio_clip_id];
             },
-            handleCreateAudioClipsSubmitSuccess(
+            handleVCreateAudioClipsSubmitSuccess(
                 passed_is_originator:boolean,
                 passed_audio_clip_id:number,
                 passed_event:EventsTypes,

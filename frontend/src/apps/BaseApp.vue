@@ -1,5 +1,5 @@
 <template>
-    <NavBar
+    <VNavBar
         :propUsername="username"
     />
 
@@ -21,7 +21,7 @@
 <script setup lang="ts">
     import VNotiwind from '../components/medium/VNotiwind.vue';
     import VAudioClipProcessings from '@/components/medium/VAudioClipProcessings.vue';
-    import NavBar from '../components/main/NavBar.vue';
+    import VNavBar from '../components/main/VNavBar.vue';
 </script>
 
 <script lang="ts">

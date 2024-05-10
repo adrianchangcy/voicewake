@@ -18,7 +18,7 @@
         {
             "label": "django-dev",
             "type": "shell",
-            "command": "py task_django_dev_runserver.py",
+            "command": "py django_dev_runserver.py",
             "presentation": {
                 "panel": "dedicated"
             }

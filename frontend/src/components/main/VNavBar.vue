@@ -66,7 +66,7 @@
                     class="h-full flex items-center"
                 >
                     <VActionSpecial
-                        @click.stop="openUserLogInSignUp('sign-up-section')"
+                        @click.stop="openVUserLogInSignUp('sign-up-section')"
                         prop-element="button"
                         prop-font-size="s"
                         prop-element-size="s"
@@ -417,7 +417,7 @@
                     >
                         <TransitionFade>
                             <keep-alive>
-                                <UserLogInSignUp
+                                <VUserLogInSignUp
                                     v-if="pop_up_manager_store.isLogInOpen"
                                     propRequestedSection="log-in-section"
                                     :propIsForStaticPage="false"
@@ -435,7 +435,7 @@
                     >
                         <TransitionFade>
                             <keep-alive>
-                                <UserLogInSignUp
+                                <VUserLogInSignUp
                                     v-if="pop_up_manager_store.isSignUpOpen"
                                     propRequestedSection="sign-up-section"
                                     :propIsForStaticPage="false"
@@ -474,7 +474,7 @@
     import VSwitch from '../small/VSwitch.vue';
     // import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
     import VLoginRequiredPrompt from '../medium/VLoginRequiredPrompt.vue';
-    import UserLogInSignUp from './UserLogInSignUp.vue';
+    import VUserLogInSignUp from './VUserLogInSignUp.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     import { library } from '@fortawesome/fontawesome-svg-core';
@@ -509,7 +509,7 @@
     const axios = require('axios');
 
     export default defineComponent({
-        name: 'NavBar',
+        name: 'VNavBar',
         data(){
             return {
                 page_refresh_trigger_store: usePageRefreshTriggerStore(),
@@ -562,7 +562,7 @@
 
                 return window.location.origin + '/user/' + this.propUsername;
             },
-            openUserLogInSignUp(section:"log-in-section"|"sign-up-section") : void {
+            openVUserLogInSignUp(section:"log-in-section"|"sign-up-section") : void {
 
                 if(section === 'log-in-section'){
 
