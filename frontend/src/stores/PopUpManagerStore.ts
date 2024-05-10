@@ -51,7 +51,6 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
             if(this.current_popup_context === 'nav_menu'){
 
                 this.current_popup_context = '';
-                console.log('closed0');
             }
         },
         closeLoginRequiredPopUp() : void {
@@ -59,7 +58,6 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
             if(this.current_popup_context === 'login_required'){
 
                 this.current_popup_context = '';
-                console.log('closed1');
             }
         },
         closeLogInPopUp() : void {
@@ -67,7 +65,6 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
             if(this.current_popup_context === 'log_in'){
 
                 this.current_popup_context = '';
-                console.log('closed2');
             }
         },
         closeSignUpPopUp() : void {
@@ -75,13 +72,11 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
             if(this.current_popup_context === 'sign_up'){
 
                 this.current_popup_context = '';
-                console.log('closed3');
             }
         },
         closeAllPopUps() : void {
 
-            this.current_popup_context = "";
-            console.log('closed4');
+            this.current_popup_context = '';
         },
     },
 });
