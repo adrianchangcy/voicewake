@@ -179,7 +179,7 @@
                         :active="active"
                     >
                         <div class="px-1 pb-6">
-                            <EventCard
+                            <VEventCard
                                 :prop-guaranteed-event-generic-status="isHomePage ? 'completed' : ''"
                                 :prop-show-title="true"
                                 :prop-event="item"
@@ -202,7 +202,7 @@
             <TransitionGroupFade>
 
                 <!--fetching-->
-                <EventCardSkeleton
+                <VEventCardSkeleton
                     v-show="filtered_events_store.isFetching"
                     :prop-has-border="true"
                     :prop-audio-clip-quantity="2"
@@ -337,8 +337,8 @@
 
 
 <script setup lang="ts">
-    import EventCard from '../components/main/EventCard.vue';
-    import EventCardSkeleton from '../components/skeleton/EventCardSkeleton.vue';
+    import VEventCard from '../components/main/VEventCard.vue';
+    import VEventCardSkeleton from '../components/skeleton/VEventCardSkeleton.vue';
     import VPlayback from '../components/medium/VPlayback.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
@@ -805,7 +805,7 @@
                     this.has_restored_scroll_once = true;
                 }
             },
-            async canShowFilterOptionBelowNavBar() : Promise<void> {
+            async canShowFilterOptionBelowVNavBar() : Promise<void> {
 
                 //currently not used
                 //we want to improve accessibility first, e.g. ESC --> nav bar --> fixed filters --> ESC --> resume content
@@ -876,7 +876,7 @@
                 );
             }
 
-            //listen from EventCardAlwaysCompleted
+            //listen from VEventCardAlwaysCompleted
             this.vplayback_store.$onAction(({
                 name,
                 after,

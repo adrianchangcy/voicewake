@@ -1,5 +1,5 @@
 <template>
-    <!--putting TransitionFade at UserLogInSignUp v-if v-else seems to break things-->
+    <!--putting TransitionFade at VUserLogInSignUp v-if v-else seems to break things-->
     <!--i.e. renders v-if and v-else once then permanently disappearing-->
 
     <Transition

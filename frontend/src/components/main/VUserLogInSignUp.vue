@@ -622,7 +622,7 @@
     type SectionsArray = ["log-in-section", "sign-up-section"]
 
     export default defineComponent({
-        name: "UserLogInSignUp",
+        name: "VUserLogInSignUp",
         data() {
             return {
                 page_refresh_trigger_store: usePageRefreshTriggerStore(),

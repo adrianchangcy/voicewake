@@ -12,7 +12,7 @@ import ListUserBannedAudioClipsApp from '../src/apps/ListUserBannedAudioClipsApp
 import ListUserBlocksApp from '../src/apps/ListUserBlocksApp.vue';
 import GetEventsApp from '../src/apps/GetEventsApp.vue';
 import BrowseEventsApp from '../src/apps/BrowseEventsApp.vue';
-import UserLogInSignUp from '../src/components/main/UserLogInSignUp.vue';
+import VUserLogInSignUp from '../src/components/main/VUserLogInSignUp.vue';
 import VUserUsername from '../src/components/medium/VUserUsername.vue';
 import VBackdropAnime from '../src/components/small/VBackdropAnime.vue';
 import TestingStuff from '../src/components/main/TestingStuff.vue';
@@ -204,7 +204,7 @@ if(document.querySelector('#list-user-blocks-app')){
 if(document.querySelector('#log-in-page')){
 
     createApp(
-        UserLogInSignUp,
+        VUserLogInSignUp,
         {
             propIsForStaticPage: true,
             propRequestedSection: 'log-in-section'
@@ -215,7 +215,7 @@ if(document.querySelector('#log-in-page')){
 if(document.querySelector('#sign-up-page')){
 
     createApp(
-        UserLogInSignUp,
+        VUserLogInSignUp,
         {
             propIsForStaticPage: true,
             propRequestedSection: 'sign-up-section'

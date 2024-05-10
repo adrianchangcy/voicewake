@@ -1,7 +1,7 @@
 <template>
     <div class="border-x-2 border-red-500 px-1">
 
-        <AudioClipsCard
+        <VAudioClipsCard
             :prop-audio-clips="audio_clips"
         />
 
@@ -39,7 +39,7 @@
 <script setup lang="ts">
     import VDialogPlain from '../components/small/VDialogPlain.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
-    import AudioClipsCard from '../components/main/AudioClipsCard.vue';
+    import VAudioClipsCard from '../components/main/VAudioClipsCard.vue';
 </script>
 
 

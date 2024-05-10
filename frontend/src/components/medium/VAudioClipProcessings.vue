@@ -242,12 +242,14 @@
     import { defineComponent } from 'vue';
     import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
     import { useEventReplyChoicesStore } from '@/stores/EventReplyChoicesStore';
+    import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
 
     export default defineComponent({
         data(){
             return {
                 audio_clip_processings_store: useAudioClipProcessingsStore(),
                 event_reply_choices_store: useEventReplyChoicesStore(),
+                pop_up_manager_store: usePopUpManagerStore(),
 
                 processing_timestamps_ms: {
                     scales: [1],
@@ -284,7 +286,7 @@
         },
         beforeMount(){
 
-            if(this.canPoll === true){
+            if(this.pop_up_manager_store.isLoggedIn === true && this.canPoll === true){
 
                 window.setTimeout(async ()=>{
 

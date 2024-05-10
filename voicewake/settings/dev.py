@@ -9,7 +9,7 @@ REQUEST_TIME_DELAY = 0  #seconds
 SHOW_DJANGO_DEBUG_TOOLBAR = True
 
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['*']
 
 
 #hide/show debug toolbar, may cause issues when shown during tests

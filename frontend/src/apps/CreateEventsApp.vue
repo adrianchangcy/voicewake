@@ -1,6 +1,6 @@
 <template>
     <div class="relative rounded-lg px-2 sm:px-4 pt-8 pb-12">
-        <CreateAudioClips
+        <VCreateAudioClips
             :propIsOriginator="true"
         />
     </div>
@@ -11,7 +11,7 @@
 </template>
 
 <script setup lang="ts">
-    import CreateAudioClips from '../components/main/CreateAudioClips.vue';
+    import VCreateAudioClips from '../components/main/VCreateAudioClips.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     import { library } from '@fortawesome/fontawesome-svg-core';

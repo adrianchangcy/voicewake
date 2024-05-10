@@ -13,7 +13,7 @@
         <div v-else>
 
             <!--audio-clips-->
-            <EventCard
+            <VEventCard
                 v-if="hasEvent"
                 :prop-event="event!"
                 :prop-show-title="false"
@@ -110,7 +110,7 @@
                         </template>
                     </VTitle>
 
-                    <CreateAudioClips
+                    <VCreateAudioClips
                         :propIsOriginator="is_originator"
                         :propReuploadAudioClipId="reupload_audio_clip_id"
                         :propEventId="event_id!"
@@ -172,7 +172,7 @@
 
                     <!--form, expiry-->
                     <div>
-                        <CreateAudioClips
+                        <VCreateAudioClips
                             :propIsOriginator="false"
                             :propReuploadAudioClipId="reupload_audio_clip_id"
                             :propEventId="event!.event.id"
@@ -213,10 +213,10 @@
 </template>
 
 <script setup lang="ts">
-    import EventCard from '../components/main/EventCard.vue';
+    import VEventCard from '../components/main/VEventCard.vue';
     import VActionDanger from '../components/small/VActionDanger.vue';
     import VActionBorder from '../components/small/VActionBorder.vue';
-    import CreateAudioClips from '../components/main/CreateAudioClips.vue';
+    import VCreateAudioClips from '../components/main/VCreateAudioClips.vue';
     import VTitle from '../components/small/VTitle.vue';
     import VPlayback from '../components/medium/VPlayback.vue';
     import VAudioClipCardSkeleton from '../components/skeleton/VAudioClipCardSkeleton.vue';

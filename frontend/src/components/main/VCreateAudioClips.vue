@@ -932,7 +932,7 @@
 
                     //update store
 
-                    this.audio_clip_processings_store.handleCreateAudioClipsSubmitSuccess(
+                    this.audio_clip_processings_store.handleVCreateAudioClipsSubmitSuccess(
                         this.propIsOriginator,
                         this.submit_audio_clip_id,
                         {
