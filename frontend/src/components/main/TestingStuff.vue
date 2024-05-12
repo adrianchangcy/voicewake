@@ -140,7 +140,10 @@
                 title: 'Keep it up!',
                 text: "You're so close to the finish line! Keep going!!!",
                 type: 'ok',
-                icon: {'font_awesome': 'fas fa-check'},
+                icon: {'audio_clip_tone': {
+                    'audio_clip_tone_name': 'ha',
+                    'audio_clip_tone_symbol': '🙂',
+                }},
                 // actions: [
                 //     {
                 //         callback: ()=>null,

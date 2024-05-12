@@ -32,7 +32,7 @@
                             v-show="isStatusOk(processing) || isStatusGeneric(processing)"
                         >
                             <span class="sr-only">{{ processing.audio_clip_tone.audio_clip_tone_name }}</span>
-                            <span>{{ processing.audio_clip_tone.audio_clip_tone_symbol }}</span>
+                            <span class="has-emoji">{{ processing.audio_clip_tone.audio_clip_tone_symbol }}</span>
                         </div>
                         <div
                             v-show="isStatusError(processing)"

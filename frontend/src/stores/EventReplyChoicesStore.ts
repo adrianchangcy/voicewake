@@ -98,13 +98,13 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
             this.event_reply_choice_expiry_ms = parseInt(event_reply_choice_expiry_seconds) * 1000;
             this.event_reply_expiry_ms = parseInt(event_reply_expiry_seconds) * 1000;
         },
-        async updateSharedDialogContext(shared_dialog_context:CurrentStatuses) : Promise<void> {
+        updateSharedDialogContext(shared_dialog_context:CurrentStatuses) : void {
 
             this.shared_dialog_context = shared_dialog_context;
         },
-        async newAudioClipIsLiked(
+        newAudioClipIsLiked(
             new_value:{audio_clip:AudioClipsAndLikeDetailsTypes, new_is_liked:boolean|null}
-        ) : Promise<void> {
+        ) : void {
 
             //since objects are passed by reference, just pass the audio_clip here
 
@@ -405,7 +405,9 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
             this.shared_dialog_context = "";
         },
     },
-    persist: true,
+    persist: {
+        paths: ['event_reply_choices', 'replying_event'],
+    },
     share: {
         //array of fields that the plugin will ignore
         omit: [],

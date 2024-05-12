@@ -173,7 +173,8 @@ textarea {
     https://github.com/joeattardi/picmo/issues/242
 */
 .has-emoji{
-    font-family: "Segoe UI Emoji", "Segoe UI Symbol", "Segoe UI", "Apple Color Emoji", "Twemoji Mozilla",
+    /*removed "Segoe UI Emoji", "Segoe UI Symbol", "Segoe UI", because they force their emojis downwards*/
+    font-family: "Apple Color Emoji", "Twemoji Mozilla",
     "Noto Color Emoji", "EmojiOne Color", "Android Emoji"
 }
 
