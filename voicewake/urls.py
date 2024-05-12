@@ -64,12 +64,14 @@ urlpatterns += [
     path('api/events/create/upload', apis.CreateEventsAPI.as_view(current_context="upload"), name="create_events_upload_api"),
     path('api/events/create/upload/regenerate-url', apis.CreateEventsAPI.as_view(current_context="regenerate_upload_url"), name="create_events_regenerate_upload_url_api"),
     path('api/events/create/process', apis.CreateEventsAPI.as_view(current_context="process"), name="create_events_process_api"),
+
     path('api/events/replies/choices/list', apis.ListEventReplyChoicesAPI.as_view(), name="list_event_reply_choices_api"),
     path('api/events/replies/start', apis.HandleReplyingEventsAPI.as_view(current_context="start"), name="start_replies_api"),
     path('api/events/replies/create/upload', apis.HandleReplyingEventsAPI.as_view(current_context="upload"), name="create_replies_upload_api"),
     path('api/events/replies/create/upload/regenerate-url', apis.HandleReplyingEventsAPI.as_view(current_context="regenerate_upload_url"), name="create_replies_regenerate_upload_url_api"),
     path('api/events/replies/create/process', apis.HandleReplyingEventsAPI.as_view(current_context="process"), name="create_replies_process_api"),
     path('api/events/replies/cancel', apis.HandleReplyingEventsAPI.as_view(current_context="cancel"), name="cancel_replies_api"),
+
     path('api/events/get/<int:event_id>', apis.GetEventsAPI.as_view(), name='get_events_api'),
 
     path('api/audio-clips/processings/list', apis.AudioClipProcessingsAPI.as_view(current_context="list"), name='list_audio_clip_processings_api'),
