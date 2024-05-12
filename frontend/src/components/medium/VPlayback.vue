@@ -252,8 +252,11 @@
                 class="row-span-2 col-span-1 relative"
                 v-if="propHasAudioClipTone"
             >
-                <div class="text-2xl pb-0.5 absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto">
-                    <span v-if="propAudioClip !== null">
+                <div class="text-2xl absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto">
+                    <span
+                        v-if="propAudioClip !== null"
+                        class="has-emoji"
+                    >
                         {{ propAudioClip.audio_clip_tone.audio_clip_tone_symbol }}
                         <span class="sr-only">{{ propAudioClip.audio_clip_tone.audio_clip_tone_name }}</span>
                     </span>

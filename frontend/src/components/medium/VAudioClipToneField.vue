@@ -15,7 +15,7 @@
         >
             <span
                 v-if="propAudioClipToneChoice !== null"
-                class="absolute w-fit h-fit left-0 right-0 top-0 bottom-0.5 m-auto has-emoji"
+                class="absolute w-fit h-fit left-0 right-0 top-0 bottom-0 m-auto has-emoji"
             >
                 <span aria-hidden="true">{{propAudioClipToneChoice.audio_clip_tone_symbol}}</span>
                 <span class="sr-only">{{propAudioClipToneChoice.audio_clip_tone_name}}</span>

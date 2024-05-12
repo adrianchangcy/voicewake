@@ -35,10 +35,10 @@
                         <canvas ref="canvas_ripples" class="w-full h-full mx-auto"></canvas>
                     </div>
 
-                    <div class="col-span-1 h-full relative">
+                    <div class="col-span-1 h-full flex items-center">
                         <!--label-->
                         <span
-                            class="w-fit h-fit absolute left-0 right-0 top-0 bottom-0.5 m-auto text-2xl has-emoji pb-0.5"
+                            class="block w-fit h-fit mx-auto text-2xl has-emoji"
                             aria-hidden="true"
                         >
                             {{ propAudioClip.audio_clip_tone.audio_clip_tone_symbol }}

@@ -43,7 +43,7 @@
                                 <span class="sr-only">
                                     {{ notification.icon!.audio_clip_tone!.audio_clip_tone_name }}
                                 </span>
-                                <span>
+                                <span class="has-emoji">
                                     {{ notification.icon!.audio_clip_tone!.audio_clip_tone_symbol }}
                                 </span>
                             </span>

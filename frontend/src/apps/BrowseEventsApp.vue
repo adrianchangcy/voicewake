@@ -99,7 +99,7 @@
                             prop-element="button"
                             prop-element-size="s"
                             prop-font-size="s"
-                            :prop-is-icon-only="false"
+                            :prop-is-icon-only="true"
                             class="w-full focus-visible:-outline-offset-2"
                         >
                             <span
@@ -110,7 +110,7 @@
                             </span>
                             <span
                                 v-else
-                                class="mx-auto text-2xl"
+                                class="mx-auto text-2xl has-emoji"
                             >
                                 <span class="sr-only">{{ filtered_events_store.getCurrentAudioClipTone.audio_clip_tone_name }}</span>
                                 {{ filtered_events_store.getCurrentAudioClipTone.audio_clip_tone_symbol }}
