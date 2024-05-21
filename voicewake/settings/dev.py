@@ -30,8 +30,15 @@ MIDDLEWARE = [
 ] + MIDDLEWARE
 
 
+#add these middleware to be latest
+MIDDLEWARE = MIDDLEWARE + [
+    'lockdown.middleware.LockdownMiddleware',
+]
+
+
 INSTALLED_APPS = [
     'debug_toolbar',
+    'lockdown',
 ] + INSTALLED_APPS
 
 
@@ -68,3 +75,13 @@ EVENT_REPLY_DAILY_LIMIT = 99999       #compares from 00:00:00 UTC
 EVENT_INCOMPLETE_QUEUE_MAX_AGE_S = 99999999
 AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS = 3
 
+
+#HTTPS
+# SECURE_SSL_REDIRECT = True
+# SESSION_COOKIE_SECURE = True
+# CSRF_COOKIE_SECURE = True
+
+
+#lockdown, useful for keeping website private when live
+LOCKDOWN_ENABLED = True
+LOCKDOWN_PASSWORDS = ('onlyvipallowed55555.',)

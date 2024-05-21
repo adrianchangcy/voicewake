@@ -3,7 +3,7 @@
         v-show="propIsOpen"
         class="flex flex-col gap-2"
     >
-        <div class="h-20 relative">
+        <div>
             <VPlayback
                 v-show="!is_recording"
                 :propAudio="final_blob"
@@ -14,14 +14,14 @@
                 :propIsOpen="propIsOpen"
                 :propHasAudioClipTone="false"
                 @isProcessing="handleIsPlaybackProcessing($event)"
-                class="w-full h-full"
+                class="w-full"
             />
             <VAudioVisualiser
                 v-show="is_recording"
                 :propNewPulse="recording_pulse"
                 :propIntervalMs="interval_ms"
                 :propIsRecording="is_recording"
-                class="w-full h-full"
+                class="w-full"
             />
         </div>
 
@@ -33,6 +33,7 @@
             @newRecording="handleNewRecording($event)"
             @isRecording="handleIsRecording($event)"
             @newVolumeAnalyserPulse="handleNewVolumeAnalyserPulse($event)"
+            class="w-full"
         />
     </div>
 </template>
