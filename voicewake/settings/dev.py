@@ -32,13 +32,11 @@ MIDDLEWARE = [
 
 #add these middleware to be latest
 MIDDLEWARE = MIDDLEWARE + [
-    'lockdown.middleware.LockdownMiddleware',
 ]
 
 
 INSTALLED_APPS = [
     'debug_toolbar',
-    'lockdown',
 ] + INSTALLED_APPS
 
 
@@ -77,11 +75,10 @@ AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS = 3
 
 
 #HTTPS
+#might not be needed when we have nginx
 # SECURE_SSL_REDIRECT = True
 # SESSION_COOKIE_SECURE = True
 # CSRF_COOKIE_SECURE = True
 
 
-#lockdown, useful for keeping website private when live
-LOCKDOWN_ENABLED = True
-LOCKDOWN_PASSWORDS = ('onlyvipallowed55555.',)
+

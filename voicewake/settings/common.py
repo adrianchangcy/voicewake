@@ -64,6 +64,7 @@ MIDDLEWARE += [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'lockdown.middleware.LockdownMiddleware',
 ]
 
 
@@ -76,6 +77,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',     #if 1 db and multiple sites, use this and SITE_ID
+
+    #lockdown to make site private
+    'lockdown',
 
     #Celery
     "django_celery_beat",
@@ -307,6 +311,11 @@ ASGI_APPLICATION = 'voicewake.asgi.application'
 #when testing, InMemoryChannelLayer is sufficient
 #on deploy, must use Redis, as InMemoryChannelLayer is sub-optimal
 CHANNEL_LAYERS = {}
+
+
+#lockdown to keep site private
+LOCKDOWN_ENABLED = False
+LOCKDOWN_PASSWORDS = ('onlyvipallowed55555.',)
 
 
 #CELERY

@@ -4,7 +4,7 @@
         <!--main nav-->
         <!--px-5 to align with main content-->
         <nav
-            class="h-full text-center grid grid-cols-4 lg:grid-cols-8 gap-2 p-2 bg-theme-light dark:bg-theme-dark border-b border-theme-gray-2 dark:border-dark-theme-gray-2"
+            class="h-full text-center grid grid-cols-4 lg:grid-cols-8 gap-2 p-2 bg-theme-nav dark:bg-dark-theme-nav border-b border-theme-gray-2 dark:border-transparent"
         >
 
             <!--home-->
@@ -153,7 +153,7 @@
                                 bool_status_variable_or_callback: pop_up_manager_store.closeNavMenuPopUp,
                                 refs_to_exclude: ['nav_menu_opener']
                             }"
-                            class="absolute w-full h-[calc(100vh-4.5rem)] overflow-auto px-2 md:px-4 bg-theme-light dark:bg-theme-dark    border-l border-theme-gray-2 dark:border-dark-theme-gray-2"
+                            class="absolute w-full h-[calc(100vh-4.5rem)] overflow-auto px-2 md:px-4 bg-theme-nav dark:bg-dark-theme-nav    border-l border-theme-gray-2 dark:border-transparent"
                         >
                             <!--profile area-->
                             <div class="py-2 dark:text-dark-theme-white-1">
