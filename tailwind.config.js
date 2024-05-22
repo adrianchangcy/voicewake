@@ -29,6 +29,7 @@ module.exports = {
             colors: {
                 'theme-light': '#FEFAE6',
                 'theme-light-trim': '#FDFDFD',
+                'theme-nav': '#FEFAE6',
                 'theme-lead': '#facc15', //yellow-400
                 'theme-black': '#404040',   //scaled via shades generator from theme-light
                 //for disabled feature, advised to use opacity on entire element until unreadable, not gray background
@@ -42,9 +43,10 @@ module.exports = {
 
                 'theme-dark': '#121212',
                 'theme-dark-trim': '#2e2e2e',
+                'dark-theme-nav': '#141414',
                 'dark-theme-lead': '#cca610',
                 'dark-theme-black-1': '#1a1a1a',
-                'dark-theme-black-2': '#1f1f1f',
+                'dark-theme-black-2': '#242424',
                 'dark-theme-white-1': '#e0dece',
                 'dark-theme-white-2': '#adaba0',
                 'dark-theme-gray-1': '#292929',
