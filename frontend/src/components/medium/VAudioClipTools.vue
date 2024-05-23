@@ -38,7 +38,7 @@
                             <FontAwesomeIcon
                                 icon="far fa-thumbs-up"
                                 :class="[
-                                    is_liked === true ? 'text-theme-lead dark:text-dark-theme-lead' : '',
+                                    is_liked === true ? 'text-theme-black dark:text-dark-theme-lead' : '',
                                     'absolute mx-auto transition-colors'
                                 ]"
                             />
@@ -79,7 +79,7 @@
                             <FontAwesomeIcon
                                 icon="far fa-thumbs-down"
                                 :class="[
-                                    is_liked === false ? 'text-theme-lead dark:text-dark-theme-lead' : '',
+                                    is_liked === false ? 'text-theme-black dark:text-dark-theme-lead' : '',
                                     'absolute mx-auto transition-colors'
                                 ]"
                             />
