@@ -24,7 +24,9 @@ services:
       start_period: 80s  
   django_unicorn:
     build:
+      #context path dictates what "." points to in Dockerfile
       context: . #. because it relies on files like manage.py
+      #dockerfile is relative to context path, and "../" can be used to reach context path's parent folder
       dockerfile: ./voicewake
     volumes:
       #type+source+target for dev for real-time changes, without destroying+recreating container?
