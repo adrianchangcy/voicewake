@@ -1,0 +1,152 @@
+services:
+  postgres:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    volumes:
+      - ~/apps/postgres:/var/lib/postgresql/data
+    #env_file is only used and seen by the container being run, not during docker compose
+    #to use .env file and fill it in here during docker compose: "docker-compose --env-file ./env/.env up -d"
+      #--env-file must come before "up", else "unknown flag" error
+    env_file:
+      - ./env/.env
+    environment:
+      #these are presumably only for setup
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    #healthcheck seems to be required if you want other services to check it for "service_healthy" condition, else "dependency failed" error
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "db_prod"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s  
+  django_unicorn:
+    build:
+      context: . #. because it relies on files like manage.py
+      dockerfile: ./voicewake
+    volumes:
+      #type+source+target for dev for real-time changes, without destroying+recreating container?
+      - type: bind
+        source: ./static
+        target: /static
+      - type: bind
+        source: ./voicewake
+        target: /voicewake
+    restart: always
+    env_file:
+      - /env/.env
+    ports:
+      #map port on host to port on container
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+  nginx:
+    build: ./nginx
+    volumes:
+      - static:/static
+    ports:
+      - "80:80"
+    depends_on:
+      - django_unicorn
+  frontend:
+    build:
+      context: .  #. because it relies on ./static
+      dockerfile: ./frontend
+    volumes:
+      - /frontend/app_modules #supposedly for faster reload, but idk
+      - type: bind
+        source: ./static
+        target: /static
+      - type: bind
+        source: ./frontend
+        target: /frontend
+    # command: npm run serve #dev
+    ports:
+      - "8080:8080"
+    environment: 
+      - CHOKIDAR_USEPOLLING=true #enables the hot reloading
+  tailwind:
+    #use tty to provide pseudo-terminal, since we have -i flag, i.e. input
+    #we essentially can see when watcher finishes applying new changes
+    tty: true
+    build:
+      context: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - type: bind
+        source: ./static
+        target: /static
+      - type: bind
+        source: ./voicewake
+        target: /voicewake
+      - type: bind
+        source: ./frontend
+        target: /frontend
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
+    # volumes:
+      # - /path/to/local/dаta:/root/redis
+      # - /path/to/local/redis.conf:/usr/local/etc/redis/redis.conf
+    environment:
+      - REDIS_PASSWORD=somepassword
+      - REDIS_PORT=6379
+      - REDIS_DATABASES=16
+
+volumes:
+  static:
+    #leave empty to use the container engine's default configuration for creating a volume
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# The commented out section below is an example of how to define a PostgreSQL
+# database that your application can use. `depends_on` tells Docker Compose to
+# start the database before your application. The `db-data` volume persists the
+# database data between container restarts. The `db-password` secret is used
+# to set the database password. You must create `db/password.txt` and add
+# a password of your choosing to it before running `docker compose up`.
+#     depends_on:
+#       db:
+#         condition: service_healthy
+#   db:
+#     image: postgres
+#     restart: always
+#     user: postgres
+#     secrets:
+#       - db-password
+#     volumes:
+#       - db-data:/var/lib/postgresql/data
+#     environment:
+#       - POSTGRES_DB=example
+#       - POSTGRES_PASSWORD_FILE=/run/secrets/db-password
+#     expose:
+#       - 5432
+#     healthcheck:
+#       test: [ "CMD", "pg_isready" ]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+# volumes:
+#   db-data:
+# secrets:
+#   db-password:
+#     file: db/password.txt
+

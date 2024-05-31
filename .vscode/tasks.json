@@ -1,62 +1,62 @@
-{
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "runAllDevTasks",
-            "runOptions": {
-                "runOn": "folderOpen"
-            },
-            "dependsOrder": "parallel",
-            "dependsOn": [
-                "django-dev",
-                "tailwind-dev",
-                "vue-dev",
-                "celery-worker-dev",
-                "ubuntu-redis-dev",
-            ]
-        },
-        {
-            "label": "django-dev",
-            "type": "shell",
-            "command": "py django_dev_runserver.py",
-            "presentation": {
-                "panel": "dedicated"
-            }
-        },
-        {
-            "label": "tailwind-dev",
-            "type": "shell",
-            "command": "npx tailwindcss -i ./static/voicewake/css/base.css -o ./static/voicewake/css/output.css --watch",
-            "presentation": {
-                "panel": "dedicated"
-            }
-        },
-        {
-            "label": "vue-dev",
-            "type": "shell",
-            "command": "cd frontend ; npm run serve",
-            "presentation": {
-                "panel": "dedicated"
-            }
-        },
-        {
-            //"-P solo" is needed for Windows
-            "label": "celery-worker-dev",
-            "type": "shell",
-            "command": "celery -A voicewake.celery worker -l info -P solo",
-            "presentation": {
-                "panel": "dedicated"
-            }
-        },
-        {
-            //relies on Ubuntu downloaded from Windows store, with WSL set up and necessary Windows Features
-            //expect password prompt, then "PONG", then ensure terminal is Ubuntu
-            "label": "ubuntu-redis-dev",
-            "type": "shell",
-            "command": "wsl --exec dbus-launch true ; wsl --exec sudo service redis-server start --daemonize yes ; wsl --exec redis-cli PING ; ubuntu",
-            "presentation": {
-                "panel": "dedicated"
-            }
-        },
-    ]
-}
+// {
+//     "version": "2.0.0",
+//     "tasks": [
+//         {
+//             "label": "runAllDevTasks",
+//             "runOptions": {
+//                 "runOn": "folderOpen"
+//             },
+//             "dependsOrder": "parallel",
+//             "dependsOn": [
+//                 "django-dev",
+//                 "tailwind-dev",
+//                 "vue-dev",
+//                 "celery-worker-dev",
+//                 "ubuntu-redis-dev",
+//             ]
+//         },
+//         {
+//             "label": "django-dev",
+//             "type": "shell",
+//             "command": "py django_dev_runserver.py",
+//             "presentation": {
+//                 "panel": "dedicated"
+//             }
+//         },
+//         {
+//             "label": "tailwind-dev",
+//             "type": "shell",
+//             "command": "npx tailwindcss -i ./static/voicewake/css/base.css -o ./static/voicewake/css/output.css --watch",
+//             "presentation": {
+//                 "panel": "dedicated"
+//             }
+//         },
+//         {
+//             "label": "vue-dev",
+//             "type": "shell",
+//             "command": "cd frontend ; npm run serve",
+//             "presentation": {
+//                 "panel": "dedicated"
+//             }
+//         },
+//         {
+//             //"-P solo" is needed for Windows
+//             "label": "celery-worker-dev",
+//             "type": "shell",
+//             "command": "celery -A voicewake.celery worker -l info -P solo",
+//             "presentation": {
+//                 "panel": "dedicated"
+//             }
+//         },
+//         {
+//             //relies on Ubuntu downloaded from Windows store, with WSL set up and necessary Windows Features
+//             //expect password prompt, then "PONG", then ensure terminal is Ubuntu
+//             "label": "ubuntu-redis-dev",
+//             "type": "shell",
+//             "command": "wsl --exec dbus-launch true ; wsl --exec sudo service redis-server start --daemonize yes ; wsl --exec redis-cli PING ; ubuntu",
+//             "presentation": {
+//                 "panel": "dedicated"
+//             }
+//         },
+//     ]
+// }
