@@ -4,9 +4,9 @@ EXPOSE 8080
 
 WORKDIR /frontend
 
-COPY ./package*.json .
+COPY ./frontend/package*.json ./
 
-RUN npm install
-RUN npm install -g @vue/cli
+RUN npm install --verbose
+RUN npm install -g @vue/cli --verbose
 
 COPY . .
