@@ -1,10 +1,12 @@
 FROM node:current-alpine
 
-COPY package*.json ./
+WORKDIR .
 
-RUN npm install
+COPY ./package*.json ./
 
 COPY . .
+
+RUN npm install --verbose
 
 EXPOSE 3000
 
@@ -16,7 +18,19 @@ EXPOSE 3000
     #we are currently only using this for Tailwind's watcher
     #we do not need any Node server
     #there seems to be a consensus against running "npm run start" as CMD here, as it can hide errors
-#solution
+#problem #1
+    #"start" must exist in package.json, but we don't need to run anything else
+    #leaving "start" empty but having Tailwind watch as script in package.json causes Docker to auto-skip and auto-run Tailwind watch
+#solution #1
     #use "start" for Tailwind watcher
     #don't run CMD here, since "start" always runs by container, otherwise you get "exited with code 0"
-CMD ["tailwindcss", "-i", "./static/voicewake/css/base.css", "-o", "./static/voicewake/css/output.css", "--watch"]
+#problem #2
+    #we have successful bind mount, and correct tailwind.config.js
+    #however, on file change, Tailwind watch does not rebuild
+#solution #2
+    #add "--poll" flag to use polling instead of filesystem events
+        #file system events are unreliable when propagating changes from host files to container
+        #saw a comment saying that file system events don't work when Docker is running in Hyper-V
+            #if you have server script, also use polling, e.g. "nodemon -L server.js"
+
+CMD ["npx", "tailwindcss", "-i", "./static/voicewake/css/base.css", "-o", "./static/voicewake/css/output.css", "--watch", "--poll"]

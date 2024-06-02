@@ -27,7 +27,8 @@ services:
       #context path dictates what "." points to in Dockerfile
       context: . #. because it relies on files like manage.py
       #dockerfile is relative to context path, and "../" can be used to reach context path's parent folder
-      dockerfile: ./voicewake
+      #seems like specifying until Dockerfile itself is needed, else "is a directory" error if folder only
+      dockerfile: ./voicewake/Dockerfile
     volumes:
       #type+source+target for dev for real-time changes, without destroying+recreating container?
       - type: bind
@@ -56,7 +57,7 @@ services:
   frontend:
     build:
       context: .  #. because it relies on ./static
-      dockerfile: ./frontend
+      dockerfile: ./frontend/Dockerfile
     volumes:
       - /frontend/app_modules #supposedly for faster reload, but idk
       - type: bind
@@ -78,6 +79,7 @@ services:
       context: .
     ports:
       - "3000:3000"
+    #we use bind mount between host files and container files for two-way sync
     volumes:
       - type: bind
         source: ./static
@@ -88,6 +90,9 @@ services:
       - type: bind
         source: ./frontend
         target: /frontend
+      - type: bind
+        source: ./tailwind.config.js
+        target: /tailwind.config.js
   redis:
     image: redis:latest
     restart: always

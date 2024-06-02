@@ -5,7 +5,8 @@ FROM python:3.12-slim-bullseye
 
 RUN pip install --upgrade pip
 
-COPY ./requirements.txt .
+#destination is "./" so that we guarantee it is added under "/"
+COPY ./requirements.txt ./
 RUN pip install -r requirements.txt
 
 #source path is relative to docker-compose.yaml context path
@@ -17,8 +18,8 @@ ENTRYPOINT ["sh", "/docker-entrypoint.sh"]
 ENV PYTHONUNBUFFERED=1
 
 # activate virtual environment
-ENV VIRTUAL_ENV=/home/myuser/venv
-ENV PATH="/home/myuser/venv/bin:$PATH"
+ENV VIRTUAL_ENV=/.venv
+ENV PATH="/.venv/bin:$PATH"
 
 EXPOSE 5000
 
