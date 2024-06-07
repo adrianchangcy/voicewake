@@ -1,4 +1,10 @@
+#in compose.yaml, things such as "command" and "entrypoint" will override things like CMD and ENTRYPOINT at .dockerfile
+  #therefore, it's best to resort to .dockerfile and entrypoint.sh before placing such things here
 services:
+  test_service:
+    build:
+      context: .  #. because it relies on ./static
+      dockerfile: ./test_service.dockerfile
   postgres:
     image: postgres:latest
     ports:
@@ -17,18 +23,43 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD}
     #healthcheck seems to be required if you want other services to check it for "service_healthy" condition, else "dependency failed" error
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready", "-d", "db_prod"]
+      #must test with POSTGRES_DB and POSTGRES_USER, else it will try to use "root" and get "role 'root' does not exist"
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
       interval: 30s
       timeout: 60s
       retries: 5
-      start_period: 80s  
-  django_unicorn:
+      start_period: 80s
+    networks:
+      - backend
+  redis:
+    working_dir: /redis
+    image: redis:latest
+    #if always restart, then when a service has error/ends, it will restart again
+    # restart: always
+    ports:
+      - "6379:6379"
+    # volumes:
+      # - /path/to/local/dаta:/root/redis
+      # - /path/to/local/redis.conf:/usr/local/etc/redis/redis.conf
+    environment:
+      - REDIS_PASSWORD=somepassword
+      - REDIS_PORT=6379
+      - REDIS_DATABASES=16
+    #even when loading, Redis can still return exit code 0, so to be sure it's ready, expect "PONG"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 2s
+      timeout: 3s
+      retries: 5
+    networks:
+      - backend
+  django_runserver:
     build:
       #context path dictates what "." points to in Dockerfile
       context: . #. because it relies on files like manage.py
       #dockerfile is relative to context path, and "../" can be used to reach context path's parent folder
       #seems like specifying until Dockerfile itself is needed, else "is a directory" error if folder only
-      dockerfile: ./voicewake/Dockerfile
+      dockerfile: ./voicewake/docker/service-django-runserver.dockerfile
     volumes:
       #type+source+target for dev for real-time changes, without destroying+recreating container?
       - type: bind
@@ -37,7 +68,22 @@ services:
       - type: bind
         source: ./voicewake
         target: /voicewake
-    restart: always
+      - type: bind
+        source: ./django_runserver.py
+        target: /django_runserver.py
+      - type: bind
+        source: ./manage.py
+        target: /manage.py
+      - type: bind
+        source: ./package.json
+        target: /package.json
+      - type: bind
+        source: ./package-lock.json
+        target: /package-lock.json
+      - type: bind
+        source: ./requirements.txt
+        target: /requirements.txt
+    # restart: always
     env_file:
       - /env/.env
     ports:
@@ -46,14 +92,100 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+  django_gunicorn:
+    build:
+      #context path dictates what "." points to in Dockerfile
+      context: . #. because it relies on files like manage.py
+      #dockerfile is relative to context path, and "../" can be used to reach context path's parent folder
+      #seems like specifying until Dockerfile itself is needed, else "is a directory" error if folder only
+      dockerfile: ./voicewake/docker/service-gunicorn.dockerfile
+    volumes:
+      #type+source+target for dev for real-time changes, without destroying+recreating container?
+      - type: bind
+        source: ./static
+        target: /static
+      - type: bind
+        source: ./voicewake
+        target: /voicewake
+    # restart: always
+    env_file:
+      - /env/.env
+    ports:
+      #map port on host to port on container
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+  django_celery_worker:
+    build:
+      context: . #. because it relies on files like manage.py
+      dockerfile: ./voicewake/docker/service-celery-worker.dockerfile
+    volumes:
+      #type+source+target for dev for real-time changes, without destroying+recreating container?
+      - type: bind
+        source: ./static
+        target: /static
+      - type: bind
+        source: ./voicewake
+        target: /voicewake
+    # restart: always
+    env_file:
+      - /env/.env
+    ports:
+      #based on django_runserver/django_gunicorn
+      - "8001:8001"
+    depends_on:
+      django_runserver:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+  django_celery_beat:
+    build:
+      context: . #. because it relies on files like manage.py
+      dockerfile: ./voicewake/docker/service-celery-beat.dockerfile
+    volumes:
+      #type+source+target for dev for real-time changes, without destroying+recreating container?
+      - type: bind
+        source: ./static
+        target: /static
+      - type: bind
+        source: ./voicewake
+        target: /voicewake
+    # restart: always
+    env_file:
+      - /env/.env
+    ports:
+      #based on django_runserver/django_gunicorn
+      - "8002:8002"
+    depends_on:
+      django_runserver:
+        condition: service_healthy
+      django_celery_worker:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
   nginx:
     build: ./nginx
     volumes:
       - static:/static
     ports:
-      - "80:80"
-    depends_on:
-      - django_unicorn
+      - "0.0.0.0:80:80"
+    networks:
+      - backend
   frontend:
     build:
       context: .  #. because it relies on ./static
@@ -93,23 +225,11 @@ services:
       - type: bind
         source: ./tailwind.config.js
         target: /tailwind.config.js
-  redis:
-    image: redis:latest
-    restart: always
-    ports:
-      - "6379:6379"
-    # volumes:
-      # - /path/to/local/dаta:/root/redis
-      # - /path/to/local/redis.conf:/usr/local/etc/redis/redis.conf
-    environment:
-      - REDIS_PASSWORD=somepassword
-      - REDIS_PORT=6379
-      - REDIS_DATABASES=16
-
 volumes:
   static:
     #leave empty to use the container engine's default configuration for creating a volume
-
+networks:
+  backend:
 
 
 
