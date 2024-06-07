@@ -44,7 +44,6 @@ from voicewake.serializers import *
 from voicewake.services import *
 from voicewake.tasks import *
 import voicewake.decorators as app_decorators
-import voicewake.factories as app_factories
 from django.conf import settings
 
 #specifically just for error handling

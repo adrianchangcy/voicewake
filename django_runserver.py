@@ -15,7 +15,7 @@ import sys
     #tried sys.exit(0), subprocess.run(stderr=subprocess.DEVNULL, captue_output=False,)
     #on KeyboardInterrupt, always exits with 1 at VSCode Powershell
 #instructions
-    #to run: py dev_runserver.py
+    #to run: py django_runserver.py
     #to stop: Ctrl+C
 
 if __name__ == '__main__':
@@ -25,7 +25,7 @@ if __name__ == '__main__':
         try:
             subprocess.run(
                 [
-                    'py',
+                    'python',
                     'manage.py',
                     'runserver',
                     '0.0.0.0:8000',
