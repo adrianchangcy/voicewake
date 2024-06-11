@@ -24,4 +24,5 @@ ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8000
 
-CMD ["python", "django_runserver.py"]
+#having CMD here for django_runserver.py is unnecessary
+    #using CMD '["python", "django_runserver.py"]' is just appended to ENTRYPOINT's commands as args, and is ignored

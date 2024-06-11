@@ -115,6 +115,6 @@
     {% endblock %}
 
     <!--Vue-->
-    <script type="text/javascript" src="{% static 'frontend/js/chunk-vendors.js' %}{{STATIC_CACHE_BUST_VERSION}}"></script>
-    <script type="text/javascript" src="{% static 'frontend/js/app.js' %}{{STATIC_CACHE_BUST_VERSION}}"></script>
+    <script type="module" src="{% static 'frontend/js/chunk-vendors.js' %}{{STATIC_CACHE_BUST_VERSION}}"></script>
+    <script type="module" src="{% static 'frontend/js/app.js' %}{{STATIC_CACHE_BUST_VERSION}}"></script>
 </html>
