@@ -1,5 +1,6 @@
 #in compose.yaml, things such as "command" and "entrypoint" will override things like CMD and ENTRYPOINT at .dockerfile
   #therefore, it's best to resort to .dockerfile and entrypoint.sh before placing such things here
+#.dockerignore is expected to be at root directory of build context, i.e. where you are running "docker build" from
 services:
   test_service:
     build:
@@ -191,13 +192,37 @@ services:
       context: .  #. because it relies on ./static
       dockerfile: ./frontend/Dockerfile
     volumes:
-      - /frontend/app_modules #supposedly for faster reload, but idk
+      #anonymous volumes
+        #declared with only "some/folder/in/container"
+        #removed together with container if started with --rm
+        #useful for container-internal folder to not be overridden by bind mounts
+          #issue
+            #volumes does not consult .dockerignore, so if you bind mount a folder, everything in there is bind-mounted
+            #we have a folder "/somehostfolder" to bind-mount, but there "/somehostfolder/folder0" we want to leave out of it
+          #context
+            #"COPY . ." does consult .dockerignore to ignore "/somehostfolder/folder0"
+            #with bind-mounting "/somehostfolder", we are bind-mounting the entire folder and its content
+            #this then syncs "/somehostfolder/folder0" from host to container
+          #solution
+            #we do what seems like ".volumeignore"
+            #based on the path of the ignored folder at host, we specify the path of where it will exist in container
+            #then, at volumes, just write that path in container
+              #volumes:
+                #- type: bind
+                  #source: ./somehostfolder
+                  #target: /somehostfolder
+                #- /somehostfolder/folder0
+      #named volumes
+        #declared with "folder-name:some/folder/in/container"
+        #not removed together with container, must remove manually
       - type: bind
         source: ./static
         target: /static
       - type: bind
         source: ./frontend
         target: /frontend
+      #in container, specify the folder we want to ignore from bind-mount
+      - /frontend/node_modules
     # command: npm run serve #dev
     ports:
       - "8080:8080"
@@ -209,6 +234,7 @@ services:
     tty: true
     build:
       context: .
+      dockerfile: ./service-tailwind.dockerfile
     ports:
       - "3000:3000"
     #we use bind mount between host files and container files for two-way sync
@@ -225,6 +251,8 @@ services:
       - type: bind
         source: ./tailwind.config.js
         target: /tailwind.config.js
+      #in container, specify the folder we want to ignore from bind-mount
+      - /frontend/node_modules
 volumes:
   static:
     #leave empty to use the container engine's default configuration for creating a volume

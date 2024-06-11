@@ -423,7 +423,7 @@
                     recorderType: recordRTC.MediaStreamRecorder,
                 
                     // disable logs
-                    disableLogs: process.env.NODE_ENV === 'production',
+                    disableLogs: import.meta.env.NODE_ENV === 'production',
                 
                     // get intervals based blobs
                     // value in milliseconds

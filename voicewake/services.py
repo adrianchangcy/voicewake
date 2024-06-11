@@ -20,7 +20,6 @@ from django.core.cache import cache
 from datetime import datetime, timezone, timedelta, tzinfo
 from genericpath import isfile
 from zoneinfo import ZoneInfo
-from pydub import AudioSegment
 import secrets
 import time
 import re
