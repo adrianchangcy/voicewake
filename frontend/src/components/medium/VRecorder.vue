@@ -651,8 +651,8 @@
                     const error_message = "Your browser does not support webm. Recording and playback may have issues.";
                     alert(error_message);
 
-                    //weird bug found and fixed (2024-06-13)
-                    //only on iOS, if we throw error here and it's unhandled, the drop-down menus' content will not be created
+                    //bug found and fixed (2024-06-13)
+                    //if we throw error here and it's unhandled at mounted(), menus will not load
                 }
             },
         },
