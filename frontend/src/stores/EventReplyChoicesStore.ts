@@ -4,7 +4,7 @@ import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.inte
 import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
 import { notify } from '@/wrappers/notify_wrapper';
 
-const axios = require('axios');
+import axios from 'axios';
 
 
 type CurrentStatuses = ""|"no_new_event_reply_choices"|"event_reply_choices_expired"|

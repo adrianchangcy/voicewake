@@ -1,9 +1,10 @@
+import axios from 'axios';
+import { v4 } from 'uuid';
+
 export function axiosCSRFSetup() : void {
 
     //seems like we just have to call this function once and it'll be set globally
     //this is proven by how we no longer get 403 error when called once at BaseApp
-
-    const axios = require('axios');
 
     //your template must have {% csrf_token %}
     const token = document.getElementsByName("csrfmiddlewaretoken")[0];
@@ -292,10 +293,9 @@ export function getDataFromTemplateJSONScript(element_id:string) : number|string
 }
 
 
-export function getRandomUUID() : any {
+export function getRandomUUID() : string {
 
-    const { v4: uuidv4 } = require('uuid');
-    return uuidv4();
+    return v4();
 }
 
 

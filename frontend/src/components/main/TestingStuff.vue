@@ -55,7 +55,7 @@
     import { useTestStore } from '@/stores/TestStore';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
     import EventsTypes from '@/types/Events.interface';
-    const axios = require('axios');
+    import axios from 'axios';
 
     export default defineComponent({
         data(){
@@ -116,7 +116,7 @@
                 let data = new FormData();
                 data.append('is_requesting_otp', JSON.stringify(true));
 
-                await axios.get(window.location.origin + '/api/test', data)
+                await axios.post(window.location.origin + '/api/test', data)
                 .then((result:any) => {
                     window.location.href = window.location.origin;
                     console.log(result.data);                      //native {keyA:{},keyB:"testo"}

@@ -213,7 +213,7 @@
     import { notify } from '@/wrappers/notify_wrapper';
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
-    const axios = require('axios');
+    import axios from 'axios';
 
     export default defineComponent({
         data(){

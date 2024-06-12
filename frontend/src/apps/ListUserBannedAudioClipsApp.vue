@@ -49,7 +49,7 @@
     import AudioClipsTypes from '@/types/AudioClips.interface';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
     import { notify } from '@/wrappers/notify_wrapper';
-    const axios = require('axios');
+    import axios from 'axios';
 
     interface ScrollableAudioClipsTypes extends AudioClipsTypes {
         scroller_index_id: number,

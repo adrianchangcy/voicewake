@@ -365,7 +365,7 @@
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
     import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
     import { isPageAccessedByBackForward } from '@/helper_functions';
-    const axios = require('axios');
+    import axios from 'axios';
 
 
     export default defineComponent({

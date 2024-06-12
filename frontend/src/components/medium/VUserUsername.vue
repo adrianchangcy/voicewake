@@ -67,7 +67,7 @@
     import { defineComponent } from 'vue';
     import { notify } from '@/wrappers/notify_wrapper';
     import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
-    const axios = require('axios');
+    import axios from 'axios';
 
     export default defineComponent({
         name: "UserOptionsApp",

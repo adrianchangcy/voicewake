@@ -241,7 +241,7 @@
     import { useEventReplyChoicesStore } from '@/stores/EventReplyChoicesStore';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
     import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
-    const axios = require('axios');
+    import axios from 'axios';
 
 
     export default defineComponent({

@@ -114,7 +114,12 @@
         </body>
     {% endblock %}
 
-    <!--Vue-->
-    <script type="module" src="{% static 'frontend/js/chunk-vendors.js' %}{{STATIC_CACHE_BUST_VERSION}}"></script>
-    <script type="module" src="{% static 'frontend/js/app.js' %}{{STATIC_CACHE_BUST_VERSION}}"></script>
+    <!--Vue with Vite-->
+    {% if DEBUG %}
+        <!--don't use absolute localhost URL, otherwise for remote devices, it means "their" localhost-->
+        <script type="module" crossorigin src="http://{{HOST}}:5173/src/main.ts"></script>
+    {% else %}
+        <script type="module" crossorigin src="{% static 'frontend/js/main.ts' %}{{STATIC_CACHE_BUST_VERSION}}"></script>
+    {% endif %}
+
 </html>

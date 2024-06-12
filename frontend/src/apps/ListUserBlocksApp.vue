@@ -116,7 +116,7 @@
 <script lang="ts">
     import { defineComponent } from 'vue';
     import { notify } from '@/wrappers/notify_wrapper';
-    const axios = require('axios');
+    import axios from 'axios';
 
     interface UserBlocksTypes {
         blocked_user: {

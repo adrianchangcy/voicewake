@@ -14,7 +14,7 @@ import {
 } from '@/types/AudioClipProcessingDetails.interface';
 import { notify } from '@/wrappers/notify_wrapper';
 
-const axios = require('axios');
+import axios from 'axios';
 
 //use this when user has uploaded to backend and AWS
 //and all there is left is the processing step

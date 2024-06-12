@@ -46,7 +46,7 @@
     // import VPlayback from '../medium/VPlayback.vue';
     import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
     import { getRandomNumber } from '@/helper_functions';
-    const axios = require('axios');
+    import axios from 'axios';
 
     export default defineComponent({
         data(){
