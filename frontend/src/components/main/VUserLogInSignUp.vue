@@ -615,7 +615,7 @@
     import { emailValidatorDjango, prettyTimeRemaining } from '@/helper_functions';
     import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
-    const axios = require('axios');
+    import axios from 'axios';
 
     interface StepsType {
         [key: number]: string[],

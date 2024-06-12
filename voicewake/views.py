@@ -186,9 +186,9 @@ class ListUserLikesDislikes(TemplateView):
 #handles originator audio_clips
 @method_decorator(
     [
-        app_decorators.deny_if_not_logged_in("redirect"),
-        app_decorators.deny_if_no_username("redirect"),
-        app_decorators.deny_if_banned("redirect"),
+        # app_decorators.deny_if_not_logged_in("redirect"),
+        # app_decorators.deny_if_no_username("redirect"),
+        # app_decorators.deny_if_banned("redirect"),
     ],
     name='get'
 )

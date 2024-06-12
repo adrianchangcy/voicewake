@@ -497,7 +497,7 @@
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
     import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
     import { useRedrawCanvasesStore } from '@/stores/RedrawCanvasesStore';
-    const axios = require('axios');
+    import axios from 'axios';
 
     export default defineComponent({
         name: 'VNavBar',

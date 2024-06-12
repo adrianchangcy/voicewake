@@ -14,4 +14,15 @@ export default defineConfig({
         //if you get hydration mismatch error at console using files from production build, refer to this URL:
             //https://vuejs.org/api/compile-time-flags#vite
     ],
+    build: {
+        rollupOptions: {
+            input: {
+                main: './src/main.ts',
+            },
+            output: {
+                dir: '../static/frontend/js/',
+                entryFileNames: '[name].ts',
+            },
+        },
+    }
 });

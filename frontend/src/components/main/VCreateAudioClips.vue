@@ -223,7 +223,7 @@
     import { notify } from '@/wrappers/notify_wrapper';
     import AWSPresignedPostURLTypes from '@/types/AWSPresignedPostURL.interface';
     import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
-    const axios = require('axios');
+    import axios from 'axios';
 
     export default defineComponent({
         data() {

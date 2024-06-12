@@ -110,7 +110,9 @@
     import fixWebmDuration from 'fix-webm-duration';
     //fixes web worker import not working when fetched from another origin
     import '/src/patches/cors_worker_patch';
-    const recordRTC = require('/node_modules/recordrtc/RecordRTC.min.js');
+    import RecordRTC from 'recordrtc';
+
+    type recorderStates = "inactive" | "recording" | "stopped" | "paused" | "destroyed";
 
     export default defineComponent({
         data(){
@@ -120,10 +122,9 @@
                 stream: null as MediaStream | null,  //for defining recorder instances
                 volume_analyser: null as AnalyserNode | null,
                 volume_analyser_interval: null as number | null,
-                recorder: null as any | null,   //recordRTC object, but lazy to find a solution
-                recorder_state: null as 'recording' | 'paused' | 'stopped' | null,
+                recorder: null as RecordRTC | null,   //recordRTC object, but lazy to find a solution
+                recorder_state: 'inactive' as recorderStates,
                 recording_interval_worker: null as Worker | null,
-                mime_type: "audio/webm;codec=opus",
 
                 is_recording: false,    //is not affected by pause/resume
                 current_duration: 0,    //milliseconds
@@ -386,7 +387,7 @@
 
                 //initiate and reinitiate stream
                 //ensures user has device ready on every recording instance
-                if(await this.initiateStream() === false){
+                if(await this.initiateStream() === false || this.stream === null){
 
                     return false;
                 }
@@ -398,7 +399,7 @@
                 
                 //https://github.com/muaz-khan/RecordRTC
                 //note that RecordRTC uses Promise in some parts
-                this.recorder = recordRTC(this.stream, {
+                this.recorder = new RecordRTC(this.stream, {
             
                     // audio, video, canvas, gif
                     type: 'audio',
@@ -416,11 +417,11 @@
                     // demo: simple-demos/isTypeSupported.html
                     //FYI
                         //audio/webm;codecs=pcm has huge file size
-                    mimeType: this.mime_type,
+                    mimeType: "audio/webm",
                 
                     // MediaStreamRecorder, StereoAudioRecorder, WebAssemblyRecorder
                     // CanvasRecorder, GifRecorder, WhammyRecorder
-                    recorderType: recordRTC.MediaStreamRecorder,
+                    recorderType: RecordRTC.MediaStreamRecorder,
                 
                     // disable logs
                     disableLogs: import.meta.env.NODE_ENV === 'production',
@@ -483,43 +484,42 @@
                 //this will still execute after .stopRecording() (not good), but it is already taken care of
                 this.recorder.setRecordingDuration(this.propMaxDurationMs)
                     .onRecordingStopped(this.recorderStopAsCallback);
-                
                 this.recorder.startRecording();
                 this.startRecordingIntervalWorker();
-                this.recorder_state = this.recorder.state;
+                this.recorder_state = this.recorder.getState() as recorderStates;
                 this.is_recording = true;
 
                 return true;
             },
             recorderPauseResume(force_state:'pause'|'resume'|null=null) : void {
-                
-                if(this.is_recording === false){
+
+                if(this.is_recording === false || this.recorder === null){
 
                     return;
                 }
 
-                if(this.recorder.state == 'recording' || force_state === 'pause'){
+                if(this.recorder.getState() == 'recording' || force_state === 'pause'){
 
                     this.recorder.pauseRecording();
                     this.stopRecordingIntervalWorker();
                     this.stopVolumeAnalyser();
                     this.$emit('newVolumeAnalyserPulse', 0);
 
-                }else if(this.recorder.state == 'paused'){
+                }else if(this.recorder.getState() == 'paused'){
 
                     this.recorder.resumeRecording();
                     this.startRecordingIntervalWorker();
                     this.startVolumeAnalyser();
                 }
 
-                this.recorder_state = this.recorder.state;
+                this.recorder_state = this.recorder.getState() as recorderStates;
             },
             resetWhenRecorderStop() : void {
 
                 //convenient to use in callback of recordRTC.stopRecording() at recorderStop()
                 //because doing it outside of recordRTC.stopRecording() would be too early
 
-                //we manually store 'stopped' instead of this.recorder.state
+                //we manually store 'stopped' instead of this.recorder.getState()
                 //fix for bug where on pause->stop, you get 'recording'
                 this.recorder_state = 'stopped';
                 this.is_recording = false;
@@ -527,7 +527,12 @@
                 this.current_duration_pretty = '00:00';
                 this.$emit('newVolumeAnalyserPulse', 0);
             },
-            recorderStopAsCallback(callback_blob_url:string) : void {
+            recorderStopAsCallback(callback_blob_url:string='') : void {
+
+                if(callback_blob_url === ''){
+
+                    return;
+                }
 
                 //RecordRTC's .onRecordingStopped() passes URL blob string as first arg to your callback
                 //i.e. auto-stopped
@@ -545,8 +550,8 @@
 
                 this.stopVolumeAnalyser();
 
-                //if stopped as callback, this.recorder.state === 'stopped' is true
-                if(this.recorder.state === 'stopped'){
+                //if stopped as callback, this.recorder.getState() === 'stopped' is true
+                if(this.recorder !== null && this.recorder.getState() === 'stopped'){
 
                     this.emitNewRecording();
 
@@ -566,7 +571,7 @@
                     //since the web worker and .onRecordingStopped() is at a no-risk race condition,
                     //URL blob string was able to reach the stage where .arrayBuffer is applied, causing the error
 
-                if(this.is_recording === false){
+                if(this.is_recording === false || this.recorder === null){
 
                     return;
                 }
@@ -604,6 +609,11 @@
                 //the callback will be passed into either onRecordingStopped() or stopRecording()
                 //else your first blob is unplayable (too small), and user has to click a second time
 
+                if(this.recorder === null){
+
+                    return;
+                }
+
                 try{
 
                     // let new_recording = new File([this.recorder.getBlob()], 'this_recording.webm', {
@@ -636,12 +646,13 @@
                 //originally was to provide a few options to best cover all browsers
                 //but now, the default seems ok
 
-                if(MediaRecorder.isTypeSupported(this.mime_type) === false){
+                if(MediaRecorder.isTypeSupported("audio/webm") === false){
 
                     const error_message = "Your browser does not support webm. Recording and playback may have issues.";
-
                     alert(error_message);
-                    throw new Error(error_message);
+
+                    //weird bug found and fixed (2024-06-13)
+                    //only on iOS, if we throw error here and it's unhandled, the drop-down menus' content will not be created
                 }
             },
         },

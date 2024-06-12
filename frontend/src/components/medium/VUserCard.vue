@@ -88,7 +88,7 @@
     import { notify } from '@/wrappers/notify_wrapper';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     // import anime from 'animejs';
-    const axios = require('axios');
+    import axios from 'axios';
 
     export default defineComponent({
         data(){
