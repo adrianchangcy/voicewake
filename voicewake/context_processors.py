@@ -1,5 +1,5 @@
 from django.conf import settings
-
+import os
 
 def settings_values(request):
 
@@ -8,9 +8,7 @@ def settings_values(request):
         return {
             'STATIC_CACHE_BUST_VERSION': settings.STATIC_CACHE_BUST_VERSION,
             'DEBUG': settings.DEBUG,
-            #remove :xxxx port from host
-            #can specify port at template to load local JS files at base.html
-            'HOST': request.get_host().split(':')[0],
+            'VITE_PORT': os.environ['VITE_PORT'],
         }
 
     else:

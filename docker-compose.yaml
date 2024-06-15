@@ -181,16 +181,22 @@ services:
       - backend
   nginx:
     build: ./nginx
-    volumes:
-      - static:/static
+    environment:
+      #base these off of actual Docker Django service name and its port
+      - DJANGO_SERVICE_NAME=django_runserver
     ports:
-      - "0.0.0.0:80:80"
+      - "8080:8080"
     networks:
       - backend
   frontend:
+    env_file:
+      - ./env/.env
     build:
       context: .  #. because it relies on ./static
       dockerfile: ./frontend/Dockerfile
+      #pass args for .dockerfile to use via ${ENV_NAME}
+      args:
+        VITE_PORT: ${VITE_PORT}
     volumes:
       #anonymous volumes
         #declared with only "some/folder/in/container"
@@ -223,11 +229,15 @@ services:
         target: /frontend
       #in container, specify the folder we want to ignore from bind-mount
       - /frontend/node_modules
-    # command: npm run serve #dev
     ports:
-      - "5173:5173"
+      #how to fix load build context "failed to solve: archive/tar: unknown file mode ?rwxr-xr-x" error
+        #open your folder at File Explorer, as VSCode may hide certain files
+        #you may have unintentionally created a file, e.g. suddenly had ${VITE_PORT} file in ./frontend, only visible at File Explorer
+        #specifying "--port $VITE_PORT" as literal string at Vite CMD creates ${VITE_PORT} file
+      - "${VITE_PORT}:${VITE_PORT}"
+      # - "5173:5173"
     environment: 
-      - CHOKIDAR_USEPOLLING=true #enables the hot reloading
+      - CHOKIDAR_USEPOLLING=true #allows for hot reload
   tailwind:
     #use tty to provide pseudo-terminal, since we have -i flag, i.e. input
     #we essentially can see when watcher finishes applying new changes
