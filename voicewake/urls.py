@@ -121,7 +121,8 @@ urlpatterns += [
     #favicon
     #only for tab icon, not to be used as actual svg
     #permanent=True allows browser to cache the file
-    path('favicon.ico', RedirectView.as_view(url=staticfiles_storage.url('voicewake/tab-icon.svg'), permanent=True)),
+    #update 2024-6-16, using NGINX will request for favicon via incorrect port, so we try to serve it directly via NGINX
+    # path('favicon.ico', RedirectView.as_view(url=staticfiles_storage.url('voicewake/tab-icon.svg'), permanent=True)),
 ]
 
 #media files, only for dev
