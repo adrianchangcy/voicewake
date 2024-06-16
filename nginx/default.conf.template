@@ -90,6 +90,10 @@ http {
             return 403;
         }
 
+        #forward original host, so we can dynamically do 192.168.1.x:viteport
+        #otherwise, doing static 127.0.0.1:viteport from remote IP will refer to remote device itself
+        proxy_set_header Host $host;
+
         # redirect server error pages to the static page /50x.html
         error_page   500 502 503 504  /50x.html;
         location = /50x.html {
@@ -108,6 +112,10 @@ http {
         location / {
             proxy_pass http://main;
             limit_req zone=default burst=60 nodelay;
+        }
+
+        location ^~ /static/ {
+            proxy_pass http://main$request_uri;
         }
 
         location ^~ /api/events/list/ {
