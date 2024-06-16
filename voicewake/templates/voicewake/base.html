@@ -38,15 +38,7 @@
         {{user.is_authenticated | json_script:"data-user-is-authenticated"}}
 
         <!--ensure main CSS is loaded first before content-->
-        <!--
-            through NGINX, relative URLs by Django will use NGINX's port
-            causing error if we try to access Django static, which is only available through Django port
-        -->
-        {% if DEBUG %}
-            <link href="http://127.0.0.1:8000/{% static 'voicewake/css/output.css' %}{{STATIC_CACHE_BUST_VERSION}}" rel="stylesheet"/>
-        {% else %}
-            <link href="{% static 'voicewake/css/output.css' %}{{STATIC_CACHE_BUST_VERSION}}" rel="stylesheet"/>
-        {% endif %}
+        <link href="{% static 'voicewake/css/output.css' %}{{STATIC_CACHE_BUST_VERSION}}" rel="stylesheet"/>
     </head>
 
     {% block body %}
@@ -132,10 +124,10 @@
                 when doing proxy_pass to upstream, the upstream name is used as host name for Django
                 Django doesn't allow underscores in host names
                 request.get_host() returns upstream name, which cannot be used to dynamically reach Vite reliably
+            solution
+                forward host at NGINX so we can do 192.168.1.200:5173 instead of upstreamname:5173
         -->
-        <!--no solution to dynamically allow local and LAN for Vite-->
-        <!--current solution is to replace "127.0.0.1" with "192.168.1.200" manually-->
-        <script type="module" crossorigin src="http://127.0.0.1:{{VITE_PORT}}/src/main.ts"></script>
+        <script type="module" crossorigin src="http://{{request.get_host}}:{{VITE_PORT}}/src/main.ts"></script>
     {% else %}
         <script type="module" crossorigin src="{% static 'frontend/js/main.ts' %}{{STATIC_CACHE_BUST_VERSION}}"></script>
     {% endif %}
