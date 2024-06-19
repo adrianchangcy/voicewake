@@ -5,7 +5,7 @@ from typing import Union
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 from typing import Literal
 from urllib.parse import quote, unquote
-from django.db import connection
+import sys
 
 #django
 from django.contrib.auth import get_user_model
@@ -50,6 +50,19 @@ from django.conf import settings
     #if this changes in the future, be sure to check whether RETURNING behaves expectedly
         #i.e. select 2 AudioClips, affect 1 Events, RETURNING info from 2 AudioClips
 
+
+
+@shared_task
+def cronjob_prepare_celery_beat_healthcheck(cache_timeout=60):
+
+    #no easy way to healthcheck celery beat itself
+    #so we set key-value at Redis with expiry of 2 minutes
+    #then for healthcheck, we check whether key exists
+    #be sure to delay healthcheck at Docker for this task's first time
+    #https://github.com/celery/celery/issues/3694#issuecomment-481114772
+
+    #set cache key with timeout
+    cache.set(settings.CELERY_BEAT_HEALTHCHECK_CACHE_KEY, 0, timeout=cache_timeout)
 
 
 @shared_task
@@ -479,7 +492,6 @@ def cronjob_delete_audio_clip_processing_overdue():
 
         AudioClipLikesDislikes.objects.filter(audio_clip_id__in=audio_clip_ids).delete()
         AudioClips.objects.filter(pk__in=audio_clip_ids).delete()
-
 
 
 

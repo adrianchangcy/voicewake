@@ -318,17 +318,6 @@ LOCKDOWN_ENABLED = False
 LOCKDOWN_PASSWORDS = ('onlyvipallowed55555.',)
 
 
-#CELERY
-CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
-CELERY_BROKER_URL = os.environ['REDIS_ENDPOINT']
-CELERY_ACCEPT_CONTENT = ['application/json']
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_BACKEND = 'django-db'
-CELERY_TIMEZONE = 'UTC'
-CELERY_TASK_TIME_LIMIT = 2 * 60
-
-
 #REDIS CACHE
 CACHES = {
     "default": {
@@ -420,11 +409,36 @@ USER_BLOCK_QUANTITY_PER_PAGE = 20
 CACHE_AUDIO_CLIP_TONE_AGE_S = 1209600  #2 weeks
 
 
-#CRONJOBS
+#CELERY
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+CELERY_BROKER_URL = os.environ['REDIS_ENDPOINT']
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_TIMEZONE = 'UTC'
+CELERY_TASK_TIME_LIMIT = 2 * 60
+#try connection to broker (Redis in this case) if it fails
+#this is also to make "CPendingDeprecationWarning - broker_connection_retry" go away for Celery 6.0+
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+#tell Celery where to find @shared_task functions
+#docs didn't show CELERY_IMPORTS, but code failed without it
+CELERY_IMPORTS = ("voicewake.tasks", "voicewake.cronjobs",)
+
+
+#CELERY BEAT
 CRONJOB_DEFAULT_ROW_LIMIT = 100
-CELERY_IMPORTS = ("voicewake.tasks",)
+CELERY_BEAT_HEALTHCHECK_CACHE_KEY = 'celery_beat_healthcheck_key'
 #if you have args to pass, specify "'args': (param1, param2)"
 CELERY_BEAT_SCHEDULE = {
+    'cronjob_prepare_celery_beat_healthcheck': {
+        'task': 'voicewake.cronjobs.cronjob_prepare_celery_beat_healthcheck',
+        'schedule': (60),  #set cache key every 1 minute, check every 1 minute at healthcheck
+        'options': {
+            'expires': 30,    #30 seconds
+        },
+        'args': (120,), #cache timeout, 2 minutes, which if healthcheck cannot find cache key, means overdue
+    },
     'cronjob_ban_audio_clips': {
         'task': 'voicewake.cronjobs.cronjob_ban_audio_clips',
         'schedule': (60 * 60),  #1 hour

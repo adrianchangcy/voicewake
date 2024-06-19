@@ -25,5 +25,4 @@ ENV PYTHONUNBUFFERED=1
 EXPOSE 8001
 
 #run Celery workers for the app "voicewake" using its celery.py, at log level "info", with max memory of 20MB per child
-# CMD ["celery", "-A", "voicewake.celery", "worker", "-l", "info" "--max-memory-per-child", "20000"]
-CMD ["sleep", "3600"]
+CMD ["sh", "-c", "celery -A voicewake.celery worker -l info --max-memory-per-child 20000"]
