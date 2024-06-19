@@ -20,10 +20,10 @@ EXPOSE 3000
     #there seems to be a consensus against running "npm run start" as CMD here, as it can hide errors
 #problem #1
     #"start" must exist in package.json, but we don't need to run anything else
-    #leaving "start" empty but having Tailwind watch as script in package.json causes Docker to auto-skip and auto-run Tailwind watch
+    #leaving "start" empty but having Tailwind watch as script in package.json causes Docker to auto-skip and auto-run next script
 #solution #1
-    #use "start" for Tailwind watcher
-    #don't run CMD here, since "start" always runs by container, otherwise you get "exited with code 0"
+    #let "start" be empty, and let "start" be the only script
+    #don't run Tailwind via package.json script, since empty "start" will go to the next script, and you'll get "exited with code 0"
 #problem #2
     #we have successful bind mount, and correct tailwind.config.js
     #however, on file change, Tailwind watch does not rebuild

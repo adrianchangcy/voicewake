@@ -37,7 +37,7 @@ if settings.DEBUG is True:
     urlpatterns += [
         path('admin', admin.site.urls),
         path('__debug__/', include('debug_toolbar.urls')),
-        path('api/test/<int:wtf>', apis.TestAPI.as_view(), name='test_api'),
+        path('api/test', apis.TestAPI.as_view(), name='test_api'),
         path('test', views.test_page(template_name='test.html'), name='test_page'),
     ]
 

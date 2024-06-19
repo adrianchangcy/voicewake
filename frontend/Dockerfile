@@ -1,9 +1,5 @@
 FROM node:current
 
-#set VITE_PORT at container ENV, since CMD is executed at run-time
-#can check that it exists with "printenv VITE_PORT"
-ENV VITE_PORT ${VITE_PORT}
-
 #Vite default port
 EXPOSE ${VITE_PORT}
 

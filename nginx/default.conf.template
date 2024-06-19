@@ -45,7 +45,7 @@ http {
     #NGINX seems to recognise Docker service names, so don't use them for upstream names
     #upstream names, i.e. host names, cannot use underscores, else "RFC 1034/1035" error at Django
     upstream main {
-        server ${DJANGO_SERVICE_NAME}:8000;
+        server ${DJANGO_SERVICE_NAME}:${DJANGO_PORT};
     }
 
     server {
@@ -58,6 +58,10 @@ http {
         #timeout between client request and its body/header that is not yet sent
         client_body_timeout 12s;
         client_header_timeout 12s;
+
+        #forward original host, so we can dynamically do 192.168.1.x:viteport
+        #otherwise, doing static 127.0.0.1:viteport from remote IP will refer to remote device itself
+        proxy_set_header Host $host;
 
         #need this for keepalive
         proxy_http_version 1.1;
@@ -90,10 +94,6 @@ http {
             return 403;
         }
 
-        #forward original host, so we can dynamically do 192.168.1.x:viteport
-        #otherwise, doing static 127.0.0.1:viteport from remote IP will refer to remote device itself
-        proxy_set_header Host $host;
-
         # redirect server error pages to the static page /50x.html
         error_page   500 502 503 504  /50x.html;
         location = /50x.html {
@@ -107,6 +107,8 @@ http {
             root /etc/nginx;
             try_files $uri /favicon.svg =404;
             expires 30d;
+            access_log off;
+            log_not_found off;
         }
 
         location / {
@@ -114,6 +116,7 @@ http {
             limit_req zone=default burst=60 nodelay;
         }
 
+        #need this so relative URL for Django static files still works correctly
         location ^~ /static/ {
             proxy_pass http://main$request_uri;
         }
