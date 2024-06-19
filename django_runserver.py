@@ -1,6 +1,5 @@
 import subprocess
 from time import sleep
-import sys
 
 #issue
     #sometimes, Django would fail silently, and manually restarting would fail silently
@@ -36,7 +35,6 @@ if __name__ == '__main__':
                     'manage.py',
                     'runserver',
                     '0.0.0.0:8000',
-                    '--settings=voicewake.settings.dev',
                 ],
             )
         except KeyboardInterrupt:

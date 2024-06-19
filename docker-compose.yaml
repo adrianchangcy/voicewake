@@ -3,9 +3,12 @@
 #.dockerignore is expected to be at root directory of build context, i.e. where you are running "docker build" from
 services:
   test_service:
+    env_file:
+      - ./env/.env
     build:
       context: .  #. because it relies on ./static
       dockerfile: ./test_service.dockerfile
+
   postgres:
     image: postgres:latest
     ports:
@@ -32,6 +35,7 @@ services:
       start_period: 80s
     networks:
       - backend
+
   redis:
     working_dir: /redis
     image: redis:latest
@@ -49,17 +53,16 @@ services:
     #even when loading, Redis can still return exit code 0, so to be sure it's ready, expect "PONG"
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
-      interval: 2s
-      timeout: 3s
+      interval: 30s
+      timeout: 60s
       retries: 5
+      start_period: 80s
     networks:
       - backend
+
   django_runserver:
     build:
-      #context path dictates what "." points to in Dockerfile
-      context: . #. because it relies on files like manage.py
-      #dockerfile is relative to context path, and "../" can be used to reach context path's parent folder
-      #seems like specifying until Dockerfile itself is needed, else "is a directory" error if folder only
+      context: .
       dockerfile: ./voicewake/docker/service-django-runserver.dockerfile
     volumes:
       #type+source+target for dev for real-time changes, without destroying+recreating container?
@@ -97,6 +100,8 @@ services:
         condition: service_healthy
     networks:
       - backend
+    #no need healthcheck for runserver if we have docker_runserver.py
+
   django_gunicorn:
     build:
       #context path dictates what "." points to in Dockerfile
@@ -123,8 +128,15 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: curl --fail http://127.0.0.1:5000 || exit 1
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
     networks:
       - backend
+
   django_celery_worker:
     build:
       context: . #. because it relies on files like manage.py
@@ -144,14 +156,21 @@ services:
       #based on django_runserver/django_gunicorn
       - "8001:8001"
     depends_on:
-      django_runserver:
+      django_gunicorn:
         condition: service_healthy
       redis:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: celery -A voicewake status || exit 1
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
     networks:
       - backend
+
   django_celery_beat:
     build:
       context: . #. because it relies on files like manage.py
@@ -171,23 +190,42 @@ services:
       #based on django_runserver/django_gunicorn
       - "8002:8002"
     depends_on:
-      django_runserver:
+      django_gunicorn:
         condition: service_healthy
       django_celery_worker:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: python manage.py shell -c "from voicewake.services import do_celery_beat_healthcheck; do_celery_beat_healthcheck();"
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 80s
     networks:
       - backend
+
   nginx:
     build: ./nginx
     environment:
       #base these off of actual Docker Django service name and its port
       - DJANGO_SERVICE_NAME=django_runserver
+      - DJANGO_PORT=8000
     ports:
       - "8080:8080"
+    depends_on:
+      django_gunicorn:
+        condition: service_healthy
+    healthcheck:
+      #NGINX will also fail if any upstream isn't responding, i.e. Django
+      #force exit 1 if nginx status fails
+      test: service nginx status || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - backend
+
   frontend:
     env_file:
       - ./env/.env
@@ -198,29 +236,6 @@ services:
       args:
         VITE_PORT: ${VITE_PORT}
     volumes:
-      #anonymous volumes
-        #declared with only "some/folder/in/container"
-        #removed together with container if started with --rm
-        #useful for container-internal folder to not be overridden by bind mounts
-          #issue
-            #volumes does not consult .dockerignore, so if you bind mount a folder, everything in there is bind-mounted
-            #we have a folder "/somehostfolder" to bind-mount, but there "/somehostfolder/folder0" we want to leave out of it
-          #context
-            #"COPY . ." does consult .dockerignore to ignore "/somehostfolder/folder0"
-            #with bind-mounting "/somehostfolder", we are bind-mounting the entire folder and its content
-            #this then syncs "/somehostfolder/folder0" from host to container
-          #solution
-            #we do what seems like ".volumeignore"
-            #based on the path of the ignored folder at host, we specify the path of where it will exist in container
-            #then, at volumes, just write that path in container
-              #volumes:
-                #- type: bind
-                  #source: ./somehostfolder
-                  #target: /somehostfolder
-                #- /somehostfolder/folder0
-      #named volumes
-        #declared with "folder-name:some/folder/in/container"
-        #not removed together with container, must remove manually
       - type: bind
         source: ./static
         target: /static
@@ -230,17 +245,17 @@ services:
       #in container, specify the folder we want to ignore from bind-mount
       - /frontend/node_modules
     ports:
-      #how to fix load build context "failed to solve: archive/tar: unknown file mode ?rwxr-xr-x" error
-        #open your folder at File Explorer, as VSCode may hide certain files
-        #you may have unintentionally created a file, e.g. suddenly had ${VITE_PORT} file in ./frontend, only visible at File Explorer
-        #specifying "--port $VITE_PORT" as literal string at Vite CMD creates ${VITE_PORT} file
       - "${VITE_PORT}:${VITE_PORT}"
-      # - "5173:5173"
     environment: 
-      - CHOKIDAR_USEPOLLING=true #allows for hot reload
+      #allows for hot reload for JS dev, e.g. Vue/React/etc.
+      #hot reload will not work without it
+      - CHOKIDAR_USEPOLLING=true
+
   tailwind:
-    #use tty to provide pseudo-terminal, since we have -i flag, i.e. input
-    #we essentially can see when watcher finishes applying new changes
+    #must use tty
+      #provide pseudo-terminal, since we have -i flag, i.e. input
+      #can see when watcher finishes applying new changes
+      #keeps container alive
     tty: true
     build:
       context: .
@@ -268,50 +283,7 @@ volumes:
     #leave empty to use the container engine's default configuration for creating a volume
 networks:
   backend:
+    #leave empty to use default driver
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-# The commented out section below is an example of how to define a PostgreSQL
-# database that your application can use. `depends_on` tells Docker Compose to
-# start the database before your application. The `db-data` volume persists the
-# database data between container restarts. The `db-password` secret is used
-# to set the database password. You must create `db/password.txt` and add
-# a password of your choosing to it before running `docker compose up`.
-#     depends_on:
-#       db:
-#         condition: service_healthy
-#   db:
-#     image: postgres
-#     restart: always
-#     user: postgres
-#     secrets:
-#       - db-password
-#     volumes:
-#       - db-data:/var/lib/postgresql/data
-#     environment:
-#       - POSTGRES_DB=example
-#       - POSTGRES_PASSWORD_FILE=/run/secrets/db-password
-#     expose:
-#       - 5432
-#     healthcheck:
-#       test: [ "CMD", "pg_isready" ]
-#       interval: 10s
-#       timeout: 5s
-#       retries: 5
-# volumes:
-#   db-data:
-# secrets:
-#   db-password:
-#     file: db/password.txt
 

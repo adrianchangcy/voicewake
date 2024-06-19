@@ -15,6 +15,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUpload
 from django.core.files.base import ContentFile
 from django.db import connection
 from django.core.cache import cache
+from django_celery_beat.models import PeriodicTask
 
 #Python
 from datetime import datetime, timezone, timedelta, tzinfo
@@ -38,6 +39,7 @@ import platform
 import logging
 import requests
 import functools
+import sys
 
 #AWS
 import boto3
@@ -491,6 +493,52 @@ def get_response_data(request):
 
     response_data = (bytes(request.content).decode())
     return json.loads(response_data)
+
+
+def do_celery_beat_healthcheck():
+
+    #call this at healthcheck via:
+    #python manage.py shell -c "from voicewake.services import do_celery_beat_healthcheck; do_celery_beat_healthcheck();"
+
+    #check cache key
+    target_cache = cache.get(settings.CELERY_BEAT_HEALTHCHECK_CACHE_KEY, None)
+
+    if target_cache is None:
+
+        #container is unhealthy
+        print('CeleryBeat healthcheck: exit 1.')
+        sys.exit(1)
+
+    #container is healthy
+    print('CeleryBeat healthcheck: exit 0.')
+    sys.exit(0)
+
+
+def delete_celery_task_from_db(task_name=''):
+
+    #call this everytime you make a change in relation to Celery Beat
+    #otherwise periodic tasks from Celery Beat will permanently show up
+    #celery purge does not work, since purge only deletes message, not task
+    #in our scenario, it persists via CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+    try:
+
+        if task_name == '':
+
+            PeriodicTask.objects.all().delete()
+
+        else:
+
+            PeriodicTask.objects.filter(name=task_name).delete()
+
+        print('CeleryBeat deleting periodic tasks: exit 0.')
+        sys.exit(0)
+
+    except Exception as e:
+
+        print(e)
+        print('CeleryBeat deleting periodic tasks: exit 1.')
+        sys.exit(1)
 
 
 #for OTP

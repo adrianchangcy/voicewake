@@ -25,4 +25,4 @@ ENV PYTHONUNBUFFERED=1
 EXPOSE 8002
 
 #run Celery Beat for the app "voicewake", at log level "info"
-CMD ["celery", "-A", "voicewake", "beat", "-l", "info"]
+CMD ["sh", "-c", "celery -A voicewake beat -l info"]
