@@ -122,7 +122,7 @@ CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:8000',
-    'http://127.0.0.1:8070',
+    'http://127.0.0.1:8080',
     'https://voicewake.com',
     'https://' + os.environ['AWS_S3_CUSTOM_DOMAIN'],
 ]
@@ -130,7 +130,7 @@ CORS_ALLOWED_ORIGINS = [
 
 CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:8000',
-    'http://127.0.0.1:8070',
+    'http://127.0.0.1:8080',
     'https://voicewake.com',
 ]
 
@@ -178,9 +178,6 @@ LOGGING = {
 #if this doesn't work, check django_site in db
 #currently not used, which would have default example.com
 SITE_ID = 1
-
-
-BASE_URL = os.environ['BASE_URL']
 
 
 #custom user model
@@ -314,8 +311,8 @@ CHANNEL_LAYERS = {}
 
 
 #lockdown to keep site private
-LOCKDOWN_ENABLED = False
-LOCKDOWN_PASSWORDS = ('onlyvipallowed55555.',)
+LOCKDOWN_ENABLED = int(os.environ['LOCKDOWN_ENABLED']) == 1
+LOCKDOWN_PASSWORDS = (os.environ.get('LOCKDOWN_PASSWORD', ''),)
 
 
 #REDIS CACHE

@@ -206,13 +206,20 @@ services:
       - backend
 
   nginx:
-    build: ./nginx
+    build:
+      context: .
+      dockerfile: ./nginx/Dockerfile
     environment:
       #base these off of actual Docker Django service name and its port
-      - DJANGO_SERVICE_NAME=django_runserver
-      - DJANGO_PORT=8000
+      - DJANGO_SERVICE_NAME=django_gunicorn
+      - DJANGO_PORT=5000
     ports:
       - "8080:8080"
+    volumes:
+      #Gunicorn will not serve /static/, so NGINX must do it directly
+      - type: bind
+        source: ./static
+        target: /static
     depends_on:
       django_gunicorn:
         condition: service_healthy
