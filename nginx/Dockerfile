@@ -11,10 +11,9 @@ FROM nginx:bookworm
 #do "include /etc/nginx/conf.d/*.conf;" at /etc/nginx/nginx.conf
 #don't include entrypoint.sh nor CMD, so NGINX uses its own default command, which will also do envsubst
 
-COPY ./default.conf.template /etc/nginx/templates/
-COPY ./nginx.conf /etc/nginx/nginx.conf
-COPY ./50x.html /etc/nginx/html/
-COPY ./favicon.svg /etc/nginx/
+COPY ./nginx/default.conf.template /etc/nginx/templates/
+COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
+COPY ./nginx/50x.html /etc/nginx/html/
 
 EXPOSE 8080
 

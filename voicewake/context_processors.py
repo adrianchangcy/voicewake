@@ -9,6 +9,7 @@ def settings_values(request):
             'STATIC_CACHE_BUST_VERSION': settings.STATIC_CACHE_BUST_VERSION,
             'DEBUG': settings.DEBUG,
             'VITE_PORT': os.environ['VITE_PORT'],
+            'HOST': request.get_host().split(":")[0],
         }
 
     else:
