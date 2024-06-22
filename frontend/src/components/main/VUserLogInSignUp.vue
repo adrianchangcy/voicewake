@@ -511,7 +511,7 @@
                                 <VActionText
                                     :propIsIconOnly="true"
                                     v-show="canSubmitEmailAndRequestOTP"
-                                    @click="submitEmailAndRequestOTP('log-in', true)"
+                                    @click="submitEmailAndRequestOTP('sign-up', true)"
                                     propElement="button"
                                     propElementSize="s"
                                     propFontSize="s"

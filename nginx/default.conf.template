@@ -29,6 +29,7 @@ http {
 
     limit_conn_zone $binary_remote_addr zone=per_ip:1m;
 
+    limit_req_zone $binary_remote_addr zone=static:1m rate=20r/s;
     limit_req_zone $binary_remote_addr zone=default:1m rate=4r/s;
     limit_req_zone $binary_remote_addr zone=common_list_apis:1m rate=40r/m;
     limit_req_zone $binary_remote_addr zone=common_get_apis:1m rate=30r/m;
@@ -65,7 +66,7 @@ http {
 
         #need this for keepalive
         proxy_http_version 1.1;
-        proxy_set_header   "Connection" "";
+        proxy_set_header "Connection" "";
 
         #allow only localhost + static ip in dev, or authorised users in staging
         #satisfy any;
@@ -102,23 +103,26 @@ http {
         }
 
         #browsers request for favicon
-        #tell NGINX to look for it at /etc/nginx/favicon.svg, else 404, with cache that expires
+        #tell NGINX to look for it via absolute path (alias), else 404, with cache that expires
         location /favicon.ico {
-            root /etc/nginx;
+            alias /static/voicewake/favicon.svg;
             try_files $uri /favicon.svg =404;
             expires 30d;
             access_log off;
             log_not_found off;
         }
 
+        #NGINX must serve static, as Gunicorn will simply return 404
+        #use root to tell it where to start
+        location ^~ /static/ {
+            root /;
+            limit_req zone=static burst=60 nodelay;
+            expires 30d;
+        }
+
         location / {
             proxy_pass http://main;
             limit_req zone=default burst=60 nodelay;
-        }
-
-        #need this so relative URL for Django static files still works correctly
-        location ^~ /static/ {
-            proxy_pass http://main$request_uri;
         }
 
         location ^~ /api/events/list/ {
@@ -180,6 +184,8 @@ http {
         }
         location ^~ /api/users/ {
             proxy_pass http://main$request_uri;
+            #no Auth header, as NGINX to Django would get 403, and we don't need it if not using Django's BasicAuthentication
+            proxy_set_header Authorization "";
             limit_req zone=account_apis burst=20;
         }
         location ^~ /api/users/username/get/ {
