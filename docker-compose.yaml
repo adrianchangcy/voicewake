@@ -65,7 +65,6 @@ services:
       context: .
       dockerfile: ./voicewake/docker/service-django-runserver.dockerfile
     volumes:
-      #type+source+target for dev for real-time changes, without destroying+recreating container?
       - type: bind
         source: ./static
         target: /static
@@ -104,13 +103,10 @@ services:
 
   django_gunicorn:
     build:
-      #context path dictates what "." points to in Dockerfile
-      context: . #. because it relies on files like manage.py
-      #dockerfile is relative to context path, and "../" can be used to reach context path's parent folder
-      #seems like specifying until Dockerfile itself is needed, else "is a directory" error if folder only
+      #. because it relies on files like manage.py
+      context: .
       dockerfile: ./voicewake/docker/service-gunicorn.dockerfile
     volumes:
-      #type+source+target for dev for real-time changes, without destroying+recreating container?
       - type: bind
         source: ./static
         target: /static
@@ -139,10 +135,10 @@ services:
 
   django_celery_worker:
     build:
-      context: . #. because it relies on files like manage.py
+      #. because it relies on files like manage.py
+      context: .
       dockerfile: ./voicewake/docker/service-celery-worker.dockerfile
     volumes:
-      #type+source+target for dev for real-time changes, without destroying+recreating container?
       - type: bind
         source: ./static
         target: /static
@@ -173,10 +169,10 @@ services:
 
   django_celery_beat:
     build:
-      context: . #. because it relies on files like manage.py
+      #. because it relies on files like manage.py
+      context: .
       dockerfile: ./voicewake/docker/service-celery-beat.dockerfile
     volumes:
-      #type+source+target for dev for real-time changes, without destroying+recreating container?
       - type: bind
         source: ./static
         target: /static

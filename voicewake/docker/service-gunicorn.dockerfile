@@ -21,7 +21,7 @@ COPY ./requirements.txt ./
 #solution is to uninstall pywin32 from PC, freeze into requirements.txt again, and only run Python via container
 # RUN sed --in-place '/pywin32/d' ./requirements.txt
 
-#don't store packages in cache, as there will not be reinstalls
+#don't store packages in cache, as there will not be "reinstalls" in the container
 #--verbose to track progress
 #set "--default-timeout=100" to fix ReadTimeoutError
 RUN pip install -r requirements.txt --no-cache-dir --verbose --default-timeout=100
@@ -46,15 +46,13 @@ EXPOSE 5000
         #networks:
             #host:
                 #external: true
-    #attempts:
+    #failed solution #3
         #'network_mode:"host"' and python:3.12-alpine instead of python:3.12-slim-bullseye
-            #still has NewConnectionError
-        #use 1.1.1.1 and 1.0.0.1 DNS at Docker-->settings-->DockerEngine-->config and python:3.12-alpine instead of python:3.12-slim-bullseye
-#discouraged to edit ./etc/resolv.conf
+    #not sure if this helped
+        #use 1.1.1.1 and 1.0.0.1 DNS at Docker-->settings-->DockerEngine-->config
+    #may have helped
+        #--default-timeout=100
+        #python:3.12-bullseye
+    #discouraged to edit ./etc/resolv.conf
 
-#bind to port 5000
-#5 workers for (2 * 2 + 1) core guideline
-#use specific --worker-tmp-dir to prevent the chances of blocking a worker when the directory is on a disk-backed file system
-    #/dev/shm is mapped to shared memory and should be used for gunicorn heartbeat
-    #this will improve performance and avoid random freezes
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "5", "--worker-class", "gevent", "--worker-tmp-dir", "/dev/shm", "voicewake.wsgi:application"]
+ENTRYPOINT ["sh", "./voicewake/docker/entrypoint-gunicorn.sh"]
