@@ -312,11 +312,12 @@ class Core_TestCase(TestCase):
 
         #start
 
+        #set abritrary high BAN_AUDIO_CLIP_MIN_AGE_S to fix race condition between test cases
         with (
             self.settings(
                 BAN_AUDIO_CLIP_LIKE_RATIO=settings.BAN_AUDIO_CLIP_LIKE_RATIO,
                 BAN_AUDIO_CLIP_DISLIKE_COUNT=settings.BAN_AUDIO_CLIP_DISLIKE_COUNT,
-                BAN_AUDIO_CLIP_MIN_AGE_S=(ban_min_age_s + 1)
+                BAN_AUDIO_CLIP_MIN_AGE_S=(ban_min_age_s + 9999)
             ),
             self.assertNumQueries(13)
         ):
@@ -397,11 +398,12 @@ class Core_TestCase(TestCase):
 
         #start
 
+        #set abritrary high BAN_AUDIO_CLIP_MIN_AGE_S to fix race condition between test cases
         with (
             self.settings(
                 BAN_AUDIO_CLIP_LIKE_RATIO=settings.BAN_AUDIO_CLIP_LIKE_RATIO,
                 BAN_AUDIO_CLIP_DISLIKE_COUNT=settings.BAN_AUDIO_CLIP_DISLIKE_COUNT,
-                BAN_AUDIO_CLIP_MIN_AGE_S=(ban_min_age_s + 1)
+                BAN_AUDIO_CLIP_MIN_AGE_S=(ban_min_age_s + 9999)
             ),
             self.assertNumQueries(13)
         ):
@@ -1726,6 +1728,17 @@ class Core_TestCase(TestCase):
             self.assertTrue(AudioClips.objects.filter(pk=sample_originator_audio_clips[x].id).exists())
             self.assertTrue(AudioClips.objects.filter(pk=sample_responder_audio_clips[x].id).exists())
 
+
+    def test_celery_beat_healthcheck_ok(self):
+
+        cronjob_prepare_celery_beat_healthcheck()
+
+        #idk why "cm" for name choice, just taking from example
+        with self.assertRaises(SystemExit) as cm:
+
+            do_celery_beat_healthcheck()
+
+        self.assertEqual(cm.exception.code, 0)
 
 
 

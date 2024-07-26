@@ -4,7 +4,7 @@ from .common import *
 DEBUG = False
 
 
-ALLOWED_HOSTS = ['127.0.0.1', 'voicewake.com']
+ALLOWED_HOSTS = ['127.0.0.1', 'voicewake.com',]
 
 
 #set these to True to avoid transmitting these over HTTP accidentally

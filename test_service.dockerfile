@@ -1,6 +1,7 @@
-FROM nginx:bookworm
+FROM postgres:latest
 
 #test area
+COPY ./test_service_entrypoint.sh /test_service_entrypoint.sh
+ENTRYPOINT ./test_service_entrypoint.sh
 
-#needs CMD, else container wouldn't run
-CMD ["sleep", "86400"]
+EXPOSE 8888
