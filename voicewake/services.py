@@ -1580,9 +1580,11 @@ class CreateAudioClips():
         if must_set_cache is True:
 
             #cache must already exist, as task queue will not create on its own
+            #since cache rows are user-specific, timeout is not needed
             self.set_processing_cache(
                 processing_cache_key=self.processing_cache_key,
-                processing_cache=self.processing_cache
+                processing_cache=self.processing_cache,
+                timeout=None,
             )
 
 
@@ -1931,7 +1933,9 @@ class CreateAudioClips():
         )
 
 
-    #will validate, no invalidation
+    #checks if can start, but will not reset things if checking fails
+    #returns None if can start, or Response if cannot
+    #should ideally just return True/False and provide getCannotStartNormalisationResponse() for apis.py
     def start_normalisation(self, audio_clip_id:int)->None|Response:
 
         #doing "add normalisation to queue" here would cause circular import error, so we call at apis.py instead
@@ -2017,7 +2021,7 @@ class CreateAudioClips():
 
                 self.processing_cache['processings'].pop(str(self.audio_clip.id))
 
-                cache.set(self.processing_cache_key, self.processing_cache)
+                self.set_processing_cache(self.processing_cache_key, self.processing_cache)
 
             return Response(
                 data={},

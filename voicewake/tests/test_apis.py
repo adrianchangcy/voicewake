@@ -135,23 +135,23 @@ class AWS_TestCase(TestCase):
                 'expected_status_code': 400,
             },
             'audio_ok_1': {
-                'file': test_file_prefix + 'audio_ok_1.mp3',
+                'file': test_file_prefix + 'audio_ok_10s.webm',
                 'expected_status_code': 200,
             },
             'audio_ok_2': {
-                'file': test_file_prefix + 'audio_ok_2.mp3',
+                'file': test_file_prefix + 'audio_ok_120s.webm',
                 'expected_status_code': 200,
             },
             'audio_too_large': {
-                'file': test_file_prefix + 'audio_too_large.mp3',
+                'file': test_file_prefix + 'audio_too_large.webm',
                 'expected_status_code': 400,
             },
             'not_audio': {
                 'file': test_file_prefix + 'not_audio.txt',
                 'expected_status_code': 400,
             },
-            'txt_as_fake_mp3': {
-                'file': test_file_prefix + 'txt_as_fake_mp3.mp3',
+            'txt_as_fake_webm': {
+                'file': test_file_prefix + 'txt_as_fake_webm.webm',
                 'expected_status_code': 400,
             },
         }
@@ -177,7 +177,7 @@ class AWS_TestCase(TestCase):
 
     def test_upload_and_delete_ok(self):
 
-        upload_key = 'test/test_upload_and_delete_ok' + '.mp3'
+        upload_key = 'test/test_upload_and_delete_ok' + '.webm'
 
         s3_wrapper_class = S3PostWrapper(
             is_ec2=False,
@@ -212,7 +212,7 @@ class AWS_TestCase(TestCase):
 
     def test_upload_file_too_large(self):
 
-        upload_key = 'test/test_upload_file_too_large' + '.mp3'
+        upload_key = 'test/test_upload_file_too_large' + '.webm'
 
         s3_wrapper_class = S3PostWrapper(
             is_ec2=False,
@@ -249,7 +249,7 @@ class AWS_TestCase(TestCase):
 
     def test_upload_multiple_same_file_to_same_url(self):
 
-        upload_key = 'test/test_upload_more_files_same_url' + '.mp3'
+        upload_key = 'test/test_upload_more_files_same_url' + '.webm'
 
         s3_wrapper_class = S3PostWrapper(
             is_ec2=False,
@@ -291,7 +291,7 @@ class AWS_TestCase(TestCase):
 
     def test_lambda(self):
 
-        upload_key = 'test/test_lambda' + '.mp3'
+        upload_key = 'test/test_lambda' + '.webm'
 
         s3_wrapper_class = S3PostWrapper(
             is_ec2=False,
@@ -332,7 +332,7 @@ class AWS_TestCase(TestCase):
         lambda_payload = bytes(lambda_payload, encoding='utf-8')
 
         response = client.invoke(
-            FunctionName='normalise_audio_clips',
+            FunctionName=os.environ['AWS_LAMBDA_NORMALISE_FUNCTION_NAME'],
             InvocationType='RequestResponse',
             Payload=lambda_payload
         )
@@ -351,78 +351,6 @@ class AWS_TestCase(TestCase):
     def test_production_bucket_cors_policy_rejected(self):
 
         pass
-
-
-    def test_lambda_ffprobe_from_local(self):
-
-        def lambda_handler(event, context):
-
-            audio_file = event.get('audio_file')
-
-            result = subprocess.run(
-                [
-                    'ffprobe',
-                    '-v', 'error',
-                    '-show_entries', 'format',  #if you want only some keys, do format=duration, no difference though
-                    '-show_streams',
-                    '-select_streams', 'a',
-                    '-of', 'json',
-                    '-i', 'pipe:0'
-                ],
-                input=audio_file.read(),
-                check=True,
-                capture_output=True,
-                timeout=10
-            )
-
-            audio_file.seek(0)
-
-            audio_file_info = json.loads(result.stdout)
-
-            return {
-                'statusCode': 200,
-                'body': json.dumps({
-                    'audio_file_info': audio_file_info,
-                    'audio_file': audio_file
-                }),
-            }
-
-        lambda_client = boto3.client(
-            service_name='lambda',
-            region_name=os.environ['AWS_S3_REGION_NAME'],
-            aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
-            aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
-        )
-
-        #example file
-        audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/file_samples/audio_can_overwrite.mp3')
-
-        #automate args
-        file_extension = audio_file_full_path.split(".", -1)[-1]
-        temporary_audio_file_name = 'new_recording' + '.' + file_extension
-        content_type = 'audio/' + file_extension
-
-        #simulate InMemoryUploadedFile
-        audio_file_in_memory = InMemoryUploadedFile(
-            io.FileIO(audio_file_full_path, mode="rb+"),
-            'FileField',
-            temporary_audio_file_name,
-            content_type,
-            os.path.getsize(audio_file_full_path),
-            None
-        )
-
-        lambda_payload = json.dumps({
-            'audio_file': audio_file_in_memory
-        })
-
-        result = lambda_client.invoke(
-            FunctionName=os.environ['AWS_LAMBDA_TEST_ARN'],
-            InvocationType='RequestResponse',
-            Payload=lambda_payload,
-        )
-
-        print(result)
 
 
     def get_keys_from_ec2_in_prod(self):
@@ -875,7 +803,8 @@ class AudioClips_TestCase(TestCase):
         )
 
 
-    def test_ffmpeg(self):
+    #only testable with ffmpeg installed
+    def do_ffmpeg(self):
 
         #should have webm/opus and mp4/__ files for test, but too lazy for now
         #webm/opus works
@@ -892,27 +821,7 @@ class AudioClips_TestCase(TestCase):
             use_timer=True,
         )
 
-        handle_audio_file_class.test_retrieve_unprocessed_audio_file_local(
-            self.audio_file_from_recording
-        )
-
-        handle_audio_file_class.prepare_info_before_normalise()
-
-        #get duration by simply converting file here, then get duration
-        #then can get peaks
-
-        handle_audio_file_class.normalise_and_overwrite_audio_file()
-
-        handle_audio_file_class.get_duration_after_normalise()
-
-        handle_audio_file_class.get_peaks_by_buckets()
-
-        #to compare old and new peaks, must manually ensure duration exists first
-        #in production, this isn't necessary, and would be redundant
-
-        print(handle_audio_file_class.audio_file_duration_s)
-        print(handle_audio_file_class.audio_volume_peaks)
-        print(handle_audio_file_class.create_return_response())
+        print(handle_audio_file_class.main())
 
 
 
@@ -6716,7 +6625,7 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
         )
         cls.faulty_audio_file_full_path = os.path.join(
             settings.BASE_DIR,
-            'voicewake/tests/file_samples/txt_as_fake_mp3.mp3'
+            'voicewake/tests/file_samples/txt_as_fake_webm.webm'
         )
 
         #files

@@ -21,8 +21,10 @@ export default defineConfig({
             },
             output: {
                 dir: '../static/frontend/js/',
-                entryFileNames: '[name].ts',
+                //during dev, Vite serves main.ts with correct MIME
+                //with build, the file ending with .ts is resolved to MIME "video/mp2t", as per NGINX mime.types, so we should use .js instead
+                entryFileNames: '[name].js',
             },
         },
-    }
+    },
 });
