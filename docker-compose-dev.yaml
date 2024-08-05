@@ -10,7 +10,7 @@ services:
       context: .  #. because it relies on ./static
       dockerfile: ./test_service.dockerfile
     ports:
-      - "8888:8888"
+      - "5000:5000"
     networks:
       - backend
 
@@ -54,13 +54,9 @@ services:
     # volumes:
       # - /path/to/local/dаta:/root/redis
       # - /path/to/local/redis.conf:/usr/local/etc/redis/redis.conf
-    environment:
-      - REDIS_PASSWORD=somepassword
-      - REDIS_PORT=6379
-      - REDIS_DATABASES=16
-    #even when loading, Redis can still return exit code 0, so to be sure it's ready, expect "PONG"
     restart: unless-stopped
     healthcheck:
+      #even when loading, Redis can still return exit code 0, so to be sure it's ready, expect "PONG"
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
       interval: 30s
       timeout: 60s
