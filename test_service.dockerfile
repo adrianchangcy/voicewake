@@ -1,7 +1,7 @@
-FROM postgres:latest
+FROM redis:latest
 
 #test area
 COPY ./test_service_entrypoint.sh /test_service_entrypoint.sh
-ENTRYPOINT ./test_service_entrypoint.sh
+ENTRYPOINT ["sh", "/test_service_entrypoint.sh"]
 
-EXPOSE 8888
+EXPOSE 5000
