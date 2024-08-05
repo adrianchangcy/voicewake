@@ -24,5 +24,8 @@ ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8001
 
-#run Celery workers for the app "voicewake" using its celery.py, at log level "info", with max memory of 20MB per child
-CMD ["sh", "-c", "celery -A voicewake.celery worker -l info --max-memory-per-child 20000"]
+#run Celery workers for the app "voicewake" using its celery.py, at log level "info"
+#if you are using prefork and not solo, max-tasks-per-child can be used
+#max-tasks-per-child is a lot more efficient
+#prevents memory leak issues that can happen with max-memory-per-child on reaching memory limit, where workers are killed and created, which costs CPU
+CMD ["sh", "-c", "celery -A voicewake.celery worker -l info --max-tasks-per-child 1"]
