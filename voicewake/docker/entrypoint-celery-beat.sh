@@ -1,3 +1,5 @@
+#!/bin/sh
+
 #when Celery Beat starts, it adds our periodic tasks to db
 #it will not remove them when we delete/modify our periodic tasks
 #sync Celery Beat changes by removing all periodic tasks, and letting Celery Beat re-add them later on start
