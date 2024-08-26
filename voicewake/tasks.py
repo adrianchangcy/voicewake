@@ -28,50 +28,55 @@ from django.conf import settings
 @shared_task
 def task_send_otp_email(context:Literal['log_in', 'sign_up'], email:str, otp:str):
 
-    #validate
-    if (
-        context not in ['log_in', 'sign_up'] or
-        len(email) == 0 or
-        len(otp) != settings.TOTP_NUMBER_OF_DIGITS
-    ):
+    try:
 
-        raise custom_error(
-            ValueError,
-            __name__,
-            dev_message="Invalid args."
+        #validate
+        if (
+            context not in ['log_in', 'sign_up'] or
+            len(email) == 0 or
+            len(otp) != settings.TOTP_NUMBER_OF_DIGITS
+        ):
+
+            raise custom_error(
+                ValueError,
+                __name__,
+                dev_message="Invalid args."
+            )
+
+        email_subject = ''
+        otp_title = ''
+
+        if context == 'log_in':
+
+            email_subject = "Code for login"
+            otp_title = "Login code:"
+
+        elif context == 'sign_up':
+
+            email_subject = "Code for sign-up"
+            otp_title = "Sign-up code:"
+
+        #we can freely use math.ceil() as long as TOTP_TOLERANCE_S is sufficient
+        otp_expiry_m = settings.TOTP_VALIDITY_S / 60
+        otp_expiry_m = str(math.ceil(otp_expiry_m))
+
+        email_message = get_template('email/otp.html').render(context={
+            'otp_title': otp_title,
+            'otp': otp,
+            'otp_expiry': '%s minutes' % (otp_expiry_m),
+        })
+
+        send_mail(
+            subject=email_subject,
+            message='',
+            html_message=email_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False
         )
 
-    email_subject = ''
-    otp_title = ''
-
-    if context == 'log_in':
-
-        email_subject = "Code for login"
-        otp_title = "Login code:"
-
-    elif context == 'sign_up':
-
-        email_subject = "Code for sign-up"
-        otp_title = "Sign-up code:"
-
-    #we can freely use math.ceil() as long as TOTP_TOLERANCE_S is sufficient
-    otp_expiry_m = settings.TOTP_VALIDITY_S / 60
-    otp_expiry_m = str(math.ceil(otp_expiry_m))
-
-    email_message = get_template('email/otp.html').render(context={
-        'otp_title': otp_title,
-        'otp': otp,
-        'otp_expiry': '%s minutes' % (otp_expiry_m),
-    })
-
-    send_mail(
-        subject=email_subject,
-        message='',
-        html_message=email_message,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[email],
-        fail_silently=True
-    )
+    except Exception as e:
+        raise custom_error(e, __name__, e)
 
 
 #will validate and invalidate

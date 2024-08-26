@@ -9,9 +9,6 @@ REQUEST_TIME_DELAY = 0  #seconds
 SHOW_DJANGO_DEBUG_TOOLBAR = False
 
 
-ALLOWED_HOSTS = ['*']
-
-
 #hide/show debug toolbar, may cause issues when shown during tests
 DEBUG_TOOLBAR_CONFIG = {
     'SHOW_TOOLBAR_CALLBACK': lambda r: SHOW_DJANGO_DEBUG_TOOLBAR,
@@ -40,7 +37,7 @@ INSTALLED_APPS = [
 ] + INSTALLED_APPS
 
 
-MEDIAFILES_LOCATION = 'media/test'
+MEDIAFILES_LOCATION = 'media/dev'
 AWS_S3_CUSTOM_DOMAIN = os.environ['AWS_S3_CUSTOM_DOMAIN']
 
 

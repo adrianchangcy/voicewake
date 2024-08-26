@@ -9,6 +9,9 @@ WORKDIR /frontend
 COPY ./frontend/package*.json ./
 COPY ./frontend .
 
+#attempt to fix "ERR_SSL_CIPHER_OPERATION_FAILED"
+RUN npm cache clear --force
+
 RUN npm install --verbose
 RUN npm install -g vite --verbose
 

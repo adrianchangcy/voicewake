@@ -4,9 +4,6 @@ from .common import *
 DEBUG = False
 
 
-ALLOWED_HOSTS = ['127.0.0.1', 'voicewake.com',]
-
-
 #set these to True to avoid transmitting these over HTTP accidentally
 #must already have redirect to HTTPS
 CSRF_COOKIE_SECURE = True
@@ -25,7 +22,7 @@ REST_FRAMEWORK.update({
 
 
 STATICFILES_LOCATION = 'static'
-MEDIAFILES_LOCATION = 'media'
+MEDIAFILES_LOCATION = 'media/prod'
 AWS_S3_CUSTOM_DOMAIN = os.environ['AWS_S3_CUSTOM_DOMAIN']
 AWS_S3_STATIC_BUCKET_NAME = os.environ['AWS_S3_STATIC_BUCKET_NAME']
 

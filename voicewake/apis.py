@@ -225,7 +225,7 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
             user_instance = get_user_model().objects.create_user(email=new_data['email'])
 
         #proceed with valid user_instance
-        
+
         with transaction.atomic():
 
             #prepare
@@ -283,7 +283,7 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
                             },
                             status=status.HTTP_400_BAD_REQUEST
                         )
-                    
+
                     else:
 
                         #not supposed to reach here

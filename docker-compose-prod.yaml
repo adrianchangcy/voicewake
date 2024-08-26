@@ -103,6 +103,8 @@ services:
       #base these off of actual Docker Django service name and its port
       - DJANGO_SERVICE_NAME=django_gunicorn
       - DJANGO_PORT=5000
+      #favicon
+      - FAVICON_URL=https://d3fpcqa3tewpp.cloudfront.net/static/voicewake/favicon.svg
     ports:
       - "8080:8080"
     volumes:

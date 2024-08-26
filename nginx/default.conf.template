@@ -45,6 +45,7 @@ http {
     #follow the service name in compose.yml
     #NGINX seems to recognise Docker service names, so don't use them for upstream names
     #upstream names, i.e. host names, cannot use underscores, else "RFC 1034/1035" error at Django
+    #upstream name specified below must be allowed in Django's ALLOWED_HOSTS, as it is sometimes directly passed as Host header
     upstream main {
         server ${DJANGO_SERVICE_NAME}:${DJANGO_PORT};
     }
@@ -103,13 +104,10 @@ http {
         }
 
         #browsers request for favicon
-        #tell NGINX to look for it via absolute path (alias), else 404, with cache that expires
+        #let CloudFront serve it
         location /favicon.ico {
-            alias /static/voicewake/favicon.svg;
-            try_files $uri /favicon.svg =404;
+            return 301 ${FAVICON_URL};
             expires 30d;
-            access_log off;
-            log_not_found off;
         }
 
         #NGINX must serve static, as Gunicorn will simply return 404
