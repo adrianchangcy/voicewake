@@ -17,4 +17,6 @@ COPY ./nginx/50x.html /etc/nginx/html/
 
 EXPOSE 8080
 
-#no CMD, let NGINX use its own entrypoint
+#for normal NGINX, skip CMD, let NGINX use its own entrypoint
+#for debug, use CMD below, and specify "...error.log debug;" at nginx.conf
+# CMD ["nginx-debug", "-g", "daemon off;"]

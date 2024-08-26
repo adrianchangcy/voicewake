@@ -100,9 +100,11 @@ services:
       context: .
       dockerfile: ./nginx/Dockerfile
     environment:
-      #base these off of actual Docker Django service name and its port
-      - DJANGO_SERVICE_NAME=django_gunicorn
+      #at ECS, it would seem that communication between containers are all done through localhost
+      - DJANGO_SERVICE_NAME=127.0.0.1
       - DJANGO_PORT=5000
+      #favicon
+      - FAVICON_URL=https://d3fpcqa3tewpp.cloudfront.net/static/voicewake/favicon.svg
     ports:
       - "8080:8080"
     volumes:

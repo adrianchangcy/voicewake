@@ -449,11 +449,20 @@ def custom_error(error_class:Exception, __name__context:str, dev_message="", use
     #     raise custom_error(ValueError, __name__, "yo fix this", "hehe oops")
     # except ValueError as e:
     #     print(get_user_message_from_custom_error(e))
+    #     raise custom_error(e, __name__, e)
+
+    #some exceptions contain non-strings instead, so always ensure dev_message is str() so we can log the entire thing
+    dev_message = str(dev_message)
 
     #for now, we only log errors that are meant for developers
     if dev_message != "":
 
-        #find or create logger
+        logger = None
+
+        #determine whether to use local file or AWS CloudWatch
+
+        #pass __name__ into __name__context, which returns strings such as voicewake.views.... from which __name__ was called
+        #can specify __name__ that does not yet exist, which will be auto-created
         logger = logging.getLogger(__name__context)
 
         #log, with attention to logger's severity level
