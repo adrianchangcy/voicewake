@@ -1892,6 +1892,11 @@ class CreateEventsAPI(generics.GenericAPIView):
 
         except Exception as e:
 
+            if get_user_message_from_custom_error(e) == "":
+
+                #unknown error
+                raise e
+
             return Response(
                 data={
                     'message': get_user_message_from_custom_error(e),
@@ -2271,6 +2276,11 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
         except Exception as e:
 
             traceback.print_exc()
+
+            if get_user_message_from_custom_error(e) == "":
+
+                #unknown error
+                raise e
 
             return Response(
                 data={
@@ -2686,7 +2696,11 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
         except Exception as e:
 
             traceback.print_exc()
-            print(e)
+
+            if get_user_message_from_custom_error(e) == "":
+
+                #unknown error
+                raise e
 
             return Response(
                 data={

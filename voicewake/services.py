@@ -1590,11 +1590,7 @@ class CreateAudioClips():
 
             #cache must already exist, as task queue will not create on its own
             #since cache rows are user-specific, timeout is not needed
-            self.set_processing_cache(
-                processing_cache_key=self.processing_cache_key,
-                processing_cache=self.processing_cache,
-                timeout=None,
-            )
+            self.set_processing_cache(processing_cache_key=self.processing_cache_key, processing_cache=self.processing_cache)
 
 
     def _initialise_s3_post_wrapper(self):

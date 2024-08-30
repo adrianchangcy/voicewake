@@ -22,6 +22,7 @@ from zoneinfo import ZoneInfo
 import os
 import shutil
 import math
+import boto3
 
 
 def ensure_otp_is_always_wrong(otp):
@@ -419,7 +420,5 @@ class HandleUserOTP_TestCase(TestCase):
         self.assertFalse(
             UserOTP.objects.filter(user=user_instance).exists()
         )
-
-
 
 
