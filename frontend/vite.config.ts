@@ -27,4 +27,9 @@ export default defineConfig({
             },
         },
     },
+    //influences import.meta.url, e.g. web workers
+    //in production, since we call main.js via CloudFront URL, it will reference cloudfront.net
+    //we fetch files via cloudfront.net/static, but import.meta.url knows nothing about build output dir, so it does .net/assets and fails
+    //if not './', must be absolute path, i.e. no './', as it is warned during build
+    base: process.env.NODE_ENV === 'production' ? '/static/frontend/js/' : './',
 });

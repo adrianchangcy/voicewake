@@ -35,10 +35,14 @@ http {
     limit_req_zone $binary_remote_addr zone=common_get_apis:1m rate=30r/m;
     limit_req_zone $binary_remote_addr zone=light_compute_apis:1m rate=60r/m;
     limit_req_zone $binary_remote_addr zone=moderate_compute_apis:1m rate=50r/m;
-    limit_req_zone $binary_remote_addr zone=audio_file_lambda_compute_apis:1m rate=20r/m;
-    limit_req_zone $binary_remote_addr zone=account_apis:1m rate=10r/m;
-    limit_req_zone $binary_remote_addr zone=audio_clip_processings:1m rate=100r/m;
+    limit_req_zone $binary_remote_addr zone=audio_file_lambda_compute_apis:1m rate=40r/m;
+    limit_req_zone $binary_remote_addr zone=account_apis:1m rate=10r/s;
+    limit_req_zone $binary_remote_addr zone=audio_clip_processings:1m rate=10r/s;
     limit_req_zone $binary_remote_addr zone=audio_clip_reports:1m rate=10r/m;
+
+    #set custom return code when rate limited, default 503, requires version >= 1.3.15
+    limit_req_status 429;
+    limit_conn_status 429;
 
     #gzip  on;
 

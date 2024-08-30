@@ -130,6 +130,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:8000',
     'http://127.0.0.1:8080',
     'https://voicewake.com',
+    'https://stage.voicewake.com',
     'https://' + os.environ['AWS_S3_CUSTOM_DOMAIN'],
 ]
 
@@ -415,8 +416,8 @@ GENERAL_ROW_QUANTITY_PER_PAGE = 20
 
 
 #EVENT
-EVENT_CREATE_DAILY_LIMIT = 5      #compares from 00:00:00 UTC
-EVENT_REPLY_DAILY_LIMIT = 10       #compares from 00:00:00 UTC
+EVENT_CREATE_DAILY_LIMIT = int(os.environ['EVENT_CREATE_DAILY_LIMIT'])      #compares from 00:00:00 UTC
+EVENT_REPLY_DAILY_LIMIT = int(os.environ['EVENT_REPLY_DAILY_LIMIT'])       #compares from 00:00:00 UTC
 EVENT_REPLY_CHOICE_MAX_DURATION_S = 1200      #20 mins, when locked but is_replying=False
 EVENT_REPLY_MAX_DURATION_S = 3600       #60 mins, when locked and is_replying=True
 EVENT_QUANTITY_PER_PAGE = 10
@@ -424,15 +425,14 @@ EVENT_INCOMPLETE_QUEUE_MAX_AGE_S = 302400   #3 days 12 hours
 
 
 #EMAIL
-#ports 465 (SSL), 587 (TLS)
+#ports 465 (SSL), 587 (TLS, recommended)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-MAILER_EMAIL_BACKEND = EMAIL_BACKEND
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_HOST_USER = os.environ['EMAIL_HOST_USER']
-EMAIL_HOST_PASSWORD = os.environ['EMAIL_HOST_PASSWORD']
-EMAIL_PORT = int(os.environ['EMAIL_PORT'])
-EMAIL_USE_SSL = True
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+EMAIL_HOST = os.environ['AWS_SES_HOST']
+EMAIL_HOST_USER = os.environ['AWS_SES_SMTP_USER_NAME']
+EMAIL_HOST_PASSWORD = os.environ['AWS_SES_SMTP_PASSWORD']
+DEFAULT_FROM_EMAIL = os.environ['AWS_SES_FROM_EMAIL']
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
 
 
 #TOTP token arguments

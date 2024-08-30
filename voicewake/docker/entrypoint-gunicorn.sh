@@ -10,8 +10,5 @@ python manage.py migrate
     #this will improve performance and avoid random freezes
 
 #default
-# sh -c "gunicorn --bind 0.0.0.0:5000 --workers 5 --worker-class gevent --worker-tmp-dir /dev/shm voicewake.wsgi:application"
-
-#debug
-#if left omitted, default "--log-file -" logs to STDERR
-sh -c "gunicorn --bind 0.0.0.0:5000 --workers 5 --worker-class gevent --worker-tmp-dir /dev/shm voicewake.wsgi:application --log-level debug"
+#to debug, add "--log-level debug", but the extra info seemed to be totally useless
+sh -c "gunicorn --bind 0.0.0.0:5000 --workers 5 --worker-class gevent --worker-tmp-dir /dev/shm voicewake.wsgi:application"
