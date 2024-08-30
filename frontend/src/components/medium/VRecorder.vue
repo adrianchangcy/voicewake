@@ -203,7 +203,7 @@
                     this.recording_interval_worker = null;
                 }
             },
-            createRecordingInternalWorker(){
+            createRecordingIntervalWorker(){
 
                 this.recording_interval_worker = new Worker(
                     new URL('/src/workers/IntervalTimer.ts', import.meta.url),
@@ -217,7 +217,7 @@
 
                 if(this.recording_interval_worker === null){
 
-                    this.createRecordingInternalWorker();
+                    this.createRecordingIntervalWorker();
                 }
 
                 //start web worker
@@ -663,7 +663,7 @@
 
             //create earlier, in case there is a wait time
             //we want the waiting to occur here, and not when user wants to record
-            this.createRecordingInternalWorker();
+            this.createRecordingIntervalWorker();
         },
         beforeUnmount(){
 
