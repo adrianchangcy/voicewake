@@ -3102,6 +3102,10 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
 
         elif self.current_context == 'list':
 
+            #TODO: consider listing qualified audio_clips from db first, to ensure cache stays true to source of truth
+            #wouldn't want simple cache unavailability to cause people to lose track of processing clips
+            #to reduce load on db, maybe use time-based sync
+
             processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=request.user.id)
             processing_cache = cache.get(processing_cache_key, None)
 
