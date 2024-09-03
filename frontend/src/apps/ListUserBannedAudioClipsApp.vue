@@ -116,8 +116,8 @@
                         this.audio_clips.push(audio_clip as ScrollableAudioClipsTypes);
                     });
 
-                    this.next_url = result.data['next_url'];
-                    this.back_url = result.data['back_url'];
+                    this.next_url = window.location.origin + '/api/audio-clips/bans/list/next/' + result.data['next_token'];
+                    this.back_url = window.location.origin + '/api/audio-clips/bans/list/back/' + result.data['back_token'];
 
                 }).catch(() => {
 

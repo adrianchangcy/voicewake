@@ -742,22 +742,22 @@
             //empty string if not found
             this.username = getDataFromTemplateJSONScript('data-user-username') as string;
 
-            //change when_created
-            const when_created_element = document.getElementById('event-when-created');
-
-            if(when_created_element !== null){
-
-                when_created_element.textContent = prettyTimePassed(
-                    new Date(when_created_element.textContent as string)
-                );
-            }
-
             //get data from SSR template
             const container = document.getElementById('data-container-get-events') as HTMLElement;
 
             if(container === null){
 
                 throw new Error('Data container element was not found.');
+            }
+
+            //change when_created
+            const when_created_element = document.getElementById('event-when-created');
+
+            if(when_created_element !== null){
+
+                when_created_element.textContent = prettyTimePassed(
+                    new Date(container.getAttribute('data-when-created') as string)
+                );
             }
 
             this.getReuploadDetailsFromTemplate(container);

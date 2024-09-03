@@ -218,9 +218,8 @@ export function useAudioClipProcessingsStore(){
 
                         default:
 
-                            //delete and recreate later
-
-                            delete this.audio_clip_processings[audio_clip_id];
+                            //do not delete processing at store by default, to prevent unexpected disappearance
+                            //let user delete it
                             break;
                     }
                 });

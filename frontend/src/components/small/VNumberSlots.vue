@@ -58,7 +58,7 @@
 
                 //unable to type NodeListOf successfully, so we just call it once
                 //data() calls before mounted(), so don't expect elements here yet
-                input_fields: document.querySelectorAll(".number-slot-field > input"),
+                input_fields: null as ReturnType<typeof document.querySelectorAll>|null,
             };
         },
         props: {
@@ -76,6 +76,10 @@
             },
             propStatusText: {
                 type: String
+            },
+            propIsSubmitting: {
+                type: Boolean,
+                default: false
             },
         },
         emits: ["hasNewValue"],
@@ -102,9 +106,38 @@
 
                 this.$emit("hasNewValue", new_value);
             },
-            propTriggerReset() : void {
+            propTriggerReset(){
 
                 this.resetEverything();
+            },
+            propIsSubmitting(new_value){
+
+                if(this.input_fields === null || this.input_fields.length === 0){
+
+                    throw new Error('No input fields found.');
+                }
+
+                if(new_value === true){
+
+                    //disable all input fields
+
+                    for(let x=0; x < this.input_fields.length; x++){
+
+                        (this.input_fields[x] as HTMLInputElement).disabled = true;
+                    }
+
+                }else{
+
+                    //enable all input fields and place cursor at last input field
+
+                    for(let x=0; x < this.input_fields.length; x++){
+
+                        (this.input_fields[x] as HTMLInputElement).disabled = false;
+                    }
+
+                    (this.input_fields[this.input_fields.length - 1] as HTMLInputElement).focus();
+
+                }
             },
         },
         methods: {
@@ -114,7 +147,7 @@
                 this.is_error = false;
                 this.status_text = "";
 
-                if(this.input_fields === null){
+                if(this.input_fields === null || this.input_fields.length === 0){
 
                     return;
                 }
@@ -133,6 +166,11 @@
             },
             concatenateSlots() : void {
 
+                if(this.input_fields === null || this.input_fields.length === 0){
+
+                    throw new Error('No input fields found.');
+                }
+
                 let concat_string = "";
 
                 this.input_fields.forEach((element:Element)=>{
@@ -146,6 +184,11 @@
                 this.otp_string = concat_string;
             },
             handlePaste(event:Event) : void {
+
+                if(this.input_fields === null || this.input_fields.length === 0){
+
+                    throw new Error('No input fields found.');
+                }
 
                 //thanks to Lighthouse for discovering possible .clipboardData === null when analysing
                 const clipboard_data = (event as ClipboardEvent).clipboardData;
@@ -237,6 +280,11 @@
             },
             validateSlot(event:Event) : void {
 
+                if(this.input_fields === null || this.input_fields.length === 0){
+
+                    throw new Error('No input fields found.');
+                }
+
                 //current_input_field behaves as reference
                     //when manual user input, current_input_field.value!=null, e.data!=null
                     //when programmatically inserted input, current_input_field.value!=null, e.data===null
@@ -317,6 +365,11 @@
             this.input_fields[0].addEventListener("paste", this.handlePaste);
         },
         beforeUnmount(){
+
+                if(this.input_fields === null || this.input_fields.length === 0){
+
+                    throw new Error('No input fields found.');
+                }
 
             //remove listeners
             this.input_fields.forEach((input_field:Element) => {
