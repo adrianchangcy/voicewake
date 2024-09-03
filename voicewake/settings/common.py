@@ -129,6 +129,7 @@ CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:8000',
     'http://127.0.0.1:8080',
+    'http://192.168.1.200:8080',
     'https://voicewake.com',
     'https://stage.voicewake.com',
     'https://' + os.environ['AWS_S3_CUSTOM_DOMAIN'],
@@ -138,6 +139,7 @@ CORS_ALLOWED_ORIGINS = [
 CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:8000',
     'http://127.0.0.1:8080',
+    'http://192.168.1.200:8080',
     'https://voicewake.com',
     'https://stage.voicewake.com',
 ]

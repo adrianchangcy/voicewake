@@ -211,18 +211,18 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        new_data = serializer.validated_data
+        request_data = serializer.validated_data
         user_instance = None
 
         #get user
 
         try:
 
-            user_instance = get_user_model().objects.get(email_lowercase=new_data['email'].lower())
+            user_instance = get_user_model().objects.get(email_lowercase=request_data['email'].lower())
 
         except get_user_model().DoesNotExist:
 
-            user_instance = get_user_model().objects.create_user(email=new_data['email'])
+            user_instance = get_user_model().objects.create_user(email=request_data['email'])
 
         #proceed with valid user_instance
 
@@ -239,7 +239,7 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
             handle_user_otp_class.guarantee_user_otp_instance(select_for_update=True)
 
             #handle request for new OTP
-            if new_data['is_requesting_new_otp'] is True:
+            if request_data['is_requesting_new_otp'] is True:
 
                 new_otp = handle_user_otp_class.generate_otp()
 
@@ -249,12 +249,12 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
                     #add task to Celery
                     task_send_otp_email.s(
                         context=self.current_context,
-                        email=new_data['email'],
+                        email=request_data['email'],
                         otp=new_otp,
                     ).delay()
 
                     #email sent
-                    message = "%s code has been sent to " + new_data['email'] + "."
+                    message = "%s code has been sent to " + request_data['email'] + "."
 
                     if self.current_context == 'log_in':
                         message = message % ("Login")
@@ -295,7 +295,7 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
 
             #not requesting for OTP, continue
 
-            return self.verify_and_log_in(request, user_instance, handle_user_otp_class, new_data['otp'])
+            return self.verify_and_log_in(request, user_instance, handle_user_otp_class, request_data['otp'])
 
 
 
@@ -344,16 +344,16 @@ class UsersUsernameAPI(generics.GenericAPIView):
         
         #proceed
 
-        new_data = serializer.validated_data
+        request_data = serializer.validated_data
         
         exists = get_user_model().objects.filter(
-            username_lowercase=new_data['username'].lower()
+            username_lowercase=request_data['username'].lower()
         ).exists()
 
         return Response(
             {
                 'data': {
-                    'username': new_data['username'],
+                    'username': request_data['username'],
                     'exists': exists
                 },
             },
@@ -388,11 +388,11 @@ class UsersUsernameAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        new_data = serializer.validated_data
+        request_data = serializer.validated_data
 
         #check again if it exists
         username_exists = get_user_model().objects.filter(
-            username_lowercase=new_data['username'].lower()
+            username_lowercase=request_data['username'].lower()
         ).exists()
 
         if username_exists is True:
@@ -400,7 +400,7 @@ class UsersUsernameAPI(generics.GenericAPIView):
             return Response(
                 data={
                     'data': {
-                        'username': new_data['username'],
+                        'username': request_data['username'],
                         'exists': True
                     },
                     'message': 'Oops! That username is taken.'
@@ -409,17 +409,17 @@ class UsersUsernameAPI(generics.GenericAPIView):
             )
         
         #apply new username
-        request.user.username = new_data['username']
-        request.user.username_lowercase = new_data['username'].lower()
+        request.user.username = request_data['username']
+        request.user.username_lowercase = request_data['username'].lower()
         request.user.save()
 
         return Response(
             data={
                 'data': {
-                    'username': new_data['username'],
+                    'username': request_data['username'],
                     'exists': False
                 },
-                'message': 'Your username is now %s!' % (new_data['username'])
+                'message': 'Your username is now %s!' % (request_data['username'])
             },
             status=status.HTTP_200_OK
         )
@@ -577,31 +577,31 @@ class UserBannedAudioClipsAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        new_data = serializer.validated_data
+        request_data = serializer.validated_data
 
         #continue
 
         result = self.get_latest_banned_audio_clips(
-            new_data['next_or_back'],
-            new_data['cursor_token'],
+            request_data['next_or_back'],
+            request_data['cursor_token'],
         )
 
-        #prepare URLs
+        #prepare next and back URLs
+        #we used to return full URLs via self.request.build_absolute_uri().split(request_data['next_or_back'], 1)
+        #but for localhost Docker, it would not include port in URL, causing frontend to fail
 
-        current_url_splits = self.request.build_absolute_uri().split(new_data['next_or_back'], 1)
-
-        next_url = current_url_splits[0] + "next"
-        back_url = current_url_splits[0] + "back"
+        next_token = ""
+        back_token = ""
 
         if len(result['rows']) > 0:
 
-            next_url += "/" + result['next_cursor_token']
-            back_url += "/" + result['back_cursor_token']
+            next_token = result['next_cursor_token']
+            back_token = result['back_cursor_token']
 
-        elif new_data['cursor_token'] != '':
+        elif len(result['rows']) == 0 and request_data['cursor_token'] != '':
 
-            next_url += "/" + new_data['cursor_token']
-            back_url += "/" + new_data['cursor_token']
+            next_token = request_data['cursor_token']
+            back_token = request_data['cursor_token']
 
         #prepare response
 
@@ -612,8 +612,8 @@ class UserBannedAudioClipsAPI(generics.GenericAPIView):
 
         return Response(
             data={
-                'next_url': next_url,
-                'back_url': back_url,
+                'next_token': next_token,
+                'back_token': back_token,
                 'data': serializer.data,
             },
             status=status.HTTP_200_OK
@@ -758,31 +758,31 @@ class UserBlocksAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        new_data = serializer.validated_data
+        request_data = serializer.validated_data
 
         #continue
 
         result = self.get_latest_user_blocks(
-            new_data['next_or_back'],
-            new_data['cursor_token'],
+            request_data['next_or_back'],
+            request_data['cursor_token'],
         )
 
-        #prepare URLs
+        #prepare next and back URLs
+        #we used to return full URLs via self.request.build_absolute_uri().split(request_data['next_or_back'], 1)
+        #but for localhost Docker, it would not include port in URL, causing frontend to fail
 
-        current_url_splits = self.request.build_absolute_uri().split(new_data['next_or_back'], 1)
-
-        next_url = current_url_splits[0] + "next"
-        back_url = current_url_splits[0] + "back"
+        next_token = ""
+        back_token = ""
 
         if len(result['rows']) > 0:
 
-            next_url += "/" + result['next_cursor_token']
-            back_url += "/" + result['back_cursor_token']
+            next_token = result['next_cursor_token']
+            back_token = result['back_cursor_token']
 
-        elif new_data['cursor_token'] != '':
+        elif len(result['rows']) == 0 and request_data['cursor_token'] != '':
 
-            next_url += "/" + new_data['cursor_token']
-            back_url += "/" + new_data['cursor_token']
+            next_token = request_data['cursor_token']
+            back_token = request_data['cursor_token']
 
         #prepare response
 
@@ -790,8 +790,8 @@ class UserBlocksAPI(generics.GenericAPIView):
 
         response = Response(
             data={
-                'next_url': next_url,
-                'back_url': back_url,
+                'next_token': next_token,
+                'back_token': back_token,
                 'data': serializer.data,
             },
             status=status.HTTP_200_OK
@@ -820,11 +820,11 @@ class UserBlocksAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        new_data = serializer.validated_data
+        request_data = serializer.validated_data
         user_message = ""
 
         #get user to block
-        blocked_user = get_object_or_404(get_user_model(), username_lowercase=new_data['username'].lower())
+        blocked_user = get_object_or_404(get_user_model(), username_lowercase=request_data['username'].lower())
 
         #disallow users from blocking themselves
         if blocked_user.id == request.user.id:
@@ -836,7 +836,7 @@ class UserBlocksAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        if new_data['to_block'] is True:
+        if request_data['to_block'] is True:
 
             #handle blocking
             UserBlocks.objects.get_or_create(
@@ -1659,29 +1659,29 @@ class BrowseEventsAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        new_data = serializer.validated_data
+        request_data = serializer.validated_data
 
         #get rows and cursor
         #currently only handling latest
 
         result = None
 
-        if new_data['likes_or_dislikes'] != '':
+        if request_data['likes_or_dislikes'] != '':
 
             #users can only view their own likes/dislikes for now
 
             if(
                 request.user.is_authenticated is True and
-                request.user.username.lower() == new_data['username'].lower()
+                request.user.username.lower() == request_data['username'].lower()
             ):
 
                 result = self.list_latest_liked_disliked_audio_clips(
-                    username=new_data['username'],
-                    likes_or_dislikes=new_data['likes_or_dislikes'],
-                    audio_clip_role_name=new_data['audio_clip_role_name'],
-                    audio_clip_tone_id=new_data['audio_clip_tone_id'],
-                    next_or_back=new_data['next_or_back'],
-                    cursor_token=new_data['cursor_token'],
+                    username=request_data['username'],
+                    likes_or_dislikes=request_data['likes_or_dislikes'],
+                    audio_clip_role_name=request_data['audio_clip_role_name'],
+                    audio_clip_tone_id=request_data['audio_clip_tone_id'],
+                    next_or_back=request_data['next_or_back'],
+                    cursor_token=request_data['cursor_token'],
                 )
 
             else:
@@ -1696,32 +1696,31 @@ class BrowseEventsAPI(generics.GenericAPIView):
         else:
 
             result = self.list_latest_grouped_audio_clips(
-                username=new_data['username'],
-                audio_clip_role_name=new_data['audio_clip_role_name'],
-                audio_clip_tone_id=new_data['audio_clip_tone_id'],
-                next_or_back=new_data['next_or_back'],
-                cursor_token=new_data['cursor_token'],
+                username=request_data['username'],
+                audio_clip_role_name=request_data['audio_clip_role_name'],
+                audio_clip_tone_id=request_data['audio_clip_tone_id'],
+                next_or_back=request_data['next_or_back'],
+                cursor_token=request_data['cursor_token'],
             )
 
         #prepare next and back URLs
+        #we used to return full URLs via self.request.build_absolute_uri().split(request_data['next_or_back'], 1)
+        #but for localhost Docker, it would not include port in URL, causing frontend to fail
 
-        #get split url after removing next_or_back
-        current_url_splits = self.request.build_absolute_uri().split(new_data['next_or_back'], 1)
-
-        next_url = current_url_splits[0] + "next"
-        back_url = current_url_splits[0] + "back"
+        next_token = ""
+        back_token = ""
 
         if len(result['rows']) > 0:
 
             #if we have > 0 rows, even with 1 row, both next and back cursor tokens will exist
-            next_url += "/" + result['next_cursor_token']
-            back_url += "/" + result['back_cursor_token']
+            next_token = result['next_cursor_token']
+            back_token = result['back_cursor_token']
 
-        elif len(result['rows']) == 0 and new_data['cursor_token'] != '':
+        elif len(result['rows']) == 0 and request_data['cursor_token'] != '':
 
             #reuse passed cursor token, if any
-            next_url += "/" + new_data['cursor_token']
-            back_url += "/" + new_data['cursor_token']
+            next_token = request_data['cursor_token']
+            back_token = request_data['cursor_token']
 
         #build the response
 
@@ -1733,8 +1732,8 @@ class BrowseEventsAPI(generics.GenericAPIView):
 
         response = Response(
             data={
-                'next_url': next_url,
-                'back_url': back_url,
+                'next_token': next_token,
+                'back_token': back_token,
                 'data': response_data,
             },
             status=status.HTTP_200_OK
@@ -1819,7 +1818,7 @@ class CreateEventsAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        new_data = serializer.validated_data
+        request_data = serializer.validated_data
 
         #proceed
 
@@ -1839,21 +1838,21 @@ class CreateEventsAPI(generics.GenericAPIView):
             if self.current_context == 'upload':
 
                 return create_audio_clips_class.create_records_and_return_s3_endpoint_as_originator(
-                    event_name=new_data['event_name'],
-                    audio_clip_tone_id=new_data['audio_clip_tone_id'],
-                    recorded_file_extension=new_data['recorded_file_extension'],
+                    event_name=request_data['event_name'],
+                    audio_clip_tone_id=request_data['audio_clip_tone_id'],
+                    recorded_file_extension=request_data['recorded_file_extension'],
                 )
 
             elif self.current_context == 'regenerate_upload_url':
 
                 return create_audio_clips_class.regenerate_s3_endpoint(
-                    audio_clip_id=new_data['audio_clip_id'],
+                    audio_clip_id=request_data['audio_clip_id'],
                 )
 
             elif self.current_context == 'process':
 
                 error_response = create_audio_clips_class.start_normalisation(
-                    audio_clip_id=new_data['audio_clip_id'],
+                    audio_clip_id=request_data['audio_clip_id'],
                 )
 
                 if error_response is not None:
@@ -1871,7 +1870,7 @@ class CreateEventsAPI(generics.GenericAPIView):
 
                 processing_cache_processing = create_audio_clips_class.get_processing_cache_processing_object(
                     create_audio_clips_class.processing_cache,
-                    new_data['audio_clip_id']
+                    request_data['audio_clip_id']
                 )
 
                 return Response(
@@ -2179,16 +2178,16 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        new_data = serializer.validated_data
+        request_data = serializer.validated_data
 
         #check whether user wants to auto-skip current choices and get new ones
 
-        if new_data['unlock_all_locked_events'] is True:
+        if request_data['unlock_all_locked_events'] is True:
 
             #auto-remove all locked events
             self.unlock_all_locked_events(only_expired_rows=False)
 
-        elif new_data['unlock_all_locked_events'] is False:
+        elif request_data['unlock_all_locked_events'] is False:
 
             #auto-remove all locked events that are expired only
             self.unlock_all_locked_events(only_expired_rows=True)
@@ -2244,7 +2243,7 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
 
             #proceed with getting new reply choices
 
-            audio_clips = self.get_audio_clips_by_incomplete_events(audio_clip_tone_id=new_data['audio_clip_tone_id'])
+            audio_clips = self.get_audio_clips_by_incomplete_events(audio_clip_tone_id=request_data['audio_clip_tone_id'])
 
             if len(audio_clips) == 0:
 
@@ -2580,7 +2579,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        new_data = serializer.validated_data
+        request_data = serializer.validated_data
 
         #proceed
 
@@ -2604,27 +2603,27 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
             if self.current_context == "start":
 
                 #start replying
-                return self.start_reply_in_event(new_data['event_id'])
+                return self.start_reply_in_event(request_data['event_id'])
 
             elif self.current_context == 'upload':
 
                 return create_audio_clips_class.create_records_and_return_s3_endpoint_as_responder(
-                    event_id=new_data['event_id'],
-                    audio_clip_tone_id=new_data['audio_clip_tone_id'],
-                    recorded_file_extension=new_data['recorded_file_extension'],
+                    event_id=request_data['event_id'],
+                    audio_clip_tone_id=request_data['audio_clip_tone_id'],
+                    recorded_file_extension=request_data['recorded_file_extension'],
                 )
 
 
             elif self.current_context == 'regenerate_upload_url':
 
                 return create_audio_clips_class.regenerate_s3_endpoint(
-                    audio_clip_id=new_data['audio_clip_id'],
+                    audio_clip_id=request_data['audio_clip_id'],
                 )
 
             elif self.current_context == 'process':
 
                 error_response = create_audio_clips_class.start_normalisation(
-                    audio_clip_id=new_data['audio_clip_id'],
+                    audio_clip_id=request_data['audio_clip_id'],
                 )
 
                 if error_response is not None:
@@ -2642,7 +2641,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
                 processing_cache_processing = CreateAudioClips.get_processing_cache_processing_object(
                     processing_cache=create_audio_clips_class.processing_cache,
-                    audio_clip_id=new_data['audio_clip_id']
+                    audio_clip_id=request_data['audio_clip_id']
                 )
 
                 return Response(
@@ -2655,7 +2654,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
             elif self.current_context == "cancel":
 
                 #delete event_reply_queue
-                return self.cancel_reply_in_event(new_data['event_id'])
+                return self.cancel_reply_in_event(request_data['event_id'])
 
         except AudioClipTones.DoesNotExist:
 
@@ -2739,7 +2738,7 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        new_data = serializer.validated_data
+        request_data = serializer.validated_data
 
         #current code is also supposedly better than 100% delete + insert
         #https://stackoverflow.com/questions/1271641/in-sql-is-update-always-faster-than-deleteinsert
@@ -2747,7 +2746,7 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
         #check if audio clip exists
         #need this check, for uncatchable update_or_create() exception during tests
 
-        if AudioClips.objects.filter(pk=new_data['audio_clip_id']).exists() is False:
+        if AudioClips.objects.filter(pk=request_data['audio_clip_id']).exists() is False:
 
             return Response(
                 data={
@@ -2760,12 +2759,12 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
 
         try:
 
-            if new_data['is_liked'] is None:
+            if request_data['is_liked'] is None:
 
                 #this is safe from "performing deletion but no rows found"
                 AudioClipLikesDislikes.objects.filter(
                     user_id=request.user.id,
-                    audio_clip_id=new_data['audio_clip_id']
+                    audio_clip_id=request_data['audio_clip_id']
                 ).delete()
 
             else:
@@ -2780,8 +2779,8 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
                     #current solution: do .exists() check above
                 AudioClipLikesDislikes.objects.update_or_create(
                     user_id=request.user.id,
-                    audio_clip_id=new_data['audio_clip_id'],
-                    defaults={'is_liked': new_data['is_liked']}
+                    audio_clip_id=request_data['audio_clip_id'],
+                    defaults={'is_liked': request_data['is_liked']}
                 )
 
         except IntegrityError as e:
@@ -2855,7 +2854,7 @@ class AudioClipReportsAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        new_data = serializer.validated_data
+        request_data = serializer.validated_data
 
         try:
 
@@ -2863,7 +2862,7 @@ class AudioClipReportsAPI(generics.GenericAPIView):
             target_audio_clip = AudioClips.objects.select_related(
                 'generic_status',
             ).get(
-                pk=new_data['audio_clip_id'],
+                pk=request_data['audio_clip_id'],
             )
 
         except AudioClips.DoesNotExist:
@@ -2900,7 +2899,7 @@ class AudioClipReportsAPI(generics.GenericAPIView):
 
         #add report
         AudioClipReports.objects.update_or_create(
-            audio_clip_id=new_data['audio_clip_id'],
+            audio_clip_id=request_data['audio_clip_id'],
             defaults={
                 "last_reported": get_datetime_now(),
             },
@@ -3083,7 +3082,7 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            new_data = serializer.validated_data
+            request_data = serializer.validated_data
 
             processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=request.user.id)
             processing_cache = cache.get(processing_cache_key, None)
@@ -3096,7 +3095,7 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
 
             return self.check_normalisation_status(
                 processing_cache=processing_cache,
-                audio_clip_id=new_data['audio_clip_id'],
+                audio_clip_id=request_data['audio_clip_id'],
                 return_type='response'
             )
 
@@ -3177,7 +3176,7 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        new_data = serializer.validated_data
+        request_data = serializer.validated_data
 
         #delete from audio_clip, event_reply_queue, and cache
 
@@ -3186,7 +3185,7 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
         try:
 
             audio_clip = AudioClips.objects.select_related('audio_clip_role').get(
-                pk=new_data['audio_clip_id'],
+                pk=request_data['audio_clip_id'],
                 user_id=request.user.id,
                 generic_status__generic_status_name='processing'
             )

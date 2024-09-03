@@ -488,7 +488,7 @@
                 //initialise to ensure object is ready
                 if(is_first_page === true){
 
-                    await this.filtered_events_store.initialiseFilteredEventsStructure(
+                    this.filtered_events_store.initialiseFilteredEventsStructure(
                         current_like_dislike_choice_index,
                         current_event_generic_status_name_index,
                         current_main_filter_index,
@@ -501,7 +501,7 @@
                 //for first page, i.e. after filter change, check if we already have data
                 const can_skip_fetching = (
                     is_first_page === true &&
-                    await this.filtered_events_store.hasExistingDataAfterFilterChange(
+                    this.filtered_events_store.hasExistingDataAfterFilterChange(
                         current_like_dislike_choice_index,
                         current_event_generic_status_name_index,
                         current_main_filter_index,
@@ -518,7 +518,7 @@
                 }
 
                 //check if can fetch, e.g. if timed out from previous search that yielded no results
-                const check_can_fetch = await this.filtered_events_store.checkCanFetch(
+                const check_can_fetch = this.filtered_events_store.checkCanFetch(
                     current_like_dislike_choice_index,
                     current_event_generic_status_name_index,
                     current_main_filter_index,
@@ -532,27 +532,35 @@
                     return;
                 }
 
+                //get base URL
+                //for first page, it is "/next" or "/back"
+                //for subsequent pages, it is "/next/tokenhere" or "/back/tokenhere"
+                //request will return next_token and back_token, so just append it to base_url
+                const base_url = this.constructBaseURL(
+                    current_like_dislike_choice_index,
+                    current_event_generic_status_name_index,
+                    current_main_filter_index,
+                    current_timeframe_index,
+                    current_audio_clip_role_name_index,
+                    current_audio_clip_tone_id,
+                );
+
                 //determine URL
-                let full_url = "";
+                let target_url = "";
 
                 if(is_first_page === true){
 
-                    //get first time URL
-                    full_url = await this.constructFirstPageURL(
-                        current_like_dislike_choice_index,
-                        current_event_generic_status_name_index,
-                        current_main_filter_index,
-                        current_timeframe_index,
-                        current_audio_clip_role_name_index,
-                        current_audio_clip_tone_id,
-                        next_or_back,
-                    );
+                    //construct target URL if first page
+
+                    target_url = base_url + "/" + next_or_back;
 
                 }else{
 
+                    //get target URL from store if not first page, as it has been constructed and saved by previous request
+
                     const url_key = next_or_back === "next" ? "next_url" : "back_url";
 
-                    full_url = this.filtered_events_store.getFilteredEventsStructure[
+                    target_url = this.filtered_events_store.getFilteredEventsStructure[
                         current_like_dislike_choice_index
                     ][
                         current_event_generic_status_name_index
@@ -580,10 +588,27 @@
                     current_audio_clip_tone_id,
                 );
 
-                await axios.get(full_url)
-                .then(async (result:any)=>{
+                await axios.get(target_url)
+                .then((result:any)=>{
 
-                    await this.filtered_events_store.insertEvents(
+                    if(
+                        Object.hasOwn(result.data, 'next_token') === false ||
+                        Object.hasOwn(result.data, 'back_token') === false
+                    ){
+
+                        throw new Error('Expected API keys were not found.');
+                    }
+
+                    let next_url = base_url + "/" + "next";
+                    let back_url = base_url + "/" + "back";
+
+                    if(result.data['next_token'] !== "" && result.data['back_token'] !== ""){
+
+                        next_url += "/" + result.data['next_token'];
+                        back_url += "/" + result.data['back_token'];
+                    }
+
+                    this.filtered_events_store.insertEvents(
                         current_like_dislike_choice_index,
                         current_event_generic_status_name_index,
                         current_main_filter_index,
@@ -592,8 +617,8 @@
                         current_audio_clip_tone_id,
                         next_or_back,
                         result.data['data'],
-                        result.data['next_url'],
-                        result.data['back_url'],
+                        next_url,
+                        back_url,
                     );
 
                     //put this after insertEvents(), for potential are_all_rows_fetched=true
@@ -619,18 +644,17 @@
                     );
                 });
             },
-            async constructFirstPageURL(
+            constructBaseURL(
                 current_like_dislike_choice_index:number,
                 current_event_generic_status_name_index:number,
                 current_main_filter_index:number,
                 current_timeframe_index:number,
                 current_audio_clip_role_name_index:number,
                 current_audio_clip_tone_id:number,
-                next_or_back:"next"|"back"="next",
-            ) : Promise<string> {
+            ) : string {
 
-                //this is only used for first page
-                //API will send us next_url and back_url to directly use after that
+                //add "/next/tokenhere" or "/back/tokenhere" after calling this function
+                //API will send us next_token and back_token to directly use after that
 
                 //start of URL
                 let full_url = window.location.origin + "/api/events/list";
@@ -673,9 +697,6 @@
 
                     full_url += "/" + current_audio_clip_tone_id.toString();
                 }
-
-                //next or back
-                full_url += "/" + next_or_back;
 
                 return full_url;
             },
@@ -722,9 +743,9 @@
                     this.can_pause_scrolling = true;
                 }
             },
-            getInfiniteScrollCallback() : ()=>Promise<void> {
+            getInfiniteScrollCallback() : ()=>void {
 
-                return async ()=>{
+                return ()=>{
                     if(
                         this.filtered_events_store.isFetching === true ||
                         this.can_observer_fetch === false ||
@@ -736,7 +757,7 @@
                         return;
                     }
 
-                    const can_fetch = await this.filtered_events_store.checkCanFetch(
+                    const can_fetch = this.filtered_events_store.checkCanFetch(
                         this.filtered_events_store.getCurrentLikeDislikeChoiceIndex,
                         this.filtered_events_store.getCurrentEventGenericStatusNameIndex,
                         this.filtered_events_store.getCurrentMainFilterIndex,

@@ -544,7 +544,7 @@ class AWSLambdaNormaliseAudioClips:
         #made no sense to check if processed audio_file exists,
         #since logic only calls ffmpeg when checked to not be processed
         #if processed audio_file already exists, but disaster happened, and output wasn't recorded,
-        #then there's no othe way but to run ffmpeg again to get required info
+        #then there's no other way but to run ffmpeg again to get required info
 
         try:
 
