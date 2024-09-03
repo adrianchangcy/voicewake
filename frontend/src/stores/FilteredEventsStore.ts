@@ -341,14 +341,14 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
                     'last_selected_audio_clip'
                 ] = audio_clip;
             },
-            async checkCanFetch(
+            checkCanFetch(
                 current_like_dislike_choice_index:number,
                 current_event_generic_status_name_index:number,
                 current_main_filter_index:number,
                 current_timeframe_index:number,
                 current_audio_clip_role_name_index:number,
                 current_audio_clip_tone_id:number,
-            ) : Promise<boolean> {
+            ) : boolean {
 
                 const args_list = [
                     current_like_dislike_choice_index,
@@ -359,7 +359,7 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
                     current_audio_clip_tone_id,
                 ];
 
-                await this.initialiseFilteredEventsStructure(
+                this.initialiseFilteredEventsStructure(
                     current_like_dislike_choice_index,
                     current_event_generic_status_name_index,
                     current_main_filter_index,
@@ -378,7 +378,7 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
 
                 return true;
             },
-            async insertEvents(
+            insertEvents(
                 current_like_dislike_choice_index:number,
                 current_event_generic_status_name_index:number,
                 current_main_filter_index:number,
@@ -389,7 +389,7 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
                 new_events:EventsAndAudioClipsTypes[]=[],
                 next_url:string='',
                 back_url:string='',
-            ) : Promise<void> {
+            ) : void {
 
                 //need to use params to prevent inaccuracy from race condition
                 //i.e. data from filter choices previously but new choices were selected
@@ -440,7 +440,7 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
 
                 if(next_or_back === "next"){
 
-                    new_events.forEach((event:EventsAndAudioClipsTypes)=>{
+                    for(let x = 0; x < new_events.length; x++){
 
                         this.filtered_events_structure[
                             current_like_dislike_choice_index
@@ -454,9 +454,9 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
                             current_audio_clip_role_name_index
                         ][
                             current_audio_clip_tone_id
-                        ]['events'].push(event);
-                    });
-                
+                        ]['events'].push(new_events[x]);
+                    }
+
                 }else if(next_or_back === "back"){
 
                     for(let x = (new_events.length - 1); x >= 0; x--){
@@ -514,14 +514,14 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
                     ]['back_url'] = back_url;
                 }
             },
-            async initialiseFilteredEventsStructure(
+            initialiseFilteredEventsStructure(
                 current_like_dislike_choice_index:number,
                 current_event_generic_status_name_index:number,
                 current_main_filter_index:number,
                 current_timeframe_index:number,
                 current_audio_clip_role_name_index:number,
                 current_audio_clip_tone_id:number,
-            ) : Promise<void> {
+            ) : void {
 
                 //on-demand initialisation
                 //does nothing if there is already our desired structure
@@ -555,14 +555,14 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
                     };
                 }
             },
-            async hasExistingDataAfterFilterChange(
+            hasExistingDataAfterFilterChange(
                 current_like_dislike_choice_index:number,
                 current_event_generic_status_name_index:number,
                 current_main_filter_index:number,
                 current_timeframe_index:number,
                 current_audio_clip_role_name_index:number,
                 current_audio_clip_tone_id:number,
-            ) : Promise<boolean> {
+            ) : boolean {
 
                 const args_list = [
                     current_like_dislike_choice_index,

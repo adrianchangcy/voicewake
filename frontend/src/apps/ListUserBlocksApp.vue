@@ -239,8 +239,8 @@
                         this.user_blocks.push(user_block as ScrollableUserBlocksTypes);
                     });
 
-                    this.next_url = result.data['next_url'];
-                    this.back_url = result.data['back_url'];
+                    this.next_url = window.location.origin + '/api/users/blocks/list/next' + result.data['next_token'];
+                    this.back_url = window.location.origin + '/api/users/blocks/list/back' + result.data['back_token'];
 
                 }).catch(() => {
 

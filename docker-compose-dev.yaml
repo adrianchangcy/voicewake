@@ -234,7 +234,7 @@ services:
         source: ./static
         target: /static
     depends_on:
-      django_gunicorn:
+      django_runserver:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:

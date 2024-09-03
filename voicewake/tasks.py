@@ -41,17 +41,21 @@ def task_send_otp_email(context:Literal['log_in', 'sign_up'], email:str, otp:str
             dev_message="Invalid args."
         )
 
+    #for subject, initially was simply "Code for x"
+    #but Gmail stacks emails with the same subject together
+    #if the entire stack is never opened, Gmail uses older email as stack summary, which is bad
+
     email_subject = ''
     otp_title = ''
 
     if context == 'log_in':
 
-        email_subject = "Code for login"
+        email_subject = "Login code: %s" % (otp)
         otp_title = "Login code:"
 
     elif context == 'sign_up':
 
-        email_subject = "Code for sign-up"
+        email_subject = "Sign-up code: %s" % (otp)
         otp_title = "Sign-up code:"
 
     #we can freely use math.ceil() as long as TOTP_TOLERANCE_S is sufficient

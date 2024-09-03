@@ -17,11 +17,12 @@
         use id to get to when-created element
         we load '1 Jan 2022' here first, then at JS we make it pretty to '1 century ago'
         shouldn't have to adjust '1 Jan 2022' to local timezone, as it's only for SEO
+        we also use "c" instead of "Y-m-d H:i:s" below for ISO 8601 format, else it shows wrong time difference at frontend when calculated with UTC
     -->
     {% if is_reupload %}
         <div
             data-event-id="{{event.id}}"
-            data-when-created="{{event.when_created|date:'Y-m-d H:i:s'}}"
+            data-when-created="{{event.when_created|date:'c'}}"
             data-event-reply-choice-expiry-seconds="{{event_reply_choice_expiry_seconds}}"
             data-event-reply-expiry-seconds="{{event_reply_expiry_seconds}}"
             data-audio-clip-unprocessed-expiry-seconds="{{audio_clip_unprocessed_expiry_seconds}}"
@@ -38,7 +39,7 @@
     {% else %}
         <div
             data-event-id="{{event.id}}"
-            data-when-created="{{event.when_created|date:'Y-m-d H:i:s'}}"
+            data-when-created="{{event.when_created|date:'c'}}"
             data-event-reply-choice-expiry-seconds="{{event_reply_choice_expiry_seconds}}"
             data-event-reply-expiry-seconds="{{event_reply_expiry_seconds}}"
             data-audio-clip-unprocessed-expiry-seconds="{{audio_clip_unprocessed_expiry_seconds}}"

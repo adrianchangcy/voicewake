@@ -222,6 +222,7 @@
                                 :prop-trigger-reset="otp_fields_reset_trigger"
                                 :prop-is-error="otp_validation_has_error"
                                 :prop-status-text="otp_validation_status_text"
+                                :prop-is-submitting="is_otp_submit_loading"
                                 class="pt-6"
                             />
 
@@ -260,7 +261,7 @@
                             <div class="mt-8 h-fit">
                                 <VActionSpecial
                                     @click="submitStep2('log-in')"
-                                    :propIsEnabled="!is_main_action_loading"
+                                    :propIsEnabled="!is_otp_submit_loading"
                                     propElement="button"
                                     type="button"
                                     propElementSize="m"
@@ -270,7 +271,7 @@
                                     <!--putting TransitionFade here seems to break things-->
                                     <!--i.e. renders v-if and v-else once then permanently disappearing-->
                                     <VLoading
-                                        v-if="is_main_action_loading"
+                                        v-if="is_otp_submit_loading"
                                         prop-element-size="m"
                                         prop-colour-class="border-theme-black"
                                         class="mx-auto"
@@ -487,6 +488,7 @@
                                 :prop-trigger-reset="otp_fields_reset_trigger"
                                 :prop-is-error="otp_validation_has_error"
                                 :prop-status-text="otp_validation_status_text"
+                                :prop-is-submitting="is_otp_submit_loading"
                                 class="pt-6"
                             />
 
@@ -525,7 +527,7 @@
                             <div class="mt-8 h-fit">
                                 <VActionSpecial
                                     @click="submitStep2('sign-up')"
-                                    :propIsEnabled="!is_main_action_loading"
+                                    :propIsEnabled="!is_otp_submit_loading"
                                     propElement="button"
                                     type="button"
                                     propElementSize="m"
@@ -533,7 +535,7 @@
                                     class="w-full"
                                 >
                                     <VLoading
-                                        v-if="is_main_action_loading"
+                                        v-if="is_otp_submit_loading"
                                         prop-element-size="m"
                                         prop-colour-class="border-theme-black"
                                         class="mx-auto"
@@ -654,7 +656,7 @@
 
                 //handle loading
                 is_otp_request_loading: false,
-                is_main_action_loading: false,
+                is_otp_submit_loading: false,
                 is_email_loading: false,
 
                 current_section: "" as SectionsValues,
@@ -850,7 +852,7 @@
                     return;
                 }
 
-                this.is_main_action_loading = true;
+                this.is_otp_submit_loading = true;
 
                 let data = new FormData();
                 data.append("email", this.email_string);
@@ -868,7 +870,7 @@
                 .catch((error:any) => {
 
                     //400 when invalid
-                    this.is_main_action_loading = false;
+                    this.is_otp_submit_loading = false;
                     this.otp_validation_has_error = true;
 
                     if(error.request.status === 400){

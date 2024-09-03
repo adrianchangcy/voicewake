@@ -641,25 +641,8 @@
                     console.log(error);
                 }
             },
-            checkMimeTypeOk() : void {
-
-                //originally was to provide a few options to best cover all browsers
-                //but now, the default seems ok
-
-                if(MediaRecorder.isTypeSupported("audio/webm") === false){
-
-                    const error_message = "Your browser does not support webm. Recording and playback may have issues.";
-                    alert(error_message);
-
-                    //bug found and fixed (2024-06-13)
-                    //if we throw error here and it's unhandled at mounted(), menus will not load
-                }
-            },
         },
         mounted(){
-
-            //choose proper mime type
-            this.checkMimeTypeOk();
 
             //create earlier, in case there is a wait time
             //we want the waiting to occur here, and not when user wants to record
