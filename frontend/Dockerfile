@@ -10,6 +10,7 @@ COPY ./frontend/package*.json ./
 COPY ./frontend .
 
 #attempt to fix "ERR_SSL_CIPHER_OPERATION_FAILED"
+#used to work, but now have to switch WiFi channels to ensure it works
 RUN npm cache clear --force
 
 RUN npm install --verbose

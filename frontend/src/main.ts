@@ -3,7 +3,6 @@ import { createPinia } from 'pinia';
 import piniaPluginPersistedState from 'pinia-plugin-persistedstate';
 import { PiniaSharedState } from 'pinia-shared-state';
 import VueVirtualScroller from 'vue-virtual-scroller';
-import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 
 import BaseApp from '../src/apps/BaseApp.vue';
 import CreateEventsApp from '../src/apps/CreateEventsApp.vue';
