@@ -10,6 +10,24 @@ import vue from '@vitejs/plugin-vue';
 //determine dev/stage/prod based on value passed into custom option --env during vite build
 function determineEnv() : 'dev'|'stage'|'prod' {
 
+    //if "build" exists, then --env is required
+    //if "build" does not exist, just use "dev"
+
+    let arg_build_exists = false;
+
+    for(let x = 0; x < process.argv.length; x++){
+
+        if(process.argv[x] === "build"){
+
+            arg_build_exists = true;
+        }
+    }
+
+    if(arg_build_exists === false){
+
+        return 'dev';
+    }
+
     const accepted_values = ['dev', 'stage', 'prod'];
     let build_env = "";
 
