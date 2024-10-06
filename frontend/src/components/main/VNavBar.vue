@@ -238,6 +238,27 @@
                                     </div>
                                 </VActionText>
 
+                                <!--about-->
+                                <VActionText
+                                    prop-element="a"
+                                    href="/about"
+                                    prop-font-size="s"
+                                    prop-element-size="s"
+                                    :prop-is-icon-only="false"
+                                    class=""
+                                >
+                                    <div class="h-full flex flex-row">
+                                        <div class="pl-2 pr-4 md:pr-6 flex items-center">
+                                            <FontAwesomeIcon fixed-width icon="fas fa-question" class="pt-0.5 mx-auto"/>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="text-left break-all">
+                                                About
+                                            </span>
+                                        </div>
+                                    </div>
+                                </VActionText>
+
                                 <!--light/dark theme-->
                                 <div class="flex flex-row">
                                     <div class="pl-2 pr-4 md:pr-6 flex items-center">
@@ -334,6 +355,27 @@
                                         </div>
                                     </VActionText>
                                 </div>
+
+                                <!--about-->
+                                <VActionText
+                                    prop-element="a"
+                                    href="/about"
+                                    prop-font-size="s"
+                                    prop-element-size="s"
+                                    :prop-is-icon-only="false"
+                                    class=""
+                                >
+                                    <div class="h-full flex flex-row">
+                                        <div class="pl-2 pr-4 md:pr-6 flex items-center">
+                                            <FontAwesomeIcon fixed-width icon="fas fa-question" class="pt-0.5 mx-auto"/>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <span class="text-left break-all">
+                                                About
+                                            </span>
+                                        </div>
+                                    </div>
+                                </VActionText>
 
                                 <!--light/dark theme-->
                                 <div class="flex flex-row">
@@ -479,11 +521,12 @@
     import { faMicrophoneLines } from '@fortawesome/free-solid-svg-icons/faMicrophoneLines';
     import { faThumbsUp as farThumbsUp } from '@fortawesome/free-regular-svg-icons/faThumbsUp';
     import { faMoon } from '@fortawesome/free-regular-svg-icons/faMoon';
+    import { faQuestion } from '@fortawesome/free-solid-svg-icons/faQuestion';
 
     library.add(
         faWaveSquare, faComment, faComments, faCircleUser,
         faRightToBracket, faBan, faDoorOpen, faMicrophoneLines,
-        farThumbsUp, faMoon,
+        farThumbsUp, faMoon, faQuestion,
     );
 </script>
 

@@ -1,0 +1,186 @@
+{% extends 'voicewake/base.html' %}
+{% block title %}Test{% endblock %}
+
+{% block extra_head %}
+    <META NAME="robots" CONTENT="noindex,nofollow">
+{% endblock %}
+
+{% block content %}
+
+    <!--backdrop and title-->
+    <div class="w-full h-fit relative">
+
+        <!--backdrop-->
+        <div id="v-backdrop-anime-target" class="absolute w-full h-full -z-10 pb-14 transition-opacity ease-in-out duration-1000" style="opacity: 0;"></div>
+
+        <div class="w-fit h-fit mx-auto sm:px-8 py-8 flex flex-col items-center text-center dark:text-dark-theme-white-1 rounded-full bg-gradient-radial from-theme-light dark:from-theme-dark from-0% to-70%">
+
+            <h1 class="text-5xl h-fit break-words">
+                <span class="sr-only">VoiceWake</span>
+                <div id="about-title-letters" class="flex flex-row transition ease-in-out duration-1000" style="transform: translateY(-40%);">
+                    <span aria-hidden="true" class="block transition ease-in-out duration-500" style="opacity: 0;">V</span>
+                    <span aria-hidden="true" class="block transition ease-in-out duration-500" style="opacity: 0;">o</span>
+                    <span aria-hidden="true" class="block transition ease-in-out duration-500" style="opacity: 0;">i</span>
+                    <span aria-hidden="true" class="block transition ease-in-out duration-500" style="opacity: 0;">c</span>
+                    <span aria-hidden="true" class="block transition ease-in-out duration-500" style="opacity: 0;">e</span>
+                    <span aria-hidden="true" class="block transition ease-in-out duration-500" style="opacity: 0;">W</span>
+                    <span aria-hidden="true" class="block transition ease-in-out duration-500" style="opacity: 0;">a</span>
+                    <span aria-hidden="true" class="block transition ease-in-out duration-500" style="opacity: 0;">k</span>
+                    <span aria-hidden="true" class="block transition ease-in-out duration-500" style="opacity: 0;">e</span>
+                </div>
+            </h1>
+            <h2 id="about-h2" class="text-xl font-medium h-fit break-words transition ease-in-out duration-1000" style="opacity: 0; transform: translateY(-40%);">
+                <span>Made by Adrian C.</span>
+            </h2>
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-4">
+        <span id="about-summary-0" class="block transition ease-in-out duration-1000" style="opacity: 0; transform: translateY(-40%);">
+            Start an event with your voice message, and someone can queue and reply to it.
+        </span>
+        <span id="about-summary-1" class="block transition ease-in-out duration-1000" style="opacity: 0; transform: translateY(-40%);">
+            Replying will complete the event and be posted on the front page.
+        </span>
+        <span id="about-summary-2" class="block transition ease-in-out duration-1000" style="opacity: 0; transform: translateY(-40%);">
+            Keep it polite, and have fun!
+        </span>
+    </div>
+
+
+    <script lang="js">
+
+        //spread the letters out across a wide area
+        //then rearrange the letters back into place, making space for the rest of the page's content
+
+        const elements = document.getElementById('about-title-letters').children;
+        const element_positions_px = [];
+        const main_html_rect = document.getElementById('main').getBoundingClientRect();
+        const first_spread_delay_ms = 100;
+
+
+        function animeLetters(){
+
+            //fill in empty positions first if not yet done so
+            if(element_positions_px.length === 0){
+
+                for(let x=0; x < elements.length; x++){
+
+                    element_positions_px.push({
+                        x: 0,
+                        y: 0,
+                        rotate: 0,
+                    });
+                }
+            }
+
+            for(let x=0; x < elements.length; x++){
+
+                //we get element's width, then randomly decide left/right
+                //ensures reasonable spreads, e.g. cannot get right-most element and spread to the right at screen width's distance
+                const element_rect = elements[x].getBoundingClientRect();
+                const is_left = Math.random() < 0.5 ? true : false;
+
+                //determine x position
+                if(is_left === true){
+
+                    //0 to left-most of element
+                    element_positions_px[x].x = Math.random() * (- (element_rect.x - main_html_rect.x));
+
+                }else{
+
+                    //left-most of element to remaining width, but never passing element's own width
+                    //use element_rect.width twice to guarantee it won't barely trigger scroll
+                    element_positions_px[x].x = Math.random() * (Math.abs(main_html_rect.width - element_rect.x - element_rect.width - element_rect.width));
+                }
+
+                //determine y position
+                //because our letters are at top part of page, no need to determine upper/lower
+                //window.screen.height can multiply any safe <1 value to guarantee spread is always visible
+                element_positions_px[x].y = Math.random() * ((window.screen.height * 0.7) - element_rect.height);
+
+                //determine rotation
+                element_positions_px[x].rotate = Math.random() * 360;
+
+                //set position
+                //reminder that due to CSS chaining, effects apply from right to left
+                elements[x].style.transform =
+                    'translateX(' + element_positions_px[x].x.toString() + 'px)' +
+                    ' translateY(' + element_positions_px[x].y.toString() + 'px)' +
+                    ' rotate(' + element_positions_px[x].rotate.toString() + 'deg)';
+
+                //show
+                elements[x].style.opacity = '1';
+
+                //undo spread
+                window.setTimeout(()=>{
+
+                    elements[x].style.transform = '';
+                    elements[x].style.rotate = '';
+
+                }, first_spread_delay_ms * (x + 1));
+            }
+        }
+
+        function animeTheRest(){
+
+            //chaining animation after the last spread letter being undone starts with +2
+            const after_last_spread_undone_ms = first_spread_delay_ms * (elements.length + 2);
+
+            //set letters down
+            window.setTimeout(()=>{
+
+                document.getElementById('about-title-letters').style.transform = 'translateY(0px)';
+
+            }, after_last_spread_undone_ms);
+
+            //show h2
+            window.setTimeout(()=>{
+
+                const target_h2 = document.getElementById('about-h2');
+                target_h2.style.opacity = '1';
+                target_h2.style.transform = 'translateY(0px)';
+
+            }, after_last_spread_undone_ms + 500);
+
+            //show summary
+            window.setTimeout(()=>{
+
+                const summary = document.getElementById('about-summary-0');
+
+                summary.style.opacity = '1';
+                summary.style.transform = 'translateY(0px)';
+
+            }, after_last_spread_undone_ms + 700);
+
+            window.setTimeout(()=>{
+
+                const summary = document.getElementById('about-summary-1');
+
+                summary.style.opacity = '1';
+                summary.style.transform = 'translateY(0px)';
+
+            }, after_last_spread_undone_ms + 900);
+
+            window.setTimeout(()=>{
+
+                const summary = document.getElementById('about-summary-2');
+
+                summary.style.opacity = '1';
+                summary.style.transform = 'translateY(0px)';
+
+            }, after_last_spread_undone_ms + 1100);
+
+            //show backdrop
+            window.setTimeout(()=>{
+
+                document.getElementById('v-backdrop-anime-target').style.opacity = '1';
+
+            }, after_last_spread_undone_ms + 1200);
+        }
+
+        animeLetters();
+        animeTheRest();
+
+    </script>
+{% endblock %}

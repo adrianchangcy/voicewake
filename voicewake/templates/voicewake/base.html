@@ -75,12 +75,10 @@
         <body class="mt-[4.5rem] overflow-x-hidden overflow-y-scroll bg-theme-light dark:bg-theme-dark text-theme-black dark:text-dark-theme-white-2">
 
             <!--content-->
-            <main>
-                <div class="min-h-[calc(100vh-4.5rem)] sm:w-3/4 md:w-2/4 xl:w-5/12 2xl:w-4/12 mx-auto text-left text-lg px-4 sm:px-[5%] pb-10">
+            <main id="main" class="min-h-[calc(100vh-4.5rem)] sm:w-3/4 md:w-2/4 xl:w-5/12 2xl:w-4/12 mx-auto text-left text-lg px-4 sm:px-[5%] pb-10">
 
-                    {% block content %}
-                    {% endblock %}
-                </div>
+                {% block content %}
+                {% endblock %}
             </main>
 
             <!--breakpoint before footer-->
