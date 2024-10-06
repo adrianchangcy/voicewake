@@ -128,6 +128,11 @@ http {
             limit_req zone=default burst=60 nodelay;
         }
 
+        location /about {
+            proxy_pass http://main/$request_uri;
+            limit_req zone=default burst=20 nodelay;
+        }
+
         location ^~ /api/events/list/ {
             proxy_pass http://main$request_uri;
             limit_req zone=common_list_apis burst=20 nodelay;
