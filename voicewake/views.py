@@ -57,6 +57,12 @@ def home(request):
 
 
 
+def about(request):
+
+    return render(request, template_name='voicewake/about.html')
+
+
+
 @app_decorators.deny_if_already_logged_in("redirect")
 def log_in(request):
 

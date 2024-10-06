@@ -105,6 +105,7 @@ urlpatterns += [
     #still need to make these pretty, but leave it for last
     #we specify 'name' arg for auto-construction of full URL via reverse()
     path('', views.home, name='home'),
+    path('about', views.about, name='about'),
     path('login', views.log_in, name='log_in'),
     path('signup', views.sign_up, name='sign_up'),
     path('banned', views.user_banned_audio_clips, name='user_banned'),
