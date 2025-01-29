@@ -466,7 +466,16 @@ CRONJOB_AUDIO_CLIP_MAX_BAN_DAYS = 1830 #366 days * 5, i.e. 5 years
 LIST_AUDIO_CLIP_QUANTITY_PER_PAGE = 20
 
 
-USER_BLOCK_QUANTITY_PER_PAGE = 20
+#LESS IMPORTANT CURSOR-BASED RECORDS
+#keep the numbers big to do less queries
+USER_BLOCK_QUANTITY_PER_PAGE = 100
+
+
+#USER LIMITS
+#for less important things that also gets all records
+#or for things that just make sense when most reasonable cases would not exceed x amount
+USER_BLOCK_LIMIT = 200
+USER_FOLLOW_LIMIT = 400
 
 
 #CACHE

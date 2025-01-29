@@ -119,6 +119,19 @@ class ListUserBlocks(TemplateView):
 
 @method_decorator(
     [
+        app_decorators.deny_if_not_logged_in("redirect"),
+        app_decorators.deny_if_no_username("redirect"),
+    ],
+    name='get'
+)
+class ListUserFollows(TemplateView):
+
+    template_name = 'voicewake/user_follows.html'
+
+
+
+@method_decorator(
+    [
         app_decorators.deny_if_no_username("redirect"),
         app_decorators.deny_if_banned("redirect"),
         never_cache

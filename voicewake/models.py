@@ -258,33 +258,6 @@ class AudioClipLikesDislikes(models.Model):
         ]
 
 
-class AudioClipRequestStatuses(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    audio_clip_request_status_name = models.CharField(max_length=30, unique=True)
-    description = models.TextField(blank=True)
-    when_created = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        app_label = 'voicewake'
-        managed = True
-        db_table = 'audio_clip_request_statuses'
-
-
-class AudioClipRequests(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, default=None, related_name='audio_clip_requests_user_1')
-    requested_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, default=None, related_name='audio_clip_requests_user_2')
-    event = models.ForeignKey('Events', on_delete=models.PROTECT, blank=True, null=True, default=None)
-    audio_clip_request_status = models.ForeignKey('AudioClipRequestStatuses', on_delete=models.PROTECT, blank=True, null=True, default=None)
-    when_created = models.DateTimeField(auto_now_add=True)
-    last_modified = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        app_label = 'voicewake'
-        managed = True
-        db_table = 'audio_clip_requests'
-
-
 class AudioClipRoles(models.Model):
     id = models.BigAutoField(primary_key=True)
     audio_clip_role_name = models.CharField(max_length=20, unique=True)
@@ -379,50 +352,17 @@ class UserEvents(models.Model):
         ]
 
 
-class UserFavourites(models.Model):
+class UserFollows(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='user_favourites_user_1', blank=True, null=True, default=None)
-    favourited_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='user_favourites_user_2', blank=True, null=True, default=None)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='user_follows_user_1', blank=True, null=True, default=None)
+    followed_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='user_follows_user_2', blank=True, null=True, default=None)
     when_created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         app_label = 'voicewake'
         managed = True
-        db_table = 'user_favourites'
+        db_table = 'user_follows'
 
-
-class UserPermissions(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    user_permission_name = models.CharField()
-    when_created = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        app_label = 'voicewake'
-        managed = True
-        db_table = 'user_permissions'
-
-
-class UserVerificationOptions(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    user_verification_option_name = models.CharField(max_length=20, unique=True)
-    when_created = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        app_label = 'voicewake'
-        managed = True
-        db_table = 'user_verification_options'
-
-
-class UserVerificationStatuses(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    user_verification_status_name = models.CharField(max_length=20, unique=True)
-    description = models.TextField(blank=True)
-    when_created = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        app_label = 'voicewake'
-        managed = True
-        db_table = 'user_verification_statuses'
 
 
 

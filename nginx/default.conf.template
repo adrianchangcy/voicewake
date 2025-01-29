@@ -188,6 +188,10 @@ http {
             proxy_pass http://main$request_uri;
             limit_req zone=common_list_apis burst=10;
         }
+        location = /api/users/follows {
+            proxy_pass http://main$request_uri;
+            limit_req zone=common_list_apis burst=10;
+        }
         location ^~ /api/users/ {
             proxy_pass http://main$request_uri;
             #no Auth header, as NGINX to Django would get 403, and we don't need it if not using Django's BasicAuthentication
