@@ -651,7 +651,7 @@ class UserBlocksAPI(generics.GenericAPIView):
 
             try:
 
-                #get audio_clips.last_modified, audio_clips.id
+                #get args from token
                 decoded_cursor_token = decode_cursor_token(cursor_token)
 
                 cursor_params = [
@@ -823,6 +823,16 @@ class UserBlocksAPI(generics.GenericAPIView):
         request_data = serializer.validated_data
         user_message = ""
 
+        #check hard limit
+        if UserBlocks.objects.filter(user=request.user).count() > settings.USER_BLOCK_LIMIT:
+
+            return Response(
+                data={
+                    'message': 'You have reached the limit for who you can block. Consider unblocking someone.',
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         #get user to block
         blocked_user = get_object_or_404(get_user_model(), username_lowercase=request_data['username'].lower())
 
@@ -855,6 +865,118 @@ class UserBlocksAPI(generics.GenericAPIView):
             ).delete()
 
             user_message = "You have unblocked " + blocked_user.username + "."
+
+        return Response(
+            data={
+                'message': user_message
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+
+class UserFollowsAPI(generics.GenericAPIView):
+
+    serializer_class = UserFollowsSerializer
+    permission_classes = [IsAuthenticated]
+
+
+    def get(self, request, *args, **kwargs):
+
+        serializer = GetUserBlocksAPISerializer(data=kwargs, many=False)
+
+        if serializer.is_valid() is False:
+
+            return Response(
+                data={
+                    'message': get_serializer_error_message(serializer),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        #continue
+
+        result = UserFollows.objects.filter(user=request.user)
+
+        #prepare response
+
+        serializer = UserFollowsSerializer(result, many=True)
+
+        response = Response(
+            data={
+                'data': serializer.data,
+            },
+            status=status.HTTP_200_OK
+        )
+
+        patch_cache_control(
+            response,
+            no_cache=True, no_store=True, must_revalidate=True, max_age=0
+        )
+
+        return response
+
+
+    #perform follow/unfollow
+    def post(self, request, *args, **kwargs):
+
+        serializer = CreateUserFollowsAPISerializer(data=request.data, many=False)
+
+        #validate
+        if serializer.is_valid() is False:
+
+            return Response(
+                data={
+                    'message': get_serializer_error_message(serializer),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        request_data = serializer.validated_data
+        user_message = ""
+
+        #check hard limit
+        if UserFollows.objects.filter(user=request.user).count() > settings.USER_FOLLOW_LIMIT:
+
+            return Response(
+                data={
+                    'message': 'You have reached the limit for who you can follow.',
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        #get user to follow
+        followed_user = get_object_or_404(get_user_model(), username_lowercase=request_data['username'].lower())
+
+        #disallow users from blocking themselves
+        if followed_user.id == request.user.id:
+
+            return Response(
+                data={
+                    'message': 'You cannot follow yourself.'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if request_data['to_follow'] is True:
+
+            #handle following
+            UserFollows.objects.get_or_create(
+                user=request.user,
+                followed_user=followed_user
+            )
+
+            user_message = "You have followed " + followed_user.username + "."
+
+        else:
+
+            #handle unfollowing
+            UserFollows.objects.filter(
+                user=request.user,
+                followed_user=followed_user
+            ).delete()
+
+            user_message = "You have unfollowed " + followed_user.username + "."
 
         return Response(
             data={
@@ -1044,6 +1166,8 @@ class GetEventsAPI(generics.GenericAPIView):
 
 
 
+#UserFollows has no effect here
+    #if it should, then have a separate query, and join after
 class BrowseEventsAPI(generics.GenericAPIView):
 
     serializer_class = EventsAndAudioClipsAPISerializer
@@ -1908,6 +2032,8 @@ class CreateEventsAPI(generics.GenericAPIView):
 #user can generate new event reply choice
     #will unlock previous is_replying=False event
     #will add to UserEvents when locking for is_replying=False
+#UserFollows has no effect here
+    #if it should, then have a separate query, and join after
 class ListEventReplyChoicesAPI(generics.GenericAPIView):
 
     serializer_class = None

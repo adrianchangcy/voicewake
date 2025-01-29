@@ -87,6 +87,7 @@ urlpatterns += [
     path('api/users/blocks/list/<str:next_or_back>/<str:cursor_token>', apis.UserBlocksAPI.as_view(), name="user_blocks_api"),
     path('api/users/blocks/list/<str:next_or_back>', apis.UserBlocksAPI.as_view(), name="user_blocks_api"),
     path('api/users/blocks', apis.UserBlocksAPI.as_view(), name="user_blocks_api"),
+    path('api/users/follows', apis.UserFollowsAPI.as_view(), name="user_follows_api"),
     path('api/users/username/get/<str:username>', apis.UsersUsernameAPI.as_view(), name='users_get_username_api'),
     path('api/users/username/set', apis.UsersUsernameAPI.as_view(), name='users_set_username_api'),
     path('api/users/sign-up', apis.UsersLogInSignUpAPI.as_view(current_context='sign_up'), name='users_sign_up_api'),
@@ -111,6 +112,7 @@ urlpatterns += [
     path('banned', views.user_banned_audio_clips, name='user_banned'),
 
     path('block', views.ListUserBlocks.as_view(), name='user_blocks'),
+    path('following', views.ListUserFollows.as_view(), name='user_follows'),
     path('user/<str:username>', views.GetUserProfile.as_view(), name='user_profile'),
     path('likes', views.ListUserLikesDislikes.as_view(), name='user_likes_dislikes'),
     path('username/new', views.SetUsername.as_view(), name='set_username'),
