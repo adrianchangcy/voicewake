@@ -43,13 +43,6 @@ class AudioClipTonesSerializer(serializers.ModelSerializer):
 
 
 
-class UserVerificationOptionsSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserVerificationOptions
-        fields = ['id', 'user_verification_option_name', 'when_created']
-
-
-
 class AudioClipLikesDislikesSerializer(serializers.ModelSerializer):
     user = UsersSerializer()
     class Meta:
@@ -114,6 +107,16 @@ class UserBlocksSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserBlocks
         fields = ['blocked_user', 'is_blocked']
+
+
+
+class UserFollowsSerializer(serializers.ModelSerializer):
+
+    followed_user = UsersSerializer()
+
+    class Meta:
+        model = UserFollows
+        fields = ['followed_user',]
 
 
 
@@ -594,6 +597,13 @@ class GetUserBlocksAPISerializer(serializers.Serializer):
             return value
 
         raise serializers.ValidationError("Accepted values not specified: next/back.")
+
+
+
+class CreateUserFollowsAPISerializer(serializers.Serializer):
+
+    username = serializers.CharField(min_length=1, max_length=30)
+    to_follow = serializers.BooleanField()
 
 
 

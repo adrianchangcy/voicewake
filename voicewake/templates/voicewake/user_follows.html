@@ -1,0 +1,28 @@
+{% extends 'voicewake/base.html' %}
+
+{% block extra_head %}
+    <title>
+        VoiceWake - Following
+    </title>
+    <meta name="description" content="A list of your favourite users.">
+    <meta name="robots" content="noindex,nofollow">
+{% endblock %}
+
+{% block content %}
+
+    <div>
+
+        <!--follows VTitle-->
+        <div class="py-8 text-center">
+            <i class="text-2xl fas fa-ban" aria-hidden="true"></i>
+            <h1 class="text-4xl h-fit break-words">
+                Following
+            </h1>
+            <h2 class="pt-5 text-lg text-center">
+                A list of your favourite users.
+            </h2>
+        </div>
+
+        <div id="list-user-follows-app"></div>
+    </div>
+{% endblock %}
