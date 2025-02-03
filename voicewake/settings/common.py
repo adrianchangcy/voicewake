@@ -396,6 +396,10 @@ CACHES = {
 }
 
 
+#how long the audio clip processing updates should stay on Redis
+REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S=os.environ['REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S']
+
+
 #if file uploaded to Django server is below this, store in memory, else disk
 #not relevant for S3 presigned POST URL
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5000000   #4.77mb
