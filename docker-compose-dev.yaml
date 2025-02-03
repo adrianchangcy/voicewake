@@ -17,18 +17,19 @@ services:
   postgres:
     image: postgres:latest
     ports:
-      - "5432:5432"
+      #using 5432+n for host port (left) in case you already have 5432 occupied by direct postgres installation on localhost machine
+      - "5433:5432"
     expose:
-      - "5432"
-    volumes:
-      - ~/apps/postgres:/var/lib/postgresql/data
+      - "5433"
     #env_file is only used and seen by the container being run, not during docker compose
     #to use .env file and fill it in here during docker compose: "docker-compose --env-file ./env/.env up -d"
       #--env-file must come before "up", else "unknown flag" error
     env_file:
       - ./env/.env
     environment:
-      #these are presumably only for setup
+      #postgres image will auto-create an empty database using POSTGRES_DB when image is first started
+      #to connect via pgAdmin: host (localhost), port (host port, i.e. 5433), maintenance database (voicewake), username (DB_USER), passwod (DB_PASSWORD)
+      #removing server at pgAdmin only removes it from the list, i.e. not actual database deletion
       - POSTGRES_DB=${DB_NAME}
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
