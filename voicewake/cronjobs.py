@@ -311,7 +311,7 @@ def cronjob_handle_originator_processing_overdue():
 
         #save
 
-        cache.set_many(processing_caches)
+        cache.set_many(processing_caches, timeout=settings.REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S)
 
 
 @shared_task
@@ -436,7 +436,7 @@ def cronjob_delete_event_reply_queue_is_replying_overdue():
 
         #save
 
-        cache.set_many(processing_caches)
+        cache.set_many(processing_caches, timeout=settings.REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S)
 
 
 @shared_task

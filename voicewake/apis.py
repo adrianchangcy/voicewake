@@ -3217,7 +3217,7 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
             if processing_cache is None:
 
                 processing_cache = CreateAudioClips.get_default_processing_cache_main_object()
-                cache.set(processing_cache_key, processing_cache)
+                cache.set(processing_cache_key, processing_cache, timeout=settings.REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S)
 
             return self.check_normalisation_status(
                 processing_cache=processing_cache,
@@ -3238,7 +3238,7 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
             if processing_cache is None:
 
                 processing_cache = CreateAudioClips.get_default_processing_cache_main_object()
-                cache.set(processing_cache_key, processing_cache)
+                cache.set(processing_cache_key, processing_cache, timeout=settings.REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S)
 
             #add "status" to processing
 
@@ -3347,7 +3347,7 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
 
             processing_cache = CreateAudioClips.get_default_processing_cache_main_object()
 
-            cache.set(processing_cache_key, processing_cache)
+            cache.set(processing_cache_key, processing_cache, timeout=settings.REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S)
 
         processing_cache_processing = CreateAudioClips.get_processing_cache_processing_object(
             processing_cache=processing_cache,
