@@ -579,31 +579,34 @@ class BrowseEventsAPISerializer(serializers.Serializer):
 class CreateUserBlocksAPISerializer(serializers.Serializer):
 
     username = serializers.CharField(min_length=1, max_length=30)
-    to_block = serializers.BooleanField()
+    #defaults to False if not passed, even with required=True
+    #we make it strict and raise error if this is not passed
+    to_block = serializers.BooleanField(default=None, allow_null=True)
 
+    def validate_to_block(self, value):
 
-
-class GetUserBlocksAPISerializer(serializers.Serializer):
-
-    #cursor_token max_length is double of usual
-    next_or_back = serializers.CharField()
-    cursor_token = serializers.CharField(required=False, default='', max_length=200)
-
-
-    def validate_next_or_back(self, value):
-
-        if value in ['next', 'back']:
+        if value is True or value is False:
 
             return value
 
-        raise serializers.ValidationError("Accepted values not specified: next/back.")
+        raise serializers.ValidationError('This field is required.')
 
 
 
 class CreateUserFollowsAPISerializer(serializers.Serializer):
 
     username = serializers.CharField(min_length=1, max_length=30)
-    to_follow = serializers.BooleanField()
+    #defaults to False if not passed, even with required=True
+    #we make it strict and raise error if this is not passed
+    to_follow = serializers.BooleanField(default=None, allow_null=True)
+
+    def validate_to_follow(self, value):
+
+        if value is True or value is False:
+
+            return value
+
+        raise serializers.ValidationError('This field is required.')
 
 
 

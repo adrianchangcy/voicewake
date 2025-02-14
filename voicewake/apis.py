@@ -627,171 +627,16 @@ class UserBlocksAPI(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
 
-    def get_latest_user_blocks(self, next_or_back:Literal['next', 'back'], cursor_token:str=''):
-
-        #we could simply implement when_banned
-        #but due to deadlines, there was no time available to retest BrowseEventsAPI
-            #using when_banned did increase query time
-
-        #this is sufficient, as long as:
-            #being banned is the last possible step to trigger last_modified
-
-        result = {
-            'rows': [],
-            'next_cursor_token': cursor_token,
-            'back_cursor_token': cursor_token,
-        }
-
-        #handle cursor token
-
-        decoded_cursor_token = {}
-        cursor_params = []
-
-        if cursor_token != '':
-
-            try:
-
-                #get args from token
-                decoded_cursor_token = decode_cursor_token(cursor_token)
-
-                cursor_params = [
-                    decoded_cursor_token['when_created'],
-                    decoded_cursor_token['id'], decoded_cursor_token['when_created'],
-                ]
-
-            except:
-
-                raise custom_error(
-                    ValueError,
-                    __name__,
-                    user_message="Unable to fetch content due to faulty cursor token.",
-                    dev_message="Token could not be decoded: " + cursor_token
-                )
-
-        #prepare adjustments based on cursor direction
-
-        cursor_sql = ''
-
-        if next_or_back == 'next':
-
-            if len(decoded_cursor_token) > 0:
-
-                cursor_sql = '''
-                    AND (
-                        user_blocks.when_created <= %s
-                        AND
-                        (user_blocks.id < %s OR user_blocks.when_created < %s)
-                    )
-                '''
-
-        elif next_or_back == 'back':
-
-            if len(decoded_cursor_token) > 0:
-
-                cursor_sql = '''
-                    AND (
-                        user_blocks.when_created >= %s
-                        AND
-                        (user_blocks.id > %s OR user_blocks.when_created > %s)
-                    )
-                '''
-
-        #proceed
-
-        full_sql = '''
-            SELECT * FROM user_blocks
-            WHERE user_id = %s
-            ''' + cursor_sql + '''
-            ORDER BY user_blocks.when_created DESC, user_blocks.id DESC
-			LIMIT %s
-        '''
-
-        full_params = [
-            self.request.user.id,
-        ] + cursor_params + [
-            settings.USER_BLOCK_QUANTITY_PER_PAGE,
-        ]
-
-        #execute
-
-        user_blocks = UserBlocks.objects.prefetch_related(
-            'user',
-            'blocked_user',
-        ).raw(
-            full_sql,
-            params=full_params
-        )
-
-        list(user_blocks)
-
-        if len(user_blocks) == 0:
-
-            return result
-        
-        result['rows'] = user_blocks
-
-        #start preparing our cursor tokens
-
-        result['back_cursor_token'] = encode_cursor_token({
-            'when_created': user_blocks[0].when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-            'id': user_blocks[0].id,
-        })
-
-        result['next_cursor_token'] = encode_cursor_token({
-            'when_created': user_blocks[-1].when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-            'id': user_blocks[-1].id,
-        })
-
-        return result
-
-
     def get(self, request, *args, **kwargs):
 
-        serializer = GetUserBlocksAPISerializer(data=kwargs, many=False)
-
-        if serializer.is_valid() is False:
-
-            return Response(
-                data={
-                    'message': get_serializer_error_message(serializer),
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        request_data = serializer.validated_data
-
-        #continue
-
-        result = self.get_latest_user_blocks(
-            request_data['next_or_back'],
-            request_data['cursor_token'],
-        )
-
-        #prepare next and back URLs
-        #we used to return full URLs via self.request.build_absolute_uri().split(request_data['next_or_back'], 1)
-        #but for localhost Docker, it would not include port in URL, causing frontend to fail
-
-        next_token = ""
-        back_token = ""
-
-        if len(result['rows']) > 0:
-
-            next_token = result['next_cursor_token']
-            back_token = result['back_cursor_token']
-
-        elif len(result['rows']) == 0 and request_data['cursor_token'] != '':
-
-            next_token = request_data['cursor_token']
-            back_token = request_data['cursor_token']
+        result = UserBlocks.objects.filter(user=request.user).order_by('when_created')
 
         #prepare response
 
-        serializer = UserBlocksSerializer(result['rows'], many=True)
+        serializer = UserBlocksSerializer(result, many=True)
 
         response = Response(
             data={
-                'next_token': next_token,
-                'back_token': back_token,
                 'data': serializer.data,
             },
             status=status.HTTP_200_OK
@@ -806,6 +651,7 @@ class UserBlocksAPI(generics.GenericAPIView):
 
 
     #perform blocking/unblocking
+    @method_decorator(app_decorators.deny_if_banned("response"))
     def post(self, request, *args, **kwargs):
 
         serializer = CreateUserBlocksAPISerializer(data=request.data, many=False)
@@ -824,7 +670,7 @@ class UserBlocksAPI(generics.GenericAPIView):
         user_message = ""
 
         #check hard limit
-        if UserBlocks.objects.filter(user=request.user).count() > settings.USER_BLOCK_LIMIT:
+        if request_data['to_block'] is True and UserBlocks.objects.filter(user=request.user).count() >= settings.USER_BLOCK_LIMIT:
 
             return Response(
                 data={
@@ -881,22 +727,10 @@ class UserFollowsAPI(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
 
+    #can only get user's own followings
     def get(self, request, *args, **kwargs):
 
-        serializer = GetUserBlocksAPISerializer(data=kwargs, many=False)
-
-        if serializer.is_valid() is False:
-
-            return Response(
-                data={
-                    'message': get_serializer_error_message(serializer),
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        #continue
-
-        result = UserFollows.objects.filter(user=request.user)
+        result = UserFollows.objects.filter(user=request.user).order_by('followed_user__username_lowercase')
 
         #prepare response
 
@@ -918,6 +752,7 @@ class UserFollowsAPI(generics.GenericAPIView):
 
 
     #perform follow/unfollow
+    @method_decorator(app_decorators.deny_if_banned("response"))
     def post(self, request, *args, **kwargs):
 
         serializer = CreateUserFollowsAPISerializer(data=request.data, many=False)
@@ -936,7 +771,7 @@ class UserFollowsAPI(generics.GenericAPIView):
         user_message = ""
 
         #check hard limit
-        if UserFollows.objects.filter(user=request.user).count() > settings.USER_FOLLOW_LIMIT:
+        if request_data['to_follow'] is True and UserFollows.objects.filter(user=request.user).count() >= settings.USER_FOLLOW_LIMIT:
 
             return Response(
                 data={
