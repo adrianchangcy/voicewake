@@ -18,7 +18,9 @@ from celery.result import AsyncResult
 #py packages
 import io
 import json
+import random
 from datetime import datetime, timezone
+from dateutil.relativedelta import relativedelta
 from zoneinfo import ZoneInfo
 import os
 import sys
@@ -44,6 +46,7 @@ from voicewake.factories import *
 from voicewake.lambdas import *
 from voicewake.celery import app
 from django.conf import settings
+from voicewake.cronjobs import cronjob_ban_audio_clips
 
 
 
@@ -830,12 +833,17 @@ class AudioClips_TestCase(TestCase):
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
     MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'voicewake/tests'),
     CELERY_TASK_ALWAYS_EAGER=True,
+    USER_BLOCK_LIMIT=2,
+    USER_FOLLOW_LIMIT=2,
 )
 class Core_TestCase(TestCase):
 
     @classmethod
     def setUpTestData(cls):
 
+        cls.datetime_now = get_datetime_now()
+
+        #normal users
         cls.users = []
 
         for x in range(0, 6):
@@ -845,12 +853,26 @@ class Core_TestCase(TestCase):
                 email='user'+str(x)+'@gmail.com',
             )
 
-            current_user = get_user_model().objects.get(username_lowercase="user"+str(x))
-
             current_user.is_active = True
             current_user.save()
 
             cls.users.append(current_user)
+
+        cls.banned_users = []
+
+        for x in range(0, 6):
+
+            current_user = get_user_model().objects.create_user(
+                username='bannedUseR'+str(x),
+                email='bannedUser'+str(x)+'@gmail.com',
+            )
+
+            current_user.is_active = True
+            current_user.ban_count = 1
+            current_user.banned_until = datetime.now(timezone.utc) + relativedelta(months=1)
+            current_user.save()
+
+            cls.banned_users.append(current_user)
 
         #audio file
         cls.audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/file_samples/audio_can_overwrite.mp3')
@@ -861,6 +883,29 @@ class Core_TestCase(TestCase):
         cls.bad_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/file_samples/not_audio.txt')
         cls.bad_file = open(cls.bad_file_full_path, 'rb')
         cls.bad_file = SimpleUploadedFile(cls.bad_file.name, cls.bad_file.read(), 'audio/mp3')
+
+        #get a username that is guaranteed to not exist
+        cls.non_existent_username = ''
+
+        existing_usernames = []
+        
+        for target_user in cls.users:
+
+            existing_usernames.append(target_user.username)
+
+        random_chars = ['a','b','c','d']
+
+        for x in range(len(random_chars)):
+
+            cls.non_existent_username += random.choice(random_chars)
+
+        while cls.non_existent_username in existing_usernames:
+
+            cls.non_existent_username = ''
+
+            for x in range(len(random_chars)):
+
+                cls.non_existent_username += random.choice(random_chars)
 
 
     @classmethod
@@ -939,6 +984,152 @@ class Core_TestCase(TestCase):
             user_id=user_id,
             blocked_user_id=blocked_user_id
         )
+
+
+    #properly relies on cronjob to give us banned data
+    #returns {} originator, event, audio_clip
+    def prepare_banned_audio_clip_by_cronjob(
+        self,
+        originator_user_id:int,
+        who_to_ban:Literal['originator','responder'],
+        is_replying:bool,
+        responder_user_id:int=None,
+    ):
+
+        if responder_user_id is None and (who_to_ban == 'responder' or is_replying is True):
+
+            raise ValueError('responder_user_id must not be None.')
+
+        originator = get_user_model().objects.get(pk=originator_user_id)
+        responder = None
+
+        if responder_user_id is not None:
+
+            responder = get_user_model().objects.get(pk=responder_user_id)
+
+        datetime_now = self.datetime_now
+
+        total_like_dislike_count = settings.BAN_AUDIO_CLIP_DISLIKE_COUNT / (1 - settings.BAN_AUDIO_CLIP_LIKE_RATIO)
+        ban_min_age_s = 10
+
+        #prepare ban conditions
+
+        sample_event_0 = EventsFactory(
+            event_created_by=originator,
+            event_generic_status_generic_status_name='incomplete',
+        )
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=originator,
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        sample_audio_clip_report_0 = None
+        sample_audio_clip_1 = None
+        sample_event_reply_queue_0 = None
+        sample_user_event_0 = None
+
+        if responder is not None:
+
+            if is_replying is True:
+
+                sample_event_reply_queue_0 = self.create_event_reply_queue(
+                    event_id=sample_event_0.id,
+                    locked_for_user_id=self.users[1].id,
+                    is_replying=True,
+                    when_locked=(get_datetime_now() - timedelta(seconds=0))
+                )
+
+            else:
+
+                sample_audio_clip_1 = AudioClipsFactory(
+                    audio_clip_user=self.users[1],
+                    audio_clip_audio_clip_role_audio_clip_role_name='responder',
+                    audio_clip_event=sample_event_0,
+                )
+
+            sample_user_event_0 = self.create_user_event(
+                self.users[1].id,
+                sample_event_0.id,
+                when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+            )
+
+        if who_to_ban == 'originator':
+
+            #pessimistic like_count to ensure ratio is as desired
+            sample_audio_clip_0.like_count = math.floor(settings.BAN_AUDIO_CLIP_LIKE_RATIO * total_like_dislike_count)
+            sample_audio_clip_0.dislike_count = settings.BAN_AUDIO_CLIP_DISLIKE_COUNT
+            sample_audio_clip_0.like_ratio = settings.BAN_AUDIO_CLIP_LIKE_RATIO
+            sample_audio_clip_0.save()
+            #arbitrary last_evaluated, as long as < last_reported
+            sample_audio_clip_report_0 = AudioClipReports.objects.create(
+                last_evaluated=(datetime_now - timedelta(seconds=ban_min_age_s)),
+                audio_clip_id=sample_audio_clip_0.id,
+            )
+
+        elif who_to_ban == 'responder':
+
+            #pessimistic like_count to ensure ratio is as desired
+            sample_audio_clip_1.like_count = math.floor(settings.BAN_AUDIO_CLIP_LIKE_RATIO * total_like_dislike_count)
+            sample_audio_clip_1.dislike_count = settings.BAN_AUDIO_CLIP_DISLIKE_COUNT
+            sample_audio_clip_1.like_ratio = settings.BAN_AUDIO_CLIP_LIKE_RATIO
+            sample_audio_clip_1.save()
+            #arbitrary last_evaluated, as long as < last_reported
+            sample_audio_clip_report_0 = AudioClipReports.objects.create(
+                last_evaluated=(datetime_now - timedelta(seconds=ban_min_age_s)),
+                audio_clip_id=sample_audio_clip_1.id,
+            )
+
+        #start
+
+        with (
+            self.settings(
+                BAN_AUDIO_CLIP_LIKE_RATIO=sample_audio_clip_0.like_ratio,
+                BAN_AUDIO_CLIP_DISLIKE_COUNT=sample_audio_clip_0.dislike_count,
+                BAN_AUDIO_CLIP_MIN_AGE_S=(ban_min_age_s + 1)
+            ),
+            self.assertNumQueries(13)
+        ):
+
+            cronjob_ban_audio_clips()
+
+        #check
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        sample_audio_clip_report_0.refresh_from_db()
+        originator.refresh_from_db()
+
+        if who_to_ban == 'originator':
+
+            self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+            self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+            self.assertTrue(sample_audio_clip_0.is_banned)
+            self.assertTrue(sample_audio_clip_report_0.last_evaluated >= sample_audio_clip_report_0.last_reported)
+            self.assertTrue(originator.banned_until > datetime_now)
+            self.assertEqual(originator.ban_count, 1)
+
+        elif who_to_ban == 'responder':
+
+            responder.refresh_from_db()
+
+            self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
+            self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'ok')
+            self.assertFalse(sample_audio_clip_0.is_banned)
+            self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
+            self.assertTrue(sample_audio_clip_1.is_banned)
+            self.assertTrue(sample_audio_clip_report_0.last_evaluated >= sample_audio_clip_report_0.last_reported)
+            self.assertTrue(responder.banned_until > datetime_now)
+            self.assertEqual(responder.ban_count, 1)
+
+        return {
+            'originator': originator,
+            'responder': responder,
+            'event': sample_event_0,
+            'originator_audio_clip': sample_audio_clip_0,
+            'responder_audio_clip': sample_audio_clip_1,
+        }
 
 
     def test_create_events__upload__ok(self):
@@ -1416,7 +1607,34 @@ class Core_TestCase(TestCase):
         self.assertEqual(request.status_code, 200)
 
 
-    def test_create_events__regenerate_upload_url__missing_args(self):
+    def test_create_events__regenerate_upload_url__self_banned(self):
+
+        #prepare data from cronjob
+
+        test_data = self.prepare_banned_audio_clip_by_cronjob(
+            originator_user_id=self.users[0].id,
+            who_to_ban='originator',
+            is_replying=False,
+            responder_user_id=None,
+        )
+
+        #start
+
+        self.login(self.users[0])
+
+        #proceed
+
+        data = {
+            'audio_clip_id': test_data['originator_audio_clip'].id,
+        }
+
+        request = self.client.post(reverse('create_events_regenerate_upload_url_api'), data)
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 403)
+
+
+    def test_create_events__regenerate_upload_url__missingcronjob__args(self):
 
         self.login(self.users[0])
 
@@ -1664,6 +1882,33 @@ class Core_TestCase(TestCase):
 
         print(request.content)
         self.assertEqual(request.status_code, 200)
+
+
+    def test_create_events__process__self_banned(self):
+
+        #prepare data from cronjob
+
+        test_data = self.prepare_banned_audio_clip_by_cronjob(
+            originator_user_id=self.users[0].id,
+            who_to_ban='originator',
+            is_replying=False,
+            responder_user_id=None,
+        )
+
+        #start
+
+        self.login(self.users[0])
+
+        #proceed
+
+        data = {
+            'audio_clip_id': test_data['originator_audio_clip'].id,
+        }
+
+        request = self.client.post(reverse('create_events_process_api'), data)
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 403)
 
 
     def test_create_events__process__missing_args(self):
@@ -2893,7 +3138,7 @@ class Core_TestCase(TestCase):
         self.assertEqual(request.status_code, 404)
 
 
-    def test_start_replies_but_expired(self):
+    def test_start_replies__expired(self):
 
         #prepare data
 
@@ -2948,7 +3193,7 @@ class Core_TestCase(TestCase):
         )
 
 
-    def test_start_replies_but_event_is_banned(self):
+    def test_start_replies__event_is_banned(self):
 
         #prepare data
 
@@ -3005,7 +3250,7 @@ class Core_TestCase(TestCase):
         )
 
 
-    def test_start_replies_only_own_rows_allowed(self):
+    def test_start_replies__only_own_rows_allowed(self):
 
         #prepare data
 
@@ -3695,6 +3940,14 @@ class Core_TestCase(TestCase):
         self.assertFalse('audio_clip_id' in response_data)
 
 
+    def test_create_replies__regenerate_upload_url__event_banned(self):
+        pass
+
+
+    def test_create_replies__regenerate_upload_url__own_audio_clip_is_banned(self):
+        pass
+
+
     def test_create_replies__regenerate_upload_url__resubmit_ok(self):
 
         self.login(self.users[1])
@@ -4191,6 +4444,14 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('create_replies_process_api'), data)
 
         self.assertEqual(request.status_code, 404)
+
+
+    def test_create_replies__process__event_is_banned(self):
+        pass
+
+
+    def test_create_replies__process__own_audio_clip_is_banned(self):
+        pass
 
 
     def test_create_replies__process__no_rows(self):
@@ -5134,7 +5395,7 @@ class Core_TestCase(TestCase):
         self.assertIsNone(audio_clip_report.last_evaluated)
 
 
-    def test_create_user_block_ok(self):
+    def test_user_block_ok(self):
 
         self.login(self.users[1])
 
@@ -5155,7 +5416,7 @@ class Core_TestCase(TestCase):
         self.assertEqual(UserBlocks.objects.all().count(), 1)
 
 
-    def test_create_user_block_missing_args(self):
+    def test_user_block_missing_args(self):
 
         self.login(self.users[1])
 
@@ -5167,8 +5428,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.post(reverse('user_blocks_api'), data)
 
-        #200 because bool defaults to False when not passed
-        self.assertEqual(request.status_code, 200)
+        self.assertEqual(request.status_code, 400)
         print_function_name(request.content)
 
         #check
@@ -5195,7 +5455,7 @@ class Core_TestCase(TestCase):
         self.assertEqual(UserBlocks.objects.all().count(), 0)
 
 
-    def test_create_user_block_faulty_args(self):
+    def test_user_block_faulty_args(self):
 
         self.login(self.users[1])
 
@@ -5218,8 +5478,123 @@ class Core_TestCase(TestCase):
 
         self.assertEqual(UserBlocks.objects.all().count(), 0)
 
+        #start
 
-    def test_create_user_block_unblock_ok(self):
+        data = {
+            'username': 200,
+            'to_block': True,
+        }
+
+        request = self.client.post(reverse('user_blocks_api'), data)
+
+        #200 because bool defaults to False when not passed
+        self.assertEqual(request.status_code, 404)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(UserBlocks.objects.all().count(), 0)
+
+
+    def test_user_block__limit_reached(self):
+
+        self.login(self.users[0])
+
+        #fill to limit
+        UserBlocks.objects.bulk_create(
+            [
+                UserBlocks(user=self.users[0], blocked_user=self.users[1]),
+                UserBlocks(user=self.users[0], blocked_user=self.users[2]),
+            ]
+        )
+
+        data = {
+            'username': self.users[3].username,
+            'to_block': True
+        }
+
+        request = self.client.post(reverse('user_blocks_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        #check
+
+        self.assertEqual(UserBlocks.objects.all().count(), 2)
+
+
+    def test_user_block__already_blocked(self):
+
+        sample_user_block_0 = UserBlocks.objects.create(
+            user_id=self.users[0].id,
+            blocked_user_id=self.users[1].id
+        )
+
+        self.login(self.users[0])
+
+        data = {
+            'username': self.users[1].username,
+            'to_block': True
+        }
+
+        request = self.client.post(reverse('user_blocks_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(UserBlocks.objects.all().count(), 1)
+
+
+    def test_user_block__block_themselves(self):
+
+        self.login(self.users[0])
+
+        data = {
+            'username': self.users[0].username,
+            'to_block': True
+        }
+
+        request = self.client.post(reverse('user_blocks_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(UserBlocks.objects.all().count(), 0)
+
+
+    def test_user_block__user_does_not_exist(self):
+
+
+        self.login(self.users[1])
+
+        data = {
+            'username': self.non_existent_username,
+            'to_block': True
+        }
+
+        request = self.client.post(reverse('user_blocks_api'), data)
+
+        self.assertEqual(request.status_code, 404)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(UserBlocks.objects.all().count(), 0)
+
+
+    def test_user_block_unblock_ok(self):
 
         sample_user_block_0 = UserBlocks.objects.create(
             user_id=self.users[1].id,
@@ -5243,6 +5618,129 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertEqual(UserBlocks.objects.all().count(), 0)
+
+
+    def test_user_block__block_banned_user_ok(self):
+
+        self.login(self.users[0])
+
+        data = {
+            'username': self.banned_users[1].username,
+            'to_block': True
+        }
+
+        request = self.client.post(reverse('user_blocks_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(UserBlocks.objects.filter(user=self.users[0], blocked_user=self.banned_users[1]).count(), 1)
+
+
+    def test_user_block__get_has_rows(self):
+
+        self.login(self.users[0])
+
+        UserBlocks.objects.bulk_create([
+            UserBlocks(user=self.users[0], blocked_user=self.users[1]),
+            UserBlocks(user=self.users[0], blocked_user=self.users[2]),
+        ])
+
+        request = self.client.get(reverse('user_blocks_api'))
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(len(response_data['data']), 2)
+
+
+    def test_user_block__get_no_rows(self):
+
+        self.login(self.users[0])
+
+        request = self.client.get(reverse('user_blocks_api'))
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+        self.assertEqual(len(response_data['data']), 0)
+
+
+    def test_user_block__get_has_rows__has_banned_user(self):
+
+        UserBlocks.objects.bulk_create([
+            UserBlocks(user=self.users[0], blocked_user=self.users[1]),
+            UserBlocks(user=self.users[0], blocked_user=self.banned_users[1]),
+        ])
+
+        self.login(self.users[0])
+
+        request = self.client.get(reverse('user_blocks_api'))
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+        self.assertEqual(len(response_data['data']), 2)
+
+
+    def test_user_block__get_has_rows__has_only_banned_users(self):
+
+        UserBlocks.objects.bulk_create([
+            UserBlocks(user=self.users[0], blocked_user=self.banned_users[1]),
+            UserBlocks(user=self.users[0], blocked_user=self.banned_users[2]),
+        ])
+
+        self.login(self.users[0])
+
+        request = self.client.get(reverse('user_blocks_api'))
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+        self.assertEqual(len(response_data['data']), 2)
+
+
+    def test_user_block__unblock_banned_user(self):
+
+        UserBlocks.objects.bulk_create([
+            UserBlocks(user=self.users[0], blocked_user=self.users[1]),
+            UserBlocks(user=self.users[0], blocked_user=self.banned_users[1]),
+        ])
+
+        self.login(self.users[0])
+
+        data = {
+            'username': self.banned_users[1].username,
+            'to_block': False
+        }
+
+        request = self.client.post(reverse('user_blocks_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(UserBlocks.objects.all().count(), 1)
 
 
     def test_audio_clip_like_dislike_missing_args(self):
@@ -6585,6 +7083,365 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('delete_audio_clip_processings_api'), data)
 
         self.assertTrue(request.status_code, 404)
+
+
+    def test_user_following__follow_user_ok(self):
+
+        self.login(self.users[0])
+
+        data = {
+            'username': self.users[1].username,
+            'to_follow': True
+        }
+
+        request = self.client.post(reverse('user_follows_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(UserFollows.objects.all().count(), 1)
+
+
+    def test_user_following__already_following(self):
+
+        UserFollows.objects.create(user=self.users[0], followed_user=self.users[1])
+
+        self.login(self.users[0])
+
+        data = {
+            'username': self.users[1].username,
+            'to_follow': True
+        }
+
+        request = self.client.post(reverse('user_follows_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(UserFollows.objects.all().count(), 1)
+
+
+    def test_user_following__limit_reached(self):
+
+        UserFollows.objects.bulk_create(
+            [
+                UserFollows(user=self.users[0], followed_user=self.users[1]),
+                UserFollows(user=self.users[0], followed_user=self.users[2]),
+            ]
+        )
+
+        self.login(self.users[0])
+
+        data = {
+            'username': self.users[3].username,
+            'to_follow': True
+        }
+
+        request = self.client.post(reverse('user_follows_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(UserFollows.objects.all().count(), 2)
+
+
+    def test_user_following__follow_themselves(self):
+
+        self.login(self.users[0])
+
+        data = {
+            'username': self.users[0].username,
+            'to_follow': True
+        }
+
+        request = self.client.post(reverse('user_follows_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(UserFollows.objects.all().count(), 0)
+
+
+    def test_user_following__user_does_not_exist(self):
+
+        self.login(self.users[0])
+
+        data = {
+            'username': self.non_existent_username,
+            'to_follow': True
+        }
+
+        request = self.client.post(reverse('user_follows_api'), data)
+
+        self.assertEqual(request.status_code, 404)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(UserFollows.objects.all().count(), 0)
+
+
+    def test_user_following__follow_user_missing_args(self):
+
+        self.login(self.users[0])
+
+        data = {
+            'to_follow': True
+        }
+
+        request = self.client.post(reverse('user_follows_api'), data)
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(UserFollows.objects.all().count(), 0)
+
+        #again
+
+        data = {
+            'username': self.users[1].username,
+        }
+
+        request = self.client.post(reverse('user_follows_api'), data)
+
+        #check
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(UserFollows.objects.all().count(), 0)
+
+
+    def test_user_following__follow_user_faulty_args(self):
+
+        self.login(self.users[0])
+
+        data = {
+            'username': 200,
+            'to_follow': True
+        }
+
+        request = self.client.post(reverse('user_follows_api'), data)
+
+        self.assertEqual(request.status_code, 404)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(UserFollows.objects.all().count(), 0)
+
+        #again
+
+        data = {
+            'username': self.users[1].username,
+            'to_follow': 200,
+        }
+
+        request = self.client.post(reverse('user_follows_api'), data)
+
+        #check
+
+        self.assertEqual(request.status_code, 400)
+        print_function_name(request.content)
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(UserFollows.objects.all().count(), 0)
+
+
+    def test_user_following__get_no_rows(self):
+
+        self.login(self.users[0])
+
+        request = self.client.get(reverse('user_follows_api'))
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(response_data['data'], [])
+
+
+    def test_user_following__get_has_rows(self):
+
+        UserFollows.objects.bulk_create(
+            [
+                UserFollows(user=self.users[0], followed_user=self.users[1]),
+                UserFollows(user=self.users[0], followed_user=self.users[2]),
+            ]
+        )
+
+        self.login(self.users[0])
+
+        request = self.client.get(reverse('user_follows_api'))
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(len(response_data['data']), 2)
+
+        #ensure no id leaked
+        self.assertFalse('user_id' in response_data['data'][0])
+        self.assertFalse('followed_user_id' in response_data['data'][0])
+
+
+    def test_user_following__follow_user_is_banned(self):
+
+        self.login(self.users[0])
+
+        data = {
+            'username': self.banned_users[1].username,
+            'to_follow': True
+        }
+
+        request = self.client.post(reverse('user_follows_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(UserFollows.objects.all().count(), 1)
+
+
+    def test_user_following__get_has_rows__has_banned_user(self):
+
+        UserFollows.objects.bulk_create(
+            [
+                UserFollows(user=self.users[0], followed_user=self.users[1]),
+                UserFollows(user=self.users[0], followed_user=self.banned_users[1]),
+            ]
+        )
+
+        self.login(self.users[0])
+
+        request = self.client.get(reverse('user_follows_api'))
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(len(response_data['data']), 2)
+
+
+    def test_user_following__get_has_rows__all_banned_users(self):
+
+        UserFollows.objects.bulk_create(
+            [
+                UserFollows(user=self.users[0], followed_user=self.banned_users[1]),
+                UserFollows(user=self.users[0], followed_user=self.banned_users[2]),
+            ]
+        )
+
+        self.login(self.users[0])
+
+        request = self.client.get(reverse('user_follows_api'))
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(len(response_data['data']), 2)
+
+
+    def test_user_following__unfollow(self):
+
+        UserFollows.objects.bulk_create(
+            [
+                UserFollows(user=self.users[0], followed_user=self.users[1]),
+                UserFollows(user=self.users[0], followed_user=self.users[2]),
+            ]
+        )
+
+        self.login(self.users[0])
+
+        data = {
+            'username': self.users[2].username,
+            'to_follow': False
+        }
+
+        request = self.client.post(reverse('user_follows_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(UserFollows.objects.filter(followed_user=self.users[2]).count(), 0)
+        self.assertEqual(UserFollows.objects.all().count(), 1)
+
+
+    def test_user_following__unfollow_banned_user(self):
+
+        UserFollows.objects.bulk_create(
+            [
+                UserFollows(user=self.users[0], followed_user=self.users[1]),
+                UserFollows(user=self.users[0], followed_user=self.banned_users[2]),
+            ]
+        )
+
+        self.login(self.users[0])
+
+        data = {
+            'username': self.banned_users[2].username,
+            'to_follow': False
+        }
+
+        request = self.client.post(reverse('user_follows_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(UserFollows.objects.filter(followed_user=self.banned_users[2]).count(), 0)
+        self.assertEqual(UserFollows.objects.all().count(), 1)
+
 
 
 #these involve AWS in one way or another
