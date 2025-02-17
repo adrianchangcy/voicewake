@@ -478,8 +478,8 @@ USER_BLOCK_QUANTITY_PER_PAGE = 100
 #USER LIMITS
 #for less important things that also gets all records
 #or for things that just make sense when most reasonable cases would not exceed x amount
-USER_BLOCK_LIMIT = 200
-USER_FOLLOW_LIMIT = 400
+USER_BLOCKS_LIMIT = 200
+USER_FOLLOWS_LIMIT = 400
 
 
 #CACHE

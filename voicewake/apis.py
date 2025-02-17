@@ -629,15 +629,23 @@ class UserBlocksAPI(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
 
-        result = UserBlocks.objects.filter(user=request.user).order_by('when_created')
+        #for something as simple as only requiring 1 column, serializing and returning as {} for every row is overkill
+        #test results at 1000 rows via Content-Length header: serializer (66900 bytes), list (18900 bytes)
+        #also confirmed via self.assertNumQueries(1) at test for queryset below
 
-        #prepare response
+        result = UserBlocks.objects.select_related('blocked_user').filter(user=request.user).order_by('when_created').values_list('blocked_user__username')
 
-        serializer = UserBlocksSerializer(result, many=True)
+        usernames = []
+
+        #transform tuple-per-object into list
+
+        for row in result:
+
+            usernames.append(row[0])
 
         response = Response(
             data={
-                'data': serializer.data,
+                'data': usernames,
             },
             status=status.HTTP_200_OK
         )
@@ -670,7 +678,7 @@ class UserBlocksAPI(generics.GenericAPIView):
         user_message = ""
 
         #check hard limit
-        if request_data['to_block'] is True and UserBlocks.objects.filter(user=request.user).count() >= settings.USER_BLOCK_LIMIT:
+        if request_data['to_block'] is True and UserBlocks.objects.filter(user=request.user).count() >= settings.USER_BLOCKS_LIMIT:
 
             return Response(
                 data={
@@ -730,15 +738,23 @@ class UserFollowsAPI(generics.GenericAPIView):
     #can only get user's own followings
     def get(self, request, *args, **kwargs):
 
-        result = UserFollows.objects.filter(user=request.user).order_by('followed_user__username_lowercase')
+        #for something as simple as only requiring 1 column, serializing and returning as {} for every row is overkill
+        #test results at 1000 rows via Content-Length header: serializer (66900 bytes), list (18900 bytes)
+        #also confirmed via self.assertNumQueries(1) at test for queryset below
 
-        #prepare response
+        result = UserFollows.objects.select_related('followed_user').filter(user=request.user).order_by('when_created').values_list('followed_user__username')
 
-        serializer = UserFollowsSerializer(result, many=True)
+        usernames = []
+
+        #transform tuple-per-object into list
+
+        for row in result:
+
+            usernames.append(row[0])
 
         response = Response(
             data={
-                'data': serializer.data,
+                'data': usernames,
             },
             status=status.HTTP_200_OK
         )
@@ -771,7 +787,7 @@ class UserFollowsAPI(generics.GenericAPIView):
         user_message = ""
 
         #check hard limit
-        if request_data['to_follow'] is True and UserFollows.objects.filter(user=request.user).count() >= settings.USER_FOLLOW_LIMIT:
+        if request_data['to_follow'] is True and UserFollows.objects.filter(user=request.user).count() >= settings.USER_FOLLOWS_LIMIT:
 
             return Response(
                 data={
