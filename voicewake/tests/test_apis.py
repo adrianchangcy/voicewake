@@ -32,6 +32,7 @@ import inspect, sys
 import dotenv
 import logging
 import requests
+import copy
 from threading import Thread
 
 #AWS
@@ -833,8 +834,8 @@ class AudioClips_TestCase(TestCase):
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
     MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'voicewake/tests'),
     CELERY_TASK_ALWAYS_EAGER=True,
-    USER_BLOCK_LIMIT=2,
-    USER_FOLLOW_LIMIT=2,
+    USER_BLOCKS_LIMIT=2,
+    USER_FOLLOWS_LIMIT=2,
 )
 class Core_TestCase(TestCase):
 
@@ -5596,6 +5597,55 @@ class Core_TestCase(TestCase):
         self.assertEqual(UserBlocks.objects.all().count(), 1)
 
 
+    def test_user_block__response_size_at_limit(self):
+
+        #test results requiring only names of 1000 users
+            #serializer (66900 bytes)
+            #pure list [] (18900 bytes)
+
+        user_blocks = []
+        test_user_blocks_row_count = 1000
+
+        for x in range(0, test_user_blocks_row_count):
+
+            current_user = get_user_model().objects.create_user(
+                username='userBlockTest'+str(x),
+                email='userblocktest'+str(x)+'@gmail.com',
+            )
+
+            current_user.is_active = True
+            current_user.save()
+
+            user_blocks.append(UserBlocks(user=self.users[0], blocked_user=current_user))
+
+        UserBlocks.objects.bulk_create(user_blocks)
+
+        self.login(self.users[0])
+
+        with self.settings(USER_BLOCKS_LIMIT=test_user_blocks_row_count):
+
+            request = self.client.get(reverse('user_blocks_api'))
+
+        self.assertEqual(request.status_code, 200)
+        # print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertTrue(request.has_header('Content-Length'))
+        self.assertEqual(len(response_data['data']), test_user_blocks_row_count)
+
+        print(request.headers['Content-Length'])
+        print(response_data['data'][0])
+
+        with self.assertNumQueries(1):
+
+            result = UserBlocks.objects.select_related('blocked_user').filter(user=self.users[0]).order_by('when_created').values_list('blocked_user__username')
+            print(len(result))
+            print(result[0][0])
+
+
     def test_audio_clip_like_dislike_missing_args(self):
 
         #prepare data
@@ -7295,6 +7345,54 @@ class Core_TestCase(TestCase):
         self.assertEqual(UserFollows.objects.filter(followed_user=self.banned_users[2]).count(), 0)
         self.assertEqual(UserFollows.objects.all().count(), 1)
 
+
+    def test_user_following__response_size_at_limit(self):
+
+        #test results requiring only names of 1000 users
+            #serializer (66900 bytes)
+            #pure list [] (18900 bytes)
+
+        user_follows = []
+        test_user_follows_row_count = 1000
+
+        for x in range(0, test_user_follows_row_count):
+
+            current_user = get_user_model().objects.create_user(
+                username='userFollowTest'+str(x),
+                email='userfollowtest'+str(x)+'@gmail.com',
+            )
+
+            current_user.is_active = True
+            current_user.save()
+
+            user_follows.append(UserFollows(user=self.users[0], followed_user=current_user))
+
+        UserFollows.objects.bulk_create(user_follows)
+
+        self.login(self.users[0])
+
+        with self.settings(USER_FOLLOWS_LIMIT=test_user_follows_row_count):
+
+            request = self.client.get(reverse('user_follows_api'))
+
+        self.assertEqual(request.status_code, 200)
+        # print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertTrue(request.has_header('Content-Length'))
+        self.assertEqual(len(response_data['data']), test_user_follows_row_count)
+
+        print(request.headers['Content-Length'])
+        print(response_data['data'][0])
+
+        with self.assertNumQueries(1):
+
+            result = UserFollows.objects.select_related('followed_user').filter(user=self.users[0]).order_by('when_created').values_list('followed_user__username')
+            print(len(result))
+            print(result[0][0])
 
 
 #these involve AWS in one way or another
