@@ -397,7 +397,7 @@ CACHES = {
 
 
 #how long the audio clip processing updates should stay on Redis
-REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S=os.environ['REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S']
+REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S=int(os.environ['REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S'])
 
 
 #if file uploaded to Django server is below this, store in memory, else disk
