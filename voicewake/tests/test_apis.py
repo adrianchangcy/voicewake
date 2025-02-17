@@ -986,152 +986,6 @@ class Core_TestCase(TestCase):
         )
 
 
-    #properly relies on cronjob to give us banned data
-    #returns {} originator, event, audio_clip
-    def prepare_banned_audio_clip_by_cronjob(
-        self,
-        originator_user_id:int,
-        who_to_ban:Literal['originator','responder'],
-        is_replying:bool,
-        responder_user_id:int=None,
-    ):
-
-        if responder_user_id is None and (who_to_ban == 'responder' or is_replying is True):
-
-            raise ValueError('responder_user_id must not be None.')
-
-        originator = get_user_model().objects.get(pk=originator_user_id)
-        responder = None
-
-        if responder_user_id is not None:
-
-            responder = get_user_model().objects.get(pk=responder_user_id)
-
-        datetime_now = self.datetime_now
-
-        total_like_dislike_count = settings.BAN_AUDIO_CLIP_DISLIKE_COUNT / (1 - settings.BAN_AUDIO_CLIP_LIKE_RATIO)
-        ban_min_age_s = 10
-
-        #prepare ban conditions
-
-        sample_event_0 = EventsFactory(
-            event_created_by=originator,
-            event_generic_status_generic_status_name='incomplete',
-        )
-        sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user=originator,
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='ok',
-        )
-
-        sample_audio_clip_report_0 = None
-        sample_audio_clip_1 = None
-        sample_event_reply_queue_0 = None
-        sample_user_event_0 = None
-
-        if responder is not None:
-
-            if is_replying is True:
-
-                sample_event_reply_queue_0 = self.create_event_reply_queue(
-                    event_id=sample_event_0.id,
-                    locked_for_user_id=self.users[1].id,
-                    is_replying=True,
-                    when_locked=(get_datetime_now() - timedelta(seconds=0))
-                )
-
-            else:
-
-                sample_audio_clip_1 = AudioClipsFactory(
-                    audio_clip_user=self.users[1],
-                    audio_clip_audio_clip_role_audio_clip_role_name='responder',
-                    audio_clip_event=sample_event_0,
-                )
-
-            sample_user_event_0 = self.create_user_event(
-                self.users[1].id,
-                sample_event_0.id,
-                when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
-            )
-
-        if who_to_ban == 'originator':
-
-            #pessimistic like_count to ensure ratio is as desired
-            sample_audio_clip_0.like_count = math.floor(settings.BAN_AUDIO_CLIP_LIKE_RATIO * total_like_dislike_count)
-            sample_audio_clip_0.dislike_count = settings.BAN_AUDIO_CLIP_DISLIKE_COUNT
-            sample_audio_clip_0.like_ratio = settings.BAN_AUDIO_CLIP_LIKE_RATIO
-            sample_audio_clip_0.save()
-            #arbitrary last_evaluated, as long as < last_reported
-            sample_audio_clip_report_0 = AudioClipReports.objects.create(
-                last_evaluated=(datetime_now - timedelta(seconds=ban_min_age_s)),
-                audio_clip_id=sample_audio_clip_0.id,
-            )
-
-        elif who_to_ban == 'responder':
-
-            #pessimistic like_count to ensure ratio is as desired
-            sample_audio_clip_1.like_count = math.floor(settings.BAN_AUDIO_CLIP_LIKE_RATIO * total_like_dislike_count)
-            sample_audio_clip_1.dislike_count = settings.BAN_AUDIO_CLIP_DISLIKE_COUNT
-            sample_audio_clip_1.like_ratio = settings.BAN_AUDIO_CLIP_LIKE_RATIO
-            sample_audio_clip_1.save()
-            #arbitrary last_evaluated, as long as < last_reported
-            sample_audio_clip_report_0 = AudioClipReports.objects.create(
-                last_evaluated=(datetime_now - timedelta(seconds=ban_min_age_s)),
-                audio_clip_id=sample_audio_clip_1.id,
-            )
-
-        #start
-
-        with (
-            self.settings(
-                BAN_AUDIO_CLIP_LIKE_RATIO=sample_audio_clip_0.like_ratio,
-                BAN_AUDIO_CLIP_DISLIKE_COUNT=sample_audio_clip_0.dislike_count,
-                BAN_AUDIO_CLIP_MIN_AGE_S=(ban_min_age_s + 1)
-            ),
-            self.assertNumQueries(13)
-        ):
-
-            cronjob_ban_audio_clips()
-
-        #check
-
-        sample_event_0.refresh_from_db()
-        sample_audio_clip_0.refresh_from_db()
-        sample_audio_clip_report_0.refresh_from_db()
-        originator.refresh_from_db()
-
-        if who_to_ban == 'originator':
-
-            self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
-            self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
-            self.assertTrue(sample_audio_clip_0.is_banned)
-            self.assertTrue(sample_audio_clip_report_0.last_evaluated >= sample_audio_clip_report_0.last_reported)
-            self.assertTrue(originator.banned_until > datetime_now)
-            self.assertEqual(originator.ban_count, 1)
-
-        elif who_to_ban == 'responder':
-
-            responder.refresh_from_db()
-
-            self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
-            self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'ok')
-            self.assertFalse(sample_audio_clip_0.is_banned)
-            self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
-            self.assertTrue(sample_audio_clip_1.is_banned)
-            self.assertTrue(sample_audio_clip_report_0.last_evaluated >= sample_audio_clip_report_0.last_reported)
-            self.assertTrue(responder.banned_until > datetime_now)
-            self.assertEqual(responder.ban_count, 1)
-
-        return {
-            'originator': originator,
-            'responder': responder,
-            'event': sample_event_0,
-            'originator_audio_clip': sample_audio_clip_0,
-            'responder_audio_clip': sample_audio_clip_1,
-        }
-
-
     def test_create_events__upload__ok(self):
 
         self.login(self.users[0])
@@ -1607,33 +1461,6 @@ class Core_TestCase(TestCase):
         self.assertEqual(request.status_code, 200)
 
 
-    def test_create_events__regenerate_upload_url__self_banned(self):
-
-        #prepare data from cronjob
-
-        test_data = self.prepare_banned_audio_clip_by_cronjob(
-            originator_user_id=self.users[0].id,
-            who_to_ban='originator',
-            is_replying=False,
-            responder_user_id=None,
-        )
-
-        #start
-
-        self.login(self.users[0])
-
-        #proceed
-
-        data = {
-            'audio_clip_id': test_data['originator_audio_clip'].id,
-        }
-
-        request = self.client.post(reverse('create_events_regenerate_upload_url_api'), data)
-
-        print_function_name(request.content)
-        self.assertEqual(request.status_code, 403)
-
-
     def test_create_events__regenerate_upload_url__missingcronjob__args(self):
 
         self.login(self.users[0])
@@ -1882,33 +1709,6 @@ class Core_TestCase(TestCase):
 
         print(request.content)
         self.assertEqual(request.status_code, 200)
-
-
-    def test_create_events__process__self_banned(self):
-
-        #prepare data from cronjob
-
-        test_data = self.prepare_banned_audio_clip_by_cronjob(
-            originator_user_id=self.users[0].id,
-            who_to_ban='originator',
-            is_replying=False,
-            responder_user_id=None,
-        )
-
-        #start
-
-        self.login(self.users[0])
-
-        #proceed
-
-        data = {
-            'audio_clip_id': test_data['originator_audio_clip'].id,
-        }
-
-        request = self.client.post(reverse('create_events_process_api'), data)
-
-        print_function_name(request.content)
-        self.assertEqual(request.status_code, 403)
 
 
     def test_create_events__process__missing_args(self):
@@ -2956,6 +2756,55 @@ class Core_TestCase(TestCase):
         self.assertIsNotNone(new_user_event.when_excluded_for_reply)
 
 
+    def test_list_reply_choices__not_listing_banned_event(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "deleted"
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='deleted'
+        )
+
+        #start
+
+        self.login(self.users[1])
+
+        data = {'unlock_all_locked_events': False}
+
+        request = self.client.post(reverse('list_event_reply_choices_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check data
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(len(response_data['data']), 0)
+
+        #again
+
+        data = {'unlock_all_locked_events': True}
+
+        request = self.client.post(reverse('list_event_reply_choices_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check data
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(len(response_data['data']), 0)
+
+
     def test_start_replies_ok(self):
 
         #prepare data
@@ -3231,8 +3080,8 @@ class Core_TestCase(TestCase):
 
         request = self.client.post(reverse('start_replies_api'), data)
 
-        self.assertEqual(request.status_code, 404)
         print_function_name(request.content)
+        self.assertEqual(request.status_code, 404)
 
         #check
 
@@ -3243,7 +3092,7 @@ class Core_TestCase(TestCase):
         self.assertEqual(
             UserEvents.objects.filter(
                 user=self.users[1],
-                event_id=sample_event_0,
+                event_id=sample_event_0.id,
                 when_excluded_for_reply__isnull=False
             ).count(),
             1
@@ -3941,10 +3790,12 @@ class Core_TestCase(TestCase):
 
 
     def test_create_replies__regenerate_upload_url__event_banned(self):
+        #irrelevant, as once audio_clip is done with upload, banning has no impact on its processing stage
         pass
 
 
     def test_create_replies__regenerate_upload_url__own_audio_clip_is_banned(self):
+        #irrelevant, as audio_clip cannot be reported until it is "ok", i.e. done processing
         pass
 
 
@@ -4447,10 +4298,12 @@ class Core_TestCase(TestCase):
 
 
     def test_create_replies__process__event_is_banned(self):
+        #irrelevant, as once upload is successful, ban has no impact on processing stage
         pass
 
 
     def test_create_replies__process__own_audio_clip_is_banned(self):
+        #irrelevant, as audio_clip cannot be reported until it is "ok", i.e. done processing
         pass
 
 

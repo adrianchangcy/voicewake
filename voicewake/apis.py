@@ -1868,7 +1868,8 @@ class CreateEventsAPI(generics.GenericAPIView):
     #will unlock previous is_replying=False event
     #will add to UserEvents when locking for is_replying=False
 #UserFollows has no effect here
-    #if it should, then have a separate query, and join after
+    #if it should, then have a separate query and join after, instead of doing it all in one query
+#Events are not affected by lock/unlock for reply
 class ListEventReplyChoicesAPI(generics.GenericAPIView):
 
     serializer_class = None

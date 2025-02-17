@@ -182,7 +182,7 @@ class Core_TestCase(TestCase):
                 BAN_AUDIO_CLIP_DISLIKE_COUNT=sample_audio_clip_0.dislike_count,
                 BAN_AUDIO_CLIP_MIN_AGE_S=(ban_min_age_s + 1)
             ),
-            self.assertNumQueries(13)
+            self.assertNumQueries(15)
         ):
 
             cronjob_ban_audio_clips()
@@ -242,7 +242,7 @@ class Core_TestCase(TestCase):
                 BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
                 BAN_AUDIO_CLIP_MIN_AGE_S=11,
             ),
-            self.assertNumQueries(13)
+            self.assertNumQueries(14)
         ):
 
             cronjob_ban_audio_clips()
@@ -319,7 +319,7 @@ class Core_TestCase(TestCase):
                 BAN_AUDIO_CLIP_DISLIKE_COUNT=settings.BAN_AUDIO_CLIP_DISLIKE_COUNT,
                 BAN_AUDIO_CLIP_MIN_AGE_S=(ban_min_age_s + 9999)
             ),
-            self.assertNumQueries(13)
+            self.assertNumQueries(15)
         ):
 
             cronjob_ban_audio_clips()
@@ -405,7 +405,7 @@ class Core_TestCase(TestCase):
                 BAN_AUDIO_CLIP_DISLIKE_COUNT=settings.BAN_AUDIO_CLIP_DISLIKE_COUNT,
                 BAN_AUDIO_CLIP_MIN_AGE_S=(ban_min_age_s + 9999)
             ),
-            self.assertNumQueries(13)
+            self.assertNumQueries(14)
         ):
 
             cronjob_ban_audio_clips()
@@ -691,6 +691,851 @@ class Core_TestCase(TestCase):
 
         self.assertTrue(self.users[0].banned_until > datetime_now)
         self.assertEqual(self.users[0].ban_count, 2)
+
+
+    def test_cronjob_ban_audio_clips__A_started__B_locked_not_replying__A_banned__B_queue_removed(self):
+
+        datetime_now = self.datetime_now
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = EventReplyQueues.objects.create(
+            locked_for_user=self.users[1],
+            event=sample_event_0,
+            when_locked=datetime_now,
+            is_replying=False,
+        )
+
+        sample_audio_clip_0.like_count = 2
+        sample_audio_clip_0.dislike_count = 10
+        sample_audio_clip_0.like_ratio = 0.2
+        sample_audio_clip_0.save()
+
+        #arbitrary last_evaluated, as long as < last_reported
+        sample_audio_clip_report_0 = AudioClipReports.objects.create(
+            last_evaluated=(datetime_now - timedelta(seconds=10)),
+            audio_clip_id=sample_audio_clip_0.id,
+        )
+
+        #start
+
+        with (
+            self.settings(
+                BAN_AUDIO_CLIP_LIKE_RATIO=0.2,
+                BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
+                BAN_AUDIO_CLIP_MIN_AGE_S=11,
+            ),
+            self.assertNumQueries(15)
+        ):
+
+            cronjob_ban_audio_clips()
+
+        #check
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        sample_audio_clip_report_0.refresh_from_db()
+        self.users[0].refresh_from_db()
+        self.users[1].refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_0.is_banned)
+        self.assertTrue(sample_audio_clip_report_0.last_evaluated >= sample_audio_clip_report_0.last_reported)
+        self.assertTrue(self.users[0].banned_until > datetime_now)
+        self.assertEqual(self.users[0].ban_count, 1)
+        self.assertIsNone(self.users[1].banned_until)
+        self.assertEqual(self.users[1].ban_count, 0)
+        self.assertEqual(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).count(), 0)
+
+
+    def test_cronjob_ban_audio_clips__A_started__B_locked_is_replying__A_banned__B_queue_removed(self):
+
+        datetime_now = self.datetime_now
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = EventReplyQueues.objects.create(
+            locked_for_user=self.users[1],
+            event=sample_event_0,
+            when_locked=datetime_now,
+            is_replying=True,
+        )
+
+        sample_audio_clip_0.like_count = 2
+        sample_audio_clip_0.dislike_count = 10
+        sample_audio_clip_0.like_ratio = 0.2
+        sample_audio_clip_0.save()
+
+        #arbitrary last_evaluated, as long as < last_reported
+        sample_audio_clip_report_0 = AudioClipReports.objects.create(
+            last_evaluated=(datetime_now - timedelta(seconds=10)),
+            audio_clip_id=sample_audio_clip_0.id,
+        )
+
+        #start
+
+        with (
+            self.settings(
+                BAN_AUDIO_CLIP_LIKE_RATIO=0.2,
+                BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
+                BAN_AUDIO_CLIP_MIN_AGE_S=11,
+            ),
+            self.assertNumQueries(15)
+        ):
+
+            cronjob_ban_audio_clips()
+
+        #check
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        sample_audio_clip_report_0.refresh_from_db()
+        self.users[0].refresh_from_db()
+        self.users[1].refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_0.is_banned)
+        self.assertTrue(sample_audio_clip_report_0.last_evaluated >= sample_audio_clip_report_0.last_reported)
+        self.assertTrue(self.users[0].banned_until > datetime_now)
+        self.assertEqual(self.users[0].ban_count, 1)
+        self.assertIsNone(self.users[1].banned_until)
+        self.assertEqual(self.users[1].ban_count, 0)
+        self.assertEqual(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).count(), 0)
+
+
+    def test_cronjob_ban_audio_clips__A_started__B_locked_not_replying__A_banned__A_new_queues_removed__B_queue_removed(self):
+
+        datetime_now = self.datetime_now
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='completed',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = EventReplyQueues.objects.create(
+            locked_for_user=self.users[1],
+            event=sample_event_0,
+            when_locked=datetime_now,
+            is_replying=False,
+        )
+
+        sample_audio_clip_0.like_count = 2
+        sample_audio_clip_0.dislike_count = 10
+        sample_audio_clip_0.like_ratio = 0.2
+        sample_audio_clip_0.save()
+
+        #arbitrary last_evaluated, as long as < last_reported
+        sample_audio_clip_report_0 = AudioClipReports.objects.create(
+            last_evaluated=(datetime_now - timedelta(seconds=10)),
+            audio_clip_id=sample_audio_clip_0.id,
+        )
+
+        #A has new queue elsewhere
+
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[2],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[2],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
+        )
+
+        sample_event_reply_queue_1 = EventReplyQueues.objects.create(
+            locked_for_user=self.users[0],
+            event=sample_event_1,
+            when_locked=datetime_now,
+            is_replying=False,
+        )
+
+        #another event of A is ok, ensure everything about it is unaffected
+
+        sample_event_2 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_2 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_2,
+        )
+
+        sample_event_reply_queue_2 = EventReplyQueues.objects.create(
+            locked_for_user=self.users[2],
+            event=sample_event_2,
+            when_locked=datetime_now,
+            is_replying=False,
+        )
+
+        #extra irrelevant innocent queues
+
+        sample_event_3 = EventsFactory(
+            event_created_by=self.users[2],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_3 = AudioClipsFactory(
+            audio_clip_user=self.users[2],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_3,
+        )
+
+        sample_event_reply_queue_3 = EventReplyQueues.objects.create(
+            locked_for_user=self.users[3],
+            event=sample_event_3,
+            when_locked=datetime_now,
+            is_replying=False,
+        )
+
+        #start
+
+        with (
+            self.settings(
+                BAN_AUDIO_CLIP_LIKE_RATIO=0.2,
+                BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
+                BAN_AUDIO_CLIP_MIN_AGE_S=11,
+            ),
+            self.assertNumQueries(15)
+        ):
+
+            cronjob_ban_audio_clips()
+
+        #check
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        sample_audio_clip_report_0.refresh_from_db()
+        sample_event_1.refresh_from_db()
+        sample_audio_clip_1.refresh_from_db()
+        sample_event_2.refresh_from_db()
+        sample_audio_clip_2.refresh_from_db()
+        sample_event_3.refresh_from_db()
+        sample_audio_clip_3.refresh_from_db()
+        self.users[0].refresh_from_db()
+        self.users[1].refresh_from_db()
+        self.users[2].refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_0.is_banned)
+        self.assertTrue(sample_audio_clip_report_0.last_evaluated >= sample_audio_clip_report_0.last_reported)
+        self.assertEqual(sample_event_1.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_1.is_banned)
+        self.assertEqual(sample_event_2.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_2.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_2.is_banned)
+        self.assertEqual(sample_event_3.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_3.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_3.is_banned)
+        self.assertTrue(self.users[0].banned_until > datetime_now)
+        self.assertEqual(self.users[0].ban_count, 1)
+        self.assertIsNone(self.users[1].banned_until)
+        self.assertEqual(self.users[1].ban_count, 0)
+        self.assertIsNone(self.users[2].banned_until)
+        self.assertEqual(self.users[2].ban_count, 0)
+        self.assertIsNone(self.users[3].banned_until)
+        self.assertEqual(self.users[3].ban_count, 0)
+        self.assertEqual(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).count(), 0)
+        self.assertEqual(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_1.id).count(), 0)
+        self.assertEqual(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_2.id).count(), 1)
+        self.assertEqual(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_3.id).count(), 1)
+
+
+    def test_cronjob_ban_audio_clips__A_started__B_locked_is_replying__A_banned__A_new_queues_removed__B_queue_removed(self):
+
+        datetime_now = self.datetime_now
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='completed',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_event_reply_queue_0 = EventReplyQueues.objects.create(
+            locked_for_user=self.users[1],
+            event=sample_event_0,
+            when_locked=datetime_now,
+            is_replying=True,
+        )
+
+        sample_audio_clip_0.like_count = 2
+        sample_audio_clip_0.dislike_count = 10
+        sample_audio_clip_0.like_ratio = 0.2
+        sample_audio_clip_0.save()
+
+        #arbitrary last_evaluated, as long as < last_reported
+        sample_audio_clip_report_0 = AudioClipReports.objects.create(
+            last_evaluated=(datetime_now - timedelta(seconds=10)),
+            audio_clip_id=sample_audio_clip_0.id,
+        )
+
+        #A has new queue elsewhere
+
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[2],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[2],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
+        )
+
+        sample_event_reply_queue_1 = EventReplyQueues.objects.create(
+            locked_for_user=self.users[0],
+            event=sample_event_1,
+            when_locked=datetime_now,
+            is_replying=False,
+        )
+
+        #another event of A is ok, ensure everything about it is unaffected
+
+        sample_event_2 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_2 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_2,
+        )
+
+        sample_event_reply_queue_2 = EventReplyQueues.objects.create(
+            locked_for_user=self.users[2],
+            event=sample_event_2,
+            when_locked=datetime_now,
+            is_replying=True,
+        )
+
+        #extra irrelevant innocent queues
+
+        sample_event_3 = EventsFactory(
+            event_created_by=self.users[2],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_3 = AudioClipsFactory(
+            audio_clip_user=self.users[2],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_3,
+        )
+
+        sample_event_reply_queue_3 = EventReplyQueues.objects.create(
+            locked_for_user=self.users[3],
+            event=sample_event_3,
+            when_locked=datetime_now,
+            is_replying=True,
+        )
+
+        #start
+
+        with (
+            self.settings(
+                BAN_AUDIO_CLIP_LIKE_RATIO=0.2,
+                BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
+                BAN_AUDIO_CLIP_MIN_AGE_S=11,
+            ),
+            self.assertNumQueries(15)
+        ):
+
+            cronjob_ban_audio_clips()
+
+        #check
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        sample_audio_clip_report_0.refresh_from_db()
+        sample_event_1.refresh_from_db()
+        sample_audio_clip_1.refresh_from_db()
+        sample_event_2.refresh_from_db()
+        sample_audio_clip_2.refresh_from_db()
+        sample_event_3.refresh_from_db()
+        sample_audio_clip_3.refresh_from_db()
+        self.users[0].refresh_from_db()
+        self.users[1].refresh_from_db()
+        self.users[2].refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_0.is_banned)
+        self.assertTrue(sample_audio_clip_report_0.last_evaluated >= sample_audio_clip_report_0.last_reported)
+        self.assertEqual(sample_event_1.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_1.is_banned)
+        self.assertEqual(sample_event_2.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_2.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_2.is_banned)
+        self.assertEqual(sample_event_3.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_3.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_3.is_banned)
+        self.assertTrue(self.users[0].banned_until > datetime_now)
+        self.assertEqual(self.users[0].ban_count, 1)
+        self.assertIsNone(self.users[1].banned_until)
+        self.assertEqual(self.users[1].ban_count, 0)
+        self.assertIsNone(self.users[2].banned_until)
+        self.assertEqual(self.users[2].ban_count, 0)
+        self.assertIsNone(self.users[3].banned_until)
+        self.assertEqual(self.users[3].ban_count, 0)
+        self.assertEqual(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).count(), 0)
+        self.assertEqual(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_1.id).count(), 0)
+        self.assertEqual(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_2.id).count(), 1)
+        self.assertEqual(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_3.id).count(), 1)
+
+
+    def test_cronjob_ban_audio_clips__A_started__B_replied_and_processing__A_banned__B_reply_unaffected(self):
+
+        datetime_now = self.datetime_now
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='completed',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_0.like_count = 2
+        sample_audio_clip_0.dislike_count = 10
+        sample_audio_clip_0.like_ratio = 0.2
+        sample_audio_clip_0.save()
+
+        #arbitrary last_evaluated, as long as < last_reported
+        sample_audio_clip_report_0 = AudioClipReports.objects.create(
+            last_evaluated=(datetime_now - timedelta(seconds=10)),
+            audio_clip_id=sample_audio_clip_0.id,
+        )
+
+        #start
+
+        with (
+            self.settings(
+                BAN_AUDIO_CLIP_LIKE_RATIO=0.2,
+                BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
+                BAN_AUDIO_CLIP_MIN_AGE_S=11,
+            ),
+            self.assertNumQueries(15)
+        ):
+
+            cronjob_ban_audio_clips()
+
+        #check
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        sample_audio_clip_1.refresh_from_db()
+        sample_audio_clip_report_0.refresh_from_db()
+        self.users[0].refresh_from_db()
+        self.users[1].refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_0.is_banned)
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'processing')
+        self.assertFalse(sample_audio_clip_1.is_banned)
+        self.assertTrue(sample_audio_clip_report_0.last_evaluated >= sample_audio_clip_report_0.last_reported)
+        self.assertTrue(self.users[0].banned_until > datetime_now)
+        self.assertEqual(self.users[0].ban_count, 1)
+        self.assertIsNone(self.users[1].banned_until)
+        self.assertEqual(self.users[1].ban_count, 0)
+
+
+    def test_cronjob_ban_audio_clips__A_started__B_replied__B_new_locked_not_replying__B_banned__A_new_queues_unaffected__B_new_queues_removed(self):
+
+        datetime_now = self.datetime_now
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='completed',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        sample_audio_clip_1.like_count = 2
+        sample_audio_clip_1.dislike_count = 10
+        sample_audio_clip_1.like_ratio = 0.2
+        sample_audio_clip_1.save()
+
+        #arbitrary last_evaluated, as long as < last_reported
+        sample_audio_clip_report_0 = AudioClipReports.objects.create(
+            last_evaluated=(datetime_now - timedelta(seconds=10)),
+            audio_clip_id=sample_audio_clip_1.id,
+        )
+
+        #B has new queue elsewhere
+
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[2],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_2 = AudioClipsFactory(
+            audio_clip_user=self.users[2],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
+        )
+
+        sample_event_reply_queue_0 = EventReplyQueues.objects.create(
+            locked_for_user=self.users[1],
+            event=sample_event_1,
+            when_locked=datetime_now,
+            is_replying=False,
+        )
+
+        #another event of B is ok, ensure everything about it is unaffected
+
+        sample_event_2 = EventsFactory(
+            event_created_by=self.users[1],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_3 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_2,
+        )
+
+        #new queues from A is unaffected
+
+        sample_event_3 = EventsFactory(
+            event_created_by=self.users[2],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_4 = AudioClipsFactory(
+            audio_clip_user=self.users[2],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_3,
+        )
+
+        sample_event_reply_queue_1 = EventReplyQueues.objects.create(
+            locked_for_user=self.users[0],
+            event=sample_event_3,
+            when_locked=datetime_now,
+            is_replying=False,
+        )
+
+        #extra irrelevant innocent queues
+
+        sample_event_4 = EventsFactory(
+            event_created_by=self.users[2],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_5 = AudioClipsFactory(
+            audio_clip_user=self.users[2],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_4,
+        )
+
+        sample_event_reply_queue_2 = EventReplyQueues.objects.create(
+            locked_for_user=self.users[0],
+            event=sample_event_4,
+            when_locked=datetime_now,
+            is_replying=False,
+        )
+
+        #start
+
+        with (
+            self.settings(
+                BAN_AUDIO_CLIP_LIKE_RATIO=0.2,
+                BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
+                BAN_AUDIO_CLIP_MIN_AGE_S=11,
+            ),
+            self.assertNumQueries(14)
+        ):
+
+            cronjob_ban_audio_clips()
+
+        #check
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        sample_audio_clip_1.refresh_from_db()
+        sample_audio_clip_report_0.refresh_from_db()
+
+        sample_event_1.refresh_from_db()
+        sample_audio_clip_2.refresh_from_db()
+
+        sample_event_2.refresh_from_db()
+        sample_audio_clip_3.refresh_from_db()
+
+        sample_event_3.refresh_from_db()
+        sample_audio_clip_4.refresh_from_db()
+
+        sample_event_4.refresh_from_db()
+        sample_audio_clip_5.refresh_from_db()
+
+        self.users[0].refresh_from_db()
+        self.users[1].refresh_from_db()
+        self.users[2].refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_0.is_banned)
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_1.is_banned)
+        self.assertTrue(sample_audio_clip_report_0.last_evaluated >= sample_audio_clip_report_0.last_reported)
+
+        self.assertEqual(sample_event_1.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_2.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_2.is_banned)
+        self.assertEqual(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).count(), 0)
+
+        self.assertEqual(sample_event_2.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_3.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_3.is_banned)
+
+        self.assertEqual(sample_event_3.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_4.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_4.is_banned)
+        self.assertEqual(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_1.id).count(), 1)
+
+        self.assertEqual(sample_event_4.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_5.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_5.is_banned)
+        self.assertEqual(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_2.id).count(), 1)
+
+        self.assertIsNone(self.users[0].banned_until)
+        self.assertEqual(self.users[0].ban_count, 0)
+        self.assertTrue(self.users[1].banned_until > datetime_now)
+        self.assertEqual(self.users[1].ban_count, 1)
+        self.assertIsNone(self.users[2].banned_until)
+        self.assertEqual(self.users[2].ban_count, 0)
+
+
+    def test_cronjob_ban_audio_clips__A_started__B_replied__B_new_locked_is_replying__B_banned__A_new_queues_unaffected__B_new_queues_removed(self):
+
+        datetime_now = self.datetime_now
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='completed',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        sample_audio_clip_1.like_count = 2
+        sample_audio_clip_1.dislike_count = 10
+        sample_audio_clip_1.like_ratio = 0.2
+        sample_audio_clip_1.save()
+
+        #arbitrary last_evaluated, as long as < last_reported
+        sample_audio_clip_report_0 = AudioClipReports.objects.create(
+            last_evaluated=(datetime_now - timedelta(seconds=10)),
+            audio_clip_id=sample_audio_clip_1.id,
+        )
+
+        #B has new queue elsewhere
+
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[2],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_2 = AudioClipsFactory(
+            audio_clip_user=self.users[2],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
+        )
+
+        sample_event_reply_queue_0 = EventReplyQueues.objects.create(
+            locked_for_user=self.users[1],
+            event=sample_event_1,
+            when_locked=datetime_now,
+            is_replying=True,
+        )
+
+        #another event of B is ok, ensure everything about it is unaffected
+
+        sample_event_2 = EventsFactory(
+            event_created_by=self.users[1],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_3 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_2,
+        )
+
+        #new queues from A is unaffected
+
+        sample_event_3 = EventsFactory(
+            event_created_by=self.users[2],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_4 = AudioClipsFactory(
+            audio_clip_user=self.users[2],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_3,
+        )
+
+        sample_event_reply_queue_1 = EventReplyQueues.objects.create(
+            locked_for_user=self.users[0],
+            event=sample_event_3,
+            when_locked=datetime_now,
+            is_replying=True,
+        )
+
+        #extra irrelevant innocent queues
+
+        sample_event_4 = EventsFactory(
+            event_created_by=self.users[2],
+            event_generic_status_generic_status_name='incomplete',
+        )
+
+        sample_audio_clip_5 = AudioClipsFactory(
+            audio_clip_user=self.users[2],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_4,
+        )
+
+        sample_event_reply_queue_2 = EventReplyQueues.objects.create(
+            locked_for_user=self.users[0],
+            event=sample_event_4,
+            when_locked=datetime_now,
+            is_replying=True,
+        )
+
+        #start
+
+        with (
+            self.settings(
+                BAN_AUDIO_CLIP_LIKE_RATIO=0.2,
+                BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
+                BAN_AUDIO_CLIP_MIN_AGE_S=11,
+            ),
+            self.assertNumQueries(14)
+        ):
+
+            cronjob_ban_audio_clips()
+
+        #check
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        sample_audio_clip_1.refresh_from_db()
+        sample_audio_clip_report_0.refresh_from_db()
+
+        sample_event_1.refresh_from_db()
+        sample_audio_clip_2.refresh_from_db()
+
+        sample_event_2.refresh_from_db()
+        sample_audio_clip_3.refresh_from_db()
+
+        sample_event_3.refresh_from_db()
+        sample_audio_clip_4.refresh_from_db()
+
+        sample_event_4.refresh_from_db()
+        sample_audio_clip_5.refresh_from_db()
+
+        self.users[0].refresh_from_db()
+        self.users[1].refresh_from_db()
+        self.users[2].refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_0.is_banned)
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_1.is_banned)
+        self.assertTrue(sample_audio_clip_report_0.last_evaluated >= sample_audio_clip_report_0.last_reported)
+
+        self.assertEqual(sample_event_1.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_2.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_2.is_banned)
+        self.assertEqual(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).count(), 0)
+
+        self.assertEqual(sample_event_2.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_3.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_3.is_banned)
+
+        self.assertEqual(sample_event_3.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_4.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_4.is_banned)
+        self.assertEqual(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_1.id).count(), 1)
+
+        self.assertEqual(sample_event_4.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_5.generic_status.generic_status_name, 'ok')
+        self.assertFalse(sample_audio_clip_5.is_banned)
+        self.assertEqual(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_2.id).count(), 1)
+
+        self.assertIsNone(self.users[0].banned_until)
+        self.assertEqual(self.users[0].ban_count, 0)
+        self.assertTrue(self.users[1].banned_until > datetime_now)
+        self.assertEqual(self.users[1].ban_count, 1)
+        self.assertIsNone(self.users[2].banned_until)
+        self.assertEqual(self.users[2].ban_count, 0)
 
 
     def test_cronjob_ban_audio_clips__skip_not_reported(self):
