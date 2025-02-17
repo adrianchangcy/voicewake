@@ -118,6 +118,12 @@ def cronjob_ban_audio_clips():
         audio_clips = []
         users = []
         user_ids = []
+        event_reply_queue_event_ids = []
+
+        #say we have originator and responder to ban, both in same event
+        #if we loop originator then responder, we update event to "deleted", regardless of whether it is to be updated
+        #if we loop responder then originator, we update event to "incomplete" if it is not yet updated
+        #thus, "deleted" rightfully takes precedence
 
         for index, audio_clip_report in enumerate(audio_clip_reports):
 
@@ -125,8 +131,8 @@ def cronjob_ban_audio_clips():
 
             audio_clip_reports[index].last_evaluated = datetime_now
 
-            #update events for originators to be deleted, for responders will be incomplete
-            #in cases where event reappears, deleted takes precedence
+            #update events for originators to be "deleted", for responders will be "incomplete"
+            #in cases where event reappears when banning originator and responder, "deleted" takes precedence
 
             if audio_clip_report.audio_clip.audio_clip_role.audio_clip_role_name == 'originator':
 
@@ -143,6 +149,7 @@ def cronjob_ban_audio_clips():
                 audio_clip_report.audio_clip.event.generic_status = generic_status_deleted
                 events.append(audio_clip_report.audio_clip.event)
                 event_ids.append(audio_clip_report.audio_clip.event.id)
+                event_reply_queue_event_ids.append(audio_clip_report.audio_clip.event.id)
 
             elif (
                 audio_clip_report.audio_clip.audio_clip_role.audio_clip_role_name == 'responder' and
@@ -186,6 +193,12 @@ def cronjob_ban_audio_clips():
                 ban_days = settings.CRONJOB_AUDIO_CLIP_MAX_BAN_DAYS
 
             users[target_user_index].banned_until = datetime_now + timedelta(days=ban_days)
+
+        #for banned originators, also delete event_reply_queues for those incomplete events
+        EventReplyQueues.objects.filter(event_id__in=event_reply_queue_event_ids).delete()
+
+        #for all banned users, delete all their existing event_reply_queues
+        EventReplyQueues.objects.filter(locked_for_user_id__in=user_ids).delete()
 
         #update everything
 
