@@ -45,6 +45,7 @@ from voicewake.models import *
 from voicewake.tasks import *
 from voicewake.factories import *
 from voicewake.lambdas import *
+from voicewake.apis import UserBlocksAPI, UserFollowsAPI
 from voicewake.celery import app
 from django.conf import settings
 from voicewake.cronjobs import cronjob_ban_audio_clips
@@ -5268,6 +5269,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertEqual(UserBlocks.objects.all().count(), 1)
+        self.assertGreater(response_data['when_last_action_s'], 0)
+        self.assertEqual(
+            cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(self.users[1].id), None),
+            response_data['when_last_action_s']
+        )
 
 
     def test_user_block_missing_args(self):
@@ -5472,6 +5478,23 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertEqual(UserBlocks.objects.all().count(), 0)
+        self.assertGreater(response_data['when_last_action_s'], 0)
+
+        #refetch using when_last_action_s
+
+        when_last_action_s = response_data['when_last_action_s']
+
+        request = self.client.get(reverse('user_blocks_api'), {'when_last_action_s': when_last_action_s})
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(len(response_data['data']), 0)
+        self.assertEqual(response_data['is_up_to_date'], True)
 
 
     def test_user_block__block_banned_user_ok(self):
@@ -5514,6 +5537,244 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertEqual(len(response_data['data']), 2)
+
+
+    def test_user_block__cache_behaviour__no_db_rows__no_cache(self):
+
+        self.login(self.users[0])
+
+        #cache does not exist, API ensures it exists
+
+        request = self.client.get(reverse('user_blocks_api'))
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+        when_last_action_s = cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
+
+        self.assertEqual(len(response_data['data']), 0)
+        self.assertGreater(response_data['when_last_action_s'], 0)
+        self.assertIsNotNone(when_last_action_s)
+        self.assertEqual(when_last_action_s, response_data['when_last_action_s'])
+
+        #block yourself
+        #expect cache to stay the same
+
+        #must delay, else test runs too quickly and we get same when_last_action_s
+        time.sleep(2)
+
+        request = self.client.post(
+            reverse('user_blocks_api'),
+            data={
+                'username': self.users[0].username,
+                'to_block': True
+            }
+        )
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 400)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertIsNone(response_data.get('when_last_action_s', None))
+        self.assertEqual(when_last_action_s, cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
+
+        #block someone
+        #expect cache to be updated
+
+        time.sleep(2)
+
+        request = self.client.post(
+            reverse('user_blocks_api'),
+            data={
+                'username': self.users[1].username,
+                'to_block': True
+            }
+        )
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertIsNotNone(response_data.get('when_last_action_s', None))
+        self.assertLess(when_last_action_s, response_data['when_last_action_s'])
+
+        when_last_action_s = cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
+
+        self.assertEqual(when_last_action_s, response_data['when_last_action_s'])
+
+        #unblock someone
+        #expect cache to be updated
+
+        time.sleep(2)
+
+        request = self.client.post(
+            reverse('user_blocks_api'),
+            data={
+                'username': self.users[1].username,
+                'to_block': False
+            }
+        )
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertIsNotNone(response_data.get('when_last_action_s', None))
+        self.assertLess(when_last_action_s, response_data['when_last_action_s'])
+
+        self.assertEqual(
+            response_data['when_last_action_s'],
+            cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
+        )
+
+        #do GET
+
+        when_last_action_s = response_data['when_last_action_s']
+
+        request = self.client.get(reverse('user_blocks_api'), data={'when_last_action_s': when_last_action_s})
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertTrue(response_data['is_up_to_date'])
+
+
+    def test_user_block__cache_behaviour__has_db_rows__no_cache(self):
+
+        self.login(self.users[0])
+
+        UserBlocks.objects.bulk_create([
+            UserBlocks(user=self.users[0], blocked_user=self.users[1]),
+        ])
+
+        self.login(self.users[0])
+
+        #cache does not exist, API ensures it exists
+
+        request = self.client.get(reverse('user_blocks_api'))
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+        when_last_action_s = cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
+
+        self.assertEqual(len(response_data['data']), 1)
+        self.assertGreater(response_data['when_last_action_s'], 0)
+        self.assertIsNotNone(when_last_action_s)
+        self.assertEqual(when_last_action_s, response_data['when_last_action_s'])
+
+        #block yourself
+        #expect cache to stay the same
+
+        #must delay, else test runs too quickly and we get same when_last_action_s
+        time.sleep(2)
+
+        request = self.client.post(
+            reverse('user_blocks_api'),
+            data={
+                'username': self.users[0].username,
+                'to_block': True
+            }
+        )
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 400)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertIsNone(response_data.get('when_last_action_s', None))
+        self.assertEqual(when_last_action_s, cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
+
+        #block someone
+        #expect cache to be updated
+
+        time.sleep(2)
+
+        request = self.client.post(
+            reverse('user_blocks_api'),
+            data={
+                'username': self.users[1].username,
+                'to_block': True
+            }
+        )
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertIsNotNone(response_data.get('when_last_action_s', None))
+        self.assertLess(when_last_action_s, response_data['when_last_action_s'])
+
+        when_last_action_s = cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
+
+        self.assertEqual(when_last_action_s, response_data['when_last_action_s'])
+
+        #unblock someone
+        #expect cache to be updated
+
+        time.sleep(2)
+
+        request = self.client.post(
+            reverse('user_blocks_api'),
+            data={
+                'username': self.users[1].username,
+                'to_block': False
+            }
+        )
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertIsNotNone(response_data.get('when_last_action_s', None))
+        self.assertLess(when_last_action_s, response_data['when_last_action_s'])
+
+        self.assertEqual(
+            response_data['when_last_action_s'],
+            cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
+        )
+
+        #do GET
+
+        when_last_action_s = response_data['when_last_action_s']
+
+        request = self.client.get(reverse('user_blocks_api'), data={'when_last_action_s': when_last_action_s})
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertTrue(response_data['is_up_to_date'])
 
 
     def test_user_block__get_no_rows(self):
@@ -7007,6 +7268,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertEqual(UserFollows.objects.all().count(), 1)
+        self.assertGreater(response_data['when_last_action_s'], 0)
+        self.assertEqual(
+            response_data['when_last_action_s'],
+            cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(self.users[0].id), None)
+        )
 
 
     def test_user_following__already_following(self):
@@ -7393,6 +7659,247 @@ class Core_TestCase(TestCase):
             result = UserFollows.objects.select_related('followed_user').filter(user=self.users[0]).order_by('when_created').values_list('followed_user__username')
             print(len(result))
             print(result[0][0])
+
+
+    def test_user_following__cache_behaviour__no_db_rows__no_cache(self):
+
+        self.login(self.users[0])
+
+        #cache does not exist, API ensures it exists
+
+        request = self.client.get(reverse('user_follows_api'))
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+        when_last_action_s = cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
+
+        self.assertEqual(len(response_data['data']), 0)
+        self.assertGreater(response_data['when_last_action_s'], 0)
+        self.assertIsNotNone(when_last_action_s)
+        self.assertEqual(when_last_action_s, response_data['when_last_action_s'])
+
+        #follow yourself
+        #expect cache to stay the same
+
+        #must delay, else test runs too quickly and we get same when_last_action_s
+        time.sleep(2)
+
+        request = self.client.post(
+            reverse('user_follows_api'),
+            data={
+                'username': self.users[0].username,
+                'to_follow': True
+            }
+        )
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 400)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertIsNone(response_data.get('when_last_action_s', None))
+        self.assertEqual(when_last_action_s, cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
+
+        #follow someone
+        #expect cache to be updated
+
+        time.sleep(2)
+
+        request = self.client.post(
+            reverse('user_follows_api'),
+            data={
+                'username': self.users[1].username,
+                'to_follow': True
+            }
+        )
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertIsNotNone(response_data.get('when_last_action_s', None))
+        self.assertLess(when_last_action_s, response_data['when_last_action_s'])
+
+        when_last_action_s = cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
+
+        self.assertEqual(when_last_action_s, response_data['when_last_action_s'])
+
+        #unfollow someone
+        #expect cache to be updated
+
+        time.sleep(2)
+
+        request = self.client.post(
+            reverse('user_follows_api'),
+            data={
+                'username': self.users[1].username,
+                'to_follow': False
+            }
+        )
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertIsNotNone(response_data.get('when_last_action_s', None))
+        self.assertLess(when_last_action_s, response_data['when_last_action_s'])
+
+        self.assertEqual(
+            response_data['when_last_action_s'],
+            cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
+        )
+
+        #do GET
+
+        when_last_action_s = response_data['when_last_action_s']
+
+        request = self.client.get(reverse('user_follows_api'), data={'when_last_action_s': when_last_action_s})
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertTrue(response_data['is_up_to_date'])
+
+
+    def test_user_following__cache_behaviour__has_db_rows__no_cache(self):
+
+        self.login(self.users[0])
+
+        UserFollows.objects.bulk_create([
+            UserFollows(user=self.users[0], followed_user=self.users[1]),
+        ])
+
+        self.login(self.users[0])
+
+        #cache does not exist, API ensures it exists
+
+        request = self.client.get(reverse('user_follows_api'))
+
+        self.assertEqual(request.status_code, 200)
+        print_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+        when_last_action_s = cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
+
+        self.assertEqual(len(response_data['data']), 1)
+        self.assertGreater(response_data['when_last_action_s'], 0)
+        self.assertIsNotNone(when_last_action_s)
+        self.assertEqual(when_last_action_s, response_data['when_last_action_s'])
+
+        #follow yourself
+        #expect cache to stay the same
+
+        #must delay, else test runs too quickly and we get same when_last_action_s
+        time.sleep(2)
+
+        request = self.client.post(
+            reverse('user_follows_api'),
+            data={
+                'username': self.users[0].username,
+                'to_follow': True
+            }
+        )
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 400)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertIsNone(response_data.get('when_last_action_s', None))
+        self.assertEqual(when_last_action_s, cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
+
+        #follow someone
+        #expect cache to be updated
+
+        time.sleep(2)
+
+        request = self.client.post(
+            reverse('user_follows_api'),
+            data={
+                'username': self.users[1].username,
+                'to_follow': True
+            }
+        )
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertIsNotNone(response_data.get('when_last_action_s', None))
+        self.assertLess(when_last_action_s, response_data['when_last_action_s'])
+
+        when_last_action_s = cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
+
+        self.assertEqual(when_last_action_s, response_data['when_last_action_s'])
+
+        #unfollow someone
+        #expect cache to be updated
+
+        time.sleep(2)
+
+        request = self.client.post(
+            reverse('user_follows_api'),
+            data={
+                'username': self.users[1].username,
+                'to_follow': False
+            }
+        )
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertIsNotNone(response_data.get('when_last_action_s', None))
+        self.assertLess(when_last_action_s, response_data['when_last_action_s'])
+
+        self.assertEqual(
+            response_data['when_last_action_s'],
+            cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
+        )
+
+        #do GET
+
+        when_last_action_s = response_data['when_last_action_s']
+
+        request = self.client.get(reverse('user_follows_api'), data={'when_last_action_s': when_last_action_s})
+
+        print_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertTrue(response_data['is_up_to_date'])
+
+
+
 
 
 #these involve AWS in one way or another
