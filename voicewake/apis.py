@@ -627,7 +627,95 @@ class UserBlocksAPI(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
 
+    def determine_when_last_action_s_cache_key(self, user_id:int):
+
+        return 'user_blocks_when_last_action_s_' + str(user_id)
+
+
+    #can only get user's own block list
     def get(self, request, *args, **kwargs):
+
+        #ensure cache exists
+
+        when_last_action_s = cache.get(self.determine_when_last_action_s_cache_key(self.request.user.id), None)
+
+        if when_last_action_s is None:
+
+            latest_row = None
+
+            try:
+
+                latest_row = UserBlocks.objects.filter(user=self.request.user).latest('when_created')
+
+                #proceeds to fetching all rows
+
+            except UserBlocks.DoesNotExist:
+
+                #early detection of 0 rows in db
+                #ensure cache exists so subsequent requests with no new actions won't query db again
+
+                when_last_action_s = math.trunc(get_datetime_now().timestamp())
+
+                cache.set(
+                    self.determine_when_last_action_s_cache_key(self.request.user.id),
+                    when_last_action_s
+                )
+
+                #already know 0 rows in db, so return
+                return Response(
+                    data={
+                        'data': [],
+                        'when_last_action_s': when_last_action_s,
+                    },
+                    status=status.HTTP_200_OK
+                )
+
+            when_last_action_s = math.trunc(latest_row.when_created.timestamp())
+
+            cache.set(
+                self.determine_when_last_action_s_cache_key(self.request.user.id),
+                when_last_action_s
+            )
+
+        #check if frontend wants to check for sync
+        #do comparison via math.trunc() value of datetime.timestamp(), i.e. seconds since UNIX epoch, a.k.a. posix
+
+        passed_when_last_action_s = self.request.GET.get('when_last_action_s', None)
+
+        if passed_when_last_action_s is not None:
+
+            #validate
+
+            try:
+
+                passed_when_last_action_s = int(passed_when_last_action_s)
+
+            except:
+
+                return Response(
+                    data={
+                        'message': "Invalid when_last_action_s passed.",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+
+            #check if frontend is in sync with cache
+
+            if passed_when_last_action_s == when_last_action_s:
+
+                #frontend and cache are up-to-date
+
+                return Response(
+                    data={
+                        'data': [],
+                        'is_up_to_date': True,
+                    },
+                    status=status.HTTP_200_OK
+                )
+
+        #not in sync, or frontend does not care
+        #continue with fetching rows
 
         #for something as simple as only requiring 1 column, serializing and returning as {} for every row is overkill
         #test results at 1000 rows via Content-Length header: serializer (66900 bytes), list (18900 bytes)
@@ -646,6 +734,7 @@ class UserBlocksAPI(generics.GenericAPIView):
         response = Response(
             data={
                 'data': usernames,
+                'when_last_action_s': when_last_action_s
             },
             status=status.HTTP_200_OK
         )
@@ -688,10 +777,10 @@ class UserBlocksAPI(generics.GenericAPIView):
             )
 
         #get user to block
-        blocked_user = get_object_or_404(get_user_model(), username_lowercase=request_data['username'].lower())
+        target_user = get_object_or_404(get_user_model(), username_lowercase=request_data['username'].lower())
 
         #disallow users from blocking themselves
-        if blocked_user.id == request.user.id:
+        if target_user.id == request.user.id:
 
             return Response(
                 data={
@@ -705,24 +794,34 @@ class UserBlocksAPI(generics.GenericAPIView):
             #handle blocking
             UserBlocks.objects.get_or_create(
                 user=request.user,
-                blocked_user=blocked_user
+                blocked_user=target_user
             )
 
-            user_message = "You have blocked " + blocked_user.username + "."
+            user_message = "You have blocked " + target_user.username + "."
 
         else:
 
             #handle unblocking
             UserBlocks.objects.filter(
                 user=request.user,
-                blocked_user=blocked_user
+                blocked_user=target_user
             ).delete()
 
-            user_message = "You have unblocked " + blocked_user.username + "."
+            user_message = "You have unblocked " + target_user.username + "."
+
+        #update when was the last time user has took action via this POST API
+
+        when_last_action_s = math.trunc(get_datetime_now().timestamp())
+
+        cache.set(
+            self.determine_when_last_action_s_cache_key(self.request.user.id),
+            when_last_action_s,
+        )
 
         return Response(
             data={
-                'message': user_message
+                'message': user_message,
+                'when_last_action_s': when_last_action_s,
             },
             status=status.HTTP_200_OK
         )
@@ -735,8 +834,95 @@ class UserFollowsAPI(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
 
-    #can only get user's own followings
+    def determine_when_last_action_s_cache_key(self, user_id:int):
+
+        return 'user_follows_when_last_action_s_' + str(user_id)
+
+
+    #can only get user's own following list
     def get(self, request, *args, **kwargs):
+
+        #ensure cache exists
+
+        when_last_action_s = cache.get(self.determine_when_last_action_s_cache_key(self.request.user.id), None)
+
+        if when_last_action_s is None:
+
+            latest_row = None
+
+            try:
+
+                latest_row = UserFollows.objects.filter(user=self.request.user).latest('when_created')
+
+                #proceeds to fetching all rows
+
+            except UserFollows.DoesNotExist:
+
+                #early detection of 0 rows in db
+                #ensure cache exists so subsequent requests with no new actions won't query db again
+
+                when_last_action_s = math.trunc(get_datetime_now().timestamp())
+
+                cache.set(
+                    self.determine_when_last_action_s_cache_key(self.request.user.id),
+                    when_last_action_s
+                )
+
+                #already know 0 rows in db, so return
+                return Response(
+                    data={
+                        'data': [],
+                        'when_last_action_s': when_last_action_s,
+                    },
+                    status=status.HTTP_200_OK
+                )
+
+            when_last_action_s = math.trunc(latest_row.when_created.timestamp())
+
+            cache.set(
+                self.determine_when_last_action_s_cache_key(self.request.user.id),
+                when_last_action_s
+            )
+
+        #check if frontend wants to check for sync
+        #do comparison via math.trunc() value of datetime.timestamp(), i.e. seconds since UNIX epoch, a.k.a. posix
+
+        passed_when_last_action_s = self.request.GET.get('when_last_action_s', None)
+
+        if passed_when_last_action_s is not None:
+
+            #validate
+
+            try:
+
+                passed_when_last_action_s = int(passed_when_last_action_s)
+
+            except:
+
+                return Response(
+                    data={
+                        'message': "Invalid when_last_action_s passed.",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+
+            #check if frontend is in sync with cache
+
+            if passed_when_last_action_s == when_last_action_s:
+
+                #frontend and cache are up-to-date
+
+                return Response(
+                    data={
+                        'data': [],
+                        'is_up_to_date': True,
+                    },
+                    status=status.HTTP_200_OK
+                )
+
+        #not in sync, or frontend does not care
+        #continue with fetching rows
 
         #for something as simple as only requiring 1 column, serializing and returning as {} for every row is overkill
         #test results at 1000 rows via Content-Length header: serializer (66900 bytes), list (18900 bytes)
@@ -755,6 +941,7 @@ class UserFollowsAPI(generics.GenericAPIView):
         response = Response(
             data={
                 'data': usernames,
+                'when_last_action_s': when_last_action_s
             },
             status=status.HTTP_200_OK
         )
@@ -767,7 +954,7 @@ class UserFollowsAPI(generics.GenericAPIView):
         return response
 
 
-    #perform follow/unfollow
+    #perform following/unfollowing
     @method_decorator(app_decorators.deny_if_banned("response"))
     def post(self, request, *args, **kwargs):
 
@@ -791,16 +978,16 @@ class UserFollowsAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'message': 'You have reached the limit for who you can follow.',
+                    'message': 'You have reached the limit for who you can follow. Consider unfollowing someone.',
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         #get user to follow
-        followed_user = get_object_or_404(get_user_model(), username_lowercase=request_data['username'].lower())
+        target_user = get_object_or_404(get_user_model(), username_lowercase=request_data['username'].lower())
 
-        #disallow users from blocking themselves
-        if followed_user.id == request.user.id:
+        #disallow users from following themselves
+        if target_user.id == request.user.id:
 
             return Response(
                 data={
@@ -814,24 +1001,34 @@ class UserFollowsAPI(generics.GenericAPIView):
             #handle following
             UserFollows.objects.get_or_create(
                 user=request.user,
-                followed_user=followed_user
+                followed_user=target_user
             )
 
-            user_message = "You have followed " + followed_user.username + "."
+            user_message = "You have followed " + target_user.username + "."
 
         else:
 
             #handle unfollowing
             UserFollows.objects.filter(
                 user=request.user,
-                followed_user=followed_user
+                followed_user=target_user
             ).delete()
 
-            user_message = "You have unfollowed " + followed_user.username + "."
+            user_message = "You have unfollowed " + target_user.username + "."
+
+        #update when was the last time user has took action via this POST API
+
+        when_last_action_s = math.trunc(get_datetime_now().timestamp())
+
+        cache.set(
+            self.determine_when_last_action_s_cache_key(self.request.user.id),
+            when_last_action_s,
+        )
 
         return Response(
             data={
-                'message': user_message
+                'message': user_message,
+                'when_last_action_s': when_last_action_s,
             },
             status=status.HTTP_200_OK
         )
