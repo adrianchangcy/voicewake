@@ -288,7 +288,6 @@
                         title: 'Username check failed',
                         text: error_text,
                         type: 'error',
-                        icon: {'font_awesome': 'fas fa-exclamation'},
                     }, 2000);
                 });
             },
@@ -354,7 +353,6 @@
                         title: 'Setting username failed',
                         text: error_text,
                         type: 'error',
-                        icon: {'font_awesome': 'fas fa-exclamation'},
                     }, 2000);
                 });
             },

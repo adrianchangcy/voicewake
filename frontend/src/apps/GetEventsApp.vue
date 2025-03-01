@@ -395,7 +395,6 @@
                         type: 'error',
                         title: 'Error',
                         text: 'Unable to get recordings for this event.',
-                        icon: {'font_awesome': 'fas fa-exclamation'},
                     }, 4000);
 
                 }).finally(()=>{
