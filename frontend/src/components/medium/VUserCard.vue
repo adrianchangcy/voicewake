@@ -148,7 +148,6 @@
                         type: 'ok',
                         title: this.is_blocked === true ? 'Blocked user' : 'Unblocked user',
                         text: result.data['message'],
-                        icon: {'font_awesome': 'fas fa-check'},
                     }, 2000);
 
                 }).catch(()=>{
@@ -157,7 +156,6 @@
                         type: 'error',
                         title: 'Action failed',
                         text: 'Try again later.',
-                        icon: {'font_awesome': 'fas fa-exclamation'},
                     }, 2000);
 
                 }).finally(()=>{
@@ -179,7 +177,6 @@
                     type: 'ok',
                     title: 'Link copied',
                     text: '',
-                    icon: {'font_awesome': 'fas fa-check'},
                 }, 2000);
 
                 this.has_shared = true;

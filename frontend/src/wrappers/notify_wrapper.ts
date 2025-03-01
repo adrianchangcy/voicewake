@@ -1,5 +1,7 @@
 import { notify as notiwind_notify } from "notiwind";
-import NotificationsTypes from "@/types/Notifications.interface";
+import NotificationsTypes from '@/types/Notifications.interface';
+
+
 
 export function notify(notify_args:NotificationsTypes, duration_ms:number) : ()=>void {
 

@@ -457,7 +457,6 @@
                     type: 'error',
                     title: 'Unexpected error',
                     text: error_text,
-                    icon: {'font_awesome': 'fas fa-exclamation'},
                 }, 4000);
 
             },

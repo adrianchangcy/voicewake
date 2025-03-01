@@ -593,7 +593,6 @@ export function useAudioClipProcessingsStore(){
                             title: 'Deletion error',
                             text: "Unexpectedly unable to delete reupload message. Try again later.",
                             type: 'error',
-                            icon: {'font_awesome': 'fas fa-exclamation'},
                         }, 4000);
                     });
                 }

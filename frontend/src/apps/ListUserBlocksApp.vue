@@ -115,37 +115,26 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import { notify } from '@/wrappers/notify_wrapper';
-    import axios from 'axios';
+    // import { notify } from '@/wrappers/notify_wrapper';
+    import { useUserBlocksStore } from '@/stores/UserBlocksStore';
+    // import axios from 'axios';
 
-    interface UserBlocksTypes {
-        blocked_user: {
-            username: string,
-        },
-        is_blocked: boolean
-    }
 
-    interface ScrollableUserBlocksTypes extends UserBlocksTypes {
-        scroller_index_id: number,
-    }
-
+    //from this page, only unblocking matters
     export default defineComponent({
         name: 'ListUserBlocksApp',
         data(){
             return {
-                user_blocks: [] as ScrollableUserBlocksTypes[],
-                is_blocking: false,
-                is_blocking_index: null as number|null,
+                user_blocks_store: useUserBlocksStore(),
+                is_fetching: true,
+                //corresponds to per-element in user_blocks_store.getBlockedUsernames
+                //purposely reinitiate on new component render
+                blocked_usernames: [] as string[],
+                is_processing: [] as boolean[],
+                api_post_calls_queue: [] as Promise<void>[],
 
                 dynamic_scroller_buffer: 1000, //px, larger means rendered earlier, needed for proper tabbing
                 window_resize_timeout: window.setTimeout(()=>{}, 0),
-
-                next_url: window.location.origin + '/api/users/blocks/list/next',
-                back_url: window.location.origin + '/api/users/blocks/list/back',
-
-                is_fetching: false,
-                can_observer_fetch: false,
-                has_no_user_blocks_left_to_fetch: false,
             };
         },
         computed: {
@@ -153,134 +142,62 @@
 
                 return (
                     this.is_fetching === false &&
-                    this.user_blocks.length === 0 &&
-                    this.has_no_user_blocks_left_to_fetch === true
-                );
-            },
-            canShowEndOfPageMessage() : boolean {
-
-                return (
-                    this.is_fetching === false &&
-                    this.user_blocks.length > 0 &&
-                    this.has_no_user_blocks_left_to_fetch === true
+                    this.user_blocks_store.getBlockedUsernames.length === 0
                 );
             },
         },
         methods: {
+            initiateComponentFromStore() : void {
+
+                this.blocked_usernames = [...this.user_blocks_store.getBlockedUsernames];
+                this.is_processing = [];
+
+                for(let x = 0; x < this.user_blocks_store.getBlockedUsernames.length; x++){
+
+                    this.is_processing.push(false);
+                }
+            },
             getProfileURL(index:number) : string {
 
-                return window.location.origin + '/user/' + this.user_blocks[index].blocked_user.username;
-            },
-            isBlocking(index:number) : boolean {
-
-                return this.is_blocking === true && this.is_blocking_index === index;
-            },
-            async handleBlock(user_block_index:number) : Promise<void> {
-
-                if(this.is_blocking === true){
-
-                    return;
-                }
-
-                this.is_blocking = true;
-                this.is_blocking_index = user_block_index;
-
-                const url = window.location.origin + '/api/users/blocks';
-
-                let data = new FormData();
-                data.append('username', this.user_blocks[user_block_index].blocked_user.username);
-                data.append('to_block', JSON.stringify(!this.user_blocks[user_block_index].is_blocked));
-
-                await axios.post(url, data)
-                .then(()=>{
-
-                    this.user_blocks[user_block_index].is_blocked = !this.user_blocks[user_block_index].is_blocked;
-
-                }).catch(()=>{
-
-                    const block_text = this.user_blocks[user_block_index].is_blocked === true ? 'unblock' : 'block';
-
-                    notify({
-                        type: 'error',
-                        title: 'Error',
-                        text: 'Unable to ' + block_text + ' that user at the moment.',
-                        icon: {'font_awesome': 'fas fa-exclamation'},
-                    }, 2000);
-
-                }).finally(()=>{
-
-                    this.is_blocking = false;
-                    this.is_blocking_index = null;
-                })
+                return window.location.origin + '/user/' + this.user_blocks_store.getBlockedUsernames[index];
             },
             async getUserBlocks() : Promise<void> {
 
-                if(this.is_fetching === true){
-
-                    return;
-                }
-
                 this.is_fetching = true;
-                this.can_observer_fetch = false;
-                this.has_no_user_blocks_left_to_fetch = false;
 
-                await axios.get(this.next_url)
-                .then((result:any) => {
+                await this.user_blocks_store.getUserBlocksAPI()
+                .then(()=>{
 
-                    if(result.data['data'].length === 0){
+                    this.initiateComponentFromStore();
 
-                        this.has_no_user_blocks_left_to_fetch = true;
-                        return;
-                    }
-
-                    result.data['data'].forEach((user_block:UserBlocksTypes)=>{
-
-                        (user_block as ScrollableUserBlocksTypes).scroller_index_id = this.user_blocks.length;
-                        this.user_blocks.push(user_block as ScrollableUserBlocksTypes);
-                    });
-
-                    this.next_url = window.location.origin + '/api/users/blocks/list/next' + result.data['next_token'];
-                    this.back_url = window.location.origin + '/api/users/blocks/list/back' + result.data['back_token'];
-
-                }).catch(() => {
-
-                    notify({
-                        type: 'error',
-                        title: 'Error',
-                        text: "Unable to get the list of users you've blocked.",
-                        icon: {'font_awesome': 'fas fa-exclamation'},
-                    }, 4000);
-
-                }).finally(() => {
+                }).finally(()=>{
 
                     this.is_fetching = false;
-                    this.can_observer_fetch = true;
                 });
             },
-            setUpObserver() : void {
+            async doUnblock(index:number) : Promise<void>{
 
-                //set up observer for infinite scroll
-                const observer_target = document.querySelector('#load-more-user-blocks-observer-target');
+                if(
+                    index >= this.user_blocks_store.getBlockedUsernames.length ||
+                    index >= this.api_post_calls_queue.length ||
+                    this.is_processing[index] === true
+                ){
 
-                const observer = new IntersectionObserver(()=>{
-
-                    if(
-                        this.can_observer_fetch === false ||
-                        this.has_no_user_blocks_left_to_fetch === true
-                    ){
-
-                        return;
-                    }
-
-                    this.getUserBlocks();
-                }, {
-                    threshold: 1,
-                });
-
-                if(observer_target !== null){
-
-                    observer.observe(observer_target);
+                    throw new Error('Out of range.');
                 }
+
+                this.is_processing[index] = true;
+
+                await this.user_blocks_store.postUserBlocksAPI(this.user_blocks_store.getBlockedUsernames[index], false)
+                .then(()=>{
+
+                    this.blocked_usernames.splice(index, 1);
+                    this.is_processing.splice(index, 1);
+
+                }).catch(()=>{
+
+                    this.is_processing[index] = false;
+                });
             },
             async handleWindowResize() : Promise<void> {
 
@@ -299,11 +216,11 @@
 
             history.scrollRestoration = 'manual';
 
-            this.getUserBlocks();
+            this.initiateComponentFromStore();
         },
         mounted(){
 
-            this.setUpObserver();
+            this.getUserBlocks();
 
             //reassign buffer size in case screen height > 1000px
             //better bigger than smaller

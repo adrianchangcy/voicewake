@@ -125,7 +125,7 @@
                         type: 'error',
                         title: 'Error',
                         text: 'Unable to retrieve your banned recordings',
-                        icon: {'font_awesome': 'fas fa-exclamation'},
+
                     }, 4000);
 
                 }).finally(() => {

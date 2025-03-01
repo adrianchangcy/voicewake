@@ -29,6 +29,7 @@
                     >
                         <!--left panel-->
                         <div
+                            v-if="noIcon(notification) === false"
                             :class="[
                                 notification.type === 'ok' ? 'bg-green-500 dark:text-dark-theme-black-2' : '',
                                 notification.type === 'error' ? 'bg-red-500 dark:text-dark-theme-black-2' : '',
@@ -36,15 +37,19 @@
                                 'w-10 shrink-0 flex flex-col items-center justify-center text-white text-xl'
                             ]"
                         >
-                            <span v-if="hasIcon(notification, 'font_awesome')">
-                                <FontAwesomeIcon :icon="notification.icon!.font_awesome!"/>
+                            <span v-if="isDefaultIcon(notification)">
+                                <FontAwesomeIcon v-if="notification.type === 'ok'" icon="fas fa-check"/>
+                                <FontAwesomeIcon v-else-if="notification.type === 'error'" icon="fas fa-exclamation"/>
                             </span>
-                            <span v-else-if="hasIcon(notification, 'audio_clip_tone')">
+                            <span v-else-if="isSpecificIcon(notification, 'font_awesome')">
+                                <FontAwesomeIcon :icon="(notification.icon as FontAwesomeIconTypes).font_awesome"/>
+                            </span>
+                            <span v-else-if="isSpecificIcon(notification, 'audio_clip_tone')">
                                 <span class="sr-only">
-                                    {{ notification.icon!.audio_clip_tone!.audio_clip_tone_name }}
+                                    {{ (notification.icon as AudioClipToneIconTypes).audio_clip_tone.audio_clip_tone_name }}
                                 </span>
                                 <span class="has-emoji">
-                                    {{ notification.icon!.audio_clip_tone!.audio_clip_tone_symbol }}
+                                    {{ (notification.icon as AudioClipToneIconTypes).audio_clip_tone.audio_clip_tone_symbol }}
                                 </span>
                             </span>
                         </div>
@@ -148,8 +153,8 @@
     import VActionText from '../small/VActionText.vue';
     import VActionBorder from '../small/VActionBorder.vue';
 
-    //this is for notify({icon: "..."}) when allowed to specify
-    //search for "icon: ..." folder-wide and import all of it here in advance
+    //this is for notify({icon: {font_awesome: "fas fa-..."}}) when allowed to specify
+    //fontawesome icons must be imported once here to be used
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     import { library } from '@fortawesome/fontawesome-svg-core';
     import { faExclamation } from '@fortawesome/free-solid-svg-icons/faExclamation';
@@ -189,17 +194,34 @@
 
     function hasActionCallback(action:{callback?:()=>any}){
 
+        return Object.hasOwn(action, 'callback') === true;
+    }
+
+    function isDefaultIcon(notification:NotificationsTypes){
+
+        //omit "icon" in {} to use default icons
+        //excludes "generic" notification type, so "generic" requires icons to be specified
+        return Object.hasOwn(notification, 'icon') === false;
+    }
+
+    function noIcon(notification:NotificationsTypes){
+
+        //pass {icon:null} to not use icons
         return (
-            Object.hasOwn(action, 'callback') === true
+            Object.hasOwn(notification, 'icon') === true &&
+            notification.icon === null
         );
     }
 
-    function hasIcon(notification:NotificationsTypes, icon_type:"font_awesome"|"audio_clip_tone"){
+    function isSpecificIcon(notification:NotificationsTypes, icon_type:"font_awesome"|"audio_clip_tone"){
 
+        //pass {icon: {'font_awesome':'fas fa-exclamation'}} to specify from font_awesome
+            //be sure to also import the icon here
+        //pass {icon: {'audio_clip_tone': 'emoji'}} to use emojis
         return (
             Object.hasOwn(notification, 'icon') === true &&
-            Object.hasOwn(notification.icon, icon_type) === true
-        )
+            Object.hasOwn(notification.icon as FontAwesomeIconTypes|NotificationsTypes, icon_type) === true
+        );
     }
 
 </script>
@@ -207,6 +229,7 @@
 
 <script lang="ts">
     import NotificationsTypes from '@/types/Notifications.interface';
+    import {FontAwesomeIconTypes, AudioClipToneIconTypes} from '@/types/Notifications.interface';
     
     interface FullNotificationsTypes extends NotificationsTypes {
         [x: string]: unknown,
