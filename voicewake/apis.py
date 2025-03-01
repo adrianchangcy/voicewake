@@ -751,6 +751,10 @@ class UserBlocksAPI(generics.GenericAPIView):
     @method_decorator(app_decorators.deny_if_banned("response"))
     def post(self, request, *args, **kwargs):
 
+        #initially also returned when_last_action_s
+            #but it can give frontend a false confirmation of sync if frontend performs POST with outdated store
+            #therefore, POST no longer returns when_last_action_s
+
         serializer = CreateUserBlocksAPISerializer(data=request.data, many=False)
 
         #validate
@@ -776,7 +780,7 @@ class UserBlocksAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        #get user to block
+        #get target user
         target_user = get_object_or_404(get_user_model(), username_lowercase=request_data['username'].lower())
 
         #disallow users from blocking themselves
@@ -821,7 +825,6 @@ class UserBlocksAPI(generics.GenericAPIView):
         return Response(
             data={
                 'message': user_message,
-                'when_last_action_s': when_last_action_s,
             },
             status=status.HTTP_200_OK
         )
@@ -958,6 +961,10 @@ class UserFollowsAPI(generics.GenericAPIView):
     @method_decorator(app_decorators.deny_if_banned("response"))
     def post(self, request, *args, **kwargs):
 
+        #initially also returned when_last_action_s
+            #but it can give frontend a false confirmation of sync if frontend performs POST with outdated store
+            #therefore, POST no longer returns when_last_action_s
+
         serializer = CreateUserFollowsAPISerializer(data=request.data, many=False)
 
         #validate
@@ -983,7 +990,7 @@ class UserFollowsAPI(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        #get user to follow
+        #get target user
         target_user = get_object_or_404(get_user_model(), username_lowercase=request_data['username'].lower())
 
         #disallow users from following themselves
@@ -1028,7 +1035,6 @@ class UserFollowsAPI(generics.GenericAPIView):
         return Response(
             data={
                 'message': user_message,
-                'when_last_action_s': when_last_action_s,
             },
             status=status.HTTP_200_OK
         )

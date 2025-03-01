@@ -231,7 +231,6 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                     title: 'Error',
                     text: error.response.data['message'],
                     type: 'error',
-                    icon: {'font_awesome': 'fas fa-exclamation'},
                 }, 3000);
             });
         },
@@ -299,7 +298,6 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                     title: 'Error',
                     text: error.response.data['message'],
                     type: 'error',
-                    icon: {'font_awesome': 'fas fa-exclamation'},
                 }, 3000);
             });
         },
@@ -378,7 +376,6 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                     title: 'Unexpected error',
                     text: "Try again later.",
                     type: 'error',
-                    icon: {'font_awesome': 'fas fa-exclamation'},
                 }, 3000);
             });
         },

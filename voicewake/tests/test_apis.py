@@ -2421,7 +2421,7 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
         response_data = response_data['data']
 
-        self.assertEqual(response_data, [])
+        self.assertEqual(len(response_data), 0)
         self.assertEqual(EventReplyQueues.objects.all().count(), 0)
         self.assertEqual(UserEvents.objects.all().count(), 0)
 
@@ -5269,11 +5269,7 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertEqual(UserBlocks.objects.all().count(), 1)
-        self.assertGreater(response_data['when_last_action_s'], 0)
-        self.assertEqual(
-            cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(self.users[1].id), None),
-            response_data['when_last_action_s']
-        )
+        self.assertIsNone(response_data.get('when_last_action_s', None))
 
 
     def test_user_block_missing_args(self):
@@ -5478,11 +5474,10 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertEqual(UserBlocks.objects.all().count(), 0)
-        self.assertGreater(response_data['when_last_action_s'], 0)
 
         #refetch using when_last_action_s
 
-        when_last_action_s = response_data['when_last_action_s']
+        when_last_action_s = cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(self.users[1].id), None)
 
         request = self.client.get(reverse('user_blocks_api'), {'when_last_action_s': when_last_action_s})
 
@@ -5558,7 +5553,6 @@ class Core_TestCase(TestCase):
         self.assertEqual(len(response_data['data']), 0)
         self.assertGreater(response_data['when_last_action_s'], 0)
         self.assertIsNotNone(when_last_action_s)
-        self.assertEqual(when_last_action_s, response_data['when_last_action_s'])
 
         #block yourself
         #expect cache to stay the same
@@ -5582,6 +5576,7 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertIsNone(response_data.get('when_last_action_s', None))
+        self.assertIsNotNone(cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
         self.assertEqual(when_last_action_s, cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
 
         #block someone
@@ -5604,15 +5599,14 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertIsNotNone(response_data.get('when_last_action_s', None))
-        self.assertLess(when_last_action_s, response_data['when_last_action_s'])
-
-        when_last_action_s = cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
-
-        self.assertEqual(when_last_action_s, response_data['when_last_action_s'])
+        self.assertIsNone(response_data.get('when_last_action_s', None))
+        self.assertIsNotNone(cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
+        self.assertLess(when_last_action_s, cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
 
         #unblock someone
         #expect cache to be updated
+
+        when_last_action_s = cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
 
         time.sleep(2)
 
@@ -5631,17 +5625,13 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertIsNotNone(response_data.get('when_last_action_s', None))
-        self.assertLess(when_last_action_s, response_data['when_last_action_s'])
-
-        self.assertEqual(
-            response_data['when_last_action_s'],
-            cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
-        )
+        self.assertIsNone(response_data.get('when_last_action_s', None))
+        self.assertIsNotNone(cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
+        self.assertLess(when_last_action_s, cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
 
         #do GET
 
-        when_last_action_s = response_data['when_last_action_s']
+        when_last_action_s = cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
 
         request = self.client.get(reverse('user_blocks_api'), data={'when_last_action_s': when_last_action_s})
 
@@ -5653,6 +5643,9 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertTrue(response_data['is_up_to_date'])
+        self.assertIsNone(response_data.get('when_last_action_s', None))
+        self.assertIsNotNone(cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
+        self.assertEqual(when_last_action_s, cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
 
 
     def test_user_block__cache_behaviour__has_db_rows__no_cache(self):
@@ -5680,7 +5673,6 @@ class Core_TestCase(TestCase):
         self.assertEqual(len(response_data['data']), 1)
         self.assertGreater(response_data['when_last_action_s'], 0)
         self.assertIsNotNone(when_last_action_s)
-        self.assertEqual(when_last_action_s, response_data['when_last_action_s'])
 
         #block yourself
         #expect cache to stay the same
@@ -5726,15 +5718,14 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertIsNotNone(response_data.get('when_last_action_s', None))
-        self.assertLess(when_last_action_s, response_data['when_last_action_s'])
-
-        when_last_action_s = cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
-
-        self.assertEqual(when_last_action_s, response_data['when_last_action_s'])
+        self.assertIsNone(response_data.get('when_last_action_s', None))
+        self.assertIsNotNone(cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
+        self.assertLess(when_last_action_s, cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
 
         #unblock someone
         #expect cache to be updated
+
+        when_last_action_s = cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
 
         time.sleep(2)
 
@@ -5753,17 +5744,13 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertIsNotNone(response_data.get('when_last_action_s', None))
-        self.assertLess(when_last_action_s, response_data['when_last_action_s'])
-
-        self.assertEqual(
-            response_data['when_last_action_s'],
-            cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
-        )
+        self.assertIsNone(response_data.get('when_last_action_s', None))
+        self.assertIsNotNone(cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
+        self.assertLess(when_last_action_s, cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
 
         #do GET
 
-        when_last_action_s = response_data['when_last_action_s']
+        when_last_action_s = cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
 
         request = self.client.get(reverse('user_blocks_api'), data={'when_last_action_s': when_last_action_s})
 
@@ -5775,6 +5762,9 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertTrue(response_data['is_up_to_date'])
+        self.assertIsNone(response_data.get('when_last_action_s', None))
+        self.assertIsNotNone(cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
+        self.assertEqual(when_last_action_s, cache.get(UserBlocksAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
 
 
     def test_user_block__get_no_rows(self):
@@ -7268,11 +7258,7 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertEqual(UserFollows.objects.all().count(), 1)
-        self.assertGreater(response_data['when_last_action_s'], 0)
-        self.assertEqual(
-            response_data['when_last_action_s'],
-            cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(self.users[0].id), None)
-        )
+        self.assertIsNone(response_data.get('when_last_action_s', None))
 
 
     def test_user_following__already_following(self):
@@ -7680,7 +7666,6 @@ class Core_TestCase(TestCase):
         self.assertEqual(len(response_data['data']), 0)
         self.assertGreater(response_data['when_last_action_s'], 0)
         self.assertIsNotNone(when_last_action_s)
-        self.assertEqual(when_last_action_s, response_data['when_last_action_s'])
 
         #follow yourself
         #expect cache to stay the same
@@ -7704,6 +7689,7 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertIsNone(response_data.get('when_last_action_s', None))
+        self.assertIsNotNone(cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
         self.assertEqual(when_last_action_s, cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
 
         #follow someone
@@ -7726,15 +7712,14 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertIsNotNone(response_data.get('when_last_action_s', None))
-        self.assertLess(when_last_action_s, response_data['when_last_action_s'])
-
-        when_last_action_s = cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
-
-        self.assertEqual(when_last_action_s, response_data['when_last_action_s'])
+        self.assertIsNone(response_data.get('when_last_action_s', None))
+        self.assertIsNotNone(cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
+        self.assertLess(when_last_action_s, cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
 
         #unfollow someone
         #expect cache to be updated
+
+        when_last_action_s = cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
 
         time.sleep(2)
 
@@ -7753,17 +7738,13 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertIsNotNone(response_data.get('when_last_action_s', None))
-        self.assertLess(when_last_action_s, response_data['when_last_action_s'])
-
-        self.assertEqual(
-            response_data['when_last_action_s'],
-            cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
-        )
+        self.assertIsNone(response_data.get('when_last_action_s', None))
+        self.assertIsNotNone(cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
+        self.assertLess(when_last_action_s, cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
 
         #do GET
 
-        when_last_action_s = response_data['when_last_action_s']
+        when_last_action_s = cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
 
         request = self.client.get(reverse('user_follows_api'), data={'when_last_action_s': when_last_action_s})
 
@@ -7775,6 +7756,9 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertTrue(response_data['is_up_to_date'])
+        self.assertIsNone(response_data.get('when_last_action_s', None))
+        self.assertIsNotNone(cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
+        self.assertEqual(when_last_action_s, cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
 
 
     def test_user_following__cache_behaviour__has_db_rows__no_cache(self):
@@ -7802,7 +7786,6 @@ class Core_TestCase(TestCase):
         self.assertEqual(len(response_data['data']), 1)
         self.assertGreater(response_data['when_last_action_s'], 0)
         self.assertIsNotNone(when_last_action_s)
-        self.assertEqual(when_last_action_s, response_data['when_last_action_s'])
 
         #follow yourself
         #expect cache to stay the same
@@ -7848,15 +7831,14 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertIsNotNone(response_data.get('when_last_action_s', None))
-        self.assertLess(when_last_action_s, response_data['when_last_action_s'])
-
-        when_last_action_s = cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
-
-        self.assertEqual(when_last_action_s, response_data['when_last_action_s'])
+        self.assertIsNone(response_data.get('when_last_action_s', None))
+        self.assertIsNotNone(cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
+        self.assertLess(when_last_action_s, cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
 
         #unfollow someone
         #expect cache to be updated
+
+        when_last_action_s = cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
 
         time.sleep(2)
 
@@ -7875,17 +7857,13 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertIsNotNone(response_data.get('when_last_action_s', None))
-        self.assertLess(when_last_action_s, response_data['when_last_action_s'])
-
-        self.assertEqual(
-            response_data['when_last_action_s'],
-            cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
-        )
+        self.assertIsNone(response_data.get('when_last_action_s', None))
+        self.assertIsNotNone(cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
+        self.assertLess(when_last_action_s, cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
 
         #do GET
 
-        when_last_action_s = response_data['when_last_action_s']
+        when_last_action_s = cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None)
 
         request = self.client.get(reverse('user_follows_api'), data={'when_last_action_s': when_last_action_s})
 
@@ -7897,6 +7875,10 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertTrue(response_data['is_up_to_date'])
+        self.assertIsNone(response_data.get('when_last_action_s', None))
+        self.assertIsNotNone(cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
+        self.assertEqual(when_last_action_s, cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
+
 
 
 

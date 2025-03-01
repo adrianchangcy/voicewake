@@ -329,7 +329,6 @@
                     type: 'ok',
                     title: 'Link copied',
                     text: '',
-                    icon: {'font_awesome': 'fas fa-check'},
                 }, 2000);
 
                 this.has_shared = true;
@@ -385,7 +384,6 @@
                             type: 'error',
                             title: 'Action failed',
                             text: error_text,
-                            icon: {'font_awesome': 'fas fa-exclamation'},
                         }, 3000);
                     });
                 }, 500);
@@ -510,7 +508,6 @@
                         type: 'error',
                         title: 'Report failed',
                         text: error_text,
-                        icon: {'font_awesome': 'fas fa-exclamation'},
                     }, 3000);
 
                 }).finally(() => {
