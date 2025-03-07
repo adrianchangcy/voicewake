@@ -94,4 +94,16 @@ class RegExp_TestCase(TestCase):
             )
 
 
+#serializer still uses original value when overriding settings.SOME_VALUE via @override_settings() decorator
+#for testing limits, solution is to initialize data via for-loop and (settings.SOME_VALUE + 1)
+class Core_TestCase(TestCase):
 
+    @classmethod
+    def setUpTestData(cls):
+
+        pass
+
+
+    def test_any(self):
+
+        pass

@@ -158,6 +158,7 @@
         </div>
 
         <div>
+            <!--must specify a unique attribute as unique key for the scroller via "key-field"-->
             <DynamicScroller
                 v-show="filtered_events_store.getEventsForBrowsing.length > 0"
                 @visible="restoreScrollY()"

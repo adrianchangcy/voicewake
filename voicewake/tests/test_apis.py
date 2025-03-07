@@ -5272,7 +5272,7 @@ class Core_TestCase(TestCase):
         self.assertIsNone(response_data.get('when_last_action_s', None))
 
 
-    def test_user_block_missing_args(self):
+    def test_user_block__missing_args(self):
 
         self.login(self.users[1])
 
@@ -5284,8 +5284,8 @@ class Core_TestCase(TestCase):
 
         request = self.client.post(reverse('user_blocks_api'), data)
 
-        self.assertEqual(request.status_code, 400)
         print_function_name(request.content)
+        self.assertEqual(request.status_code, 400)
 
         #check
 
@@ -5311,7 +5311,7 @@ class Core_TestCase(TestCase):
         self.assertEqual(UserBlocks.objects.all().count(), 0)
 
 
-    def test_user_block_faulty_args(self):
+    def test_user_block__faulty_args(self):
 
         self.login(self.users[1])
 

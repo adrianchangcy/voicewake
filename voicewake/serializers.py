@@ -382,7 +382,7 @@ class UsersUsernameAPISerializer(serializers.Serializer):
 
     username = serializers.CharField(
         min_length=1,
-        max_length=30,
+        max_length=settings.USERNAME_MAX_LENGTH,
     )
     exists = serializers.BooleanField(
         required=False
@@ -481,7 +481,7 @@ class AudioClipReportsAPISerializer(serializers.Serializer):
 class BrowseEventsAPISerializer(serializers.Serializer):
 
     #cursor_token max_length is double of usual
-    username = serializers.CharField(required=False, default='', max_length=30)
+    username = serializers.CharField(required=False, default='', max_length=settings.USERNAME_MAX_LENGTH)
     latest_or_best = serializers.CharField()
     timeframe = serializers.CharField()
     audio_clip_role_name = serializers.CharField()
@@ -576,23 +576,6 @@ class BrowseEventsAPISerializer(serializers.Serializer):
 
 
 
-class CreateUserBlocksAPISerializer(serializers.Serializer):
-
-    username = serializers.CharField(min_length=1, max_length=30)
-    #defaults to False if not passed, even with required=True
-    #we make it strict and raise error if this is not passed
-    to_block = serializers.BooleanField(default=None, allow_null=True)
-
-    def validate_to_block(self, value):
-
-        if value is True or value is False:
-
-            return value
-
-        raise serializers.ValidationError('This field is required.')
-
-
-
 class CreateUserFollowsAPISerializer(serializers.Serializer):
 
     username = serializers.CharField(min_length=1, max_length=30)
@@ -664,6 +647,44 @@ class CheckAudioClipProcessingsAPISerializer(serializers.Serializer):
 class DeleteAudioClipProcessingsAPISerializer(serializers.Serializer):
 
     audio_clip_id = serializers.IntegerField()
+
+
+
+class PostUserBlocksAPISerializer(serializers.Serializer):
+
+    username = serializers.CharField(trim_whitespace=True, min_length=1, max_length=settings.USERNAME_MAX_LENGTH)
+    #defaults to False if not passed, even with required=True
+    #we make it strict and raise error if this is not passed
+    to_block = serializers.BooleanField(default=None, allow_null=True)
+
+    def validate_to_block(self, value):
+
+        if value is True or value is False:
+
+            return value
+
+        raise serializers.ValidationError('This field is required.')
+
+
+
+class PostUserFollowsAPISerializer(serializers.Serializer):
+
+    username = serializers.CharField(trim_whitespace=True, min_length=1, max_length=settings.USERNAME_MAX_LENGTH)
+    #defaults to False if not passed, even with required=True
+    #we make it strict and raise error if this is not passed
+    to_follow = serializers.BooleanField(default=None, allow_null=True)
+
+    def validate_to_follow(self, value):
+
+        if value is True or value is False:
+
+            return value
+
+        raise serializers.ValidationError('This field is required.')
+
+
+
+
 
 
 
