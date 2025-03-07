@@ -110,6 +110,8 @@
         },
         watch: {
         },
+        computed: {
+        },
         methods: {
             async callTest() : Promise<void> {
 

@@ -8,6 +8,8 @@
     //Worker() does not accept URL that is from another origin, i.e. cross-origin
 //
 //context:
+    //we are trying to import web worker script from AWS Cloudfront domain name, and running it on voicewake.com domain
+        //we are already importing all Vue code from Cloudfront, but CORS fails for web worker only
     //through tests, native Worker requests for passed URL without required headers by CloudFront CORS
         //Access-Control-Requests-Headers
         //Access-Control-Requests-Method

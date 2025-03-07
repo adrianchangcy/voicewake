@@ -92,8 +92,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     id = models.BigAutoField(primary_key=True)
     email = models.EmailField(max_length=254, unique=True)  #preserve uppercase
     email_lowercase = models.CharField(max_length=254, unique=True) #all lowercase
-    username = models.CharField(max_length=30, unique=True, null=True, blank=True, default=None) #preserve uppercase
-    username_lowercase = models.CharField(max_length=30, unique=True, null=True, blank=True, default=None) #all lowercase
+    username = models.CharField(max_length=settings.USERNAME_MAX_LENGTH, unique=True, null=True, blank=True, default=None) #preserve uppercase
+    username_lowercase = models.CharField(max_length=settings.USERNAME_MAX_LENGTH, unique=True, null=True, blank=True, default=None) #all lowercase
     totp_key = models.BinaryField()
     password = models.CharField(max_length=128) #still used for superuser
     is_staff = models.BooleanField(default=False)

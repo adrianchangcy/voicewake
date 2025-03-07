@@ -751,11 +751,12 @@ class UserBlocksAPI(generics.GenericAPIView):
     @method_decorator(app_decorators.deny_if_banned("response"))
     def post(self, request, *args, **kwargs):
 
+        #wanted to allow for bulk changes via usernames=[...], but it is overkill for what this feature is
         #initially also returned when_last_action_s
             #but it can give frontend a false confirmation of sync if frontend performs POST with outdated store
             #therefore, POST no longer returns when_last_action_s
 
-        serializer = CreateUserBlocksAPISerializer(data=request.data, many=False)
+        serializer = PostUserBlocksAPISerializer(data=request.data, many=False)
 
         #validate
         if serializer.is_valid() is False:
@@ -961,11 +962,12 @@ class UserFollowsAPI(generics.GenericAPIView):
     @method_decorator(app_decorators.deny_if_banned("response"))
     def post(self, request, *args, **kwargs):
 
+        #wanted to allow for bulk changes via usernames=[...], but it is overkill for what this feature is
         #initially also returned when_last_action_s
             #but it can give frontend a false confirmation of sync if frontend performs POST with outdated store
             #therefore, POST no longer returns when_last_action_s
 
-        serializer = CreateUserFollowsAPISerializer(data=request.data, many=False)
+        serializer = PostUserFollowsAPISerializer(data=request.data, many=False)
 
         #validate
         if serializer.is_valid() is False:

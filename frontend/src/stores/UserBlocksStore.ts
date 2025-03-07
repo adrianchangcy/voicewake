@@ -17,8 +17,9 @@ import axios from 'axios';
         //if persist=true, then tab closing prematurely let it stay is_get_processing=true
 export const useUserBlocksStore = defineStore('user_blocks_store', {
     state: ()=>({
-        //on unblock, simply remove from blocked_usernames
-        //on components that use this, be sure to only use .copy() and not to directly rely on this
+        //only update on GET
+        //GET is performed on every page open
+        //improves efficiency by not relying on db if GET is done with no changes made
         blocked_usernames: [] as string[],
         //only obtainable from GET
         cache_sync_when_last_action_s: 0,
@@ -61,6 +62,7 @@ export const useUserBlocksStore = defineStore('user_blocks_store', {
 
                 this.blocked_usernames = result.data['data'];
                 this.cache_sync_when_last_action_s = result.data['when_last_action_s'];
+
             }).catch(()=>{
 
                 notify({
@@ -87,36 +89,32 @@ export const useUserBlocksStore = defineStore('user_blocks_store', {
             await axios.post(url, data)
             .then(()=>{
 
-                let success_title = "";
-                let success_text = "";
+                //we use setTimeout() to prevent blocking main thread, in case the array is too large to be instantaneous
 
                 if(to_block === true){
 
-                    this.blocked_usernames.unshift(target_username);
+                    setTimeout(()=>{
 
-                    success_title = "Blocked";
-                    success_text = "You have blocked " + target_username + ".";
+                        notify({
+                            type: 'ok',
+                            title: "User blocked",
+                            text: "You have blocked " + target_username + ".",
+                        }, 4000);
+
+                    }, 0);
 
                 }else{
 
-                    this.blocked_usernames.indexOf('target_username');
+                    setTimeout(()=>{
 
-                    const target_index = this.blocked_usernames.findIndex((username)=>{username === target_username});
+                        notify({
+                            type: 'ok',
+                            title: "User unblocked",
+                            text: "You have unblocked " + target_username + ".",
+                        }, 4000);
 
-                    if(target_index !== -1){
-
-                        this.blocked_usernames.splice(target_index, 1);
-                    }
-
-                    success_title = "Unblocked";
-                    success_text = "You have unblocked " + target_username + ".";
+                    }, 0);
                 }
-
-                notify({
-                    type: 'ok',
-                    title: success_title,
-                    text: success_text,
-                }, 4000);
 
             }).catch((error:any)=>{
 
