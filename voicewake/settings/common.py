@@ -252,6 +252,9 @@ SITE_ID = 1
 AUTH_USER_MODEL = 'voicewake.User'
 
 
+USERNAME_MAX_LENGTH = int(os.environ['USERNAME_MAX_LENGTH'])
+
+
 #where to find all frontend + backend static files
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
@@ -470,16 +473,16 @@ CRONJOB_AUDIO_CLIP_MAX_BAN_DAYS = 1830 #366 days * 5, i.e. 5 years
 LIST_AUDIO_CLIP_QUANTITY_PER_PAGE = 20
 
 
-#LESS IMPORTANT CURSOR-BASED RECORDS
-#keep the numbers big to do less queries
-USER_BLOCK_QUANTITY_PER_PAGE = 100
-
-
 #USER LIMITS
 #for less important things that also gets all records
 #or for things that just make sense when most reasonable cases would not exceed x amount
-USER_BLOCKS_LIMIT = 200
-USER_FOLLOWS_LIMIT = 400
+USER_BLOCKS_LIMIT = int(os.environ['USER_BLOCKS_LIMIT'])
+USER_FOLLOWS_LIMIT = int(os.environ['USER_FOLLOWS_LIMIT'])
+
+
+#BATCH MINIMUM
+#minimum db queues required to start offloading to celery worker
+GENERAL_MIN_BATCH = 40
 
 
 #CACHE
