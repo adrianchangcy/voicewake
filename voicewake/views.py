@@ -156,10 +156,12 @@ class GetUserProfile(TemplateView):
         
         #check if blocked
         is_blocked = False
+        is_following = False
 
         if request.user.is_authenticated is True:
 
             is_blocked = UserBlocks.objects.filter(blocked_user=specific_user, user=request.user).exists()
+            is_following = UserFollows.objects.filter(followed_user=specific_user, user=request.user).exists()
 
         return render(
             request,
@@ -167,7 +169,8 @@ class GetUserProfile(TemplateView):
             context={
             'username': specific_user.username,
             'is_own_page': json.dumps(request.user.is_authenticated is True and request.user.id == specific_user.id),
-            'is_blocked': json.dumps(is_blocked)
+            'is_blocked': json.dumps(is_blocked),
+            'is_following': json.dumps(is_following),
             }
         )
 

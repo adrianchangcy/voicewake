@@ -1,9 +1,9 @@
 <template>
     <div>
-        <!--only update blocked_users once from [] to [...], not twice, to prevent bugs-->
+        <!--only update followed_users once from [] to [...], not twice, to prevent bugs-->
         <DynamicScroller
-            v-if="blocked_users.length > 0"
-            :items="blocked_users"
+            v-if="followed_users.length > 0"
+            :items="followed_users"
             :min-item-size="2"
             :page-mode="true"
             :buffer="dynamic_scroller_buffer"
@@ -33,18 +33,18 @@
                                 <span class="text-base font-normal text-ellipsis overflow-hidden">{{ item.username }}</span>
                             </VActionText>
                         
-                            <!--block/unblock-->
+                            <!--follow/unfollow-->
                             <div class="w-fit flex-shrink-0">
                                 <VActionBorder
-                                    @click="postUserBlocks(index)"
+                                    @click="postUserFollows(index)"
                                     prop-element-size="s"
                                     prop-font-size="s"
                                     prop-element="button"
                                     :prop-is-enabled="!isProcessing(index)"
-                                    :prop-is-icon-only="isProcessing(index) || item.is_blocked"
+                                    :prop-is-icon-only="isProcessing(index) || item.is_followed"
                                     type="button"
                                     :class="[
-                                        item.is_blocked ? 'w-fit' : 'w-[7rem]',
+                                        item.is_followed ? 'w-fit' : 'w-[7rem]',
                                         ''
                                     ]"
                                 >
@@ -54,13 +54,13 @@
                                     >
                                         <VLoading prop-element-size="s"/>
                                     </div>
-                                    <span v-show="!isProcessing(index) && item.is_blocked" class="px-6 mx-auto flex items-center text-center">
+                                    <span v-show="!isProcessing(index) && item.is_followed" class="px-6 mx-auto flex items-center text-center">
                                         <FontAwesomeIcon icon="fas fa-xmark" class="mx-auto text-xl"/>
-                                        <span class="sr-only">Unblock</span>
+                                        <span class="sr-only">Unfollow</span>
                                     </span>
-                                    <span v-show="!isProcessing(index) && !item.is_blocked" class="mx-auto flex items-center text-center">
-                                        <FontAwesomeIcon icon="fas fa-ban" class="text-base"/>
-                                        <span class="pl-1">Block</span>
+                                    <span v-show="!isProcessing(index) && !item.is_followed" class="mx-auto flex items-center text-center">
+                                        <FontAwesomeIcon icon="far fa-star" class="text-base"/>
+                                        <span class="pl-1">Follow</span>
                                     </span>
                                 </VActionBorder>
                             </div>
@@ -91,7 +91,7 @@
                 class="w-full px-1 pt-8"
             >
                 <template #title>
-                    <span>No users blocked.</span>
+                    <span>You have not followed any users.</span>
                 </template>
             </VDialogPlain>
         </TransitionFade>
@@ -111,40 +111,40 @@
     import { library } from '@fortawesome/fontawesome-svg-core';
     import { faCircle } from '@fortawesome/free-regular-svg-icons/faCircle';
     import { faUser } from '@fortawesome/free-solid-svg-icons/faUser';
-    import { faBan } from '@fortawesome/free-solid-svg-icons/faBan';
+    import { faStar } from '@fortawesome/free-regular-svg-icons/faStar';
     import { faXmark } from '@fortawesome/free-solid-svg-icons/faXmark';
 
-    library.add(faCircle, faUser, faBan, faXmark);
+    library.add(faCircle, faUser, faStar, faXmark);
 </script>
 
 
 <script lang="ts">
     import { defineComponent } from 'vue';
     // import { notify } from '@/wrappers/notify_wrapper';
-    import { useUserBlocksStore } from '@/stores/UserBlocksStore';
+    import { useUserFollowsStore } from '@/stores/UserFollowsStore';
     import { notify } from '@/wrappers/notify_wrapper';
     // import axios from 'axios';
 
-    interface BlockedUsersTypes {
+    interface FollowedUsersTypes {
         scroller_id: number,
         username: string,
-        is_blocked: boolean,
+        is_followed: boolean,
         is_processing: boolean,
     }
 
-    //from this page, only unblocking matters
+    //from this page, only unfollowing matters
     export default defineComponent({
-        name: 'ListUserBlocksApp',
+        name: 'ListUserFollowsApp',
         data(){
             return {
-                user_blocks_store: useUserBlocksStore(),
+                user_follows_store: useUserFollowsStore(),
                 is_fetching: false,
                 is_first_time_fetching: true,
 
-                //corresponds to per-element in user_blocks_store.getBlockedUsernames
+                //corresponds to per-element in user_follows_store.getFollowedUsernames
                 //while never explicitly stated, demo at docs has shown that the virtual scroller plugin only works with [{},{}]
                 //1D array will bug out
-                blocked_users: [] as BlockedUsersTypes[],
+                followed_users: [] as FollowedUsersTypes[],
 
                 dynamic_scroller_buffer: 1000, //px, larger means rendered earlier, needed for proper tabbing
                 window_resize_timeout: window.setTimeout(()=>{}, 0),
@@ -155,7 +155,7 @@
 
                 return (
                     this.is_fetching === true &&
-                    this.blocked_users.length === 0
+                    this.followed_users.length === 0
                 );
             },
             canShowEmptyMessage() : boolean {
@@ -163,35 +163,35 @@
                 return (
                     this.is_fetching === false &&
                     this.is_first_time_fetching === false &&
-                    this.user_blocks_store.getBlockedUsernames.length === 0
+                    this.user_follows_store.getFollowedUsernames.length === 0
                 );
             },
         },
         methods: {
             initiateComponentFromStore() : void {
 
-                //use setTimeout() in case it is so intensive that it blocks UI
+                //use setTimeout() in case it is so intensive that it follows UI
                 setTimeout(()=>{
 
                     //create copy, since the main store only updates via GET and does not allow changes from frontend
-                    const blocked_usernames = [...this.user_blocks_store.getBlockedUsernames];
+                    const followed_usernames = [...this.user_follows_store.getFollowedUsernames];
 
-                    for(let x = 0; x < blocked_usernames.length; x++){
+                    for(let x = 0; x < followed_usernames.length; x++){
 
-                        this.blocked_users.push({
+                        this.followed_users.push({
                             scroller_id: x,
-                            username: blocked_usernames[x],
-                            is_blocked: true,
+                            username: followed_usernames[x],
+                            is_followed: true,
                             is_processing: false,
-                        } as BlockedUsersTypes);
+                        } as FollowedUsersTypes);
                     }
                 }, 0);
             },
             getProfileURL(index:number) : string {
 
-                return window.location.origin + '/user/' + this.blocked_users[index]['username'];
+                return window.location.origin + '/user/' + this.followed_users[index]['username'];
             },
-            async getUserBlocks() : Promise<void> {
+            async getUserFollows() : Promise<void> {
 
                 if(this.is_first_time_fetching === false && this.is_fetching === true){
 
@@ -201,7 +201,7 @@
                 this.is_first_time_fetching = false;
                 this.is_fetching = true;
 
-                await this.user_blocks_store.getUserBlocksAPI()
+                await this.user_follows_store.getUserFollowsAPI()
                 .then(()=>{
 
                     this.initiateComponentFromStore();
@@ -211,45 +211,45 @@
                     this.is_fetching = false;
                 });
             },
-            async postUserBlocks(index:number) : Promise<void>{
+            async postUserFollows(index:number) : Promise<void>{
 
-                //let row stay if unblock, so user can re-block if needed
+                //let row stay if unfollow, so user can re-follow if needed
                 //also prevents the necessity of rediscovering index on update
 
                 if(
-                    index >= this.blocked_users.length ||
-                    this.blocked_users[index]['is_processing'] === true
+                    index >= this.followed_users.length ||
+                    this.followed_users[index]['is_processing'] === true
                 ){
 
                     throw new Error('Out of range.');
                 }
 
-                const target_username = this.blocked_users[index]['username'];
-                this.blocked_users[index]['is_processing'] = true;
+                const target_username = this.followed_users[index]['username'];
+                this.followed_users[index]['is_processing'] = true;
 
                 //rediscover index to avoid using old array context on new potentially-updated array context
-                //use setTimeout to avoid blocking thread in case array is too huge
+                //use setTimeout to avoid following thread in case array is too huge
 
-                await this.user_blocks_store.postUserBlocksAPI(target_username, !this.blocked_users[index]['is_blocked'])
+                await this.user_follows_store.postUserFollowsAPI(target_username, !this.followed_users[index]['is_followed'])
                 .then(()=>{
 
-                    this.blocked_users[index]['is_blocked'] = !this.blocked_users[index]['is_blocked'];
+                    this.followed_users[index]['is_followed'] = !this.followed_users[index]['is_followed'];
 
                 }).catch((error:any)=>{
 
                     let error_title = '';
                     let error_text = '';
 
-                    if(this.blocked_users[index]['is_blocked'] === true){
+                    if(this.followed_users[index]['is_followed'] === true){
 
-                        //failed to unblock
-                        error_title = 'Unblock failed';
+                        //failed to unfollow
+                        error_title = 'Unfollow failed';
                         error_text = error.response.data['message'];
 
                     }else{
 
-                        //failed to block
-                        error_title = 'Block failed';
+                        //failed to follow
+                        error_title = 'Follow failed';
                         error_text = error.response.data['message'];
                     }
 
@@ -261,12 +261,12 @@
 
                 }).finally(()=>{
 
-                    this.blocked_users[index]['is_processing'] = false;
+                    this.followed_users[index]['is_processing'] = false;
                 });
             },
             isProcessing(index:number) : boolean {
 
-                return this.blocked_users[index]['is_processing'];
+                return this.followed_users[index]['is_processing'];
             },
             async handleWindowResize() : Promise<void> {
 
@@ -285,7 +285,7 @@
 
             history.scrollRestoration = 'manual';
 
-            this.getUserBlocks();
+            this.getUserFollows();
         },
         mounted(){
 
