@@ -540,6 +540,8 @@
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
     import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
     import { useRedrawCanvasesStore } from '@/stores/RedrawCanvasesStore';
+    import { useUserBlocksStore } from '@/stores/UserBlocksStore';
+    import { useUserFollowsStore } from '@/stores/UserFollowsStore';
     import axios from 'axios';
 
     export default defineComponent({
@@ -625,6 +627,8 @@
                         useFilteredEventsStore('user_profile'),
                         useVPlaybackStore(),
                         useAudioClipProcessingsStore(),
+                        useUserBlocksStore(),
+                        useUserFollowsStore(),
                     ];
 
                     for(let x=0; x < stores_to_reset.length; x++){
