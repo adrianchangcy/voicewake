@@ -82,10 +82,10 @@ class TestAPI(generics.GenericAPIView):
     def get(self, request, *args, **kwargs):
 
 
-
         return Response(
             data={
-                'data': {},
+                'data': {
+                },
                 'message': '',
             },
             status=status.HTTP_200_OK
