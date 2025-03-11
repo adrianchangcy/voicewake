@@ -9,6 +9,7 @@ import CreateEventsApp from '../src/apps/CreateEventsApp.vue';
 import ListEventReplyChoicesApp from '../src/apps/ListEventReplyChoicesApp.vue';
 import ListUserBannedAudioClipsApp from '../src/apps/ListUserBannedAudioClipsApp.vue';
 import ListUserBlocksApp from '../src/apps/ListUserBlocksApp.vue';
+import ListUserFollowsApp from '../src/apps/ListUserBlocksApp.vue';
 import GetEventsApp from '../src/apps/GetEventsApp.vue';
 import BrowseEventsApp from '../src/apps/BrowseEventsApp.vue';
 import VUserLogInSignUp from '../src/components/main/VUserLogInSignUp.vue';
@@ -198,6 +199,12 @@ if(document.querySelector('#list-user-blocks-app')){
 
     createApp(ListUserBlocksApp)
         .mount('#list-user-blocks-app');
+}
+
+if(document.querySelector('#list-user-follows-app')){
+
+    createApp(ListUserFollowsApp)
+        .mount('#list-user-follows-app');
 }
 
 if(document.querySelector('#log-in-page')){
