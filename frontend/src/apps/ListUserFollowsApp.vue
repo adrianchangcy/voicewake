@@ -59,7 +59,6 @@
                                         <span class="sr-only">Unfollow</span>
                                     </span>
                                     <span v-show="!isProcessing(index) && !item.is_followed" class="mx-auto flex items-center text-center">
-                                        <FontAwesomeIcon icon="far fa-star" class="text-base"/>
                                         <span class="pl-1">Follow</span>
                                     </span>
                                 </VActionBorder>
@@ -111,10 +110,9 @@
     import { library } from '@fortawesome/fontawesome-svg-core';
     import { faCircle } from '@fortawesome/free-regular-svg-icons/faCircle';
     import { faUser } from '@fortawesome/free-solid-svg-icons/faUser';
-    import { faStar } from '@fortawesome/free-regular-svg-icons/faStar';
     import { faXmark } from '@fortawesome/free-solid-svg-icons/faXmark';
 
-    library.add(faCircle, faUser, faStar, faXmark);
+    library.add(faCircle, faUser, faXmark);
 </script>
 
 

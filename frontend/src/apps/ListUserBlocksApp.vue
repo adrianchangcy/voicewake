@@ -59,7 +59,6 @@
                                         <span class="sr-only">Unblock</span>
                                     </span>
                                     <span v-show="!isProcessing(index) && !item.is_blocked" class="mx-auto flex items-center text-center">
-                                        <FontAwesomeIcon icon="fas fa-ban" class="text-base"/>
                                         <span class="pl-1">Block</span>
                                     </span>
                                 </VActionBorder>
@@ -111,10 +110,9 @@
     import { library } from '@fortawesome/fontawesome-svg-core';
     import { faCircle } from '@fortawesome/free-regular-svg-icons/faCircle';
     import { faUser } from '@fortawesome/free-solid-svg-icons/faUser';
-    import { faBan } from '@fortawesome/free-solid-svg-icons/faBan';
     import { faXmark } from '@fortawesome/free-solid-svg-icons/faXmark';
 
-    library.add(faCircle, faUser, faBan, faXmark);
+    library.add(faCircle, faUser, faXmark);
 </script>
 
 

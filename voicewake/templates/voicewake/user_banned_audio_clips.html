@@ -4,7 +4,7 @@
     <title>
         You Are Banned
     </title>
-    <meta name="description" content="Your banned recordings, sorted by most recent.">
+    <meta name="description" content="Your banned recordings.">
     <meta name="robots" content="noindex,nofollow">
 {% endblock %}
 
@@ -16,19 +16,22 @@
     >
 
         <!--follows VTitle-->
-        <div class="py-8 text-center">
-            <i class="text-2xl fas fa-gavel" aria-hidden="true"></i>
-            <h1 class="text-4xl h-fit break-words">
+        <div>
+            <div class="pt-3"></div>
+            <!--top respects nav bar height-->
+            <!--z-index to prevent overlap from vue-virtual-scroller-->
+            <h1 class="text-4xl py-5 text-center h-fit break-words sticky top-[4.5rem] z-[1] bg-theme-light dark:bg-theme-dark">
                 Banned
             </h1>
-            <h2 class="text-xl font-medium h-fit break-words">
-                You are banned&nbsp;<span class="banned-until"></span>
+            <h2 class="text-lg text-center">
+                <span class="banned-until">You are banned</span>
             </h2>
-            <h3 class="pt-5 text-lg text-center">
-                Your banned recordings, sorted by most recent.
+            <h3 class="text-base text-center">
+                Sorted by most recent:
             </h3>
-        </div>
+            <div class="pt-8"></div>
 
-        <div id="list-user-banned-audio-clips-app"></div>
+            <div id="list-user-banned-audio-clips-app"></div>
+        </div>
     </div>
 {% endblock %}
