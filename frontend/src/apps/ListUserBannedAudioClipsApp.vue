@@ -20,7 +20,7 @@
                 :prop-has-auto-space-logo="false"
                 :prop-has-auto-space-title="false"
                 :prop-has-auto-space-content="false"
-                class="w-full px-1 pt-8"
+                class="w-full px-1 py-8"
             >
                 <template #title>
                     <span v-show="canShowEmptyMessage">No banned recordings.</span>
@@ -185,10 +185,10 @@
 
                 const banned_until_element = container.getElementsByClassName('banned-until')[0];
                 const banned_until = (container.getAttribute('data-banned-until') as string).replace(/ /g, 'T') + 'Z';
-                banned_until_element.textContent = 'for ' + prettyTimeRemaining(
+                banned_until_element.textContent = prettyTimeRemaining(
                     new Date().getTime(),
                     new Date(banned_until).getTime()
-                );
+                ) + " left";
             }
         },
         mounted(){
