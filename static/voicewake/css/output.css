@@ -1623,10 +1623,6 @@ video {
   background-color: rgb(255 255 255 / var(--tw-bg-opacity));
 }
 
-.bg-inherit {
-  background-color: inherit;
-}
-
 .bg-gradient-radial {
   background-image: radial-gradient(var(--tw-gradient-stops));
 }
@@ -1692,6 +1688,11 @@ video {
   padding-bottom: 0.5rem;
 }
 
+.py-5 {
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+
 .py-6 {
   padding-top: 1.5rem;
   padding-bottom: 1.5rem;
@@ -1700,11 +1701,6 @@ video {
 .py-8 {
   padding-top: 2rem;
   padding-bottom: 2rem;
-}
-
-.py-5 {
-  padding-top: 1.25rem;
-  padding-bottom: 1.25rem;
 }
 
 .pb-0 {
@@ -1831,6 +1827,10 @@ video {
   padding-top: 5rem;
 }
 
+.pt-3 {
+  padding-top: 0.75rem;
+}
+
 .pt-4 {
   padding-top: 1rem;
 }
@@ -1853,10 +1853,6 @@ video {
 
 .pt-\[1px\] {
   padding-top: 1px;
-}
-
-.pt-3 {
-  padding-top: 0.75rem;
 }
 
 .text-left {
