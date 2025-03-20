@@ -268,43 +268,6 @@ def prevent_events_from_queuing_twice_for_reply(user, events:list):
     )
 
 
-def prevent_events_from_showing_twice_at_front_page(user, events:list):
-
-    datetime_now = get_datetime_now()
-    bulk_user_events = []
-    user_ids = []
-    event_ids = []
-
-    for event in events:
-
-        if user.id not in user_ids and event not in event_ids:
-
-            bulk_user_events.append(
-                UserEvents(
-                    user=user,
-                    event=event,
-                )
-            )
-
-            user_ids.append(user.id)
-            event_ids.append(event.id)
-
-    #create rows if they don't yet exist
-    #ignore conflict because there's a decent chance that rows already exist, which is fine
-    UserEvents.objects.bulk_create(
-        bulk_user_events,
-        ignore_conflicts=True
-    )
-
-    #do extra update for rows that already exist during bulk_create
-    UserEvents.objects.filter(
-        user=user,
-        event_id__in=event_ids
-    ).update(
-        when_seen_at_front_page=datetime_now
-    )
-
-
 def get_user_create_events_and_replies_cooldown_s(user, context:Literal['create_event','create_reply'])->int:
 
     if context not in ['create_event', 'create_reply']:
