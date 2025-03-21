@@ -153,7 +153,7 @@
                                 bool_status_variable_or_callback: pop_up_manager_store.closeNavMenuPopUp,
                                 refs_to_exclude: ['nav_menu_opener']
                             }"
-                            class="absolute w-full h-[calc(100vh-4.5rem)] overflow-auto px-2 md:px-4 bg-theme-nav dark:bg-dark-theme-nav    border-l border-theme-gray-2 dark:border-transparent"
+                            class="absolute w-full h-[calc(100vh-4.5rem)] overflow-auto px-2 md:px-4 pb-10 bg-theme-nav dark:bg-dark-theme-nav    border-l border-theme-gray-2 dark:border-transparent"
                         >
                             <!--profile area-->
                             <div class="py-2 dark:text-dark-theme-white-1">
@@ -262,7 +262,7 @@
                                 <!--light/dark theme-->
                                 <div class="flex flex-row">
                                     <div class="pl-2 pr-4 md:pr-6 flex items-center">
-                                        <FontAwesomeIcon fixed-width icon="far fa-moon" class="mx-auto"/>
+                                        <FontAwesomeIcon fixed-width icon="fas fa-moon" class="mx-auto"/>
                                     </div>
                                     <!--follows "s" size action-->
                                     <div class="w-full flex items-center text-base font-medium pb-0.5">
@@ -321,7 +321,7 @@
                                     >
                                         <div class="h-full flex flex-row">
                                             <div class="pl-2 pr-4 md:pr-6 flex items-center">
-                                                <FontAwesomeIcon fixed-width icon="far fa-thumbs-up" class="mx-auto"/>
+                                                <FontAwesomeIcon fixed-width icon="fas fa-thumbs-up" class="mx-auto"/>
                                             </div>
                                             <div class="flex items-center">
                                                 <span class="text-left break-all">
@@ -345,7 +345,7 @@
                                     >
                                         <div class="h-full flex flex-row">
                                             <div class="pl-2 pr-4 md:pr-6 flex items-center">
-                                                <FontAwesomeIcon fixed-width icon="far fa-star" class="pt-0.5 mx-auto"/>
+                                                <FontAwesomeIcon fixed-width icon="fas fa-star" class="pt-0.5 mx-auto"/>
                                             </div>
                                             <div class="flex items-center">
                                                 <span class="text-left break-all">
@@ -404,7 +404,7 @@
                                 <!--light/dark theme-->
                                 <div class="flex flex-row">
                                     <div class="pl-2 pr-4 md:pr-6 flex items-center">
-                                        <FontAwesomeIcon fixed-width icon="far fa-moon" class="mx-auto"/>
+                                        <FontAwesomeIcon fixed-width icon="fas fa-moon" class="mx-auto"/>
                                     </div>
                                     <!--follows "s" size action-->
                                     <div class="w-full flex items-center text-base font-medium pb-0.5">
@@ -459,6 +459,12 @@
                                         </div>
                                     </VActionText>
                                 </div>
+                            </div>
+
+                            <!--copyright-->
+                            <div class="w-full text-center text-sm pt-10 flex flex-col">
+                                <span id="nav-copyright">Copyright &copy; 2025</span>
+                                <span>Adrian C.</span>
                             </div>
                         </div>
                     </div>
@@ -543,15 +549,15 @@
     import { faBan } from '@fortawesome/free-solid-svg-icons/faBan';
     import { faDoorOpen } from '@fortawesome/free-solid-svg-icons/faDoorOpen';
     import { faMicrophoneLines } from '@fortawesome/free-solid-svg-icons/faMicrophoneLines';
-    import { faThumbsUp as farThumbsUp } from '@fortawesome/free-regular-svg-icons/faThumbsUp';
-    import { faMoon } from '@fortawesome/free-regular-svg-icons/faMoon';
+    import { faThumbsUp as fasThumbsUp } from '@fortawesome/free-solid-svg-icons/faThumbsUp';
+    import { faMoon } from '@fortawesome/free-solid-svg-icons/faMoon';
     import { faQuestion } from '@fortawesome/free-solid-svg-icons/faQuestion';
-    import { faStar } from '@fortawesome/free-regular-svg-icons/faStar';
+    import { faStar } from '@fortawesome/free-solid-svg-icons/faStar';
 
     library.add(
         faWaveSquare, faComment, faComments, faCircleUser,
         faRightToBracket, faBan, faDoorOpen, faMicrophoneLines,
-        farThumbsUp, faMoon, faQuestion, faStar
+        fasThumbsUp, faMoon, faQuestion, faStar
     );
 </script>
 
@@ -712,10 +718,32 @@
                     return;
                 }
             },
+            handleCopyright() : void {
+
+                const target_element = document.getElementById('nav-copyright');
+
+                if(target_element === null){
+
+                    console.error('Missing copyright element.');
+                }
+
+                const current_year = new Date().getUTCFullYear();
+
+                //.textContent does not decode, so use .innerHTML instead
+
+                if(current_year > 2025){
+
+                    target_element!.innerHTML = 'Copyright &copy; 2025 - ' + current_year.toString();
+                }
+            }
         },
         beforeMount(){
 
             this.handleIsLogInSignUpStaticPage();
         },
+        mounted(){
+
+            this.handleCopyright();
+        }
     });
 </script>
