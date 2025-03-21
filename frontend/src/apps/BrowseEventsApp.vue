@@ -7,7 +7,7 @@
             v-if="isUserProfilePage || isUserLikesDislikesPage"
             :prop-page-context="propPageContext"
             :prop-has-default-actions="isUserProfilePage"
-            class="py-8 px-1"
+            class="px-1 pt-4 pb-10"
         >
             <span v-if="isUserLikesDislikesPage">Likes &#38; Dislikes</span>
         </VUserCard>
