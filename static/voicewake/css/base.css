@@ -55,6 +55,10 @@ NAMING STANDARDS
 
 Z-INDEX
     nav bar, z-50
+    VueVirtualScroller, z-0 by default
+    sticky page titles, z-[1]
+    floating drop-down menu, z-20
+    floating drop-down menu arrow, z-30
     anything on top of everything else, z-10
     everything else, nothing, i.e. z-0 by default
 

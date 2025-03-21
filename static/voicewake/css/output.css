@@ -690,6 +690,10 @@ video {
   right: 0.5rem;
 }
 
+.right-4 {
+  right: 1rem;
+}
+
 .right-6 {
   right: 1.5rem;
 }
@@ -1082,10 +1086,6 @@ video {
   width: 25%;
 }
 
-.w-\[6rem\] {
-  width: 6rem;
-}
-
 .w-\[75\%\] {
   width: 75%;
 }
@@ -1101,6 +1101,10 @@ video {
 
 .w-full {
   width: 100%;
+}
+
+.w-\[50\%\] {
+  width: 50%;
 }
 
 .min-w-0 {
@@ -1311,6 +1315,10 @@ video {
 
 .items-start {
   align-items: flex-start;
+}
+
+.items-end {
+  align-items: flex-end;
 }
 
 .items-center {
@@ -1688,14 +1696,14 @@ video {
   padding-bottom: 0.5rem;
 }
 
+.py-4 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
 .py-5 {
   padding-top: 1.25rem;
   padding-bottom: 1.25rem;
-}
-
-.py-6 {
-  padding-top: 1.5rem;
-  padding-bottom: 1.5rem;
 }
 
 .py-8 {
@@ -2209,6 +2217,10 @@ NAMING STANDARDS
 
 Z-INDEX
     nav bar, z-50
+    VueVirtualScroller, z-0 by default
+    sticky page titles, z-[1]
+    floating drop-down menu, z-20
+    floating drop-down menu arrow, z-30
     anything on top of everything else, z-10
     everything else, nothing, i.e. z-0 by default
 
