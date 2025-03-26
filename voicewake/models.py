@@ -98,7 +98,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     password = models.CharField(max_length=128) #still used for superuser
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)   #when False, login() and force_login() will fail
+    is_active = models.BooleanField(default=False)   #when False, login() and force_login() will fail
     banned_until = models.DateTimeField(null=True, blank=True, default=None)
     ban_count = models.SmallIntegerField(default=0)
     last_login = models.DateTimeField(null=True, blank=True)
@@ -123,15 +123,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ['username']
 
     objects = UserManager()
-
-    def save(self, *args, **kwargs):
-
-        self.email_lowercase = self.email.lower()
-
-        if self.username is not None:
-            self.username_lowercase = self.username.lower()
-
-        super(User, self).save(*args, **kwargs)
 
 
 #delete on success or on max attempts once max attempt timeout has passed

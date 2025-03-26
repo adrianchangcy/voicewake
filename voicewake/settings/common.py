@@ -252,7 +252,7 @@ SITE_ID = 1
 AUTH_USER_MODEL = 'voicewake.User'
 
 
-USERNAME_MAX_LENGTH = int(os.environ['USERNAME_MAX_LENGTH'])
+USERNAME_MAX_LENGTH = 30
 
 
 #where to find all frontend + backend static files
@@ -425,8 +425,8 @@ GENERAL_ROW_QUANTITY_PER_PAGE = 20
 
 
 #EVENT
-EVENT_CREATE_DAILY_LIMIT = int(os.environ['EVENT_CREATE_DAILY_LIMIT'])      #compares from 00:00:00 UTC
-EVENT_REPLY_DAILY_LIMIT = int(os.environ['EVENT_REPLY_DAILY_LIMIT'])       #compares from 00:00:00 UTC
+EVENT_CREATE_DAILY_LIMIT = 4      #compares from 00:00:00 UTC
+EVENT_REPLY_DAILY_LIMIT = 8       #compares from 00:00:00 UTC
 EVENT_REPLY_CHOICE_MAX_DURATION_S = 1200      #20 mins, when locked but is_replying=False
 EVENT_REPLY_MAX_DURATION_S = 3600       #60 mins, when locked and is_replying=True
 EVENT_QUANTITY_PER_PAGE = 10
@@ -476,8 +476,8 @@ LIST_AUDIO_CLIP_QUANTITY_PER_PAGE = 20
 #USER LIMITS
 #for less important things that also gets all records
 #or for things that just make sense when most reasonable cases would not exceed x amount
-USER_BLOCKS_LIMIT = int(os.environ['USER_BLOCKS_LIMIT'])
-USER_FOLLOWS_LIMIT = int(os.environ['USER_FOLLOWS_LIMIT'])
+USER_BLOCKS_LIMIT = 200
+USER_FOLLOWS_LIMIT = 400
 
 
 #BATCH MINIMUM
@@ -487,6 +487,11 @@ GENERAL_MIN_BATCH = 40
 
 #CACHE
 CACHE_AUDIO_CLIP_TONE_AGE_S = 1209600  #2 weeks
+
+
+#UNREGISTERED USERS
+UNREGISTERED_USERS_MAX_INACTIVE_DURATION_S = 172800 #2 days
+UNREGISTERED_USERS_DELETE_LIMIT = 100
 
 
 #CELERY
@@ -549,6 +554,13 @@ CELERY_BEAT_SCHEDULE = {
     },
     'cronjob_delete_audio_clip_processing_overdue': {
         'task': 'voicewake.cronjobs.cronjob_delete_audio_clip_processing_overdue',
+        'schedule': (12 * 60 * 60),  #12 hours
+        'options': {
+            'expires': 30,    #30 seconds
+        },
+    },
+    'cronjob_delete_unregistered_users': {
+        'task': 'voicewake.cronjobs.cronjob_delete_unregistered_users',
         'schedule': (12 * 60 * 60),  #12 hours
         'options': {
             'expires': 30,    #30 seconds
