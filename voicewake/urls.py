@@ -84,8 +84,6 @@ urlpatterns += [
     path('api/audio-clips/bans/list/<str:next_or_back>/<str:cursor_token>', apis.UserBannedAudioClipsAPI.as_view(), name="user_banned_audio_clips_api"),
     path('api/audio-clips/bans/list/<str:next_or_back>', apis.UserBannedAudioClipsAPI.as_view(), name="user_banned_audio_clips_api"),
 
-    path('api/users/blocks/list/<str:next_or_back>/<str:cursor_token>', apis.UserBlocksAPI.as_view(), name="user_blocks_api"),
-    path('api/users/blocks/list/<str:next_or_back>', apis.UserBlocksAPI.as_view(), name="user_blocks_api"),
     path('api/users/blocks', apis.UserBlocksAPI.as_view(), name="user_blocks_api"),
     path('api/users/follows', apis.UserFollowsAPI.as_view(), name="user_follows_api"),
     path('api/users/username/get/<str:username>', apis.UsersUsernameAPI.as_view(), name='users_get_username_api'),

@@ -170,7 +170,8 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
 
         #OTP verified, continue
 
-        #currently set to True because we have no implication for is_active=False
+        #finally do is_active=True
+        #so we can regularly clean up is_active=False accounts who failed to fully register, e.g. email impersonation
         #on is_active=False, login() will fail, as well as force_login() at tests
         user_instance.is_active = True
 

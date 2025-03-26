@@ -184,7 +184,7 @@ http {
             limit_req zone=common_list_apis burst=10;
         }
 
-        location ^~ /api/users/blocks/list/ {
+        location = /api/users/blocks {
             proxy_pass http://main$request_uri;
             limit_req zone=common_list_apis burst=10;
         }
