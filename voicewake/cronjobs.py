@@ -507,6 +507,44 @@ def cronjob_delete_audio_clip_processing_overdue():
         AudioClips.objects.filter(pk__in=audio_clip_ids).delete()
 
 
+@shared_task
+def cronjob_delete_unregistered_users():
+
+    #no known cases of "user is/was active" and is_active=False
+    #since UserOTP always exists on account creation, delete those that have UserOTP.otp_last_attempted to be lesser than x
+    #UsersLogInSignUpAPI() will auto-create account if deleted while in the process of signing up
+
+    #we split otp_last_attempted into valid datetime and None, so surplus of one would not prevent the other
+
+    #handle users with no otp attempts
+
+    user_ids = UserOTP.objects.select_related('user').filter(
+            otp_last_attempted=None,
+            user__is_active=False,
+            user__username_lowercase=None,
+        ).values('user_id')[:settings.UNREGISTERED_USERS_DELETE_LIMIT]
+
+    get_user_model().objects.filter(pk__in=user_ids).delete()
+
+    #handle users that have otp attempts
+
+    otp_last_attempted_checkpoint = get_datetime_now() - timedelta(seconds=settings.UNREGISTERED_USERS_MAX_INACTIVE_DURATION_S)
+
+    user_ids = UserOTP.objects.select_related('user').filter(
+            otp_last_attempted__lte=otp_last_attempted_checkpoint,
+            user__is_active=False,
+            user__username_lowercase=None,
+        ).values('user_id')[:settings.UNREGISTERED_USERS_DELETE_LIMIT]
+
+    get_user_model().objects.filter(pk__in=user_ids).delete()
+
+
+
+
+
+
+
+
 
 
 

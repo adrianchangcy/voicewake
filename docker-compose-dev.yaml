@@ -30,6 +30,7 @@ services:
       #postgres image will auto-create an empty database using POSTGRES_DB when image is first started
       #to connect via pgAdmin: host (localhost), port (host port, i.e. 5433), maintenance database (voicewake), username (DB_USER), passwod (DB_PASSWORD)
       #removing server at pgAdmin only removes it from the list, i.e. not actual database deletion
+      #for fresh start, "docker container ls -a", "docker container rm container_id", rebuild container, makemigrations, paste custom migration, migrate
       - POSTGRES_DB=${DB_NAME}
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}

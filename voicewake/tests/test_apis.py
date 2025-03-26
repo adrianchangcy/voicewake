@@ -477,7 +477,7 @@ class Users_TestCase(TestCase):
         self.assertEqual(response.wsgi_request.user.is_authenticated, False)
 
 
-    def test_sign_up_correctly(self, another_email=''):
+    def test_sign_up_ok(self, another_email=''):
 
         if len(another_email) > 0:
 
@@ -501,6 +501,10 @@ class Users_TestCase(TestCase):
             email_lowercase=email.lower()
         )
 
+        #check
+
+        self.assertFalse(user_instance.is_active)
+
         #get OTP
         handle_user_otp_class = HandleUserOTP(
             user_instance,
@@ -520,6 +524,8 @@ class Users_TestCase(TestCase):
         print(response.status_code)
         print(response.data)
 
+        user_instance.refresh_from_db()
+
         #expect
         self.assertTrue(response.data['is_logged_in'])
         self.assertTrue(response.wsgi_request.user.is_authenticated)
@@ -533,7 +539,7 @@ class Users_TestCase(TestCase):
 
     def test_sign_up_log_out(self):
 
-        self.test_sign_up_correctly()
+        self.test_sign_up_ok()
 
         response = self.client.post(reverse('users_log_out_api'))
 
@@ -552,12 +558,12 @@ class Users_TestCase(TestCase):
         #has email sent
         self.assertEqual(len(mail.outbox), 1)
 
-        user_exists = get_user_model().objects.filter(
+        target_user = get_user_model().objects.get(
             email_lowercase=self.email.lower()
-        ).exists()
+        )
 
         #user should be created with only email
-        self.assertTrue(user_exists)
+        self.assertFalse(target_user.is_active)
 
         print(response.status_code)
         print(response.data)
@@ -599,7 +605,7 @@ class Users_TestCase(TestCase):
         self.assertEqual(response.wsgi_request.user.is_authenticated, False)
 
 
-    def test_log_in_correctly(self):
+    def test_log_in_ok(self):
 
         self.test_sign_up_log_out()
 
@@ -617,6 +623,10 @@ class Users_TestCase(TestCase):
             email_lowercase=self.email.lower()
         )
 
+        #check
+
+        self.assertTrue(user_instance.is_active)
+
         #get correct OTP
         handle_user_otp_class = HandleUserOTP(
             user_instance,
@@ -633,6 +643,8 @@ class Users_TestCase(TestCase):
             'otp': new_otp
         })
 
+        user_instance.refresh_from_db()
+
         #expect
         self.assertEqual(response.wsgi_request.user.is_authenticated, True)
         self.assertTrue(response.data['is_logged_in'])
@@ -648,7 +660,7 @@ class Users_TestCase(TestCase):
 
         #https://stackoverflow.com/a/32330839
 
-        self.test_log_in_correctly()
+        self.test_log_in_ok()
 
         #log out
         response = self.client.post(reverse('users_log_out_api'))
@@ -672,7 +684,7 @@ class Users_TestCase(TestCase):
 
     def test_set_bad_username_is_logged_in(self):
 
-        self.test_log_in_correctly()
+        self.test_log_in_ok()
 
         #set username
         response = self.client.post(reverse('users_set_username_api'), data={
@@ -693,7 +705,7 @@ class Users_TestCase(TestCase):
 
     def test_set_username_is_logged_in(self):
 
-        self.test_log_in_correctly()
+        self.test_log_in_ok()
 
         #set username
         response = self.client.post(reverse('users_set_username_api'), data={
@@ -719,7 +731,7 @@ class Users_TestCase(TestCase):
         #new account
         another_email = 'user2@gmail.com'
 
-        self.test_sign_up_correctly(another_email)
+        self.test_sign_up_ok(another_email)
 
         #set username identical to user1
         response = self.client.post(reverse('users_set_username_api'), data={
