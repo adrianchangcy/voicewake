@@ -500,6 +500,7 @@ class BrowseEventsAPISerializer(serializers.Serializer):
             return value
         
         #disallow these usernames
+        #not sure if there's optimisation potential via "all requests in server shall read from this single memory allocation" for this file
         with open(os.path.join(settings.BASE_DIR, 'static/voicewake/json/bad_usernames.en.json')) as file:
 
             bad_usernames = json.load(file)['usernames']
