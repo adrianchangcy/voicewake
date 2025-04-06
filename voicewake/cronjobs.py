@@ -108,7 +108,7 @@ def cronjob_ban_audio_clips():
             audio_clip__dislike_count__gte=settings.BAN_AUDIO_CLIP_DISLIKE_COUNT,
         ).order_by(
             F('last_evaluated').asc(nulls_first=True)
-        )[0:settings.CRONJOB_BAN_AUDIO_CLIP_QUANTITY_LIMIT]
+        )[:settings.CRONJOB_BAN_AUDIO_CLIP_QUANTITY_LIMIT]
 
         #evaluate and print
         print(str(len(audio_clip_reports)) + ' audio_clips to ban')

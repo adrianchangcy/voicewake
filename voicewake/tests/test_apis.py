@@ -48,7 +48,6 @@ from voicewake.lambdas import *
 from voicewake.apis import UserBlocksAPI, UserFollowsAPI
 from voicewake.celery import app
 from django.conf import settings
-from voicewake.cronjobs import cronjob_ban_audio_clips
 
 
 
