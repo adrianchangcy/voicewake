@@ -513,6 +513,33 @@ def delete_celery_task_from_db(task_name=''):
         sys.exit(1)
 
 
+
+class Stopwatch:
+
+    def __init__(self):
+
+        self.start_time = None
+        self.end_time = None
+
+
+    def start(self):
+
+        self.start_time = time.perf_counter()
+        self.end_time = None
+
+
+    def end(self):
+
+        self.end_time = time.perf_counter()
+
+
+    def diff_seconds(self):
+
+        #0.000s
+        return round(self.end_time - self.start_time, 3)
+
+
+
 #for OTP
 class TOTPVerification:
 
@@ -604,7 +631,7 @@ class TOTPVerification:
             # check if the current counter value is higher than the value of
             # last verified counter and check if entered token is correct by
             # calling totp.verify_token()
-            if ((totp.t() > self.last_verified_counter) and (totp.verify(token, tolerance=self.token_validity_tolerance))):
+            if (totp.t() > self.last_verified_counter) and totp.verify(token, tolerance=self.token_validity_tolerance) is True:
 
                 # if the condition is true, set the last verified counter value
                 # to current counter value, and return True
@@ -1254,6 +1281,7 @@ class CreateAudioClips():
         self.processing_cache = None
 
 
+    #not a static method because it is easier to use when class is initiated
     def get_cooldown_on_audio_clip_create_limit_s(self)->int:
 
         #this is for "X max new posts every __", which in this case is every 24h
