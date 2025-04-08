@@ -55,6 +55,8 @@ class UserManager(BaseUserManager):
             username = remove_all_whitespace(username)
             username_lowercase = username.lower()
 
+        #if db is compromised, generate new secret for all users
+        #if extra protection against staffs is needed, encrypt+decrypt with a key stored in a highly protected .env file
         totp_key = secrets.token_bytes(settings.TOTP_KEY_BYTE_SIZE)
 
         user = self.model(
@@ -81,11 +83,12 @@ class UserManager(BaseUserManager):
     #for normal users, if manual, call get_user_model().objects.create_user()
     #py manage.py createsuperuser and UserCreationForm will auto-call these methods
 
+    #providing is_active allows for easier creation of test users
     def create_user(self, email, username=None, is_active=False, **extra_fields):
-        return self._create_user(email, username, None, is_active, False, False, **extra_fields)
+        return self._create_user(email, username, password=None, is_active=is_active, is_staff=False, is_superuser=False, **extra_fields)
 
     def create_superuser(self, email, username, password, **extra_fields):
-        return self._create_user(email, username, password, True, True, True, **extra_fields)
+        return self._create_user(email, username, password, is_active=True, is_staff=True, is_superuser=True, **extra_fields)
 
 
 class User(AbstractBaseUser, PermissionsMixin):

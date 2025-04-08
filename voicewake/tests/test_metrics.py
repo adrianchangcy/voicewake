@@ -954,6 +954,7 @@ class RealisticBulkData_TestCase(TestCase):
 
 #since we have cursor tokens, always test (latest->back/to), (earliest->back/to)
 #can we inherit this class and do high bulk_quantity for RealisticBulkData()?
+#specify --keepdb when running tests to only run bulk data creation once
 @override_settings(
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
     DEBUG=True,
@@ -967,11 +968,14 @@ class Core_TestCase(TestCase):
     def setUpTestData(cls):
 
         cls.realistic_bulk_data_class = RealisticBulkData()
-        cls.realistic_bulk_data_class.prepare_new_users()
-        cls.realistic_bulk_data_class.prepare_like_dislike_estimate()
-        cls.realistic_bulk_data_class.create_event_incomplete()
-        cls.realistic_bulk_data_class.create_event_completed()
-        cls.realistic_bulk_data_class.create_audio_clip_likes_dislikes()
+
+        if AudioClips.objects.count() == 0:
+
+            cls.realistic_bulk_data_class.prepare_new_users()
+            cls.realistic_bulk_data_class.prepare_like_dislike_estimate()
+            # cls.realistic_bulk_data_class.create_event_incomplete()
+            cls.realistic_bulk_data_class.create_event_completed()
+            cls.realistic_bulk_data_class.create_audio_clip_likes_dislikes()
 
         cls.metrics.update({'all_rows': cls.realistic_bulk_data_class.get_db_row_count()})
 
@@ -1013,13 +1017,18 @@ class Core_TestCase(TestCase):
 
     def test_browse_events__latest__all(self):
 
-        metrics = {}
+        self.login(self.realistic_bulk_data_class.users[0])
 
+        metrics = {}
         stopwatch = Stopwatch()
 
-        #basic
+        #it is difficult to write easy queries here to take cursor tokens into account
+        #take 2x rows with simpler query to test cursor tokens later
+        expected_rows = AudioClips.objects.filter(
+            audio_clip_role__audio_clip_role_name='originator',
+        ).order_by('-when_created', '-id')[0:settings.EVENT_QUANTITY_PER_PAGE*2]
 
-        self.login(self.realistic_bulk_data_class.users[0])
+        #basic, next
 
         data = {
             'latest_or_best': 'latest',
@@ -1041,21 +1050,135 @@ class Core_TestCase(TestCase):
         stopwatch.end()
 
         metrics.update({
-            'basic': {
+            'next__no_token': {
                 'data': data,
                 'time_s': stopwatch.diff_seconds(),
             }
         })
 
-        #basic, next
-        #compare first row's pk to last api's last row pk
+        #check
 
-        #basic, back
-        #check if we get the exact same rows as normal basic
+        #next_token, back_token, data
+        response_data = get_response_data(request)
 
-        #get earliest relevant row by pk DESC, do next, expect ok
+        #[{event:event,originator:[],responder:[]}]
+        for x in range(0, settings.EVENT_QUANTITY_PER_PAGE):
 
-        #get earliest relevant row by pk DESC, do back, expect 0 rows
+            self.assertEqual(expected_rows[x].pk, response_data['data'][x]['originator'][0]['id'])
+
+        #basic+token, next
+
+        data = {
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'originator',
+            'next_or_back': 'next',
+            'cursor_token': response_data['next_token']
+        }
+
+        stopwatch.start()
+
+        request = self.client.get(
+            reverse(
+                'browse_events_api',
+                kwargs=data
+            )
+        )
+        self.assertEqual(request.status_code, 200)
+
+        stopwatch.end()
+
+        metrics.update({
+            'next_token': {
+                'data': data,
+                'time_s': stopwatch.diff_seconds(),
+            }
+        })
+
+        #check
+
+        #next_token, back_token, data
+        response_data = get_response_data(request)
+
+        #[{event:event,originator:[],responder:[]}]
+        for x in range(settings.EVENT_QUANTITY_PER_PAGE, settings.EVENT_QUANTITY_PER_PAGE * 2):
+
+            self.assertEqual(expected_rows[x].pk, response_data['data'][x - settings.EVENT_QUANTITY_PER_PAGE]['originator'][0]['id'])
+
+        #basic+token, back
+
+        data = {
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'originator',
+            'next_or_back': 'back',
+            'cursor_token': response_data['back_token']
+        }
+
+        stopwatch.start()
+
+        request = self.client.get(
+            reverse(
+                'browse_events_api',
+                kwargs=data
+            )
+        )
+        self.assertEqual(request.status_code, 200)
+
+        stopwatch.end()
+
+        metrics.update({
+            'back_token': {
+                'data': data,
+                'time_s': stopwatch.diff_seconds(),
+            }
+        })
+
+        #check
+
+        #next_token, back_token, data
+        response_data = get_response_data(request)
+
+        #[{event:event,originator:[],responder:[]}]
+        for x in range(0, settings.EVENT_QUANTITY_PER_PAGE):
+
+            self.assertEqual(expected_rows[x].pk, response_data['data'][x]['originator'][0]['id'])
+
+        #basic+back, expect no rows
+
+        data = {
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'originator',
+            'next_or_back': 'back',
+            'cursor_token': response_data['back_token']
+        }
+
+        stopwatch.start()
+
+        request = self.client.get(
+            reverse(
+                'browse_events_api',
+                kwargs=data
+            )
+        )
+        self.assertEqual(request.status_code, 200)
+
+        stopwatch.end()
+
+        metrics.update({
+            'back_token__no_rows': {
+                'data': data,
+                'time_s': stopwatch.diff_seconds(),
+            }
+        })
+
+        #check
+
+        #next_token, back_token, data
+        response_data = get_response_data(request)
+
+        self.assertEqual(len(response_data['data']), 0)
 
         #all done
 
