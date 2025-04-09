@@ -565,6 +565,13 @@ class BrowseEventsAPISerializer(serializers.Serializer):
         raise serializers.ValidationError("Accepted values not specified: likes/dislikes.")
 
 
+    def validate_cursor_token(self, value):
+
+        #could use CharField's trim_whitespace, but that only handles leading and trailing whitespace
+        #must remove all of it
+        return remove_all_whitespace(value)
+
+
     def validate(self, data):
 
         if data['likes_or_dislikes'] != '' and len(data['username']) == 0:
@@ -608,6 +615,13 @@ class UserBannedAudioClipsAPISerializer(serializers.Serializer):
             return value
 
         raise serializers.ValidationError("Accepted values not specified: next/back.")
+
+
+    def validate_cursor_token(self, value):
+
+        #could use CharField's trim_whitespace, but that only handles leading and trailing whitespace
+        #must remove all of it
+        return remove_all_whitespace(value)
 
 
 
