@@ -456,6 +456,12 @@ class UserBannedAudioClipsAPI(generics.GenericAPIView):
 
             return result
 
+        #due to cursor-based browsing requiring 1 fixed direction for ordering,
+        #it is impossible to do "back" without providing cursor_token
+        if next_or_back == 'back' and cursor_token == '':
+
+            return result
+
         #handle cursor token
 
         decoded_cursor_token = {}
@@ -1247,6 +1253,12 @@ class BrowseEventsAPI(generics.GenericAPIView):
             'back_cursor_token': cursor_token,
         }
 
+        #due to cursor-based browsing requiring 1 fixed direction for ordering,
+        #it is impossible to do "back" without providing cursor_token
+        if next_or_back == 'back' and cursor_token == '':
+
+            return result
+
         username_lowercase = username.lower()
 
         #handle cursor token
@@ -1632,6 +1644,12 @@ class BrowseEventsAPI(generics.GenericAPIView):
             'next_cursor_token': cursor_token,
             'back_cursor_token': cursor_token,
         }
+
+        #due to cursor-based browsing requiring 1 fixed direction for ordering,
+        #it is impossible to do "back" without providing cursor_token
+        if next_or_back == 'back' and cursor_token == '':
+
+            return result
 
         username_lowercase = username.lower()
         is_liked = True if likes_or_dislikes == 'likes' else False
