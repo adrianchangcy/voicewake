@@ -64,11 +64,12 @@ class RealisticBulkData():
     def __init__(
         self,
         batch_quantity=1,
-        like_dislike_activitiy:Literal['low','high']='low',
+        reduce_audio_clip_tone_quantity=True,
     ):
 
         self.batch_quantity = batch_quantity
-        self.bulk_create_batch_size = 200
+        self.reduce_audio_clip_tone_quantity = reduce_audio_clip_tone_quantity
+        self.bulk_create_batch_size = 500
 
         self.user_quantity = 10 * batch_quantity
         self.user_prefix = "testuser"
@@ -79,7 +80,7 @@ class RealisticBulkData():
             'voicewake/tests/file_samples/audio_ok_1.mp3'
         )
 
-        self.event_quantity = 10 * batch_quantity
+        self.event_quantity = 20 * batch_quantity
 
         self.generic_statuses = {
             'ok': GenericStatuses.objects.get(generic_status_name='ok'),
@@ -96,7 +97,17 @@ class RealisticBulkData():
         #divide audio_clip_tones into 4 quarters, choose one per quarter to exclude when creating audio_clips
         #this will allow for better index testing
 
-        self.audio_clip_tones = AudioClipTones.objects.all()
+        self.audio_clip_tones = []
+
+        if self.reduce_audio_clip_tone_quantity is True:
+
+            new_audio_clip_tone_quantity = math.ceil(AudioClipTones.objects.count() / 4)
+            self.audio_clip_tones = AudioClipTones.objects.all()[:new_audio_clip_tone_quantity]
+
+        else:
+
+            self.audio_clip_tones = AudioClipTones.objects.all()
+
         self.excluded_audio_clip_tones_index = []
 
         audio_clip_tones_per_quarter = math.floor(len(self.audio_clip_tones) / 4)
@@ -113,8 +124,6 @@ class RealisticBulkData():
         #we accumulate audio_clips here to later have better control on creating likes/dislikes
         self.audio_clips = []
 
-        self.like_dislike_activity = like_dislike_activitiy
-        self.like_dislike_user_group_count = 2
         self.like_count = 0
         self.dislike_count = 0
         self.like_ratio = 0
@@ -164,7 +173,7 @@ class RealisticBulkData():
 
         #create users
 
-        for x in range(user_count, user_count+(self.user_quantity*self.batch_quantity)):
+        for x in range(user_count, user_count+self.user_quantity):
 
             new_username = self.user_prefix + str(x)
             new_email = new_username + '@gmail.com'
@@ -182,19 +191,19 @@ class RealisticBulkData():
 
     def prepare_like_dislike_estimate(self):
 
-        if self.like_dislike_activity == 'low':
+        if self.user_quantity < 10:
 
-            #for every audio_clip, 0.25 users will like, 0.25 users will dislike
-            self.like_count = math.ceil(len(self.users) / 4)
-            self.dislike_count = math.ceil(len(self.users) / 2) - self.like_count
-            self.like_ratio = (self.like_count / len(self.users)) / 100
+            raise ValueError('To keep things simple, please maintain a minimum of 10.')
 
-        elif self.like_dislike_activity == 'high':
+        #to prevent full exponential scaling, allow an amount of users to not vote at every audio_clip
 
-            #for every audio_clip, half users will like, half will dislike
-            self.like_count = math.ceil(len(self.users) / 2)
-            self.dislike_count = len(self.users) - self.like_count
-            self.like_ratio = (self.like_count / len(self.users)) / 100
+        #len(users) must not be divisible by (like_count + dislike_count), else one user has only likes, the other dislikes, etc.
+        #this is easily achieved by doing (len(users)/2)+1
+        #better +1 than -1, since having too few also means some users have only likes/dislikes
+        self.like_count = math.ceil(len(self.users) * 0.25)
+        self.dislike_count = math.ceil(len(self.users) * 0.5) + 1
+
+        self.like_ratio = (self.like_count / (self.like_count + self.dislike_count)) / 100
 
 
     def create_event_incomplete(self):
@@ -738,90 +747,63 @@ class RealisticBulkData():
     def create_audio_clip_likes_dislikes(self):
 
         #likes dislikes
+        #len(users) must not be divisible by (like_count + dislike_count), else one user has only likes, the other dislikes, etc.
 
         audio_clip_likes_dislikes = []
 
-        if self.like_dislike_activity == 'low':
+        user_index = 0
 
-            user_index = 0
+        for audio_clip in self.audio_clips:
 
-            for audio_clip in self.audio_clips:
+            current_like_count = 0
+            current_dislike_count = 0
+            current_user = None
 
-                current_like_count = 0
-                current_dislike_count = 0
-                current_user = None
+            #likes
+            while current_like_count < self.like_count:
 
-                #likes
-                while current_like_count < self.like_count:
+                try:
 
-                    try:
+                    current_user = self.users[user_index]
 
-                        current_user = self.users[user_index]
+                except IndexError:
 
-                    except IndexError:
+                    user_index = 0
+                    current_user = self.users[user_index]
 
-                        user_index = 0
-                        current_user = self.users[user_index]
-
-                    audio_clip_likes_dislikes.append(
-                        AudioClipLikesDislikes(
-                            user=current_user,
-                            audio_clip=audio_clip,
-                            is_liked=True
-                        )
+                audio_clip_likes_dislikes.append(
+                    AudioClipLikesDislikes(
+                        user=current_user,
+                        audio_clip=audio_clip,
+                        is_liked=True
                     )
+                )
 
-                    user_index += 1
-                    current_like_count += 1
+                user_index += 1
+                current_like_count += 1
 
-                #dislikes
-                while current_like_count < self.dislike_count:
+            #dislikes
+            while current_dislike_count < self.dislike_count:
 
-                    try:
+                try:
 
-                        current_user = self.users[user_index]
+                    current_user = self.users[user_index]
 
-                    except IndexError:
+                except IndexError:
 
-                        user_index = 0
-                        current_user = self.users[user_index]
+                    user_index = 0
+                    current_user = self.users[user_index]
 
-                    audio_clip_likes_dislikes.append(
-                        AudioClipLikesDislikes(
-                            user=self.users[user_index],
-                            audio_clip=audio_clip,
-                            is_liked=False
-                        )
+                audio_clip_likes_dislikes.append(
+                    AudioClipLikesDislikes(
+                        user=current_user,
+                        audio_clip=audio_clip,
+                        is_liked=False
                     )
+                )
 
-                    user_index += 1
-                    current_dislike_count += 1
-
-        elif self.like_dislike_activity == 'high':
-
-            for audio_clip in self.audio_clips:
-
-                #50% users will like
-                for x in range(0, self.like_count):
-
-                    audio_clip_likes_dislikes.append(
-                        AudioClipLikesDislikes(
-                            user=self.users[x],
-                            audio_clip=audio_clip,
-                            is_liked=True
-                        )
-                    )
-
-                #50% users will dislike
-                for x in range(self.like_count, len(self.users)):
-
-                    audio_clip_likes_dislikes.append(
-                        AudioClipLikesDislikes(
-                            user=self.users[x],
-                            audio_clip=audio_clip,
-                            is_liked=False
-                        )
-                    )
+                user_index += 1
+                current_dislike_count += 1
 
         #since this has the highest quantity, we can run it as one .bulk_create()
         print('Running .bulk_create() with ' + str(len(audio_clip_likes_dislikes)) + ' items for audio_clip_likes_dislikes.')
@@ -871,6 +853,21 @@ class RealisticBulkData_TestCase(TestCase):
             cache.clear()
         except:
             pass
+
+
+    @staticmethod
+    def check_likes_dislikes_of_users(realistic_bulk_data_class:RealisticBulkData):
+
+        print('\n\n')
+        print(realistic_bulk_data_class.like_count)
+        print(realistic_bulk_data_class.dislike_count)
+        print(realistic_bulk_data_class.like_ratio)
+        print(AudioClipLikesDislikes.objects.filter(is_liked=True).count())
+        print(AudioClipLikesDislikes.objects.filter(is_liked=False).count())
+        for user in realistic_bulk_data_class.users:
+            print(user.username)
+            print(AudioClipLikesDislikes.objects.filter(user=user, is_liked=True).count())
+            print(AudioClipLikesDislikes.objects.filter(user=user, is_liked=False).count())
 
 
     def test_realistic_bulk_data__event_incomplete(self):
@@ -954,7 +951,11 @@ class RealisticBulkData_TestCase(TestCase):
 
 #since we have cursor tokens, always test (latest->back/to), (earliest->back/to)
 #can we inherit this class and do high bulk_quantity for RealisticBulkData()?
-#specify --keepdb when running tests to only run bulk data creation once
+#for tests that test on filtering, we iterate through list of filters in a single test case, else exponential
+    #a test case for filters then becomes unique by differentiating into latest/earliest/empty rows to test db indexing
+#you may see a repeat queryset between audio_clip_tone_id and expected_rows
+    #this is necessary so we can do [:1] and guarantee all expected_rows later only has the same audio_clip_tone
+    #expected_rows on its own cannot guarantee that all rows have the same audio_clip_tone
 @override_settings(
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
     DEBUG=True,
@@ -967,7 +968,7 @@ class Core_TestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
-        cls.realistic_bulk_data_class = RealisticBulkData()
+        cls.realistic_bulk_data_class = RealisticBulkData(batch_quantity=1)
 
         if AudioClips.objects.count() == 0:
 
@@ -1015,6 +1016,659 @@ class Core_TestCase(TestCase):
 
         #need this here because @classmethod does not have .client attribute
         self.client.force_login(user_instance)
+
+
+    def test_browse_events(self):
+
+        logged_in_user = self.realistic_bulk_data_class.users[0]
+        metrics = {}
+        stopwatch = Stopwatch()
+
+        self.login(logged_in_user)
+
+        #==========
+        #main page, only completed
+        #==========
+
+        latest_completed_kwargs = []
+        latest_completed_expected_rows = []
+        latest_completed_audio_clip_tone_id = []
+
+        #no tone, originator
+        audio_clip_tone_id = None
+        latest_completed_audio_clip_tone_id.append(None)
+        latest_completed_kwargs.append({
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'originator',
+            'next_or_back': 'next',
+        })
+        latest_completed_expected_rows.append(
+            AudioClips.objects.filter(
+                audio_clip_role__audio_clip_role_name='originator',
+                event__generic_status__generic_status_name='completed',
+            ).order_by('-when_created', '-id')[:settings.EVENT_QUANTITY_PER_PAGE*2],
+        )
+
+        #no tone, responder
+        audio_clip_tone_id = None
+        latest_completed_audio_clip_tone_id.append(None)
+        latest_completed_kwargs.append({
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'responder',
+            'next_or_back': 'next',
+        })
+        latest_completed_expected_rows.append(
+            AudioClips.objects.filter(
+                audio_clip_role__audio_clip_role_name='responder',
+                event__generic_status__generic_status_name='completed',
+            ).order_by('-when_created', '-id')[:settings.EVENT_QUANTITY_PER_PAGE*2],
+        )
+
+        #has tone, originator
+        audio_clip_tone_id = AudioClips.objects.filter(
+            audio_clip_role__audio_clip_role_name='originator',
+            event__generic_status__generic_status_name='completed'
+        ).order_by('-id')[:1]
+        audio_clip_tone_id = audio_clip_tone_id[0].audio_clip_tone.id
+        latest_completed_audio_clip_tone_id.append(audio_clip_tone_id)
+        latest_completed_kwargs.append({
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'originator',
+            'next_or_back': 'next',
+            'audio_clip_tone_id': audio_clip_tone_id,
+        })
+        latest_completed_expected_rows.append(
+            AudioClips.objects.filter(
+                audio_clip_role__audio_clip_role_name='originator',
+                event__generic_status__generic_status_name='completed',
+                audio_clip_tone__id=audio_clip_tone_id,
+            ).order_by('-when_created', '-id')[:settings.EVENT_QUANTITY_PER_PAGE*2],
+        )
+
+        #has tone, responder
+        audio_clip_tone_id = AudioClips.objects.filter(
+            audio_clip_role__audio_clip_role_name='originator',
+            event__generic_status__generic_status_name='completed'
+        ).order_by('-id')[:1]
+        audio_clip_tone_id = audio_clip_tone_id[0].audio_clip_tone.id
+        latest_completed_audio_clip_tone_id.append(audio_clip_tone_id)
+        latest_completed_kwargs.append({
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'originator',
+            'next_or_back': 'next',
+            'audio_clip_tone_id': audio_clip_tone_id,
+        })
+        latest_completed_expected_rows.append(
+            AudioClips.objects.filter(
+                audio_clip_role__audio_clip_role_name='originator',
+                event__generic_status__generic_status_name='completed',
+                audio_clip_tone__id=audio_clip_tone_id,
+            ).order_by('-when_created', '-id')[:settings.EVENT_QUANTITY_PER_PAGE*2],
+        )
+
+        #check test setup
+
+        self.assertEqual(len(latest_completed_kwargs), len(latest_completed_audio_clip_tone_id))
+        self.assertEqual(len(latest_completed_kwargs), len(latest_completed_expected_rows))
+
+        for expected_rows in latest_completed_expected_rows:
+
+            self.assertEqual(len(expected_rows), settings.EVENT_QUANTITY_PER_PAGE*2)
+
+        #==========
+        #user page, only completed
+        #==========
+
+        user_latest_completed_kwargs = []
+        user_latest_completed_expected_rows = []
+        user_latest_completed_audio_clip_tone_id = []
+
+        #no tone, originator, username
+        audio_clip_tone_id = None
+        user_latest_completed_audio_clip_tone_id.append(None)
+        user_latest_completed_kwargs.append({
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'originator',
+            'next_or_back': 'next',
+            'username': logged_in_user.username,
+        })
+        user_latest_completed_expected_rows.append(
+            AudioClips.objects.filter(
+                audio_clip_role__audio_clip_role_name='originator',
+                event__generic_status__generic_status_name='completed',
+                user__id=logged_in_user.id,
+            ).order_by('-when_created', '-id')[:settings.EVENT_QUANTITY_PER_PAGE*2],
+        )
+
+        #no tone, responder, username
+        audio_clip_tone_id = None
+        user_latest_completed_audio_clip_tone_id.append(None)
+        user_latest_completed_kwargs.append({
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'responder',
+            'next_or_back': 'next',
+            'username': logged_in_user.username,
+        })
+        user_latest_completed_expected_rows.append(
+            AudioClips.objects.filter(
+                audio_clip_role__audio_clip_role_name='responder',
+                event__generic_status__generic_status_name='completed',
+                user__id=logged_in_user.id,
+            ).order_by('-when_created', '-id')[:settings.EVENT_QUANTITY_PER_PAGE*2],
+        )
+
+        #has tone, originator, username
+        audio_clip_tone_id = AudioClips.objects.filter(
+            audio_clip_role__audio_clip_role_name='originator',
+            event__generic_status__generic_status_name='completed',
+            user__id=logged_in_user.id,
+        ).order_by('-id')[:1]
+        audio_clip_tone_id = audio_clip_tone_id[0].audio_clip_tone.id
+        user_latest_completed_audio_clip_tone_id.append(audio_clip_tone_id)
+        user_latest_completed_kwargs.append({
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'originator',
+            'next_or_back': 'next',
+            'audio_clip_tone_id': audio_clip_tone_id,
+            'username': logged_in_user.username,
+        })
+        user_latest_completed_expected_rows.append(
+            AudioClips.objects.filter(
+                audio_clip_role__audio_clip_role_name='originator',
+                event__generic_status__generic_status_name='completed',
+                audio_clip_tone__id=audio_clip_tone_id,
+                user__id=logged_in_user.id,
+            ).order_by('-when_created', '-id')[:settings.EVENT_QUANTITY_PER_PAGE*2],
+        )
+
+        #has tone, responder, username
+        audio_clip_tone_id = AudioClips.objects.filter(
+            audio_clip_role__audio_clip_role_name='responder',
+            event__generic_status__generic_status_name='completed',
+            user__id=logged_in_user.id,
+        ).order_by('-id')[:1]
+        audio_clip_tone_id = audio_clip_tone_id[0].audio_clip_tone.id
+        user_latest_completed_audio_clip_tone_id.append(audio_clip_tone_id)
+        user_latest_completed_kwargs.append({
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'responder',
+            'next_or_back': 'next',
+            'audio_clip_tone_id': audio_clip_tone_id,
+            'username': logged_in_user.username,
+        })
+        user_latest_completed_expected_rows.append(
+            AudioClips.objects.filter(
+                audio_clip_role__audio_clip_role_name='responder',
+                event__generic_status__generic_status_name='completed',
+                audio_clip_tone__id=audio_clip_tone_id,
+                user__id=logged_in_user.id,
+            ).order_by('-when_created', '-id')[:settings.EVENT_QUANTITY_PER_PAGE*2],
+        )
+
+        #check test setup
+
+        self.assertEqual(len(user_latest_completed_kwargs), len(user_latest_completed_audio_clip_tone_id))
+        self.assertEqual(len(user_latest_completed_kwargs), len(user_latest_completed_expected_rows))
+
+        for expected_rows in user_latest_completed_expected_rows:
+
+            self.assertEqual(len(expected_rows), settings.EVENT_QUANTITY_PER_PAGE*2)
+
+        #==========
+        #own page, latest completed, likes dislikes
+        #==========
+
+        own_latest_completed_kwargs = []
+        own_latest_completed_expected_rows = []
+        own_latest_completed_audio_clip_tone_id = []
+
+        #no tone, originator, username, likes/dislikes
+        for likes_or_dislikes_choice in ['likes', 'dislikes']:
+            audio_clip_tone_id = None
+            own_latest_completed_audio_clip_tone_id.append(None)
+            own_latest_completed_kwargs.append({
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'originator',
+                'next_or_back': 'next',
+                'username': logged_in_user.username,
+                'likes_or_dislikes': likes_or_dislikes_choice,
+            })
+            like_dislike_rows = AudioClipLikesDislikes.objects.select_related('audio_clip').filter(
+                user=logged_in_user,
+                audio_clip__event__generic_status__generic_status_name__in=['incomplete', 'completed', 'deleted'],
+                audio_clip__generic_status__generic_status_name='ok',
+                audio_clip__audio_clip_role__audio_clip_role_name='originator',
+                is_liked=(likes_or_dislikes_choice == 'likes'),
+            ).order_by('-last_modified', '-id')[:settings.EVENT_QUANTITY_PER_PAGE*2]
+            expected_rows = []
+            for row in like_dislike_rows:
+                expected_rows.append(row.audio_clip)
+            own_latest_completed_expected_rows.append(expected_rows)
+
+        #no tone, responder, username, likes/dislikes
+        for likes_or_dislikes_choice in ['likes', 'dislikes']:
+            audio_clip_tone_id = None
+            own_latest_completed_audio_clip_tone_id.append(None)
+            own_latest_completed_kwargs.append({
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'responder',
+                'next_or_back': 'next',
+                'username': logged_in_user.username,
+                'likes_or_dislikes': likes_or_dislikes_choice,
+            })
+            like_dislike_rows = AudioClipLikesDislikes.objects.select_related('audio_clip').filter(
+                user=logged_in_user,
+                audio_clip__event__generic_status__generic_status_name__in=['completed', 'deleted'],
+                audio_clip__generic_status__generic_status_name='ok',
+                audio_clip__audio_clip_role__audio_clip_role_name='responder',
+                is_liked=(likes_or_dislikes_choice == 'likes'),
+            ).order_by('-last_modified', '-id')[:settings.EVENT_QUANTITY_PER_PAGE*2]
+            expected_rows = []
+            for row in like_dislike_rows:
+                expected_rows.append(row.audio_clip)
+            own_latest_completed_expected_rows.append(expected_rows)
+
+        #has tone, originator, username, likes/dislikes
+        for likes_or_dislikes_choice in ['likes', 'dislikes']:
+            audio_clip_tone_id = AudioClipLikesDislikes.objects.select_related('audio_clip').filter(
+                user=logged_in_user,
+                audio_clip__event__generic_status__generic_status_name__in=['incomplete', 'completed', 'deleted'],
+                audio_clip__generic_status__generic_status_name='ok',
+                audio_clip__audio_clip_role__audio_clip_role_name='originator',
+                is_liked=(likes_or_dislikes_choice == 'likes'),
+            ).order_by('-last_modified', '-id')[:1]
+            audio_clip_tone_id = audio_clip_tone_id[0].audio_clip.audio_clip_tone.id
+            own_latest_completed_audio_clip_tone_id.append(audio_clip_tone_id)
+            own_latest_completed_kwargs.append({
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'originator',
+                'next_or_back': 'next',
+                'username': logged_in_user.username,
+                'likes_or_dislikes': likes_or_dislikes_choice,
+                'audio_clip_tone_id': audio_clip_tone_id,
+            })
+            like_dislike_rows = AudioClipLikesDislikes.objects.select_related('audio_clip').filter(
+                user=logged_in_user,
+                audio_clip__event__generic_status__generic_status_name__in=['incomplete', 'completed', 'deleted'],
+                audio_clip__generic_status__generic_status_name='ok',
+                audio_clip__audio_clip_role__audio_clip_role_name='originator',
+                is_liked=(likes_or_dislikes_choice == 'likes'),
+                audio_clip__audio_clip_tone__id=audio_clip_tone_id,
+            ).order_by('-last_modified', '-id')[:settings.EVENT_QUANTITY_PER_PAGE*2]
+            expected_rows = []
+            for row in like_dislike_rows:
+                expected_rows.append(row.audio_clip)
+            own_latest_completed_expected_rows.append(expected_rows)
+
+        #has tone, responder, username, likes/dislikes
+        for likes_or_dislikes_choice in ['likes', 'dislikes']:
+            audio_clip_tone_id = AudioClipLikesDislikes.objects.select_related('audio_clip').filter(
+                user=logged_in_user,
+                audio_clip__event__generic_status__generic_status_name__in=['completed', 'deleted'],
+                audio_clip__generic_status__generic_status_name='ok',
+                audio_clip__audio_clip_role__audio_clip_role_name='responder',
+                is_liked=(likes_or_dislikes_choice == 'likes'),
+            ).order_by('-last_modified', '-id')[:1]
+            audio_clip_tone_id = audio_clip_tone_id[0].audio_clip.audio_clip_tone.id
+            own_latest_completed_audio_clip_tone_id.append(audio_clip_tone_id)
+            own_latest_completed_kwargs.append({
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'responder',
+                'next_or_back': 'next',
+                'username': logged_in_user.username,
+                'likes_or_dislikes': likes_or_dislikes_choice,
+                'audio_clip_tone_id': audio_clip_tone_id,
+            })
+            like_dislike_rows = AudioClipLikesDislikes.objects.select_related('audio_clip').filter(
+                user=logged_in_user,
+                audio_clip__event__generic_status__generic_status_name__in=['completed', 'deleted'],
+                audio_clip__generic_status__generic_status_name='ok',
+                audio_clip__audio_clip_role__audio_clip_role_name='responder',
+                is_liked=(likes_or_dislikes_choice == 'likes'),
+                audio_clip__audio_clip_tone__id=audio_clip_tone_id,
+            ).order_by('-last_modified', '-id')[:settings.EVENT_QUANTITY_PER_PAGE*2]
+            expected_rows = []
+            for row in like_dislike_rows:
+                expected_rows.append(row.audio_clip)
+            own_latest_completed_expected_rows.append(expected_rows)
+
+
+        self.assertEqual(len(own_latest_completed_kwargs), len(own_latest_completed_audio_clip_tone_id))
+        self.assertEqual(len(own_latest_completed_kwargs), len(own_latest_completed_expected_rows))
+
+        for expected_rows in own_latest_completed_expected_rows:
+
+            self.assertEqual(len(expected_rows), settings.EVENT_QUANTITY_PER_PAGE*2)
+
+        return
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        own_latest_completed_kwargs = [
+            #no audio_clip_tone
+            {
+                'username': logged_in_user.username,
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'originator',
+                'next_or_back': 'next',
+            },
+            {
+                'username': logged_in_user.username,
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'responder',
+                'next_or_back': 'next',
+            },
+            #has audio_clip_tone
+            {
+                'username': logged_in_user.username,
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'originator',
+                'next_or_back': 'next',
+                'audio_clip_tone_id': None,
+            },
+            {
+                'username': logged_in_user.username,
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'responder',
+                'next_or_back': 'next',
+                'audio_clip_tone_id': None,
+            },
+        ]
+
+        #since API only allows viewing own profile, username must match the logged in user in test case
+        user_likes_dislikes_kwargs = [
+            #no audio_clip_tone
+            {
+                'username': logged_in_user.username,
+                'likes_or_dislikes': 'likes',
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'originator',
+                'next_or_back': 'next',
+            },
+            {
+                'username': logged_in_user.username,
+                'likes_or_dislikes': 'likes',
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'responder',
+                'next_or_back': 'next',
+            },
+            {
+                'username': logged_in_user.username,
+                'likes_or_dislikes': 'dislikes',
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'originator',
+                'next_or_back': 'next',
+            },
+            {
+                'username': logged_in_user.username,
+                'likes_or_dislikes': 'dislikes',
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'responder',
+                'next_or_back': 'next',
+            },
+            #has audio_clip_tone
+            {
+                'username': logged_in_user.username,
+                'likes_or_dislikes': 'likes',
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'originator',
+                'next_or_back': 'next',
+                'audio_clip_tone_id': None,
+            },
+            {
+                'username': logged_in_user.username,
+                'likes_or_dislikes': 'likes',
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'responder',
+                'next_or_back': 'next',
+                'audio_clip_tone_id': None,
+            },
+            {
+                'username': logged_in_user.username,
+                'likes_or_dislikes': 'dislikes',
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'originator',
+                'next_or_back': 'next',
+                'audio_clip_tone_id': None,
+            },
+            {
+                'username': logged_in_user.username,
+                'likes_or_dislikes': 'dislikes',
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'responder',
+                'next_or_back': 'next',
+                'audio_clip_tone_id': None,
+            },
+        ]
+
+        #start
+
+        #basic, next
+
+        data = {
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'originator',
+            'next_or_back': 'next',
+        }
+
+        stopwatch.start()
+
+        request = self.client.get(
+            reverse(
+                'browse_events_api',
+                kwargs=data
+            )
+        )
+
+        stopwatch.end()
+
+        metrics.update({
+            'next__no_token': {
+                'data': data,
+                'time_s': stopwatch.diff_seconds(),
+            }
+        })
+
+        #check
+
+        self.assertEqual(request.status_code, 200)
+
+        #next_token, back_token, data
+        response_data = get_response_data(request)
+
+        self.assertGreater(len(response_data['data']), 0)
+
+        #[{event:event,originator:[],responder:[]}]
+        for x in range(0, settings.EVENT_QUANTITY_PER_PAGE):
+
+            self.assertEqual(expected_rows[x].pk, response_data['data'][x]['originator'][0]['id'])
+
+        #basic+token, next
+
+        data = {
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'originator',
+            'next_or_back': 'next',
+            'cursor_token': response_data['next_token']
+        }
+
+        stopwatch.start()
+
+        request = self.client.get(
+            reverse(
+                'browse_events_api',
+                kwargs=data
+            )
+        )
+
+        stopwatch.end()
+
+        metrics.update({
+            'next_token': {
+                'data': data,
+                'time_s': stopwatch.diff_seconds(),
+            }
+        })
+
+        #check
+
+        self.assertEqual(request.status_code, 200)
+
+        #next_token, back_token, data
+        response_data = get_response_data(request)
+
+        self.assertGreater(len(response_data['data']), 0)
+
+        #[{event:event,originator:[],responder:[]}]
+        for x in range(settings.EVENT_QUANTITY_PER_PAGE, settings.EVENT_QUANTITY_PER_PAGE * 2):
+
+            self.assertEqual(expected_rows[x].pk, response_data['data'][x - settings.EVENT_QUANTITY_PER_PAGE]['originator'][0]['id'])
+
+        #basic+token, back
+
+        data = {
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'originator',
+            'next_or_back': 'back',
+            'cursor_token': response_data['back_token']
+        }
+
+        stopwatch.start()
+
+        request = self.client.get(
+            reverse(
+                'browse_events_api',
+                kwargs=data
+            )
+        )
+
+        stopwatch.end()
+
+        metrics.update({
+            'back_token': {
+                'data': data,
+                'time_s': stopwatch.diff_seconds(),
+            }
+        })
+
+        #check
+
+        self.assertEqual(request.status_code, 200)
+
+        #next_token, back_token, data
+        response_data = get_response_data(request)
+
+        self.assertGreater(len(response_data['data']), 0)
+
+        #[{event:event,originator:[],responder:[]}]
+        for x in range(0, settings.EVENT_QUANTITY_PER_PAGE):
+
+            self.assertEqual(expected_rows[x].pk, response_data['data'][x]['originator'][0]['id'])
+
+        #basic+back, expect no rows
+
+        data = {
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'originator',
+            'next_or_back': 'back',
+            'cursor_token': response_data['back_token']
+        }
+
+        stopwatch.start()
+
+        request = self.client.get(
+            reverse(
+                'browse_events_api',
+                kwargs=data
+            )
+        )
+
+        stopwatch.end()
+
+        metrics.update({
+            'back_token__no_rows': {
+                'data': data,
+                'time_s': stopwatch.diff_seconds(),
+            }
+        })
+
+        #check
+
+        self.assertEqual(request.status_code, 200)
+
+        #next_token, back_token, data
+        response_data = get_response_data(request)
+
+        self.assertEqual(len(response_data['data']), 0)
+
+        #done
+
+        self.metrics.update({inspect.currentframe().f_code.co_name: metrics})
+
+
+    def test_browse_events__using_audio_clip_tone_from_latest_audio_clip_row(self):
+
+        pass
+
+
+    def test_browse_events__using_audio_clip_tone_from_earliest_audio_clip_row(self):
+
+        pass
+
+
+    def test_browse_events__using_audio_clip_tone_from_earliest_audio_clip_row(self):
+
+        pass
 
 
     def test_browse_events__back_no_token__always_no_rows(self):
@@ -1066,6 +1720,21 @@ class Core_TestCase(TestCase):
                 'timeframe': 'all',
                 'audio_clip_role_name': 'originator',
                 'next_or_back': 'back',
+                'audio_clip_tone_id': audio_clip_tone.id,
+            },
+            {
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'responder',
+                'next_or_back': 'back',
+                'audio_clip_tone_id': audio_clip_tone.id,
+            },
+            #"any" audio_clip_tone
+            {
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'originator',
+                'next_or_back': 'back',
                 'username': self.realistic_bulk_data_class.users[0].username,
             },
             {
@@ -1075,18 +1744,64 @@ class Core_TestCase(TestCase):
                 'next_or_back': 'back',
                 'username': self.realistic_bulk_data_class.users[0].username,
             },
+            #specified audio_clip_tone
             {
                 'latest_or_best': 'latest',
                 'timeframe': 'all',
                 'audio_clip_role_name': 'originator',
                 'next_or_back': 'back',
                 'audio_clip_tone_id': audio_clip_tone.id,
+                'username': self.realistic_bulk_data_class.users[0].username,
             },
             {
                 'latest_or_best': 'latest',
                 'timeframe': 'all',
                 'audio_clip_role_name': 'responder',
                 'next_or_back': 'back',
+                'audio_clip_tone_id': audio_clip_tone.id,
+                'username': self.realistic_bulk_data_class.users[0].username,
+            },
+            #likes/dislikes + "any" audio_clip_tone
+            {
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'originator',
+                'next_or_back': 'back',
+                'username': self.realistic_bulk_data_class.users[0].username,
+                'likes_or_dislikes': 'likes',
+            },
+            {
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'originator',
+                'next_or_back': 'back',
+                'username': self.realistic_bulk_data_class.users[0].username,
+                'likes_or_dislikes': 'dislikes',
+            },
+            {
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'responder',
+                'next_or_back': 'back',
+                'username': self.realistic_bulk_data_class.users[0].username,
+                'likes_or_dislikes': 'likes',
+            },
+            {
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'responder',
+                'next_or_back': 'back',
+                'username': self.realistic_bulk_data_class.users[0].username,
+                'likes_or_dislikes': 'dislikes',
+            },
+            #likes/dislikes + specified audio_clip_tone
+            {
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'originator',
+                'next_or_back': 'back',
+                'username': self.realistic_bulk_data_class.users[0].username,
+                'likes_or_dislikes': 'likes',
                 'audio_clip_tone_id': audio_clip_tone.id,
             },
             {
@@ -1094,16 +1809,27 @@ class Core_TestCase(TestCase):
                 'timeframe': 'all',
                 'audio_clip_role_name': 'originator',
                 'next_or_back': 'back',
-                'audio_clip_tone_id': audio_clip_tone.id,
                 'username': self.realistic_bulk_data_class.users[0].username,
+                'likes_or_dislikes': 'dislikes',
+                'audio_clip_tone_id': audio_clip_tone.id,
             },
             {
                 'latest_or_best': 'latest',
                 'timeframe': 'all',
                 'audio_clip_role_name': 'responder',
                 'next_or_back': 'back',
-                'audio_clip_tone_id': audio_clip_tone.id,
                 'username': self.realistic_bulk_data_class.users[0].username,
+                'likes_or_dislikes': 'likes',
+                'audio_clip_tone_id': audio_clip_tone.id,
+            },
+            {
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'responder',
+                'next_or_back': 'back',
+                'username': self.realistic_bulk_data_class.users[0].username,
+                'likes_or_dislikes': 'dislikes',
+                'audio_clip_tone_id': audio_clip_tone.id,
             },
         ]
 
@@ -1141,6 +1867,24 @@ class Core_TestCase(TestCase):
         #done
 
         self.metrics.update({inspect.currentframe().f_code.co_name: metrics})
+
+
+    def test_browse_events__next__no_rows_left(self):
+
+        pass
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     def test_browse_events__latest_completed__originator__all(self):
@@ -2809,34 +3553,35 @@ class Core_TestCase(TestCase):
         self.metrics.update({inspect.currentframe().f_code.co_name: metrics})
 
 
-    def test_browse_events__user_latest__all(self):
-
-        pass
 
 
-    def test_browse_events__user_latest__by_audio_clip_tone(self):
-
-        pass
 
 
-    def test_browse_events__user_latest__by_unused_audio_clip_tone(self):
-
-        pass
 
 
-    def test_browse_events__user_latest_likes_dislikes__all(self):
-
-        pass
 
 
-    def test_browse_events__user_latest_likes_dislikes__by_audio_clip_tone(self):
-
-        pass
 
 
-    def test_browse_events__user_latest_likes_dislikes__by_unused_audio_clip_tone(self):
 
-        pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     def test_list_event_reply_choices__ok(self):

@@ -7891,7 +7891,37 @@ class Core_TestCase(TestCase):
         self.assertEqual(when_last_action_s, cache.get(UserFollowsAPI().determine_when_last_action_s_cache_key(user_id=self.users[0].id), None))
 
 
+    def test_browse_events__missing_args(self):
+        pass
 
+
+    def test_browse_events__faulty_args(self):
+        pass
+
+
+    def test_browse_events__browse_likes_dislikes__only_own_profile_allowed(self):
+        pass
+
+
+    def test_browse_events__ok(self):
+        #tests are in voicewake.tests.test_metrics.Core_TestCase
+        pass
+
+
+    def test_user_banned_audio_clip__missing_args(self):
+        pass
+
+
+    def test_user_banned_audio_clip__faulty_args(self):
+        pass
+
+
+    def test_user_banned_audio_clip__can_only_view_while_banned(self):
+        pass
+
+
+    def test_user_banned_audio_clip__ok(self):
+        pass
 
 
 
