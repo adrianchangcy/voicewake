@@ -1626,8 +1626,8 @@ class BrowseEventsAPI(generics.GenericAPIView):
                 #this issue persists when user is specified, but is also fixed using dummy ORDER BY is_banned
 
 
-    #this is ready to handle viewing other users' likes dislikes
-    #but UI is not ready, so for now, can only view user's own likes dislikes
+    #ready to handle any user's likes/dislikes, but frontend isn't, so can only view own likes/dislikes for now
+    #frontend shall accept "deleted" event, but audio_clips must always be "ok", to ensure 1:1 originator:responder
     def list_latest_liked_disliked_audio_clips(
         self,
         username:str,
@@ -1731,17 +1731,17 @@ class BrowseEventsAPI(generics.GenericAPIView):
 
         if audio_clip_role_name == 'originator':
 
-            #for originator, show incomplete and completed for profile page
+            #allow events of incomplete/completed/deleted
             event_generic_status_name_sql = '''
                 AND e.generic_status_id IN (
                     SELECT id FROM generic_statuses
-                    WHERE generic_status_name IN ('incomplete', 'completed')
+                    WHERE generic_status_name IN ('incomplete', 'completed', 'deleted')
                 )
             '''
 
         elif audio_clip_role_name == 'responder':
 
-            #show completed, but also deleted
+            #allow events of completed/deleted
             event_generic_status_name_sql = '''
                 AND e.generic_status_id IN (
                     SELECT id FROM generic_statuses
@@ -1750,6 +1750,7 @@ class BrowseEventsAPI(generics.GenericAPIView):
             '''
 
         #get audio_clips
+        #only allow "ok" audio_clips to ensure 1:1, as there can be 1 originator, 2 deleted responders, 1 responder
 
         full_sql = '''
             WITH target_events AS (
@@ -2912,7 +2913,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
 
 
-#to submit likes/dislikes
+#submit likes/dislikes
 #is_liked=True/False, or destroy when undone
 class AudioClipLikesDislikesAPI(generics.GenericAPIView):
 
@@ -2920,6 +2921,8 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     #no get() needed, since likes/dislikes are tied directly to audio_clips
+    #still allow when audio_clip doesn't have generic_status "ok"
+        #votes will matter when reassessed during repeated report, as well as allowing users to unlike deleted audio_clips
 
     #create
     @method_decorator([
