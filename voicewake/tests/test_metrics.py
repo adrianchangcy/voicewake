@@ -1032,11 +1032,11 @@ class Core_TestCase(TestCase):
 
         latest_completed_kwargs = []
         latest_completed_expected_rows = []
-        latest_completed_audio_clip_tone_id = []
+        latest_completed_audio_clip_tone_ids = []
 
         #no tone, originator
         audio_clip_tone_id = None
-        latest_completed_audio_clip_tone_id.append(None)
+        latest_completed_audio_clip_tone_ids.append(None)
         latest_completed_kwargs.append({
             'latest_or_best': 'latest',
             'timeframe': 'all',
@@ -1052,7 +1052,7 @@ class Core_TestCase(TestCase):
 
         #no tone, responder
         audio_clip_tone_id = None
-        latest_completed_audio_clip_tone_id.append(None)
+        latest_completed_audio_clip_tone_ids.append(None)
         latest_completed_kwargs.append({
             'latest_or_best': 'latest',
             'timeframe': 'all',
@@ -1072,7 +1072,7 @@ class Core_TestCase(TestCase):
             event__generic_status__generic_status_name='completed'
         ).order_by('-id')[:1]
         audio_clip_tone_id = audio_clip_tone_id[0].audio_clip_tone.id
-        latest_completed_audio_clip_tone_id.append(audio_clip_tone_id)
+        latest_completed_audio_clip_tone_ids.append(audio_clip_tone_id)
         latest_completed_kwargs.append({
             'latest_or_best': 'latest',
             'timeframe': 'all',
@@ -1094,7 +1094,7 @@ class Core_TestCase(TestCase):
             event__generic_status__generic_status_name='completed'
         ).order_by('-id')[:1]
         audio_clip_tone_id = audio_clip_tone_id[0].audio_clip_tone.id
-        latest_completed_audio_clip_tone_id.append(audio_clip_tone_id)
+        latest_completed_audio_clip_tone_ids.append(audio_clip_tone_id)
         latest_completed_kwargs.append({
             'latest_or_best': 'latest',
             'timeframe': 'all',
@@ -1112,7 +1112,7 @@ class Core_TestCase(TestCase):
 
         #check test setup
 
-        self.assertEqual(len(latest_completed_kwargs), len(latest_completed_audio_clip_tone_id))
+        self.assertEqual(len(latest_completed_kwargs), len(latest_completed_audio_clip_tone_ids))
         self.assertEqual(len(latest_completed_kwargs), len(latest_completed_expected_rows))
 
         for expected_rows in latest_completed_expected_rows:
@@ -1125,11 +1125,11 @@ class Core_TestCase(TestCase):
 
         user_latest_completed_kwargs = []
         user_latest_completed_expected_rows = []
-        user_latest_completed_audio_clip_tone_id = []
+        user_latest_completed_audio_clip_tone_ids = []
 
         #no tone, originator, username
         audio_clip_tone_id = None
-        user_latest_completed_audio_clip_tone_id.append(None)
+        user_latest_completed_audio_clip_tone_ids.append(None)
         user_latest_completed_kwargs.append({
             'latest_or_best': 'latest',
             'timeframe': 'all',
@@ -1147,7 +1147,7 @@ class Core_TestCase(TestCase):
 
         #no tone, responder, username
         audio_clip_tone_id = None
-        user_latest_completed_audio_clip_tone_id.append(None)
+        user_latest_completed_audio_clip_tone_ids.append(None)
         user_latest_completed_kwargs.append({
             'latest_or_best': 'latest',
             'timeframe': 'all',
@@ -1170,7 +1170,7 @@ class Core_TestCase(TestCase):
             user__id=logged_in_user.id,
         ).order_by('-id')[:1]
         audio_clip_tone_id = audio_clip_tone_id[0].audio_clip_tone.id
-        user_latest_completed_audio_clip_tone_id.append(audio_clip_tone_id)
+        user_latest_completed_audio_clip_tone_ids.append(audio_clip_tone_id)
         user_latest_completed_kwargs.append({
             'latest_or_best': 'latest',
             'timeframe': 'all',
@@ -1195,7 +1195,7 @@ class Core_TestCase(TestCase):
             user__id=logged_in_user.id,
         ).order_by('-id')[:1]
         audio_clip_tone_id = audio_clip_tone_id[0].audio_clip_tone.id
-        user_latest_completed_audio_clip_tone_id.append(audio_clip_tone_id)
+        user_latest_completed_audio_clip_tone_ids.append(audio_clip_tone_id)
         user_latest_completed_kwargs.append({
             'latest_or_best': 'latest',
             'timeframe': 'all',
@@ -1215,7 +1215,7 @@ class Core_TestCase(TestCase):
 
         #check test setup
 
-        self.assertEqual(len(user_latest_completed_kwargs), len(user_latest_completed_audio_clip_tone_id))
+        self.assertEqual(len(user_latest_completed_kwargs), len(user_latest_completed_audio_clip_tone_ids))
         self.assertEqual(len(user_latest_completed_kwargs), len(user_latest_completed_expected_rows))
 
         for expected_rows in user_latest_completed_expected_rows:
@@ -1228,12 +1228,12 @@ class Core_TestCase(TestCase):
 
         own_latest_completed_kwargs = []
         own_latest_completed_expected_rows = []
-        own_latest_completed_audio_clip_tone_id = []
+        own_latest_completed_audio_clip_tone_ids = []
 
         #no tone, originator, username, likes/dislikes
         for likes_or_dislikes_choice in ['likes', 'dislikes']:
             audio_clip_tone_id = None
-            own_latest_completed_audio_clip_tone_id.append(None)
+            own_latest_completed_audio_clip_tone_ids.append(None)
             own_latest_completed_kwargs.append({
                 'latest_or_best': 'latest',
                 'timeframe': 'all',
@@ -1257,7 +1257,7 @@ class Core_TestCase(TestCase):
         #no tone, responder, username, likes/dislikes
         for likes_or_dislikes_choice in ['likes', 'dislikes']:
             audio_clip_tone_id = None
-            own_latest_completed_audio_clip_tone_id.append(None)
+            own_latest_completed_audio_clip_tone_ids.append(None)
             own_latest_completed_kwargs.append({
                 'latest_or_best': 'latest',
                 'timeframe': 'all',
@@ -1288,7 +1288,7 @@ class Core_TestCase(TestCase):
                 is_liked=(likes_or_dislikes_choice == 'likes'),
             ).order_by('-last_modified', '-id')[:1]
             audio_clip_tone_id = audio_clip_tone_id[0].audio_clip.audio_clip_tone.id
-            own_latest_completed_audio_clip_tone_id.append(audio_clip_tone_id)
+            own_latest_completed_audio_clip_tone_ids.append(audio_clip_tone_id)
             own_latest_completed_kwargs.append({
                 'latest_or_best': 'latest',
                 'timeframe': 'all',
@@ -1321,7 +1321,7 @@ class Core_TestCase(TestCase):
                 is_liked=(likes_or_dislikes_choice == 'likes'),
             ).order_by('-last_modified', '-id')[:1]
             audio_clip_tone_id = audio_clip_tone_id[0].audio_clip.audio_clip_tone.id
-            own_latest_completed_audio_clip_tone_id.append(audio_clip_tone_id)
+            own_latest_completed_audio_clip_tone_ids.append(audio_clip_tone_id)
             own_latest_completed_kwargs.append({
                 'latest_or_best': 'latest',
                 'timeframe': 'all',
@@ -1345,311 +1345,179 @@ class Core_TestCase(TestCase):
             own_latest_completed_expected_rows.append(expected_rows)
 
 
-        self.assertEqual(len(own_latest_completed_kwargs), len(own_latest_completed_audio_clip_tone_id))
+        self.assertEqual(len(own_latest_completed_kwargs), len(own_latest_completed_audio_clip_tone_ids))
         self.assertEqual(len(own_latest_completed_kwargs), len(own_latest_completed_expected_rows))
 
         for expected_rows in own_latest_completed_expected_rows:
 
             self.assertEqual(len(expected_rows), settings.EVENT_QUANTITY_PER_PAGE*2)
 
-        return
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        own_latest_completed_kwargs = [
-            #no audio_clip_tone
-            {
-                'username': logged_in_user.username,
-                'latest_or_best': 'latest',
-                'timeframe': 'all',
-                'audio_clip_role_name': 'originator',
-                'next_or_back': 'next',
-            },
-            {
-                'username': logged_in_user.username,
-                'latest_or_best': 'latest',
-                'timeframe': 'all',
-                'audio_clip_role_name': 'responder',
-                'next_or_back': 'next',
-            },
-            #has audio_clip_tone
-            {
-                'username': logged_in_user.username,
-                'latest_or_best': 'latest',
-                'timeframe': 'all',
-                'audio_clip_role_name': 'originator',
-                'next_or_back': 'next',
-                'audio_clip_tone_id': None,
-            },
-            {
-                'username': logged_in_user.username,
-                'latest_or_best': 'latest',
-                'timeframe': 'all',
-                'audio_clip_role_name': 'responder',
-                'next_or_back': 'next',
-                'audio_clip_tone_id': None,
-            },
-        ]
-
-        #since API only allows viewing own profile, username must match the logged in user in test case
-        user_likes_dislikes_kwargs = [
-            #no audio_clip_tone
-            {
-                'username': logged_in_user.username,
-                'likes_or_dislikes': 'likes',
-                'latest_or_best': 'latest',
-                'timeframe': 'all',
-                'audio_clip_role_name': 'originator',
-                'next_or_back': 'next',
-            },
-            {
-                'username': logged_in_user.username,
-                'likes_or_dislikes': 'likes',
-                'latest_or_best': 'latest',
-                'timeframe': 'all',
-                'audio_clip_role_name': 'responder',
-                'next_or_back': 'next',
-            },
-            {
-                'username': logged_in_user.username,
-                'likes_or_dislikes': 'dislikes',
-                'latest_or_best': 'latest',
-                'timeframe': 'all',
-                'audio_clip_role_name': 'originator',
-                'next_or_back': 'next',
-            },
-            {
-                'username': logged_in_user.username,
-                'likes_or_dislikes': 'dislikes',
-                'latest_or_best': 'latest',
-                'timeframe': 'all',
-                'audio_clip_role_name': 'responder',
-                'next_or_back': 'next',
-            },
-            #has audio_clip_tone
-            {
-                'username': logged_in_user.username,
-                'likes_or_dislikes': 'likes',
-                'latest_or_best': 'latest',
-                'timeframe': 'all',
-                'audio_clip_role_name': 'originator',
-                'next_or_back': 'next',
-                'audio_clip_tone_id': None,
-            },
-            {
-                'username': logged_in_user.username,
-                'likes_or_dislikes': 'likes',
-                'latest_or_best': 'latest',
-                'timeframe': 'all',
-                'audio_clip_role_name': 'responder',
-                'next_or_back': 'next',
-                'audio_clip_tone_id': None,
-            },
-            {
-                'username': logged_in_user.username,
-                'likes_or_dislikes': 'dislikes',
-                'latest_or_best': 'latest',
-                'timeframe': 'all',
-                'audio_clip_role_name': 'originator',
-                'next_or_back': 'next',
-                'audio_clip_tone_id': None,
-            },
-            {
-                'username': logged_in_user.username,
-                'likes_or_dislikes': 'dislikes',
-                'latest_or_best': 'latest',
-                'timeframe': 'all',
-                'audio_clip_role_name': 'responder',
-                'next_or_back': 'next',
-                'audio_clip_tone_id': None,
-            },
-        ]
-
         #start
 
-        #basic, next
+        all_kwargs = latest_completed_kwargs + user_latest_completed_kwargs + own_latest_completed_kwargs
+        all_expected_rows = latest_completed_expected_rows + user_latest_completed_expected_rows + own_latest_completed_expected_rows
+        all_audio_clip_tone_ids = latest_completed_audio_clip_tone_ids + user_latest_completed_audio_clip_tone_ids + own_latest_completed_audio_clip_tone_ids
 
-        data = {
-            'latest_or_best': 'latest',
-            'timeframe': 'all',
-            'audio_clip_role_name': 'originator',
-            'next_or_back': 'next',
-        }
+        for x in range(len(all_kwargs)):
 
-        stopwatch.start()
+            loop_title = 'loop #' + str(x)
 
-        request = self.client.get(
-            reverse(
-                'browse_events_api',
-                kwargs=data
+            print(loop_title)
+
+            #next
+
+            stopwatch.start()
+
+            current_kwargs:dict = all_kwargs[x].copy()
+
+            request = self.client.get(
+                reverse(
+                    'browse_events_api',
+                    kwargs=current_kwargs
+                )
             )
-        )
 
-        stopwatch.end()
+            stopwatch.end()
 
-        metrics.update({
-            'next__no_token': {
-                'data': data,
-                'time_s': stopwatch.diff_seconds(),
-            }
-        })
+            metrics.update({
+                loop_title + '__next__no_token': {
+                    'data': current_kwargs.copy(),
+                    'time_s': stopwatch.diff_seconds(),
+                }
+            })
 
-        #check
+            #check
 
-        self.assertEqual(request.status_code, 200)
+            self.assertEqual(request.status_code, 200)
 
-        #next_token, back_token, data
-        response_data = get_response_data(request)
+            #next_token, back_token, data
+            response_data = get_response_data(request)
 
-        self.assertGreater(len(response_data['data']), 0)
+            self.assertGreater(len(response_data['data']), 0)
 
-        #[{event:event,originator:[],responder:[]}]
-        for x in range(0, settings.EVENT_QUANTITY_PER_PAGE):
+            #[{event:event,originator:[],responder:[]}]
+            for xx in range(0, settings.EVENT_QUANTITY_PER_PAGE):
 
-            self.assertEqual(expected_rows[x].pk, response_data['data'][x]['originator'][0]['id'])
+                self.assertEqual(
+                    all_expected_rows[x][xx].pk,
+                    response_data['data'][xx][all_kwargs[x]['audio_clip_role_name']][0]['id']
+                )
 
-        #basic+token, next
+            #next+token
 
-        data = {
-            'latest_or_best': 'latest',
-            'timeframe': 'all',
-            'audio_clip_role_name': 'originator',
-            'next_or_back': 'next',
-            'cursor_token': response_data['next_token']
-        }
+            current_kwargs.update({
+                'cursor_token': response_data['next_token'],
+            })
 
-        stopwatch.start()
+            stopwatch.start()
 
-        request = self.client.get(
-            reverse(
-                'browse_events_api',
-                kwargs=data
+            request = self.client.get(
+                reverse(
+                    'browse_events_api',
+                    kwargs=current_kwargs
+                )
             )
-        )
 
-        stopwatch.end()
+            stopwatch.end()
 
-        metrics.update({
-            'next_token': {
-                'data': data,
-                'time_s': stopwatch.diff_seconds(),
-            }
-        })
+            metrics.update({
+                loop_title + '__next_token': {
+                    'data': current_kwargs.copy(),
+                    'time_s': stopwatch.diff_seconds(),
+                }
+            })
 
-        #check
+            #check
 
-        self.assertEqual(request.status_code, 200)
+            self.assertEqual(request.status_code, 200)
 
-        #next_token, back_token, data
-        response_data = get_response_data(request)
+            #next_token, back_token, data
+            response_data = get_response_data(request)
 
-        self.assertGreater(len(response_data['data']), 0)
+            self.assertGreater(len(response_data['data']), 0)
 
-        #[{event:event,originator:[],responder:[]}]
-        for x in range(settings.EVENT_QUANTITY_PER_PAGE, settings.EVENT_QUANTITY_PER_PAGE * 2):
+            #[{event:event,originator:[],responder:[]}]
+            for xx in range(settings.EVENT_QUANTITY_PER_PAGE, settings.EVENT_QUANTITY_PER_PAGE * 2):
 
-            self.assertEqual(expected_rows[x].pk, response_data['data'][x - settings.EVENT_QUANTITY_PER_PAGE]['originator'][0]['id'])
+                self.assertEqual(
+                    all_expected_rows[x][xx].pk,
+                    response_data['data'][xx - settings.EVENT_QUANTITY_PER_PAGE][all_kwargs[x]['audio_clip_role_name']][0]['id']
+                )
 
-        #basic+token, back
+            #back+token
 
-        data = {
-            'latest_or_best': 'latest',
-            'timeframe': 'all',
-            'audio_clip_role_name': 'originator',
-            'next_or_back': 'back',
-            'cursor_token': response_data['back_token']
-        }
+            current_kwargs.update({
+                'next_or_back': 'back',
+                'cursor_token': response_data['back_token'],
+            })
 
-        stopwatch.start()
+            stopwatch.start()
 
-        request = self.client.get(
-            reverse(
-                'browse_events_api',
-                kwargs=data
+            request = self.client.get(
+                reverse(
+                    'browse_events_api',
+                    kwargs=current_kwargs
+                )
             )
-        )
 
-        stopwatch.end()
+            stopwatch.end()
 
-        metrics.update({
-            'back_token': {
-                'data': data,
-                'time_s': stopwatch.diff_seconds(),
-            }
-        })
+            metrics.update({
+                loop_title + '__back_token': {
+                    'data': current_kwargs.copy(),
+                    'time_s': stopwatch.diff_seconds(),
+                }
+            })
 
-        #check
+            #check
 
-        self.assertEqual(request.status_code, 200)
+            self.assertEqual(request.status_code, 200)
 
-        #next_token, back_token, data
-        response_data = get_response_data(request)
+            #next_token, back_token, data
+            response_data = get_response_data(request)
 
-        self.assertGreater(len(response_data['data']), 0)
+            self.assertGreater(len(response_data['data']), 0)
 
-        #[{event:event,originator:[],responder:[]}]
-        for x in range(0, settings.EVENT_QUANTITY_PER_PAGE):
+            #[{event:event,originator:[],responder:[]}]
+            for xx in range(0, settings.EVENT_QUANTITY_PER_PAGE):
 
-            self.assertEqual(expected_rows[x].pk, response_data['data'][x]['originator'][0]['id'])
+                self.assertEqual(
+                    all_expected_rows[x][xx].pk,
+                    response_data['data'][xx][all_kwargs[x]['audio_clip_role_name']][0]['id'])
 
-        #basic+back, expect no rows
+            #back+token again, expect no rows
 
-        data = {
-            'latest_or_best': 'latest',
-            'timeframe': 'all',
-            'audio_clip_role_name': 'originator',
-            'next_or_back': 'back',
-            'cursor_token': response_data['back_token']
-        }
+            current_kwargs.update({
+                'next_or_back': 'back',
+                'cursor_token': response_data['back_token'],
+            })
 
-        stopwatch.start()
+            stopwatch.start()
 
-        request = self.client.get(
-            reverse(
-                'browse_events_api',
-                kwargs=data
+            request = self.client.get(
+                reverse(
+                    'browse_events_api',
+                    kwargs=current_kwargs
+                )
             )
-        )
 
-        stopwatch.end()
+            stopwatch.end()
 
-        metrics.update({
-            'back_token__no_rows': {
-                'data': data,
-                'time_s': stopwatch.diff_seconds(),
-            }
-        })
+            metrics.update({
+                loop_title + '__back_token__no_rows': {
+                    'data': current_kwargs.copy(),
+                    'time_s': stopwatch.diff_seconds(),
+                }
+            })
 
-        #check
+            #check
 
-        self.assertEqual(request.status_code, 200)
+            self.assertEqual(request.status_code, 200)
 
-        #next_token, back_token, data
-        response_data = get_response_data(request)
+            #next_token, back_token, data
+            response_data = get_response_data(request)
 
-        self.assertEqual(len(response_data['data']), 0)
+            self.assertEqual(len(response_data['data']), 0)
 
         #done
 
