@@ -433,6 +433,8 @@ class UserBannedAudioClipsAPI(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     #no post() here, cronjob does the banning
+    #due to exponential ban period, banned audio_clips per user should be controllable
+        #could remove cursor-based browsing, but keeping it in case moderation is needed next time
 
 
     def get_latest_banned_audio_clips(self, next_or_back:Literal['next', 'back'], cursor_token:str=''):
