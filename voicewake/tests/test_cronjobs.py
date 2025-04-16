@@ -1404,7 +1404,7 @@ class Core_TransactionTestCase(TransactionTestCase):
         total_like_dislike_count = settings.BAN_AUDIO_CLIP_DISLIKE_COUNT / (1 - settings.BAN_AUDIO_CLIP_LIKE_RATIO)
         ban_min_age_s = 10
 
-        #row #1
+        #row to be deleted
 
         sample_event_0 = EventsFactory(
             event_created_by=self.users[0],
@@ -1416,11 +1416,34 @@ class Core_TransactionTestCase(TransactionTestCase):
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='ok',
         )
+
+        #not delete-related row, same user
+
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
+        )
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        #like from same originator, like from someone else
+        sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(user=self.users[0], audio_clip=sample_audio_clip_0, is_liked=True)
+        sample_audio_clip_like_dislike_1 = AudioClipLikesDislikes.objects.create(user=self.users[1], audio_clip=sample_audio_clip_0, is_liked=True)
+
+        #like that is unrelated to deleted rows
+        sample_audio_clip_like_dislike_2 = AudioClipLikesDislikes.objects.create(user=self.users[0], audio_clip=sample_audio_clip_1, is_liked=True)
+        sample_audio_clip_like_dislike_3 = AudioClipLikesDislikes.objects.create(user=self.users[1], audio_clip=sample_audio_clip_1, is_liked=True)
+
         #pessimistic like_count to ensure ratio is as desired
         sample_audio_clip_0.like_count = math.floor(settings.BAN_AUDIO_CLIP_LIKE_RATIO * total_like_dislike_count)
         sample_audio_clip_0.dislike_count = settings.BAN_AUDIO_CLIP_DISLIKE_COUNT
         sample_audio_clip_0.like_ratio = settings.BAN_AUDIO_CLIP_LIKE_RATIO
         sample_audio_clip_0.save()
+
         #arbitrary last_evaluated, as long as < last_reported
         sample_audio_clip_report_0 = AudioClipReports.objects.create(
             last_evaluated=(datetime_now - timedelta(seconds=ban_min_age_s)),
@@ -1435,7 +1458,7 @@ class Core_TransactionTestCase(TransactionTestCase):
                 BAN_AUDIO_CLIP_DISLIKE_COUNT=sample_audio_clip_0.dislike_count,
                 BAN_AUDIO_CLIP_MIN_AGE_S=(ban_min_age_s + 1)
             ),
-            self.assertNumQueries(15)
+            self.assertNumQueries(16)
         ):
 
             cronjob_ban_audio_clips()
@@ -1453,11 +1476,17 @@ class Core_TransactionTestCase(TransactionTestCase):
         self.assertTrue(sample_audio_clip_report_0.last_evaluated >= sample_audio_clip_report_0.last_reported)
         self.assertTrue(self.users[0].banned_until > datetime_now)
         self.assertEqual(self.users[0].ban_count, 1)
+        self.assertFalse(AudioClipLikesDislikes.objects.filter(pk=sample_audio_clip_like_dislike_0.id).exists())
+        self.assertFalse(AudioClipLikesDislikes.objects.filter(pk=sample_audio_clip_like_dislike_1.id).exists())
+        self.assertTrue(AudioClipLikesDislikes.objects.filter(pk=sample_audio_clip_like_dislike_2.id).exists())
+        self.assertTrue(AudioClipLikesDislikes.objects.filter(pk=sample_audio_clip_like_dislike_3.id).exists())
 
 
     def test_cronjob_ban_audio_clips__responder_ok(self):
 
         datetime_now = self.datetime_now
+
+        #delete-related
 
         sample_event_0 = EventsFactory(
             event_created_by=self.users[0],
@@ -1475,6 +1504,36 @@ class Core_TransactionTestCase(TransactionTestCase):
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
         )
+
+        #not delete-related, same users
+
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='completed',
+        )
+
+        sample_audio_clip_2 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_3 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+        )
+
+        #like from originator, like from same responder, like from someone else
+        sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(user=self.users[0], audio_clip=sample_audio_clip_1, is_liked=True)
+        sample_audio_clip_like_dislike_1 = AudioClipLikesDislikes.objects.create(user=self.users[1], audio_clip=sample_audio_clip_1, is_liked=True)
+        sample_audio_clip_like_dislike_2 = AudioClipLikesDislikes.objects.create(user=self.users[2], audio_clip=sample_audio_clip_1, is_liked=True)
+
+        #likes on not delete-related rows
+
+        sample_audio_clip_like_dislike_3 = AudioClipLikesDislikes.objects.create(user=self.users[0], audio_clip=sample_audio_clip_2, is_liked=True)
+        sample_audio_clip_like_dislike_4 = AudioClipLikesDislikes.objects.create(user=self.users[1], audio_clip=sample_audio_clip_3, is_liked=True)
+        sample_audio_clip_like_dislike_5 = AudioClipLikesDislikes.objects.create(user=self.users[2], audio_clip=sample_audio_clip_3, is_liked=True)
 
         sample_audio_clip_1.like_count = 2
         sample_audio_clip_1.dislike_count = 10
@@ -1495,7 +1554,7 @@ class Core_TransactionTestCase(TransactionTestCase):
                 BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
                 BAN_AUDIO_CLIP_MIN_AGE_S=11,
             ),
-            self.assertNumQueries(14)
+            self.assertNumQueries(15)
         ):
 
             cronjob_ban_audio_clips()
@@ -1516,6 +1575,12 @@ class Core_TransactionTestCase(TransactionTestCase):
         self.assertTrue(sample_audio_clip_report_0.last_evaluated >= sample_audio_clip_report_0.last_reported)
         self.assertTrue(self.users[1].banned_until > datetime_now)
         self.assertEqual(self.users[1].ban_count, 1)
+        self.assertFalse(AudioClipLikesDislikes.objects.filter(pk=sample_audio_clip_like_dislike_0.id).exists())
+        self.assertFalse(AudioClipLikesDislikes.objects.filter(pk=sample_audio_clip_like_dislike_1.id).exists())
+        self.assertFalse(AudioClipLikesDislikes.objects.filter(pk=sample_audio_clip_like_dislike_2.id).exists())
+        self.assertTrue(AudioClipLikesDislikes.objects.filter(pk=sample_audio_clip_like_dislike_3.id).exists())
+        self.assertTrue(AudioClipLikesDislikes.objects.filter(pk=sample_audio_clip_like_dislike_4.id).exists())
+        self.assertTrue(AudioClipLikesDislikes.objects.filter(pk=sample_audio_clip_like_dislike_5.id).exists())
 
 
     def test_cronjob_ban_audio_clips_multiple_same_originator(self):
@@ -1572,7 +1637,7 @@ class Core_TransactionTestCase(TransactionTestCase):
                 BAN_AUDIO_CLIP_DISLIKE_COUNT=settings.BAN_AUDIO_CLIP_DISLIKE_COUNT,
                 BAN_AUDIO_CLIP_MIN_AGE_S=(ban_min_age_s + 9999)
             ),
-            self.assertNumQueries(15)
+            self.assertNumQueries(16)
         ):
 
             cronjob_ban_audio_clips()
@@ -1658,7 +1723,7 @@ class Core_TransactionTestCase(TransactionTestCase):
                 BAN_AUDIO_CLIP_DISLIKE_COUNT=settings.BAN_AUDIO_CLIP_DISLIKE_COUNT,
                 BAN_AUDIO_CLIP_MIN_AGE_S=(ban_min_age_s + 9999)
             ),
-            self.assertNumQueries(14)
+            self.assertNumQueries(15)
         ):
 
             cronjob_ban_audio_clips()
@@ -1987,7 +2052,7 @@ class Core_TransactionTestCase(TransactionTestCase):
                 BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
                 BAN_AUDIO_CLIP_MIN_AGE_S=11,
             ),
-            self.assertNumQueries(15)
+            self.assertNumQueries(16)
         ):
 
             cronjob_ban_audio_clips()
@@ -2052,7 +2117,7 @@ class Core_TransactionTestCase(TransactionTestCase):
                 BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
                 BAN_AUDIO_CLIP_MIN_AGE_S=11,
             ),
-            self.assertNumQueries(15)
+            self.assertNumQueries(16)
         ):
 
             cronjob_ban_audio_clips()
@@ -2177,7 +2242,7 @@ class Core_TransactionTestCase(TransactionTestCase):
                 BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
                 BAN_AUDIO_CLIP_MIN_AGE_S=11,
             ),
-            self.assertNumQueries(15)
+            self.assertNumQueries(16)
         ):
 
             cronjob_ban_audio_clips()
@@ -2325,7 +2390,7 @@ class Core_TransactionTestCase(TransactionTestCase):
                 BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
                 BAN_AUDIO_CLIP_MIN_AGE_S=11,
             ),
-            self.assertNumQueries(15)
+            self.assertNumQueries(16)
         ):
 
             cronjob_ban_audio_clips()
@@ -2413,7 +2478,7 @@ class Core_TransactionTestCase(TransactionTestCase):
                 BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
                 BAN_AUDIO_CLIP_MIN_AGE_S=11,
             ),
-            self.assertNumQueries(15)
+            self.assertNumQueries(16)
         ):
 
             cronjob_ban_audio_clips()
@@ -2553,7 +2618,7 @@ class Core_TransactionTestCase(TransactionTestCase):
                 BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
                 BAN_AUDIO_CLIP_MIN_AGE_S=11,
             ),
-            self.assertNumQueries(14)
+            self.assertNumQueries(15)
         ):
 
             cronjob_ban_audio_clips()
@@ -2729,7 +2794,7 @@ class Core_TransactionTestCase(TransactionTestCase):
                 BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
                 BAN_AUDIO_CLIP_MIN_AGE_S=11,
             ),
-            self.assertNumQueries(14)
+            self.assertNumQueries(15)
         ):
 
             cronjob_ban_audio_clips()

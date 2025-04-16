@@ -480,7 +480,6 @@ class AudioClipReportsAPISerializer(serializers.Serializer):
 
 class BrowseEventsAPISerializer(serializers.Serializer):
 
-    #cursor_token max_length is double of usual
     username = serializers.CharField(required=False, default='', max_length=settings.USERNAME_MAX_LENGTH)
     latest_or_best = serializers.CharField()
     timeframe = serializers.CharField()
@@ -488,36 +487,13 @@ class BrowseEventsAPISerializer(serializers.Serializer):
     audio_clip_tone_id = serializers.IntegerField(required=False, default=None, min_value=1)
     next_or_back = serializers.CharField()
     likes_or_dislikes = serializers.CharField(required=False, default='', max_length=8)
+    #cursor_token max_length is double of usual
     cursor_token = serializers.CharField(required=False, default='', max_length=200)
 
 
     def validate_username(self, value):
 
-        value = remove_all_whitespace(value)
-
-        if len(value) == 0:
-
-            return value
-        
-        #disallow these usernames
-        #not sure if there's optimisation potential via "all requests in server shall read from this single memory allocation" for this file
-        with open(os.path.join(settings.BASE_DIR, 'static/voicewake/json/bad_usernames.en.json')) as file:
-
-            bad_usernames = json.load(file)['usernames']
-
-            if value in bad_usernames:
-
-                raise serializers.ValidationError('Username not allowed.')
-
-        #either entirely letters and numbers only,
-        #or start and end with letters and numbers with possible '_' and '.' in between
-        #with the addition of {1,30} for condition 1, constant 120+ steps becomes 6 steps
-        #if '_' or '.', cannot continue with another '_' nor '.'
-        if re.match(r'(^[a-zA-Z0-9]{1,30}$)|(^[a-zA-Z0-9](_(?!(\.|_))|\.(?!(_|\.))|[a-zA-Z0-9]){0,28}[a-zA-Z0-9]$)', value) is None:
-
-            raise serializers.ValidationError('Invalid username format.')
-
-        return value
+        return remove_all_whitespace(value)
 
 
     def validate_latest_or_best(self, value):
@@ -598,30 +574,6 @@ class CreateUserFollowsAPISerializer(serializers.Serializer):
             return value
 
         raise serializers.ValidationError('This field is required.')
-
-
-
-class UserBannedAudioClipsAPISerializer(serializers.Serializer):
-
-    #cursor_token max_length is double of usual
-    next_or_back = serializers.CharField()
-    cursor_token = serializers.CharField(required=False, default='', max_length=200)
-
-
-    def validate_next_or_back(self, value):
-
-        if value in ['next', 'back']:
-
-            return value
-
-        raise serializers.ValidationError("Accepted values not specified: next/back.")
-
-
-    def validate_cursor_token(self, value):
-
-        #could use CharField's trim_whitespace, but that only handles leading and trailing whitespace
-        #must remove all of it
-        return remove_all_whitespace(value)
 
 
 

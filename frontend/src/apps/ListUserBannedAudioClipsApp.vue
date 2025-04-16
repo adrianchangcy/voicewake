@@ -28,10 +28,6 @@
                 </template>
             </VDialogPlain>
         </TransitionFade>
-
-        <div id="load-more-user-banned-audio-clips-observer-target"></div>
-
-
     </div>
 </template>
 
@@ -62,8 +58,7 @@
                 audio_clips: [] as ScrollableAudioClipsTypes[],
                 vplayback_store: useVPlaybackStore(),
 
-                next_url: window.location.origin + '/api/audio-clips/bans/list/next',
-                back_url: window.location.origin + '/api/audio-clips/bans/list/back',
+                url: '/api/audio-clips/bans/list',
 
                 is_fetching: false,
                 can_observer_fetch: false,
@@ -100,7 +95,7 @@
                 this.can_observer_fetch = false;
                 this.has_no_audio_clips_left_to_fetch = false;
 
-                await axios.get(this.next_url)
+                await axios.get(this.url)
                 .then((result:any) => {
 
                     if(result.data['data'].length === 0){
@@ -116,16 +111,12 @@
                         this.audio_clips.push(audio_clip as ScrollableAudioClipsTypes);
                     });
 
-                    this.next_url = window.location.origin + '/api/audio-clips/bans/list/next/' + result.data['next_token'];
-                    this.back_url = window.location.origin + '/api/audio-clips/bans/list/back/' + result.data['back_token'];
-
                 }).catch(() => {
 
                     notify({
                         type: 'error',
                         title: 'Error',
                         text: 'Unable to retrieve your banned recordings',
-
                     }, 4000);
 
                 }).finally(() => {
@@ -142,31 +133,6 @@
                     playing_audio_clip !== null &&
                     playing_audio_clip.id === audio_clip_id
                 );
-            },
-            setUpObserver() : void {
-
-                //set up observer for infinite scroll
-                const observer_target = document.querySelector('#load-more-user-banned-audio-clips-observer-target');
-
-                const observer = new IntersectionObserver(()=>{
-
-                    if(
-                        this.can_observer_fetch === false ||
-                        this.has_no_audio_clips_left_to_fetch === true
-                    ){
-
-                        return;
-                    }
-
-                    this.getUserBannedAudioClips();
-                }, {
-                    threshold: 1,
-                });
-
-                if(observer_target !== null){
-
-                    observer.observe(observer_target);
-                }
             },
         },
         beforeMount(){
@@ -190,10 +156,6 @@
                     new Date(banned_until).getTime()
                 ) + " left";
             }
-        },
-        mounted(){
-
-            this.setUpObserver();
         },
     });
 </script>
