@@ -453,9 +453,9 @@ def get_dev_message_from_custom_error(new_error:Exception)->str:
         return ""
 
 
-def print_function_name(extra_stuff_to_print)->str:
+def print_with_function_name(extra_stuff_to_print)->str:
 
-    #this gives you outer function's name, i.e. not print_function_name()
+    #this gives you outer function's name, i.e. not print_with_function_name()
     cframe = inspect.currentframe()
     calling_function_name = inspect.getframeinfo(cframe.f_back).function + "()"
     print("\n" + calling_function_name + ": " + str(extra_stuff_to_print) + "\n")

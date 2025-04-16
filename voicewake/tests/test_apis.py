@@ -1,7 +1,7 @@
 #Django
 from time import sleep
 from django.test import TestCase, Client, TransactionTestCase, override_settings
-from django.urls import reverse
+from django.urls import reverse, exceptions
 from rest_framework import status
 from django.core.files import File
 from django.http import StreamingHttpResponse
@@ -841,7 +841,7 @@ class AudioClips_TestCase(TestCase):
 
 
 
-#not yet adjusted to use FactoryBoy
+#should use FactoryBoy to prevent future changes from requiring every individual test case to be edited
 @override_settings(
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
     MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'voicewake/tests'),
@@ -1011,7 +1011,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.post(reverse('create_events_upload_api'), data)
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 201)
 
         #check data
@@ -1323,7 +1323,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.post(reverse('create_events_regenerate_upload_url_api'), data)
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 200)
 
         response_data = get_response_data(request)
@@ -1497,7 +1497,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.post(reverse('create_events_regenerate_upload_url_api'), data)
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 400)
 
 
@@ -1818,7 +1818,7 @@ class Core_TestCase(TestCase):
         )
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -1831,7 +1831,7 @@ class Core_TestCase(TestCase):
         self.assertFalse('event_reply_queue' in response_data[0])
 
 
-    def test_get_event_has_queue__same_request_user__not_replying(self):
+    def test_get_event__has_event_reply_queue__same_request_user__not_replying(self):
 
         #prepare data
 
@@ -1873,7 +1873,7 @@ class Core_TestCase(TestCase):
         )
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -1884,7 +1884,7 @@ class Core_TestCase(TestCase):
         self.assertFalse(response_data[0]['event_reply_queue']['is_replying'])
 
 
-    def test_get_event_has_queue__same_request_user__is_replying(self):
+    def test_get_event__has_event_reply_queue__same_request_user__is_replying(self):
 
         #prepare data
 
@@ -1926,7 +1926,7 @@ class Core_TestCase(TestCase):
         )
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -1937,7 +1937,7 @@ class Core_TestCase(TestCase):
         self.assertTrue(response_data[0]['event_reply_queue']['is_replying'])
 
 
-    def test_get_event_has_queue__different_request_user__not_replying(self):
+    def test_get_event__has_event_reply_queue__different_request_user__not_replying(self):
 
         #prepare data
 
@@ -1979,7 +1979,7 @@ class Core_TestCase(TestCase):
         )
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -1989,7 +1989,7 @@ class Core_TestCase(TestCase):
         self.assertFalse('event_reply_queue' in response_data[0])
 
 
-    def test_get_event_has_queue__different_request_user__is_replying(self):
+    def test_get_event__has_event_reply_queue__different_request_user__is_replying(self):
 
         #prepare data
 
@@ -2031,7 +2031,7 @@ class Core_TestCase(TestCase):
         )
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -2041,7 +2041,7 @@ class Core_TestCase(TestCase):
         self.assertFalse('event_reply_queue' in response_data[0])
 
 
-    def test_get_event_has_queue__anonymous_request_user__not_replying(self):
+    def test_get_event__has_event_reply_queue__anonymous_request_user__not_replying(self):
 
         #prepare data
 
@@ -2081,7 +2081,7 @@ class Core_TestCase(TestCase):
         )
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -2091,7 +2091,7 @@ class Core_TestCase(TestCase):
         self.assertFalse('event_reply_queue' in response_data[0])
 
 
-    def test_get_event_has_queue__anonymous_request_user__is_replying(self):
+    def test_get_event__has_event_reply_queue__anonymous_request_user__is_replying(self):
 
         #prepare data
 
@@ -2131,7 +2131,7 @@ class Core_TestCase(TestCase):
         )
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -2164,7 +2164,7 @@ class Core_TestCase(TestCase):
         )
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
 
     def test_list_event_reply_choices_daily_limit_reached(self):
@@ -2216,7 +2216,7 @@ class Core_TestCase(TestCase):
 
             request = self.client.post(reverse('list_event_reply_choices_api'), data)
 
-            print_function_name(request.content)
+            print_with_function_name(request.content)
             self.assertEqual(request.status_code, 400)
 
             #check
@@ -2244,7 +2244,7 @@ class Core_TestCase(TestCase):
 
             request = self.client.post(reverse('list_event_reply_choices_api'), data)
 
-            print_function_name(request.content)
+            print_with_function_name(request.content)
             self.assertEqual(request.status_code, 400)
 
             #check
@@ -2288,7 +2288,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('list_event_reply_choices_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check data
 
@@ -2337,7 +2337,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('list_event_reply_choices_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check data
 
@@ -2363,7 +2363,52 @@ class Core_TestCase(TestCase):
         self.assertIsNotNone(user_event.when_excluded_for_reply)
 
 
-    def test_list_reply_choices_ensure_own_events_not_listed(self):
+    def test_list_reply_choices__has_event_but_outdated__no_rows(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "incomplete"
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        new_when_created = (get_datetime_now() - timedelta(seconds=(settings.EVENT_INCOMPLETE_QUEUE_MAX_AGE_S * 2)))
+        new_when_created = new_when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z')
+
+        sample_event_0.when_created = new_when_created
+        sample_event_0.save()
+
+        sample_audio_clip_0.when_created = new_when_created
+        sample_audio_clip_0.save()
+
+        #start
+
+        self.login(self.users[0])
+
+        data = {'unlock_all_locked_events': True}
+
+        request = self.client.post(reverse('list_event_reply_choices_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_with_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+        response_data = response_data['data']
+
+        self.assertEqual(response_data, [])
+        self.assertEqual(EventReplyQueues.objects.all().count(), 0)
+        self.assertEqual(UserEvents.objects.all().count(), 0)
+
+
+    def test_list_reply_choices__has_own_events__no_rows(self):
 
         #prepare data
 
@@ -2387,7 +2432,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('list_event_reply_choices_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -2399,7 +2444,7 @@ class Core_TestCase(TestCase):
         self.assertEqual(UserEvents.objects.all().count(), 0)
 
 
-    def test_list_reply_choices_where_originator_is_blocked(self):
+    def test_list_reply_choices__originator_is_blocked__no_rows(self):
 
         #prepare data
 
@@ -2425,7 +2470,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('list_event_reply_choices_api'))
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check data
 
@@ -2437,7 +2482,7 @@ class Core_TestCase(TestCase):
         self.assertEqual(UserEvents.objects.all().count(), 0)
 
 
-    def test_list_reply_choices_where_responder_is_blocked(self):
+    def test_list_reply_choices__responder_is_blocked__no_rows(self):
 
         #prepare data
 
@@ -2463,7 +2508,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('list_event_reply_choices_api'))
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check data
 
@@ -2475,7 +2520,7 @@ class Core_TestCase(TestCase):
         self.assertEqual(UserEvents.objects.all().count(), 0)
 
 
-    def test_list_reply_choices_where_locked_for_someone_else(self):
+    def test_list_reply_choices__locked_for_someone_else__no_rows(self):
 
         self.login(self.users[2])
 
@@ -2511,7 +2556,7 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         self.assertEqual(response_data['data'], [])
 
@@ -2565,7 +2610,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('list_event_reply_choices_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -2627,7 +2672,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('list_event_reply_choices_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -2691,7 +2736,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('list_event_reply_choices_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -2754,7 +2799,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('list_event_reply_choices_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -2769,7 +2814,7 @@ class Core_TestCase(TestCase):
         self.assertIsNotNone(new_user_event.when_excluded_for_reply)
 
 
-    def test_list_reply_choices__not_listing_banned_event(self):
+    def test_list_reply_choices__not_listing_deleted_event(self):
 
         #prepare data
 
@@ -2794,7 +2839,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('list_event_reply_choices_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check data
 
@@ -2809,7 +2854,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('list_event_reply_choices_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check data
 
@@ -2855,7 +2900,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('start_replies_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -2913,7 +2958,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('start_replies_api'), data)
 
         self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -2961,7 +3006,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('start_replies_api'), data)
 
         self.assertEqual(request.status_code, 404)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -2995,7 +3040,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.post(reverse('start_replies_api'), data)
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         self.assertEqual(request.status_code, 404)
 
@@ -3037,7 +3082,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('start_replies_api'), data)
 
         self.assertEqual(request.status_code, 404)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -3055,7 +3100,7 @@ class Core_TestCase(TestCase):
         )
 
 
-    def test_start_replies__event_is_banned(self):
+    def test_start_replies__event_is_deleted(self):
 
         #prepare data
 
@@ -3069,7 +3114,7 @@ class Core_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
             audio_clip_generic_status_generic_status_name = 'deleted',
-            audio_clip_is_banned = True,
+            audio_clip_is_deleted = True,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -3093,7 +3138,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.post(reverse('start_replies_api'), data)
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 404)
 
         #check
@@ -3149,7 +3194,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('start_replies_api'), data)
 
         self.assertEqual(request.status_code, 404)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -3210,7 +3255,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.post(reverse('create_replies_upload_api'), data)
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 201)
 
         #check
@@ -3397,7 +3442,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.post(reverse('create_replies_upload_api'), data)
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 404)
 
 
@@ -3441,7 +3486,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.post(reverse('create_replies_upload_api'), data)
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 400)
 
 
@@ -3485,7 +3530,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.post(reverse('create_replies_upload_api'), data)
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 205)
 
         #check
@@ -3493,7 +3538,7 @@ class Core_TestCase(TestCase):
         self.assertEqual(EventReplyQueues.objects.all().count(), 0)
 
 
-    def test_create_replies__upload__event_is_banned(self):
+    def test_create_replies__upload__event_is_deleted(self):
 
         self.login(self.users[1])
 
@@ -3509,7 +3554,7 @@ class Core_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='deleted',
-            audio_clip_is_banned=True,
+            audio_clip_is_deleted=True,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -3535,7 +3580,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.post(reverse('create_replies_upload_api'), data)
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 404)
 
         #check
@@ -3790,7 +3835,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.post(reverse('create_replies_regenerate_upload_url_api'), data)
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 200)
 
         response_data = get_response_data(request)
@@ -3807,7 +3852,7 @@ class Core_TestCase(TestCase):
         pass
 
 
-    def test_create_replies__regenerate_upload_url__own_audio_clip_is_banned(self):
+    def test_create_replies__regenerate_upload_url__own_audio_clip_is_deleted(self):
         #irrelevant, as audio_clip cannot be reported until it is "ok", i.e. done processing
         pass
 
@@ -4090,7 +4135,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.post(reverse('create_replies_regenerate_upload_url_api'), data)
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 400)
 
 
@@ -4310,13 +4355,13 @@ class Core_TestCase(TestCase):
         self.assertEqual(request.status_code, 404)
 
 
-    def test_create_replies__process__event_is_banned(self):
+    def test_create_replies__process__event_is_deleted(self):
         #irrelevant, as once upload is successful, ban has no impact on processing stage
         pass
 
 
-    def test_create_replies__process__own_audio_clip_is_banned(self):
-        #irrelevant, as audio_clip cannot be reported until it is "ok", i.e. done processing
+    def test_create_replies__process__own_audio_clip_is_deleted(self):
+        #irrelevant, as audio_clip cannot be deleted until it is "ok", i.e. done processing
         pass
 
 
@@ -4573,7 +4618,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('cancel_replies_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -4623,7 +4668,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('cancel_replies_api'), data)
 
         self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
 
     def test_cancel_reply_with_faulty_args(self):
@@ -4665,7 +4710,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('cancel_replies_api'), data)
 
         self.assertEqual(request.status_code, 404)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
 
     def test_cancel_reply_but_never_queued_for_it(self):
@@ -4694,7 +4739,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('cancel_replies_api'), data)
 
         self.assertEqual(request.status_code, 404)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
 
     def test_cancel_reply_locked_but_not_replying(self):
@@ -4736,7 +4781,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('cancel_replies_api'), data)
 
         self.assertEqual(request.status_code, 404)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -4795,7 +4840,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('cancel_replies_api'), data)
 
         self.assertEqual(request.status_code, 404)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -4807,7 +4852,7 @@ class Core_TestCase(TestCase):
         self.assertTrue(UserEvents.objects.filter(user=self.users[2], event_id=sample_event_0.id).exists())
 
 
-    def test_cancel_reply_but_event_is_banned(self):
+    def test_cancel_reply_but_event_is_deleted(self):
 
         #prepare data
 
@@ -4821,7 +4866,7 @@ class Core_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
             audio_clip_generic_status_generic_status_name = 'deleted',
-            audio_clip_is_banned = True,
+            audio_clip_is_deleted = True,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -4848,7 +4893,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('cancel_replies_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -4926,7 +4971,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('cancel_replies_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -4972,7 +5017,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('create_audio_clip_reports_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5012,7 +5057,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('create_audio_clip_reports_api'), data)
 
         self.assertEqual(request.status_code, 404)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5046,7 +5091,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('create_audio_clip_reports_api'), data)
 
         self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5083,7 +5128,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('create_audio_clip_reports_api'), data)
 
         self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5120,7 +5165,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('create_audio_clip_reports_api'), data)
 
         self.assertEqual(request.status_code, 404)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5163,7 +5208,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('create_audio_clip_reports_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5190,7 +5235,7 @@ class Core_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
             audio_clip_event = sample_event_0,
             audio_clip_generic_status_generic_status_name = 'deleted',
-            audio_clip_is_banned = True,
+            audio_clip_is_deleted = True,
         )
 
         sample_audio_clip_report_0 = AudioClipReports.objects.create(
@@ -5209,7 +5254,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('create_audio_clip_reports_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5248,7 +5293,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('create_audio_clip_reports_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5273,7 +5318,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('user_blocks_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5295,7 +5340,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.post(reverse('user_blocks_api'), data)
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 400)
 
         #check
@@ -5313,7 +5358,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('user_blocks_api'), data)
 
         self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5337,7 +5382,7 @@ class Core_TestCase(TestCase):
 
         #200 because bool defaults to False when not passed
         self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5356,7 +5401,7 @@ class Core_TestCase(TestCase):
 
         #200 because bool defaults to False when not passed
         self.assertEqual(request.status_code, 404)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5385,7 +5430,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('user_blocks_api'), data)
 
         self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5409,7 +5454,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('user_blocks_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5430,7 +5475,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('user_blocks_api'), data)
 
         self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5452,7 +5497,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('user_blocks_api'), data)
 
         self.assertEqual(request.status_code, 404)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5478,7 +5523,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('user_blocks_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5493,7 +5538,7 @@ class Core_TestCase(TestCase):
         request = self.client.get(reverse('user_blocks_api'), {'when_last_action_s': when_last_action_s})
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5515,7 +5560,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('user_blocks_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5536,7 +5581,7 @@ class Core_TestCase(TestCase):
         request = self.client.get(reverse('user_blocks_api'))
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5554,7 +5599,7 @@ class Core_TestCase(TestCase):
         request = self.client.get(reverse('user_blocks_api'))
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5579,7 +5624,7 @@ class Core_TestCase(TestCase):
             }
         )
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 400)
 
         #check
@@ -5603,7 +5648,7 @@ class Core_TestCase(TestCase):
             }
         )
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 200)
 
         #check
@@ -5629,7 +5674,7 @@ class Core_TestCase(TestCase):
             }
         )
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 200)
 
         #check
@@ -5646,7 +5691,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.get(reverse('user_blocks_api'), data={'when_last_action_s': when_last_action_s})
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 200)
 
         #check
@@ -5674,7 +5719,7 @@ class Core_TestCase(TestCase):
         request = self.client.get(reverse('user_blocks_api'))
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5699,7 +5744,7 @@ class Core_TestCase(TestCase):
             }
         )
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 400)
 
         #check
@@ -5722,7 +5767,7 @@ class Core_TestCase(TestCase):
             }
         )
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 200)
 
         #check
@@ -5748,7 +5793,7 @@ class Core_TestCase(TestCase):
             }
         )
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 200)
 
         #check
@@ -5765,7 +5810,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.get(reverse('user_blocks_api'), data={'when_last_action_s': when_last_action_s})
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 200)
 
         #check
@@ -5785,7 +5830,7 @@ class Core_TestCase(TestCase):
         request = self.client.get(reverse('user_blocks_api'))
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5805,7 +5850,7 @@ class Core_TestCase(TestCase):
         request = self.client.get(reverse('user_blocks_api'))
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5825,7 +5870,7 @@ class Core_TestCase(TestCase):
         request = self.client.get(reverse('user_blocks_api'))
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5850,7 +5895,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('user_blocks_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -5889,7 +5934,7 @@ class Core_TestCase(TestCase):
             request = self.client.get(reverse('user_blocks_api'))
 
         self.assertEqual(request.status_code, 200)
-        # print_function_name(request.content)
+        # print_with_function_name(request.content)
 
         #check
 
@@ -5908,7 +5953,7 @@ class Core_TestCase(TestCase):
             print(result[0][0])
 
 
-    def test_audio_clip_like_dislike_missing_args(self):
+    def test_audio_clip_like_dislike__missing_args(self):
 
         #prepare data
 
@@ -5935,7 +5980,7 @@ class Core_TestCase(TestCase):
 
         #bool defaults to False by serializer
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         data = {
             'is_liked': True,
@@ -5944,10 +5989,10 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
 
         self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
 
-    def test_audio_clip_like_dislike_faulty_args(self):
+    def test_audio_clip_like_dislike__faulty_args(self):
 
 
         #prepare data
@@ -5976,7 +6021,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         data = {
             'audio_clip_id': sample_audio_clip_0.id,
@@ -5986,7 +6031,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
 
         self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         data = {
             'audio_clip_id': 999,
@@ -5996,10 +6041,10 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
 
         self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
 
-    def test_create_and_delete_audio_clip_like(self):
+    def test_audio_clip_like_dislike__create_and_delete__like(self):
 
         #prepare data
 
@@ -6031,7 +6076,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -6070,7 +6115,7 @@ class Core_TestCase(TestCase):
         self.assertEqual(sample_audio_clip_0.dislike_count, 0)
 
 
-    def test_create_and_delete_audio_clip_dislike(self):
+    def test_audio_clip_like_dislike__create_and_delete__dislike(self):
 
         #prepare data
 
@@ -6102,7 +6147,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -6141,7 +6186,7 @@ class Core_TestCase(TestCase):
         self.assertEqual(sample_audio_clip_0.dislike_count, 0)
 
 
-    def test_random_audio_clip_like_dislike_chaining(self):
+    def test_audio_clip_like_dislike__random_audio_clip_like_dislike_chaining(self):
 
         #prepare data
 
@@ -6173,7 +6218,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -6199,7 +6244,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -6225,7 +6270,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -6274,7 +6319,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -6291,7 +6336,7 @@ class Core_TestCase(TestCase):
         self.assertTrue(audio_clip_like_dislike.is_liked)
 
 
-    def test_random_audio_clip_like_dislike_chaining_multiple_users(self):
+    def test_audio_clip_like_dislike__random_chaining_multiple_users(self):
 
         #prepare data
 
@@ -6372,6 +6417,91 @@ class Core_TestCase(TestCase):
 
         self.assertEqual(sample_audio_clip_0.like_count, is_liked_total_count['true'])
         self.assertEqual(sample_audio_clip_0.dislike_count, is_liked_total_count['false'])
+
+
+    def test_audio_clip_like_dislike__deleted_audio_clip__not_allowed(self):
+
+        #prepare data
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "deleted"
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_0.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
+        sample_audio_clip_0.save()
+        sample_audio_clip_1.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
+        sample_audio_clip_1.save()
+
+        #first we log in as originator, then responder, then as an unrelated user
+
+        all_relevant_users = [
+            self.users[0],
+            self.users[1],
+            self.users[2]
+        ]
+
+        for current_user in all_relevant_users:
+
+            self.login(current_user)
+
+            #originator audio_clip
+
+            data = {
+                'audio_clip_id': sample_audio_clip_0.id,
+                'is_liked': True
+            }
+
+            request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+            self.assertEqual(request.status_code, 400)
+            print_with_function_name(request.content)
+
+            #check
+
+            response_data = get_response_data(request)
+
+            sample_audio_clip_0.refresh_from_db()
+
+            self.assertEqual(sample_audio_clip_0.like_count, 0)
+            self.assertEqual(sample_audio_clip_0.like_ratio, 0)
+            self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+            self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[0], audio_clip=sample_audio_clip_0).exists())
+
+            #responder audio_clip
+
+            data = {
+                'audio_clip_id': sample_audio_clip_1.id,
+                'is_liked': True
+            }
+
+            request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+            self.assertEqual(request.status_code, 400)
+            print_with_function_name(request.content)
+
+            #check
+
+            response_data = get_response_data(request)
+
+            sample_audio_clip_1.refresh_from_db()
+
+            self.assertEqual(sample_audio_clip_1.like_count, 0)
+            self.assertEqual(sample_audio_clip_1.like_ratio, 0)
+            self.assertEqual(sample_audio_clip_1.dislike_count, 0)
+            self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[0], audio_clip=sample_audio_clip_1).exists())
 
 
     def test_list_audio_clip_processing__ok(self):
@@ -7262,7 +7392,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('user_follows_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -7286,7 +7416,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('user_follows_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -7314,7 +7444,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('user_follows_api'), data)
 
         self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -7335,7 +7465,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('user_follows_api'), data)
 
         self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -7356,7 +7486,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('user_follows_api'), data)
 
         self.assertEqual(request.status_code, 404)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -7376,7 +7506,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('user_follows_api'), data)
 
         self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -7395,7 +7525,7 @@ class Core_TestCase(TestCase):
         #check
 
         self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         response_data = get_response_data(request)
 
@@ -7414,7 +7544,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('user_follows_api'), data)
 
         self.assertEqual(request.status_code, 404)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -7434,7 +7564,7 @@ class Core_TestCase(TestCase):
         #check
 
         self.assertEqual(request.status_code, 400)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         response_data = get_response_data(request)
 
@@ -7448,7 +7578,7 @@ class Core_TestCase(TestCase):
         request = self.client.get(reverse('user_follows_api'))
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -7471,7 +7601,7 @@ class Core_TestCase(TestCase):
         request = self.client.get(reverse('user_follows_api'))
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -7496,7 +7626,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('user_follows_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -7519,7 +7649,7 @@ class Core_TestCase(TestCase):
         request = self.client.get(reverse('user_follows_api'))
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -7542,7 +7672,7 @@ class Core_TestCase(TestCase):
         request = self.client.get(reverse('user_follows_api'))
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -7570,7 +7700,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('user_follows_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -7599,7 +7729,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('user_follows_api'), data)
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -7639,7 +7769,7 @@ class Core_TestCase(TestCase):
             request = self.client.get(reverse('user_follows_api'))
 
         self.assertEqual(request.status_code, 200)
-        # print_function_name(request.content)
+        # print_with_function_name(request.content)
 
         #check
 
@@ -7667,7 +7797,7 @@ class Core_TestCase(TestCase):
         request = self.client.get(reverse('user_follows_api'))
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -7692,7 +7822,7 @@ class Core_TestCase(TestCase):
             }
         )
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 400)
 
         #check
@@ -7716,7 +7846,7 @@ class Core_TestCase(TestCase):
             }
         )
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 200)
 
         #check
@@ -7742,7 +7872,7 @@ class Core_TestCase(TestCase):
             }
         )
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 200)
 
         #check
@@ -7759,7 +7889,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.get(reverse('user_follows_api'), data={'when_last_action_s': when_last_action_s})
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 200)
 
         #check
@@ -7787,7 +7917,7 @@ class Core_TestCase(TestCase):
         request = self.client.get(reverse('user_follows_api'))
 
         self.assertEqual(request.status_code, 200)
-        print_function_name(request.content)
+        print_with_function_name(request.content)
 
         #check
 
@@ -7812,7 +7942,7 @@ class Core_TestCase(TestCase):
             }
         )
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 400)
 
         #check
@@ -7835,7 +7965,7 @@ class Core_TestCase(TestCase):
             }
         )
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 200)
 
         #check
@@ -7861,7 +7991,7 @@ class Core_TestCase(TestCase):
             }
         )
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 200)
 
         #check
@@ -7878,7 +8008,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.get(reverse('user_follows_api'), data={'when_last_action_s': when_last_action_s})
 
-        print_function_name(request.content)
+        print_with_function_name(request.content)
         self.assertEqual(request.status_code, 200)
 
         #check
@@ -7892,15 +8022,225 @@ class Core_TestCase(TestCase):
 
 
     def test_browse_events__missing_args(self):
-        pass
+
+        full_valid_args = {
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'responder',
+            'next_or_back': 'back',
+            'username': 'huhu',
+            'likes_or_dislikes': 'dislikes',
+            'audio_clip_tone_id': 1,
+        }
+
+        #all are valid kwargs but each is missing 1 important kwarg
+        all_kwargs = [
+            {
+                'timeframe': 'all',
+                'audio_clip_role_name': 'originator',
+                'next_or_back': 'back',
+            },
+            {
+                'latest_or_best': 'latest',
+                'audio_clip_role_name': 'originator',
+                'next_or_back': 'back',
+            },
+            {
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'next_or_back': 'back',
+            },
+            {
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'originator',
+            },
+            {
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'responder',
+                'likes_or_dislikes': 'dislikes',
+            },
+        ]
+
+        for kwargs in all_kwargs:
+
+            try:
+
+                request = self.client.get(
+                    reverse(
+                        'browse_events_api',
+                        kwargs=kwargs
+                    )
+                )
+
+            except exceptions.NoReverseMatch:
+
+                pass
+
+            except Exception as e:
+
+                raise e
 
 
     def test_browse_events__faulty_args(self):
-        pass
+
+        full_valid_args = {
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'responder',
+            'next_or_back': 'back',
+            'username': self.users[0].username,
+            'likes_or_dislikes': 'dislikes',
+            'audio_clip_tone_id': 1,
+        }
+
+        #all are valid kwargs but each is missing 1 important kwarg
+        all_kwargs = []
+
+        new_kwargs = full_valid_args.copy()
+        new_kwargs.update({'latest_or_best': 'huh'})
+        all_kwargs.append(new_kwargs)
+
+        new_kwargs = full_valid_args.copy()
+        new_kwargs.update({'timeframe': 'huh'})
+        all_kwargs.append(new_kwargs)
+
+        new_kwargs = full_valid_args.copy()
+        new_kwargs.update({'audio_clip_role_name': 'abcde'})
+        all_kwargs.append(new_kwargs)
+
+        new_kwargs = full_valid_args.copy()
+        new_kwargs.update({'likes_or_dislikes': 'huh'})
+        all_kwargs.append(new_kwargs)
+
+        for kwargs in all_kwargs:
+
+            request = self.client.get(
+                reverse(
+                    'browse_events_api',
+                    kwargs=kwargs
+                )
+            )
+
+            self.assertEqual(request.status_code, 400)
+
+        #cannot pass None
+        new_kwargs = full_valid_args.copy()
+        new_kwargs.update({'audio_clip_tone_id': None})
+
+        try:
+
+            request = self.client.get(
+                reverse(
+                    'browse_events_api',
+                    kwargs=kwargs
+                )
+            )
+
+        except exceptions.NoReverseMatch:
+
+            pass
+
+        except Exception as e:
+
+            raise e
 
 
-    def test_browse_events__browse_likes_dislikes__only_own_profile_allowed(self):
-        pass
+    def test_browse_events__not_found_in_db_args(self):
+
+        all_kwargs = []
+
+        #username
+
+        all_kwargs.append({
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'responder',
+            'next_or_back': 'back',
+            'username': self.users[0].username + '999',
+            'likes_or_dislikes': 'dislikes',
+            'audio_clip_tone_id': 1,
+        })
+
+        #audio_clip_tone
+
+        guaranteed_non_existent_audio_clip_tone_id = AudioClipTones.objects.all().order_by('-id').values_list('id')[:1]
+        guaranteed_non_existent_audio_clip_tone_id = guaranteed_non_existent_audio_clip_tone_id[0][0]
+        guaranteed_non_existent_audio_clip_tone_id += 1
+
+        all_kwargs.append({
+                'latest_or_best': 'latest',
+                'timeframe': 'all',
+                'audio_clip_role_name': 'responder',
+                'next_or_back': 'back',
+                'audio_clip_tone_id': guaranteed_non_existent_audio_clip_tone_id,
+        })
+
+        #check
+
+        for kwargs in all_kwargs:
+
+            request = self.client.get(
+                reverse(
+                    'browse_events_api',
+                    kwargs=kwargs
+                )
+            )
+
+            print_with_function_name(request.content)
+            self.assertEqual(request.status_code, 404)
+
+
+    def test_browse_events__browse_likes_dislikes__only_own_rows_allowed(self):
+
+        self.login(self.users[0])
+
+        #not own rows
+
+        kwargs = {
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'responder',
+            'next_or_back': 'back',
+            'likes_or_dislikes': 'likes',
+            'username': self.users[1].username,
+        }
+
+        #check
+
+        request = self.client.get(
+            reverse(
+                'browse_events_api',
+                kwargs=kwargs
+            )
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 403)
+
+        #is own rows
+
+        kwargs = {
+            'latest_or_best': 'latest',
+            'timeframe': 'all',
+            'audio_clip_role_name': 'responder',
+            'next_or_back': 'back',
+            'likes_or_dislikes': 'likes',
+            'username': self.users[0].username,
+        }
+
+        #check
+
+        request = self.client.get(
+            reverse(
+                'browse_events_api',
+                kwargs=kwargs
+            )
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
 
 
     def test_browse_events__ok(self):
@@ -7908,16 +8248,143 @@ class Core_TestCase(TestCase):
         pass
 
 
-    def test_user_banned_audio_clip__missing_args(self):
-        pass
+    def test_user_banned_audio_clips__can_only_view_while_banned(self):
+
+        #not banned
+
+        self.login(self.users[0])
+
+        request = self.client.get(
+            reverse(
+                'user_banned_audio_clips_api',
+                kwargs={}
+            )
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 400)
+
+        #banned
+
+        self.users[0].banned_until = get_datetime_now() + timedelta(seconds=10)
+        self.users[0].ban_count = 1
+        self.users[0].save()
+
+        self.login(self.users[0])
+
+        request = self.client.get(
+            reverse(
+                'user_banned_audio_clips_api',
+                kwargs={}
+            )
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
 
 
-    def test_user_banned_audio_clip__faulty_args(self):
-        pass
+    def test_user_banned_audio_clips__ok(self):
 
+        #prepare data
 
-    def test_user_banned_audio_clip__can_only_view_while_banned(self):
-        pass
+        #banned as originator
+
+        sample_event_0 = self.create_event(
+            self.users[0],
+            "deleted"
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='deleted',
+            audio_clip_is_banned=True,
+        )
+
+        #banned as responder
+
+        sample_event_1 = self.create_event(
+            self.users[1],
+            "incomplete"
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_1,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        sample_audio_clip_2 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_1,
+            audio_clip_generic_status_generic_status_name='deleted',
+            audio_clip_is_banned=True,
+        )
+
+        #fine as originator
+
+        sample_event_2 = self.create_event(
+            self.users[0],
+            "completed"
+        )
+
+        sample_audio_clip_3 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_2,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        #fine as responder
+
+        sample_event_3 = self.create_event(
+            self.users[1],
+            "completed"
+        )
+
+        sample_audio_clip_4 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_3,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        sample_audio_clip_5 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_3,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        #start
+
+        self.users[0].banned_until = get_datetime_now() + timedelta(seconds=10)
+        self.users[0].ban_count = 1
+        self.users[0].save()
+
+        self.login(self.users[0])
+
+        request = self.client.get(
+            reverse(
+                'user_banned_audio_clips_api',
+            )
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
+
+        response_data = get_response_data(request)
+
+        banned_audio_clip_ids = [sample_audio_clip_0.id, sample_audio_clip_2.id]
+
+        self.assertEqual(len(response_data['data']), 2)
+        self.assertTrue(response_data['data'][0]['id'] in banned_audio_clip_ids)
+        self.assertTrue(response_data['data'][1]['id'] in banned_audio_clip_ids)
+        self.assertNotEqual(response_data['data'][0]['id'], response_data['data'][1]['id'])
+
 
 
 

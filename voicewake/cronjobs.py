@@ -86,7 +86,6 @@ def cronjob_ban_audio_clips():
         #Q() is important since you cannot do comparison with NULL, e.g. >= NULL
         audio_clip_reports = AudioClipReports.objects.select_for_update(
             of=('self', 'audio_clip',),
-            no_key=True,
         ).select_related(
             'audio_clip',
         ).prefetch_related(
@@ -213,6 +212,8 @@ def cronjob_ban_audio_clips():
             fields=('generic_status',),
             batch_size=100,
         )
+
+        AudioClipLikesDislikes.objects.filter(audio_clip__in=audio_clips).delete()
 
         AudioClips.objects.bulk_update(
             audio_clips,
