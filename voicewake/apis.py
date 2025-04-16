@@ -429,200 +429,37 @@ class UsersUsernameAPI(generics.GenericAPIView):
 
 class UserBannedAudioClipsAPI(generics.GenericAPIView):
 
-    serializer_class = AudioClipsSerializer
+    serializer_class = None
     permission_classes = [IsAuthenticated]
 
     #no post() here, cronjob does the banning
-    #due to exponential ban period, banned audio_clips per user should be controllable
-        #could remove cursor-based browsing, but keeping it in case moderation is needed next time
-
-
-    def get_latest_banned_audio_clips(self, next_or_back:Literal['next', 'back'], cursor_token:str=''):
-
-        #we could simply implement when_banned
-        #but due to deadlines, there was no time available to retest BrowseEventsAPI
-            #using when_banned did increase query time
-
-        #this is sufficient, as long as:
-            #being banned is the last possible step to trigger last_modified
-
-        result = {
-            'rows': [],
-            'next_cursor_token': cursor_token,
-            'back_cursor_token': cursor_token,
-        }
-
-        #only show when user is still banned
-
-        if self.request.user.banned_until is None:
-
-            return result
-
-        #due to cursor-based browsing requiring 1 fixed direction for ordering,
-        #it is impossible to do "back" without providing cursor_token
-        if next_or_back == 'back' and cursor_token == '':
-
-            return result
-
-        #handle cursor token
-
-        decoded_cursor_token = {}
-        cursor_params = []
-
-        if cursor_token != '':
-
-            try:
-
-                #get audio_clips.last_modified, audio_clips.id
-                decoded_cursor_token = decode_cursor_token(cursor_token)
-
-                cursor_params = [
-                    decoded_cursor_token['last_modified'],
-                    decoded_cursor_token['id'], decoded_cursor_token['last_modified'],
-                ]
-
-            except:
-
-                raise custom_error(
-                    ValueError,
-                    __name__,
-                    user_message="Unable to fetch content due to faulty cursor token.",
-                    dev_message="Token could not be decoded: " + cursor_token
-                )
-
-        #prepare adjustments based on cursor direction
-
-        cursor_sql = ''
-
-        if next_or_back == 'next':
-
-            if len(decoded_cursor_token) > 0:
-
-                cursor_sql = '''
-                    AND (
-                        audio_clips.last_modified <= %s
-                        AND
-                        (audio_clips.id < %s OR audio_clips.last_modified < %s)
-                    )
-                '''
-
-        elif next_or_back == 'back':
-
-            if len(decoded_cursor_token) > 0:
-
-                cursor_sql = '''
-                    AND (
-                        audio_clips.last_modified >= %s
-                        AND
-                        (audio_clips.id > %s OR audio_clips.last_modified > %s)
-                    )
-                '''
-
-        #proceed
-
-        full_sql = '''
-            SELECT * FROM audio_clips
-            INNER JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
-            WHERE is_banned IS TRUE
-            AND audio_clips.user_id = %s
-            AND generic_statuses.generic_status_name = %s
-            ''' + cursor_sql + '''
-            ORDER BY audio_clips.last_modified DESC, audio_clips.id DESC
-			LIMIT %s
-        '''
-
-        full_params = [
-            self.request.user.id,
-            'deleted',
-        ] + cursor_params + [
-            settings.LIST_AUDIO_CLIP_QUANTITY_PER_PAGE,
-        ]
-
-        #execute
-
-        audio_clips = AudioClips.objects.prefetch_related(
-            'audio_clip_role',
-            'audio_clip_tone',
-            'generic_status',
-            'user',
-        ).raw(
-            full_sql,
-            params=full_params
-        )
-
-        list(audio_clips)
-
-        if len(audio_clips) == 0:
-
-            return result
-        
-        result['rows'] = audio_clips
-
-        #start preparing our cursor tokens
-
-        result['back_cursor_token'] = encode_cursor_token({
-            'last_modified': audio_clips[0].last_modified.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-            'id': audio_clips[0].id,
-        })
-
-        result['next_cursor_token'] = encode_cursor_token({
-            'last_modified': audio_clips[-1].last_modified.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-            'id': audio_clips[-1].id,
-        })
-
-        return result
-
+    #due to exponential ban period, banned audio_clips per user is nearly guaranteed to be low
 
     def get(self, request, *args, **kwargs):
 
-        serializer = UserBannedAudioClipsAPISerializer(data=kwargs, many=False)
-
-        if serializer.is_valid() is False:
+        #only allow users to use API if currently banned
+        if request.user.banned_until is None:
 
             return Response(
                 data={
-                    'message': get_serializer_error_message(serializer),
+                    'message': 'You can only view your banned recordings while you are banned.',
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        request_data = serializer.validated_data
-
-        #continue
-
-        result = self.get_latest_banned_audio_clips(
-            request_data['next_or_back'],
-            request_data['cursor_token'],
-        )
-
-        #prepare next and back URLs
-        #we used to return full URLs via self.request.build_absolute_uri().split(request_data['next_or_back'], 1)
-        #but for localhost Docker, it would not include port in URL, causing frontend to fail
-
-        next_token = ""
-        back_token = ""
-
-        if len(result['rows']) > 0:
-
-            next_token = result['next_cursor_token']
-            back_token = result['back_cursor_token']
-
-        elif len(result['rows']) == 0 and request_data['cursor_token'] != '':
-
-            next_token = request_data['cursor_token']
-            back_token = request_data['cursor_token']
-
-        #prepare response
+        banned_audio_clips = AudioClips.objects.select_related(
+            'audio_clip_role',
+            'audio_clip_tone',
+            'generic_status',
+        ).filter(user=request.user, is_banned=True).order_by('-last_modified')
 
         serializer = AudioClipsSerializer(
-            result['rows'],
+            banned_audio_clips,
             many=True,
         )
 
         return Response(
             data={
-                'next_token': next_token,
-                'back_token': back_token,
                 'data': serializer.data,
             },
             status=status.HTTP_200_OK
@@ -1863,6 +1700,30 @@ class BrowseEventsAPI(generics.GenericAPIView):
 
         request_data = serializer.validated_data
 
+        #check if user is trying to view a user that does not exist
+
+        username_lowercase = request_data['username'].lower()
+
+        if len(username_lowercase) > 0 and get_user_model().objects.filter(username_lowercase=username_lowercase).exists() is False:
+
+            return Response(
+                data={
+                    'message': 'Username does not exist.',
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        #check if user is trying to view audio_clip_tone that does not exist
+
+        if request_data['audio_clip_tone_id'] is not None and AudioClipTones.objects.filter(id=request_data['audio_clip_tone_id']).exists() is False:
+
+            return Response(
+                data={
+                    'message': 'Tone does not exist.',
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
         #get rows and cursor
         #currently only handling latest
 
@@ -1874,7 +1735,7 @@ class BrowseEventsAPI(generics.GenericAPIView):
 
             if(
                 request.user.is_authenticated is True and
-                request.user.username.lower() == request_data['username'].lower()
+                request.user.username_lowercase == username_lowercase
             ):
 
                 result = self.list_latest_liked_disliked_audio_clips(
@@ -1892,7 +1753,7 @@ class BrowseEventsAPI(generics.GenericAPIView):
                     data={
                         'message': 'You can only view your own likes and dislikes for now.',
                     },
-                    status=status.HTTP_400_BAD_REQUEST
+                    status=status.HTTP_403_FORBIDDEN
                 )
 
         else:
@@ -2123,6 +1984,7 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
     #excludes those that blocked user, as well as those that the user has blocked, i.e. goes both ways
     def get_audio_clips_by_incomplete_events(self, audio_clip_tone_id:int|None=None):
 
+        #this must be balanced between "give older unreplied events a chance" and "new events get replied fast enough"
         oldest_when_created = (get_datetime_now() - timedelta(seconds=settings.EVENT_INCOMPLETE_QUEUE_MAX_AGE_S))
         oldest_when_created = oldest_when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z')
 
@@ -2140,6 +2002,7 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
             '''
             audio_clip_tone_params.append(audio_clip_tone_id)
 
+        #doing "events.when_created >= datetime" is better, since with "<=", you'd need "restart search from latest" feature
         full_sql = '''
             WITH
 				excluded_events_1 AS (
@@ -2953,7 +2816,20 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
         #check if audio clip exists
         #need this check, for uncatchable update_or_create() exception during tests
 
-        if AudioClips.objects.filter(pk=request_data['audio_clip_id']).exists() is False:
+        try:
+
+            audio_clip = AudioClips.objects.select_related('generic_status').get(pk=request_data['audio_clip_id'])
+
+            if audio_clip.generic_status.generic_status_name == 'deleted':
+
+                return Response(
+                    data={
+                        'message': 'This recording has been deleted, and cannot accept any new likes or dislikes.',
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        except AudioClips.DoesNotExist:
 
             return Response(
                 data={
@@ -2977,13 +2853,13 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
             else:
 
                 #for value changes, use defaults arg
-                #IRRELEVANT BUG:
+                #irrelevant but notable behaviour:
                     #update_or_create()'s psycopg.errors.ForeignKeyViolation exception cannot be caught here (during tests)
                     #trying to catch at test's self.client.post() also didn't work
                     #will still reach end and return 200
                     #if using create(), the exception can be caught
                     #steps to replicate: at tests, use FK that doesn't exist for audio_clip_id
-                    #current solution: do .exists() check above
+                    #current solution: check if audio_clip_id exists first
                 AudioClipLikesDislikes.objects.update_or_create(
                     user_id=request.user.id,
                     audio_clip_id=request_data['audio_clip_id'],

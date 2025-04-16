@@ -80,7 +80,8 @@ class RealisticBulkData():
             'voicewake/tests/file_samples/audio_ok_1.mp3'
         )
 
-        self.event_quantity = 20 * batch_quantity
+        #keep this lower so you can frequently mix and match the creating phase for more realistic data
+        self.event_quantity = 10 * batch_quantity
 
         self.generic_statuses = {
             'ok': GenericStatuses.objects.get(generic_status_name='ok'),
@@ -2764,20 +2765,16 @@ class Core_TestCase(TestCase):
 
     def test_list_event_reply_choices__ok(self):
 
-        pass
-
-
-    def test_list_event_reply_choices__no_events(self):
-
+        #current dilemma:
+            #no real ordering, although can be unnecessary due to other conditions helping to narrow the range of rows
+            #solutions
+                #either try ORDER BY audio_clips.id ASC, or
+                #do another "exclusive_events" WITH statement and join it
         pass
 
 
     def test_list_event_reply_choices__many_skipped(self):
 
-        pass
-
-
-    def test_user_banned_audio_clip__ok(self):
         pass
 
 
