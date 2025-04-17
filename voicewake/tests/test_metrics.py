@@ -15,6 +15,7 @@ import math
 from typing import Literal
 import inspect
 import time
+import threading
 
 
 
@@ -64,12 +65,13 @@ class RealisticBulkData():
     def __init__(
         self,
         batch_quantity=1,
-        reduce_audio_clip_tone_quantity=True,
+        is_audio_clip_tone_quantity_reduced=True,
+        db_batch_size=500,
     ):
 
         self.batch_quantity = batch_quantity
-        self.reduce_audio_clip_tone_quantity = reduce_audio_clip_tone_quantity
-        self.bulk_create_batch_size = 500
+        self.is_audio_clip_tone_quantity_reduced = is_audio_clip_tone_quantity_reduced
+        self.db_batch_size = db_batch_size
 
         self.user_quantity = 10 * batch_quantity
         self.user_prefix = "testuser"
@@ -100,7 +102,7 @@ class RealisticBulkData():
 
         self.audio_clip_tones = []
 
-        if self.reduce_audio_clip_tone_quantity is True:
+        if self.is_audio_clip_tone_quantity_reduced is True:
 
             new_audio_clip_tone_quantity = math.ceil(AudioClipTones.objects.count() / 4)
             self.audio_clip_tones = AudioClipTones.objects.all()[:new_audio_clip_tone_quantity]
@@ -121,9 +123,6 @@ class RealisticBulkData():
         self.excluded_audio_clip_tones_indexes.append((audio_clip_tones_per_quarter*3) - 1)
         #closest to end, but not last
         self.excluded_audio_clip_tones_indexes.append(len(self.audio_clip_tones) - 2)
-
-        #we accumulate audio_clips here to later have better control on creating likes/dislikes
-        self.audio_clips = []
 
         self.like_count = 0
         self.dislike_count = 0
@@ -196,6 +195,10 @@ class RealisticBulkData():
 
             raise ValueError('To keep things simple, please maintain a minimum of 10.')
 
+        if len(self.users) == 0:
+
+            raise ValueError('No users. Call .prepare_new_users() first.')
+
         #to prevent full exponential scaling, allow an amount of users to not vote at every audio_clip
 
         #len(users) must not be divisible by (like_count + dislike_count), else one user has only likes, the other dislikes, etc.
@@ -205,6 +208,72 @@ class RealisticBulkData():
         self.dislike_count = math.ceil(len(self.users) * 0.5) + 1
 
         self.like_ratio = (self.like_count / (self.like_count + self.dislike_count)) / 100
+
+
+    #initially though only running this once for all create() is more efficient
+    #but that doesn't help when everything is too slow, so this will be coupled into all individual create(), then use threading to execute
+    def _create_audio_clip_likes_dislikes(self, audio_clips):
+
+        #likes dislikes
+        #len(users) must not be divisible by (like_count + dislike_count), else one user has only likes, the other dislikes, etc.
+
+        audio_clip_likes_dislikes = []
+
+        user_index = 0
+
+        for audio_clip in audio_clips:
+
+            current_like_count = 0
+            current_dislike_count = 0
+            current_user = None
+
+            #likes
+            while current_like_count < self.like_count:
+
+                try:
+
+                    current_user = self.users[user_index]
+
+                except IndexError:
+
+                    user_index = 0
+                    current_user = self.users[user_index]
+
+                audio_clip_likes_dislikes.append(
+                    AudioClipLikesDislikes(
+                        user=current_user,
+                        audio_clip=audio_clip,
+                        is_liked=True
+                    )
+                )
+
+                user_index += 1
+                current_like_count += 1
+
+            #dislikes
+            while current_dislike_count < self.dislike_count:
+
+                try:
+
+                    current_user = self.users[user_index]
+
+                except IndexError:
+
+                    user_index = 0
+                    current_user = self.users[user_index]
+
+                audio_clip_likes_dislikes.append(
+                    AudioClipLikesDislikes(
+                        user=current_user,
+                        audio_clip=audio_clip,
+                        is_liked=False
+                    )
+                )
+
+                user_index += 1
+                current_dislike_count += 1
+
+        audio_clip_likes_dislikes = AudioClipLikesDislikes.objects.bulk_create(audio_clip_likes_dislikes, batch_size=self.db_batch_size)
 
 
     def create_event_incomplete(self):
@@ -241,7 +310,7 @@ class RealisticBulkData():
                         )
                     )
 
-            events = Events.objects.bulk_create(events, batch_size=self.bulk_create_batch_size)
+            events = Events.objects.bulk_create(events, batch_size=self.db_batch_size)
 
             #audio_clips
 
@@ -265,7 +334,8 @@ class RealisticBulkData():
                     )
                 )
 
-            self.audio_clips.extend(AudioClips.objects.bulk_create(audio_clips, batch_size=self.bulk_create_batch_size))
+            audio_clips = AudioClips.objects.bulk_create(audio_clips, batch_size=self.db_batch_size)
+            self._create_audio_clip_likes_dislikes(audio_clips)
 
             print('Done with audio_clip_tone #' + str(audio_clip_tone_index) + '.')
 
@@ -304,7 +374,7 @@ class RealisticBulkData():
                         )
                     )
 
-            events = Events.objects.bulk_create(events, batch_size=self.bulk_create_batch_size)
+            events = Events.objects.bulk_create(events, batch_size=self.db_batch_size)
 
             #audio_clips, event_reply_queues
 
@@ -360,9 +430,9 @@ class RealisticBulkData():
 
                 user_index += 1
 
-            self.audio_clips.extend(AudioClips.objects.bulk_create(audio_clips, batch_size=self.bulk_create_batch_size))
-
-            EventReplyQueues.objects.bulk_create(event_reply_queues, batch_size=self.bulk_create_batch_size)
+            event_reply_queues = EventReplyQueues.objects.bulk_create(event_reply_queues, batch_size=self.db_batch_size)
+            audio_clips = AudioClips.objects.bulk_create(audio_clips, batch_size=self.db_batch_size)
+            self._create_audio_clip_likes_dislikes(audio_clips)
 
             print('Done with audio_clip_tone #' + str(audio_clip_tone_index) + '.')
 
@@ -403,7 +473,7 @@ class RealisticBulkData():
                         )
                     )
 
-            events = Events.objects.bulk_create(events, batch_size=self.bulk_create_batch_size)
+            events = Events.objects.bulk_create(events, batch_size=self.db_batch_size)
 
             #audio_clips
 
@@ -427,42 +497,32 @@ class RealisticBulkData():
                     )
                 )
 
-            self.audio_clips.extend(AudioClips.objects.bulk_create(audio_clips, batch_size=self.bulk_create_batch_size))
-
             #user_events
 
             user_events = []
 
             user_index = 0
             when_excluded_for_reply = get_datetime_now() - timedelta(seconds=10)
-            user_event_quantity_per_event = math.ceil(len(self.users) / 3)
 
             for event in events:
 
-                for x in range(user_event_quantity_per_event):
+                for user in self.users:
 
-                    try:
+                    if event.created_by.id == user.id:
 
-                        if self.users[user_index] == event.created_by.pk:
-
-                            user_index += 1
-
-                    except IndexError:
-
-                        user_index = 0
-
-                    responder_user = self.users[user_index]
-                    user_index += 1
+                        continue
 
                     user_events.append(
                         UserEvents(
-                            user=responder_user,
+                            user=user,
                             event=event,
                             when_excluded_for_reply=when_excluded_for_reply,
                         )
                     )
 
-            user_events = UserEvents.objects.bulk_create(user_events, batch_size=self.bulk_create_batch_size)
+            user_events = UserEvents.objects.bulk_create(user_events, batch_size=self.db_batch_size)
+            audio_clips = AudioClips.objects.bulk_create(audio_clips, batch_size=self.db_batch_size)
+            self._create_audio_clip_likes_dislikes(audio_clips)
 
             print('Done with audio_clip_tone #' + str(audio_clip_tone_index) + '.')
 
@@ -501,7 +561,7 @@ class RealisticBulkData():
                         )
                     )
 
-            events = Events.objects.bulk_create(events, batch_size=self.bulk_create_batch_size)
+            events = Events.objects.bulk_create(events, batch_size=self.db_batch_size)
 
             #audio_clips
 
@@ -567,7 +627,8 @@ class RealisticBulkData():
                     )
                 )
 
-            self.audio_clips.extend(AudioClips.objects.bulk_create(audio_clips, batch_size=self.bulk_create_batch_size))
+            audio_clips = AudioClips.objects.bulk_create(audio_clips, batch_size=self.db_batch_size)
+            self._create_audio_clip_likes_dislikes(audio_clips)
 
             print('Done with audio_clip_tone #' + str(audio_clip_tone_index) + '.')
 
@@ -606,7 +667,7 @@ class RealisticBulkData():
                         )
                     )
 
-            events = Events.objects.bulk_create(events, batch_size=self.bulk_create_batch_size)
+            events = Events.objects.bulk_create(events, batch_size=self.db_batch_size)
 
             #audio_clips
 
@@ -630,7 +691,8 @@ class RealisticBulkData():
                     )
                 )
 
-            self.audio_clips.extend(AudioClips.objects.bulk_create(audio_clips, batch_size=self.bulk_create_batch_size))
+            audio_clips = AudioClips.objects.bulk_create(audio_clips, batch_size=self.db_batch_size)
+            self._create_audio_clip_likes_dislikes(audio_clips)
 
             print('Done with audio_clip_tone #' + str(audio_clip_tone_index) + '.')
 
@@ -674,7 +736,7 @@ class RealisticBulkData():
                         )
                     )
 
-            events = Events.objects.bulk_create(events, batch_size=self.bulk_create_batch_size)
+            events = Events.objects.bulk_create(events, batch_size=self.db_batch_size)
 
             #audio_clips
 
@@ -740,75 +802,47 @@ class RealisticBulkData():
                     )
                 )
 
-            self.audio_clips.extend(AudioClips.objects.bulk_create(audio_clips, batch_size=self.bulk_create_batch_size))
+            audio_clips = AudioClips.objects.bulk_create(audio_clips, batch_size=self.db_batch_size)
+            self._create_audio_clip_likes_dislikes(audio_clips)
 
             print('Done with audio_clip_tone #' + str(audio_clip_tone_index) + '.')
 
 
-    def create_audio_clip_likes_dislikes(self):
+    @staticmethod
+    def sample_run():
 
-        #likes dislikes
-        #len(users) must not be divisible by (like_count + dislike_count), else one user has only likes, the other dislikes, etc.
+        #cmd:
+            #python manage.py shell -c "from voicewake.tests.test_metrics import RealisticBulkData; RealisticBulkData.sample_run();"
 
-        audio_clip_likes_dislikes = []
+        realistic_bulk_data_class = RealisticBulkData(batch_quantity=50, is_audio_clip_tone_quantity_reduced=False, db_batch_size=100)
 
-        user_index = 0
+        realistic_bulk_data_class.prepare_new_users()
+        realistic_bulk_data_class.prepare_like_dislike_estimate()
 
-        for audio_clip in self.audio_clips:
+        threads = []
 
-            current_like_count = 0
-            current_dislike_count = 0
-            current_user = None
+        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete__skipped_by_responders))
+        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_completed))
+        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted__has_reply))
+        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete__is_replying))
+        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete))
+        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete__is_replying))
+        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted__has_reply))
+        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_completed))
+        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete__skipped_by_responders))
+        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted__no_reply))
 
-            #likes
-            while current_like_count < self.like_count:
+        #add to multithread queue immediately one after another
+        for thread in threads:
 
-                try:
+            thread.start()
 
-                    current_user = self.users[user_index]
+        #pause main thread until the thread with .join() is done
+        for thread in threads:
 
-                except IndexError:
+            thread.join()
 
-                    user_index = 0
-                    current_user = self.users[user_index]
 
-                audio_clip_likes_dislikes.append(
-                    AudioClipLikesDislikes(
-                        user=current_user,
-                        audio_clip=audio_clip,
-                        is_liked=True
-                    )
-                )
-
-                user_index += 1
-                current_like_count += 1
-
-            #dislikes
-            while current_dislike_count < self.dislike_count:
-
-                try:
-
-                    current_user = self.users[user_index]
-
-                except IndexError:
-
-                    user_index = 0
-                    current_user = self.users[user_index]
-
-                audio_clip_likes_dislikes.append(
-                    AudioClipLikesDislikes(
-                        user=current_user,
-                        audio_clip=audio_clip,
-                        is_liked=False
-                    )
-                )
-
-                user_index += 1
-                current_dislike_count += 1
-
-        #since this has the highest quantity, we can run it as one .bulk_create()
-        print('Running .bulk_create() with ' + str(len(audio_clip_likes_dislikes)) + ' items for audio_clip_likes_dislikes.')
-        audio_clip_likes_dislikes = AudioClipLikesDislikes.objects.bulk_create(audio_clip_likes_dislikes, batch_size=self.bulk_create_batch_size)
 
 
 
@@ -878,7 +912,6 @@ class RealisticBulkData_TestCase(TestCase):
         realistic_bulk_data_class.prepare_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
         realistic_bulk_data_class.create_event_incomplete()
-        realistic_bulk_data_class.create_audio_clip_likes_dislikes()
         self.metrics.update({
             inspect.currentframe().f_code.co_name: realistic_bulk_data_class.get_db_row_count()
         })
@@ -891,7 +924,6 @@ class RealisticBulkData_TestCase(TestCase):
         realistic_bulk_data_class.prepare_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
         realistic_bulk_data_class.create_event_incomplete__is_replying()
-        realistic_bulk_data_class.create_audio_clip_likes_dislikes()
         self.metrics.update({
             inspect.currentframe().f_code.co_name: realistic_bulk_data_class.get_db_row_count()
         })
@@ -904,7 +936,6 @@ class RealisticBulkData_TestCase(TestCase):
         realistic_bulk_data_class.prepare_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
         realistic_bulk_data_class.create_event_incomplete__skipped_by_responders()
-        realistic_bulk_data_class.create_audio_clip_likes_dislikes()
         self.metrics.update({
             inspect.currentframe().f_code.co_name: realistic_bulk_data_class.get_db_row_count()
         })
@@ -917,7 +948,6 @@ class RealisticBulkData_TestCase(TestCase):
         realistic_bulk_data_class.prepare_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
         realistic_bulk_data_class.create_event_completed()
-        realistic_bulk_data_class.create_audio_clip_likes_dislikes()
         self.metrics.update({
             inspect.currentframe().f_code.co_name: realistic_bulk_data_class.get_db_row_count()
         })
@@ -930,7 +960,6 @@ class RealisticBulkData_TestCase(TestCase):
         realistic_bulk_data_class.prepare_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
         realistic_bulk_data_class.create_event_deleted__no_reply()
-        realistic_bulk_data_class.create_audio_clip_likes_dislikes()
         self.metrics.update({
             inspect.currentframe().f_code.co_name: realistic_bulk_data_class.get_db_row_count()
         })
@@ -943,7 +972,6 @@ class RealisticBulkData_TestCase(TestCase):
         realistic_bulk_data_class.prepare_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
         realistic_bulk_data_class.create_event_deleted__has_reply()
-        realistic_bulk_data_class.create_audio_clip_likes_dislikes()
         self.metrics.update({
             inspect.currentframe().f_code.co_name: realistic_bulk_data_class.get_db_row_count()
         })
@@ -951,7 +979,6 @@ class RealisticBulkData_TestCase(TestCase):
 
 
 #since we have cursor tokens, always test (latest->back/to), (earliest->back/to)
-#can we inherit this class and do high bulk_quantity for RealisticBulkData()?
 #for tests that test on filtering, we iterate through list of filters in a single test case, else exponential
     #a test case for filters then becomes unique by differentiating into latest/earliest/empty rows to test db indexing
 #you may see a repeat queryset between audio_clip_tone_id and expected_rows
@@ -969,17 +996,11 @@ class Core_TestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
-        cls.realistic_bulk_data_class = RealisticBulkData(batch_quantity=1)
+        cls.realistic_bulk_data_class = RealisticBulkData()
+        raise ValueError('Figure out how to make this test class use specified db')
+        #also, update everything related to "self.realistic_bulk_data_class" in this test class
 
-        if AudioClips.objects.count() == 0:
-
-            cls.realistic_bulk_data_class.prepare_new_users()
-            cls.realistic_bulk_data_class.prepare_like_dislike_estimate()
-            # cls.realistic_bulk_data_class.create_event_incomplete()
-            cls.realistic_bulk_data_class.create_event_completed()
-            cls.realistic_bulk_data_class.create_audio_clip_likes_dislikes()
-
-        cls.metrics.update({'all_rows': cls.realistic_bulk_data_class.get_db_row_count()})
+        cls.metrics.update({'all_rows': RealisticBulkData.get_db_row_count()})
 
 
     @classmethod
@@ -2776,6 +2797,225 @@ class Core_TestCase(TestCase):
     def test_list_event_reply_choices__many_skipped(self):
 
         pass
+
+
+    #do this first, finalise at API, then do the test cases above
+    def test_new_list_event_reply_choices(self):
+
+        #old
+        #problem: provides no guaranteed ordering, making tests potentially unreliable, or have rows unexpectedly skipped
+        def old(self, audio_clip_tone_id:int|None=None):
+
+            #this must be balanced between "give older unreplied events a chance" and "new events get replied fast enough"
+            oldest_when_created = (get_datetime_now() - timedelta(seconds=settings.EVENT_INCOMPLETE_QUEUE_MAX_AGE_S))
+            oldest_when_created = oldest_when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z')
+
+            #do not get events where this user has been involved in before
+            #we select only events.id in selected_events, followed by events JOIN
+            #because if we do events.* in selected_events, we'll have to write all columns in GROUP BY clause
+
+            audio_clip_tone_sql = ''
+            audio_clip_tone_params = []
+
+            if audio_clip_tone_id is not None:
+
+                audio_clip_tone_sql = '''
+                    AND audio_clips.audio_clip_tone_id = %s
+                '''
+                audio_clip_tone_params.append(audio_clip_tone_id)
+
+            #doing "events.when_created >= datetime" is better, since with "<=", you'd need "restart search from latest" feature
+            full_sql = '''
+                WITH
+                    excluded_events_1 AS (
+                        SELECT event_id FROM audio_clips
+                        WHERE user_id = %s
+                    ),
+                    excluded_events_2 AS (
+                        SELECT event_id FROM user_events
+                        WHERE user_id = %s
+                        AND when_excluded_for_reply IS NOT NULL
+                    ),
+                    excluded_users_1 AS (
+                        SELECT blocked_user_id AS id FROM user_blocks
+                        WHERE user_id = %s
+                    ),
+                    excluded_users_2 AS (
+                        SELECT user_id AS id FROM user_blocks
+                        WHERE blocked_user_id = %s
+                    )
+                    SELECT audio_clips.*,
+                    audio_clip_likes_dislikes.is_liked AS is_liked_by_user
+                    FROM audio_clips
+                    INNER JOIN events ON audio_clips.event_id = events.id
+                    LEFT JOIN event_reply_queues ON events.id = event_reply_queues.event_id
+                    LEFT JOIN excluded_events_1 ON events.id = excluded_events_1.event_id
+                    LEFT JOIN excluded_events_2 ON events.id = excluded_events_2.event_id
+                    LEFT JOIN excluded_users_1 ON audio_clips.user_id = excluded_users_1.id
+                    LEFT JOIN excluded_users_2 ON audio_clips.user_id = excluded_users_2.id
+                    LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
+                        AND audio_clip_likes_dislikes.user_id = %s
+                    WHERE audio_clips.is_banned IS FALSE
+                    ''' + audio_clip_tone_sql + '''
+                    AND event_reply_queues.id IS NULL
+                    AND excluded_events_1.event_id IS NULL
+                    AND excluded_events_2.event_id IS NULL
+                    AND excluded_users_1.id IS NULL
+                    AND excluded_users_2.id IS NULL
+                    AND events.when_created >= %s
+                    AND audio_clips.audio_clip_role_id = (
+                        SELECT id FROM audio_clip_roles
+                        WHERE audio_clip_role_name = %s
+                    )
+                    AND audio_clips.generic_status_id = (
+                        SELECT id FROM generic_statuses
+                        WHERE generic_status_name = %s
+                    )
+                    AND events.generic_status_id = (
+                        SELECT id FROM generic_statuses
+                        WHERE generic_status_name = %s
+                    )
+                    LIMIT %s
+            '''
+
+            full_params = [
+                self.request.user.id,
+                self.request.user.id,
+                self.request.user.id,
+                self.request.user.id,
+                self.request.user.id,
+            ] + audio_clip_tone_params + [
+                oldest_when_created,
+                'originator',
+                'ok',
+                'incomplete',
+                1,  #frontend currently can only handle 1
+            ]
+
+            #start
+            audio_clips = AudioClips.objects.prefetch_related(
+                'audio_clip_role',
+                'event__generic_status',
+                'event',
+                'audio_clip_tone',
+                'generic_status',
+                'user',
+            ).raw(
+                full_sql,
+                full_params
+            )
+
+            return audio_clips
+
+
+        #new0
+        #ORDER BY audio_clips.when_created
+        def new0(self, audio_clip_tone_id:int|None=None):
+
+            #this must be balanced between "give older unreplied events a chance" and "new events get replied fast enough"
+            oldest_when_created = (get_datetime_now() - timedelta(seconds=settings.EVENT_INCOMPLETE_QUEUE_MAX_AGE_S))
+            oldest_when_created = oldest_when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z')
+
+            #do not get events where this user has been involved in before
+            #we select only events.id in selected_events, followed by events JOIN
+            #because if we do events.* in selected_events, we'll have to write all columns in GROUP BY clause
+
+            audio_clip_tone_sql = ''
+            audio_clip_tone_params = []
+
+            if audio_clip_tone_id is not None:
+
+                audio_clip_tone_sql = '''
+                    AND audio_clips.audio_clip_tone_id = %s
+                '''
+                audio_clip_tone_params.append(audio_clip_tone_id)
+
+            #doing "events.when_created >= datetime" is better, since with "<=", you'd need "restart search from latest" feature
+            full_sql = '''
+                WITH
+                    excluded_events_1 AS (
+                        SELECT event_id FROM audio_clips
+                        WHERE user_id = %s
+                    ),
+                    excluded_events_2 AS (
+                        SELECT event_id FROM user_events
+                        WHERE user_id = %s
+                        AND when_excluded_for_reply IS NOT NULL
+                    ),
+                    excluded_users_1 AS (
+                        SELECT blocked_user_id AS id FROM user_blocks
+                        WHERE user_id = %s
+                    ),
+                    excluded_users_2 AS (
+                        SELECT user_id AS id FROM user_blocks
+                        WHERE blocked_user_id = %s
+                    )
+                    SELECT audio_clips.*,
+                    audio_clip_likes_dislikes.is_liked AS is_liked_by_user
+                    FROM audio_clips
+                    INNER JOIN events ON audio_clips.event_id = events.id
+                    LEFT JOIN event_reply_queues ON events.id = event_reply_queues.event_id
+                    LEFT JOIN excluded_events_1 ON events.id = excluded_events_1.event_id
+                    LEFT JOIN excluded_events_2 ON events.id = excluded_events_2.event_id
+                    LEFT JOIN excluded_users_1 ON audio_clips.user_id = excluded_users_1.id
+                    LEFT JOIN excluded_users_2 ON audio_clips.user_id = excluded_users_2.id
+                    LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
+                        AND audio_clip_likes_dislikes.user_id = %s
+                    WHERE audio_clips.is_banned IS FALSE
+                    ''' + audio_clip_tone_sql + '''
+                    AND event_reply_queues.id IS NULL
+                    AND excluded_events_1.event_id IS NULL
+                    AND excluded_events_2.event_id IS NULL
+                    AND excluded_users_1.id IS NULL
+                    AND excluded_users_2.id IS NULL
+                    AND audio_clips.when_created >= %s
+                    AND audio_clips.audio_clip_role_id = (
+                        SELECT id FROM audio_clip_roles
+                        WHERE audio_clip_role_name = %s
+                    )
+                    AND audio_clips.generic_status_id = (
+                        SELECT id FROM generic_statuses
+                        WHERE generic_status_name = %s
+                    )
+                    AND events.generic_status_id = (
+                        SELECT id FROM generic_statuses
+                        WHERE generic_status_name = %s
+                    )
+                    ORDER BY audio_clips.when_created ASC
+                    LIMIT %s
+            '''
+
+            full_params = [
+                self.request.user.id,
+                self.request.user.id,
+                self.request.user.id,
+                self.request.user.id,
+                self.request.user.id,
+            ] + audio_clip_tone_params + [
+                oldest_when_created,
+                'originator',
+                'ok',
+                'incomplete',
+                1,  #frontend currently can only handle 1
+            ]
+
+            #start
+            audio_clips = AudioClips.objects.prefetch_related(
+                'audio_clip_role',
+                'event__generic_status',
+                'event',
+                'audio_clip_tone',
+                'generic_status',
+                'user',
+            ).raw(
+                full_sql,
+                full_params
+            )
+
+            return audio_clips
+
+
+
 
 
 
