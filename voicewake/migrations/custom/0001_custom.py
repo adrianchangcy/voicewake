@@ -12,6 +12,7 @@ from django.db import migrations
 import os
 import json
 from django.conf import settings
+from django.contrib.auth import get_user_model
 
 #this isn't found at our models.py
 from django.contrib.auth.models import Group
@@ -82,6 +83,14 @@ def fill_necessary_data(apps, schema_editor):
         ],
         ignore_conflicts=True
     )
+
+    #ensure admin account exists
+    #this is a short-term solution
+    #for long-term solution:
+        #at frontend, enter username, check is_superuser, prompt password, then prompt TOTP
+            #better to prompt password first so no DoS
+            #once done, update code that refers to this account, to check for .is_superuser instead
+    get_user_model().objects.create_user(username='AdrianC', email='adrianchangcy@gmail.com', is_active=True)
 
     print("\nFinished populating db with necessary data.")
 
