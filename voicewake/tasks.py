@@ -58,14 +58,10 @@ def task_send_otp_email(context:Literal['log_in', 'sign_up'], email:str, otp:str
         email_subject = "Sign-up code: %s" % (otp)
         otp_title = "Sign-up code:"
 
-    #we can freely use math.ceil() as long as TOTP_TOLERANCE_S is sufficient
-    otp_expiry_m = settings.TOTP_VALIDITY_S / 60
-    otp_expiry_m = str(math.ceil(otp_expiry_m))
-
     email_message = get_template('email/otp.html').render(context={
         'otp_title': otp_title,
         'otp': otp,
-        'otp_expiry': '%s minutes' % (otp_expiry_m),
+        'otp_expiry': get_pretty_datetime(settings.TOTP_VALIDITY_S),
     })
 
     send_mail(
