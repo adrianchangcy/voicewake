@@ -680,6 +680,7 @@ class RealisticBulkData():
             print('Done with audio_clip_tone #' + str(audio_clip_tone_index) + '.')
 
 
+    #is like/dislike trigger at db affecting speed?
     @staticmethod
     def sample_run():
 
@@ -748,6 +749,111 @@ class RealisticBulkData():
 
             current_randomness_iteration_count += 1
 
+
+    #run this for a quick run with stopwatch used
+    #increase bulk_quantity for more noticeable difference
+    def performance_diagnosis_run(self):
+
+        self._check_ready()
+        stopwatch = Stopwatch()
+
+        print_with_function_name(f"Started.")
+
+        datetime_now = get_datetime_now()
+
+        for audio_clip_tone_index, audio_clip_tone in enumerate(self.audio_clip_tones):
+
+            #skip audio_clip_tone
+            if audio_clip_tone_index in self.excluded_audio_clip_tones_indexes:
+
+                print('Skipping excluded audio_clip_tones.')
+                continue
+
+            #events
+
+            print('events before bulk_create')
+            stopwatch.start()
+
+            events = []
+
+            for user in self.users:
+
+                #if we only need originator, use current user
+                #if we need responder, use user_index+1
+
+                #create events, audio_clips, audio_clip_likes_dislikes
+                #create extra "incomplete" events that are in the midst of replying
+
+                for x in range(self.event_quantity):
+
+                    events.append(
+                        Events(
+                            None,
+                            "An event by " + user.username,
+                            self.generic_statuses['ok'].id,
+                            user.id,
+                            datetime_now,
+                            datetime_now,
+                        )
+                    )
+
+            stopwatch.stop()
+            print(stopwatch.diff_seconds())
+            print('events during bulk_create')
+            stopwatch.start()
+
+            events = Events.objects.bulk_create(events, batch_size=self.db_batch_size)
+
+            stopwatch.stop()
+            print(stopwatch.diff_seconds())
+            print('audio_clips before bulk_create')
+            stopwatch.start()
+
+            #audio_clips
+
+            audio_clips = []
+
+            for event in events:
+
+                audio_clips.append(
+                    AudioClips(
+                        None,
+                        event.created_by.id,
+                        self.audio_clip_roles['originator'].id,
+                        audio_clip_tone.id,
+                        event.id,
+                        self.generic_statuses['ok'].id,
+                        self.audio_file,
+                        10,
+                        [],
+                        self.like_count,
+                        self.dislike_count,
+                        self.like_ratio,
+                        False,
+                        datetime_now,
+                        datetime_now,
+                    )
+                )
+
+            stopwatch.stop()
+            print(stopwatch.diff_seconds())
+            print('audio_clips during bulk_create')
+            stopwatch.start()
+
+            audio_clips = AudioClips.objects.bulk_create(audio_clips, batch_size=self.db_batch_size)
+
+            stopwatch.stop()
+            print(stopwatch.diff_seconds())
+            print('audio_clip_likes_dislikes during bulk_create')
+            stopwatch.start()
+
+            self._create_audio_clip_likes_dislikes(audio_clips)
+
+            stopwatch.stop()
+            print(stopwatch.diff_seconds())
+
+            print('Done with audio_clip_tone #' + str(audio_clip_tone_index) + '.')
+            break
 
 
 
@@ -899,6 +1005,15 @@ class RealisticBulkData_TestCase(TestCase):
         self.metrics.update({
             inspect.currentframe().f_code.co_name: realistic_bulk_data_class.get_db_row_count()
         })
+
+
+    def test_enable_disable_trigger__audio_clip_likes_dislikes(self):
+
+        #check if trigger is enabled
+        #run .performance_diagnosis_run()
+        #use raw sql to disable trigger
+        #run .performance_diagnosis_run()
+        pass
 
 
 
@@ -1113,7 +1228,7 @@ class Core_TestCase(TestCase):
                 )
             )
 
-            stopwatch.end()
+            stopwatch.stop()
 
             metrics.update({
                 loop_title + '__next__no_token': {
@@ -1154,7 +1269,7 @@ class Core_TestCase(TestCase):
                 )
             )
 
-            stopwatch.end()
+            stopwatch.stop()
 
             metrics.update({
                 loop_title + '__next_token': {
@@ -1196,7 +1311,7 @@ class Core_TestCase(TestCase):
                 )
             )
 
-            stopwatch.end()
+            stopwatch.stop()
 
             metrics.update({
                 loop_title + '__back_token': {
@@ -1237,7 +1352,7 @@ class Core_TestCase(TestCase):
                 )
             )
 
-            stopwatch.end()
+            stopwatch.stop()
 
             metrics.update({
                 loop_title + '__back_token__no_rows': {
@@ -1431,7 +1546,7 @@ class Core_TestCase(TestCase):
                 )
             )
 
-            stopwatch.end()
+            stopwatch.stop()
 
             metrics.update({
                 loop_title + '__next__no_token': {
@@ -1472,7 +1587,7 @@ class Core_TestCase(TestCase):
                 )
             )
 
-            stopwatch.end()
+            stopwatch.stop()
 
             metrics.update({
                 loop_title + '__next_token': {
@@ -1514,7 +1629,7 @@ class Core_TestCase(TestCase):
                 )
             )
 
-            stopwatch.end()
+            stopwatch.stop()
 
             metrics.update({
                 loop_title + '__back_token': {
@@ -1555,7 +1670,7 @@ class Core_TestCase(TestCase):
                 )
             )
 
-            stopwatch.end()
+            stopwatch.stop()
 
             metrics.update({
                 loop_title + '__back_token__no_rows': {
@@ -1749,7 +1864,7 @@ class Core_TestCase(TestCase):
                 )
             )
 
-            stopwatch.end()
+            stopwatch.stop()
 
             metrics.update({
                 loop_title + 'next__no_token': {
@@ -1790,7 +1905,7 @@ class Core_TestCase(TestCase):
                 )
             )
 
-            stopwatch.end()
+            stopwatch.stop()
 
             metrics.update({
                 loop_title + 'next_token': {
@@ -1832,7 +1947,7 @@ class Core_TestCase(TestCase):
                 )
             )
 
-            stopwatch.end()
+            stopwatch.stop()
 
             metrics.update({
                 loop_title + 'back_token': {
@@ -1873,7 +1988,7 @@ class Core_TestCase(TestCase):
                 )
             )
 
-            stopwatch.end()
+            stopwatch.stop()
 
             metrics.update({
                 loop_title + 'back_token__no_rows': {
@@ -2053,7 +2168,7 @@ class Core_TestCase(TestCase):
                     )
                 )
 
-                stopwatch.end()
+                stopwatch.stop()
 
                 metrics.update({
                     loop_title + 'next__no_token': {
@@ -2094,7 +2209,7 @@ class Core_TestCase(TestCase):
                     )
                 )
 
-                stopwatch.end()
+                stopwatch.stop()
 
                 metrics.update({
                     loop_title + 'next_token': {
@@ -2136,7 +2251,7 @@ class Core_TestCase(TestCase):
                     )
                 )
 
-                stopwatch.end()
+                stopwatch.stop()
 
                 metrics.update({
                     loop_title + 'back_token': {
@@ -2177,7 +2292,7 @@ class Core_TestCase(TestCase):
                     )
                 )
 
-                stopwatch.end()
+                stopwatch.stop()
 
                 metrics.update({
                     loop_title + 'back_token__no_rows': {
@@ -2375,7 +2490,7 @@ class Core_TestCase(TestCase):
                 )
             )
 
-            stopwatch.end()
+            stopwatch.stop()
 
             metrics.update({
                 'loop_'+str(index): {
@@ -2681,7 +2796,7 @@ class Core_TestCase(TestCase):
                 )
             )
 
-            stopwatch.end()
+            stopwatch.stop()
 
             metrics.update({
                 loop_title + 'next_token': {
