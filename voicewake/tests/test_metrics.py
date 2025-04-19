@@ -691,24 +691,68 @@ class RealisticBulkData():
         realistic_bulk_data_class.prepare_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
 
-        threads = []
+        #this improves realism of randomness
+        max_randomness_iteration_count = 3
+        current_randomness_iteration_count = 0
 
-        # threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete__skipped_by_responders))
-        # threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_completed))
-        # threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted__has_reply))
-        # threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete__is_replying))
-        # threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted__no_reply))
-        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete))
+        while current_randomness_iteration_count < max_randomness_iteration_count:
 
-        #add to multithread queue immediately one after another
-        for thread in threads:
+            threads = []
 
-            thread.start()
+            threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete, args=(True, False)))
+            threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete, args=(False, True)))
+            threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete, args=(True, True)))
+            threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete, args=(False, False)))
 
-        #pause main thread until the thread with .join() is done
-        for thread in threads:
+            threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_completed))
 
-            thread.join()
+            threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted, args=(True, False)))
+            threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted, args=(False, True)))
+            threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted, args=(True, True)))
+            threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted, args=(False, False)))
+
+            random.shuffle(threads)
+
+            #run 2 threads at a time
+
+            thread_index = 0
+
+            while thread_index < len(threads):
+
+                is_last_thread = False
+
+                #start threads
+
+                threads[thread_index].start()
+
+                try:
+
+                    threads[thread_index+1].start()
+
+                except IndexError:
+
+                    is_last_thread = True
+
+                #pause main thread until done
+
+                threads[thread_index].join()
+
+                if is_last_thread is False:
+
+                    threads[thread_index+1].join()
+                    thread_index += 2
+
+                else:
+
+                    thread_index += 1
+
+            current_randomness_iteration_count += 1
+
+
+
+
+
+
 
 
 
