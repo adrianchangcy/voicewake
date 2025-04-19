@@ -519,24 +519,24 @@ class Stopwatch:
     def __init__(self):
 
         self.start_time = None
-        self.end_time = None
+        self.stop_time = None
 
 
     def start(self):
 
         self.start_time = time.perf_counter()
-        self.end_time = None
+        self.stop_time = None
 
 
-    def end(self):
+    def stop(self):
 
-        self.end_time = time.perf_counter()
+        self.stop_time = time.perf_counter()
 
 
     def diff_seconds(self):
 
         #0.000s
-        return round(self.end_time - self.start_time, 3)
+        return round(self.stop_time - self.start_time, 3)
 
 
 
