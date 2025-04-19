@@ -59,7 +59,9 @@ import threading
 
 #good balance of rows with same dates will test indexing better
 #if you have too many rows to the point where it's unrealistic, space out data creation with time.sleep(1)
-#if you want more realistic likes/dislikes, group audio_clips by modulus, e.g. %2 %4 %6
+#trying out suggestions to optimise this:
+    #using positional args (id, user)(None, current_user.id) instead of kwargs for models
+    #using DEBUG=False at settings.dev
 class RealisticBulkData():
 
     def __init__(
@@ -217,6 +219,8 @@ class RealisticBulkData():
         #likes dislikes
         #len(users) must not be divisible by (like_count + dislike_count), else one user has only likes, the other dislikes, etc.
 
+        datetime_now = get_datetime_now()
+
         audio_clip_likes_dislikes = []
 
         user_index = 0
@@ -241,9 +245,12 @@ class RealisticBulkData():
 
                 audio_clip_likes_dislikes.append(
                     AudioClipLikesDislikes(
-                        user=current_user,
-                        audio_clip=audio_clip,
-                        is_liked=True
+                        None,
+                        current_user.id,
+                        audio_clip.id,
+                        True,
+                        datetime_now,
+                        datetime_now,
                     )
                 )
 
@@ -264,9 +271,12 @@ class RealisticBulkData():
 
                 audio_clip_likes_dislikes.append(
                     AudioClipLikesDislikes(
-                        user=current_user,
-                        audio_clip=audio_clip,
-                        is_liked=False
+                        None,
+                        current_user.id,
+                        audio_clip.id,
+                        False,
+                        datetime_now,
+                        datetime_now,
                     )
                 )
 
@@ -276,9 +286,13 @@ class RealisticBulkData():
         audio_clip_likes_dislikes = AudioClipLikesDislikes.objects.bulk_create(audio_clip_likes_dislikes, batch_size=self.db_batch_size)
 
 
-    def create_event_incomplete(self):
+    def create_event_incomplete(self, is_replying:bool=False, skipped_by_users:bool=False):
 
         self._check_ready()
+
+        print_with_function_name(f"Started. is_replying={str(is_replying)}, skipped_by_users={str(skipped_by_users)}.")
+
+        datetime_now = get_datetime_now()
 
         for audio_clip_tone_index, audio_clip_tone in enumerate(self.audio_clip_tones):
 
@@ -304,224 +318,116 @@ class RealisticBulkData():
 
                     events.append(
                         Events(
-                            event_name=("An event by " + user.username),
-                            generic_status=self.generic_statuses['incomplete'],
-                            created_by=user,
+                            None,
+                            "An event by " + user.username,
+                            self.generic_statuses['incomplete'].id,
+                            user.id,
+                            datetime_now,
+                            datetime_now,
                         )
                     )
 
             events = Events.objects.bulk_create(events, batch_size=self.db_batch_size)
 
-            #audio_clips
-
-            audio_clips = []
-
-            for event in events:
-
-                audio_clips.append(
-                    AudioClips(
-                        user=event.created_by,
-                        audio_clip_role=self.audio_clip_roles['originator'],
-                        audio_clip_tone=audio_clip_tone,
-                        event=event,
-                        generic_status=self.generic_statuses['ok'],
-                        audio_file=self.audio_file,
-                        audio_duration_s=10,
-                        like_count=self.like_count,
-                        dislike_count=self.dislike_count,
-                        like_ratio=self.like_ratio,
-                        is_banned=False,
-                    )
-                )
-
-            audio_clips = AudioClips.objects.bulk_create(audio_clips, batch_size=self.db_batch_size)
-            self._create_audio_clip_likes_dislikes(audio_clips)
-
-            print('Done with audio_clip_tone #' + str(audio_clip_tone_index) + '.')
-
-
-    def create_event_incomplete__is_replying(self):
-
-        self._check_ready()
-
-        for audio_clip_tone_index, audio_clip_tone in enumerate(self.audio_clip_tones):
-
-            #skip audio_clip_tone
-            if audio_clip_tone_index in self.excluded_audio_clip_tones_indexes:
-
-                print('Skipping excluded audio_clip_tones.')
-                continue
-
-            #events
-
-            events = []
-
-            for user in self.users:
-
-                #if we only need originator, use current user
-                #if we need responder, use user_index+1
-
-                #create events, audio_clips, audio_clip_likes_dislikes
-                #create extra "incomplete" events that are in the midst of replying
-
-                for x in range(self.event_quantity):
-
-                    events.append(
-                        Events(
-                            event_name=("An event by " + user.username),
-                            generic_status=self.generic_statuses['incomplete'],
-                            created_by=user,
-                        )
-                    )
-
-            events = Events.objects.bulk_create(events, batch_size=self.db_batch_size)
-
-            #audio_clips, event_reply_queues
+            #audio_clips, event_reply_queues, user_events
 
             audio_clips = []
             event_reply_queues = []
-
-            when_locked = get_datetime_now() - timedelta(seconds=10)
-            user_index = 0
-
-            for event in events:
-
-                audio_clips.append(
-                    AudioClips(
-                        user=event.created_by,
-                        audio_clip_role=self.audio_clip_roles['originator'],
-                        audio_clip_tone=audio_clip_tone,
-                        event=event,
-                        generic_status=self.generic_statuses['ok'],
-                        audio_file=self.audio_file,
-                        audio_duration_s=10,
-                        like_count=self.like_count,
-                        dislike_count=self.dislike_count,
-                        like_ratio=self.like_ratio,
-                        is_banned=False,
-                    )
-                )
-
-                try:
-
-                    #use this statement to check for IndexError
-                    #also might as well +=1 if users are the same
-                    if self.users[user_index] == event.created_by.pk:
-
-                        user_index += 1
-
-                except IndexError:
-
-                    #out of range, restart
-                    user_index = 0
-
-                    if self.users[user_index] == event.created_by.pk:
-
-                        user_index += 1
-
-                event_reply_queues.append(
-                    EventReplyQueues(
-                        event=event,
-                        when_locked=when_locked,
-                        locked_for_user=self.users[user_index],
-                        is_replying=True,
-                    )
-                )
-
-                user_index += 1
-
-            event_reply_queues = EventReplyQueues.objects.bulk_create(event_reply_queues, batch_size=self.db_batch_size)
-            audio_clips = AudioClips.objects.bulk_create(audio_clips, batch_size=self.db_batch_size)
-            self._create_audio_clip_likes_dislikes(audio_clips)
-
-            print('Done with audio_clip_tone #' + str(audio_clip_tone_index) + '.')
-
-
-    def create_event_incomplete__skipped_by_responders(self):
-
-        #only using half of total users
-
-        self._check_ready()
-
-        for audio_clip_tone_index, audio_clip_tone in enumerate(self.audio_clip_tones):
-
-            #skip audio_clip_tone
-            if audio_clip_tone_index in self.excluded_audio_clip_tones_indexes:
-
-                print('Skipping excluded audio_clip_tones.')
-                continue
-
-            #events
-
-            events = []
-
-            for user in self.users:
-
-                #if we only need originator, use current user
-                #if we need responder, use user_index+1
-
-                #create events, audio_clips, audio_clip_likes_dislikes
-                #create extra "incomplete" events that are in the midst of replying
-
-                for x in range(self.event_quantity):
-
-                    events.append(
-                        Events(
-                            event_name=("An event by " + user.username),
-                            generic_status=self.generic_statuses['incomplete'],
-                            created_by=user,
-                        )
-                    )
-
-            events = Events.objects.bulk_create(events, batch_size=self.db_batch_size)
-
-            #audio_clips
-
-            audio_clips = []
-
-            for event in events:
-
-                audio_clips.append(
-                    AudioClips(
-                        user=event.created_by,
-                        audio_clip_role=self.audio_clip_roles['originator'],
-                        audio_clip_tone=audio_clip_tone,
-                        event=event,
-                        generic_status=self.generic_statuses['ok'],
-                        audio_file=self.audio_file,
-                        audio_duration_s=10,
-                        like_count=self.like_count,
-                        dislike_count=self.dislike_count,
-                        like_ratio=self.like_ratio,
-                        is_banned=False,
-                    )
-                )
-
-            #user_events
-
             user_events = []
 
-            user_index = 0
-            when_excluded_for_reply = get_datetime_now() - timedelta(seconds=10)
+            replying_user_index = 0
+            when_locked = get_datetime_now() - timedelta(seconds=10)
+            when_excluded_for_reply = get_datetime_now() - timedelta(seconds=20)
 
             for event in events:
 
-                for user in self.users:
+                audio_clips.append(
+                    AudioClips(
+                        None,
+                        event.created_by.id,
+                        self.audio_clip_roles['originator'].id,
+                        audio_clip_tone.id,
+                        event.id,
+                        self.generic_statuses['ok'].id,
+                        self.audio_file,
+                        10,
+                        [],
+                        self.like_count,
+                        self.dislike_count,
+                        self.like_ratio,
+                        False,
+                        datetime_now,
+                        datetime_now,
+                    )
+                )
 
-                    if event.created_by.id == user.id:
+                #event_reply_queues
 
-                        continue
+                if is_replying is True:
 
-                    user_events.append(
-                        UserEvents(
-                            user=user,
-                            event=event,
-                            when_excluded_for_reply=when_excluded_for_reply,
+                    try:
+
+                        #use this statement to check for IndexError
+                        #also might as well +=1 if users are the same
+                        if self.users[replying_user_index] == event.created_by.pk:
+
+                            replying_user_index += 1
+
+                    except IndexError:
+
+                        #out of range, restart
+                        replying_user_index = 0
+
+                        if self.users[replying_user_index] == event.created_by.pk:
+
+                            replying_user_index += 1
+
+                    event_reply_queues.append(
+                        EventReplyQueues(
+                            None,
+                            event.id,
+                            when_locked,
+                            self.users[replying_user_index].id,
+                            True,
+                            datetime_now,
+                            datetime_now,
                         )
                     )
 
-            user_events = UserEvents.objects.bulk_create(user_events, batch_size=self.db_batch_size)
+                #users who have skipped before
+                #we refer to existing user in event_reply_queues if is_replying=True, so we don't have the same user skipping and replying
+
+                if skipped_by_users is True:
+
+                    for user in self.users:
+
+                        if is_replying is True and self.users[replying_user_index].id == user.id:
+
+                            continue
+
+                        user_events.append(
+                            UserEvents(
+                                None,
+                                user.id,
+                                event.id,
+                                when_excluded_for_reply,
+                                when_excluded_for_reply,
+                            )
+                        )
+
+                replying_user_index += 1
+
+
             audio_clips = AudioClips.objects.bulk_create(audio_clips, batch_size=self.db_batch_size)
+
+            if is_replying is True:
+
+                event_reply_queues = EventReplyQueues.objects.bulk_create(event_reply_queues, batch_size=self.db_batch_size)
+
+            if skipped_by_users is True:
+
+                user_events = UserEvents.objects.bulk_create(user_events, batch_size=self.db_batch_size)
+
             self._create_audio_clip_likes_dislikes(audio_clips)
 
             print('Done with audio_clip_tone #' + str(audio_clip_tone_index) + '.')
@@ -531,6 +437,10 @@ class RealisticBulkData():
 
         self._check_ready()
 
+        print_with_function_name(f"Started.")
+
+        datetime_now = get_datetime_now()
+
         for audio_clip_tone_index, audio_clip_tone in enumerate(self.audio_clip_tones):
 
             #skip audio_clip_tone
@@ -555,9 +465,12 @@ class RealisticBulkData():
 
                     events.append(
                         Events(
-                            event_name=("An event by " + user.username),
-                            generic_status=self.generic_statuses['completed'],
-                            created_by=user,
+                            None,
+                            "An event by " + user.username,
+                            self.generic_statuses['completed'].id,
+                            user.id,
+                            datetime_now,
+                            datetime_now,
                         )
                     )
 
@@ -573,17 +486,21 @@ class RealisticBulkData():
 
                 audio_clips.append(
                     AudioClips(
-                        user=event.created_by,
-                        audio_clip_role=self.audio_clip_roles['originator'],
-                        audio_clip_tone=audio_clip_tone,
-                        event=event,
-                        generic_status=self.generic_statuses['ok'],
-                        audio_file=self.audio_file,
-                        audio_duration_s=10,
-                        like_count=self.like_count,
-                        dislike_count=self.dislike_count,
-                        like_ratio=self.like_ratio,
-                        is_banned=False,
+                        None,
+                        event.created_by.id,
+                        self.audio_clip_roles['originator'].id,
+                        audio_clip_tone.id,
+                        event.id,
+                        self.generic_statuses['ok'].id,
+                        self.audio_file,
+                        10,
+                        [],
+                        self.like_count,
+                        self.dislike_count,
+                        self.like_ratio,
+                        False,
+                        datetime_now,
+                        datetime_now,
                     )
                 )
 
@@ -613,17 +530,21 @@ class RealisticBulkData():
 
                 audio_clips.append(
                     AudioClips(
-                        user=responder,
-                        audio_clip_role=self.audio_clip_roles['responder'],
-                        audio_clip_tone=audio_clip_tone,
-                        event=event,
-                        generic_status=self.generic_statuses['ok'],
-                        audio_file=self.audio_file,
-                        audio_duration_s=10,
-                        like_count=self.like_count,
-                        dislike_count=self.dislike_count,
-                        like_ratio=self.like_ratio,
-                        is_banned=False,
+                        None,
+                        responder.id,
+                        self.audio_clip_roles['responder'].id,
+                        audio_clip_tone.id,
+                        event.id,
+                        self.generic_statuses['ok'].id,
+                        self.audio_file,
+                        10,
+                        [],
+                        self.like_count,
+                        self.dislike_count,
+                        self.like_ratio,
+                        False,
+                        datetime_now,
+                        datetime_now,
                     )
                 )
 
@@ -633,9 +554,13 @@ class RealisticBulkData():
             print('Done with audio_clip_tone #' + str(audio_clip_tone_index) + '.')
 
 
-    def create_event_deleted__no_reply(self):
+    def create_event_deleted(self, has_reply:bool=False, deleted_and_banned:bool=False):
 
         self._check_ready()
+
+        print_with_function_name(f"Started. has_reply={str(has_reply)}, deleted_and_banned={str(deleted_and_banned)}.")
+
+        datetime_now = get_datetime_now()
 
         for audio_clip_tone_index, audio_clip_tone in enumerate(self.audio_clip_tones):
 
@@ -661,78 +586,12 @@ class RealisticBulkData():
 
                     events.append(
                         Events(
-                            event_name=("An event by " + user.username),
-                            generic_status=self.generic_statuses['deleted'],
-                            created_by=user,
-                        )
-                    )
-
-            events = Events.objects.bulk_create(events, batch_size=self.db_batch_size)
-
-            #audio_clips
-
-            audio_clips = []
-
-            for event in events:
-
-                audio_clips.append(
-                    AudioClips(
-                        user=event.created_by,
-                        audio_clip_role=self.audio_clip_roles['originator'],
-                        audio_clip_tone=audio_clip_tone,
-                        event=event,
-                        generic_status=self.generic_statuses['deleted'],
-                        audio_file=self.audio_file,
-                        audio_duration_s=10,
-                        like_count=self.like_count,
-                        dislike_count=self.dislike_count,
-                        like_ratio=self.like_ratio,
-                        is_banned=False,
-                    )
-                )
-
-            audio_clips = AudioClips.objects.bulk_create(audio_clips, batch_size=self.db_batch_size)
-            self._create_audio_clip_likes_dislikes(audio_clips)
-
-            print('Done with audio_clip_tone #' + str(audio_clip_tone_index) + '.')
-
-
-    def create_event_deleted__has_reply(self):
-
-        self._check_ready()
-
-        #we save the highest quantity of rows for execution outside of loop
-        #this is so when rows are very few, we can at least speed things up this way
-        #can't do it for things like AudioClips because they must first exist before AudioClipLikesDislikes can exist
-        audio_clip_likes_dislikes = []
-
-        for audio_clip_tone_index, audio_clip_tone in enumerate(self.audio_clip_tones):
-
-            #skip audio_clip_tone
-            if audio_clip_tone_index in self.excluded_audio_clip_tones_indexes:
-
-                print('Skipping excluded audio_clip_tones.')
-                continue
-
-            #events
-
-            events = []
-
-            for user in self.users:
-
-                #if we only need originator, use current user
-                #if we need responder, use user_index+1
-
-                #create events, audio_clips, audio_clip_likes_dislikes
-                #create extra "incomplete" events that are in the midst of replying
-
-                for x in range(self.event_quantity):
-
-                    events.append(
-                        Events(
-                            event_name=("An event by " + user.username),
-                            generic_status=self.generic_statuses['deleted'],
-                            created_by=user,
+                            None,
+                            "An event by " + user.username,
+                            self.generic_statuses['deleted'].id,
+                            user.id,
+                            datetime_now,
+                            datetime_now,
                         )
                     )
 
@@ -748,19 +607,27 @@ class RealisticBulkData():
 
                 audio_clips.append(
                     AudioClips(
-                        user=event.created_by,
-                        audio_clip_role=self.audio_clip_roles['originator'],
-                        audio_clip_tone=audio_clip_tone,
-                        event=event,
-                        generic_status=self.generic_statuses['deleted'],
-                        audio_file=self.audio_file,
-                        audio_duration_s=10,
-                        like_count=self.like_count,
-                        dislike_count=self.dislike_count,
-                        like_ratio=self.like_ratio,
-                        is_banned=True,
+                        None,
+                        event.created_by.id,
+                        self.audio_clip_roles['originator'].id,
+                        audio_clip_tone.id,
+                        event.id,
+                        self.generic_statuses['deleted'].id,
+                        self.audio_file,
+                        10,
+                        [],
+                        self.like_count,
+                        self.dislike_count,
+                        self.like_ratio,
+                        deleted_and_banned,
+                        datetime_now,
+                        datetime_now,
                     )
                 )
+
+                if has_reply is False:
+
+                    continue
 
                 #for responder, we +1 self.users until the end, then restart from 0
                 #originator and responder cannot be the same
@@ -788,19 +655,24 @@ class RealisticBulkData():
 
                 audio_clips.append(
                     AudioClips(
-                        user=responder,
-                        audio_clip_role=self.audio_clip_roles['responder'],
-                        audio_clip_tone=audio_clip_tone,
-                        event=event,
-                        generic_status=self.generic_statuses['ok'],
-                        audio_file=self.audio_file,
-                        audio_duration_s=10,
-                        like_count=self.like_count,
-                        dislike_count=self.dislike_count,
-                        like_ratio=self.like_ratio,
-                        is_banned=False,
+                        None,
+                        responder.id,
+                        self.audio_clip_roles['responder'].id,
+                        audio_clip_tone.id,
+                        event.id,
+                        self.generic_statuses['ok'].id,
+                        self.audio_file,
+                        10,
+                        [],
+                        self.like_count,
+                        self.dislike_count,
+                        self.like_ratio,
+                        False,
+                        datetime_now,
+                        datetime_now,
                     )
                 )
+
 
             audio_clips = AudioClips.objects.bulk_create(audio_clips, batch_size=self.db_batch_size)
             self._create_audio_clip_likes_dislikes(audio_clips)
@@ -814,23 +686,19 @@ class RealisticBulkData():
         #cmd:
             #python manage.py shell -c "from voicewake.tests.test_metrics import RealisticBulkData; RealisticBulkData.sample_run();"
 
-        realistic_bulk_data_class = RealisticBulkData(batch_quantity=50, is_audio_clip_tone_quantity_reduced=False, db_batch_size=100)
+        realistic_bulk_data_class = RealisticBulkData(batch_quantity=10, is_audio_clip_tone_quantity_reduced=False, db_batch_size=100)
 
         realistic_bulk_data_class.prepare_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
 
         threads = []
 
-        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete__skipped_by_responders))
-        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_completed))
-        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted__has_reply))
-        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete__is_replying))
+        # threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete__skipped_by_responders))
+        # threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_completed))
+        # threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted__has_reply))
+        # threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete__is_replying))
+        # threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted__no_reply))
         threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete))
-        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete__is_replying))
-        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted__has_reply))
-        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_completed))
-        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete__skipped_by_responders))
-        threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted__no_reply))
 
         #add to multithread queue immediately one after another
         for thread in threads:
@@ -923,7 +791,7 @@ class RealisticBulkData_TestCase(TestCase):
 
         realistic_bulk_data_class.prepare_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
-        realistic_bulk_data_class.create_event_incomplete__is_replying()
+        realistic_bulk_data_class.create_event_incomplete(is_replying=True)
         self.metrics.update({
             inspect.currentframe().f_code.co_name: realistic_bulk_data_class.get_db_row_count()
         })
@@ -935,7 +803,19 @@ class RealisticBulkData_TestCase(TestCase):
 
         realistic_bulk_data_class.prepare_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
-        realistic_bulk_data_class.create_event_incomplete__skipped_by_responders()
+        realistic_bulk_data_class.create_event_incomplete(skipped_by_users=True)
+        self.metrics.update({
+            inspect.currentframe().f_code.co_name: realistic_bulk_data_class.get_db_row_count()
+        })
+
+
+    def test_realistic_bulk_data__event_incomplete__all_true(self):
+
+        realistic_bulk_data_class = RealisticBulkData()
+
+        realistic_bulk_data_class.prepare_new_users()
+        realistic_bulk_data_class.prepare_like_dislike_estimate()
+        realistic_bulk_data_class.create_event_incomplete(is_replying=True, skipped_by_users=True)
         self.metrics.update({
             inspect.currentframe().f_code.co_name: realistic_bulk_data_class.get_db_row_count()
         })
@@ -959,7 +839,7 @@ class RealisticBulkData_TestCase(TestCase):
 
         realistic_bulk_data_class.prepare_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
-        realistic_bulk_data_class.create_event_deleted__no_reply()
+        realistic_bulk_data_class.create_event_deleted(has_reply=False, deleted_and_banned=False)
         self.metrics.update({
             inspect.currentframe().f_code.co_name: realistic_bulk_data_class.get_db_row_count()
         })
@@ -971,7 +851,7 @@ class RealisticBulkData_TestCase(TestCase):
 
         realistic_bulk_data_class.prepare_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
-        realistic_bulk_data_class.create_event_deleted__has_reply()
+        realistic_bulk_data_class.create_event_deleted(has_reply=True, deleted_and_banned=False)
         self.metrics.update({
             inspect.currentframe().f_code.co_name: realistic_bulk_data_class.get_db_row_count()
         })
