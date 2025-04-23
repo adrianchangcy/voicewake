@@ -1,8 +1,7 @@
 from .common import *
 
 
-#is it true that turning DEBUG=False prevents memory leak when running large amounts of queryset?
-DEBUG = False
+DEBUG = True
 DEBUG_PROPAGATE_EXCEPTIONS = True   #shows detailed exceptions instead of simple 500
 
 
