@@ -5,11 +5,12 @@ from django.contrib.auth import get_user_model
 from django.db.models import Count
 from django.db import connection
 from django.core.cache import cache
+from django.db.models import Case, Value, When, Sum, Q, F, Count, BooleanField
+from django.conf import settings
+from django.db import connection, reset_queries
 
 from voicewake.models import *
 from voicewake.services import *
-from django.db.models import Case, Value, When, Sum, Q, F, Count, BooleanField
-from django.conf import settings
 
 import math
 from typing import Literal
@@ -19,41 +20,7 @@ import threading
 
 
 
-#how to generate realistic large set of data
 
-#create 100 users
-#create incomplete/completed/deleted events
-    #incomplete: user + event + audio_clip
-    #completed: user*2 + event + audio_clip*2
-    #deleted: user(User.is_banned=True,User.banned_until) + event + audio_clip
-    #deleted: user(User.is_banned=True,User.banned_until) + user(User.is_banned=True,User.banned_until) + event + audio_clip
-    #deleted: user + user(User.is_banned=True,User.banned_until) + event + audio_clip
-#ensure some audio_clip_tones are not used
-#apply likes and dislikes to audio clips
-    #0 likes 0 dislikes
-    #8 likes 0 dislikes
-    #5 likes 5 dislikes
-    #0 likes 8 dislikes
-
-#test cases
-    #without specifying user
-        #test when rows are the newest in db
-        #test when rows are the oldest in db
-        #test when rows don't exist based on audio_clip
-        #test when rows are in the middle in terms of when_created
-        #test when rows are in the middle in terms of when_created + audio_clip_tones
-    #with specific user, when user is middle in terms of when_created
-        #test when rows are the newest in db
-        #test when rows are the oldest in db
-        #test when rows don't exist based on audio_clip
-        #test when rows are in the middle in terms of when_created
-        #test when rows are in the middle in terms of when_created + audio_clip_tones
-    #with specific user, when user is oldest
-        #test when rows are the newest in db
-        #test when rows are the oldest in db
-        #test when rows don't exist based on audio_clip
-        #test when rows are in the middle in terms of when_created
-        #test when rows are in the middle in terms of when_created + audio_clip_tones
 
 
 
@@ -144,6 +111,99 @@ class RealisticBulkData():
         if self.like_count == 0 or self.dislike_count == 0 or self.like_ratio == 0:
 
             raise ValueError('Call .prepare_like_dislike_estimate() first.')
+
+
+    @staticmethod
+    def check_trigger(table_name:str, trigger_name:str, expect_trigger_enabled:bool):
+
+        #::regclass
+            #the cast to regclass gets you from qualified table name to OID the easy way
+        #pg_get_triggerdef(pg_trigger.oid, pretty_print)
+            #gives more details on trigger
+            #for more internal postgresql functions:
+                #https://www.postgresql.org/docs/current/functions-info.html
+        #pg_trigger.tgenabled
+            #controls in which session_replication_role modes the trigger fires
+            #O = trigger fires in “origin” and “local” modes
+            #D = trigger is disabled
+            #R = trigger fires in “replica” mode
+            #A = trigger fires always
+        #NOT tgisinternal
+            #filter out auto-generated triggers, e.g. re-created trigger with different tgname, or those for FKs
+            #important to specify
+                #if not, it will only return auto-gen triggers
+                    #shown by pg_trigger.tgname having unrecognisable value
+
+        rows = None
+
+        with connection.cursor() as cursor:
+
+            cursor.execute(
+                '''
+                    SELECT
+                    trg.tgrelid, trg.tgname, pg_class.relname, trg.tgenabled, pg_get_triggerdef(trg.oid, true)
+                    FROM pg_trigger AS trg
+                    INNER JOIN pg_class ON trg.tgrelid = pg_class.oid
+                    INNER JOIN pg_namespace ON pg_namespace.oid = pg_class.relnamespace
+                    WHERE trg.tgrelid = %s::regclass
+                    AND NOT tgisinternal;
+                ''',
+                [table_name]
+            )
+
+            rows = cursor.fetchmany()
+
+        is_trigger_found = False
+        test_case_class = TestCase()
+
+        for row in rows:
+
+            if row[1] == trigger_name:
+
+                if expect_trigger_enabled is True:
+
+                    test_case_class.assertEqual(row[3], 'O')
+
+                else:
+
+                    test_case_class.assertEqual(row[3], 'D')
+
+                is_trigger_found = True
+                break
+
+        if is_trigger_found is False:
+
+            raise ValueError('Trigger was not found.')
+
+
+    def modify_related_triggers(self, enable:bool):
+
+        #problem
+            #cannot escape table name and trigger name
+        #current solution
+            #only refer to one table in this function
+        #potential better solutions if needed
+            #whitelist all table names from "import django.apps; django.apps.apps.get_models();"
+            #run DO statement, use DECLARE statement to store strings, and EXECUTE "format('%i', tablename)" as query
+                #format() will safely escape, with %i being identifier name, i.e. variable name from DECLARE statement
+
+        with connection.cursor() as cursor:
+
+            if enable is True:
+
+                cursor.execute(
+                    '''
+                        ALTER TABLE audio_clip_likes_dislikes ENABLE TRIGGER trigger_audio_clip_likes_dislikes;
+                    ''',
+                )
+
+            else:
+
+                cursor.execute(
+                    '''
+                        ALTER TABLE audio_clip_likes_dislikes DISABLE TRIGGER trigger_audio_clip_likes_dislikes;
+                    ''',
+                )
 
 
     @staticmethod
@@ -752,6 +812,7 @@ class RealisticBulkData():
 
     #run this for a quick run with stopwatch used
     #increase bulk_quantity for more noticeable difference
+    #returns {'events':{'row_count': x, 'seconds': y}, 'audio_clips': {...same...}, 'audio_clip_likes_dislikes': {...same...}}
     def performance_diagnosis_run(self):
 
         self._check_ready()
@@ -1007,13 +1068,653 @@ class RealisticBulkData_TestCase(TestCase):
         })
 
 
-    def test_enable_disable_trigger__audio_clip_likes_dislikes(self):
+    def test_realistic_bulk_data__trigger_functions_ok(self):
 
-        #check if trigger is enabled
-        #run .performance_diagnosis_run()
-        #use raw sql to disable trigger
-        #run .performance_diagnosis_run()
-        pass
+        RealisticBulkData.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
+
+        RealisticBulkData().modify_related_triggers(False)
+
+        is_unexpected = False
+
+        try:
+
+            RealisticBulkData.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
+
+            is_unexpected = True
+
+        except AssertionError:
+
+            pass
+
+        if is_unexpected is True:
+
+            raise ValueError('AssertionError did not go as planned.')
+
+        RealisticBulkData.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', False)
+
+
+
+
+
+
+
+#OPTIMISATION TIPS FOR BULK DATA CREATION
+    #facts
+        #bulk_create() immediately evaluates
+            #.only() does not work with bulk_create() nor create()
+            #in most cases, you only need the PK, so that is a large waste of memory space
+            #tested with BulkCreateOptimisation_TestCase.test_behaviour__does_bulk_create_load_into_memory_without_evaluation()
+                #in bytes, with 250000 objects:
+                    #before bulk_create() with objects only: 2,055,512
+                    #after bulk_create(): 2,000,056
+                    #after forced evaluation(): 2,000,056
+
+#using TransactionTestCase to allow tests to run one by one
+@override_settings(
+    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    DEBUG=True,
+)
+class BulkCreateOptimisation_TestCase(TransactionTestCase):
+
+    #{test_function_name: anything}
+    metrics = {}
+    serialized_rollback = True
+
+    @classmethod
+    def setUp(cls):
+
+        cls.bulk_quantity = 5
+
+        cls.low_batch_size = 100
+        cls.high_batch_size = 500
+
+        cls.user_quantity = 10 * cls.bulk_quantity
+        cls.originator_quantity_per_user = 20 * cls.bulk_quantity
+        cls.audio_clip_like_dislike_quantity = cls.user_quantity * cls.originator_quantity_per_user
+
+
+    @classmethod
+    def tearDownClass(cls):
+
+        #print more beautifully
+        for function_name in cls.metrics:
+
+            print(function_name)
+            print(cls.metrics[function_name])
+            print('\n')
+
+        try:
+            cache.clear()
+        except:
+            pass
+
+        with connection.cursor() as cursor:
+
+            cursor.close()
+
+        super().tearDownClass()
+
+
+    def create_users(self):
+
+        print('Creating users.')
+
+        users = []
+
+        for x in range(self.user_quantity):
+
+            users.append(
+                get_user_model().objects.create_user(
+                    username='user'+str(x),
+                    email='user'+str(x)+'@gmail.com',
+                    is_active=True,
+                )
+            )
+
+        return users
+
+
+    def create_originator_events(self, users):
+
+        print('Creating events.')
+
+        events = []
+        
+        datetime_now = get_datetime_now()
+        generic_status = GenericStatuses.objects.get(generic_status_name='incomplete')
+
+        for user in users:
+
+            for x in range(self.originator_quantity_per_user):
+
+                events.append(
+                    Events(
+                        None,
+                        "An event by " + user.username,
+                        generic_status.id,
+                        user.id,
+                        datetime_now,
+                        datetime_now,
+                    )
+                )
+
+        return Events.objects.bulk_create(events)
+
+
+    def create_originator_audio_clips(self, events):
+
+        print('Creating audio_clips.')
+
+        audio_clips = []
+        datetime_now = get_datetime_now()
+        audio_clip_tone = AudioClipTones.objects.first()
+        audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='originator')
+        generic_status = GenericStatuses.objects.get(generic_status_name='ok')
+
+        for event in events:
+
+            audio_clips.append(
+                AudioClips(
+                    None,
+                    event.created_by.id,
+                    audio_clip_role.id,
+                    audio_clip_tone.id,
+                    event.id,
+                    generic_status.id,
+                    '',
+                    10,
+                    [],
+                    self.user_quantity,
+                    0,
+                    1,
+                    False,
+                    datetime_now,
+                    datetime_now,
+                )
+            )
+
+        return AudioClips.objects.bulk_create(audio_clips)
+
+
+    def create_audio_clip_likes_dislikes(self, users, audio_clips, batch_size, is_single_bulk_create):
+
+        print('Creating audio_clip_likes_dislikes.')
+
+        audio_clip_likes_dislikes = []
+        final_rows = []
+        datetime_now = get_datetime_now()
+
+        #minimise the impact of having more if-statements on benchmark
+
+        if is_single_bulk_create is True:
+
+            for user in users:
+
+                for audio_clip in audio_clips:
+
+                    audio_clip_likes_dislikes.append(
+                        AudioClipLikesDislikes(
+                            None,
+                            user.id,
+                            audio_clip.id,
+                            True,
+                            datetime_now,
+                            datetime_now,
+                        )
+                    )
+
+            final_rows = AudioClipLikesDislikes.objects.bulk_create(
+                audio_clip_likes_dislikes,
+                batch_size=batch_size
+            )
+
+        else:
+
+            for user in users:
+
+                for audio_clip in audio_clips:
+
+                    audio_clip_likes_dislikes.append(
+                        AudioClipLikesDislikes(
+                            None,
+                            user.id,
+                            audio_clip.id,
+                            True,
+                            datetime_now,
+                            datetime_now,
+                        )
+                    )
+
+                final_rows.extend(
+                    AudioClipLikesDislikes.objects.bulk_create(
+                        audio_clip_likes_dislikes,
+                        batch_size=batch_size
+                    )
+                )
+                audio_clip_likes_dislikes = []
+
+        return final_rows
+
+
+    def create_audio_clip_likes_dislikes__raw(self, users, audio_clips, batch_size, must_reset_queries):
+
+        #important format notes
+            #we use 'x' instead of whitespace-respecting '''x'''
+                #there cannot be comma for last row in ', RETURNING'
+                #can do '...,'[:len(full_sql)-1]
+
+        #important efficiency notes
+            #cursor.fetchmany() returns tuples, e.g. [(9,),(10,),] for "RETURNING id;"
+                #it is more efficient to write "current_row[0]" later, than to flatten this list of tuples
+
+        print('Creating audio_clip_likes_dislikes.')
+
+        audio_clip_like_dislike_ids = []
+        datetime_now = get_datetime_now()
+        current_row_count = 0
+
+        starter_sql = 'INSERT INTO audio_clip_likes_dislikes (user_id, audio_clip_id, is_liked, when_created, last_modified) VALUES '
+        full_params = []
+
+        full_sql = starter_sql
+
+        for user in users:
+
+            for audio_clip in audio_clips:
+
+                full_sql += '(%s, %s, %s, %s, %s),'
+                full_params.extend([
+                    user.id,
+                    audio_clip.id,
+                    True,
+                    datetime_now,
+                    datetime_now
+                ])
+
+                current_row_count += 1
+
+                if current_row_count == batch_size:
+
+                    #batch size reached
+
+                    #remove the final ',' from final audio_clip row
+                    full_sql = full_sql[:len(full_sql)-1]
+                    full_sql += ' '
+
+                    #get PK only
+                    full_sql += 'RETURNING audio_clip_likes_dislikes.id;'
+
+                    with connection.cursor() as cursor:
+
+                        cursor.execute(full_sql, full_params)
+                        audio_clip_like_dislike_ids.extend(cursor.fetchall())
+
+                    #reset
+                    full_sql = starter_sql
+                    full_params = []
+                    current_row_count = 0
+
+                    if must_reset_queries is True:
+
+                        reset_queries()
+
+        #handle any remaining rows
+
+        if current_row_count > 0:
+
+            #batch size reached
+
+            #remove the final ',' from final audio_clip row
+            full_sql = full_sql[:len(full_sql)-1]
+            full_sql += ' '
+
+            #get PK only
+            full_sql += 'RETURNING audio_clip_likes_dislikes.id;'
+
+            with connection.cursor() as cursor:
+
+                cursor.execute(full_sql, full_params)
+                audio_clip_like_dislike_ids.extend(cursor.fetchall())
+
+            #reset
+            full_sql = starter_sql
+            full_params = []
+            current_row_count = 0
+
+            if must_reset_queries is True:
+
+                reset_queries()
+
+        return audio_clip_like_dislike_ids
+
+
+    def _update_metrics(self, function_name, row_count, seconds, total_bytes):
+
+        self.metrics.update({
+            function_name: {
+                'row_count': row_count,
+                'seconds': seconds,
+                'total_bytes': total_bytes, #sys.getsizeof(var_name)
+            }
+        })
+
+
+    def _update_bulk_quantity(self, new_value):
+
+        self.bulk_quantity = new_value
+
+        self.user_quantity = 10 * self.bulk_quantity
+        self.originator_quantity_per_user = 20 * self.bulk_quantity
+        self.audio_clip_like_dislike_quantity = self.user_quantity * self.originator_quantity_per_user
+
+
+    def test_behaviour__does_bulk_create_load_into_memory_without_evaluation(self):
+
+        #container hangs at bulk_quantity = 10
+        self._update_bulk_quantity(5)
+
+        users = self.create_users()
+        reset_queries()
+        events = self.create_originator_events(users)
+        reset_queries()
+        audio_clips = self.create_originator_audio_clips(events)
+        reset_queries()
+
+        print('Creating audio_clip_likes_dislikes.')
+
+        audio_clip_likes_dislikes = []
+        datetime_now = get_datetime_now()
+
+        for audio_clip in audio_clips:
+
+            for user in users:
+
+                audio_clip_likes_dislikes.append(
+                    AudioClipLikesDislikes(
+                        None,
+                        user.id,
+                        audio_clip.id,
+                        True,
+                        datetime_now,
+                        datetime_now,
+                    )
+                )
+
+        print('Object count: ' + str(len(audio_clip_likes_dislikes)))
+
+        print('Only model objects before bulk_create: ' + str(sys.getsizeof(audio_clip_likes_dislikes)))
+
+        audio_clip_likes_dislikes = AudioClipLikesDislikes.objects.bulk_create(
+            audio_clip_likes_dislikes,
+            batch_size=math.ceil(len(audio_clip_likes_dislikes) * 0.10)
+        )
+
+        print('After bulk_create: ' + str(sys.getsizeof(audio_clip_likes_dislikes)))
+
+        print('Object count: ' + str(len(audio_clip_likes_dislikes)))
+
+        len(audio_clip_likes_dislikes)
+
+        print('After forced evaluation: ' + str(sys.getsizeof(audio_clip_likes_dislikes)))
+
+
+    def test_one_bulk_create(self):
+
+        stopwatch = Stopwatch()
+
+        users = self.create_users()
+        events = self.create_originator_events(users)
+        audio_clips = self.create_originator_audio_clips(events)
+
+        stopwatch.start()
+        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes(users, audio_clips, self.high_batch_size, True)
+        stopwatch.stop()
+
+        self._update_metrics(
+            get_current_function_name(),
+            len(audio_clip_likes_dislikes),
+            stopwatch.diff_seconds(),
+            sys.getsizeof(audio_clip_likes_dislikes),
+        )
+
+
+    def test_one_bulk_create__reset_queries(self):
+
+        stopwatch = Stopwatch()
+
+        users = self.create_users()
+        reset_queries()
+        events = self.create_originator_events(users)
+        reset_queries()
+        audio_clips = self.create_originator_audio_clips(events)
+        reset_queries()
+
+        stopwatch.start()
+        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes(users, audio_clips, self.high_batch_size, True)
+        stopwatch.stop()
+
+        self._update_metrics(
+            get_current_function_name(),
+            len(audio_clip_likes_dislikes),
+            stopwatch.diff_seconds(),
+            sys.getsizeof(audio_clip_likes_dislikes),
+        )
+
+
+    def test_one_bulk_create__reset_queries__batch_size(self):
+
+        stopwatch = Stopwatch()
+
+        users = self.create_users()
+        reset_queries()
+        events = self.create_originator_events(users)
+        reset_queries()
+        audio_clips = self.create_originator_audio_clips(events)
+        reset_queries()
+
+        stopwatch.start()
+        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes(users, audio_clips, self.high_batch_size, True)
+        stopwatch.stop()
+
+        self._update_metrics(
+            get_current_function_name(),
+            len(audio_clip_likes_dislikes),
+            stopwatch.diff_seconds(),
+            sys.getsizeof(audio_clip_likes_dislikes),
+        )
+
+
+    def test_one_bulk_create__reset_queries__batch_size__remove_trigger(self):
+
+        stopwatch = Stopwatch()
+        realistic_bulk_data_class = RealisticBulkData()
+
+        users = self.create_users()
+        reset_queries()
+        events = self.create_originator_events(users)
+        reset_queries()
+        audio_clips = self.create_originator_audio_clips(events)
+        reset_queries()
+
+        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
+        realistic_bulk_data_class.modify_related_triggers(False)
+        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', False)
+
+        stopwatch.start()
+        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes(users, audio_clips, self.high_batch_size, True)
+        stopwatch.stop()
+
+        self._update_metrics(
+            get_current_function_name(),
+            len(audio_clip_likes_dislikes),
+            stopwatch.diff_seconds(),
+            sys.getsizeof(audio_clip_likes_dislikes),
+        )
+
+        realistic_bulk_data_class.modify_related_triggers(True)
+        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
+
+
+    def test_one_bulk_create__reset_queries__batch_size__remove_trigger(self):
+
+        stopwatch = Stopwatch()
+        realistic_bulk_data_class = RealisticBulkData()
+
+        users = self.create_users()
+        reset_queries()
+        events = self.create_originator_events(users)
+        reset_queries()
+        audio_clips = self.create_originator_audio_clips(events)
+        reset_queries()
+
+        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
+        realistic_bulk_data_class.modify_related_triggers(False)
+        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', False)
+
+        stopwatch.start()
+        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes(users, audio_clips, self.high_batch_size, True)
+        stopwatch.stop()
+
+        self._update_metrics(
+            get_current_function_name(),
+            len(audio_clip_likes_dislikes),
+            stopwatch.diff_seconds(),
+            sys.getsizeof(audio_clip_likes_dislikes),
+        )
+
+        realistic_bulk_data_class.modify_related_triggers(True)
+        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
+
+
+    #probably no difference if total rows is too little
+    def test_many_bulk_create__reset_queries__batch_size__remove_trigger(self):
+
+        stopwatch = Stopwatch()
+        realistic_bulk_data_class = RealisticBulkData()
+
+        users = self.create_users()
+        reset_queries()
+        events = self.create_originator_events(users)
+        reset_queries()
+        audio_clips = self.create_originator_audio_clips(events)
+        reset_queries()
+
+        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
+        realistic_bulk_data_class.modify_related_triggers(False)
+        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', False)
+
+        stopwatch.start()
+        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes(users, audio_clips, self.high_batch_size, False)
+        stopwatch.stop()
+
+        self._update_metrics(
+            get_current_function_name(),
+            len(audio_clip_likes_dislikes),
+            stopwatch.diff_seconds(),
+            sys.getsizeof(audio_clip_likes_dislikes),
+        )
+
+        realistic_bulk_data_class.modify_related_triggers(True)
+        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
+
+
+    def test_main__raw_queries__batch_size__return_pk_only(self):
+
+        stopwatch = Stopwatch()
+        realistic_bulk_data_class = RealisticBulkData()
+
+        users = self.create_users()
+        reset_queries()
+        events = self.create_originator_events(users)
+        reset_queries()
+        audio_clips = self.create_originator_audio_clips(events)
+        reset_queries()
+
+        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
+
+        stopwatch.start()
+        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes__raw(users, audio_clips, self.high_batch_size, False)
+        stopwatch.stop()
+
+        self._update_metrics(
+            get_current_function_name(),
+            len(audio_clip_likes_dislikes),
+            stopwatch.diff_seconds(),
+            sys.getsizeof(audio_clip_likes_dislikes),
+        )
+
+
+    def test_main__raw_queries__reset_queries__batch_size__return_pk_only(self):
+
+        stopwatch = Stopwatch()
+        realistic_bulk_data_class = RealisticBulkData()
+
+        users = self.create_users()
+        reset_queries()
+        events = self.create_originator_events(users)
+        reset_queries()
+        audio_clips = self.create_originator_audio_clips(events)
+        reset_queries()
+
+        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
+
+        stopwatch.start()
+        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes__raw(users, audio_clips, self.high_batch_size, True)
+        stopwatch.stop()
+
+        self._update_metrics(
+            get_current_function_name(),
+            len(audio_clip_likes_dislikes),
+            stopwatch.diff_seconds(),
+            sys.getsizeof(audio_clip_likes_dislikes),
+        )
+
+
+    def test_main__raw_queries__reset_queries__batch_size__return_pk_only__remove_trigger(self):
+
+        stopwatch = Stopwatch()
+        realistic_bulk_data_class = RealisticBulkData()
+
+        users = self.create_users()
+        reset_queries()
+        events = self.create_originator_events(users)
+        reset_queries()
+        audio_clips = self.create_originator_audio_clips(events)
+        reset_queries()
+
+        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
+        realistic_bulk_data_class.modify_related_triggers(False)
+        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', False)
+
+        stopwatch.start()
+        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes__raw(users, audio_clips, self.high_batch_size, True)
+        stopwatch.stop()
+
+        self._update_metrics(
+            get_current_function_name(),
+            len(audio_clip_likes_dislikes),
+            stopwatch.diff_seconds(),
+            sys.getsizeof(audio_clip_likes_dislikes),
+        )
+
+        realistic_bulk_data_class.modify_related_triggers(True)
+        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
