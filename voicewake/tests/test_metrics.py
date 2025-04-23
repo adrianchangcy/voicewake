@@ -114,7 +114,7 @@ class RealisticBulkData():
 
 
     @staticmethod
-    def check_trigger(table_name:str, trigger_name:str, expect_trigger_enabled:bool):
+    def check_trigger(table_name:str, trigger_name:str, expect_enabled:bool):
 
         #::regclass
             #the cast to regclass gets you from qualified table name to OID the easy way
@@ -160,7 +160,7 @@ class RealisticBulkData():
 
             if row[1] == trigger_name:
 
-                if expect_trigger_enabled is True:
+                if expect_enabled is True:
 
                     test_case_class.assertEqual(row[3], 'O')
 
@@ -174,6 +174,11 @@ class RealisticBulkData():
         if is_trigger_found is False:
 
             raise ValueError('Trigger was not found.')
+
+
+    def check_related_triggers(self, expect_enabled:bool):
+
+        self.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', expect_enabled)
 
 
     def modify_related_triggers(self, enable:bool):
@@ -217,6 +222,38 @@ class RealisticBulkData():
             'event_reply_queues': EventReplyQueues.objects.count(),
             'user_events': UserEvents.objects.count(),
         }
+
+
+    @staticmethod
+    def _disable_related_triggers_while_running_decorator(passed_function):
+
+        @functools.wraps(passed_function)
+        def inner(*args, **kwargs):
+
+            realistic_bulk_data_class = RealisticBulkData()
+
+            try:
+
+                realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
+                realistic_bulk_data_class.modify_related_triggers(False)
+                realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', False)
+
+                print('Triggers are disabled.')
+
+                return passed_function(*args, **kwargs)
+
+            except Exception as e:
+
+                raise e
+
+            finally:
+
+                realistic_bulk_data_class.modify_related_triggers(True)
+                realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
+
+                print('Triggers are enabled.')
+
+        return inner
 
 
     def prepare_new_users(self):
@@ -281,7 +318,8 @@ class RealisticBulkData():
 
         datetime_now = get_datetime_now()
 
-        audio_clip_likes_dislikes = []
+        full_sql = 'INSERT INTO audio_clip_likes_dislikes (user_id, audio_clip_id, is_liked, when_created, last_modified) VALUES '
+        full_params = []
 
         user_index = 0
 
@@ -303,16 +341,14 @@ class RealisticBulkData():
                     user_index = 0
                     current_user = self.users[user_index]
 
-                audio_clip_likes_dislikes.append(
-                    AudioClipLikesDislikes(
-                        None,
-                        current_user.id,
-                        audio_clip.id,
-                        True,
-                        datetime_now,
-                        datetime_now,
-                    )
-                )
+                full_sql += '(%s,%s,%s,%s,%s),'
+                full_params.extend([
+                    current_user.id,
+                    audio_clip.id,
+                    True,
+                    datetime_now,
+                    datetime_now,
+                ])
 
                 user_index += 1
                 current_like_count += 1
@@ -329,21 +365,28 @@ class RealisticBulkData():
                     user_index = 0
                     current_user = self.users[user_index]
 
-                audio_clip_likes_dislikes.append(
-                    AudioClipLikesDislikes(
-                        None,
-                        current_user.id,
-                        audio_clip.id,
-                        False,
-                        datetime_now,
-                        datetime_now,
-                    )
-                )
+                full_sql += '(%s,%s,%s,%s,%s),'
+                full_params.extend([
+                    current_user.id,
+                    audio_clip.id,
+                    True,
+                    datetime_now,
+                    datetime_now,
+                ])
 
                 user_index += 1
                 current_dislike_count += 1
 
-        audio_clip_likes_dislikes = AudioClipLikesDislikes.objects.bulk_create(audio_clip_likes_dislikes, batch_size=self.db_batch_size)
+        #remove the final ',' from final audio_clip row
+        full_sql = full_sql[:len(full_sql)-1]
+        full_sql += ' '
+
+        #get PK only
+        full_sql += 'RETURNING audio_clip_likes_dislikes.id;'
+
+        with connection.cursor() as cursor:
+
+            cursor.execute(full_sql, full_params)
 
 
     def create_event_incomplete(self, is_replying:bool=False, skipped_by_users:bool=False):
@@ -353,6 +396,7 @@ class RealisticBulkData():
         print_with_function_name(f"Started. is_replying={str(is_replying)}, skipped_by_users={str(skipped_by_users)}.")
 
         datetime_now = get_datetime_now()
+        stopwatch = Stopwatch()
 
         for audio_clip_tone_index, audio_clip_tone in enumerate(self.audio_clip_tones):
 
@@ -361,6 +405,8 @@ class RealisticBulkData():
 
                 print('Skipping excluded audio_clip_tones.')
                 continue
+
+            stopwatch.start()
 
             #events
 
@@ -388,6 +434,7 @@ class RealisticBulkData():
                     )
 
             events = Events.objects.bulk_create(events, batch_size=self.db_batch_size)
+            reset_queries()
 
             #audio_clips, event_reply_queues, user_events
 
@@ -479,18 +526,23 @@ class RealisticBulkData():
 
 
             audio_clips = AudioClips.objects.bulk_create(audio_clips, batch_size=self.db_batch_size)
+            reset_queries()
 
             if is_replying is True:
 
                 event_reply_queues = EventReplyQueues.objects.bulk_create(event_reply_queues, batch_size=self.db_batch_size)
+                reset_queries()
 
             if skipped_by_users is True:
 
                 user_events = UserEvents.objects.bulk_create(user_events, batch_size=self.db_batch_size)
+                reset_queries()
 
             self._create_audio_clip_likes_dislikes(audio_clips)
+            reset_queries()
 
-            print('Done with audio_clip_tone #' + str(audio_clip_tone_index) + '.')
+            stopwatch.stop()
+            print(f'Done with audio_clip_tone #{audio_clip_tone_index} in {stopwatch.diff_seconds()}s.')
 
 
     def create_event_completed(self):
@@ -500,6 +552,7 @@ class RealisticBulkData():
         print_with_function_name(f"Started.")
 
         datetime_now = get_datetime_now()
+        stopwatch = Stopwatch()
 
         for audio_clip_tone_index, audio_clip_tone in enumerate(self.audio_clip_tones):
 
@@ -508,6 +561,8 @@ class RealisticBulkData():
 
                 print('Skipping excluded audio_clip_tones.')
                 continue
+
+            stopwatch.start()
 
             #events
 
@@ -535,6 +590,7 @@ class RealisticBulkData():
                     )
 
             events = Events.objects.bulk_create(events, batch_size=self.db_batch_size)
+            reset_queries()
 
             #audio_clips
 
@@ -609,9 +665,12 @@ class RealisticBulkData():
                 )
 
             audio_clips = AudioClips.objects.bulk_create(audio_clips, batch_size=self.db_batch_size)
+            reset_queries()
             self._create_audio_clip_likes_dislikes(audio_clips)
+            reset_queries()
 
-            print('Done with audio_clip_tone #' + str(audio_clip_tone_index) + '.')
+            stopwatch.stop()
+            print(f'Done with audio_clip_tone #{audio_clip_tone_index} in {stopwatch.diff_seconds()}s.')
 
 
     def create_event_deleted(self, has_reply:bool=False, deleted_and_banned:bool=False):
@@ -621,6 +680,7 @@ class RealisticBulkData():
         print_with_function_name(f"Started. has_reply={str(has_reply)}, deleted_and_banned={str(deleted_and_banned)}.")
 
         datetime_now = get_datetime_now()
+        stopwatch = Stopwatch()
 
         for audio_clip_tone_index, audio_clip_tone in enumerate(self.audio_clip_tones):
 
@@ -629,6 +689,8 @@ class RealisticBulkData():
 
                 print('Skipping excluded audio_clip_tones.')
                 continue
+
+            stopwatch.start()
 
             #events
 
@@ -656,6 +718,7 @@ class RealisticBulkData():
                     )
 
             events = Events.objects.bulk_create(events, batch_size=self.db_batch_size)
+            reset_queries()
 
             #audio_clips
 
@@ -733,21 +796,23 @@ class RealisticBulkData():
                     )
                 )
 
-
             audio_clips = AudioClips.objects.bulk_create(audio_clips, batch_size=self.db_batch_size)
+            reset_queries()
             self._create_audio_clip_likes_dislikes(audio_clips)
+            reset_queries()
 
-            print('Done with audio_clip_tone #' + str(audio_clip_tone_index) + '.')
+            stopwatch.stop()
+            print(f'Done with audio_clip_tone #{audio_clip_tone_index} in {stopwatch.diff_seconds()}s.')
 
 
-    #is like/dislike trigger at db affecting speed?
+    @_disable_related_triggers_while_running_decorator
     @staticmethod
     def sample_run():
 
         #cmd:
             #python manage.py shell -c "from voicewake.tests.test_metrics import RealisticBulkData; RealisticBulkData.sample_run();"
 
-        realistic_bulk_data_class = RealisticBulkData(batch_quantity=10, is_audio_clip_tone_quantity_reduced=False, db_batch_size=100)
+        realistic_bulk_data_class = RealisticBulkData(batch_quantity=5, is_audio_clip_tone_quantity_reduced=True, db_batch_size=500)
 
         realistic_bulk_data_class.prepare_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
@@ -765,6 +830,7 @@ class RealisticBulkData():
             threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete, args=(True, True)))
             threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete, args=(False, False)))
 
+            threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_completed))
             threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_completed))
 
             threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted, args=(True, False)))
@@ -810,117 +876,6 @@ class RealisticBulkData():
             current_randomness_iteration_count += 1
 
 
-    #run this for a quick run with stopwatch used
-    #increase bulk_quantity for more noticeable difference
-    #returns {'events':{'row_count': x, 'seconds': y}, 'audio_clips': {...same...}, 'audio_clip_likes_dislikes': {...same...}}
-    def performance_diagnosis_run(self):
-
-        self._check_ready()
-        stopwatch = Stopwatch()
-
-        print_with_function_name(f"Started.")
-
-        datetime_now = get_datetime_now()
-
-        for audio_clip_tone_index, audio_clip_tone in enumerate(self.audio_clip_tones):
-
-            #skip audio_clip_tone
-            if audio_clip_tone_index in self.excluded_audio_clip_tones_indexes:
-
-                print('Skipping excluded audio_clip_tones.')
-                continue
-
-            #events
-
-            print('events before bulk_create')
-            stopwatch.start()
-
-            events = []
-
-            for user in self.users:
-
-                #if we only need originator, use current user
-                #if we need responder, use user_index+1
-
-                #create events, audio_clips, audio_clip_likes_dislikes
-                #create extra "incomplete" events that are in the midst of replying
-
-                for x in range(self.event_quantity):
-
-                    events.append(
-                        Events(
-                            None,
-                            "An event by " + user.username,
-                            self.generic_statuses['ok'].id,
-                            user.id,
-                            datetime_now,
-                            datetime_now,
-                        )
-                    )
-
-            stopwatch.stop()
-            print(stopwatch.diff_seconds())
-            print('events during bulk_create')
-            stopwatch.start()
-
-            events = Events.objects.bulk_create(events, batch_size=self.db_batch_size)
-
-            stopwatch.stop()
-            print(stopwatch.diff_seconds())
-            print('audio_clips before bulk_create')
-            stopwatch.start()
-
-            #audio_clips
-
-            audio_clips = []
-
-            for event in events:
-
-                audio_clips.append(
-                    AudioClips(
-                        None,
-                        event.created_by.id,
-                        self.audio_clip_roles['originator'].id,
-                        audio_clip_tone.id,
-                        event.id,
-                        self.generic_statuses['ok'].id,
-                        self.audio_file,
-                        10,
-                        [],
-                        self.like_count,
-                        self.dislike_count,
-                        self.like_ratio,
-                        False,
-                        datetime_now,
-                        datetime_now,
-                    )
-                )
-
-            stopwatch.stop()
-            print(stopwatch.diff_seconds())
-            print('audio_clips during bulk_create')
-            stopwatch.start()
-
-            audio_clips = AudioClips.objects.bulk_create(audio_clips, batch_size=self.db_batch_size)
-
-            stopwatch.stop()
-            print(stopwatch.diff_seconds())
-            print('audio_clip_likes_dislikes during bulk_create')
-            stopwatch.start()
-
-            self._create_audio_clip_likes_dislikes(audio_clips)
-
-            stopwatch.stop()
-            print(stopwatch.diff_seconds())
-
-            print('Done with audio_clip_tone #' + str(audio_clip_tone_index) + '.')
-            break
-
-
-
-
-
-
 
 
 
@@ -937,7 +892,9 @@ class RealisticBulkData_TestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
-        pass
+        realistic_bulk_data_class = RealisticBulkData()
+        realistic_bulk_data_class.check_related_triggers(True)
+        realistic_bulk_data_class.modify_related_triggers(False)
 
 
     @classmethod
@@ -949,6 +906,10 @@ class RealisticBulkData_TestCase(TestCase):
             print(function_name)
             print(cls.metrics[function_name])
             print('\n')
+
+        realistic_bulk_data_class = RealisticBulkData()
+        realistic_bulk_data_class.check_related_triggers(False)
+        realistic_bulk_data_class.modify_related_triggers(True)
 
         shutil.rmtree(os.path.join(settings.MEDIA_ROOT, 'audio_clips'), ignore_errors=True)
 
@@ -1070,26 +1031,7 @@ class RealisticBulkData_TestCase(TestCase):
 
     def test_realistic_bulk_data__trigger_functions_ok(self):
 
-        RealisticBulkData.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
-
-        RealisticBulkData().modify_related_triggers(False)
-
-        is_unexpected = False
-
-        try:
-
-            RealisticBulkData.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
-
-            is_unexpected = True
-
-        except AssertionError:
-
-            pass
-
-        if is_unexpected is True:
-
-            raise ValueError('AssertionError did not go as planned.')
-
+        #already disabled at setUpTestData
         RealisticBulkData.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', False)
 
 
@@ -1097,19 +1039,8 @@ class RealisticBulkData_TestCase(TestCase):
 
 
 
-
-#OPTIMISATION TIPS FOR BULK DATA CREATION
-    #facts
-        #bulk_create() immediately evaluates
-            #.only() does not work with bulk_create() nor create()
-            #in most cases, you only need the PK, so that is a large waste of memory space
-            #tested with BulkCreateOptimisation_TestCase.test_behaviour__does_bulk_create_load_into_memory_without_evaluation()
-                #in bytes, with 250000 objects:
-                    #before bulk_create() with objects only: 2,055,512
-                    #after bulk_create(): 2,000,056
-                    #after forced evaluation(): 2,000,056
-
 #using TransactionTestCase to allow tests to run one by one
+#conclusion from tests is to use kwargs, disable related triggers, use raw query if rows are not needed, higher over lower batch_size
 @override_settings(
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
     DEBUG=True,
@@ -1263,6 +1194,8 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
                         )
                     )
 
+            print(f'Size (bytes) of all AudioClipLikesDislikes, args, before bulk_create(): {sys.getsizeof(audio_clip_likes_dislikes)}')
+
             final_rows = AudioClipLikesDislikes.objects.bulk_create(
                 audio_clip_likes_dislikes,
                 batch_size=batch_size
@@ -1296,6 +1229,62 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
         return final_rows
 
 
+    def create_audio_clip_likes_dislikes_kwargs(self, users, audio_clips, batch_size, is_single_bulk_create):
+
+        print('Creating audio_clip_likes_dislikes.')
+
+        audio_clip_likes_dislikes = []
+        final_rows = []
+        datetime_now = get_datetime_now()
+
+        #minimise the impact of having more if-statements on benchmark
+
+        if is_single_bulk_create is True:
+
+            for user in users:
+
+                for audio_clip in audio_clips:
+
+                    audio_clip_likes_dislikes.append(
+                        AudioClipLikesDislikes(
+                            user=user,
+                            audio_clip=audio_clip,
+                            is_liked=True,
+                        )
+                    )
+
+            print(f'Size (bytes) of all AudioClipLikesDislikes, kwargs, before bulk_create(): {sys.getsizeof(audio_clip_likes_dislikes)}')
+
+            final_rows = AudioClipLikesDislikes.objects.bulk_create(
+                audio_clip_likes_dislikes,
+                batch_size=batch_size
+            )
+
+        else:
+
+            for user in users:
+
+                for audio_clip in audio_clips:
+
+                    audio_clip_likes_dislikes.append(
+                        AudioClipLikesDislikes(
+                            user=user,
+                            audio_clip=audio_clip,
+                            is_liked=True,
+                        )
+                    )
+
+                final_rows.extend(
+                    AudioClipLikesDislikes.objects.bulk_create(
+                        audio_clip_likes_dislikes,
+                        batch_size=batch_size
+                    )
+                )
+                audio_clip_likes_dislikes = []
+
+        return final_rows
+
+
     def create_audio_clip_likes_dislikes__raw(self, users, audio_clips, batch_size, must_reset_queries):
 
         #important format notes
@@ -1304,7 +1293,7 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
                 #can do '...,'[:len(full_sql)-1]
 
         #important efficiency notes
-            #cursor.fetchmany() returns tuples, e.g. [(9,),(10,),] for "RETURNING id;"
+            #cursor.fetchall() returns tuples, e.g. [(9,),(10,),] for "RETURNING id;"
                 #it is more efficient to write "current_row[0]" later, than to flatten this list of tuples
 
         print('Creating audio_clip_likes_dislikes.')
@@ -1315,6 +1304,9 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
 
         starter_sql = 'INSERT INTO audio_clip_likes_dislikes (user_id, audio_clip_id, is_liked, when_created, last_modified) VALUES '
         full_params = []
+
+        full_sql_size_at_full_rows = 0
+        full_params_size_at_full_rows = 0
 
         full_sql = starter_sql
 
@@ -1348,6 +1340,11 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
 
                         cursor.execute(full_sql, full_params)
                         audio_clip_like_dislike_ids.extend(cursor.fetchall())
+
+                    #record size
+                    #only do it here so total rows always matches batch_size
+                    full_sql_size_at_full_rows = sys.getsizeof(full_sql)
+                    full_params_size_at_full_rows = sys.getsizeof(full_params)
 
                     #reset
                     full_sql = starter_sql
@@ -1385,6 +1382,10 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
 
                 reset_queries()
 
+        print(f'full_sql byte size at {batch_size} rows: {full_sql_size_at_full_rows}')
+        print(f'full_params byte size at {batch_size} rows: {full_params_size_at_full_rows}')
+        print(f'total byte size at {batch_size} rows before execution: {full_sql_size_at_full_rows+full_params_size_at_full_rows}')
+
         return audio_clip_like_dislike_ids
 
 
@@ -1394,7 +1395,7 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
             function_name: {
                 'row_count': row_count,
                 'seconds': seconds,
-                'total_bytes': total_bytes, #sys.getsizeof(var_name)
+                'new_objects_size_in_bytes_after_insertion': total_bytes, #sys.getsizeof(var_name)
             }
         })
 
@@ -1458,7 +1459,7 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
         print('After forced evaluation: ' + str(sys.getsizeof(audio_clip_likes_dislikes)))
 
 
-    def test_one_bulk_create(self):
+    def test_one_bulk_create__high_batch_size(self):
 
         stopwatch = Stopwatch()
 
@@ -1478,7 +1479,51 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
         )
 
 
-    def test_one_bulk_create__reset_queries(self):
+    def test_one_bulk_create__high_batch_size__kwargs(self):
+
+        stopwatch = Stopwatch()
+
+        users = self.create_users()
+        events = self.create_originator_events(users)
+        audio_clips = self.create_originator_audio_clips(events)
+
+        stopwatch.start()
+        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes_kwargs(users, audio_clips, self.high_batch_size, True)
+        stopwatch.stop()
+
+        self._update_metrics(
+            get_current_function_name(),
+            len(audio_clip_likes_dislikes),
+            stopwatch.diff_seconds(),
+            sys.getsizeof(audio_clip_likes_dislikes),
+        )
+
+
+    def test_one_bulk_create__reset_queries__low_batch_size(self):
+
+        stopwatch = Stopwatch()
+
+        users = self.create_users()
+        reset_queries()
+        events = self.create_originator_events(users)
+        reset_queries()
+        audio_clips = self.create_originator_audio_clips(events)
+        reset_queries()
+
+        stopwatch.start()
+        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes(users, audio_clips, self.low_batch_size, True)
+        stopwatch.stop()
+        reset_queries()
+
+        self._update_metrics(
+            get_current_function_name(),
+            len(audio_clip_likes_dislikes),
+            stopwatch.diff_seconds(),
+            sys.getsizeof(audio_clip_likes_dislikes),
+        )
+
+
+    def test_one_bulk_create__reset_queries__high_batch_size(self):
 
         stopwatch = Stopwatch()
 
@@ -1492,6 +1537,7 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
         stopwatch.start()
         audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes(users, audio_clips, self.high_batch_size, True)
         stopwatch.stop()
+        reset_queries()
 
         self._update_metrics(
             get_current_function_name(),
@@ -1501,61 +1547,7 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
         )
 
 
-    def test_one_bulk_create__reset_queries__batch_size(self):
-
-        stopwatch = Stopwatch()
-
-        users = self.create_users()
-        reset_queries()
-        events = self.create_originator_events(users)
-        reset_queries()
-        audio_clips = self.create_originator_audio_clips(events)
-        reset_queries()
-
-        stopwatch.start()
-        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes(users, audio_clips, self.high_batch_size, True)
-        stopwatch.stop()
-
-        self._update_metrics(
-            get_current_function_name(),
-            len(audio_clip_likes_dislikes),
-            stopwatch.diff_seconds(),
-            sys.getsizeof(audio_clip_likes_dislikes),
-        )
-
-
-    def test_one_bulk_create__reset_queries__batch_size__remove_trigger(self):
-
-        stopwatch = Stopwatch()
-        realistic_bulk_data_class = RealisticBulkData()
-
-        users = self.create_users()
-        reset_queries()
-        events = self.create_originator_events(users)
-        reset_queries()
-        audio_clips = self.create_originator_audio_clips(events)
-        reset_queries()
-
-        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
-        realistic_bulk_data_class.modify_related_triggers(False)
-        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', False)
-
-        stopwatch.start()
-        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes(users, audio_clips, self.high_batch_size, True)
-        stopwatch.stop()
-
-        self._update_metrics(
-            get_current_function_name(),
-            len(audio_clip_likes_dislikes),
-            stopwatch.diff_seconds(),
-            sys.getsizeof(audio_clip_likes_dislikes),
-        )
-
-        realistic_bulk_data_class.modify_related_triggers(True)
-        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
-
-
-    def test_one_bulk_create__reset_queries__batch_size__remove_trigger(self):
+    def test_one_bulk_create__reset_queries__high_batch_size__remove_trigger(self):
 
         stopwatch = Stopwatch()
         realistic_bulk_data_class = RealisticBulkData()
@@ -1574,6 +1566,7 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
         stopwatch.start()
         audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes(users, audio_clips, self.high_batch_size, True)
         stopwatch.stop()
+        reset_queries()
 
         self._update_metrics(
             get_current_function_name(),
@@ -1586,8 +1579,7 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
         realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
 
 
-    #probably no difference if total rows is too little
-    def test_many_bulk_create__reset_queries__batch_size__remove_trigger(self):
+    def test_many_bulk_create__reset_queries__high_batch_size__remove_trigger(self):
 
         stopwatch = Stopwatch()
         realistic_bulk_data_class = RealisticBulkData()
@@ -1606,6 +1598,7 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
         stopwatch.start()
         audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes(users, audio_clips, self.high_batch_size, False)
         stopwatch.stop()
+        reset_queries()
 
         self._update_metrics(
             get_current_function_name(),
@@ -1618,17 +1611,14 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
         realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
 
 
-    def test_main__raw_queries__batch_size__return_pk_only(self):
+    def test_raw_sql__high_batch_size__return_pk_only(self):
 
         stopwatch = Stopwatch()
         realistic_bulk_data_class = RealisticBulkData()
 
         users = self.create_users()
-        reset_queries()
         events = self.create_originator_events(users)
-        reset_queries()
         audio_clips = self.create_originator_audio_clips(events)
-        reset_queries()
 
         realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
 
@@ -1644,7 +1634,7 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
         )
 
 
-    def test_main__raw_queries__reset_queries__batch_size__return_pk_only(self):
+    def test_raw_sql__reset_queries__high_batch_size__return_pk_only(self):
 
         stopwatch = Stopwatch()
         realistic_bulk_data_class = RealisticBulkData()
@@ -1661,6 +1651,7 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
         stopwatch.start()
         audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes__raw(users, audio_clips, self.high_batch_size, True)
         stopwatch.stop()
+        reset_queries()
 
         self._update_metrics(
             get_current_function_name(),
@@ -1670,7 +1661,7 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
         )
 
 
-    def test_main__raw_queries__reset_queries__batch_size__return_pk_only__remove_trigger(self):
+    def test_raw_sql__reset_queries__high_batch_size__return_pk_only__remove_trigger(self):
 
         stopwatch = Stopwatch()
         realistic_bulk_data_class = RealisticBulkData()
@@ -1689,6 +1680,7 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
         stopwatch.start()
         audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes__raw(users, audio_clips, self.high_batch_size, True)
         stopwatch.stop()
+        reset_queries()
 
         self._update_metrics(
             get_current_function_name(),
@@ -3753,6 +3745,15 @@ class Core_TestCase(TestCase):
             )
 
             return audio_clips
+
+
+
+
+
+
+
+
+
 
 
 
