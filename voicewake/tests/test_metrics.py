@@ -812,16 +812,16 @@ class RealisticBulkData():
         #cmd:
             #python manage.py shell -c "from voicewake.tests.test_metrics import RealisticBulkData; RealisticBulkData.sample_run();"
 
-        realistic_bulk_data_class = RealisticBulkData(batch_quantity=5, is_audio_clip_tone_quantity_reduced=True, db_batch_size=500)
-
-        realistic_bulk_data_class.prepare_new_users()
-        realistic_bulk_data_class.prepare_like_dislike_estimate()
-
         #this improves realism of randomness
-        max_randomness_iteration_count = 3
+        max_randomness_iteration_count = 5
         current_randomness_iteration_count = 0
 
         while current_randomness_iteration_count < max_randomness_iteration_count:
+
+            realistic_bulk_data_class = RealisticBulkData(batch_quantity=2, is_audio_clip_tone_quantity_reduced=False, db_batch_size=500)
+
+            realistic_bulk_data_class.prepare_new_users()
+            realistic_bulk_data_class.prepare_like_dislike_estimate()
 
             threads = []
 
