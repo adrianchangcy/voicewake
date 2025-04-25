@@ -179,7 +179,12 @@ http {
             limit_req zone=light_compute_apis;
             keepalive_timeout  10;
         }
-        location = /api/audio-clips/bans/list {
+
+        location ^~ /api/audio-clips/bans {
+            proxy_pass http://main$request_uri;
+            limit_req zone=common_list_apis burst=10;
+        }
+        location ^~ /api/audio-clips/deletions {
             proxy_pass http://main$request_uri;
             limit_req zone=common_list_apis burst=10;
         }

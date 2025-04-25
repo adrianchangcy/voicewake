@@ -173,6 +173,36 @@ def deny_if_no_username(return_instance:Literal["response", "redirect"]):
 
 
 
+def deny_if_not_superuser(return_instance:Literal["response"]):
+
+    if return_instance not in ["response"]:
+
+        raise ValueError("Invalid return_instance.")
+    
+    
+    def decorator(passed_function):
+
+        @functools.wraps(passed_function)
+        def inner(request, *args, **kwargs):
+
+            if request.user.is_authenticated is False or request.user.is_superuser is False:
+
+                return JsonResponse(
+                    data={
+                        'message': 'This feature is only allowed for superusers.',
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            return passed_function(request, *args, **kwargs)
+        
+        return inner
+    
+    return decorator
+
+
+
+
 
 
 

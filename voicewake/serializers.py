@@ -365,14 +365,14 @@ class AWSLambdaNormaliseAudioClipsAPISerializer(serializers.Serializer):
 
 
 
-class ListEventReplyChoicesAPISerializer(serializers.Serializer):
+class EventReplyChoicesAPISerializer(serializers.Serializer):
 
     audio_clip_tone_id = serializers.IntegerField(required=False, default=None, min_value=1)
     unlock_all_locked_events = serializers.BooleanField()
 
 
 
-class HandleReplyingEventsAPISerializer(serializers.Serializer):
+class EventRepliesAPISerializer(serializers.Serializer):
 
     event_id = serializers.IntegerField(min_value=1,)
 
@@ -650,6 +650,16 @@ class PostUserFollowsAPISerializer(serializers.Serializer):
         raise serializers.ValidationError('This field is required.')
 
 
+
+class PostAudioClipBansAPISerializer(serializers.Serializer):
+
+    audio_clip_id = serializers.IntegerField()
+
+
+
+class PostAudioClipDeletionsAPISerializer(serializers.Serializer):
+
+    audio_clip_id = serializers.IntegerField()
 
 
 

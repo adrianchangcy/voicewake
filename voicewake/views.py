@@ -372,7 +372,7 @@ class GetEvents(TemplateView):
     ],
     name='get'
 )
-class ListEventReplyChoices(TemplateView):
+class EventReplyChoices(TemplateView):
 
     template_name = 'voicewake/events/list_event_reply_choices.html'
 

@@ -77,8 +77,9 @@ def cronjob_ban_audio_clips():
 
     earliest_datetime = datetime_now - timedelta(seconds=settings.BAN_AUDIO_CLIP_MIN_AGE_S)
 
-    generic_status_deleted = GenericStatuses.objects.get(generic_status_name='deleted')
     generic_status_incomplete = GenericStatuses.objects.get(generic_status_name='incomplete')
+    generic_status_completed = GenericStatuses.objects.get(generic_status_name='completed')
+    generic_status_deleted = GenericStatuses.objects.get(generic_status_name='deleted')
 
     with transaction.atomic():
 
@@ -152,7 +153,7 @@ def cronjob_ban_audio_clips():
 
             elif (
                 audio_clip_report.audio_clip.audio_clip_role.audio_clip_role_name == 'responder' and
-                audio_clip_report.audio_clip.event.generic_status.id != generic_status_deleted.id
+                audio_clip_report.audio_clip.event.generic_status.id == generic_status_completed.id
             ):
 
                 #mark as incomplete, do nothing if event has already been evaluated as originator
@@ -164,11 +165,14 @@ def cronjob_ban_audio_clips():
                     events.append(audio_clip_report.audio_clip.event)
                     event_ids.append(audio_clip_report.audio_clip.event.id)
 
-            #update audio_clips to update is_banned=False and generic_status to 'deleted'
+            #update audio_clips
 
             audio_clip_report.audio_clip.is_banned = True
             audio_clip_report.audio_clip.last_modified = datetime_now
             audio_clip_report.audio_clip.generic_status = generic_status_deleted
+            audio_clip_report.audio_clip.like_count = 0
+            audio_clip_report.audio_clip.dislike_count = 0
+            audio_clip_report.audio_clip.like_ratio = 0
 
             audio_clips.append(audio_clip_report.audio_clip)
 
@@ -217,7 +221,7 @@ def cronjob_ban_audio_clips():
 
         AudioClips.objects.bulk_update(
             audio_clips,
-            fields=('is_banned', 'last_modified', 'generic_status',),
+            fields=('is_banned', 'last_modified', 'generic_status', 'like_count', 'dislike_count', 'like_ratio'),
             batch_size=100,
         )
 

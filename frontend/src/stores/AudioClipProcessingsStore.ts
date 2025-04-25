@@ -46,7 +46,7 @@ export function useAudioClipProcessingsStore(){
 
             audio_clip_unprocessed_expiry_ms: 0,
 
-            //this is needed to show a more serious dialog at ListEventReplyChoicesApp
+            //this is needed to show a more serious dialog at EventReplyChoicesApp
             //only one should exist at any given time
             responder_processing_audio_clip_id: null as number|null,
         }),
@@ -270,7 +270,7 @@ export function useAudioClipProcessingsStore(){
                             processing['attempts_left'],
                         )
 
-                        //once there is a responder processing, ListEventReplyChoicesApp can have a more accurate dialog
+                        //once there is a responder processing, EventReplyChoicesApp can have a more accurate dialog
 
                         if(processing['audio_clip_role_name'] === 'responder'){
 
