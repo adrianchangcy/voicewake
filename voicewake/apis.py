@@ -76,7 +76,7 @@ class TestAPI(generics.GenericAPIView):
 
     serializer_class = None
     permission_classes = []
-    current_context = ""
+    url_context = ""
 
 
     def get(self, request, *args, **kwargs):
@@ -106,17 +106,17 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
     serializer_class = None
     permission_classes = []
     available_contexts = ['log_in', 'sign_up']
-    current_context:Literal['log_in', 'sign_up'] = 'log_in'
+    url_context:Literal['log_in', 'sign_up'] = 'log_in'
 
 
     def __init__(self, *args, **kwargs):
 
-        if 'current_context' not in kwargs or kwargs['current_context'] not in self.available_contexts:
+        if 'url_context' not in kwargs or kwargs['url_context'] not in self.available_contexts:
 
             raise custom_error(
                 ValueError,
                 __name__,
-                dev_message="Incorrect current_context passed. Check .as_view() at urls.py."
+                dev_message="Incorrect url_context passed. Check .as_view() at urls.py."
             )
     
         super().__init__(*args, **kwargs)
@@ -139,9 +139,9 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
                 #timed out and wrong OTP
                 message = "Timed out from too many %s attempts. Try again in " + get_pretty_datetime(verify_otp_timeout_s) + "."
 
-                if self.current_context == 'log_in':
+                if self.url_context == 'log_in':
                     message = message % ("login")
-                elif self.current_context == 'sign_up':
+                elif self.url_context == 'sign_up':
                     message = message % ("sign-up")
 
                 return Response(
@@ -155,9 +155,9 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
             #not timed out but wrong OTP
             message = "Incorrect %s code."
 
-            if self.current_context == 'log_in':
+            if self.url_context == 'log_in':
                 message = message % ("login")
-            elif self.current_context == 'sign_up':
+            elif self.url_context == 'sign_up':
                 message = message % ("sign-up")
 
             return Response(
@@ -249,7 +249,7 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
 
                     #add task to Celery
                     task_send_otp_email.s(
-                        context=self.current_context,
+                        context=self.url_context,
                         email=request_data['email'],
                         otp=new_otp,
                     ).delay()
@@ -257,9 +257,9 @@ class UsersLogInSignUpAPI(generics.GenericAPIView):
                     #email sent
                     message = "%s code has been sent to " + request_data['email'] + "."
 
-                    if self.current_context == 'log_in':
+                    if self.url_context == 'log_in':
                         message = message % ("Login")
-                    elif self.current_context == 'sign_up':
+                    elif self.url_context == 'sign_up':
                         message = message % ("Sign-up")
 
                     return Response(
@@ -421,46 +421,6 @@ class UsersUsernameAPI(generics.GenericAPIView):
                     'exists': False
                 },
                 'message': 'Your username is now %s!' % (request_data['username'])
-            },
-            status=status.HTTP_200_OK
-        )
-
-
-
-class UserBannedAudioClipsAPI(generics.GenericAPIView):
-
-    serializer_class = None
-    permission_classes = [IsAuthenticated]
-
-    #no post() here, cronjob does the banning
-    #due to exponential ban period, banned audio_clips per user is nearly guaranteed to be low
-
-    def get(self, request, *args, **kwargs):
-
-        #only allow users to use API if currently banned
-        if request.user.banned_until is None:
-
-            return Response(
-                data={
-                    'message': 'You can only view your banned recordings while you are banned.',
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        banned_audio_clips = AudioClips.objects.select_related(
-            'audio_clip_role',
-            'audio_clip_tone',
-            'generic_status',
-        ).filter(user=request.user, is_banned=True).order_by('-last_modified')
-
-        serializer = AudioClipsSerializer(
-            banned_audio_clips,
-            many=True,
-        )
-
-        return Response(
-            data={
-                'data': serializer.data,
             },
             status=status.HTTP_200_OK
         )
@@ -1823,17 +1783,17 @@ class CreateEventsAPI(generics.GenericAPIView):
     serializer_class = CreateAudioClips_Upload_APISerializer
     permission_classes = [IsAuthenticated]
     available_contexts = ['upload', 'regenerate_upload_url', 'process']
-    current_context:Literal['upload', 'regenerate_upload_url', 'process'] = 'upload'
+    url_context:Literal['upload', 'regenerate_upload_url', 'process'] = 'upload'
 
 
     def __init__(self, *args, **kwargs):
 
-        if 'current_context' not in kwargs or kwargs['current_context'] not in self.available_contexts:
+        if 'url_context' not in kwargs or kwargs['url_context'] not in self.available_contexts:
 
             raise custom_error(
                 ValueError,
                 __name__,
-                dev_message="Incorrect current_context. Check .as_view() at urls.py."
+                dev_message="Incorrect url_context. Check .as_view() at urls.py."
             )
 
         super().__init__(*args, **kwargs)
@@ -1847,7 +1807,7 @@ class CreateEventsAPI(generics.GenericAPIView):
 
         serializer = None
 
-        if self.current_context == 'upload':
+        if self.url_context == 'upload':
 
             serializer = CreateAudioClips_Upload_APISerializer(
                 data=request.data,
@@ -1857,14 +1817,14 @@ class CreateEventsAPI(generics.GenericAPIView):
                 },
             )
 
-        elif self.current_context == 'regenerate_upload_url':
+        elif self.url_context == 'regenerate_upload_url':
 
             serializer = CreateAudioClips_Upload_RegenerateURL_APISerializer(
                 data=request.data,
                 many=False,
             )
 
-        elif self.current_context == 'process':
+        elif self.url_context == 'process':
 
             serializer = CreateAudioClips_Process_APISerializer(
                 data=request.data,
@@ -1890,7 +1850,7 @@ class CreateEventsAPI(generics.GenericAPIView):
             create_audio_clips_class = CreateAudioClips(
                 user=self.request.user,
                 is_ec2=settings.IS_EC2,
-                current_context='create_event',
+                url_context='create_event',
                 unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS,
                 processed_file_extension=os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
                 event_create_daily_limit=settings.EVENT_CREATE_DAILY_LIMIT,
@@ -1898,7 +1858,7 @@ class CreateEventsAPI(generics.GenericAPIView):
                 event_reply_expiry_seconds=settings.EVENT_REPLY_MAX_DURATION_S,
             )
 
-            if self.current_context == 'upload':
+            if self.url_context == 'upload':
 
                 return create_audio_clips_class.create_records_and_return_s3_endpoint_as_originator(
                     event_name=request_data['event_name'],
@@ -1906,13 +1866,13 @@ class CreateEventsAPI(generics.GenericAPIView):
                     recorded_file_extension=request_data['recorded_file_extension'],
                 )
 
-            elif self.current_context == 'regenerate_upload_url':
+            elif self.url_context == 'regenerate_upload_url':
 
                 return create_audio_clips_class.regenerate_s3_endpoint(
                     audio_clip_id=request_data['audio_clip_id'],
                 )
 
-            elif self.current_context == 'process':
+            elif self.url_context == 'process':
 
                 error_response = create_audio_clips_class.start_normalisation(
                     audio_clip_id=request_data['audio_clip_id'],
@@ -1974,7 +1934,7 @@ class CreateEventsAPI(generics.GenericAPIView):
 #UserFollows has no effect here
     #if it should, then have a separate query and join after, instead of doing it all in one query
 #Events are not affected by lock/unlock for reply
-class ListEventReplyChoicesAPI(generics.GenericAPIView):
+class EventReplyChoicesAPI(generics.GenericAPIView):
 
     serializer_class = None
     permission_classes = [IsAuthenticated]
@@ -2235,7 +2195,7 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
     ])
     def post(self, request, *args, **kwargs):
 
-        serializer = ListEventReplyChoicesAPISerializer(data=request.data, many=False)
+        serializer = EventReplyChoicesAPISerializer(data=request.data, many=False)
 
         if serializer.is_valid() is False:
 
@@ -2287,7 +2247,7 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
             create_audio_clips_class = CreateAudioClips(
                 user=self.request.user,
                 is_ec2=settings.IS_EC2,
-                current_context='create_reply',
+                url_context='create_reply',
                 unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS,
                 processed_file_extension=os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
                 event_create_daily_limit=settings.EVENT_CREATE_DAILY_LIMIT,
@@ -2360,15 +2320,15 @@ class ListEventReplyChoicesAPI(generics.GenericAPIView):
 
 #purposely not check UserBlocks here
 #else a few unnecessary edge cases must be dealt with, since blocking someone is spammable
-class HandleReplyingEventsAPI(generics.GenericAPIView):
+class EventRepliesAPI(generics.GenericAPIView):
 
-    serializer_class = HandleReplyingEventsAPISerializer
+    serializer_class = EventRepliesAPISerializer
     permission_classes = [IsAuthenticated]
     available_contexts = [
         'start', 'cancel',
         'upload', 'regenerate_upload_url', 'process',
     ]
-    current_context:Literal[
+    url_context:Literal[
         'start', 'cancel',
         'upload', 'regenerate_upload_url', 'process',
     ] = 'start'
@@ -2376,12 +2336,12 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
     def __init__(self, *args, **kwargs):
 
-        if 'current_context' not in kwargs or kwargs['current_context'] not in self.available_contexts:
+        if 'url_context' not in kwargs or kwargs['url_context'] not in self.available_contexts:
 
             raise custom_error(
                 ValueError,
                 __name__,
-                dev_message="Incorrect current_context. Check .as_view() at urls.py."
+                dev_message="Incorrect url_context. Check .as_view() at urls.py."
             )
 
         super().__init__(*args, **kwargs)
@@ -2616,11 +2576,11 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
         serializer = None
 
-        if self.current_context == 'start' or self.current_context == 'cancel':
+        if self.url_context == 'start' or self.url_context == 'cancel':
 
-            serializer = HandleReplyingEventsAPISerializer(data=request.data)
+            serializer = EventRepliesAPISerializer(data=request.data)
 
-        elif self.current_context == 'upload':
+        elif self.url_context == 'upload':
 
             serializer = CreateAudioClips_Upload_APISerializer(
                 data=request.data,
@@ -2629,11 +2589,11 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                 },
             )
 
-        elif self.current_context == 'regenerate_upload_url':
+        elif self.url_context == 'regenerate_upload_url':
 
             serializer = CreateAudioClips_Upload_RegenerateURL_APISerializer(data=request.data)
 
-        elif self.current_context == 'process':
+        elif self.url_context == 'process':
 
             serializer = CreateAudioClips_Process_APISerializer(data=request.data)
 
@@ -2655,12 +2615,12 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
 
             create_audio_clips_class = None
 
-            if self.current_context in ['upload', 'regenerate_upload_url', 'process']:
+            if self.url_context in ['upload', 'regenerate_upload_url', 'process']:
 
                 create_audio_clips_class = CreateAudioClips(
                     user=self.request.user,
                     is_ec2=settings.IS_EC2,
-                    current_context='create_reply',
+                    url_context='create_reply',
                     unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS,
                     processed_file_extension=os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
                     event_create_daily_limit=settings.EVENT_CREATE_DAILY_LIMIT,
@@ -2668,12 +2628,12 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                     event_reply_expiry_seconds=settings.EVENT_REPLY_MAX_DURATION_S,
                 )
 
-            if self.current_context == "start":
+            if self.url_context == "start":
 
                 #start replying
                 return self.start_reply_in_event(request_data['event_id'])
 
-            elif self.current_context == 'upload':
+            elif self.url_context == 'upload':
 
                 return create_audio_clips_class.create_records_and_return_s3_endpoint_as_responder(
                     event_id=request_data['event_id'],
@@ -2682,13 +2642,13 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                 )
 
 
-            elif self.current_context == 'regenerate_upload_url':
+            elif self.url_context == 'regenerate_upload_url':
 
                 return create_audio_clips_class.regenerate_s3_endpoint(
                     audio_clip_id=request_data['audio_clip_id'],
                 )
 
-            elif self.current_context == 'process':
+            elif self.url_context == 'process':
 
                 error_response = create_audio_clips_class.start_normalisation(
                     audio_clip_id=request_data['audio_clip_id'],
@@ -2719,7 +2679,7 @@ class HandleReplyingEventsAPI(generics.GenericAPIView):
                     status=status.HTTP_200_OK
                 )
 
-            elif self.current_context == "cancel":
+            elif self.url_context == "cancel":
 
                 #delete event_reply_queue
                 return self.cancel_reply_in_event(request_data['event_id'])
@@ -2914,98 +2874,12 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
 
 
 
-class AudioClipReportsAPI(generics.GenericAPIView):
-
-    serializer_class = AudioClipReportsAPISerializer
-    permission_classes = [IsAuthenticated]
-
-    #no get() here, users don't have to see what audio_clips they've reported
-
-    #user wants to report an audio_clip
-    @method_decorator(app_decorators.deny_if_banned("response"))
-    def post(self, request, *args, **kwargs):
-
-        serializer = AudioClipReportsAPISerializer(data=request.data, many=False)
-
-        #validate
-        if serializer.is_valid() is False:
-
-            return Response(
-                data={
-                    'message': get_serializer_error_message(serializer),
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        request_data = serializer.validated_data
-
-        try:
-
-            #get audio_clip
-            target_audio_clip = AudioClips.objects.select_related(
-                'generic_status',
-            ).get(
-                pk=request_data['audio_clip_id'],
-            )
-
-        except AudioClips.DoesNotExist:
-
-            return Response(
-                data={
-                    'message': 'Recording does not exist.',
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        #no need to check whether audio_clip belongs to user
-
-        #check if already banned
-        if target_audio_clip.is_banned is True:
-
-            return Response(
-                data={
-                    'message': 'This recording has already been banned.',
-                },
-                status=status.HTTP_200_OK
-            )
-
-        #check if audio_clip is eligible to be reported
-        #e.g. cannot report when still processing and not shown publicly
-        if target_audio_clip.generic_status.generic_status_name != 'ok':
-
-            return Response(
-                data={
-                    'message': 'Recording does not exist.',
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        #add report
-        AudioClipReports.objects.update_or_create(
-            audio_clip_id=request_data['audio_clip_id'],
-            defaults={
-                "last_reported": get_datetime_now(),
-            },
-        )
-
-        #for edge case where same user reports --> evaluated --> reports again,
-        #no need to do anything, otherwise our cronjob can get overwhelmed
-
-        return Response(
-            data={
-                'message': 'The recording is now queued for evaluation.',
-            },
-            status=status.HTTP_200_OK
-        )
-
-
-
 class AudioClipProcessingsAPI(generics.GenericAPIView):
 
     serializer_class = CheckAudioClipProcessingsAPISerializer
     permission_classes = [IsAuthenticated]
     available_contexts = ['list', 'check', 'delete']
-    current_context:Literal['list', 'check', 'delete'] = 'check'
+    url_context:Literal['list', 'check', 'delete'] = 'check'
     processing_statuses = ['processing', 'processed', 'not_found', 'lambda_error']
 
 
@@ -3135,12 +3009,12 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
 
         #self.request is not available here
 
-        if 'current_context' not in kwargs or kwargs['current_context'] not in self.available_contexts:
+        if 'url_context' not in kwargs or kwargs['url_context'] not in self.available_contexts:
 
             raise custom_error(
                 ValueError,
                 __name__,
-                dev_message="Incorrect current_context. Check .as_view() at urls.py."
+                dev_message="Incorrect url_context. Check .as_view() at urls.py."
             )
 
         super().__init__(*args, **kwargs)
@@ -3152,7 +3026,7 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
         #list is just to sync data at frontend
         #keep list and check separate, to allow us to check only specific processings as desired
 
-        if self.current_context == 'check':
+        if self.url_context == 'check':
 
             serializer = CheckAudioClipProcessingsAPISerializer(data=kwargs)
 
@@ -3182,7 +3056,7 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
                 return_type='response'
             )
 
-        elif self.current_context == 'list':
+        elif self.url_context == 'list':
 
             #TODO: consider listing qualified audio_clips from db first, to ensure cache stays true to source of truth
             #wouldn't want simple cache unavailability to cause people to lose track of processing clips
@@ -3240,7 +3114,7 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
     @method_decorator(app_decorators.deny_if_banned("response"))
     def post(self, request, *args, **kwargs):
 
-        if self.current_context != 'delete':
+        if self.url_context != 'delete':
 
             return Response(
                 data={
@@ -3340,6 +3214,319 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
 
 
 
+class AudioClipReportsAPI(generics.GenericAPIView):
+
+    serializer_class = AudioClipReportsAPISerializer
+    permission_classes = [IsAuthenticated]
+
+    #no get() here, users don't have to see what audio_clips they've reported
+
+    #user wants to report an audio_clip
+    @method_decorator(app_decorators.deny_if_banned("response"))
+    def post(self, request, *args, **kwargs):
+
+        serializer = AudioClipReportsAPISerializer(data=request.data, many=False)
+
+        #validate
+        if serializer.is_valid() is False:
+
+            return Response(
+                data={
+                    'message': get_serializer_error_message(serializer),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        request_data = serializer.validated_data
+
+        try:
+
+            #get audio_clip
+            target_audio_clip = AudioClips.objects.select_related(
+                'generic_status',
+            ).get(
+                pk=request_data['audio_clip_id'],
+            )
+
+        except AudioClips.DoesNotExist:
+
+            return Response(
+                data={
+                    'message': 'Recording does not exist.',
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        #no need to check whether audio_clip belongs to user
+
+        #check if already banned
+        if target_audio_clip.is_banned is True:
+
+            return Response(
+                data={
+                    'message': 'This recording has already been banned.',
+                },
+                status=status.HTTP_200_OK
+            )
+
+        #check if audio_clip is eligible to be reported
+        #e.g. cannot report when still processing and not shown publicly
+        if target_audio_clip.generic_status.generic_status_name != 'ok':
+
+            return Response(
+                data={
+                    'message': 'Recording does not exist.',
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        #add report
+        AudioClipReports.objects.update_or_create(
+            audio_clip_id=request_data['audio_clip_id'],
+            defaults={
+                "last_reported": get_datetime_now(),
+            },
+        )
+
+        #for edge case where same user reports --> evaluated --> reports again,
+        #no need to do anything, otherwise our cronjob can get overwhelmed
+
+        return Response(
+            data={
+                'message': 'The recording is now queued for evaluation.',
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+
+class AudioClipBansAPI(generics.GenericAPIView):
+
+    serializer_class = None
+    permission_classes = [IsAuthenticated]
+
+    #no post() here, cronjob does the banning
+    #due to exponential ban period, banned audio_clips per user is nearly guaranteed to be low
+
+    #banned users can get their own banned audio_clips
+    def get(self, request, *args, **kwargs):
+
+        #only allow users to use API if currently banned
+        if request.user.banned_until is None:
+
+            return Response(
+                data={
+                    'message': 'You can only view your banned recordings while you are banned.',
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        banned_audio_clips = AudioClips.objects.select_related(
+            'audio_clip_role',
+            'audio_clip_tone',
+            'generic_status',
+        ).filter(user=request.user, is_banned=True).order_by('-last_modified')
+
+        serializer = AudioClipsSerializer(
+            banned_audio_clips,
+            many=True,
+        )
+
+        return Response(
+            data={
+                'data': serializer.data,
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+    @method_decorator(app_decorators.deny_if_not_superuser("response"))
+    def post(self, request, *args, **kwargs):
+
+        serializer = PostAudioClipBansAPISerializer(data=request.data, many=False)
+
+        #validate
+        if serializer.is_valid() is False:
+
+            return Response(
+                data={
+                    'message': get_serializer_error_message(serializer),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        request_data = serializer.validated_data
+
+        generic_status_incomplete = GenericStatuses.objects.get(generic_status_name='incomplete')
+        generic_status_completed = GenericStatuses.objects.get(generic_status_name='completed')
+        generic_status_deleted = GenericStatuses.objects.get(generic_status_name='deleted')
+
+        audio_clip = None
+
+        try:
+
+            with transaction.atomic():
+
+                audio_clip = AudioClips.objects.select_for_update().select_related(
+                    'audio_clip_role',
+                    'event',
+                    'user',
+                ).get(
+                    pk=request_data['audio_clip_id'],
+                    is_banned=False,
+                )
+
+                audio_clip.is_banned = True
+                audio_clip.generic_status = generic_status_deleted
+                audio_clip.save()
+
+        except AudioClips.DoesNotExist:
+
+            return Response(
+                data={
+                    'message': get_serializer_error_message(serializer),
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        #remove relevant rows
+
+        AudioClipLikesDislikes.objects.filter(audio_clip=audio_clip).delete()
+
+        EventReplyQueues.objects.filter(event=audio_clip.event).delete()
+
+        #handle event
+
+        if audio_clip.audio_clip_role.audio_clip_role_name == 'originator':
+
+            #for originator, event always becomes 'deleted'
+            audio_clip.event.generic_status = generic_status_deleted
+            audio_clip.event.save()
+
+        elif (
+            audio_clip.audio_clip_role.audio_clip_role_name == 'responder' and
+            audio_clip.event.generic_status_id == generic_status_completed
+        ):
+
+            #for responder, event changes from 'completed' to 'incomplete'
+            audio_clip.event.generic_status = generic_status_incomplete
+            audio_clip.event.save()
+
+        #ban user
+
+        ban_days = settings.CRONJOB_AUDIO_CLIP_BAN_DAYS ** audio_clip.user.ban_count
+
+        #cap ban_days, else it can get out of hand
+        if ban_days > settings.CRONJOB_AUDIO_CLIP_MAX_BAN_DAYS:
+
+            ban_days = settings.CRONJOB_AUDIO_CLIP_MAX_BAN_DAYS
+
+        audio_clip.user.banned_until = get_datetime_now() + timedelta(days=ban_days)
+        audio_clip.user.save()
+
+        return Response(
+            data={
+                'message': 'Recording has been banned.',
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+
+class AudioClipDeletionsAPI(generics.GenericAPIView):
+
+    serializer_class = None
+    permission_classes = [IsAuthenticated]
+
+
+    def post(self, request, *args, **kwargs):
+
+        #allow if user performing the action is superuser or is the one who created the audio_clip
+
+        serializer = PostAudioClipDeletionsAPISerializer(data=request.data, many=False)
+
+        #validate
+        if serializer.is_valid() is False:
+
+            return Response(
+                data={
+                    'message': get_serializer_error_message(serializer),
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        request_data = serializer.validated_data
+
+        generic_status_incomplete = GenericStatuses.objects.get(generic_status_name='incomplete')
+        generic_status_completed = GenericStatuses.objects.get(generic_status_name='completed')
+        generic_status_deleted = GenericStatuses.objects.get(generic_status_name='deleted')
+
+        audio_clip = None
+
+        try:
+
+            with transaction.atomic():
+
+                audio_clip = AudioClips.objects.select_for_update().select_related(
+                    'audio_clip_role',
+                    'event',
+                ).get(
+                    pk=request_data['audio_clip_id'],
+                    generic_status__generic_status_name='ok',
+                )
+
+                if request.user.is_superuser is True or request.user.id == audio_clip.user_id:
+
+                    audio_clip.generic_status = generic_status_deleted
+                    audio_clip.save()
+
+                else:
+
+                    return Response(
+                        data={
+                            'message': 'You do not have permission to perform this action.',
+                        },
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+
+        except AudioClips.DoesNotExist:
+
+            return Response(
+                data={
+                    'message': get_serializer_error_message(serializer),
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        #remove relevant rows
+
+        AudioClipLikesDislikes.objects.filter(audio_clip=audio_clip).delete()
+
+        EventReplyQueues.objects.filter(event=audio_clip.event).delete()
+
+        #handle event
+
+        if audio_clip.audio_clip_role.audio_clip_role_name == 'originator':
+
+            #for originator, event always becomes 'deleted'
+            audio_clip.event.generic_status = generic_status_deleted
+            audio_clip.event.save()
+
+        elif (
+            audio_clip.audio_clip_role.audio_clip_role_name == 'responder' and
+            audio_clip.event.generic_status_id == generic_status_completed
+        ):
+
+            #for responder, event changes from 'completed' to 'incomplete'
+            audio_clip.event.generic_status = generic_status_incomplete
+            audio_clip.event.save()
+
+        return Response(
+            data={
+                'message': 'Recording has been banned.',
+            },
+            status=status.HTTP_200_OK
+        )
 
 
 

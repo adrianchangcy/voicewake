@@ -476,7 +476,7 @@
 
 
     export default defineComponent({
-        name: "ListEventReplyChoicesApp",
+        name: "EventReplyChoicesApp",
         data() {
             return {
                 event_reply_choices_store: useEventReplyChoicesStore(),

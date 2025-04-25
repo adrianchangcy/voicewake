@@ -58,7 +58,7 @@
                 audio_clips: [] as ScrollableAudioClipsTypes[],
                 vplayback_store: useVPlaybackStore(),
 
-                url: '/api/audio-clips/bans/list',
+                url: '/api/audio-clips/bans',
 
                 is_fetching: false,
                 can_observer_fetch: false,

@@ -1250,7 +1250,7 @@ class CreateAudioClips():
         self,
         user,
         is_ec2:bool,
-        current_context:Literal["create_event", "create_reply"],
+        url_context:Literal["create_event", "create_reply"],
         unprocessed_file_extensions:list,
         processed_file_extension:str,
         event_create_daily_limit:int,
@@ -1258,7 +1258,7 @@ class CreateAudioClips():
         event_reply_expiry_seconds:int,
     ):
 
-        if current_context not in ["create_event", "create_reply"]:
+        if url_context not in ["create_event", "create_reply"]:
 
             raise ValueError('Invalid context.')
 
@@ -1268,7 +1268,7 @@ class CreateAudioClips():
 
         self.user = user
         self.is_ec2 = is_ec2
-        self.current_context:Literal["create_event", "create_reply"] = current_context
+        self.url_context:Literal["create_event", "create_reply"] = url_context
         self.unprocessed_file_extensions = unprocessed_file_extensions
         self.processed_file_extension = processed_file_extension
         self.event_create_daily_limit = event_create_daily_limit
@@ -1301,12 +1301,12 @@ class CreateAudioClips():
         audio_clip_role_name = ''
         count_limit = 0
 
-        if self.current_context == 'create_event':
+        if self.url_context == 'create_event':
 
             audio_clip_role_name = 'originator'
             count_limit = self.event_create_daily_limit
 
-        elif self.current_context == 'create_reply':
+        elif self.url_context == 'create_reply':
 
             audio_clip_role_name = 'responder'
             count_limit = self.event_reply_daily_limit
@@ -1624,12 +1624,12 @@ class CreateAudioClips():
         recorded_file_extension:str,
     )->Response:
 
-        if self.current_context != "create_event":
+        if self.url_context != "create_event":
 
             raise custom_error(
                 ValueError,
                 __name__,
-                dev_message="Invalid self.current_context."
+                dev_message="Invalid self.url_context."
             )
 
         #check if creation limit has been reached
@@ -1713,12 +1713,12 @@ class CreateAudioClips():
 
         #reply limit is enforced at choice listing, not here
 
-        if self.current_context != "create_reply":
+        if self.url_context != "create_reply":
 
             raise custom_error(
                 ValueError,
                 __name__,
-                dev_message="Invalid self.current_context."
+                dev_message="Invalid self.url_context."
             )
 
         #handle audio clip first so we can immediately return if processed
