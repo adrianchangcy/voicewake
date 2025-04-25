@@ -8248,7 +8248,7 @@ class Core_TestCase(TestCase):
         pass
 
 
-    def test_user_banned_audio_clips__can_only_view_while_banned(self):
+    def test_audio_clip_bans__get__only_while_banned(self):
 
         #not banned
 
@@ -8256,7 +8256,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.get(
             reverse(
-                'user_banned_audio_clips_api',
+                'audio_clip_bans_api',
                 kwargs={}
             )
         )
@@ -8274,7 +8274,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.get(
             reverse(
-                'user_banned_audio_clips_api',
+                'audio_clip_bans_api',
                 kwargs={}
             )
         )
@@ -8283,7 +8283,7 @@ class Core_TestCase(TestCase):
         self.assertEqual(request.status_code, 200)
 
 
-    def test_user_banned_audio_clips__ok(self):
+    def test_audio_clip_bans__get__ok(self):
 
         #prepare data
 
@@ -8369,7 +8369,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.get(
             reverse(
-                'user_banned_audio_clips_api',
+                'audio_clip_bans_api',
             )
         )
 
@@ -8385,6 +8385,49 @@ class Core_TestCase(TestCase):
         self.assertTrue(response_data['data'][1]['id'] in banned_audio_clip_ids)
         self.assertNotEqual(response_data['data'][0]['id'], response_data['data'][1]['id'])
 
+
+    def test_audio_clip_bans__post__only_as_superuser(self):
+        pass
+
+
+    def test_audio_clip_bans__post__ok(self):
+        pass
+
+
+    def test_audio_clip_deletions__post__only_as_superuser_or_creator(self):
+        pass
+
+
+    def test_audio_clip_deletions__post__ok(self):
+        pass
+
+
+    def test_audio_clip_likes_dislikes__simultaneous_trigger(self):
+        #use threads and do 2 likes from 2 users
+        #use threads and do 1 like 1 dislike from same user
+        pass
+
+
+    def test_audio_clip_likes_dislikes__new_trigger_implementation(self):
+        #since triggers can slow down large queries,
+        #try to implement transaction blocks where the trigger is disabled, while still enabled for other requests
+
+        #create config parameter at migrations/0001_custom
+        #this is an alternative to using .conf at dev or specifying parameters at AWS
+        #ALTER DATABASE myapp SET myapp.skip_trigger_audio_clip_likes_dislikes TO 1;
+
+        #at client, you can see if it exists
+        #SHOW myapp._skip_trigger_audio_clip_likes_dislikes;
+
+        #update trigger to check for this
+        #current_setting('myapp.skip_trigger_audio_clip_likes_dislikes') = 1
+
+        #deletion
+        # BEGIN;
+        # SET LOCAL myapp.skip_trigger_audio_clip_likes_dislikes = 0;
+        # INSERT INTO your_table (...) VALUES (...);
+        # COMMIT;
+        pass
 
 
 
