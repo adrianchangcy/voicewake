@@ -8387,19 +8387,838 @@ class Core_TestCase(TestCase):
 
 
     def test_audio_clip_bans__post__only_as_superuser(self):
-        pass
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
+        )
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        #try when not superuser
+
+        self.assertFalse(self.users[1].is_superuser)
+
+        self.login(self.users[1])
+
+        request = self.client.post(
+            reverse('audio_clip_bans_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_0.id,
+            }
+        )
+
+        self.assertEqual(request.status_code, 403)
+
+        #try when superuser
+
+        self.users[1].is_superuser = True
+        self.users[1].save()
+
+        request = self.client.post(
+            reverse('audio_clip_bans_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_0.id,
+            }
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
 
 
-    def test_audio_clip_bans__post__ok(self):
-        pass
+    def test_audio_clip_bans__post__incomplete__ban_originator(self):
+
+        self.users[3].is_superuser = True
+        self.users[3].save()
+
+        self.login(self.users[3])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
+        )
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+        sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(
+            audio_clip=sample_audio_clip_0,
+            user=self.users[1],
+            is_liked=True
+        )
+        sample_audio_clip_like_dislike_1 = AudioClipLikesDislikes.objects.create(
+            audio_clip=sample_audio_clip_0,
+            user=self.users[2],
+            is_liked=False
+        )
+
+        request = self.client.post(
+            reverse('audio_clip_bans_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_0.id,
+            }
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
+
+        self.users[0].refresh_from_db()
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+
+        self.assertEqual(self.users[0].ban_count, 1)
+        self.assertIsNotNone(self.users[0].banned_until)
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_0.generic_status.is_banned)
+        self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
 
 
-    def test_audio_clip_deletions__post__only_as_superuser_or_creator(self):
-        pass
+    def test_audio_clip_bans__post__completed__ban_originator(self):
+
+        self.users[3].is_superuser = True
+        self.users[3].save()
+
+        self.login(self.users[3])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='completed',
+        )
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+        sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(
+            audio_clip=sample_audio_clip_0,
+            user=self.users[1],
+            is_liked=True
+        )
+        sample_audio_clip_like_dislike_1 = AudioClipLikesDislikes.objects.create(
+            audio_clip=sample_audio_clip_0,
+            user=self.users[2],
+            is_liked=False
+        )
+
+        request = self.client.post(
+            reverse('audio_clip_bans_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_0.id,
+            }
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
+
+        self.users[0].refresh_from_db()
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+
+        self.assertEqual(self.users[0].ban_count, 1)
+        self.assertIsNotNone(self.users[0].banned_until)
+        self.assertEqual(self.users[1].ban_count, 0)
+        self.assertIsNone(self.users[1].banned_until)
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'ok')
+        self.assertTrue(sample_audio_clip_0.generic_status.is_banned)
+        self.assertFalse(sample_audio_clip_1.generic_status.is_banned)
+        self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
+        self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 0)
 
 
-    def test_audio_clip_deletions__post__ok(self):
-        pass
+    def test_audio_clip_bans__post__completed__ban_responder(self):
+
+        self.users[3].is_superuser = True
+        self.users[3].save()
+
+        self.login(self.users[3])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='completed',
+        )
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+        sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(
+            audio_clip=sample_audio_clip_1,
+            user=self.users[1],
+            is_liked=True
+        )
+        sample_audio_clip_like_dislike_1 = AudioClipLikesDislikes.objects.create(
+            audio_clip=sample_audio_clip_1,
+            user=self.users[2],
+            is_liked=False
+        )
+
+        request = self.client.post(
+            reverse('audio_clip_bans_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_1.id,
+            }
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
+
+        self.users[0].refresh_from_db()
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        sample_audio_clip_1.refresh_from_db()
+
+        self.assertEqual(self.users[0].ban_count, 0)
+        self.assertIsNone(self.users[0].banned_until)
+        self.assertEqual(self.users[1].ban_count, 1)
+        self.assertIsNotNone(self.users[1].banned_until)
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'ok')
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
+        self.assertFalse(sample_audio_clip_0.generic_status.is_banned)
+        self.assertTrue(sample_audio_clip_1.generic_status.is_banned)
+        self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
+        self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 0)
+
+
+    def test_audio_clip_bans__post__originator_banned__ban_responder(self):
+
+        self.users[3].is_superuser = True
+        self.users[3].save()
+
+        self.login(self.users[3])
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='deleted',
+        )
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='deleted',
+            audio_clip_is_banned=True,
+        )
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+        sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(
+            audio_clip=sample_audio_clip_1,
+            user=self.users[1],
+            is_liked=True
+        )
+        sample_audio_clip_like_dislike_1 = AudioClipLikesDislikes.objects.create(
+            audio_clip=sample_audio_clip_1,
+            user=self.users[2],
+            is_liked=False
+        )
+
+        request = self.client.post(
+            reverse('audio_clip_bans_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_1.id,
+            }
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 200)
+
+        self.users[0].refresh_from_db()
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        sample_audio_clip_1.refresh_from_db()
+
+        self.assertEqual(self.users[0].ban_count, 0)
+        self.assertIsNone(self.users[0].banned_until)
+        self.assertEqual(self.users[1].ban_count, 1)
+        self.assertIsNotNone(self.users[1].banned_until)
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_0.generic_status.is_banned)
+        self.assertTrue(sample_audio_clip_1.generic_status.is_banned)
+        self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
+        self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 0)
+
+
+    def test_audio_clip_bans__post__audio_clip__unaffected(self):
+
+        self.users[3].is_superuser = True
+        self.users[3].save()
+
+        self.login(self.users[3])
+
+        #not yet banned
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
+        )
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        request = self.client.post(
+            reverse('audio_clip_bans_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_0.id + 1,
+            }
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 404)
+
+        #already banned
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='deleted',
+        )
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='deleted',
+            audio_clip_is_banned=True,
+        )
+
+        request = self.client.post(
+            reverse('audio_clip_bans_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_0.id,
+            }
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 404)
+
+        #already deleted
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='deleted',
+        )
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='deleted',
+            audio_clip_is_banned=False,
+        )
+
+        request = self.client.post(
+            reverse('audio_clip_bans_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_0.id,
+            }
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 404)
+
+
+    def test_audio_clip_bans__post__missing_args(self):
+
+        self.users[3].is_superuser = True
+        self.users[3].save()
+
+        self.login(self.users[3])
+
+        request = self.client.post(
+            reverse('audio_clip_bans_api'),
+            data={
+            }
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 400)
+
+
+    def test_audio_clip_bans__post__faulty_args(self):
+
+        self.users[3].is_superuser = True
+        self.users[3].save()
+
+        self.login(self.users[3])
+
+        request = self.client.post(
+            reverse('audio_clip_bans_api'),
+            data={
+                'audio_clip_id': '1',
+            }
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 400)
+
+
+    def test_audio_clip_deletions__post__only_as_superuser_or_themselves(self):
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
+        )
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        #try when not superuser
+
+        self.assertFalse(self.users[1].is_superuser)
+
+        self.login(self.users[1])
+
+        request = self.client.post(
+            reverse('audio_clip_deletions_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_0.id,
+            }
+        )
+
+        self.assertEqual(request.status_code, 403)
+
+        #try when superuser
+
+        self.users[1].is_superuser = True
+        self.users[1].save()
+
+        request = self.client.post(
+            reverse('audio_clip_deletions_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_0.id,
+            }
+        )
+
+        self.assertEqual(request.status_code, 200)
+
+        #try as themselves
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
+        )
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        self.login(self.users[0])
+
+        request = self.client.post(
+            reverse('audio_clip_deletions_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_0.id,
+            }
+        )
+
+        self.assertEqual(request.status_code, 200)
+
+
+    def test_audio_clip_deletions__post__incomplete__delete_originator(self):
+
+        self.users[3].is_superuser = True
+        self.users[3].save()
+
+        all_users = [
+            self.users[0],
+            self.users[3]
+        ]
+
+        for user in all_users:
+
+            self.login(user)
+
+            sample_event_0 = EventsFactory(
+                event_created_by=self.users[0],
+                event_generic_status_generic_status_name='incomplete',
+            )
+            sample_audio_clip_0 = AudioClipsFactory(
+                audio_clip_user=self.users[0],
+                audio_clip_audio_clip_role_audio_clip_role_name='originator',
+                audio_clip_event=sample_event_0,
+                audio_clip_generic_status_generic_status_name='ok',
+            )
+            sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(
+                audio_clip=sample_audio_clip_0,
+                user=self.users[1],
+                is_liked=True
+            )
+            sample_audio_clip_like_dislike_1 = AudioClipLikesDislikes.objects.create(
+                audio_clip=sample_audio_clip_0,
+                user=self.users[2],
+                is_liked=False
+            )
+
+            request = self.client.post(
+                reverse('audio_clip_deletions_api'),
+                data={
+                    'audio_clip_id': sample_audio_clip_0.id,
+                }
+            )
+
+            print_with_function_name(request.content)
+            self.assertEqual(request.status_code, 200)
+
+            self.users[0].refresh_from_db()
+            sample_event_0.refresh_from_db()
+            sample_audio_clip_0.refresh_from_db()
+
+            self.assertEqual(self.users[0].ban_count, 0)
+            self.assertIsNone(self.users[0].banned_until)
+            self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+            self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+            self.assertFalse(sample_audio_clip_0.generic_status.is_banned)
+            self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
+
+
+    def test_audio_clip_deletions__post__completed__delete_originator(self):
+
+        self.users[3].is_superuser = True
+        self.users[3].save()
+
+        all_users = [
+            self.users[0],
+            self.users[3]
+        ]
+
+        for user in all_users:
+
+            self.login(user)
+
+            sample_event_0 = EventsFactory(
+                event_created_by=self.users[0],
+                event_generic_status_generic_status_name='completed',
+            )
+            sample_audio_clip_0 = AudioClipsFactory(
+                audio_clip_user=self.users[0],
+                audio_clip_audio_clip_role_audio_clip_role_name='originator',
+                audio_clip_event=sample_event_0,
+                audio_clip_generic_status_generic_status_name='ok',
+            )
+            sample_audio_clip_1 = AudioClipsFactory(
+                audio_clip_user=self.users[1],
+                audio_clip_audio_clip_role_audio_clip_role_name='responder',
+                audio_clip_event=sample_event_0,
+                audio_clip_generic_status_generic_status_name='ok',
+            )
+            sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(
+                audio_clip=sample_audio_clip_0,
+                user=self.users[1],
+                is_liked=True
+            )
+            sample_audio_clip_like_dislike_1 = AudioClipLikesDislikes.objects.create(
+                audio_clip=sample_audio_clip_0,
+                user=self.users[2],
+                is_liked=False
+            )
+
+            request = self.client.post(
+                reverse('audio_clip_deletions_api'),
+                data={
+                    'audio_clip_id': sample_audio_clip_0.id,
+                }
+            )
+
+            print_with_function_name(request.content)
+            self.assertEqual(request.status_code, 200)
+
+            self.users[0].refresh_from_db()
+            sample_event_0.refresh_from_db()
+            sample_audio_clip_0.refresh_from_db()
+
+            self.assertEqual(self.users[0].ban_count, 0)
+            self.assertIsNone(self.users[0].banned_until)
+            self.assertEqual(self.users[1].ban_count, 0)
+            self.assertIsNone(self.users[1].banned_until)
+            self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+            self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+            self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'ok')
+            self.assertFalse(sample_audio_clip_0.generic_status.is_banned)
+            self.assertFalse(sample_audio_clip_1.generic_status.is_banned)
+            self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
+            self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 0)
+
+
+    def test_audio_clip_deletions__post__completed__delete_responder(self):
+
+        self.users[3].is_superuser = True
+        self.users[3].save()
+
+        all_users = [
+            self.users[0],
+            self.users[3]
+        ]
+
+        for user in all_users:
+
+            self.login(user)
+
+            sample_event_0 = EventsFactory(
+                event_created_by=self.users[0],
+                event_generic_status_generic_status_name='completed',
+            )
+            sample_audio_clip_0 = AudioClipsFactory(
+                audio_clip_user=self.users[0],
+                audio_clip_audio_clip_role_audio_clip_role_name='originator',
+                audio_clip_event=sample_event_0,
+                audio_clip_generic_status_generic_status_name='ok',
+            )
+            sample_audio_clip_1 = AudioClipsFactory(
+                audio_clip_user=self.users[1],
+                audio_clip_audio_clip_role_audio_clip_role_name='responder',
+                audio_clip_event=sample_event_0,
+                audio_clip_generic_status_generic_status_name='ok',
+            )
+            sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(
+                audio_clip=sample_audio_clip_0,
+                user=self.users[1],
+                is_liked=True
+            )
+            sample_audio_clip_like_dislike_1 = AudioClipLikesDislikes.objects.create(
+                audio_clip=sample_audio_clip_0,
+                user=self.users[2],
+                is_liked=False
+            )
+
+            request = self.client.post(
+                reverse('audio_clip_deletions_api'),
+                data={
+                    'audio_clip_id': sample_audio_clip_0.id,
+                }
+            )
+
+            print_with_function_name(request.content)
+            self.assertEqual(request.status_code, 200)
+
+            self.users[0].refresh_from_db()
+            sample_event_0.refresh_from_db()
+            sample_audio_clip_0.refresh_from_db()
+
+            self.assertEqual(self.users[0].ban_count, 0)
+            self.assertIsNone(self.users[0].banned_until)
+            self.assertEqual(self.users[1].ban_count, 0)
+            self.assertIsNone(self.users[1].banned_until)
+            self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
+            self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'ok')
+            self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
+            self.assertFalse(sample_audio_clip_0.generic_status.is_banned)
+            self.assertFalse(sample_audio_clip_1.generic_status.is_banned)
+            self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
+            self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 0)
+
+
+    def test_audio_clip_deletions__post__originator_delete__deleted_responder(self):
+        self.users[3].is_superuser = True
+        self.users[3].save()
+
+        all_users = [
+            self.users[0],
+            self.users[3]
+        ]
+
+        for user in all_users:
+
+            self.login(user)
+
+            sample_event_0 = EventsFactory(
+                event_created_by=self.users[0],
+                event_generic_status_generic_status_name='deleted',
+            )
+            sample_audio_clip_0 = AudioClipsFactory(
+                audio_clip_user=self.users[0],
+                audio_clip_audio_clip_role_audio_clip_role_name='originator',
+                audio_clip_event=sample_event_0,
+                audio_clip_generic_status_generic_status_name='deleted',
+            )
+            sample_audio_clip_1 = AudioClipsFactory(
+                audio_clip_user=self.users[1],
+                audio_clip_audio_clip_role_audio_clip_role_name='responder',
+                audio_clip_event=sample_event_0,
+                audio_clip_generic_status_generic_status_name='ok',
+            )
+            sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(
+                audio_clip=sample_audio_clip_0,
+                user=self.users[1],
+                is_liked=True
+            )
+            sample_audio_clip_like_dislike_1 = AudioClipLikesDislikes.objects.create(
+                audio_clip=sample_audio_clip_0,
+                user=self.users[2],
+                is_liked=False
+            )
+
+            request = self.client.post(
+                reverse('audio_clip_deletions_api'),
+                data={
+                    'audio_clip_id': sample_audio_clip_0.id,
+                }
+            )
+
+            print_with_function_name(request.content)
+            self.assertEqual(request.status_code, 200)
+
+            self.users[0].refresh_from_db()
+            sample_event_0.refresh_from_db()
+            sample_audio_clip_0.refresh_from_db()
+
+            self.assertEqual(self.users[0].ban_count, 0)
+            self.assertIsNone(self.users[0].banned_until)
+            self.assertEqual(self.users[1].ban_count, 0)
+            self.assertIsNone(self.users[1].banned_until)
+            self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+            self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+            self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
+            self.assertFalse(sample_audio_clip_0.generic_status.is_banned)
+            self.assertFalse(sample_audio_clip_1.generic_status.is_banned)
+            self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
+            self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 0)
+
+
+    def test_audio_clip_deletions__post__audio_clip__unaffected(self):
+
+        self.users[3].is_superuser = True
+        self.users[3].save()
+
+        self.login(self.users[3])
+
+        #not yet banned
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
+        )
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        request = self.client.post(
+            reverse('audio_clip_deletions_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_0.id + 1,
+            }
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 404)
+
+        #already banned
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='deleted',
+        )
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='deleted',
+            audio_clip_is_banned=True,
+        )
+
+        request = self.client.post(
+            reverse('audio_clip_deletions_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_0.id,
+            }
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 404)
+
+        #already deleted
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='deleted',
+        )
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='deleted',
+            audio_clip_is_banned=False,
+        )
+
+        request = self.client.post(
+            reverse('audio_clip_deletions_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_0.id,
+            }
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 404)
+
+
+    def test_audio_clip_deletions__post__missing_args(self):
+
+        self.users[3].is_superuser = True
+        self.users[3].save()
+
+        self.login(self.users[3])
+
+        request = self.client.post(
+            reverse('audio_clip_deletions_api'),
+            data={
+            }
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 400)
+
+
+    def test_audio_clip_deletions__post__faulty_args(self):
+
+        self.users[3].is_superuser = True
+        self.users[3].save()
+
+        self.login(self.users[3])
+
+        request = self.client.post(
+            reverse('audio_clip_deletions_api'),
+            data={
+                'audio_clip_id': '1',
+            }
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 400)
 
 
     def test_audio_clip_likes_dislikes__simultaneous_trigger(self):
