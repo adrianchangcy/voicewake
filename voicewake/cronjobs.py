@@ -208,13 +208,13 @@ def cronjob_ban_audio_clips():
         AudioClipReports.objects.bulk_update(
             audio_clip_reports,
             fields=('last_evaluated',),
-            batch_size=100,
+            batch_size=settings.BULK_CREATE_BATCH_SIZE,
         )
 
         Events.objects.bulk_update(
             events,
             fields=('generic_status',),
-            batch_size=100,
+            batch_size=settings.BULK_CREATE_BATCH_SIZE,
         )
 
         AudioClipLikesDislikes.objects.filter(audio_clip__in=audio_clips).delete()
@@ -222,13 +222,13 @@ def cronjob_ban_audio_clips():
         AudioClips.objects.bulk_update(
             audio_clips,
             fields=('is_banned', 'last_modified', 'generic_status', 'like_count', 'dislike_count', 'like_ratio'),
-            batch_size=100,
+            batch_size=settings.BULK_CREATE_BATCH_SIZE,
         )
 
         get_user_model().objects.bulk_update(
             users,
             fields=('ban_count', 'banned_until',),
-            batch_size=100,
+            batch_size=settings.BULK_CREATE_BATCH_SIZE,
         )
 
 

@@ -90,7 +90,7 @@ def fill_necessary_data(apps, schema_editor):
         #at frontend, enter username, check is_superuser, prompt password, then prompt TOTP
             #better to prompt password first so no DoS
             #once done, update code that refers to this account, to check for .is_superuser instead
-    get_user_model().objects.create_user(username='AdrianC', email='adrianchangcy@gmail.com', is_active=True)
+    get_user_model().objects.create_superuser(email='adrianchangcy@gmail.com', username='AdrianC', password=None)
 
     print("\nFinished populating db with necessary data.")
 
