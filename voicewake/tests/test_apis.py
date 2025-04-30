@@ -8477,6 +8477,9 @@ class Core_TestCase(TestCase):
         self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
         self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
         self.assertTrue(sample_audio_clip_0.generic_status.is_banned)
+        self.assertEqual(sample_audio_clip_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
         self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
 
 
@@ -8513,6 +8516,16 @@ class Core_TestCase(TestCase):
             user=self.users[2],
             is_liked=False
         )
+        sample_audio_clip_like_dislike_2 = AudioClipLikesDislikes.objects.create(
+            audio_clip=sample_audio_clip_1,
+            user=self.users[1],
+            is_liked=True
+        )
+        sample_audio_clip_like_dislike_3 = AudioClipLikesDislikes.objects.create(
+            audio_clip=sample_audio_clip_1,
+            user=self.users[2],
+            is_liked=False
+        )
 
         request = self.client.post(
             reverse('audio_clip_bans_api'),
@@ -8537,8 +8550,14 @@ class Core_TestCase(TestCase):
         self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'ok')
         self.assertTrue(sample_audio_clip_0.generic_status.is_banned)
         self.assertFalse(sample_audio_clip_1.generic_status.is_banned)
+        self.assertEqual(sample_audio_clip_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_1.like_count, 1)
+        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_1.dislike_count, 1)
+        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_1.like_ratio, 0.5)
         self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
-        self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 0)
+        self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 2)
 
 
     def test_audio_clip_bans__post__completed__ban_responder(self):
@@ -8565,11 +8584,21 @@ class Core_TestCase(TestCase):
             audio_clip_generic_status_generic_status_name='ok',
         )
         sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(
-            audio_clip=sample_audio_clip_1,
+            audio_clip=sample_audio_clip_0,
             user=self.users[1],
             is_liked=True
         )
         sample_audio_clip_like_dislike_1 = AudioClipLikesDislikes.objects.create(
+            audio_clip=sample_audio_clip_0,
+            user=self.users[2],
+            is_liked=False
+        )
+        sample_audio_clip_like_dislike_2 = AudioClipLikesDislikes.objects.create(
+            audio_clip=sample_audio_clip_1,
+            user=self.users[1],
+            is_liked=True
+        )
+        sample_audio_clip_like_dislike_3 = AudioClipLikesDislikes.objects.create(
             audio_clip=sample_audio_clip_1,
             user=self.users[2],
             is_liked=False
@@ -8599,7 +8628,13 @@ class Core_TestCase(TestCase):
         self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
         self.assertFalse(sample_audio_clip_0.generic_status.is_banned)
         self.assertTrue(sample_audio_clip_1.generic_status.is_banned)
-        self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
+        self.assertEqual(sample_audio_clip_0.like_count, 1)
+        self.assertEqual(sample_audio_clip_1.like_count, 0)
+        self.assertEqual(sample_audio_clip_0.dislike_count, 1)
+        self.assertEqual(sample_audio_clip_1.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_0.like_ratio, 0.5)
+        self.assertEqual(sample_audio_clip_1.like_ratio, 0)
+        self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 2)
         self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 0)
 
 
@@ -8627,12 +8662,12 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='ok',
         )
-        sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(
+        sample_audio_clip_like_dislike_2 = AudioClipLikesDislikes.objects.create(
             audio_clip=sample_audio_clip_1,
             user=self.users[1],
             is_liked=True
         )
-        sample_audio_clip_like_dislike_1 = AudioClipLikesDislikes.objects.create(
+        sample_audio_clip_like_dislike_3 = AudioClipLikesDislikes.objects.create(
             audio_clip=sample_audio_clip_1,
             user=self.users[2],
             is_liked=False
@@ -8662,6 +8697,12 @@ class Core_TestCase(TestCase):
         self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
         self.assertTrue(sample_audio_clip_0.generic_status.is_banned)
         self.assertTrue(sample_audio_clip_1.generic_status.is_banned)
+        self.assertEqual(sample_audio_clip_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_1.like_count, 0)
+        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_1.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_1.like_ratio, 0)
         self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
         self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 0)
 
@@ -8901,6 +8942,9 @@ class Core_TestCase(TestCase):
             self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
             self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
             self.assertFalse(sample_audio_clip_0.generic_status.is_banned)
+            self.assertEqual(sample_audio_clip_0.like_count, 0)
+            self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+            self.assertEqual(sample_audio_clip_0.like_ratio, 0)
             self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
 
 
@@ -8944,6 +8988,16 @@ class Core_TestCase(TestCase):
                 user=self.users[2],
                 is_liked=False
             )
+            sample_audio_clip_like_dislike_2 = AudioClipLikesDislikes.objects.create(
+                audio_clip=sample_audio_clip_1,
+                user=self.users[1],
+                is_liked=True
+            )
+            sample_audio_clip_like_dislike_3 = AudioClipLikesDislikes.objects.create(
+                audio_clip=sample_audio_clip_1,
+                user=self.users[2],
+                is_liked=False
+            )
 
             request = self.client.post(
                 reverse('audio_clip_deletions_api'),
@@ -8968,8 +9022,14 @@ class Core_TestCase(TestCase):
             self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'ok')
             self.assertFalse(sample_audio_clip_0.generic_status.is_banned)
             self.assertFalse(sample_audio_clip_1.generic_status.is_banned)
+            self.assertEqual(sample_audio_clip_0.like_count, 0)
+            self.assertEqual(sample_audio_clip_1.like_count, 1)
+            self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+            self.assertEqual(sample_audio_clip_1.dislike_count, 1)
+            self.assertEqual(sample_audio_clip_0.like_ratio, 0)
+            self.assertEqual(sample_audio_clip_1.like_ratio, 0.5)
             self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
-            self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 0)
+            self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 2)
 
 
     def test_audio_clip_deletions__post__completed__delete_responder(self):
@@ -9012,6 +9072,16 @@ class Core_TestCase(TestCase):
                 user=self.users[2],
                 is_liked=False
             )
+            sample_audio_clip_like_dislike_2 = AudioClipLikesDislikes.objects.create(
+                audio_clip=sample_audio_clip_1,
+                user=self.users[1],
+                is_liked=True
+            )
+            sample_audio_clip_like_dislike_3 = AudioClipLikesDislikes.objects.create(
+                audio_clip=sample_audio_clip_1,
+                user=self.users[2],
+                is_liked=False
+            )
 
             request = self.client.post(
                 reverse('audio_clip_deletions_api'),
@@ -9036,11 +9106,18 @@ class Core_TestCase(TestCase):
             self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
             self.assertFalse(sample_audio_clip_0.generic_status.is_banned)
             self.assertFalse(sample_audio_clip_1.generic_status.is_banned)
-            self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
+            self.assertEqual(sample_audio_clip_0.like_count, 1)
+            self.assertEqual(sample_audio_clip_1.like_count, 0)
+            self.assertEqual(sample_audio_clip_0.dislike_count, 1)
+            self.assertEqual(sample_audio_clip_1.dislike_count, 0)
+            self.assertEqual(sample_audio_clip_0.like_ratio, 0.5)
+            self.assertEqual(sample_audio_clip_1.like_ratio, 0)
+            self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 2)
             self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 0)
 
 
     def test_audio_clip_deletions__post__originator_delete__deleted_responder(self):
+
         self.users[3].is_superuser = True
         self.users[3].save()
 
@@ -9069,13 +9146,13 @@ class Core_TestCase(TestCase):
                 audio_clip_event=sample_event_0,
                 audio_clip_generic_status_generic_status_name='ok',
             )
-            sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(
-                audio_clip=sample_audio_clip_0,
+            sample_audio_clip_like_dislike_2 = AudioClipLikesDislikes.objects.create(
+                audio_clip=sample_audio_clip_1,
                 user=self.users[1],
                 is_liked=True
             )
-            sample_audio_clip_like_dislike_1 = AudioClipLikesDislikes.objects.create(
-                audio_clip=sample_audio_clip_0,
+            sample_audio_clip_like_dislike_3 = AudioClipLikesDislikes.objects.create(
+                audio_clip=sample_audio_clip_1,
                 user=self.users[2],
                 is_liked=False
             )
@@ -9083,7 +9160,7 @@ class Core_TestCase(TestCase):
             request = self.client.post(
                 reverse('audio_clip_deletions_api'),
                 data={
-                    'audio_clip_id': sample_audio_clip_0.id,
+                    'audio_clip_id': sample_audio_clip_1.id,
                 }
             )
 
@@ -9093,6 +9170,7 @@ class Core_TestCase(TestCase):
             self.users[0].refresh_from_db()
             sample_event_0.refresh_from_db()
             sample_audio_clip_0.refresh_from_db()
+            sample_audio_clip_1.refresh_from_db()
 
             self.assertEqual(self.users[0].ban_count, 0)
             self.assertIsNone(self.users[0].banned_until)
@@ -9103,6 +9181,12 @@ class Core_TestCase(TestCase):
             self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
             self.assertFalse(sample_audio_clip_0.generic_status.is_banned)
             self.assertFalse(sample_audio_clip_1.generic_status.is_banned)
+            self.assertEqual(sample_audio_clip_0.like_count, 0)
+            self.assertEqual(sample_audio_clip_1.like_count, 0)
+            self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+            self.assertEqual(sample_audio_clip_1.dislike_count, 0)
+            self.assertEqual(sample_audio_clip_0.like_ratio, 0)
+            self.assertEqual(sample_audio_clip_1.like_ratio, 0)
             self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
             self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 0)
 
@@ -9222,9 +9306,65 @@ class Core_TestCase(TestCase):
 
 
     def test_audio_clip_likes_dislikes__simultaneous_trigger(self):
-        #use threads and do 2 likes from 2 users
-        #use threads and do 1 like 1 dislike from same user
-        pass
+
+        #prepare 10 audio_clips
+
+        events = []
+        audio_clips = []
+
+        for x in range(10):
+
+            events.append(
+                EventsFactory(
+                    event_created_by=self.users[0],
+                    event_generic_status_generic_status_name='incomplete',
+                )
+            )
+            audio_clips.append(
+                AudioClipsFactory(
+                    audio_clip_user=self.users[0],
+                    audio_clip_audio_clip_role_audio_clip_role_name='originator',
+                    audio_clip_event=events[x],
+                    audio_clip_generic_status_generic_status_name='ok',
+                )
+            )
+
+        #like function
+        def do_like(login_function, user, audio_clips):
+
+            login_function(user)
+
+            for audio_clip in audio_clips:
+
+                self.client.post(
+                    reverse('audio_clip_likes_dislikes_api'),
+                    data={
+                        'audio_clip_id': audio_clip.id,
+                        'is_liked': True,
+                    }
+                )
+
+        threads = []
+
+        for x in range(len(self.users)):
+
+            threads.append(
+                Thread(target=do_like, args=[self.login, self.users[x], audio_clips])
+            )
+            threads[x].start()
+
+        for x in range(len(threads)):
+
+            threads[x].join()
+
+        #evaluate
+
+        for audio_clip in audio_clips:
+
+            audio_clip.refresh_from_db()
+
+            self.assertEqual(audio_clip.like_count, len(self.users))
+            self.assertEqual(audio_clip.like_ratio, 1)
 
 
     def test_audio_clip_likes_dislikes__new_trigger_implementation(self):
@@ -9236,7 +9376,7 @@ class Core_TestCase(TestCase):
         #ALTER DATABASE myapp SET myapp.skip_trigger_audio_clip_likes_dislikes TO 1;
 
         #at client, you can see if it exists
-        #SHOW myapp._skip_trigger_audio_clip_likes_dislikes;
+        #SHOW myapp.skip_trigger_audio_clip_likes_dislikes;
 
         #update trigger to check for this
         #current_setting('myapp.skip_trigger_audio_clip_likes_dislikes') = 1
@@ -9246,6 +9386,43 @@ class Core_TestCase(TestCase):
         # SET LOCAL myapp.skip_trigger_audio_clip_likes_dislikes = 0;
         # INSERT INTO your_table (...) VALUES (...);
         # COMMIT;
+
+        #ALTER SYSTEM affects global configs
+        #call "SELECT pg_reload_conf();" after
+        #to view at pgAdmin:
+            #SELECT NULLIF(current_setting('appname.param_name'), NULL);
+        #if you've accidentally done "ALTER DATABASE mydb SET x TO 1;", you can remove it:
+            #ALTER DATABASE mydb RESET mydb.param_name;
+                #doing this will reuse global param value, proven by current_setting()
+        #to temporarily do something in transaction with different config values, use "SET LOCAL"
+        create_skip_trigger_audio_clip_likes_dislikes = '''
+            ALTER SYSTEM SET voicewake.skip_trigger_audio_clip_likes_dislikes TO 0;
+        '''
+
+        #replace AudioClipLikesDislikes.objects.filter().delete() with:
+        delete_without_triggers_sql = '''
+            BEGIN;
+            SET LOCAL voicewake.skip_trigger_audio_clip_likes_dislikes = 1;
+            DELETE FROM audio_clip_likes_dislikes
+            WHERE id IN ();
+            COMMIT;
+        '''
+
+        #trigger code to respect voicewake.skip_trigger_audio_clip_likes_dislikes:
+        #for current_setting(arg0, arg1), arg1 is "missing_ok", which returns NULL instead of raising exception when not found
+            #catching exception is more expensive
+            #only supported by psql 9.6+
+        early_line_of_function = '''
+        CREATE OR REPLACE FUNCTION handle_audio_clip_likes_dislikes_count() RETURNS TRIGGER AS $$
+            BEGIN
+                IF (current_setting(voicewake.skip_audio_clip_likes_dislikes, TRUE) = 0) THEN
+                    IF (TG_OP = 'INSERT') THEN
+                    ...
+                    ENDIF;
+                    RETURN NULL;
+                ENDIF;
+                RETURN NULL;
+        '''
         pass
 
 
