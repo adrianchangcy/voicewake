@@ -217,7 +217,22 @@ def cronjob_ban_audio_clips():
             batch_size=settings.BULK_CREATE_BATCH_SIZE,
         )
 
-        AudioClipLikesDislikes.objects.filter(audio_clip__in=audio_clips).delete()
+        #currently in transaction, continue
+        with connection.cursor() as cursor:
+
+            #delete all rows from AudioClipLikesDislikes while exiting trigger early
+            #with 250000 rows, performance is 1s slower to 3s faster compared to completely disabling trigger at table
+
+            cursor.execute('''SET LOCAL voicewake.skip_trigger_audio_clip_likes_dislikes = 1;''')
+
+            AudioClipLikesDislikes.objects.filter(audio_clip__in=audio_clips).delete()
+
+            #ensure param is only 1 during transaction
+            check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
+            cursor.execute(check_sql)
+            skip_trigger = int(cursor.fetchone()[0])
+            if skip_trigger == 0:
+                raise ValueError('This line should not be reached.')
 
         AudioClips.objects.bulk_update(
             audio_clips,
@@ -230,6 +245,15 @@ def cronjob_ban_audio_clips():
             fields=('ban_count', 'banned_until',),
             batch_size=settings.BULK_CREATE_BATCH_SIZE,
         )
+
+    with connection.cursor() as cursor:
+
+        #ensure param is 0 outside of transaction
+        check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
+        cursor.execute(check_sql)
+        skip_trigger = int(cursor.fetchone()[0])
+        if skip_trigger == 1:
+            raise ValueError('This line should not be reached.')
 
 
 @shared_task

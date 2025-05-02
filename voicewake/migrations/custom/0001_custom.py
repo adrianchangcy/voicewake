@@ -8,7 +8,7 @@
 #possible better step, but worse separation between auto-generated and custom:
     #do makemigrations --> directly edit the file --> migrate
 
-from django.db import migrations
+from django.db import migrations, connection
 import os
 import json
 from django.conf import settings
@@ -85,7 +85,8 @@ def fill_necessary_data(apps, schema_editor):
     )
 
     #ensure admin account exists
-    #this is a short-term solution
+    #this is a short-term solution, as superusers should also have proper password
+        #specifying password here or at .env is improper if superusers should have access to only their account
     #for long-term solution:
         #at frontend, enter username, check is_superuser, prompt password, then prompt TOTP
             #better to prompt password first so no DoS
@@ -95,94 +96,138 @@ def fill_necessary_data(apps, schema_editor):
     print("\nFinished populating db with necessary data.")
 
 
+
+def config_param_operations():
+
+    #be consistent with booleans
+        #0 for FALSE, 1 for TRUE
+    #this is an alternative to using .conf at dev or specifying parameters at AWS
+
+    with connection.cursor() as cursor:
+
+        #this allows trigger functions to exit early
+        #with 250000 rows, performance is 1s slower to 3s faster compared to completely disabling trigger at table
+        #useful in bulk operations, by overriding param at only current transaction via SET LOCAL, e.g.:
+            # with transaction.atomic():
+                # with connection.cursor() as cursor:
+                    # cursor.execute('''SET LOCAL voicewake.skip_trigger_audio_clip_likes_dislikes = 1;''')
+                    # AudioClipLikesDislikes.objects.filter(audio_clip=audio_clip).delete()
+        #how to check if conf param override is truly occuring only within the transaction
+            # check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
+            # cursor.execute(check_sql)
+            # skip_trigger = int(cursor.fetchone()[0])
+        cursor.execute(
+            '''
+                ALTER SYSTEM SET voicewake.skip_trigger_audio_clip_likes_dislikes TO 0;
+            '''
+        )
+
+        #ensure this is appended as last operation
+        #pg_reload_conf() ensures changes to params are made
+        cursor.execute(
+            '''
+                SELECT pg_reload_conf();
+            '''
+        )
+
+config_param_operations()
+
+
+
 #the "OLD.is_liked IS FALSE AND NEW.is_liked IS TRUE" and vice versa part is important
 #to protect against race condition redundancy, i.e. multiple requests with same action
 #for like_ratio, must cast any one value with ::float to prevent rounding off to int, i.e. always 0.00 or 1.00
 custom_function_handle_audio_clip_likes_dislikes_count = '''
     CREATE OR REPLACE FUNCTION handle_audio_clip_likes_dislikes_count() RETURNS TRIGGER AS $$
         BEGIN
-            IF (TG_OP = 'INSERT') THEN
+            IF (current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes')::integer = 0) THEN
 
-                IF (NEW.is_liked IS TRUE) THEN
+                IF (TG_OP = 'INSERT') THEN
 
-                    UPDATE audio_clips
-                    SET like_count = like_count + 1,
-					like_ratio = (like_count + 1)::float / (like_count + dislike_count + 1)
-                    WHERE id = NEW.audio_clip_id
-                    ;
+                    IF (NEW.is_liked IS TRUE) THEN
 
-                ELSIF (NEW.is_liked IS FALSE) THEN
+                        UPDATE audio_clips
+                        SET like_count = like_count + 1,
+                        like_ratio = (like_count + 1)::float / (like_count + dislike_count + 1)
+                        WHERE id = NEW.audio_clip_id
+                        ;
 
-                    UPDATE audio_clips
-                    SET dislike_count = dislike_count + 1,
-					like_ratio = like_count::float / (like_count + dislike_count + 1)
-                    WHERE id = NEW.audio_clip_id
-                    ;
+                    ELSIF (NEW.is_liked IS FALSE) THEN
 
-                END IF;
-                RETURN NEW;
+                        UPDATE audio_clips
+                        SET dislike_count = dislike_count + 1,
+                        like_ratio = like_count::float / (like_count + dislike_count + 1)
+                        WHERE id = NEW.audio_clip_id
+                        ;
 
-            ELSIF (TG_OP = 'UPDATE') THEN
+                    END IF;
+                    RETURN NEW;
 
-                IF (OLD.is_liked IS FALSE AND NEW.is_liked IS TRUE) THEN
+                ELSIF (TG_OP = 'UPDATE') THEN
 
-                    UPDATE audio_clips
-                    SET like_count = like_count + 1,
-                    dislike_count = dislike_count - 1,
-					like_ratio = (like_count + 1)::float / (like_count + dislike_count)
-                    WHERE id = NEW.audio_clip_id
-                    ;
+                    /*
+                    *only run UPDATE when is_liked will be changed, to prevent duplicate UPDATEs from having duplicated effects
+                    */
 
-                ELSIF (OLD.is_liked IS TRUE AND NEW.is_liked IS FALSE) THEN
+                    IF (OLD.is_liked IS FALSE AND NEW.is_liked IS TRUE) THEN
 
-                    UPDATE audio_clips
-                    SET like_count = like_count - 1,
-                    dislike_count = dislike_count + 1,
-					like_ratio = (like_count - 1)::float / (like_count + dislike_count)
-                    WHERE id = NEW.audio_clip_id
-                    ;
+                        UPDATE audio_clips
+                        SET like_count = like_count + 1,
+                        dislike_count = dislike_count - 1,
+                        like_ratio = (like_count + 1)::float / (like_count + dislike_count)
+                        WHERE id = NEW.audio_clip_id
+                        ;
 
-                END IF;
-                RETURN NEW;
+                    ELSIF (OLD.is_liked IS TRUE AND NEW.is_liked IS FALSE) THEN
 
-            ELSIF (TG_OP = 'DELETE') THEN
+                        UPDATE audio_clips
+                        SET like_count = like_count - 1,
+                        dislike_count = dislike_count + 1,
+                        like_ratio = (like_count - 1)::float / (like_count + dislike_count)
+                        WHERE id = NEW.audio_clip_id
+                        ;
 
-                /*
-                *we use COALESCE + NULLIF trick to solve "division by 0" error
-                */
+                    END IF;
+                    RETURN NEW;
 
-                IF (OLD.is_liked IS TRUE) THEN
+                ELSIF (TG_OP = 'DELETE') THEN
 
-                    UPDATE audio_clips
-                    SET like_count = like_count - 1,
-					like_ratio = (like_count - 1)::float / (
-                        COALESCE(
-                            NULLIF((like_count + dislike_count - 1), 0),
-                            1
+                    /*
+                    *use COALESCE + NULLIF trick to solve "division by 0" error
+                    */
+
+                    IF (OLD.is_liked IS TRUE) THEN
+
+                        UPDATE audio_clips
+                        SET like_count = like_count - 1,
+                        like_ratio = (like_count - 1)::float / (
+                            COALESCE(
+                                NULLIF((like_count + dislike_count - 1), 0),
+                                1
+                            )
                         )
-                    )
-                    WHERE id = OLD.audio_clip_id
-                    ;
+                        WHERE id = OLD.audio_clip_id
+                        ;
 
-                ELSIF (OLD.is_liked IS FALSE) THEN
+                    ELSIF (OLD.is_liked IS FALSE) THEN
 
-                    UPDATE audio_clips
-                    SET dislike_count = dislike_count - 1,
-					like_ratio = like_count::float / (
-                        COALESCE(
-                            NULLIF((like_count + dislike_count - 1), 0),
-                            1
+                        UPDATE audio_clips
+                        SET dislike_count = dislike_count - 1,
+                        like_ratio = like_count::float / (
+                            COALESCE(
+                                NULLIF((like_count + dislike_count - 1), 0),
+                                1
+                            )
                         )
-                    )
-                    WHERE id = OLD.audio_clip_id
-                    ;
+                        WHERE id = OLD.audio_clip_id
+                        ;
 
+                    END IF;
+                    RETURN OLD;
                 END IF;
-
-                RETURN OLD;
-
+                RETURN NULL;
             END IF;
-            RETURN NULL;
+            RETURN NEW;
         END;
     $$ LANGUAGE plpgsql VOLATILE;
 '''

@@ -3378,7 +3378,35 @@ class AudioClipBansAPI(generics.GenericAPIView):
 
                 audio_clip.is_banned = True
                 audio_clip.generic_status = generic_status_deleted
+                audio_clip.like_count = 0
+                audio_clip.dislike_count = 0
+                audio_clip.like_ratio = 0
                 audio_clip.save()
+
+                with connection.cursor() as cursor:
+
+                    #delete all rows from AudioClipLikesDislikes while exiting trigger early
+                    #with 250000 rows, performance is 1s slower to 3s faster compared to completely disabling trigger at table
+
+                    cursor.execute('''SET LOCAL voicewake.skip_trigger_audio_clip_likes_dislikes = 1;''')
+
+                    AudioClipLikesDislikes.objects.filter(audio_clip=audio_clip).delete()
+
+                    #ensure param is only 1 during transaction
+                    check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
+                    cursor.execute(check_sql)
+                    skip_trigger = int(cursor.fetchone()[0])
+                    if skip_trigger == 0:
+                        raise ValueError('This line should not be reached.')
+
+            with connection.cursor() as cursor:
+
+                #ensure param is 0 outside of transaction
+                check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
+                cursor.execute(check_sql)
+                skip_trigger = int(cursor.fetchone()[0])
+                if skip_trigger == 1:
+                    raise ValueError('This line should not be reached.')
 
         except AudioClips.DoesNotExist:
 
@@ -3391,7 +3419,6 @@ class AudioClipBansAPI(generics.GenericAPIView):
 
         #remove relevant rows
 
-        AudioClipLikesDislikes.objects.filter(audio_clip=audio_clip).delete()
 
         EventReplyQueues.objects.filter(event=audio_clip.event).delete()
 
@@ -3478,6 +3505,9 @@ class AudioClipDeletionsAPI(generics.GenericAPIView):
                 if request.user.is_superuser is True or request.user.id == audio_clip.user_id:
 
                     audio_clip.generic_status = generic_status_deleted
+                    audio_clip.like_count = 0
+                    audio_clip.dislike_count = 0
+                    audio_clip.like_ratio = 0
                     audio_clip.save()
 
                 else:
@@ -3489,6 +3519,31 @@ class AudioClipDeletionsAPI(generics.GenericAPIView):
                         status=status.HTTP_403_FORBIDDEN
                     )
 
+                with connection.cursor() as cursor:
+
+                    #delete all rows from AudioClipLikesDislikes while exiting trigger early
+                    #with 250000 rows, performance is 1s slower to 3s faster compared to completely disabling trigger at table
+
+                    cursor.execute('''SET LOCAL voicewake.skip_trigger_audio_clip_likes_dislikes = 1;''')
+
+                    AudioClipLikesDislikes.objects.filter(audio_clip=audio_clip).delete()
+
+                    #ensure param is only 1 during transaction
+                    check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
+                    cursor.execute(check_sql)
+                    skip_trigger = int(cursor.fetchone()[0])
+                    if skip_trigger == 0:
+                        raise ValueError('This line should not be reached.')
+
+            with connection.cursor() as cursor:
+
+                #ensure param is 0 outside of transaction
+                check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
+                cursor.execute(check_sql)
+                skip_trigger = int(cursor.fetchone()[0])
+                if skip_trigger == 1:
+                    raise ValueError('This line should not be reached.')
+
         except AudioClips.DoesNotExist:
 
             return Response(
@@ -3499,8 +3554,6 @@ class AudioClipDeletionsAPI(generics.GenericAPIView):
             )
 
         #remove relevant rows
-
-        AudioClipLikesDislikes.objects.filter(audio_clip=audio_clip).delete()
 
         EventReplyQueues.objects.filter(event=audio_clip.event).delete()
 

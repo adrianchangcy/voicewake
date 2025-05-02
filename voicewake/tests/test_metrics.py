@@ -306,20 +306,44 @@ class RealisticBulkData():
         self.like_count = math.ceil(len(self.users) * 0.25)
         self.dislike_count = math.ceil(len(self.users) * 0.5) + 1
 
-        self.like_ratio = (self.like_count / (self.like_count + self.dislike_count)) / 100
+        self.like_ratio = (self.like_count / (self.like_count + self.dislike_count))
 
 
     #initially though only running this once for all create() is more efficient
     #but that doesn't help when everything is too slow, so this will be coupled into all individual create(), then use threading to execute
-    def _create_audio_clip_likes_dislikes(self, audio_clips):
+    #instead of disabling triggers completely, you can pass enable_trigger_but_skip
+    def _create_audio_clip_likes_dislikes(self, audio_clips, enable_trigger_but_skip:bool):
+
+        full_sql = ''
+        full_params = []
+
+        if enable_trigger_but_skip is True:
+
+            #ensure trigger is enabled
+            self.check_related_triggers(expect_enabled=True)
+
+            #ensure conf parameter exists
+            check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
+
+            with connection.cursor() as cursor:
+
+                cursor.execute(check_sql)
+
+                skip_trigger = int(cursor.fetchone()[0])
+
+                if skip_trigger  == 1:
+
+                    raise ValueError('Trigger for skipping at main system is unintentionally True.')
+
+                #turn it into transaction block
+                full_sql += 'BEGIN; SET LOCAL voicewake.skip_trigger_audio_clip_likes_dislikes = 1; '
 
         #likes dislikes
         #len(users) must not be divisible by (like_count + dislike_count), else one user has only likes, the other dislikes, etc.
 
         datetime_now = get_datetime_now()
 
-        full_sql = 'INSERT INTO audio_clip_likes_dislikes (user_id, audio_clip_id, is_liked, when_created, last_modified) VALUES '
-        full_params = []
+        full_sql += 'INSERT INTO audio_clip_likes_dislikes (user_id, audio_clip_id, is_liked, when_created, last_modified) VALUES '
 
         user_index = 0
 
@@ -383,6 +407,10 @@ class RealisticBulkData():
 
         #get PK only
         full_sql += 'RETURNING audio_clip_likes_dislikes.id;'
+
+        if enable_trigger_but_skip is True:
+
+            full_sql += ' COMMIT;'
 
         with connection.cursor() as cursor:
 
@@ -1086,6 +1114,14 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
         super().tearDownClass()
 
 
+    def tearDown(cls):
+
+        realistic_bulk_data_class = RealisticBulkData()
+
+        realistic_bulk_data_class.modify_related_triggers(True)
+        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
+
+
     def create_users(self):
 
         print('Creating users.')
@@ -1285,7 +1321,7 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
         return final_rows
 
 
-    def create_audio_clip_likes_dislikes__raw(self, users, audio_clips, batch_size, must_reset_queries):
+    def create_audio_clip_likes_dislikes__raw(self, users, audio_clips, batch_size, must_reset_queries, use_trigger_but_skip):
 
         #important format notes
             #we use 'x' instead of whitespace-respecting '''x'''
@@ -1298,15 +1334,81 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
 
         print('Creating audio_clip_likes_dislikes.')
 
+        def create_rows_in_db(full_sql, full_params):
+
+            new_rows = None
+
+            #remove the final ',' from final audio_clip row
+            full_sql = full_sql[:len(full_sql)-1]
+            full_sql += ' '
+
+            #get PK only
+            full_sql += 'RETURNING audio_clip_likes_dislikes.id;'
+
+            if use_trigger_but_skip is True:
+
+                with transaction.atomic():
+
+                    with connection.cursor() as cursor:
+
+                        cursor.execute('''SET LOCAL voicewake.skip_trigger_audio_clip_likes_dislikes = 1;''')
+                        cursor.execute(full_sql, full_params)
+                        new_rows = cursor.fetchall()
+
+                        #ensure it's only 1 during transaction
+                        check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
+                        cursor.execute(check_sql)
+                        skip_trigger = int(cursor.fetchone()[0])
+                        if skip_trigger == 0:
+                            raise ValueError('This line should not be reached.')
+
+                with connection.cursor() as cursor:
+
+                    #ensure it's 0 outside of transaction above
+                    check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
+                    cursor.execute(check_sql)
+                    skip_trigger = int(cursor.fetchone()[0])
+                    if skip_trigger == 1:
+                        raise ValueError('Nope, not isolated.')
+
+            else:
+
+                with connection.cursor() as cursor:
+
+                    cursor.execute(full_sql, full_params)
+                    new_rows = cursor.fetchall()
+
+            if must_reset_queries is True:
+
+                reset_queries()
+
+            return new_rows
+
+        #start
+
         audio_clip_like_dislike_ids = []
         datetime_now = get_datetime_now()
         current_row_count = 0
 
-        starter_sql = 'INSERT INTO audio_clip_likes_dislikes (user_id, audio_clip_id, is_liked, when_created, last_modified) VALUES '
+        starter_sql = ''
         full_params = []
 
-        full_sql_size_at_full_rows = 0
-        full_params_size_at_full_rows = 0
+        if use_trigger_but_skip:
+
+            #ensure conf parameter exists
+            check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
+
+            with connection.cursor() as cursor:
+
+                cursor.execute(check_sql)
+
+                skip_trigger = int(cursor.fetchone()[0])
+
+                if skip_trigger  == 1:
+
+                    raise ValueError('Trigger for skipping at main system is unintentionally True.')
+
+        starter_sql += 'INSERT INTO audio_clip_likes_dislikes (user_id, audio_clip_id, is_liked, when_created, last_modified) VALUES '
 
         full_sql = starter_sql
 
@@ -1329,31 +1431,14 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
 
                     #batch size reached
 
-                    #remove the final ',' from final audio_clip row
-                    full_sql = full_sql[:len(full_sql)-1]
-                    full_sql += ' '
-
-                    #get PK only
-                    full_sql += 'RETURNING audio_clip_likes_dislikes.id;'
-
-                    with connection.cursor() as cursor:
-
-                        cursor.execute(full_sql, full_params)
-                        audio_clip_like_dislike_ids.extend(cursor.fetchall())
-
-                    #record size
-                    #only do it here so total rows always matches batch_size
-                    full_sql_size_at_full_rows = sys.getsizeof(full_sql)
-                    full_params_size_at_full_rows = sys.getsizeof(full_params)
+                    #execute
+                    new_audio_clip_like_dislike_ids = create_rows_in_db(full_sql, full_params)
+                    audio_clip_like_dislike_ids.extend(new_audio_clip_like_dislike_ids)
 
                     #reset
                     full_sql = starter_sql
                     full_params = []
                     current_row_count = 0
-
-                    if must_reset_queries is True:
-
-                        reset_queries()
 
         #handle any remaining rows
 
@@ -1361,30 +1446,14 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
 
             #batch size reached
 
-            #remove the final ',' from final audio_clip row
-            full_sql = full_sql[:len(full_sql)-1]
-            full_sql += ' '
-
-            #get PK only
-            full_sql += 'RETURNING audio_clip_likes_dislikes.id;'
-
-            with connection.cursor() as cursor:
-
-                cursor.execute(full_sql, full_params)
-                audio_clip_like_dislike_ids.extend(cursor.fetchall())
+            #execute
+            new_audio_clip_like_dislike_ids = create_rows_in_db(full_sql, full_params)
+            audio_clip_like_dislike_ids.extend(new_audio_clip_like_dislike_ids)
 
             #reset
             full_sql = starter_sql
             full_params = []
             current_row_count = 0
-
-            if must_reset_queries is True:
-
-                reset_queries()
-
-        print(f'full_sql byte size at {batch_size} rows: {full_sql_size_at_full_rows}')
-        print(f'full_params byte size at {batch_size} rows: {full_params_size_at_full_rows}')
-        print(f'total byte size at {batch_size} rows before execution: {full_sql_size_at_full_rows+full_params_size_at_full_rows}')
 
         return audio_clip_like_dislike_ids
 
@@ -1575,9 +1644,6 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
             sys.getsizeof(audio_clip_likes_dislikes),
         )
 
-        realistic_bulk_data_class.modify_related_triggers(True)
-        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
-
 
     def test_many_bulk_create__reset_queries__high_batch_size__remove_trigger(self):
 
@@ -1607,9 +1673,6 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
             sys.getsizeof(audio_clip_likes_dislikes),
         )
 
-        realistic_bulk_data_class.modify_related_triggers(True)
-        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
-
 
     def test_raw_sql__high_batch_size__return_pk_only(self):
 
@@ -1623,7 +1686,7 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
         realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
 
         stopwatch.start()
-        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes__raw(users, audio_clips, self.high_batch_size, False)
+        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes__raw(users, audio_clips, self.high_batch_size, False, False)
         stopwatch.stop()
 
         self._update_metrics(
@@ -1649,7 +1712,7 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
         realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
 
         stopwatch.start()
-        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes__raw(users, audio_clips, self.high_batch_size, True)
+        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes__raw(users, audio_clips, self.high_batch_size, True, False)
         stopwatch.stop()
         reset_queries()
 
@@ -1678,7 +1741,7 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
         realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', False)
 
         stopwatch.start()
-        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes__raw(users, audio_clips, self.high_batch_size, True)
+        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes__raw(users, audio_clips, self.high_batch_size, True, False)
         stopwatch.stop()
         reset_queries()
 
@@ -1689,9 +1752,29 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
             sys.getsizeof(audio_clip_likes_dislikes),
         )
 
-        realistic_bulk_data_class.modify_related_triggers(True)
-        realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
 
+    def test_raw_sql__reset_queries__high_batch_size__use_trigger_but_skip(self):
+
+        stopwatch = Stopwatch()
+
+        users = self.create_users()
+        reset_queries()
+        events = self.create_originator_events(users)
+        reset_queries()
+        audio_clips = self.create_originator_audio_clips(events)
+        reset_queries()
+
+        stopwatch.start()
+        audio_clip_likes_dislikes = self.create_audio_clip_likes_dislikes__raw(users, audio_clips, self.high_batch_size, True, True)
+        stopwatch.stop()
+        reset_queries()
+
+        self._update_metrics(
+            get_current_function_name(),
+            len(audio_clip_likes_dislikes),
+            stopwatch.diff_seconds(),
+            sys.getsizeof(audio_clip_likes_dislikes),
+        )
 
 
 
@@ -3745,6 +3828,11 @@ class Core_TestCase(TestCase):
             )
 
             return audio_clips
+
+
+
+
+
 
 
 
