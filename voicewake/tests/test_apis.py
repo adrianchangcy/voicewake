@@ -9367,63 +9367,61 @@ class Core_TestCase(TestCase):
             self.assertEqual(audio_clip.like_ratio, 1)
 
 
-    def test_audio_clip_likes_dislikes__new_trigger_implementation(self):
-        #since triggers can slow down large queries,
-        #try to implement transaction blocks where the trigger is disabled, while still enabled for other requests
+    def test_audio_clip_likes_dislikes__skip_trigger(self):
 
-        #create config parameter at migrations/0001_custom
-        #this is an alternative to using .conf at dev or specifying parameters at AWS
-        #ALTER DATABASE myapp SET myapp.skip_trigger_audio_clip_likes_dislikes TO 1;
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='incomplete',
+        )
 
-        #at client, you can see if it exists
-        #SHOW myapp.skip_trigger_audio_clip_likes_dislikes;
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
 
-        #update trigger to check for this
-        #current_setting('myapp.skip_trigger_audio_clip_likes_dislikes') = 1
+        #do 1 like
 
-        #deletion
-        # BEGIN;
-        # SET LOCAL myapp.skip_trigger_audio_clip_likes_dislikes = 0;
-        # INSERT INTO your_table (...) VALUES (...);
-        # COMMIT;
+        AudioClipLikesDislikes.objects.create(user=self.users[0], audio_clip=sample_audio_clip_0, is_liked=True)
 
-        #ALTER SYSTEM affects global configs
-        #call "SELECT pg_reload_conf();" after
-        #to view at pgAdmin:
-            #SELECT NULLIF(current_setting('appname.param_name'), NULL);
-        #if you've accidentally done "ALTER DATABASE mydb SET x TO 1;", you can remove it:
-            #ALTER DATABASE mydb RESET mydb.param_name;
-                #doing this will reuse global param value, proven by current_setting()
-        #to temporarily do something in transaction with different config values, use "SET LOCAL"
-        create_skip_trigger_audio_clip_likes_dislikes = '''
-            ALTER SYSTEM SET voicewake.skip_trigger_audio_clip_likes_dislikes TO 0;
-        '''
+        #delete like while skipping trigger
 
-        #replace AudioClipLikesDislikes.objects.filter().delete() with:
-        delete_without_triggers_sql = '''
-            BEGIN;
-            SET LOCAL voicewake.skip_trigger_audio_clip_likes_dislikes = 1;
-            DELETE FROM audio_clip_likes_dislikes
-            WHERE id IN ();
-            COMMIT;
-        '''
+        with transaction.atomic():
 
-        #trigger code to respect voicewake.skip_trigger_audio_clip_likes_dislikes:
-        #for current_setting(arg0, arg1), arg1 is "missing_ok", which returns NULL instead of raising exception when not found
-            #catching exception is more expensive
-            #only supported by psql 9.6+
-        early_line_of_function = '''
-        CREATE OR REPLACE FUNCTION handle_audio_clip_likes_dislikes_count() RETURNS TRIGGER AS $$
-            BEGIN
-                IF (current_setting(voicewake.skip_audio_clip_likes_dislikes, TRUE) = 0) THEN
-                    IF (TG_OP = 'INSERT') THEN
-                    ...
-                    ENDIF;
-                    RETURN NULL;
-                ENDIF;
-                RETURN NULL;
-        '''
-        pass
+            with connection.cursor() as cursor:
+
+                #delete all rows from AudioClipLikesDislikes while exiting trigger early
+                #with 250000 rows, performance is 1s slower to 3s faster compared to completely disabling trigger at table
+
+                cursor.execute('''SET LOCAL voicewake.skip_trigger_audio_clip_likes_dislikes = 1;''')
+
+                AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).delete()
+
+                #ensure param is only 1 during transaction
+                check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
+                cursor.execute(check_sql)
+                skip_trigger = int(cursor.fetchone()[0])
+                if skip_trigger == 0:
+                    raise ValueError('This line should not be reached.')
+
+        with connection.cursor() as cursor:
+
+            #ensure param is 0 outside of transaction
+            check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
+            cursor.execute(check_sql)
+            skip_trigger = int(cursor.fetchone()[0])
+            if skip_trigger == 1:
+                raise ValueError('This line should not be reached.')
+
+        #check
+
+        sample_audio_clip_0.refresh_from_db()
+
+        self.assertEqual(sample_audio_clip_0.like_count, 1)
+        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_0.like_ratio, 1)
+        self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
 
 
 
