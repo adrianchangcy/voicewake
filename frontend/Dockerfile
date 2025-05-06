@@ -13,6 +13,10 @@ COPY ./frontend .
 #used to work, but now have to switch WiFi channels to ensure it works
 RUN npm cache clear --force
 
+#attempt to fix "ERR_SSL_CIPHER_OPERATION_FAILED"
+#has worked once so far
+RUN npm cache verify
+
 RUN npm install --verbose
 RUN npm install -g vite --verbose
 

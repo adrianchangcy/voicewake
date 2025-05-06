@@ -11,6 +11,7 @@ from django.db import connection, reset_queries
 
 from voicewake.models import *
 from voicewake.services import *
+from voicewake.factories import *
 
 import math
 from typing import Literal
@@ -176,41 +177,6 @@ class RealisticBulkData():
             raise ValueError('Trigger was not found.')
 
 
-    def check_related_triggers(self, expect_enabled:bool):
-
-        self.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', expect_enabled)
-
-
-    def modify_related_triggers(self, enable:bool):
-
-        #problem
-            #cannot escape table name and trigger name
-        #current solution
-            #only refer to one table in this function
-        #potential better solutions if needed
-            #whitelist all table names from "import django.apps; django.apps.apps.get_models();"
-            #run DO statement, use DECLARE statement to store strings, and EXECUTE "format('%i', tablename)" as query
-                #format() will safely escape, with %i being identifier name, i.e. variable name from DECLARE statement
-
-        with connection.cursor() as cursor:
-
-            if enable is True:
-
-                cursor.execute(
-                    '''
-                        ALTER TABLE audio_clip_likes_dislikes ENABLE TRIGGER trigger_audio_clip_likes_dislikes;
-                    ''',
-                )
-
-            else:
-
-                cursor.execute(
-                    '''
-                        ALTER TABLE audio_clip_likes_dislikes DISABLE TRIGGER trigger_audio_clip_likes_dislikes;
-                    ''',
-                )
-
-
     @staticmethod
     def get_db_row_count():
 
@@ -222,38 +188,6 @@ class RealisticBulkData():
             'event_reply_queues': EventReplyQueues.objects.count(),
             'user_events': UserEvents.objects.count(),
         }
-
-
-    @staticmethod
-    def _disable_related_triggers_while_running_decorator(passed_function):
-
-        @functools.wraps(passed_function)
-        def inner(*args, **kwargs):
-
-            realistic_bulk_data_class = RealisticBulkData()
-
-            try:
-
-                realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
-                realistic_bulk_data_class.modify_related_triggers(False)
-                realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', False)
-
-                print('Triggers are disabled.')
-
-                return passed_function(*args, **kwargs)
-
-            except Exception as e:
-
-                raise e
-
-            finally:
-
-                realistic_bulk_data_class.modify_related_triggers(True)
-                realistic_bulk_data_class.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', True)
-
-                print('Triggers are enabled.')
-
-        return inner
 
 
     def prepare_new_users(self):
@@ -311,32 +245,10 @@ class RealisticBulkData():
 
     #initially though only running this once for all create() is more efficient
     #but that doesn't help when everything is too slow, so this will be coupled into all individual create(), then use threading to execute
-    #instead of disabling triggers completely, you can pass enable_trigger_but_skip
-    def _create_audio_clip_likes_dislikes(self, audio_clips, enable_trigger_but_skip:bool):
+    def _create_audio_clip_likes_dislikes(self, audio_clips):
 
         full_sql = ''
         full_params = []
-
-        if enable_trigger_but_skip is True:
-
-            #ensure trigger is enabled
-            self.check_related_triggers(expect_enabled=True)
-
-            #ensure conf parameter exists
-            check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
-
-            with connection.cursor() as cursor:
-
-                cursor.execute(check_sql)
-
-                skip_trigger = int(cursor.fetchone()[0])
-
-                if skip_trigger  == 1:
-
-                    raise ValueError('Trigger for skipping at main system is unintentionally True.')
-
-                #turn it into transaction block
-                full_sql += 'BEGIN; SET LOCAL voicewake.skip_trigger_audio_clip_likes_dislikes = 1; '
 
         #likes dislikes
         #len(users) must not be divisible by (like_count + dislike_count), else one user has only likes, the other dislikes, etc.
@@ -408,10 +320,6 @@ class RealisticBulkData():
         #get PK only
         full_sql += 'RETURNING audio_clip_likes_dislikes.id;'
 
-        if enable_trigger_but_skip is True:
-
-            full_sql += ' COMMIT;'
-
         with connection.cursor() as cursor:
 
             cursor.execute(full_sql, full_params)
@@ -439,34 +347,22 @@ class RealisticBulkData():
             #events
 
             events = []
-
+            
             for user in self.users:
-
-                #if we only need originator, use current user
-                #if we need responder, use user_index+1
-
-                #create events, audio_clips, audio_clip_likes_dislikes
-                #create extra "incomplete" events that are in the midst of replying
-
-                for x in range(self.event_quantity):
-
-                    events.append(
-                        Events(
-                            None,
-                            "An event by " + user.username,
-                            self.generic_statuses['incomplete'].id,
-                            user.id,
-                            datetime_now,
-                            datetime_now,
-                        )
+                
+                events.extend(
+                    EventsFactory.create_batch(
+                        event_created_by=user,
+                        event_generic_status_generic_status_name='incomplete',
+                        size=self.event_quantity,
                     )
-
-            events = Events.objects.bulk_create(events, batch_size=self.db_batch_size)
-            reset_queries()
+                )
+                reset_queries()
 
             #audio_clips, event_reply_queues, user_events
 
             audio_clips = []
+            audio_clip_metrics = []
             event_reply_queues = []
             user_events = []
 
@@ -487,9 +383,6 @@ class RealisticBulkData():
                         self.audio_file,
                         10,
                         [],
-                        self.like_count,
-                        self.dislike_count,
-                        self.like_ratio,
                         False,
                         datetime_now,
                         datetime_now,
@@ -556,6 +449,23 @@ class RealisticBulkData():
             audio_clips = AudioClips.objects.bulk_create(audio_clips, batch_size=self.db_batch_size)
             reset_queries()
 
+            for audio_clip in audio_clips:
+
+                audio_clip_metrics.append(
+                    AudioClipMetrics(
+                        None,
+                        audio_clip.id,
+                        0,
+                        0,
+                        0,
+                        datetime_now,
+                        datetime_now
+                    )
+                )
+
+            audio_clip_metrics = AudioClipMetrics.objects.bulk_create(audio_clip_metrics, batch_size=self.db_batch_size)
+            reset_queries()
+
             if is_replying is True:
 
                 event_reply_queues = EventReplyQueues.objects.bulk_create(event_reply_queues, batch_size=self.db_batch_size)
@@ -604,25 +514,19 @@ class RealisticBulkData():
                 #create events, audio_clips, audio_clip_likes_dislikes
                 #create extra "incomplete" events that are in the midst of replying
 
-                for x in range(self.event_quantity):
-
-                    events.append(
-                        Events(
-                            None,
-                            "An event by " + user.username,
-                            self.generic_statuses['completed'].id,
-                            user.id,
-                            datetime_now,
-                            datetime_now,
-                        )
+                events.extend(
+                    EventsFactory.create_batch(
+                        event_created_by=user,
+                        event_generic_status_generic_status_name='completed',
+                        size=self.event_quantity,
                     )
-
-            events = Events.objects.bulk_create(events, batch_size=self.db_batch_size)
-            reset_queries()
+                )
+                reset_queries()
 
             #audio_clips
 
             audio_clips = []
+            audio_clip_metrics = []
 
             responder_user_index = 0
 
@@ -639,9 +543,6 @@ class RealisticBulkData():
                         self.audio_file,
                         10,
                         [],
-                        self.like_count,
-                        self.dislike_count,
-                        self.like_ratio,
                         False,
                         datetime_now,
                         datetime_now,
@@ -683,9 +584,6 @@ class RealisticBulkData():
                         self.audio_file,
                         10,
                         [],
-                        self.like_count,
-                        self.dislike_count,
-                        self.like_ratio,
                         False,
                         datetime_now,
                         datetime_now,
@@ -694,6 +592,24 @@ class RealisticBulkData():
 
             audio_clips = AudioClips.objects.bulk_create(audio_clips, batch_size=self.db_batch_size)
             reset_queries()
+
+            for audio_clip in audio_clips:
+
+                audio_clip_metrics.append(
+                    AudioClipMetrics(
+                        None,
+                        audio_clip.id,
+                        0,
+                        0,
+                        0,
+                        datetime_now,
+                        datetime_now
+                    )
+                )
+
+            audio_clip_metrics = AudioClipMetrics.objects.bulk_create(audio_clip_metrics, batch_size=self.db_batch_size)
+            reset_queries()
+
             self._create_audio_clip_likes_dislikes(audio_clips)
             reset_queries()
 
@@ -732,25 +648,19 @@ class RealisticBulkData():
                 #create events, audio_clips, audio_clip_likes_dislikes
                 #create extra "incomplete" events that are in the midst of replying
 
-                for x in range(self.event_quantity):
-
-                    events.append(
-                        Events(
-                            None,
-                            "An event by " + user.username,
-                            self.generic_statuses['deleted'].id,
-                            user.id,
-                            datetime_now,
-                            datetime_now,
-                        )
+                events.extend(
+                    EventsFactory.create_batch(
+                        event_created_by=user,
+                        event_generic_status_generic_status_name='deleted',
+                        size=self.event_quantity,
                     )
-
-            events = Events.objects.bulk_create(events, batch_size=self.db_batch_size)
-            reset_queries()
+                )
+                reset_queries()
 
             #audio_clips
 
             audio_clips = []
+            audio_clip_metrics = []
 
             responder_user_index = 0
 
@@ -767,9 +677,6 @@ class RealisticBulkData():
                         self.audio_file,
                         10,
                         [],
-                        self.like_count,
-                        self.dislike_count,
-                        self.like_ratio,
                         deleted_and_banned,
                         datetime_now,
                         datetime_now,
@@ -815,9 +722,6 @@ class RealisticBulkData():
                         self.audio_file,
                         10,
                         [],
-                        self.like_count,
-                        self.dislike_count,
-                        self.like_ratio,
                         False,
                         datetime_now,
                         datetime_now,
@@ -826,6 +730,24 @@ class RealisticBulkData():
 
             audio_clips = AudioClips.objects.bulk_create(audio_clips, batch_size=self.db_batch_size)
             reset_queries()
+
+            for audio_clip in audio_clips:
+
+                audio_clip_metrics.append(
+                    AudioClipMetrics(
+                        None,
+                        audio_clip.id,
+                        0,
+                        0,
+                        0,
+                        datetime_now,
+                        datetime_now
+                    )
+                )
+
+            audio_clip_metrics = AudioClipMetrics.objects.bulk_create(audio_clip_metrics, batch_size=self.db_batch_size)
+            reset_queries()
+
             self._create_audio_clip_likes_dislikes(audio_clips)
             reset_queries()
 
@@ -833,7 +755,6 @@ class RealisticBulkData():
             print(f'Done with audio_clip_tone #{audio_clip_tone_index} in {stopwatch.diff_seconds()}s.')
 
 
-    @_disable_related_triggers_while_running_decorator
     @staticmethod
     def sample_run():
 
@@ -920,9 +841,7 @@ class RealisticBulkData_TestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
 
-        realistic_bulk_data_class = RealisticBulkData()
-        realistic_bulk_data_class.check_related_triggers(True)
-        realistic_bulk_data_class.modify_related_triggers(False)
+        pass
 
 
     @classmethod
@@ -934,10 +853,6 @@ class RealisticBulkData_TestCase(TestCase):
             print(function_name)
             print(cls.metrics[function_name])
             print('\n')
-
-        realistic_bulk_data_class = RealisticBulkData()
-        realistic_bulk_data_class.check_related_triggers(False)
-        realistic_bulk_data_class.modify_related_triggers(True)
 
         shutil.rmtree(os.path.join(settings.MEDIA_ROOT, 'audio_clips'), ignore_errors=True)
 
@@ -1057,18 +972,14 @@ class RealisticBulkData_TestCase(TestCase):
         })
 
 
-    def test_realistic_bulk_data__trigger_functions_ok(self):
-
-        #already disabled at setUpTestData
-        RealisticBulkData.check_trigger('audio_clip_likes_dislikes', 'trigger_audio_clip_likes_dislikes', False)
-
-
 
 
 
 
 #using TransactionTestCase to allow tests to run one by one
 #conclusion from tests is to use kwargs, disable related triggers, use raw query if rows are not needed, higher over lower batch_size
+#trigger that also performs sql within itself is what slowed things down during bulk actions
+#update: trigger is no longer used in production
 @override_settings(
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
     DEBUG=True,

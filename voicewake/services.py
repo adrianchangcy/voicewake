@@ -1648,17 +1648,6 @@ class CreateAudioClips():
 
         #proceed
 
-        audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='originator')
-        audio_clip_tone = AudioClipTones.objects.get(pk=audio_clip_tone_id)
-        generic_status_processing = GenericStatuses.objects.get(generic_status_name='processing')
-
-        #create event, as "processing", to avoid being queued for responders
-        self.event = Events.objects.create(
-            event_name=event_name,
-            generic_status=generic_status_processing,
-            created_by=self.user,
-        )
-
         #s3
 
         self._initialise_s3_post_wrapper()
@@ -1675,20 +1664,37 @@ class CreateAudioClips():
             file_extension=recorded_file_extension,
         )
 
-        #create AudioClips
+        #create relevant rows
 
-        #we update audio_volume_peaks and audio_duration_s during processing, not here
-        #audio_file currently has file extension of unprocessed file
-        self.audio_clip = AudioClips.objects.create(
-            user=self.user,
-            audio_clip_role=audio_clip_role,
-            audio_clip_tone=audio_clip_tone,
-            event=self.event,
-            audio_volume_peaks=[],
-            audio_duration_s=0,
-            audio_file=upload_key,
-            generic_status=generic_status_processing
-        )
+        audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='originator')
+        audio_clip_tone = AudioClipTones.objects.get(pk=audio_clip_tone_id)
+        generic_status_processing = GenericStatuses.objects.get(generic_status_name='processing')
+
+        with transaction.atomic():
+
+            #create event, as "processing", to avoid being queued for responders
+            self.event = Events.objects.create(
+                event_name=event_name,
+                generic_status=generic_status_processing,
+                created_by=self.user,
+            )
+    
+            #we update audio_volume_peaks and audio_duration_s during processing, not here
+            #audio_file currently has file extension of unprocessed file
+            self.audio_clip = AudioClips.objects.create(
+                user=self.user,
+                audio_clip_role=audio_clip_role,
+                audio_clip_tone=audio_clip_tone,
+                event=self.event,
+                audio_volume_peaks=[],
+                audio_duration_s=0,
+                audio_file=upload_key,
+                generic_status=generic_status_processing
+            )
+    
+            AudioClipMetrics.objects.create(
+                audio_clip=self.audio_clip,
+            )
 
         return Response(
             data={
@@ -1813,12 +1819,14 @@ class CreateAudioClips():
 
             #invalidate/reset everything
 
-            if self.audio_clip is not None and self.audio_clip.generic_status.generic_status_name == 'processing':
+            with transaction.atomic():
 
-                self.audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
-                self.audio_clip.save()
+                if self.audio_clip is not None and self.audio_clip.generic_status.generic_status_name == 'processing':
 
-            self.event_reply_queue.delete()
+                    self.audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
+                    self.audio_clip.save()
+
+                self.event_reply_queue.delete()
 
             return Response(
                 data={
@@ -1833,12 +1841,14 @@ class CreateAudioClips():
 
             #invalidate/reset everything
 
-            if self.audio_clip is not None and self.audio_clip.generic_status.generic_status_name == 'processing':
+            with transaction.atomic():
 
-                self.audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
-                self.audio_clip.save()
+                if self.audio_clip is not None and self.audio_clip.generic_status.generic_status_name == 'processing':
 
-            self.event_reply_queue.delete()
+                    self.audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
+                    self.audio_clip.save()
+
+                self.event_reply_queue.delete()
 
             return Response(
                 data={

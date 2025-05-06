@@ -182,15 +182,15 @@ class Core_TestCase(TestCase):
         overdue_s = 10
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='processing',
+            created_by=self.users[0],
+            generic_status_name='processing',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
         )
 
         sample_audio_clip_0.when_created = self.datetime_now - timedelta(seconds=overdue_s)
@@ -244,15 +244,15 @@ class Core_TestCase(TestCase):
         #row 1
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='processing',
+            created_by=self.users[0],
+            generic_status_name='processing',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
         )
 
         sample_audio_clip_0.when_created = self.datetime_now - timedelta(seconds=overdue_s)
@@ -281,15 +281,15 @@ class Core_TestCase(TestCase):
         #row 2
 
         sample_event_1 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='processing',
+            created_by=self.users[0],
+            generic_status_name='processing',
         )
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_1,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
         )
 
         sample_audio_clip_1.when_created = self.datetime_now - timedelta(seconds=overdue_s)
@@ -338,15 +338,15 @@ class Core_TestCase(TestCase):
         overdue_s = 10
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='processing',
+            created_by=self.users[0],
+            generic_status_name='processing',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
         )
 
         sample_audio_clip_0.when_created = self.datetime_now
@@ -392,13 +392,13 @@ class Core_TestCase(TestCase):
         overdue_s = 10
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='ok',
+            created_by=self.users[0],
+            generic_status_name='ok',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -425,13 +425,13 @@ class Core_TestCase(TestCase):
         #row 1
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='ok',
+            created_by=self.users[0],
+            generic_status_name='ok',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -445,13 +445,13 @@ class Core_TestCase(TestCase):
         #row 2
 
         sample_event_1 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='ok',
+            created_by=self.users[0],
+            generic_status_name='ok',
         )
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_1,
         )
 
@@ -477,13 +477,13 @@ class Core_TestCase(TestCase):
         overdue_s = 10
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='ok',
+            created_by=self.users[0],
+            generic_status_name='ok',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -508,13 +508,13 @@ class Core_TestCase(TestCase):
         overdue_s = 10
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='ok',
+            created_by=self.users[0],
+            generic_status_name='ok',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -539,13 +539,13 @@ class Core_TestCase(TestCase):
         overdue_s = 10
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='ok',
+            created_by=self.users[0],
+            generic_status_name='ok',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -572,13 +572,13 @@ class Core_TestCase(TestCase):
         #row 1
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='ok',
+            created_by=self.users[0],
+            generic_status_name='ok',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -592,13 +592,13 @@ class Core_TestCase(TestCase):
         #row 2
 
         sample_event_1 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='ok',
+            created_by=self.users[0],
+            generic_status_name='ok',
         )
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_1,
         )
 
@@ -625,13 +625,13 @@ class Core_TestCase(TestCase):
         overdue_s = 10
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='ok',
+            created_by=self.users[0],
+            generic_status_name='ok',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -656,13 +656,13 @@ class Core_TestCase(TestCase):
         overdue_s = 10
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='ok',
+            created_by=self.users[0],
+            generic_status_name='ok',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -687,13 +687,13 @@ class Core_TestCase(TestCase):
         overdue_s = 10
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='ok',
+            created_by=self.users[0],
+            generic_status_name='ok',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -706,9 +706,9 @@ class Core_TestCase(TestCase):
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
         )
 
         with self.settings(
@@ -732,13 +732,13 @@ class Core_TestCase(TestCase):
         #row 1
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='ok',
+            created_by=self.users[0],
+            generic_status_name='ok',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -751,21 +751,21 @@ class Core_TestCase(TestCase):
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
         )
 
         #row 2
 
         sample_event_1 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='ok',
+            created_by=self.users[0],
+            generic_status_name='ok',
         )
 
         sample_audio_clip_2 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_1,
         )
 
@@ -778,9 +778,9 @@ class Core_TestCase(TestCase):
 
         sample_audio_clip_3 = AudioClipsFactory(
             audio_clip_user=self.users[2],
-            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_role_name='responder',
             audio_clip_event=sample_event_1,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
         )
 
         with self.settings(
@@ -807,13 +807,13 @@ class Core_TestCase(TestCase):
         overdue_s = 10
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='ok',
+            created_by=self.users[0],
+            generic_status_name='ok',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -826,9 +826,9 @@ class Core_TestCase(TestCase):
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
         )
 
         with self.settings(
@@ -867,17 +867,17 @@ class Core_TestCase(TestCase):
             sample_originator_audio_clips.append(
                 AudioClipsFactory(
                     audio_clip_user=self.users[0],
-                    audio_clip_audio_clip_role_audio_clip_role_name='originator',
+                    audio_clip_role_name='originator',
                     audio_clip_event=None,
-                    audio_clip_generic_status_generic_status_name='processing_overdue',
+                    generic_status_name='processing_overdue',
                 )
             )
             sample_responder_audio_clips.append(
                 AudioClipsFactory(
                     audio_clip_user=self.users[1],
-                    audio_clip_audio_clip_role_audio_clip_role_name='responder',
+                    audio_clip_role_name='responder',
                     audio_clip_event=None,
-                    audio_clip_generic_status_generic_status_name='processing_overdue',
+                    generic_status_name='processing_overdue',
                 )
             )
 
@@ -928,17 +928,17 @@ class Core_TestCase(TestCase):
             sample_originator_audio_clips.append(
                 AudioClipsFactory(
                     audio_clip_user=self.users[0],
-                    audio_clip_audio_clip_role_audio_clip_role_name='originator',
+                    audio_clip_role_name='originator',
                     audio_clip_event=None,
-                    audio_clip_generic_status_generic_status_name='processing_overdue',
+                    generic_status_name='processing_overdue',
                 )
             )
             sample_responder_audio_clips.append(
                 AudioClipsFactory(
                     audio_clip_user=self.users[1],
-                    audio_clip_audio_clip_role_audio_clip_role_name='responder',
+                    audio_clip_role_name='responder',
                     audio_clip_event=None,
-                    audio_clip_generic_status_generic_status_name='processing_overdue',
+                    generic_status_name='processing_overdue',
                 )
             )
 
@@ -981,17 +981,17 @@ class Core_TestCase(TestCase):
             sample_originator_audio_clips.append(
                 AudioClipsFactory(
                     audio_clip_user=self.users[0],
-                    audio_clip_audio_clip_role_audio_clip_role_name='originator',
+                    audio_clip_role_name='originator',
                     audio_clip_event=None,
-                    audio_clip_generic_status_generic_status_name='deleted',
+                    generic_status_name='deleted',
                 )
             )
             sample_responder_audio_clips.append(
                 AudioClipsFactory(
                     audio_clip_user=self.users[1],
-                    audio_clip_audio_clip_role_audio_clip_role_name='responder',
+                    audio_clip_role_name='responder',
                     audio_clip_event=None,
-                    audio_clip_generic_status_generic_status_name='deleted',
+                    generic_status_name='deleted',
                 )
             )
 
@@ -1034,19 +1034,19 @@ class Core_TestCase(TestCase):
             sample_originator_audio_clips.append(
                 AudioClipsFactory(
                     audio_clip_user=self.users[0],
-                    audio_clip_audio_clip_role_audio_clip_role_name='originator',
+                    audio_clip_role_name='originator',
                     audio_clip_event=None,
-                    audio_clip_generic_status_generic_status_name='deleted',
-                    audio_clip_is_banned=True,
+                    generic_status_name='deleted',
+                    is_banned=True,
                 )
             )
             sample_responder_audio_clips.append(
                 AudioClipsFactory(
                     audio_clip_user=self.users[1],
-                    audio_clip_audio_clip_role_audio_clip_role_name='responder',
+                    audio_clip_role_name='responder',
                     audio_clip_event=None,
-                    audio_clip_generic_status_generic_status_name='deleted',
-                    audio_clip_is_banned=True,
+                    generic_status_name='deleted',
+                    is_banned=True,
                 )
             )
 
@@ -1407,27 +1407,27 @@ class Core_TransactionTestCase(TransactionTestCase):
         #row to be deleted
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[0],
+            generic_status_name='incomplete',
         )
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='ok',
+            generic_status_name='ok',
         )
 
         #not delete-related row, same user
 
         sample_event_1 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[0],
+            generic_status_name='incomplete',
         )
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='ok',
+            generic_status_name='ok',
         )
 
         #like from same originator, like from someone else
@@ -1489,38 +1489,38 @@ class Core_TransactionTestCase(TransactionTestCase):
         #delete-related
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='completed',
+            created_by=self.users[0],
+            generic_status_name='completed',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
         )
 
         #not delete-related, same users
 
         sample_event_1 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='completed',
+            created_by=self.users[0],
+            generic_status_name='completed',
         )
 
         sample_audio_clip_2 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
         sample_audio_clip_3 = AudioClipsFactory(
             audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
         )
 
@@ -1603,16 +1603,16 @@ class Core_TransactionTestCase(TransactionTestCase):
 
             sample_events.append(
                 EventsFactory(
-                    event_created_by=self.users[0],
-                    event_generic_status_generic_status_name='incomplete',
+                    created_by=self.users[0],
+                    generic_status_name='incomplete',
                 )
             )
             sample_audio_clips.append(
                 AudioClipsFactory(
                     audio_clip_user=self.users[0],
-                    audio_clip_audio_clip_role_audio_clip_role_name='originator',
+                    audio_clip_role_name='originator',
                     audio_clip_event=sample_events[x],
-                    audio_clip_generic_status_generic_status_name='ok',
+                    generic_status_name='ok',
                 )
             )
             #pessimistic like_count to ensure ratio is as desired
@@ -1681,24 +1681,24 @@ class Core_TransactionTestCase(TransactionTestCase):
 
             sample_events.append(
                 EventsFactory(
-                    event_created_by=self.users[0],
-                    event_generic_status_generic_status_name='incomplete',
+                    created_by=self.users[0],
+                    generic_status_name='incomplete',
                 )
             )
             sample_originator_audio_clips.append(
                 AudioClipsFactory(
                     audio_clip_user=self.users[0],
-                    audio_clip_audio_clip_role_audio_clip_role_name='originator',
+                    audio_clip_role_name='originator',
                     audio_clip_event=sample_events[x],
-                    audio_clip_generic_status_generic_status_name='ok',
+                    generic_status_name='ok',
                 )
             )
             sample_responder_audio_clips.append(
                 AudioClipsFactory(
                     audio_clip_user=self.users[1],
-                    audio_clip_audio_clip_role_audio_clip_role_name='responder',
+                    audio_clip_role_name='responder',
                     audio_clip_event=sample_events[x],
-                    audio_clip_generic_status_generic_status_name='ok',
+                    generic_status_name='ok',
                 )
             )
             #pessimistic like_count to ensure ratio is as desired
@@ -1751,13 +1751,13 @@ class Core_TransactionTestCase(TransactionTestCase):
         datetime_now = self.datetime_now
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='completed',
+            created_by=self.users[0],
+            generic_status_name='completed',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -1768,7 +1768,7 @@ class Core_TransactionTestCase(TransactionTestCase):
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
         )
 
@@ -1827,19 +1827,19 @@ class Core_TransactionTestCase(TransactionTestCase):
         #event 0, ban originator
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='completed',
+            created_by=self.users[0],
+            generic_status_name='completed',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
         )
 
@@ -1851,19 +1851,19 @@ class Core_TransactionTestCase(TransactionTestCase):
         #event 1, ban responder
 
         sample_event_1 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='completed',
+            created_by=self.users[0],
+            generic_status_name='completed',
         )
 
         sample_audio_clip_2 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_1,
         )
 
         sample_audio_clip_3 = AudioClipsFactory(
             audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_role_name='responder',
             audio_clip_event=sample_event_1,
         )
 
@@ -1933,13 +1933,13 @@ class Core_TransactionTestCase(TransactionTestCase):
         #event 0, ban originator
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[0],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -1951,13 +1951,13 @@ class Core_TransactionTestCase(TransactionTestCase):
         #event 1, ban responder
 
         sample_event_1 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[0],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_1,
         )
 
@@ -2016,13 +2016,13 @@ class Core_TransactionTestCase(TransactionTestCase):
         datetime_now = self.datetime_now
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[0],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -2081,13 +2081,13 @@ class Core_TransactionTestCase(TransactionTestCase):
         datetime_now = self.datetime_now
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[0],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -2146,13 +2146,13 @@ class Core_TransactionTestCase(TransactionTestCase):
         datetime_now = self.datetime_now
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='completed',
+            created_by=self.users[0],
+            generic_status_name='completed',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -2177,13 +2177,13 @@ class Core_TransactionTestCase(TransactionTestCase):
         #A has new queue elsewhere
 
         sample_event_1 = EventsFactory(
-            event_created_by=self.users[2],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[2],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[2],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_1,
         )
 
@@ -2197,13 +2197,13 @@ class Core_TransactionTestCase(TransactionTestCase):
         #another event of A is ok, ensure everything about it is unaffected
 
         sample_event_2 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[0],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_2 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_2,
         )
 
@@ -2217,13 +2217,13 @@ class Core_TransactionTestCase(TransactionTestCase):
         #extra irrelevant innocent queues
 
         sample_event_3 = EventsFactory(
-            event_created_by=self.users[2],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[2],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_3 = AudioClipsFactory(
             audio_clip_user=self.users[2],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_3,
         )
 
@@ -2294,13 +2294,13 @@ class Core_TransactionTestCase(TransactionTestCase):
         datetime_now = self.datetime_now
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='completed',
+            created_by=self.users[0],
+            generic_status_name='completed',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -2325,13 +2325,13 @@ class Core_TransactionTestCase(TransactionTestCase):
         #A has new queue elsewhere
 
         sample_event_1 = EventsFactory(
-            event_created_by=self.users[2],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[2],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[2],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_1,
         )
 
@@ -2345,13 +2345,13 @@ class Core_TransactionTestCase(TransactionTestCase):
         #another event of A is ok, ensure everything about it is unaffected
 
         sample_event_2 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[0],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_2 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_2,
         )
 
@@ -2365,13 +2365,13 @@ class Core_TransactionTestCase(TransactionTestCase):
         #extra irrelevant innocent queues
 
         sample_event_3 = EventsFactory(
-            event_created_by=self.users[2],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[2],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_3 = AudioClipsFactory(
             audio_clip_user=self.users[2],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_3,
         )
 
@@ -2442,21 +2442,21 @@ class Core_TransactionTestCase(TransactionTestCase):
         datetime_now = self.datetime_now
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='completed',
+            created_by=self.users[0],
+            generic_status_name='completed',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
         )
 
         sample_audio_clip_0.like_count = 2
@@ -2509,21 +2509,21 @@ class Core_TransactionTestCase(TransactionTestCase):
         datetime_now = self.datetime_now
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='completed',
+            created_by=self.users[0],
+            generic_status_name='completed',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='ok',
+            generic_status_name='ok',
         )
 
         sample_audio_clip_1.like_count = 2
@@ -2540,13 +2540,13 @@ class Core_TransactionTestCase(TransactionTestCase):
         #B has new queue elsewhere
 
         sample_event_1 = EventsFactory(
-            event_created_by=self.users[2],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[2],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_2 = AudioClipsFactory(
             audio_clip_user=self.users[2],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_1,
         )
 
@@ -2560,26 +2560,26 @@ class Core_TransactionTestCase(TransactionTestCase):
         #another event of B is ok, ensure everything about it is unaffected
 
         sample_event_2 = EventsFactory(
-            event_created_by=self.users[1],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[1],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_3 = AudioClipsFactory(
             audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_2,
         )
 
         #new queues from A is unaffected
 
         sample_event_3 = EventsFactory(
-            event_created_by=self.users[2],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[2],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_4 = AudioClipsFactory(
             audio_clip_user=self.users[2],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_3,
         )
 
@@ -2593,13 +2593,13 @@ class Core_TransactionTestCase(TransactionTestCase):
         #extra irrelevant innocent queues
 
         sample_event_4 = EventsFactory(
-            event_created_by=self.users[2],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[2],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_5 = AudioClipsFactory(
             audio_clip_user=self.users[2],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_4,
         )
 
@@ -2685,21 +2685,21 @@ class Core_TransactionTestCase(TransactionTestCase):
         datetime_now = self.datetime_now
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='completed',
+            created_by=self.users[0],
+            generic_status_name='completed',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='ok',
+            generic_status_name='ok',
         )
 
         sample_audio_clip_1.like_count = 2
@@ -2716,13 +2716,13 @@ class Core_TransactionTestCase(TransactionTestCase):
         #B has new queue elsewhere
 
         sample_event_1 = EventsFactory(
-            event_created_by=self.users[2],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[2],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_2 = AudioClipsFactory(
             audio_clip_user=self.users[2],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_1,
         )
 
@@ -2736,26 +2736,26 @@ class Core_TransactionTestCase(TransactionTestCase):
         #another event of B is ok, ensure everything about it is unaffected
 
         sample_event_2 = EventsFactory(
-            event_created_by=self.users[1],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[1],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_3 = AudioClipsFactory(
             audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_2,
         )
 
         #new queues from A is unaffected
 
         sample_event_3 = EventsFactory(
-            event_created_by=self.users[2],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[2],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_4 = AudioClipsFactory(
             audio_clip_user=self.users[2],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_3,
         )
 
@@ -2769,13 +2769,13 @@ class Core_TransactionTestCase(TransactionTestCase):
         #extra irrelevant innocent queues
 
         sample_event_4 = EventsFactory(
-            event_created_by=self.users[2],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[2],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_5 = AudioClipsFactory(
             audio_clip_user=self.users[2],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_4,
         )
 
@@ -2859,13 +2859,13 @@ class Core_TransactionTestCase(TransactionTestCase):
     def test_cronjob_ban_audio_clips__skip_not_reported(self):
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[0],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -2901,13 +2901,13 @@ class Core_TransactionTestCase(TransactionTestCase):
         datetime_now = self.datetime_now
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[0],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -2953,16 +2953,16 @@ class Core_TransactionTestCase(TransactionTestCase):
         datetime_now = self.datetime_now
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='deleted',
+            created_by=self.users[0],
+            generic_status_name='deleted',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='deleted',
-            audio_clip_is_banned=True,
+            generic_status_name='deleted',
+            is_banned=True,
         )
 
         sample_audio_clip_0.like_count = 2
