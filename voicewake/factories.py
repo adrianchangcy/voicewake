@@ -24,6 +24,10 @@ class UsersFactory(DjangoModelFactory):
     class Params:
         user_email = ''
         user_username = ''
+        user_is_banned = False
+        user_banned_until = None
+        user_ban_count = 0
+        user_is_active = True
 
     email = factory.LazyAttributeSequence(
         lambda o, n : 'user'+str(n)+'@gmail.com' if o.user_email == '' else o.user_email
@@ -31,24 +35,37 @@ class UsersFactory(DjangoModelFactory):
     username = factory.LazyAttributeSequence(
         lambda o, n : 'useR'+str(n) if o.user_username == '' else o.user_username
     )
+    is_banned = factory.LazyAttribute(
+        lambda o : o.user_is_banned
+    )
+    banned_until = factory.LazyAttribute(
+        lambda o : (
+            settings.CRONJOB_AUDIO_CLIP_BAN_DAYS ** o.user_ban_count
+            if o.user_is_banned is True
+            else None
+        )
+    )
+    ban_count = factory.LazyAttribute(lambda o : o.user_ban_count)
+    is_active = factory.LazyAttribute(lambda o : o.user_is_active)
 
     @classmethod
     def _create(cls, model_class, *args, **kwargs):
 
         manager = cls._get_manager(model_class)
 
-        is_user_created = get_user_model().objects.filter(
-            email_lowercase=kwargs['email'].lower(),
-            username_lowercase=kwargs['username'].lower(),
+        new_user = manager.create_user(
+            email=kwargs['email'],
+            username=kwargs['username'],
+            is_active=kwargs['is_active'],
         )
 
-        if is_user_created is False:
+        #oddly, must explicitly define all fields here, else they will be missing in instance returned from save()
+        new_user.is_banned = kwargs['is_banned']
+        new_user.banned_until = kwargs['banned_until']
+        new_user.ban_count = kwargs['ban_count']
+        new_user.save()
 
-            return manager.create_user(
-                kwargs['email'],
-                kwargs['username'],
-                True
-            )
+        return new_user
 
 
 
@@ -141,10 +158,36 @@ class AudioClipsFactory(DjangoModelFactory):
             else (
                 EventsFactory(
                     created_by=(o.audio_clip_user if o.audio_clip_user is not None else UsersFactory()),
-                    event_generic_status_generic_status_name=('deleted' if o.audio_clip_is_banned is True else 'ok')
+                    generic_status_name=('deleted' if o.is_banned is True else 'ok')
                 )
             )
         )
+    )
+
+
+
+class AudioClipMetricsFactory(DjangoModelFactory):
+
+    class Meta:
+        model = AudioClipMetrics
+
+    class Params:
+        audio_clip_metric_audio_clip = None
+        audio_clip_metric_like_count = 0
+        audio_clip_metric_dislike_count = 0
+        audio_clip_metric_like_ratio = 0
+
+    audio_clip = factory.LazyAttribute(
+        lambda o : o.audio_clip_metric_audio_clip
+    )
+    like_count = factory.LazyAttribute(
+        lambda o : o.audio_clip_metric_like_count
+    )
+    dislike_count = factory.LazyAttribute(
+        lambda o : o.audio_clip_metric_dislike_count
+    )
+    like_ratio = factory.LazyAttribute(
+        lambda o : o.audio_clip_metric_like_ratio
     )
 
 

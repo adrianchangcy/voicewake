@@ -165,15 +165,15 @@ class Core_TestCase(TestCase):
         self.login(self.users[0])
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='processing',
+            created_by=self.users[0],
+            generic_status_name='processing',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
         )
 
         #set cache
@@ -209,16 +209,16 @@ class Core_TestCase(TestCase):
         self.login(self.users[0])
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='processing',
+            created_by=self.users[0],
+            generic_status_name='processing',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
-            audio_clip_audio_file=self.faulty_audio_file_full_path,
+            generic_status_name='processing',
+            audio_file=self.faulty_audio_file_full_path,
         )
 
         #set cache
@@ -256,15 +256,15 @@ class Core_TestCase(TestCase):
         self.login(self.users[0])
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='processing',
+            created_by=self.users[0],
+            generic_status_name='processing',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
         )
 
         #no need to create cache
@@ -286,13 +286,13 @@ class Core_TestCase(TestCase):
         self.login(self.users[1])
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[0],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -304,9 +304,9 @@ class Core_TestCase(TestCase):
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -351,13 +351,13 @@ class Core_TestCase(TestCase):
         self.login(self.users[1])
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[0],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -369,10 +369,10 @@ class Core_TestCase(TestCase):
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
-            audio_clip_audio_file=self.faulty_audio_file_full_path,
+            generic_status_name='processing',
+            audio_file=self.faulty_audio_file_full_path,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -417,13 +417,13 @@ class Core_TestCase(TestCase):
         self.login(self.users[1])
 
         sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='incomplete',
+            created_by=self.users[0],
+            generic_status_name='incomplete',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
 
@@ -435,9 +435,9 @@ class Core_TestCase(TestCase):
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
