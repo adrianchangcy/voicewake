@@ -939,12 +939,15 @@ class GetEventsAPI(generics.GenericAPIView):
                 events.*,
                 audio_clip_tones.*,
                 generic_statuses.*,
-                audio_clip_likes_dislikes.is_liked AS is_liked_by_user
+                audio_clip_likes_dislikes.is_liked AS is_liked_by_user,
+                audio_clip_metrics.like_count AS like_count,
+                audio_clip_metrics.dislike_count AS dislike_count
             FROM audio_clips
             LEFT JOIN events ON audio_clips.event_id = events.id
             LEFT JOIN audio_clip_tones ON audio_clips.audio_clip_tone_id = audio_clip_tones.id
             LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
                 AND audio_clip_likes_dislikes.user_id = %s
+            LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
             LEFT JOIN generic_statuses ON audio_clips.generic_status_id = generic_statuses.id
             WHERE audio_clips.event_id = %s
             AND audio_clips.is_banned IS FALSE
@@ -1297,10 +1300,13 @@ class BrowseEventsAPI(generics.GenericAPIView):
             )
             SELECT audio_clips.*,
 
-            ''' + is_liked_by_user_sql['col'] + '''
+            ''' + is_liked_by_user_sql['col'] + ''',
+            audio_clip_metrics.like_count AS like_count,
+            audio_clip_metrics.dislike_count AS dislike_count
 
             FROM audio_clips
             RIGHT JOIN target_events ON audio_clips.event_id = target_events.event_id
+            LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
             INNER JOIN generic_statuses AS ac_gs ON audio_clips.generic_status_id = ac_gs.id
             INNER JOIN audio_clip_roles ON audio_clips.audio_clip_role_id = audio_clip_roles.id
 
@@ -1577,11 +1583,16 @@ class BrowseEventsAPI(generics.GenericAPIView):
                 ''' + cursor_order_sql + '''
                 LIMIT %s
             )
-            SELECT ac.*, acld.is_liked AS is_liked_by_user,
+            SELECT
+                ac.*,
+                acld.is_liked AS is_liked_by_user,
                 target_events.acld_last_modified AS te_acld_last_modified,
-                target_events.acld_id AS te_acld_id
+                target_events.acld_id AS te_acld_id,
+                audio_clip_metrics.like_count AS like_count,
+                audio_clip_metrics.dislike_count AS dislike_count
             FROM audio_clips AS ac
             LEFT JOIN audio_clip_likes_dislikes AS acld ON ac.id = acld.audio_clip_id
+            LEFT JOIN audio_clip_metrics ON ac.id = audio_clip_metrics.audio_clip_id
             INNER JOIN target_events ON ac.event_id = target_events.ac_event_id
             WHERE ac.is_banned IS FALSE
             AND acld.user_id = (
@@ -1982,8 +1993,11 @@ class EventReplyChoicesAPI(generics.GenericAPIView):
                     SELECT user_id AS id FROM user_blocks
                     WHERE blocked_user_id = %s
 				)
-				SELECT audio_clips.*,
-                audio_clip_likes_dislikes.is_liked AS is_liked_by_user
+				SELECT
+                    audio_clips.*,
+                    audio_clip_likes_dislikes.is_liked AS is_liked_by_user,
+                    audio_clip_metrics.like_count AS like_count,
+                    audio_clip_metrics.dislike_count AS dislike_count
                 FROM audio_clips
                 INNER JOIN events ON audio_clips.event_id = events.id
 				LEFT JOIN event_reply_queues ON events.id = event_reply_queues.event_id
@@ -1993,6 +2007,7 @@ class EventReplyChoicesAPI(generics.GenericAPIView):
 				LEFT JOIN excluded_users_2 ON audio_clips.user_id = excluded_users_2.id
                 LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
                     AND audio_clip_likes_dislikes.user_id = %s
+                LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
 				WHERE audio_clips.is_banned IS FALSE
 				''' + audio_clip_tone_sql + '''
 				AND event_reply_queues.id IS NULL
@@ -2165,13 +2180,17 @@ class EventReplyChoicesAPI(generics.GenericAPIView):
             ),
         ).raw(
             '''
-            SELECT audio_clips.*,
-                audio_clip_likes_dislikes.is_liked AS is_liked_by_user
+            SELECT
+                audio_clips.*,
+                audio_clip_likes_dislikes.is_liked AS is_liked_by_user,
+                audio_clip_metrics.like_count AS like_count,
+                audio_clip_metrics.dislike_count AS dislike_count
             FROM audio_clips
 			INNER JOIN event_reply_queues ON audio_clips.event_id = event_reply_queues.event_id
 				AND event_reply_queues.locked_for_user_id = %s
             LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
                 AND audio_clip_likes_dislikes.user_id = %s
+            LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
 			WHERE audio_clips.is_banned IS FALSE
             AND audio_clips.generic_status_id = (
                 SELECT id FROM generic_statuses
@@ -2778,13 +2797,26 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
 
         try:
 
-            audio_clip = AudioClips.objects.select_related('generic_status').get(pk=request_data['audio_clip_id'])
+            audio_clip = AudioClips.objects.select_related(
+                'generic_status',
+            ).get(
+                pk=request_data['audio_clip_id'],
+            )
 
             if audio_clip.generic_status.generic_status_name == 'deleted':
 
                 return Response(
                     data={
-                        'message': 'This recording has been deleted, and cannot accept any new likes or dislikes.',
+                        'message': 'This recording has been deleted, and cannot accept new likes and dislikes.',
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            elif audio_clip.generic_status.generic_status_name != 'ok':
+
+                return Response(
+                    data={
+                        'message': 'Recording is not available.',
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
@@ -2795,66 +2827,140 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
                 data={
                     'message': 'Recording does not exist.',
                 },
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_404_NOT_FOUND
             )
 
         #start
 
-        try:
+        if request_data['is_liked'] is None:
 
-            if request_data['is_liked'] is None:
+            #handle removing like/dislike
 
-                #this is safe from "performing deletion but no rows found"
-                AudioClipLikesDislikes.objects.filter(
-                    user_id=request.user.id,
-                    audio_clip_id=request_data['audio_clip_id']
-                ).delete()
+            try:
 
-            else:
-
-                #for value changes, use defaults arg
-                #irrelevant but notable behaviour:
-                    #update_or_create()'s psycopg.errors.ForeignKeyViolation exception cannot be caught here (during tests)
-                    #trying to catch at test's self.client.post() also didn't work
-                    #will still reach end and return 200
-                    #if using create(), the exception can be caught
-                    #steps to replicate: at tests, use FK that doesn't exist for audio_clip_id
-                    #current solution: check if audio_clip_id exists first
-                AudioClipLikesDislikes.objects.update_or_create(
-                    user_id=request.user.id,
-                    audio_clip_id=request_data['audio_clip_id'],
-                    defaults={'is_liked': request_data['is_liked']}
+                audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(
+                    user=request.user,
+                    audio_clip=request_data['audio_clip']
                 )
 
-        except IntegrityError as e:
+                with transaction.atomic():
 
-            if type(e.__context__) == UniqueViolation:
+                    #should always exist
+                    #don't catch error so system can log it
+                    audio_clip_metric = AudioClipMetrics.objects.select_for_update().get(
+                        audio_clip_id=request_data['audio_clip_id']
+                    )
 
-                #this is no big deal
-                #catches FK duplicates and when FK doesn't exist
-                pass
+                    if audio_clip_like_dislike.is_liked is True:
 
-            else:
+                        #remove like
+                        audio_clip_metric.like_count -= 1
+                        audio_clip_metric.like_ratio = audio_clip_metric.like_count / (audio_clip_metric.like_count + audio_clip_metric.dislike_count)
+                        audio_clip_metric.save()
 
-                traceback.print_exc()
+                    else:
 
+                        #remove dislike
+                        audio_clip_metric.dislike_count -= 1
+                        audio_clip_metric.like_ratio = audio_clip_metric.like_count / (audio_clip_metric.like_count + audio_clip_metric.dislike_count)
+                        audio_clip_metric.save()
+
+                    audio_clip_like_dislike.delete()
+
+            except AudioClipLikesDislikes.DoesNotExist:
+
+                #allows frontend to gracefully handle race condition
                 return Response(
                     data={
-                        'message': 'Unable to like and dislike this recording.',
+                        'expected_row_not_found': True,
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        except:
+        else:
 
-            traceback.print_exc()
+            #handle new like/dislike
 
-            return Response(
-                data={
-                    'message': 'Unable to like and dislike this recording.',
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            audio_clip_like_dislike = None
+
+            #don't use get_or_create(), because any existing row may be treated as "not found" when specifying is_liked
+            #enables handling of request_data['is_liked']=True and row.is_liked=True, request_data['is_liked']=True and row.is_liked=False
+            try:
+
+                audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(
+                    user=request.user,
+                    audio_clip=request_data['audio_clip'],
+                )
+
+                #row exists with identical state
+                #allow frontend to handle race condition gracefully
+
+                if request_data['is_liked'] == audio_clip_like_dislike.is_liked:
+
+                    return Response(
+                        data={
+                            'identical_is_liked': True,
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                #change like/dislike
+
+                with transaction.atomic():
+
+                    #should always exist
+                    #don't catch error so system can log it
+                    audio_clip_metric = AudioClipMetrics.objects.select_for_update().get(
+                        audio_clip_id=request_data['audio_clip_id']
+                    )
+
+                    if request_data['is_liked'] is True:
+
+                        #change to like
+                        audio_clip_metric.like_count += 1
+                        audio_clip_metric.like_ratio = audio_clip_metric.like_count / (audio_clip_metric.like_count + audio_clip_metric.dislike_count)
+                        audio_clip_metric.save()
+
+                    else:
+
+                        #change to dislike
+                        audio_clip_metric.dislike_count += 1
+                        audio_clip_metric.like_ratio = audio_clip_metric.like_count / (audio_clip_metric.like_count + audio_clip_metric.dislike_count)
+                        audio_clip_metric.save()
+
+
+            except AudioClipLikesDislikes.DoesNotExist:
+
+                #handling this scenario is more straightforward
+                #add new like/dislike
+
+                audio_clip_like_dislike = AudioClipLikesDislikes.objects.create(
+                    user=request.user,
+                    audio_clip=request_data['audio_clip'],
+                    is_liked=request_data['is_liked']
+                )
+
+                with transaction.atomic():
+
+                    #should always exist
+                    #don't catch error so system can log it
+                    audio_clip_metric = AudioClipMetrics.objects.select_for_update().get(
+                        audio_clip_id=request_data['audio_clip_id']
+                    )
+
+                    if audio_clip_like_dislike.is_liked is True:
+
+                        #add like
+                        audio_clip_metric.like_count += 1
+                        audio_clip_metric.like_ratio = audio_clip_metric.like_count / (audio_clip_metric.like_count + audio_clip_metric.dislike_count)
+                        audio_clip_metric.save()
+
+                    else:
+
+                        #add dislike
+                        audio_clip_metric.dislike_count += 1
+                        audio_clip_metric.like_ratio = audio_clip_metric.like_count / (audio_clip_metric.like_count + audio_clip_metric.dislike_count)
+                        audio_clip_metric.save()
 
         return Response(
             data={
@@ -3367,46 +3473,60 @@ class AudioClipBansAPI(generics.GenericAPIView):
 
             with transaction.atomic():
 
-                audio_clip = AudioClips.objects.select_for_update().select_related(
+                audio_clip = AudioClips.objects.select_for_update(of=('self', 'event', 'user')).select_related(
                     'audio_clip_role',
                     'event',
                     'user',
                 ).get(
                     pk=request_data['audio_clip_id'],
+                    generic_status__generic_status_name='ok',
                     is_banned=False,
                 )
 
                 audio_clip.is_banned = True
                 audio_clip.generic_status = generic_status_deleted
-                audio_clip.like_count = 0
-                audio_clip.dislike_count = 0
-                audio_clip.like_ratio = 0
                 audio_clip.save()
 
-                with connection.cursor() as cursor:
+                #remove relevant rows
 
-                    #delete all rows from AudioClipLikesDislikes while exiting trigger early
-                    #with 250000 rows, performance is 1s slower to 3s faster compared to completely disabling trigger at table
+                EventReplyQueues.objects.filter(event=audio_clip.event).delete()
+                AudioClipLikesDislikes.objects.filter(audio_clip=audio_clip).delete()
 
-                    cursor.execute('''SET LOCAL voicewake.skip_trigger_audio_clip_likes_dislikes = 1;''')
+                #handle event
 
-                    AudioClipLikesDislikes.objects.filter(audio_clip=audio_clip).delete()
+                if audio_clip.audio_clip_role.audio_clip_role_name == 'originator':
 
-                    #ensure param is only 1 during transaction
-                    check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
-                    cursor.execute(check_sql)
-                    skip_trigger = int(cursor.fetchone()[0])
-                    if skip_trigger == 0:
-                        raise ValueError('This line should not be reached.')
+                    #for originator, event always becomes 'deleted'
+                    audio_clip.event.generic_status = generic_status_deleted
+                    audio_clip.event.save()
 
-            with connection.cursor() as cursor:
+                elif (
+                    audio_clip.audio_clip_role.audio_clip_role_name == 'responder' and
+                    audio_clip.event.generic_status_id == generic_status_completed
+                ):
 
-                #ensure param is 0 outside of transaction
-                check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
-                cursor.execute(check_sql)
-                skip_trigger = int(cursor.fetchone()[0])
-                if skip_trigger == 1:
-                    raise ValueError('This line should not be reached.')
+                    #for responder, event changes from 'completed' to 'incomplete'
+                    audio_clip.event.generic_status = generic_status_incomplete
+                    audio_clip.event.save()
+
+                #ban user
+
+                ban_days = settings.CRONJOB_AUDIO_CLIP_BAN_DAYS ** audio_clip.user.ban_count
+
+                #cap ban_days, else it can get out of hand
+                if ban_days > settings.CRONJOB_AUDIO_CLIP_MAX_BAN_DAYS:
+
+                    ban_days = settings.CRONJOB_AUDIO_CLIP_MAX_BAN_DAYS
+
+                audio_clip.user.banned_until = get_datetime_now() + timedelta(days=ban_days)
+                audio_clip.user.save()
+
+                return Response(
+                    data={
+                        'message': 'Recording has been banned.',
+                    },
+                    status=status.HTTP_200_OK
+                )
 
         except AudioClips.DoesNotExist:
 
@@ -3417,60 +3537,19 @@ class AudioClipBansAPI(generics.GenericAPIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        #remove relevant rows
 
 
-        EventReplyQueues.objects.filter(event=audio_clip.event).delete()
-
-        #handle event
-
-        if audio_clip.audio_clip_role.audio_clip_role_name == 'originator':
-
-            #for originator, event always becomes 'deleted'
-            audio_clip.event.generic_status = generic_status_deleted
-            audio_clip.event.save()
-
-        elif (
-            audio_clip.audio_clip_role.audio_clip_role_name == 'responder' and
-            audio_clip.event.generic_status_id == generic_status_completed
-        ):
-
-            #for responder, event changes from 'completed' to 'incomplete'
-            audio_clip.event.generic_status = generic_status_incomplete
-            audio_clip.event.save()
-
-        #ban user
-
-        ban_days = settings.CRONJOB_AUDIO_CLIP_BAN_DAYS ** audio_clip.user.ban_count
-
-        #cap ban_days, else it can get out of hand
-        if ban_days > settings.CRONJOB_AUDIO_CLIP_MAX_BAN_DAYS:
-
-            ban_days = settings.CRONJOB_AUDIO_CLIP_MAX_BAN_DAYS
-
-        audio_clip.user.banned_until = get_datetime_now() + timedelta(days=ban_days)
-        audio_clip.user.save()
-
-        return Response(
-            data={
-                'message': 'Recording has been banned.',
-            },
-            status=status.HTTP_200_OK
-        )
-
-
-
-class AudioClipDeletionsAPI(generics.GenericAPIView):
+class AudioClipDeletionsAPI(generics.DestroyAPIView):
 
     serializer_class = None
     permission_classes = [IsAuthenticated]
 
 
-    def post(self, request, *args, **kwargs):
+    def delete(self, request, *args, **kwargs):
 
         #allow if user performing the action is superuser or is the one who created the audio_clip
 
-        serializer = PostAudioClipDeletionsAPISerializer(data=request.data, many=False)
+        serializer = DeleteAudioClipDeletionsAPISerializer(data=request.data, many=False)
 
         #validate
         if serializer.is_valid() is False:
@@ -3494,7 +3573,7 @@ class AudioClipDeletionsAPI(generics.GenericAPIView):
 
             with transaction.atomic():
 
-                audio_clip = AudioClips.objects.select_for_update().select_related(
+                audio_clip = AudioClips.objects.select_for_update(of=('self', 'event',)).select_related(
                     'audio_clip_role',
                     'event',
                 ).get(
@@ -3505,9 +3584,6 @@ class AudioClipDeletionsAPI(generics.GenericAPIView):
                 if request.user.is_superuser is True or request.user.id == audio_clip.user_id:
 
                     audio_clip.generic_status = generic_status_deleted
-                    audio_clip.like_count = 0
-                    audio_clip.dislike_count = 0
-                    audio_clip.like_ratio = 0
                     audio_clip.save()
 
                 else:
@@ -3519,30 +3595,34 @@ class AudioClipDeletionsAPI(generics.GenericAPIView):
                         status=status.HTTP_403_FORBIDDEN
                     )
 
-                with connection.cursor() as cursor:
+                #remove relevant rows
 
-                    #delete all rows from AudioClipLikesDislikes while exiting trigger early
-                    #with 250000 rows, performance is 1s slower to 3s faster compared to completely disabling trigger at table
+                EventReplyQueues.objects.filter(event=audio_clip.event).delete()
+                AudioClipLikesDislikes.objects.filter(audio_clip=audio_clip).delete()
 
-                    cursor.execute('''SET LOCAL voicewake.skip_trigger_audio_clip_likes_dislikes = 1;''')
+                #handle event
 
-                    AudioClipLikesDislikes.objects.filter(audio_clip=audio_clip).delete()
+                if audio_clip.audio_clip_role.audio_clip_role_name == 'originator':
 
-                    #ensure param is only 1 during transaction
-                    check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
-                    cursor.execute(check_sql)
-                    skip_trigger = int(cursor.fetchone()[0])
-                    if skip_trigger == 0:
-                        raise ValueError('This line should not be reached.')
+                    #for originator, event always becomes 'deleted'
+                    audio_clip.event.generic_status = generic_status_deleted
+                    audio_clip.event.save()
 
-            with connection.cursor() as cursor:
+                elif (
+                    audio_clip.audio_clip_role.audio_clip_role_name == 'responder' and
+                    audio_clip.event.generic_status_id == generic_status_completed
+                ):
 
-                #ensure param is 0 outside of transaction
-                check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
-                cursor.execute(check_sql)
-                skip_trigger = int(cursor.fetchone()[0])
-                if skip_trigger == 1:
-                    raise ValueError('This line should not be reached.')
+                    #for responder, event changes from 'completed' to 'incomplete'
+                    audio_clip.event.generic_status = generic_status_incomplete
+                    audio_clip.event.save()
+
+                return Response(
+                    data={
+                        'message': 'Recording has been deleted.',
+                    },
+                    status=status.HTTP_204_NO_CONTENT
+                )
 
         except AudioClips.DoesNotExist:
 
@@ -3553,33 +3633,9 @@ class AudioClipDeletionsAPI(generics.GenericAPIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        #remove relevant rows
 
-        EventReplyQueues.objects.filter(event=audio_clip.event).delete()
 
-        #handle event
 
-        if audio_clip.audio_clip_role.audio_clip_role_name == 'originator':
-
-            #for originator, event always becomes 'deleted'
-            audio_clip.event.generic_status = generic_status_deleted
-            audio_clip.event.save()
-
-        elif (
-            audio_clip.audio_clip_role.audio_clip_role_name == 'responder' and
-            audio_clip.event.generic_status_id == generic_status_completed
-        ):
-
-            #for responder, event changes from 'completed' to 'incomplete'
-            audio_clip.event.generic_status = generic_status_incomplete
-            audio_clip.event.save()
-
-        return Response(
-            data={
-                'message': 'Recording has been banned.',
-            },
-            status=status.HTTP_200_OK
-        )
 
 
 

@@ -172,9 +172,9 @@ class AudioClips(models.Model):
         #because otherwise, read operation scales horribly (260ms to 700ms vs. 40ms)
     id = models.BigAutoField(primary_key=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, default=None)
-    audio_clip_role = models.ForeignKey('AudioClipRoles', on_delete=models.PROTECT, blank=True, null=True, default=None)
-    audio_clip_tone = models.ForeignKey('AudioClipTones', on_delete=models.SET_NULL, blank=True, null=True, default=None)
-    event = models.ForeignKey('Events', on_delete=models.CASCADE, null=True, default=None)
+    audio_clip_role = models.ForeignKey('AudioClipRoles', on_delete=models.PROTECT, blank=False, null=False)
+    audio_clip_tone = models.ForeignKey('AudioClipTones', on_delete=models.SET_DEFAULT, blank=False, null=True, default=None)
+    event = models.ForeignKey('Events', on_delete=models.CASCADE, blank=False, null=False)
     generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)
     audio_file = models.CharField(max_length=300)   #no starting slash, so settings.MEDIA_ROOT + 'folder1/myfile.mp3'
     audio_duration_s = models.IntegerField(default=0)  #seconds, is not used for VPlayback functionality
@@ -184,9 +184,6 @@ class AudioClips(models.Model):
         null=True,
         default=None
     )
-    like_count = models.IntegerField(default=0)
-    dislike_count = models.IntegerField(default=0)
-    like_ratio = models.DecimalField(default=Decimal('0.00'), decimal_places=2, max_digits=3)   #0.00 to 1.00
     is_banned = models.BooleanField(default=False)
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
@@ -205,6 +202,21 @@ class AudioClips(models.Model):
                 fields=('last_modified', 'id',),
             ),
         ]
+
+
+class AudioClipMetrics(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    audio_clip = models.OneToOneField('AudioClips', on_delete=models.CASCADE)
+    like_count = models.IntegerField(default=0)
+    dislike_count = models.IntegerField(default=0)
+    like_ratio = models.DecimalField(default=Decimal('0.00'), decimal_places=2, max_digits=3)   #0.00 to 1.00
+    when_created = models.DateTimeField(auto_now_add=True)
+    last_modified = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = 'voicewake'
+        managed = True
+        db_table = 'audio_clip_metrics'
 
 
 #on ban_decision becoming from None to True/False, delete all other rows with the same reported_audio_clip

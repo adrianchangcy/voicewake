@@ -657,7 +657,7 @@ class PostAudioClipBansAPISerializer(serializers.Serializer):
 
 
 
-class PostAudioClipDeletionsAPISerializer(serializers.Serializer):
+class DeleteAudioClipDeletionsAPISerializer(serializers.Serializer):
 
     audio_clip_id = serializers.IntegerField()
 

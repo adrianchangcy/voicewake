@@ -102,7 +102,21 @@ class Random_TestCase(TestCase):
 
     def test_random(self):
 
-        pass
+        event = EventsFactory(
+            event_name='yolo',
+            created_by=self.users[0],
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+        ac = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            event=event,
+        )
+        acm = AudioClipMetrics(
+            audio_clip=ac,
+        )
+
+        AudioClips.objects.get(pk=ac.id)
 
 
 
@@ -826,7 +840,7 @@ class AudioClips_TestCase(TestCase):
         #webm/opus works
         #https://dirask.com/posts/JavaScript-supported-Audio-Video-MIME-Types-by-MediaRecorder-Chrome-and-Firefox-jERn81
 
-        # audio_file = 'audio-clips/year_2023/month_7/day_21/user_id_1/e_13.webm'
+        # audio_clip_audio_file='audio-clips/year_2023/month_7/day_21/user_id_1/e_13.webm'
 
         handle_audio_file_class = AWSLambdaNormaliseAudioClips(
             is_lambda=False,
@@ -856,36 +870,15 @@ class Core_TestCase(TestCase):
 
         cls.datetime_now = get_datetime_now()
 
-        #normal users
-        cls.users = []
-
-        for x in range(0, 6):
-
-            current_user = get_user_model().objects.create_user(
-                username='useR'+str(x),
-                email='user'+str(x)+'@gmail.com',
-            )
-
-            current_user.is_active = True
-            current_user.save()
-
-            cls.users.append(current_user)
-
-        cls.banned_users = []
-
-        for x in range(0, 6):
-
-            current_user = get_user_model().objects.create_user(
-                username='bannedUseR'+str(x),
-                email='bannedUser'+str(x)+'@gmail.com',
-            )
-
-            current_user.is_active = True
-            current_user.ban_count = 1
-            current_user.banned_until = datetime.now(timezone.utc) + relativedelta(months=1)
-            current_user.save()
-
-            cls.banned_users.append(current_user)
+        #users
+        cls.users = UsersFactory.create_batch(
+            size=6,
+        )
+        cls.banned_users = UsersFactory.create_batch(
+            is_banned=True,
+            ban_count=1,
+            size=6,
+        )
 
         #audio file
         cls.audio_file_full_path = os.path.join(settings.BASE_DIR, 'voicewake/tests/file_samples/audio_can_overwrite.mp3')
@@ -961,15 +954,6 @@ class Core_TestCase(TestCase):
         #need this to auto-reset via seek(0)
         self.bad_file.seek(0)
         return self.bad_file
-
-
-    def create_event(self, created_by, generic_status_name="incomplete"):
-
-        return Events.objects.create(
-            event_name="yolo",
-            created_by=created_by,
-            generic_status=GenericStatuses.objects.get(generic_status_name=generic_status_name)
-        )
 
 
     def create_event_reply_queue(self, event_id:int, locked_for_user_id:int, is_replying:bool, when_locked:datetime):
@@ -1308,11 +1292,15 @@ class Core_TestCase(TestCase):
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user = self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
-            audio_clip_event = sample_event_0,
-            audio_clip_audio_file = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
-            audio_clip_generic_status_generic_status_name = 'processing',
+            audio_clip_audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_audio_file='yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #proceed
@@ -1345,11 +1333,15 @@ class Core_TestCase(TestCase):
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user = self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
-            audio_clip_event = sample_event_0,
-            audio_clip_audio_file = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
-            audio_clip_generic_status_generic_status_name = 'processing',
+            audio_clip_audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_audio_file='yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #proceed
@@ -1383,11 +1375,15 @@ class Core_TestCase(TestCase):
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user = self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
-            audio_clip_event = sample_event_0,
-            audio_clip_audio_file = 'yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
-            audio_clip_generic_status_generic_status_name = 'ok',
+            audio_clip_audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_audio_file='yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #proceed
@@ -1426,11 +1422,15 @@ class Core_TestCase(TestCase):
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user = self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
-            audio_clip_event = sample_event_0,
-            audio_clip_audio_file = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
-            audio_clip_generic_status_generic_status_name = 'processing',
+            audio_clip_audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_audio_file='yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #proceed
@@ -1455,11 +1455,15 @@ class Core_TestCase(TestCase):
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user = self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
-            audio_clip_event = sample_event_0,
-            audio_clip_audio_file = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
-            audio_clip_generic_status_generic_status_name = 'processing',
+            audio_clip_audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_audio_file='yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #proceed
@@ -1484,11 +1488,15 @@ class Core_TestCase(TestCase):
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user = self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
-            audio_clip_event = sample_event_0,
-            audio_clip_audio_file = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
-            audio_clip_generic_status_generic_status_name = 'processing',
+            audio_clip_audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_audio_file='yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #proceed
@@ -1511,11 +1519,15 @@ class Core_TestCase(TestCase):
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user = self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
-            audio_clip_event = sample_event_0,
-            audio_clip_audio_file = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
-            audio_clip_generic_status_generic_status_name = 'processing',
+            audio_clip_audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_audio_file='yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #proceed
@@ -1547,11 +1559,15 @@ class Core_TestCase(TestCase):
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user = self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
-            audio_clip_event = sample_event_0,
-            audio_clip_audio_file = 'yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
-            audio_clip_generic_status_generic_status_name = 'ok',
+            audio_clip_audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_audio_file='yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #proceed
@@ -1581,7 +1597,10 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #set cache
@@ -1634,7 +1653,11 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing_max_attempts_reached',
+            generic_status_name='processing_max_attempts_reached',
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #no cache
@@ -1676,11 +1699,15 @@ class Core_TestCase(TestCase):
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user = self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
-            audio_clip_event = sample_event_0,
-            audio_clip_audio_file = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
-            audio_clip_generic_status_generic_status_name = 'processing',
+            audio_clip_audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_audio_file='yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #proceed
@@ -1705,11 +1732,15 @@ class Core_TestCase(TestCase):
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user = self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
-            audio_clip_event = sample_event_0,
-            audio_clip_audio_file = 'yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
-            audio_clip_generic_status_generic_status_name = 'processing',
+            audio_clip_audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_audio_file='yolofolder/yolofile.' + settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS[0],
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #proceed
@@ -1734,11 +1765,15 @@ class Core_TestCase(TestCase):
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user = self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
-            audio_clip_event = sample_event_0,
-            audio_clip_audio_file = 'yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
-            audio_clip_generic_status_generic_status_name = 'processing',
+            audio_clip_audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_audio_file='yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #proceed
@@ -1761,11 +1796,15 @@ class Core_TestCase(TestCase):
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user = self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
-            audio_clip_event = sample_event_0,
-            audio_clip_audio_file = 'yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
-            audio_clip_generic_status_generic_status_name = 'processing',
+            audio_clip_audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_audio_file='yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #proceed
@@ -1793,15 +1832,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #start
@@ -1835,15 +1878,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -1888,15 +1935,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -1941,15 +1992,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -1993,15 +2048,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2045,15 +2104,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2095,15 +2158,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2145,9 +2212,9 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         #start
@@ -2171,15 +2238,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "completed"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="completed",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_user_event_0 = self.create_user_event(
@@ -2195,15 +2266,23 @@ class Core_TestCase(TestCase):
             audio_clip_generic_status_generic_status_name='ok',
         )
 
-        sample_event_1 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
+
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_2 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_1,
+        )
+
+        sample_audio_clip_metric_2 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_2,
         )
 
         #start
@@ -2226,7 +2305,7 @@ class Core_TestCase(TestCase):
 
             self.assertFalse(
                 EventReplyQueues.objects.filter(
-                    locked_for_user=self.users[1], event_id=sample_event_1.id, is_replying=False
+                    locked_for_audio_clip_user=self.users[1], event_id=sample_event_1.id, is_replying=False
                 ).exists()
             )
             self.assertTrue('message' in response_data)
@@ -2254,7 +2333,7 @@ class Core_TestCase(TestCase):
 
             self.assertFalse(
                 EventReplyQueues.objects.filter(
-                    locked_for_user=self.users[1], event_id=sample_event_1.id, is_replying=False
+                    locked_for_audio_clip_user=self.users[1], event_id=sample_event_1.id, is_replying=False
                 ).exists()
             )
             self.assertTrue('message' in response_data)
@@ -2268,15 +2347,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #start
@@ -2317,15 +2400,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #start
@@ -2367,15 +2454,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         new_when_created = (get_datetime_now() - timedelta(seconds=(settings.EVENT_INCOMPLETE_QUEUE_MAX_AGE_S * 2)))
@@ -2412,15 +2503,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #start
@@ -2448,15 +2543,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         user_block_0 = self.create_user_block(user_id=self.users[1].id, blocked_user_id=self.users[0].id)
@@ -2486,15 +2585,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         user_block_0 = self.create_user_block(user_id=self.users[0].id, blocked_user_id=self.users[1].id)
@@ -2526,15 +2629,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2565,15 +2672,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #ensure when_locked does not change
@@ -2590,9 +2701,9 @@ class Core_TestCase(TestCase):
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
-        sample_event_1 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_1 = AudioClipsFactory(
@@ -2601,6 +2712,9 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_1,
         )
 
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
         #start
 
         self.login(self.users[1])
@@ -2627,15 +2741,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #simply ensure when_locked changes
@@ -2652,9 +2770,9 @@ class Core_TestCase(TestCase):
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
-        sample_event_1 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_1 = AudioClipsFactory(
@@ -2663,6 +2781,9 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_1,
         )
 
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
         #start
 
         self.login(self.users[1])
@@ -2679,7 +2800,7 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         new_event_id = response_data['data'][0]['event']['id']
-        new_user_event = UserEvents.objects.get(user=self.users[1], event_id=new_event_id)
+        new_user_event = UserEvents.objects.get(audio_clip_user=self.users[1], event_id=new_event_id)
 
         self.assertEqual(EventReplyQueues.objects.all().count(), 1)
         self.assertEqual(UserEvents.objects.all().count(), 2)
@@ -2692,15 +2813,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2716,9 +2841,9 @@ class Core_TestCase(TestCase):
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
-        sample_event_1 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_1 = AudioClipsFactory(
@@ -2727,6 +2852,9 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_1,
         )
 
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
         #start
 
         self.login(self.users[1])
@@ -2743,7 +2871,7 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         new_event_id = response_data['data'][0]['event']['id']
-        new_user_event = UserEvents.objects.get(user=self.users[1], event_id=new_event_id)
+        new_user_event = UserEvents.objects.get(audio_clip_user=self.users[1], event_id=new_event_id)
 
         self.assertEqual(EventReplyQueues.objects.all().count(), 1)
         self.assertEqual(UserEvents.objects.all().count(), 2)
@@ -2755,15 +2883,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2779,9 +2911,9 @@ class Core_TestCase(TestCase):
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
-        sample_event_1 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_1 = AudioClipsFactory(
@@ -2790,6 +2922,9 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_1,
         )
 
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
         #start
 
         self.login(self.users[1])
@@ -2806,7 +2941,7 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         new_event_id = response_data['data'][0]['event']['id']
-        new_user_event = UserEvents.objects.get(user=self.users[1], event_id=new_event_id)
+        new_user_event = UserEvents.objects.get(audio_clip_user=self.users[1], event_id=new_event_id)
 
         self.assertEqual(EventReplyQueues.objects.all().count(), 1)
         self.assertEqual(UserEvents.objects.all().count(), 2)
@@ -2818,16 +2953,20 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "deleted"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="deleted",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='deleted'
+            generic_status_name='deleted'
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #start
@@ -2867,15 +3006,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2925,15 +3068,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -2964,7 +3111,7 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.users[1], event_id=sample_event_0.id)
+        event_reply_queue = EventReplyQueues.objects.get(locked_for_audio_clip_user=self.users[1], event_id=sample_event_0.id)
 
         self.assertFalse(event_reply_queue.is_replying)
 
@@ -2973,15 +3120,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -3012,7 +3163,7 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.users[1], event_id=sample_event_0.id)
+        event_reply_queue = EventReplyQueues.objects.get(locked_for_audio_clip_user=self.users[1], event_id=sample_event_0.id)
 
         self.assertFalse(event_reply_queue.is_replying)
 
@@ -3021,15 +3172,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #start
@@ -3049,15 +3204,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -3092,7 +3251,7 @@ class Core_TestCase(TestCase):
         self.assertEqual(EventReplyQueues.objects.all().count(), 0)
         self.assertEqual(
             UserEvents.objects.filter(
-                user=self.users[1],
+                audio_clip_user=self.users[1],
                 event_id=sample_event_0,
                 when_excluded_for_reply__isnull=False
             ).count(),
@@ -3104,17 +3263,20 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "deleted"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="deleted",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user = self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
-            audio_clip_event = sample_event_0,
-            audio_clip_generic_status_generic_status_name = 'deleted',
-            audio_clip_is_deleted = True,
+            audio_clip_audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='deleted',
+            audio_clip_is_deleted = True
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -3149,7 +3311,7 @@ class Core_TestCase(TestCase):
         self.assertEqual(EventReplyQueues.objects.all().count(), 0)
         self.assertEqual(
             UserEvents.objects.filter(
-                user=self.users[1],
+                audio_clip_user=self.users[1],
                 event_id=sample_event_0.id,
                 when_excluded_for_reply__isnull=False
             ).count(),
@@ -3161,15 +3323,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -3200,19 +3366,19 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        event_reply_queue = EventReplyQueues.objects.get(event_id=sample_event_0.id, locked_for_user=self.users[2])
+        event_reply_queue = EventReplyQueues.objects.get(event_id=sample_event_0.id, locked_for_audio_clip_user=self.users[2])
 
         self.assertEqual(EventReplyQueues.objects.all().count(), 1)
         self.assertEqual(
             UserEvents.objects.filter(
-                user=self.users[2],
+                audio_clip_user=self.users[2],
                 event_id=sample_event_0,
                 when_excluded_for_reply__isnull=False
             ).count(),
             1
         )
-        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1]).exists())
-        self.assertFalse(UserEvents.objects.filter(user=self.users[1]).exists())
+        self.assertFalse(EventReplyQueues.objects.filter(locked_for_audio_clip_user=self.users[1]).exists())
+        self.assertFalse(UserEvents.objects.filter(audio_clip_user=self.users[1]).exists())
 
 
     def test_create_replies__upload__ok(self):
@@ -3230,6 +3396,10 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -3304,6 +3474,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
             locked_for_user_id=self.users[1].id,
@@ -3332,11 +3506,11 @@ class Core_TestCase(TestCase):
         #check
 
         self.assertEqual(
-            AudioClips.objects.filter(user=self.users[1]).count(),
+            AudioClips.objects.filter(audio_clip_user=self.users[1]).count(),
             1
         )
         self.assertEqual(
-            AudioClips.objects.filter(user=self.users[1]).first().audio_clip_tone_id,
+            AudioClips.objects.filter(audio_clip_user=self.users[1]).first().audio_clip_tone_id,
             data['audio_clip_tone_id']
         )
         self.assertTrue(
@@ -3365,7 +3539,7 @@ class Core_TestCase(TestCase):
 
         #check
 
-        self.assertEqual(AudioClips.objects.filter(user=self.users[1]).count(), 1)
+        self.assertEqual(AudioClips.objects.filter(audio_clip_user=self.users[1]).count(), 1)
         self.assertTrue(
             EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
         )
@@ -3388,15 +3562,23 @@ class Core_TestCase(TestCase):
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user = self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
-            audio_clip_event = sample_event_0,
+            audio_clip_audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user = self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name = 'responder',
-            audio_clip_event = sample_event_0,
+            audio_clip_audio_clip_user=self.users[1],
+            audio_clip_role_name = 'responder',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #proceed
@@ -3432,6 +3614,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         #start
 
         data = {
@@ -3461,6 +3647,10 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -3505,6 +3695,10 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -3554,9 +3748,10 @@ class Core_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='deleted',
-            audio_clip_is_deleted=True,
         )
-
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
             locked_for_user_id=self.users[1].id,
@@ -3605,6 +3800,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
             locked_for_user_id=self.users[2].id,
@@ -3643,6 +3842,9 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_1,
         )
 
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
         sample_event_reply_queue_1 = self.create_event_reply_queue(
             event_id=sample_event_1.id,
             locked_for_user_id=self.users[1].id,
@@ -3684,6 +3886,10 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -3744,6 +3950,10 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -3807,6 +4017,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
             locked_for_user_id=self.users[1].id,
@@ -3824,7 +4038,11 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         #proceed
@@ -3872,6 +4090,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
             locked_for_user_id=self.users[1].id,
@@ -3889,7 +4111,11 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         #proceed
@@ -3928,6 +4154,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_user_event_0 = self.create_user_event(
             self.users[1].id,
             sample_event_0.id,
@@ -3939,6 +4169,10 @@ class Core_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         #proceed
@@ -3982,6 +4216,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
             locked_for_user_id=self.users[1].id,
@@ -3999,7 +4237,11 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         #other responder
@@ -4013,6 +4255,10 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_2 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_2,
         )
 
         sample_event_reply_queue_1 = self.create_event_reply_queue(
@@ -4032,7 +4278,11 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[2],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_3 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_3,
         )
 
         #proceed
@@ -4062,6 +4312,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
             locked_for_user_id=self.users[1].id,
@@ -4079,7 +4333,11 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         #proceed
@@ -4109,6 +4367,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
             locked_for_user_id=self.users[1].id,
@@ -4126,7 +4388,11 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         #proceed
@@ -4154,6 +4420,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
             locked_for_user_id=self.users[1].id,
@@ -4171,7 +4441,11 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         #proceed
@@ -4208,6 +4482,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_user_event_0 = self.create_user_event(
             self.users[1].id,
             sample_event_0.id,
@@ -4219,6 +4497,10 @@ class Core_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         #proceed
@@ -4250,6 +4532,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_user_event_0 = self.create_user_event(
             self.users[1].id,
             sample_event_0.id,
@@ -4267,7 +4553,11 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         #set cache
@@ -4329,6 +4619,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_user_event_0 = self.create_user_event(
             self.users[1].id,
             sample_event_0.id,
@@ -4339,7 +4633,11 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing_max_attempts_reached',
+            generic_status_name='processing_max_attempts_reached',
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         #no cache
@@ -4395,6 +4693,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_user_event_0 = self.create_user_event(
             self.users[2].id,
             sample_event_0.id,
@@ -4405,7 +4707,11 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[2],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         #proceed
@@ -4434,6 +4740,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_user_event_0 = self.create_user_event(
             self.users[1].id,
             sample_event_0.id,
@@ -4451,7 +4761,11 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         #set cache
@@ -4510,6 +4824,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_user_event_0 = self.create_user_event(
             self.users[1].id,
             sample_event_0.id,
@@ -4520,7 +4838,11 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         #proceed
@@ -4547,6 +4869,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_user_event_0 = self.create_user_event(
             self.users[1].id,
             sample_event_0.id,
@@ -4557,7 +4883,11 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         #proceed
@@ -4583,15 +4913,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -4624,25 +4958,29 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
+        self.assertFalse(EventReplyQueues.objects.filter(locked_for_audio_clip_user=self.users[1], event_id=sample_event_0.id).exists())
         self.assertEqual(Events.objects.count(), 1)
         self.assertEqual(AudioClips.objects.count(), 1)
-        self.assertTrue(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0.id).exists())
+        self.assertTrue(UserEvents.objects.filter(audio_clip_user=self.users[1], event_id=sample_event_0.id).exists())
 
 
     def test_cancel_reply_with_missing_args(self):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -4675,15 +5013,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -4717,15 +5059,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #start
@@ -4746,15 +5092,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -4789,13 +5139,13 @@ class Core_TestCase(TestCase):
 
         self.assertTrue(
             EventReplyQueues.objects.filter(
-                locked_for_user=self.users[1],
+                locked_for_audio_clip_user=self.users[1],
                 event_id=sample_event_0.id
             ).exists()
         )
         self.assertEqual(Events.objects.count(), 1)
         self.assertEqual(AudioClips.objects.count(), 1)
-        self.assertTrue(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0.id).exists())
+        self.assertTrue(UserEvents.objects.filter(audio_clip_user=self.users[1], event_id=sample_event_0.id).exists())
 
         self.assertTrue('can_retry' in response_data)
         self.assertFalse(response_data['can_retry'])
@@ -4805,15 +5155,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -4846,27 +5200,30 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertTrue(EventReplyQueues.objects.filter(locked_for_user=self.users[2], event_id=sample_event_0.id).exists())
+        self.assertTrue(EventReplyQueues.objects.filter(locked_for_audio_clip_user=self.users[2], event_id=sample_event_0.id).exists())
         self.assertEqual(Events.objects.count(), 1)
         self.assertEqual(AudioClips.objects.count(), 1)
-        self.assertTrue(UserEvents.objects.filter(user=self.users[2], event_id=sample_event_0.id).exists())
+        self.assertTrue(UserEvents.objects.filter(audio_clip_user=self.users[2], event_id=sample_event_0.id).exists())
 
 
     def test_cancel_reply_but_event_is_deleted(self):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "deleted"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="deleted",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user = self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
-            audio_clip_event = sample_event_0,
-            audio_clip_generic_status_generic_status_name = 'deleted',
-            audio_clip_is_deleted = True,
+            audio_clip_audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='deleted',
+            audio_clip_is_deleted = True
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -4899,25 +5256,29 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
+        self.assertFalse(EventReplyQueues.objects.filter(locked_for_audio_clip_user=self.users[1], event_id=sample_event_0.id).exists())
         self.assertEqual(Events.objects.count(), 1)
         self.assertEqual(AudioClips.objects.count(), 1)
-        self.assertTrue(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0.id).exists())
+        self.assertTrue(UserEvents.objects.filter(audio_clip_user=self.users[1], event_id=sample_event_0.id).exists())
 
 
     def test_cancel_reply_still_processing(self):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -4937,7 +5298,11 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         #set cache
@@ -4979,11 +5344,11 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
+        self.assertFalse(EventReplyQueues.objects.filter(locked_for_audio_clip_user=self.users[1], event_id=sample_event_0.id).exists())
         self.assertEqual(Events.objects.count(), 1)
         self.assertEqual(AudioClips.objects.count(), 2)
         self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
-        self.assertTrue(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0.id).exists())
+        self.assertTrue(UserEvents.objects.filter(audio_clip_user=self.users[1], event_id=sample_event_0.id).exists())
 
         target_cache = cache.get(target_cache_key, None)
 
@@ -4995,15 +5360,19 @@ class Core_TestCase(TestCase):
 
         #prepare
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #start
@@ -5034,18 +5403,20 @@ class Core_TestCase(TestCase):
 
         #prepare
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user = self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
-            audio_clip_event = sample_event_0,
-            audio_clip_generic_status_generic_status_name = 'processing',
+            audio_clip_audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
         )
-
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
         #start
 
         self.login(self.users[1])
@@ -5070,15 +5441,19 @@ class Core_TestCase(TestCase):
 
         #prepare
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #start
@@ -5106,15 +5481,19 @@ class Core_TestCase(TestCase):
 
         #prepare
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #start
@@ -5143,15 +5522,19 @@ class Core_TestCase(TestCase):
 
         #prepare
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #start
@@ -5180,15 +5563,19 @@ class Core_TestCase(TestCase):
 
         #prepare
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_audio_clip_report_0 = AudioClipReports.objects.create(
@@ -5225,17 +5612,20 @@ class Core_TestCase(TestCase):
 
         #prepare
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user = self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name = 'originator',
-            audio_clip_event = sample_event_0,
-            audio_clip_generic_status_generic_status_name = 'deleted',
-            audio_clip_is_deleted = True,
+            audio_clip_audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='deleted',
+            audio_clip_is_deleted = True
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_audio_clip_report_0 = AudioClipReports.objects.create(
@@ -5271,15 +5661,19 @@ class Core_TestCase(TestCase):
 
         #prepare
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #start
@@ -5417,8 +5811,8 @@ class Core_TestCase(TestCase):
         #fill to limit
         UserBlocks.objects.bulk_create(
             [
-                UserBlocks(user=self.users[0], blocked_user=self.users[1]),
-                UserBlocks(user=self.users[0], blocked_user=self.users[2]),
+                UserBlocks(audio_clip_user=self.users[0], blocked_audio_clip_user=self.users[1]),
+                UserBlocks(audio_clip_user=self.users[0], blocked_audio_clip_user=self.users[2]),
             ]
         )
 
@@ -5566,7 +5960,7 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertEqual(UserBlocks.objects.filter(user=self.users[0], blocked_user=self.banned_users[1]).count(), 1)
+        self.assertEqual(UserBlocks.objects.filter(audio_clip_user=self.users[0], blocked_audio_clip_user=self.banned_users[1]).count(), 1)
 
 
     def test_user_block__get_has_rows(self):
@@ -5574,8 +5968,8 @@ class Core_TestCase(TestCase):
         self.login(self.users[0])
 
         UserBlocks.objects.bulk_create([
-            UserBlocks(user=self.users[0], blocked_user=self.users[1]),
-            UserBlocks(user=self.users[0], blocked_user=self.users[2]),
+            UserBlocks(audio_clip_user=self.users[0], blocked_audio_clip_user=self.users[1]),
+            UserBlocks(audio_clip_user=self.users[0], blocked_audio_clip_user=self.users[2]),
         ])
 
         request = self.client.get(reverse('user_blocks_api'))
@@ -5709,7 +6103,7 @@ class Core_TestCase(TestCase):
         self.login(self.users[0])
 
         UserBlocks.objects.bulk_create([
-            UserBlocks(user=self.users[0], blocked_user=self.users[1]),
+            UserBlocks(audio_clip_user=self.users[0], blocked_audio_clip_user=self.users[1]),
         ])
 
         self.login(self.users[0])
@@ -5841,8 +6235,8 @@ class Core_TestCase(TestCase):
     def test_user_block__get_has_rows__has_banned_user(self):
 
         UserBlocks.objects.bulk_create([
-            UserBlocks(user=self.users[0], blocked_user=self.users[1]),
-            UserBlocks(user=self.users[0], blocked_user=self.banned_users[1]),
+            UserBlocks(audio_clip_user=self.users[0], blocked_audio_clip_user=self.users[1]),
+            UserBlocks(audio_clip_user=self.users[0], blocked_audio_clip_user=self.banned_users[1]),
         ])
 
         self.login(self.users[0])
@@ -5861,8 +6255,8 @@ class Core_TestCase(TestCase):
     def test_user_block__get_has_rows__has_only_banned_users(self):
 
         UserBlocks.objects.bulk_create([
-            UserBlocks(user=self.users[0], blocked_user=self.banned_users[1]),
-            UserBlocks(user=self.users[0], blocked_user=self.banned_users[2]),
+            UserBlocks(audio_clip_user=self.users[0], blocked_audio_clip_user=self.banned_users[1]),
+            UserBlocks(audio_clip_user=self.users[0], blocked_audio_clip_user=self.banned_users[2]),
         ])
 
         self.login(self.users[0])
@@ -5881,8 +6275,8 @@ class Core_TestCase(TestCase):
     def test_user_block__unblock_banned_user(self):
 
         UserBlocks.objects.bulk_create([
-            UserBlocks(user=self.users[0], blocked_user=self.users[1]),
-            UserBlocks(user=self.users[0], blocked_user=self.banned_users[1]),
+            UserBlocks(audio_clip_user=self.users[0], blocked_audio_clip_user=self.users[1]),
+            UserBlocks(audio_clip_user=self.users[0], blocked_audio_clip_user=self.banned_users[1]),
         ])
 
         self.login(self.users[0])
@@ -5923,7 +6317,7 @@ class Core_TestCase(TestCase):
             current_user.is_active = True
             current_user.save()
 
-            user_blocks.append(UserBlocks(user=self.users[0], blocked_user=current_user))
+            user_blocks.append(UserBlocks(audio_clip_user=self.users[0], blocked_user=current_user))
 
         UserBlocks.objects.bulk_create(user_blocks)
 
@@ -5948,7 +6342,7 @@ class Core_TestCase(TestCase):
 
         with self.assertNumQueries(1):
 
-            result = UserBlocks.objects.select_related('blocked_user').filter(user=self.users[0]).order_by('when_created').values_list('blocked_user__username')
+            result = UserBlocks.objects.select_related('blocked_user').filter(audio_clip_user=self.users[0]).order_by('when_created').values_list('blocked_user__username')
             print(len(result))
             print(result[0][0])
 
@@ -5957,15 +6351,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #start
@@ -5997,15 +6395,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #start
@@ -6048,9 +6450,9 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -6059,14 +6461,18 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         #start
 
         self.login(self.users[1])
 
-        self.assertEqual(sample_audio_clip_0.like_count, 0)
-        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
-        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
-        self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[1]).exists())
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
+        self.assertFalse(AudioClipLikesDislikes.objects.filter(audio_clip_user=self.users[1]).exists())
 
         data = {
             'audio_clip_id': sample_audio_clip_0.id,
@@ -6083,11 +6489,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         sample_audio_clip_0.refresh_from_db()
-        audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(user=self.users[1])
+        audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(audio_clip_user=self.users[1])
 
-        self.assertEqual(sample_audio_clip_0.like_count, 1)
-        self.assertEqual(sample_audio_clip_0.like_ratio, 1)
-        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 1)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 1)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
 
         self.assertEqual(audio_clip_like_dislike.audio_clip_id, sample_audio_clip_0.id)
         self.assertTrue(audio_clip_like_dislike.is_liked)
@@ -6108,20 +6514,20 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         sample_audio_clip_0.refresh_from_db()
-        self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[1]).exists())
+        self.assertFalse(AudioClipLikesDislikes.objects.filter(audio_clip_user=self.users[1]).exists())
 
-        self.assertEqual(sample_audio_clip_0.like_count, 0)
-        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
-        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
 
 
     def test_audio_clip_like_dislike__create_and_delete__dislike(self):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -6130,14 +6536,18 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         #start
 
         self.login(self.users[1])
 
-        self.assertEqual(sample_audio_clip_0.like_count, 0)
-        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
-        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
-        self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[1]).exists())
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
+        self.assertFalse(AudioClipLikesDislikes.objects.filter(audio_clip_user=self.users[1]).exists())
 
         data = {
             'audio_clip_id': sample_audio_clip_0.id,
@@ -6154,11 +6564,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         sample_audio_clip_0.refresh_from_db()
-        audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(user=self.users[1])
+        audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(audio_clip_user=self.users[1])
 
-        self.assertEqual(sample_audio_clip_0.like_count, 0)
-        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
-        self.assertEqual(sample_audio_clip_0.dislike_count, 1)
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 1)
 
         self.assertEqual(audio_clip_like_dislike.audio_clip_id, sample_audio_clip_0.id)
         self.assertFalse(audio_clip_like_dislike.is_liked)
@@ -6179,20 +6589,20 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         sample_audio_clip_0.refresh_from_db()
-        self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[1]).exists())
+        self.assertFalse(AudioClipLikesDislikes.objects.filter(audio_clip_user=self.users[1]).exists())
 
-        self.assertEqual(sample_audio_clip_0.like_count, 0)
-        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
-        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
 
 
     def test_audio_clip_like_dislike__random_audio_clip_like_dislike_chaining(self):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -6201,14 +6611,18 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         #start
 
         self.login(self.users[1])
 
-        self.assertEqual(sample_audio_clip_0.like_count, 0)
-        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
-        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
-        self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[1]).exists())
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
+        self.assertFalse(AudioClipLikesDislikes.objects.filter(audio_clip_user=self.users[1]).exists())
 
         data = {
             'audio_clip_id': sample_audio_clip_0.id,
@@ -6225,11 +6639,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         sample_audio_clip_0.refresh_from_db()
-        audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(user=self.users[1])
+        audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(audio_clip_user=self.users[1])
 
-        self.assertEqual(sample_audio_clip_0.like_count, 1)
-        self.assertEqual(sample_audio_clip_0.like_ratio, 1)
-        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 1)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 1)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
 
         self.assertEqual(audio_clip_like_dislike.audio_clip_id, sample_audio_clip_0.id)
         self.assertTrue(audio_clip_like_dislike.is_liked)
@@ -6251,11 +6665,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         sample_audio_clip_0.refresh_from_db()
-        audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(user=self.users[1])
+        audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(audio_clip_user=self.users[1])
 
-        self.assertEqual(sample_audio_clip_0.like_count, 0)
-        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
-        self.assertEqual(sample_audio_clip_0.dislike_count, 1)
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 1)
 
         self.assertEqual(audio_clip_like_dislike.audio_clip_id, sample_audio_clip_0.id)
         self.assertFalse(audio_clip_like_dislike.is_liked)
@@ -6277,11 +6691,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         sample_audio_clip_0.refresh_from_db()
-        audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(user=self.users[1])
+        audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(audio_clip_user=self.users[1])
 
-        self.assertEqual(sample_audio_clip_0.like_count, 1)
-        self.assertEqual(sample_audio_clip_0.like_ratio, 1)
-        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 1)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 1)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
 
         self.assertEqual(audio_clip_like_dislike.audio_clip_id, sample_audio_clip_0.id)
         self.assertTrue(audio_clip_like_dislike.is_liked)
@@ -6303,11 +6717,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         sample_audio_clip_0.refresh_from_db()
-        self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[1]).exists())
+        self.assertFalse(AudioClipLikesDislikes.objects.filter(audio_clip_user=self.users[1]).exists())
 
-        self.assertEqual(sample_audio_clip_0.like_count, 0)
-        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
-        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
 
         #like
 
@@ -6326,11 +6740,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         sample_audio_clip_0.refresh_from_db()
-        audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(user=self.users[1])
+        audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(audio_clip_user=self.users[1])
 
-        self.assertEqual(sample_audio_clip_0.like_count, 1)
-        self.assertEqual(sample_audio_clip_0.like_ratio, 1)
-        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 1)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 1)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
 
         self.assertEqual(audio_clip_like_dislike.audio_clip_id, sample_audio_clip_0.id)
         self.assertTrue(audio_clip_like_dislike.is_liked)
@@ -6340,15 +6754,19 @@ class Core_TestCase(TestCase):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "incomplete"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         def do_request(target_user, is_liked:bool|None):
@@ -6415,17 +6833,17 @@ class Core_TestCase(TestCase):
 
                 raise AssertionError('is_liked did not match.')
 
-        self.assertEqual(sample_audio_clip_0.like_count, is_liked_total_count['true'])
-        self.assertEqual(sample_audio_clip_0.dislike_count, is_liked_total_count['false'])
+        self.assertEqual(sample_audio_clip_metric_0.like_count, is_liked_total_count['true'])
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, is_liked_total_count['false'])
 
 
     def test_audio_clip_like_dislike__deleted_audio_clip__not_allowed(self):
 
         #prepare data
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "deleted"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="deleted",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -6434,12 +6852,19 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
         sample_audio_clip_0.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
         sample_audio_clip_0.save()
         sample_audio_clip_1.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
@@ -6475,10 +6900,10 @@ class Core_TestCase(TestCase):
 
             sample_audio_clip_0.refresh_from_db()
 
-            self.assertEqual(sample_audio_clip_0.like_count, 0)
-            self.assertEqual(sample_audio_clip_0.like_ratio, 0)
-            self.assertEqual(sample_audio_clip_0.dislike_count, 0)
-            self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[0], audio_clip=sample_audio_clip_0).exists())
+            self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
+            self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
+            self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
+            self.assertFalse(AudioClipLikesDislikes.objects.filter(audio_clip_user=self.users[0], audio_clip=sample_audio_clip_0).exists())
 
             #responder audio_clip
 
@@ -6498,10 +6923,10 @@ class Core_TestCase(TestCase):
 
             sample_audio_clip_1.refresh_from_db()
 
-            self.assertEqual(sample_audio_clip_1.like_count, 0)
-            self.assertEqual(sample_audio_clip_1.like_ratio, 0)
-            self.assertEqual(sample_audio_clip_1.dislike_count, 0)
-            self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[0], audio_clip=sample_audio_clip_1).exists())
+            self.assertEqual(sample_audio_clip_metric_1.like_count, 0)
+            self.assertEqual(sample_audio_clip_metric_1.like_ratio, 0)
+            self.assertEqual(sample_audio_clip_metric_1.dislike_count, 0)
+            self.assertFalse(AudioClipLikesDislikes.objects.filter(audio_clip_user=self.users[0], audio_clip=sample_audio_clip_1).exists())
 
 
     def test_list_audio_clip_processing__ok(self):
@@ -6517,7 +6942,10 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #set cache
@@ -6568,7 +6996,10 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #set cache
@@ -6616,6 +7047,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         #set cache
 
         target_cache_key = CreateAudioClips.determine_processing_cache_key(
@@ -6649,7 +7084,10 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         request = self.client.get(
@@ -6677,7 +7115,10 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #set cache
@@ -6739,7 +7180,10 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #set cache
@@ -6800,7 +7244,11 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing_max_attempts_reached',
+            generic_status_name='processing_max_attempts_reached',
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #no cache
@@ -6838,6 +7286,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         #no cache
 
         #proceed
@@ -6871,7 +7323,10 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #set cache
@@ -6945,6 +7400,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_event_1 = EventsFactory(
             event_created_by=self.users[1],
             event_generic_status_generic_status_name='incomplete',
@@ -6956,6 +7415,9 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
         #no cache
 
         #proceed
@@ -6991,7 +7453,10 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #set cache
@@ -7046,7 +7511,10 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #set cache
@@ -7103,7 +7571,9 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='deleted',
         )
-
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
         #set cache
 
         target_cache_key = CreateAudioClips.determine_processing_cache_key(
@@ -7165,6 +7635,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
             locked_for_user_id=self.users[1].id,
@@ -7182,7 +7656,11 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         #set cache
@@ -7241,6 +7719,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
             locked_for_user_id=self.users[1].id,
@@ -7258,7 +7740,11 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            generic_status_name='processing',
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         #set cache
@@ -7316,6 +7802,10 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
             locked_for_user_id=self.users[1].id,
@@ -7335,6 +7825,9 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
         #set cache
 
         target_cache_key = CreateAudioClips.determine_processing_cache_key(
@@ -7404,7 +7897,7 @@ class Core_TestCase(TestCase):
 
     def test_user_following__already_following(self):
 
-        UserFollows.objects.create(user=self.users[0], followed_user=self.users[1])
+        UserFollows.objects.create(audio_clip_user=self.users[0], followed_audio_clip_user=self.users[1])
 
         self.login(self.users[0])
 
@@ -7429,8 +7922,8 @@ class Core_TestCase(TestCase):
 
         UserFollows.objects.bulk_create(
             [
-                UserFollows(user=self.users[0], followed_user=self.users[1]),
-                UserFollows(user=self.users[0], followed_user=self.users[2]),
+                UserFollows(audio_clip_user=self.users[0], followed_audio_clip_user=self.users[1]),
+                UserFollows(audio_clip_user=self.users[0], followed_audio_clip_user=self.users[2]),
             ]
         )
 
@@ -7591,8 +8084,8 @@ class Core_TestCase(TestCase):
 
         UserFollows.objects.bulk_create(
             [
-                UserFollows(user=self.users[0], followed_user=self.users[1]),
-                UserFollows(user=self.users[0], followed_user=self.users[2]),
+                UserFollows(audio_clip_user=self.users[0], followed_audio_clip_user=self.users[1]),
+                UserFollows(audio_clip_user=self.users[0], followed_audio_clip_user=self.users[2]),
             ]
         )
 
@@ -7639,8 +8132,8 @@ class Core_TestCase(TestCase):
 
         UserFollows.objects.bulk_create(
             [
-                UserFollows(user=self.users[0], followed_user=self.users[1]),
-                UserFollows(user=self.users[0], followed_user=self.banned_users[1]),
+                UserFollows(audio_clip_user=self.users[0], followed_audio_clip_user=self.users[1]),
+                UserFollows(audio_clip_user=self.users[0], followed_audio_clip_user=self.banned_users[1]),
             ]
         )
 
@@ -7662,8 +8155,8 @@ class Core_TestCase(TestCase):
 
         UserFollows.objects.bulk_create(
             [
-                UserFollows(user=self.users[0], followed_user=self.banned_users[1]),
-                UserFollows(user=self.users[0], followed_user=self.banned_users[2]),
+                UserFollows(audio_clip_user=self.users[0], followed_audio_clip_user=self.banned_users[1]),
+                UserFollows(audio_clip_user=self.users[0], followed_audio_clip_user=self.banned_users[2]),
             ]
         )
 
@@ -7685,8 +8178,8 @@ class Core_TestCase(TestCase):
 
         UserFollows.objects.bulk_create(
             [
-                UserFollows(user=self.users[0], followed_user=self.users[1]),
-                UserFollows(user=self.users[0], followed_user=self.users[2]),
+                UserFollows(audio_clip_user=self.users[0], followed_audio_clip_user=self.users[1]),
+                UserFollows(audio_clip_user=self.users[0], followed_audio_clip_user=self.users[2]),
             ]
         )
 
@@ -7706,7 +8199,7 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertEqual(UserFollows.objects.filter(followed_user=self.users[2]).count(), 0)
+        self.assertEqual(UserFollows.objects.filter(followed_audio_clip_user=self.users[2]).count(), 0)
         self.assertEqual(UserFollows.objects.all().count(), 1)
 
 
@@ -7714,8 +8207,8 @@ class Core_TestCase(TestCase):
 
         UserFollows.objects.bulk_create(
             [
-                UserFollows(user=self.users[0], followed_user=self.users[1]),
-                UserFollows(user=self.users[0], followed_user=self.banned_users[2]),
+                UserFollows(audio_clip_user=self.users[0], followed_audio_clip_user=self.users[1]),
+                UserFollows(audio_clip_user=self.users[0], followed_audio_clip_user=self.banned_users[2]),
             ]
         )
 
@@ -7735,7 +8228,7 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertEqual(UserFollows.objects.filter(followed_user=self.banned_users[2]).count(), 0)
+        self.assertEqual(UserFollows.objects.filter(followed_audio_clip_user=self.banned_users[2]).count(), 0)
         self.assertEqual(UserFollows.objects.all().count(), 1)
 
 
@@ -7758,7 +8251,7 @@ class Core_TestCase(TestCase):
             current_user.is_active = True
             current_user.save()
 
-            user_follows.append(UserFollows(user=self.users[0], followed_user=current_user))
+            user_follows.append(UserFollows(audio_clip_user=self.users[0], followed_user=current_user))
 
         UserFollows.objects.bulk_create(user_follows)
 
@@ -7783,7 +8276,7 @@ class Core_TestCase(TestCase):
 
         with self.assertNumQueries(1):
 
-            result = UserFollows.objects.select_related('followed_user').filter(user=self.users[0]).order_by('when_created').values_list('followed_user__username')
+            result = UserFollows.objects.select_related('followed_user').filter(audio_clip_user=self.users[0]).order_by('when_created').values_list('followed_user__username')
             print(len(result))
             print(result[0][0])
 
@@ -7907,7 +8400,7 @@ class Core_TestCase(TestCase):
         self.login(self.users[0])
 
         UserFollows.objects.bulk_create([
-            UserFollows(user=self.users[0], followed_user=self.users[1]),
+            UserFollows(audio_clip_user=self.users[0], followed_audio_clip_user=self.users[1]),
         ])
 
         self.login(self.users[0])
@@ -8289,9 +8782,9 @@ class Core_TestCase(TestCase):
 
         #banned as originator
 
-        sample_event_0 = self.create_event(
-            self.users[0],
-            "deleted"
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="deleted",
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -8299,14 +8792,17 @@ class Core_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='deleted',
-            audio_clip_is_banned=True,
+            is_banned=True
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #banned as responder
 
-        sample_event_1 = self.create_event(
-            self.users[1],
-            "incomplete"
+        sample_event_1 = EventsFactory(
+            event_created_by=self.users[1],
+            event_generic_status_generic_status_name="incomplete",
         )
 
         sample_audio_clip_1 = AudioClipsFactory(
@@ -8316,19 +8812,27 @@ class Core_TestCase(TestCase):
             audio_clip_generic_status_generic_status_name='ok',
         )
 
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
+
         sample_audio_clip_2 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_1,
             audio_clip_generic_status_generic_status_name='deleted',
-            audio_clip_is_banned=True,
+            is_banned=True,
+        )
+
+        sample_audio_clip_metric_2 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_2,
         )
 
         #fine as originator
 
-        sample_event_2 = self.create_event(
-            self.users[0],
-            "completed"
+        sample_event_2 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="completed",
         )
 
         sample_audio_clip_3 = AudioClipsFactory(
@@ -8338,11 +8842,15 @@ class Core_TestCase(TestCase):
             audio_clip_generic_status_generic_status_name='ok',
         )
 
+        sample_audio_clip_metric_3 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_3,
+        )
+
         #fine as responder
 
-        sample_event_3 = self.create_event(
-            self.users[1],
-            "completed"
+        sample_event_3 = EventsFactory(
+            event_created_by=self.users[1],
+            event_generic_status_generic_status_name="completed",
         )
 
         sample_audio_clip_4 = AudioClipsFactory(
@@ -8352,11 +8860,19 @@ class Core_TestCase(TestCase):
             audio_clip_generic_status_generic_status_name='ok',
         )
 
+        sample_audio_clip_metric_4 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_4,
+        )
+
         sample_audio_clip_5 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_3,
             audio_clip_generic_status_generic_status_name='ok',
+        )
+
+        sample_audio_clip_metric_5 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_5,
         )
 
         #start
@@ -8398,7 +8914,9 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='ok',
         )
-
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
         #try when not superuser
 
         self.assertFalse(self.users[1].is_superuser)
@@ -8447,14 +8965,17 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='ok',
         )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
         sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(
             audio_clip=sample_audio_clip_0,
-            user=self.users[1],
+            audio_clip_user=self.users[1],
             is_liked=True
         )
         sample_audio_clip_like_dislike_1 = AudioClipLikesDislikes.objects.create(
             audio_clip=sample_audio_clip_0,
-            user=self.users[2],
+            audio_clip_user=self.users[2],
             is_liked=False
         )
 
@@ -8476,10 +8997,10 @@ class Core_TestCase(TestCase):
         self.assertIsNotNone(self.users[0].banned_until)
         self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
         self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
-        self.assertTrue(sample_audio_clip_0.generic_status.is_banned)
-        self.assertEqual(sample_audio_clip_0.like_count, 0)
-        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
-        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
+        self.assertTrue(sample_audio_clip_0.is_banned)
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
         self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
 
 
@@ -8500,30 +9021,36 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='ok',
         )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='ok',
         )
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
         sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(
             audio_clip=sample_audio_clip_0,
-            user=self.users[1],
+            audio_clip_user=self.users[1],
             is_liked=True
         )
         sample_audio_clip_like_dislike_1 = AudioClipLikesDislikes.objects.create(
             audio_clip=sample_audio_clip_0,
-            user=self.users[2],
+            audio_clip_user=self.users[2],
             is_liked=False
         )
         sample_audio_clip_like_dislike_2 = AudioClipLikesDislikes.objects.create(
             audio_clip=sample_audio_clip_1,
-            user=self.users[1],
+            audio_clip_user=self.users[1],
             is_liked=True
         )
         sample_audio_clip_like_dislike_3 = AudioClipLikesDislikes.objects.create(
             audio_clip=sample_audio_clip_1,
-            user=self.users[2],
+            audio_clip_user=self.users[2],
             is_liked=False
         )
 
@@ -8548,14 +9075,14 @@ class Core_TestCase(TestCase):
         self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
         self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
         self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'ok')
-        self.assertTrue(sample_audio_clip_0.generic_status.is_banned)
-        self.assertFalse(sample_audio_clip_1.generic_status.is_banned)
-        self.assertEqual(sample_audio_clip_0.like_count, 0)
-        self.assertEqual(sample_audio_clip_1.like_count, 1)
-        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
-        self.assertEqual(sample_audio_clip_1.dislike_count, 1)
-        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
-        self.assertEqual(sample_audio_clip_1.like_ratio, 0.5)
+        self.assertTrue(sample_audio_clip_0.is_banned)
+        self.assertFalse(sample_audio_clip_1.is_banned)
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_metric_1.like_count, 1)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_metric_1.dislike_count, 1)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_metric_1.like_ratio, 0.5)
         self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
         self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 2)
 
@@ -8577,30 +9104,36 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='ok',
         )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='ok',
         )
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
         sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(
-            audio_clip=sample_audio_clip_0,
             user=self.users[1],
+            audio_clip=sample_audio_clip_0,
             is_liked=True
         )
         sample_audio_clip_like_dislike_1 = AudioClipLikesDislikes.objects.create(
-            audio_clip=sample_audio_clip_0,
             user=self.users[2],
+            audio_clip=sample_audio_clip_0,
             is_liked=False
         )
         sample_audio_clip_like_dislike_2 = AudioClipLikesDislikes.objects.create(
-            audio_clip=sample_audio_clip_1,
             user=self.users[1],
+            audio_clip=sample_audio_clip_1,
             is_liked=True
         )
         sample_audio_clip_like_dislike_3 = AudioClipLikesDislikes.objects.create(
-            audio_clip=sample_audio_clip_1,
             user=self.users[2],
+            audio_clip=sample_audio_clip_1,
             is_liked=False
         )
 
@@ -8626,14 +9159,14 @@ class Core_TestCase(TestCase):
         self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
         self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'ok')
         self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
-        self.assertFalse(sample_audio_clip_0.generic_status.is_banned)
-        self.assertTrue(sample_audio_clip_1.generic_status.is_banned)
-        self.assertEqual(sample_audio_clip_0.like_count, 1)
-        self.assertEqual(sample_audio_clip_1.like_count, 0)
-        self.assertEqual(sample_audio_clip_0.dislike_count, 1)
-        self.assertEqual(sample_audio_clip_1.dislike_count, 0)
-        self.assertEqual(sample_audio_clip_0.like_ratio, 0.5)
-        self.assertEqual(sample_audio_clip_1.like_ratio, 0)
+        self.assertFalse(sample_audio_clip_0.is_banned)
+        self.assertTrue(sample_audio_clip_1.is_banned)
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 1)
+        self.assertEqual(sample_audio_clip_metric_1.like_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 1)
+        self.assertEqual(sample_audio_clip_metric_1.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0.5)
+        self.assertEqual(sample_audio_clip_metric_1.like_ratio, 0)
         self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 2)
         self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 0)
 
@@ -8654,7 +9187,10 @@ class Core_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='deleted',
-            audio_clip_is_banned=True,
+            is_banned=True,
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[1],
@@ -8662,14 +9198,17 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='ok',
         )
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
         sample_audio_clip_like_dislike_2 = AudioClipLikesDislikes.objects.create(
-            audio_clip=sample_audio_clip_1,
             user=self.users[1],
+            audio_clip=sample_audio_clip_1,
             is_liked=True
         )
         sample_audio_clip_like_dislike_3 = AudioClipLikesDislikes.objects.create(
-            audio_clip=sample_audio_clip_1,
             user=self.users[2],
+            audio_clip=sample_audio_clip_1,
             is_liked=False
         )
 
@@ -8695,14 +9234,14 @@ class Core_TestCase(TestCase):
         self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
         self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
         self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
-        self.assertTrue(sample_audio_clip_0.generic_status.is_banned)
-        self.assertTrue(sample_audio_clip_1.generic_status.is_banned)
-        self.assertEqual(sample_audio_clip_0.like_count, 0)
-        self.assertEqual(sample_audio_clip_1.like_count, 0)
-        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
-        self.assertEqual(sample_audio_clip_1.dislike_count, 0)
-        self.assertEqual(sample_audio_clip_0.like_ratio, 0)
-        self.assertEqual(sample_audio_clip_1.like_ratio, 0)
+        self.assertTrue(sample_audio_clip_0.is_banned)
+        self.assertTrue(sample_audio_clip_1.is_banned)
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_metric_1.like_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_metric_1.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
+        self.assertEqual(sample_audio_clip_metric_1.like_ratio, 0)
         self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
         self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 0)
 
@@ -8726,6 +9265,9 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='ok',
         )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
 
         request = self.client.post(
             reverse('audio_clip_bans_api'),
@@ -8748,7 +9290,10 @@ class Core_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='deleted',
-            audio_clip_is_banned=True,
+            is_banned=True
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         request = self.client.post(
@@ -8772,7 +9317,10 @@ class Core_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='deleted',
-            audio_clip_is_banned=False,
+            is_banned=False
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         request = self.client.post(
@@ -8833,18 +9381,21 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='ok',
         )
-
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
         #try when not superuser
 
         self.assertFalse(self.users[1].is_superuser)
 
         self.login(self.users[1])
 
-        request = self.client.post(
+        request = self.client.delete(
             reverse('audio_clip_deletions_api'),
             data={
                 'audio_clip_id': sample_audio_clip_0.id,
-            }
+            },
+            content_type='application/json',
         )
 
         self.assertEqual(request.status_code, 403)
@@ -8854,14 +9405,15 @@ class Core_TestCase(TestCase):
         self.users[1].is_superuser = True
         self.users[1].save()
 
-        request = self.client.post(
+        request = self.client.delete(
             reverse('audio_clip_deletions_api'),
             data={
                 'audio_clip_id': sample_audio_clip_0.id,
-            }
+            },
+            content_type='application/json',
         )
 
-        self.assertEqual(request.status_code, 200)
+        self.assertEqual(request.status_code, 204)
 
         #try as themselves
 
@@ -8875,17 +9427,20 @@ class Core_TestCase(TestCase):
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='ok',
         )
-
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
         self.login(self.users[0])
 
-        request = self.client.post(
+        request = self.client.delete(
             reverse('audio_clip_deletions_api'),
             data={
                 'audio_clip_id': sample_audio_clip_0.id,
-            }
+            },
+            content_type='application/json',
         )
 
-        self.assertEqual(request.status_code, 200)
+        self.assertEqual(request.status_code, 204)
 
 
     def test_audio_clip_deletions__post__incomplete__delete_originator(self):
@@ -8912,26 +9467,30 @@ class Core_TestCase(TestCase):
                 audio_clip_event=sample_event_0,
                 audio_clip_generic_status_generic_status_name='ok',
             )
+            sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+                audio_clip_metric_audio_clip=sample_audio_clip_0,
+            )
             sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(
-                audio_clip=sample_audio_clip_0,
                 user=self.users[1],
+                audio_clip=sample_audio_clip_0,
                 is_liked=True
             )
             sample_audio_clip_like_dislike_1 = AudioClipLikesDislikes.objects.create(
-                audio_clip=sample_audio_clip_0,
                 user=self.users[2],
+                audio_clip=sample_audio_clip_0,
                 is_liked=False
             )
 
-            request = self.client.post(
+            request = self.client.delete(
                 reverse('audio_clip_deletions_api'),
                 data={
                     'audio_clip_id': sample_audio_clip_0.id,
-                }
+                },
+                content_type='application/json',
             )
 
             print_with_function_name(request.content)
-            self.assertEqual(request.status_code, 200)
+            self.assertEqual(request.status_code, 204)
 
             self.users[0].refresh_from_db()
             sample_event_0.refresh_from_db()
@@ -8941,10 +9500,10 @@ class Core_TestCase(TestCase):
             self.assertIsNone(self.users[0].banned_until)
             self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
             self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
-            self.assertFalse(sample_audio_clip_0.generic_status.is_banned)
-            self.assertEqual(sample_audio_clip_0.like_count, 0)
-            self.assertEqual(sample_audio_clip_0.dislike_count, 0)
-            self.assertEqual(sample_audio_clip_0.like_ratio, 0)
+            self.assertFalse(sample_audio_clip_0.is_banned)
+            self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
+            self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
+            self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
             self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
 
 
@@ -8972,42 +9531,49 @@ class Core_TestCase(TestCase):
                 audio_clip_event=sample_event_0,
                 audio_clip_generic_status_generic_status_name='ok',
             )
+            sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+                audio_clip_metric_audio_clip=sample_audio_clip_0,
+            )
             sample_audio_clip_1 = AudioClipsFactory(
                 audio_clip_user=self.users[1],
                 audio_clip_audio_clip_role_audio_clip_role_name='responder',
                 audio_clip_event=sample_event_0,
                 audio_clip_generic_status_generic_status_name='ok',
             )
+            sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+                audio_clip_metric_audio_clip=sample_audio_clip_1,
+            )
             sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(
-                audio_clip=sample_audio_clip_0,
                 user=self.users[1],
+                audio_clip=sample_audio_clip_0,
                 is_liked=True
             )
             sample_audio_clip_like_dislike_1 = AudioClipLikesDislikes.objects.create(
-                audio_clip=sample_audio_clip_0,
                 user=self.users[2],
+                audio_clip=sample_audio_clip_0,
                 is_liked=False
             )
             sample_audio_clip_like_dislike_2 = AudioClipLikesDislikes.objects.create(
-                audio_clip=sample_audio_clip_1,
                 user=self.users[1],
+                audio_clip=sample_audio_clip_1,
                 is_liked=True
             )
             sample_audio_clip_like_dislike_3 = AudioClipLikesDislikes.objects.create(
-                audio_clip=sample_audio_clip_1,
                 user=self.users[2],
+                audio_clip=sample_audio_clip_1,
                 is_liked=False
             )
 
-            request = self.client.post(
+            request = self.client.delete(
                 reverse('audio_clip_deletions_api'),
                 data={
                     'audio_clip_id': sample_audio_clip_0.id,
-                }
+                },
+                content_type='application/json',
             )
 
             print_with_function_name(request.content)
-            self.assertEqual(request.status_code, 200)
+            self.assertEqual(request.status_code, 204)
 
             self.users[0].refresh_from_db()
             sample_event_0.refresh_from_db()
@@ -9020,14 +9586,14 @@ class Core_TestCase(TestCase):
             self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
             self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
             self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'ok')
-            self.assertFalse(sample_audio_clip_0.generic_status.is_banned)
-            self.assertFalse(sample_audio_clip_1.generic_status.is_banned)
-            self.assertEqual(sample_audio_clip_0.like_count, 0)
-            self.assertEqual(sample_audio_clip_1.like_count, 1)
-            self.assertEqual(sample_audio_clip_0.dislike_count, 0)
-            self.assertEqual(sample_audio_clip_1.dislike_count, 1)
-            self.assertEqual(sample_audio_clip_0.like_ratio, 0)
-            self.assertEqual(sample_audio_clip_1.like_ratio, 0.5)
+            self.assertFalse(sample_audio_clip_0.is_banned)
+            self.assertFalse(sample_audio_clip_1.is_banned)
+            self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
+            self.assertEqual(sample_audio_clip_metric_1.like_count, 1)
+            self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
+            self.assertEqual(sample_audio_clip_metric_1.dislike_count, 1)
+            self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
+            self.assertEqual(sample_audio_clip_metric_1.like_ratio, 0.5)
             self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
             self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 2)
 
@@ -9056,42 +9622,49 @@ class Core_TestCase(TestCase):
                 audio_clip_event=sample_event_0,
                 audio_clip_generic_status_generic_status_name='ok',
             )
+            sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+                audio_clip_metric_audio_clip=sample_audio_clip_0,
+            )
             sample_audio_clip_1 = AudioClipsFactory(
                 audio_clip_user=self.users[1],
                 audio_clip_audio_clip_role_audio_clip_role_name='responder',
                 audio_clip_event=sample_event_0,
                 audio_clip_generic_status_generic_status_name='ok',
             )
+            sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+                audio_clip_metric_audio_clip=sample_audio_clip_1,
+            )
             sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(
-                audio_clip=sample_audio_clip_0,
                 user=self.users[1],
+                audio_clip=sample_audio_clip_0,
                 is_liked=True
             )
             sample_audio_clip_like_dislike_1 = AudioClipLikesDislikes.objects.create(
-                audio_clip=sample_audio_clip_0,
                 user=self.users[2],
+                audio_clip=sample_audio_clip_0,
                 is_liked=False
             )
             sample_audio_clip_like_dislike_2 = AudioClipLikesDislikes.objects.create(
-                audio_clip=sample_audio_clip_1,
                 user=self.users[1],
+                audio_clip=sample_audio_clip_1,
                 is_liked=True
             )
             sample_audio_clip_like_dislike_3 = AudioClipLikesDislikes.objects.create(
-                audio_clip=sample_audio_clip_1,
                 user=self.users[2],
+                audio_clip=sample_audio_clip_1,
                 is_liked=False
             )
 
-            request = self.client.post(
+            request = self.client.delete(
                 reverse('audio_clip_deletions_api'),
                 data={
                     'audio_clip_id': sample_audio_clip_0.id,
-                }
+                },
+                content_type='application/json',
             )
 
             print_with_function_name(request.content)
-            self.assertEqual(request.status_code, 200)
+            self.assertEqual(request.status_code, 204)
 
             self.users[0].refresh_from_db()
             sample_event_0.refresh_from_db()
@@ -9104,14 +9677,14 @@ class Core_TestCase(TestCase):
             self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
             self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'ok')
             self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
-            self.assertFalse(sample_audio_clip_0.generic_status.is_banned)
-            self.assertFalse(sample_audio_clip_1.generic_status.is_banned)
-            self.assertEqual(sample_audio_clip_0.like_count, 1)
-            self.assertEqual(sample_audio_clip_1.like_count, 0)
-            self.assertEqual(sample_audio_clip_0.dislike_count, 1)
-            self.assertEqual(sample_audio_clip_1.dislike_count, 0)
-            self.assertEqual(sample_audio_clip_0.like_ratio, 0.5)
-            self.assertEqual(sample_audio_clip_1.like_ratio, 0)
+            self.assertFalse(sample_audio_clip_0.is_banned)
+            self.assertFalse(sample_audio_clip_1.is_banned)
+            self.assertEqual(sample_audio_clip_metric_0.like_count, 1)
+            self.assertEqual(sample_audio_clip_metric_1.like_count, 0)
+            self.assertEqual(sample_audio_clip_metric_0.dislike_count, 1)
+            self.assertEqual(sample_audio_clip_metric_1.dislike_count, 0)
+            self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0.5)
+            self.assertEqual(sample_audio_clip_metric_1.like_ratio, 0)
             self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 2)
             self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 0)
 
@@ -9140,32 +9713,39 @@ class Core_TestCase(TestCase):
                 audio_clip_event=sample_event_0,
                 audio_clip_generic_status_generic_status_name='deleted',
             )
+            sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+                audio_clip_metric_audio_clip=sample_audio_clip_0,
+            )
             sample_audio_clip_1 = AudioClipsFactory(
                 audio_clip_user=self.users[1],
                 audio_clip_audio_clip_role_audio_clip_role_name='responder',
                 audio_clip_event=sample_event_0,
                 audio_clip_generic_status_generic_status_name='ok',
             )
+            sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+                audio_clip_metric_audio_clip=sample_audio_clip_1,
+            )
             sample_audio_clip_like_dislike_2 = AudioClipLikesDislikes.objects.create(
-                audio_clip=sample_audio_clip_1,
                 user=self.users[1],
+                audio_clip=sample_audio_clip_1,
                 is_liked=True
             )
             sample_audio_clip_like_dislike_3 = AudioClipLikesDislikes.objects.create(
-                audio_clip=sample_audio_clip_1,
                 user=self.users[2],
+                audio_clip=sample_audio_clip_1,
                 is_liked=False
             )
 
-            request = self.client.post(
+            request = self.client.delete(
                 reverse('audio_clip_deletions_api'),
                 data={
                     'audio_clip_id': sample_audio_clip_1.id,
-                }
+                },
+                content_type='application/json',
             )
 
             print_with_function_name(request.content)
-            self.assertEqual(request.status_code, 200)
+            self.assertEqual(request.status_code, 204)
 
             self.users[0].refresh_from_db()
             sample_event_0.refresh_from_db()
@@ -9179,14 +9759,14 @@ class Core_TestCase(TestCase):
             self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
             self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
             self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
-            self.assertFalse(sample_audio_clip_0.generic_status.is_banned)
-            self.assertFalse(sample_audio_clip_1.generic_status.is_banned)
-            self.assertEqual(sample_audio_clip_0.like_count, 0)
-            self.assertEqual(sample_audio_clip_1.like_count, 0)
-            self.assertEqual(sample_audio_clip_0.dislike_count, 0)
-            self.assertEqual(sample_audio_clip_1.dislike_count, 0)
-            self.assertEqual(sample_audio_clip_0.like_ratio, 0)
-            self.assertEqual(sample_audio_clip_1.like_ratio, 0)
+            self.assertFalse(sample_audio_clip_0.is_banned)
+            self.assertFalse(sample_audio_clip_1.is_banned)
+            self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
+            self.assertEqual(sample_audio_clip_metric_1.like_count, 0)
+            self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
+            self.assertEqual(sample_audio_clip_metric_1.dislike_count, 0)
+            self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
+            self.assertEqual(sample_audio_clip_metric_1.like_ratio, 0)
             self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
             self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 0)
 
@@ -9208,14 +9788,18 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='ok',
+            audio_clip_generic_status_generic_satus_name='ok',
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
-        request = self.client.post(
+        request = self.client.delete(
             reverse('audio_clip_deletions_api'),
             data={
                 'audio_clip_id': sample_audio_clip_0.id + 1,
-            }
+            },
+            content_type='application/json',
         )
 
         print_with_function_name(request.content)
@@ -9231,15 +9815,19 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='deleted',
-            audio_clip_is_banned=True,
+            audio_clip_generic_status_generic_satus_name='deleted',
+            is_banned=True,
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
-        request = self.client.post(
+        request = self.client.delete(
             reverse('audio_clip_deletions_api'),
             data={
                 'audio_clip_id': sample_audio_clip_0.id,
-            }
+            },
+            content_type='application/json',
         )
 
         print_with_function_name(request.content)
@@ -9255,15 +9843,19 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='deleted',
-            audio_clip_is_banned=False,
+            audio_clip_generic_status_generic_satus_name='deleted',
+            is_banned=False,
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
-        request = self.client.post(
+        request = self.client.delete(
             reverse('audio_clip_deletions_api'),
             data={
                 'audio_clip_id': sample_audio_clip_0.id,
-            }
+            },
+            content_type='application/json',
         )
 
         print_with_function_name(request.content)
@@ -9277,10 +9869,11 @@ class Core_TestCase(TestCase):
 
         self.login(self.users[3])
 
-        request = self.client.post(
+        request = self.client.delete(
             reverse('audio_clip_deletions_api'),
             data={
-            }
+            },
+            content_type='application/json',
         )
 
         print_with_function_name(request.content)
@@ -9378,12 +9971,19 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='ok',
+            audio_clip_generic_status_generic_satus_name='ok',
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #do 1 like
 
-        AudioClipLikesDislikes.objects.create(user=self.users[0], audio_clip=sample_audio_clip_0, is_liked=True)
+        AudioClipLikesDislikes.objects.create(
+            user=self.users[0],
+            audio_clip=sample_audio_clip_0,
+            is_liked=True,
+        )
 
         #delete like while skipping trigger
 
@@ -9418,12 +10018,18 @@ class Core_TestCase(TestCase):
 
         sample_audio_clip_0.refresh_from_db()
 
-        self.assertEqual(sample_audio_clip_0.like_count, 1)
-        self.assertEqual(sample_audio_clip_0.dislike_count, 0)
-        self.assertEqual(sample_audio_clip_0.like_ratio, 1)
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 1)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 1)
         self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
 
 
+    def test_audio_clip_likes_dislikes__undo_but_no_row(self):
+        pass
+
+
+    def test_audio_clip_likes_dislikes__duplicate_action(self):
+        pass
 
 
 
@@ -9471,7 +10077,7 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
 
         #files
         with open(cls.shorter_audio_file_full_path, 'rb') as file_stream:
-            cls.shorter_audio_file = SimpleUploadedFile('sample_audio_file.webm', file_stream.read(), 'audio/webm')
+            cls.shorter_audio_clip_audio_file=SimpleUploadedFile('sample_audio_file.webm', file_stream.read(), 'audio/webm')
 
         #objects in s3 should exist before starting tests
 
@@ -9673,8 +10279,12 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
-            audio_clip_audio_file=self.unprocessed_object_key,
+            generic_status_name='processing',
+            audio_file=self.unprocessed_object_key,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #let fresh cache be auto-created when it doesn't exist, and use it
@@ -9718,8 +10328,12 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
-            audio_clip_audio_file=self.unprocessed_object_key,
+            generic_status_name='processing',
+            audio_file=self.unprocessed_object_key,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #set cache
@@ -9771,8 +10385,12 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
-            audio_clip_audio_file=self.faulty_audio_file_unprocessed_object_key,
+            generic_status_name='processing',
+            audio_file=self.faulty_audio_file_unprocessed_object_key,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         #set cache
@@ -9835,7 +10453,10 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='ok',
+            audio_clip_generic_status_generic_satus_name='ok',
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_user_event_0 = self.create_user_event(
@@ -9855,8 +10476,11 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
-            audio_clip_audio_file=self.unprocessed_object_key,
+            generic_status_name='processing',
+            audio_file=self.unprocessed_object_key,
+        )
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         #let fresh cache be auto-created when it doesn't exist, and use it
@@ -9905,12 +10529,19 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
             audio_clip_event=sample_event_0,
         )
 
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
-            audio_clip_audio_file=self.unprocessed_object_key,
+            generic_status_name='processing',
+            audio_file=self.unprocessed_object_key,
+        )
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
@@ -9973,13 +10604,19 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
         )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
 
         sample_audio_clip_1 = AudioClipsFactory(
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
-            audio_clip_audio_file=self.faulty_audio_file_unprocessed_object_key,
+            generic_status_name='processing',
+            audio_file=self.faulty_audio_file_unprocessed_object_key,
+        )
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(

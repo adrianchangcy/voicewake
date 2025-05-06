@@ -89,6 +89,7 @@ def cronjob_ban_audio_clips():
             of=('self', 'audio_clip',),
         ).select_related(
             'audio_clip',
+            'audio_clip__audio_clip_metric',
         ).prefetch_related(
             'audio_clip__event',
             'audio_clip__event__generic_status',
@@ -104,8 +105,8 @@ def cronjob_ban_audio_clips():
             ),
             audio_clip__generic_status__generic_status_name='ok',
             audio_clip__is_banned=False,
-            audio_clip__like_ratio__lte=settings.BAN_AUDIO_CLIP_LIKE_RATIO,
-            audio_clip__dislike_count__gte=settings.BAN_AUDIO_CLIP_DISLIKE_COUNT,
+            audio_clip__audio_clip_metric__like_ratio__lte=settings.BAN_AUDIO_CLIP_LIKE_RATIO,
+            audio_clip__audio_clip_metric__dislike_count__gte=settings.BAN_AUDIO_CLIP_DISLIKE_COUNT,
         ).order_by(
             F('last_evaluated').asc(nulls_first=True)
         )[:settings.CRONJOB_BAN_AUDIO_CLIP_QUANTITY_LIMIT]
@@ -170,11 +171,8 @@ def cronjob_ban_audio_clips():
             audio_clip_report.audio_clip.is_banned = True
             audio_clip_report.audio_clip.last_modified = datetime_now
             audio_clip_report.audio_clip.generic_status = generic_status_deleted
-            audio_clip_report.audio_clip.like_count = 0
-            audio_clip_report.audio_clip.dislike_count = 0
-            audio_clip_report.audio_clip.like_ratio = 0
 
-            audio_clips.append(audio_clip_report.audio_clip)
+            audio_clips.append(audio_clip_report.audio_clip.id)
 
             #update users to be banned
 
@@ -203,6 +201,8 @@ def cronjob_ban_audio_clips():
         #for all banned users, delete all their existing event_reply_queues
         EventReplyQueues.objects.filter(locked_for_user_id__in=user_ids).delete()
 
+        AudioClipLikesDislikes.objects.filter(audio_clip__in=audio_clips).delete()
+
         #update everything
 
         AudioClipReports.objects.bulk_update(
@@ -217,26 +217,9 @@ def cronjob_ban_audio_clips():
             batch_size=settings.BULK_CREATE_BATCH_SIZE,
         )
 
-        #currently in transaction, continue
-        with connection.cursor() as cursor:
-
-            #delete all rows from AudioClipLikesDislikes while exiting trigger early
-            #with 250000 rows, performance is 1s slower to 3s faster compared to completely disabling trigger at table
-
-            cursor.execute('''SET LOCAL voicewake.skip_trigger_audio_clip_likes_dislikes = 1;''')
-
-            AudioClipLikesDislikes.objects.filter(audio_clip__in=audio_clips).delete()
-
-            #ensure param is only 1 during transaction
-            check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
-            cursor.execute(check_sql)
-            skip_trigger = int(cursor.fetchone()[0])
-            if skip_trigger == 0:
-                raise ValueError('This line should not be reached.')
-
         AudioClips.objects.bulk_update(
             audio_clips,
-            fields=('is_banned', 'last_modified', 'generic_status', 'like_count', 'dislike_count', 'like_ratio'),
+            fields=('is_banned', 'last_modified', 'generic_status',),
             batch_size=settings.BULK_CREATE_BATCH_SIZE,
         )
 
@@ -245,15 +228,6 @@ def cronjob_ban_audio_clips():
             fields=('ban_count', 'banned_until',),
             batch_size=settings.BULK_CREATE_BATCH_SIZE,
         )
-
-    with connection.cursor() as cursor:
-
-        #ensure param is 0 outside of transaction
-        check_sql = "SELECT NULLIF(current_setting('voicewake.skip_trigger_audio_clip_likes_dislikes'), NULL);"
-        cursor.execute(check_sql)
-        skip_trigger = int(cursor.fetchone()[0])
-        if skip_trigger == 1:
-            raise ValueError('This line should not be reached.')
 
 
 @shared_task
