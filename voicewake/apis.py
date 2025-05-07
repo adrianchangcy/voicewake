@@ -2803,20 +2803,11 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
                 pk=request_data['audio_clip_id'],
             )
 
-            if audio_clip.generic_status.generic_status_name == 'deleted':
+            if audio_clip.generic_status.generic_status_name != 'ok' or audio_clip.generic_status.generic_status_name == 'deleted':
 
                 return Response(
                     data={
-                        'message': 'This recording has been deleted, and cannot accept new likes and dislikes.',
-                    },
-                    status=status.HTTP_404_NOT_FOUND
-                )
-
-            elif audio_clip.generic_status.generic_status_name != 'ok':
-
-                return Response(
-                    data={
-                        'message': 'Recording is not available.',
+                        'message': 'Recording is no longer available.',
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
@@ -2840,7 +2831,7 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
 
                 audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(
                     user=request.user,
-                    audio_clip=request_data['audio_clip']
+                    audio_clip_id=request_data['audio_clip_id']
                 )
 
                 with transaction.atomic():
@@ -2853,28 +2844,30 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
 
                     if audio_clip_like_dislike.is_liked is True:
 
-                        #remove like
                         audio_clip_metric.like_count -= 1
-                        audio_clip_metric.like_ratio = audio_clip_metric.like_count / (audio_clip_metric.like_count + audio_clip_metric.dislike_count)
-                        audio_clip_metric.save()
 
                     else:
 
-                        #remove dislike
                         audio_clip_metric.dislike_count -= 1
-                        audio_clip_metric.like_ratio = audio_clip_metric.like_count / (audio_clip_metric.like_count + audio_clip_metric.dislike_count)
-                        audio_clip_metric.save()
 
+                    try:
+
+                        audio_clip_metric.like_ratio = audio_clip_metric.like_count / (audio_clip_metric.like_count + audio_clip_metric.dislike_count)
+
+                    except ZeroDivisionError:
+
+                        audio_clip_metric.like_ratio = 0
+
+                    audio_clip_metric.save()
                     audio_clip_like_dislike.delete()
 
             except AudioClipLikesDislikes.DoesNotExist:
 
-                #allows frontend to gracefully handle race condition
+                #allow frontend to handle race condition gracefully
                 return Response(
                     data={
-                        'expected_row_not_found': True,
                     },
-                    status=status.HTTP_400_BAD_REQUEST
+                    status=status.HTTP_200_OK
                 )
 
         else:
@@ -2889,7 +2882,7 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
 
                 audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(
                     user=request.user,
-                    audio_clip=request_data['audio_clip'],
+                    audio_clip_id=request_data['audio_clip_id'],
                 )
 
                 #row exists with identical state
@@ -2899,9 +2892,8 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
 
                     return Response(
                         data={
-                            'identical_is_liked': True,
                         },
-                        status=status.HTTP_400_BAD_REQUEST
+                        status=status.HTTP_200_OK
                     )
 
                 #change like/dislike
@@ -2917,17 +2909,27 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
                     if request_data['is_liked'] is True:
 
                         #change to like
+                        audio_clip_like_dislike.is_liked = True
                         audio_clip_metric.like_count += 1
-                        audio_clip_metric.like_ratio = audio_clip_metric.like_count / (audio_clip_metric.like_count + audio_clip_metric.dislike_count)
-                        audio_clip_metric.save()
+                        audio_clip_metric.dislike_count -= 1
 
                     else:
 
                         #change to dislike
+                        audio_clip_like_dislike.is_liked = False
+                        audio_clip_metric.like_count -= 1
                         audio_clip_metric.dislike_count += 1
-                        audio_clip_metric.like_ratio = audio_clip_metric.like_count / (audio_clip_metric.like_count + audio_clip_metric.dislike_count)
-                        audio_clip_metric.save()
 
+                    try:
+
+                        audio_clip_metric.like_ratio = audio_clip_metric.like_count / (audio_clip_metric.like_count + audio_clip_metric.dislike_count)
+
+                    except ZeroDivisionError:
+
+                        audio_clip_metric.like_ratio = 0
+
+                    audio_clip_like_dislike.save()
+                    audio_clip_metric.save()
 
             except AudioClipLikesDislikes.DoesNotExist:
 
@@ -2936,7 +2938,7 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
 
                 audio_clip_like_dislike = AudioClipLikesDislikes.objects.create(
                     user=request.user,
-                    audio_clip=request_data['audio_clip'],
+                    audio_clip_id=request_data['audio_clip_id'],
                     is_liked=request_data['is_liked']
                 )
 
@@ -2952,15 +2954,21 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
 
                         #add like
                         audio_clip_metric.like_count += 1
-                        audio_clip_metric.like_ratio = audio_clip_metric.like_count / (audio_clip_metric.like_count + audio_clip_metric.dislike_count)
-                        audio_clip_metric.save()
 
                     else:
 
                         #add dislike
                         audio_clip_metric.dislike_count += 1
+
+                    try:
+
                         audio_clip_metric.like_ratio = audio_clip_metric.like_count / (audio_clip_metric.like_count + audio_clip_metric.dislike_count)
-                        audio_clip_metric.save()
+
+                    except ZeroDivisionError:
+
+                        audio_clip_metric.like_ratio = 0
+
+                    audio_clip_metric.save()
 
         return Response(
             data={
@@ -3473,15 +3481,53 @@ class AudioClipBansAPI(generics.GenericAPIView):
 
             with transaction.atomic():
 
-                audio_clip = AudioClips.objects.select_for_update(of=('self', 'event', 'user')).select_related(
+                audio_clip = AudioClips.objects.select_for_update(of=('self',)).select_related(
                     'audio_clip_role',
                     'event',
                     'user',
+                    'generic_status',
                 ).get(
                     pk=request_data['audio_clip_id'],
-                    generic_status__generic_status_name='ok',
-                    is_banned=False,
                 )
+
+                if audio_clip.user.id == request.user.id:
+
+                    return Response(
+                        data={
+                            'message': 'You cannot ban yourself.',
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                if audio_clip.generic_status.generic_status_name == 'deleted':
+
+                    if audio_clip.is_banned is True:
+
+                        #already banned
+                        return Response(
+                            data={
+                                'message': 'Recording has been banned.',
+                            },
+                            status=status.HTTP_200_OK
+                        )
+
+                    else:
+
+                        #can continue to ban "deleted" with is_banned=False
+                        pass
+
+                elif audio_clip.generic_status.generic_status_name != 'ok':
+
+                    #not qualified for ban
+                    return Response(
+                        data={
+                            'message': 'Recording not eligible for ban.',
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                #allow to proceed when "deleted" and is_banned=False
+                #allow to proceed when "ok"
 
                 audio_clip.is_banned = True
                 audio_clip.generic_status = generic_status_deleted
@@ -3491,6 +3537,7 @@ class AudioClipBansAPI(generics.GenericAPIView):
 
                 EventReplyQueues.objects.filter(event=audio_clip.event).delete()
                 AudioClipLikesDislikes.objects.filter(audio_clip=audio_clip).delete()
+                AudioClipMetrics.objects.filter(audio_clip=audio_clip).update(like_count=0, dislike_count=0, like_ratio=0)
 
                 #handle event
 
@@ -3502,7 +3549,7 @@ class AudioClipBansAPI(generics.GenericAPIView):
 
                 elif (
                     audio_clip.audio_clip_role.audio_clip_role_name == 'responder' and
-                    audio_clip.event.generic_status_id == generic_status_completed
+                    audio_clip.event.generic_status_id == generic_status_completed.id
                 ):
 
                     #for responder, event changes from 'completed' to 'incomplete'
@@ -3518,6 +3565,7 @@ class AudioClipBansAPI(generics.GenericAPIView):
 
                     ban_days = settings.CRONJOB_AUDIO_CLIP_MAX_BAN_DAYS
 
+                audio_clip.user.ban_count += 1
                 audio_clip.user.banned_until = get_datetime_now() + timedelta(days=ban_days)
                 audio_clip.user.save()
 
@@ -3573,7 +3621,7 @@ class AudioClipDeletionsAPI(generics.DestroyAPIView):
 
             with transaction.atomic():
 
-                audio_clip = AudioClips.objects.select_for_update(of=('self', 'event',)).select_related(
+                audio_clip = AudioClips.objects.select_for_update(of=('self',)).select_related(
                     'audio_clip_role',
                     'event',
                 ).get(
@@ -3599,6 +3647,7 @@ class AudioClipDeletionsAPI(generics.DestroyAPIView):
 
                 EventReplyQueues.objects.filter(event=audio_clip.event).delete()
                 AudioClipLikesDislikes.objects.filter(audio_clip=audio_clip).delete()
+                AudioClipMetrics.objects.filter(audio_clip=audio_clip).update(like_count=0, dislike_count=0, like_ratio=0)
 
                 #handle event
 
@@ -3610,7 +3659,7 @@ class AudioClipDeletionsAPI(generics.DestroyAPIView):
 
                 elif (
                     audio_clip.audio_clip_role.audio_clip_role_name == 'responder' and
-                    audio_clip.event.generic_status_id == generic_status_completed
+                    audio_clip.event.generic_status_id == generic_status_completed.id
                 ):
 
                     #for responder, event changes from 'completed' to 'incomplete'
