@@ -1678,7 +1678,7 @@ class CreateAudioClips():
                 generic_status=generic_status_processing,
                 created_by=self.user,
             )
-    
+
             #we update audio_volume_peaks and audio_duration_s during processing, not here
             #audio_file currently has file extension of unprocessed file
             self.audio_clip = AudioClips.objects.create(
@@ -1691,7 +1691,7 @@ class CreateAudioClips():
                 audio_file=upload_key,
                 generic_status=generic_status_processing
             )
-    
+
             AudioClipMetrics.objects.create(
                 audio_clip=self.audio_clip,
             )
@@ -1890,6 +1890,10 @@ class CreateAudioClips():
                 audio_duration_s=0,
                 audio_file=upload_key,
                 generic_status=generic_status_processing
+            )
+
+            AudioClipMetrics.objects.create(
+                audio_clip=self.audio_clip,
             )
 
         #no need to update event to "processing" as responder

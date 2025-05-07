@@ -202,6 +202,7 @@ def cronjob_ban_audio_clips():
         EventReplyQueues.objects.filter(locked_for_user_id__in=user_ids).delete()
 
         AudioClipLikesDislikes.objects.filter(audio_clip__in=audio_clips).delete()
+        AudioClipMetrics.objects.filter(audio_clip__in=audio_clips).update(like_count=0, dislike_count=0, like_ratio=0)
 
         #update everything
 
