@@ -2121,6 +2121,27 @@ class EventReplyChoicesAPI(generics.GenericAPIView):
         return bulk_event_reply_queues
 
 
+    def check_has_audio_clip_processing(self):
+
+        try:
+
+            event_reply_queue = EventReplyQueues.objects.get(user=self.request.user)
+
+            if AudioClips.objects.filter(
+                user=self.request.user,
+                event_id=event_reply_queue.event_id,
+                generic_status__generic_status_name='processing',
+            ).exists():
+        
+                return True
+
+        except EventReplyQueues.DoesNotExist:
+
+            pass
+
+        return False
+
+
     #involves both is_replying=False (choice) and is_replying=True (replying)
     #pass only_expired_rows=True for "first time searching in UI"
     #pass only_expired_rows=False for "skipped choice", "skipped replying"
@@ -2226,6 +2247,17 @@ class EventReplyChoicesAPI(generics.GenericAPIView):
             )
 
         request_data = serializer.validated_data
+
+        #before unlocking, check if anything is still processing
+
+        if self.check_has_audio_clip_processing is True:
+
+            return Response(
+                data={
+                    'message': 'Please wait for your recording to process before you explore new events.',
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         #check whether user wants to auto-skip current choices and get new ones
 
@@ -2507,6 +2539,17 @@ class EventRepliesAPI(generics.GenericAPIView):
     #only mark audio clip as deleted, and not actually delete, so we can enforce daily limit
     def cancel_reply_in_event(self, event_id:int)->Response:
 
+        #disallow if still processing
+
+        if AudioClips.objects.filter(user=self.user, event_id=event_id, generic_status__generic_status_name='processing').exists() is True:
+
+            return Response(
+                data={
+                    'has_processing': True,
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         #no 'try' here, let main call catch exception
 
         delete_quantity, delete_quantity_by_model = EventReplyQueues.objects.filter(
@@ -2540,7 +2583,7 @@ class EventRepliesAPI(generics.GenericAPIView):
                 },
                 status=status.HTTP_200_OK
             )
-        
+
         #update audio_clip
 
         if audio_clip.generic_status.generic_status_name == 'processing':
@@ -3521,7 +3564,7 @@ class AudioClipBansAPI(generics.GenericAPIView):
                     #not qualified for ban
                     return Response(
                         data={
-                            'message': 'Recording not eligible for ban.',
+                            'message': 'Recording is not eligible for ban.',
                         },
                         status=status.HTTP_400_BAD_REQUEST
                     )
