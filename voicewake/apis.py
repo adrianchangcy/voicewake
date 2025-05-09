@@ -2125,7 +2125,7 @@ class EventReplyChoicesAPI(generics.GenericAPIView):
 
         try:
 
-            event_reply_queue = EventReplyQueues.objects.get(user=self.request.user)
+            event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.request.user)
 
             if AudioClips.objects.filter(
                 user=self.request.user,
@@ -2250,11 +2250,12 @@ class EventReplyChoicesAPI(generics.GenericAPIView):
 
         #before unlocking, check if anything is still processing
 
-        if self.check_has_audio_clip_processing is True:
+        if self.check_has_audio_clip_processing() is True:
 
             return Response(
                 data={
                     'message': 'Please wait for your recording to process before you explore new events.',
+                    'is_processing': True,
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -2541,7 +2542,7 @@ class EventRepliesAPI(generics.GenericAPIView):
 
         #disallow if still processing
 
-        if AudioClips.objects.filter(user=self.user, event_id=event_id, generic_status__generic_status_name='processing').exists() is True:
+        if AudioClips.objects.filter(user=self.request.user, event_id=event_id, generic_status__generic_status_name='processing').exists() is True:
 
             return Response(
                 data={
@@ -2702,7 +2703,6 @@ class EventRepliesAPI(generics.GenericAPIView):
                     audio_clip_tone_id=request_data['audio_clip_tone_id'],
                     recorded_file_extension=request_data['recorded_file_extension'],
                 )
-
 
             elif self.url_context == 'regenerate_upload_url':
 

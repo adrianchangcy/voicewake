@@ -841,7 +841,12 @@ class AudioClips_TestCase(TestCase):
 
 
 #new frontend changes:
-    #expect 400 and still_processing=True if canceling reply while processing
+    #expect 400 and is_processing=True if canceling reply while processing
+    #expect 400 and is_processing=True if skipping reply choice while processing
+    #if delete, expect 404 on fail, 204 on success
+    #if ban, expect 400 on fail, 404 if id does not exist in db, 200 on success
+    #if still processing, cannot cancel reply, cannot skip reply choice, cannot delete with is_processing=True, cannot ban
+    #if originator suddenly banned, expect can_retry=False for responder
 #should use FactoryBoy to prevent future changes from requiring every individual test case to be edited
 @override_settings(
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
@@ -1495,7 +1500,8 @@ class Core_TestCase(TestCase):
             reverse('audio_clip_deletions_api'),
             data={
                 'audio_clip_id': sample_audio_clip_0.id,
-            }
+            },
+            content_type='application/json',
         )
 
         self.assertEqual(request.status_code, 404)
@@ -1554,7 +1560,7 @@ class Core_TestCase(TestCase):
             }
         )
 
-        self.assertEqual(request.status_code, 404)
+        self.assertEqual(request.status_code, 400)
 
         #proceed
 
@@ -1859,16 +1865,14 @@ class Core_TestCase(TestCase):
 
         sample_event_0 = EventsFactory(
             event_created_by = self.users[0],
-            event_generic_status_generic_status_name = 'incomplete',
+            event_generic_status_generic_status_name = 'processing',
         )
-
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='processing',
         )
-
         sample_audio_clip_metric_0 = AudioClipMetricsFactory(
             audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
@@ -1876,7 +1880,7 @@ class Core_TestCase(TestCase):
         #set cache
 
         target_cache_key = CreateAudioClips.determine_processing_cache_key(
-            user_id=self.users[1].id,
+            user_id=self.users[0].id,
         )
 
         target_cache = CreateAudioClips.get_default_processing_cache_main_object()
@@ -1918,6 +1922,7 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('create_events_process_api'), data)
 
         response_data = get_response_data(request)
+        print(request.content)
 
         self.assertEqual(request.status_code, 409)
         self.assertTrue("is_processing" in response_data)
@@ -1934,7 +1939,7 @@ class Core_TestCase(TestCase):
 
         sample_event_0 = EventsFactory(
             event_created_by = self.users[0],
-            event_generic_status_generic_status_name = 'incomplete',
+            event_generic_status_generic_status_name = 'processing',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
@@ -1951,7 +1956,7 @@ class Core_TestCase(TestCase):
         #set cache
 
         target_cache_key = CreateAudioClips.determine_processing_cache_key(
-            user_id=self.users[1].id,
+            user_id=self.users[0].id,
         )
 
         target_cache = CreateAudioClips.get_default_processing_cache_main_object()
@@ -1981,7 +1986,7 @@ class Core_TestCase(TestCase):
             },
         )
 
-        self.assertEqual(request.status_code, 404)
+        self.assertEqual(request.status_code, 400)
 
         #processing should still be allowed
 
@@ -3276,11 +3281,11 @@ class Core_TestCase(TestCase):
 
         new_event_id = response_data['data'][0]['event']['id']
         new_user_event = UserEvents.objects.get(user=self.users[1], event_id=new_event_id)
-        new_event_reply_queue = EventReplyQueues.objects.get(user=self.users[1], event_id=new_event_id)
+        new_event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.users[1], event_id=new_event_id)
 
         self.assertEqual(EventReplyQueues.objects.all().count(), 1)
         self.assertEqual(UserEvents.objects.all().count(), 2)
-        self.assertEqual(response_data['data'][0]['event']['id'], sample_event_1.id)
+        self.assertEqual(new_event_id, sample_event_1.id)
         self.assertIsNotNone(new_user_event.when_excluded_for_reply)
         self.assertNotEqual(new_event_reply_queue.when_locked, sample_event_reply_queue_0.when_locked)
 
@@ -3326,7 +3331,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.post(reverse('list_event_reply_choices_api'), data)
 
-        self.assertEqual(request.status_code, 404)
+        self.assertEqual(request.status_code, 200)
         print_with_function_name(request.content)
 
         #check
@@ -3548,11 +3553,13 @@ class Core_TestCase(TestCase):
 
         new_event_id = response_data['data'][0]['event']['id']
         new_user_event = UserEvents.objects.get(user=self.users[1], event_id=new_event_id)
-        new_event_reply_queue = EventReplyQueues.objects.get(user=self.users[1], event_id=new_event_id)
+        new_event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.users[1], event_id=new_event_id)
 
+        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
+        self.assertNotEqual(new_event_reply_queue.pk, sample_event_reply_queue_0.id)
         self.assertEqual(EventReplyQueues.objects.all().count(), 1)
         self.assertEqual(UserEvents.objects.all().count(), 2)
-        self.assertEqual(response_data['data'][0]['event']['id'], sample_event_1.id)
+        self.assertEqual(new_event_id, sample_event_1.id)
         self.assertIsNotNone(new_user_event.when_excluded_for_reply)
         self.assertNotEqual(new_event_reply_queue.when_locked, sample_event_reply_queue_0.when_locked)
 
@@ -3602,7 +3609,9 @@ class Core_TestCase(TestCase):
 
         #ban
 
-        self.login(self.users[0])
+        self.users[2].is_superuser = True
+        self.users[2].save()
+        self.login(self.users[2])
 
         request = self.client.post(
             reverse('audio_clip_bans_api'),
@@ -3630,11 +3639,13 @@ class Core_TestCase(TestCase):
 
         new_event_id = response_data['data'][0]['event']['id']
         new_user_event = UserEvents.objects.get(user=self.users[1], event_id=new_event_id)
-        new_event_reply_queue = EventReplyQueues.objects.get(user=self.users[1], event_id=new_event_id)
+        new_event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.users[1], event_id=new_event_id)
 
+        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
+        self.assertNotEqual(new_event_reply_queue.pk, sample_event_reply_queue_0.id)
         self.assertEqual(EventReplyQueues.objects.all().count(), 1)
         self.assertEqual(UserEvents.objects.all().count(), 2)
-        self.assertEqual(response_data['data'][0]['event']['id'], sample_event_1.id)
+        self.assertEqual(new_event_id, sample_event_1.id)
         self.assertIsNotNone(new_user_event.when_excluded_for_reply)
         self.assertNotEqual(new_event_reply_queue.when_locked, sample_event_reply_queue_0.when_locked)
 
@@ -3692,8 +3703,8 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertTrue(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists())
-        self.assertEqual(UserEvents.objects.filter(pk=sample_user_event_0.id).exists())
-        self.assertTrue(response_data['is_processing'], True)
+        self.assertTrue(UserEvents.objects.filter(pk=sample_user_event_0.id).exists())
+        self.assertTrue(response_data['is_processing'])
 
         #start
 
@@ -3711,8 +3722,8 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertTrue(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists())
-        self.assertEqual(UserEvents.objects.filter(pk=sample_user_event_0.id).exists())
-        self.assertTrue(response_data['is_processing'], True)
+        self.assertTrue(UserEvents.objects.filter(pk=sample_user_event_0.id).exists())
+        self.assertTrue(response_data['is_processing'])
 
 
     def test_list_reply_choices__originator_deleted__no_rows(self):
@@ -3739,8 +3750,8 @@ class Core_TestCase(TestCase):
 
         self.login(self.users[0])
 
-        request = self.client.post(
-            reverse('audio_clip_bans_api'),
+        request = self.client.delete(
+            reverse('audio_clip_deletions_api'),
             data={
                 'audio_clip_id': sample_audio_clip_0.id,
             },
@@ -6197,7 +6208,7 @@ class Core_TestCase(TestCase):
 
         self.assertEqual(request.status_code, 204)
 
-        #processing should still be allowed
+        #processing should fail
 
         self.login(self.users[1])
 
@@ -6209,15 +6220,7 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertEqual(request.status_code, 409)
-        self.assertTrue("is_processing" in response_data)
-        self.assertTrue("attempts_left" in response_data)
-
-        self.assertTrue(response_data['is_processing'])
-        self.assertEqual(
-            response_data['attempts_left'],
-            settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        )
+        self.assertEqual(request.status_code, 404)
         self.assertFalse(
             EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
         )
@@ -6300,7 +6303,7 @@ class Core_TestCase(TestCase):
 
         self.assertEqual(request.status_code, 200)
 
-        #processing should still be allowed
+        #processing should fail
 
         self.login(self.users[1])
 
@@ -6312,15 +6315,7 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertEqual(request.status_code, 409)
-        self.assertTrue("is_processing" in response_data)
-        self.assertTrue("attempts_left" in response_data)
-
-        self.assertTrue(response_data['is_processing'])
-        self.assertEqual(
-            response_data['attempts_left'],
-            settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        )
+        self.assertEqual(request.status_code, 404)
         self.assertFalse(
             EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
         )
@@ -6422,7 +6417,7 @@ class Core_TestCase(TestCase):
             response_data['attempts_left'],
             settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
         )
-        self.assertFalse(
+        self.assertTrue(
             EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
         )
 
@@ -6501,7 +6496,7 @@ class Core_TestCase(TestCase):
             },
         )
 
-        self.assertEqual(request.status_code, 404)
+        self.assertEqual(request.status_code, 400)
 
         #processing should still be allowed
 
@@ -6524,7 +6519,7 @@ class Core_TestCase(TestCase):
             response_data['attempts_left'],
             settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
         )
-        self.assertFalse(
+        self.assertTrue(
             EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
         )
 
@@ -6871,7 +6866,7 @@ class Core_TestCase(TestCase):
         self.assertFalse(response_data['can_retry'])
 
 
-    def test_cancel_reply_only_own_rows_allowed(self):
+    def test_cancel_reply__only_own_rows_allowed(self):
 
         #prepare data
 
@@ -6926,37 +6921,48 @@ class Core_TestCase(TestCase):
         self.assertTrue(UserEvents.objects.filter(user=self.users[2], event_id=sample_event_0.id).exists())
 
 
-    def test_cancel_reply_but_event_is_deleted(self):
+    def test_cancel_reply__event_is_deleted(self):
 
         #prepare data
 
         sample_event_0 = EventsFactory(
             event_created_by=self.users[0],
-            event_generic_status_generic_status_name="deleted",
+            event_generic_status_generic_status_name="incomplete",
         )
-
         sample_audio_clip_0 = AudioClipsFactory(
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='deleted',
+            audio_clip_generic_status_generic_status_name='ok',
         )
         sample_audio_clip_metric_0 = AudioClipMetricsFactory(
             audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
-
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
             locked_for_user_id=self.users[1].id,
             is_replying=True,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
-
         sample_user_event_0 = self.create_user_event(
             self.users[1].id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
+
+        #delete
+
+        self.login(self.users[0])
+
+        request = self.client.delete(
+            reverse('audio_clip_deletions_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_0.id,
+            },
+            content_type='application/json',
+        )
+
+        self.assertEqual(request.status_code, 204)
 
         #start
 
@@ -6968,7 +6974,7 @@ class Core_TestCase(TestCase):
 
         request = self.client.post(reverse('cancel_replies_api'), data)
 
-        self.assertEqual(request.status_code, 200)
+        self.assertEqual(request.status_code, 404)
         print_with_function_name(request.content)
 
         #check
@@ -6979,9 +6985,78 @@ class Core_TestCase(TestCase):
         self.assertEqual(Events.objects.count(), 1)
         self.assertEqual(AudioClips.objects.count(), 1)
         self.assertTrue(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0.id).exists())
+        self.assertFalse(response_data['can_retry'])
 
 
-    def test_cancel_reply_still_processing(self):
+    def test_cancel_reply__event_is_banned(self):
+
+        #prepare data
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
+        )
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        #ban
+
+        self.users[2].is_superuser = True
+        self.users[2].save()
+        self.login(self.users[2])
+
+        request = self.client.post(
+            reverse('audio_clip_bans_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_0.id,
+            },
+        )
+
+        self.assertEqual(request.status_code, 200)
+
+        #start
+
+        self.login(self.users[1])
+
+        data = {
+            'event_id': sample_event_0.id,
+        }
+
+        request = self.client.post(reverse('cancel_replies_api'), data)
+
+        self.assertEqual(request.status_code, 404)
+        print_with_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
+        self.assertEqual(Events.objects.count(), 1)
+        self.assertEqual(AudioClips.objects.count(), 1)
+        self.assertTrue(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0.id).exists())
+        self.assertFalse(response_data['can_retry'])
+
+
+    def test_cancel_reply__still_processing(self):
 
         #prepare data
 
@@ -7069,11 +7144,12 @@ class Core_TestCase(TestCase):
         self.assertEqual(AudioClips.objects.count(), 2)
         self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'processing')
         self.assertTrue(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0.id).exists())
+        self.assertTrue(response_data['has_processing'])
 
         target_cache = cache.get(target_cache_key, None)
 
         self.assertIsNotNone(target_cache)
-        self.assertEqual(len(target_cache['processings']), 0)
+        self.assertEqual(len(target_cache['processings']), 1)
 
 
     def test_create_audio_clip_report_ok(self):
@@ -8574,6 +8650,110 @@ class Core_TestCase(TestCase):
             self.assertEqual(sample_audio_clip_metric_1.like_ratio, 0)
             self.assertEqual(sample_audio_clip_metric_1.dislike_count, 0)
             self.assertFalse(AudioClipLikesDislikes.objects.filter(user=self.users[0], audio_clip=sample_audio_clip_1).exists())
+
+
+    def test_audio_clip_like_dislike__duplicate_delete__duplicate_new_row(self):
+
+        #prepare data
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="incomplete",
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+            like_count=1,
+            dislike_count=0,
+            like_ratio=1,
+        )
+
+        sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(
+            user=self.users[0],
+            audio_clip=sample_audio_clip_0,
+            is_liked=True,
+        )
+
+        #like again
+
+        self.login(self.users[0])
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+            'is_liked': True
+        }
+
+        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_with_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        sample_audio_clip_metric_0.refresh_from_db()
+
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 1)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 1)
+        self.assertEqual(AudioClipLikesDislikes.objects.filter(pk=sample_audio_clip_like_dislike_0.id).count(), 1)
+
+        #delete like
+
+        self.login(self.users[0])
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+            'is_liked': json.dumps(None),
+        }
+
+        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_with_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        sample_audio_clip_metric_0.refresh_from_db()
+
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
+        self.assertEqual(AudioClipLikesDislikes.objects.filter(pk=sample_audio_clip_like_dislike_0.id).count(), 0)
+
+        #delete like again
+
+        self.login(self.users[0])
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+            'is_liked': json.dumps(None),
+        }
+
+        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
+
+        self.assertEqual(request.status_code, 200)
+        print_with_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)
+
+        sample_audio_clip_metric_0.refresh_from_db()
+
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
+        self.assertEqual(AudioClipLikesDislikes.objects.filter(pk=sample_audio_clip_like_dislike_0.id).count(), 0)
 
 
     def test_list_audio_clip_processing__ok(self):
@@ -10958,7 +11138,7 @@ class Core_TestCase(TestCase):
         )
 
         print_with_function_name(request.content)
-        self.assertEqual(request.status_code, 404)
+        self.assertEqual(request.status_code, 400)
 
         #already banned
 
@@ -10990,11 +11170,6 @@ class Core_TestCase(TestCase):
 
     def test_audio_clip_bans__post__ban_deleted_audio_clip(self):
 
-        self.users[0].is_superuser = True
-        self.users[0].save()
-
-        self.login(self.users[0])
-
         sample_event_0 = EventsFactory(
             event_created_by=self.users[1],
             event_generic_status_generic_status_name='deleted',
@@ -11021,6 +11196,10 @@ class Core_TestCase(TestCase):
         )
 
         #start
+
+        self.users[0].is_superuser = True
+        self.users[0].save()
+        self.login(self.users[0])
 
         request = self.client.post(
             reverse('audio_clip_bans_api'),
@@ -11059,7 +11238,7 @@ class Core_TestCase(TestCase):
 
         sample_audio_clip_1.refresh_from_db()
         sample_audio_clip_metric_1.refresh_from_db()
-        self.users[1].refresh_from_db()
+        self.users[2].refresh_from_db()
 
         self.assertEqual(request.status_code, 200)
         self.assertEqual(self.users[2].ban_count, 1)
@@ -11123,6 +11302,24 @@ class Core_TestCase(TestCase):
 
         self.assertEqual(request.status_code, 400)
         self.assertEqual(self.users[0].ban_count, 0)
+
+
+    def test_audio_clip_bans__post__no_rows(self):
+
+        self.users[3].is_superuser = True
+        self.users[3].save()
+
+        self.login(self.users[3])
+
+        request = self.client.post(
+            reverse('audio_clip_bans_api'),
+            data={
+                'audio_clip_id': 999999999,
+            }
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 404)
 
 
     def test_audio_clip_bans__post__missing_args(self):
@@ -11706,6 +11903,157 @@ class Core_TestCase(TestCase):
         self.assertEqual(request.status_code, 404)
 
 
+    def test_audio_clip_deletions__delete_banned_audio_clip(self):
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name='completed',
+        )
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+        )
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
+
+        #ban both
+
+        self.users[2].is_superuser = True
+        self.users[2].save()
+        self.login(self.users[2])
+
+        request = self.client.post(
+            reverse('audio_clip_bans_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_0.id,
+            },
+        )
+
+        self.assertEqual(request.status_code, 200)
+
+        request = self.client.post(
+            reverse('audio_clip_bans_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_1.id,
+            },
+        )
+
+        self.assertEqual(request.status_code, 200)
+
+        #delete as originator
+
+        self.login(self.users[0])
+
+        request = self.client.delete(
+            reverse('audio_clip_deletions_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_0.id,
+            },
+            content_type='application/json',
+        )
+
+        #can't delete while user is banned
+        self.assertEqual(request.status_code, 403)
+
+        self.users[0].banned_until = None
+        self.users[0].save()
+
+        request = self.client.delete(
+            reverse('audio_clip_deletions_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_0.id,
+            },
+            content_type='application/json',
+        )
+
+        #can try to delete once user is not banned
+        self.assertEqual(request.status_code, 404)
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        sample_audio_clip_metric_0.refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_0.is_banned)
+        self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
+        self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
+
+        #delete as responder
+
+        self.login(self.users[1])
+
+        request = self.client.delete(
+            reverse('audio_clip_deletions_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_1.id,
+            },
+            content_type='application/json',
+        )
+
+        #can't delete while user is banned
+        self.assertEqual(request.status_code, 403)
+
+        self.users[1].banned_until = None
+        self.users[1].save()
+
+        request = self.client.delete(
+            reverse('audio_clip_deletions_api'),
+            data={
+                'audio_clip_id': sample_audio_clip_1.id,
+            },
+            content_type='application/json',
+        )
+
+        #can try to delete once user is not banned
+        self.assertEqual(request.status_code, 404)
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_1.refresh_from_db()
+        sample_audio_clip_metric_1.refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
+        self.assertTrue(sample_audio_clip_1.is_banned)
+        self.assertEqual(sample_audio_clip_metric_1.like_count, 0)
+        self.assertEqual(sample_audio_clip_metric_1.dislike_count, 0)
+        self.assertEqual(sample_audio_clip_metric_1.like_ratio, 0)
+        self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 0)
+
+
+    def test_audio_clip_deletions__no_rows(self):
+
+        self.users[3].is_superuser = True
+        self.users[3].save()
+
+        self.login(self.users[3])
+
+        request = self.client.delete(
+            reverse('audio_clip_deletions_api'),
+            data={
+                'audio_clip_id': 99999999,
+            },
+            content_type='application/json',
+        )
+
+        print_with_function_name(request.content)
+        self.assertEqual(request.status_code, 404)
+
+
     def test_audio_clip_deletions__post__missing_args(self):
 
         self.users[3].is_superuser = True
@@ -11743,274 +12091,6 @@ class Core_TestCase(TestCase):
         self.assertEqual(request.status_code, 400)
 
 
-    def test_audio_clip_like_dislike__duplicate_delete__duplicate_new_row(self):
-
-
-        #prepare data
-
-        sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name="incomplete",
-        )
-
-        sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=sample_event_0,
-        )
-
-        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
-            audio_clip_metric_audio_clip=sample_audio_clip_0,
-            like_count=1,
-            dislike_count=0,
-            like_ratio=1,
-        )
-
-        sample_audio_clip_like_dislike_0 = AudioClipLikesDislikes.objects.create(
-            user=self.users[0],
-            audio_clip=sample_audio_clip_0,
-            is_liked=True,
-        )
-
-        #like again
-
-        self.login(self.users[0])
-
-        data = {
-            'audio_clip_id': sample_audio_clip_0.id,
-            'is_liked': True
-        }
-
-        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
-
-        self.assertEqual(request.status_code, 200)
-        print_with_function_name(request.content)
-
-        #check
-
-        response_data = get_response_data(request)
-
-        sample_audio_clip_metric_0.refresh_from_db()
-
-        self.assertEqual(sample_audio_clip_metric_0.like_count, 1)
-        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
-        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 1)
-        self.assertEqual(AudioClipLikesDislikes.objects.filter(pk=sample_audio_clip_like_dislike_0.id).count(), 1)
-
-        #delete like
-
-        self.login(self.users[0])
-
-        data = {
-            'audio_clip_id': sample_audio_clip_0.id,
-            'is_liked': None
-        }
-
-        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
-
-        self.assertEqual(request.status_code, 200)
-        print_with_function_name(request.content)
-
-        #check
-
-        response_data = get_response_data(request)
-
-        sample_audio_clip_metric_0.refresh_from_db()
-
-        self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
-        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
-        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
-        self.assertEqual(AudioClipLikesDislikes.objects.filter(pk=sample_audio_clip_like_dislike_0.id).count(), 0)
-
-        #delete like again
-
-        self.login(self.users[0])
-
-        data = {
-            'audio_clip_id': sample_audio_clip_0.id,
-            'is_liked': None
-        }
-
-        request = self.client.post(reverse('audio_clip_likes_dislikes_api'), data)
-
-        self.assertEqual(request.status_code, 200)
-        print_with_function_name(request.content)
-
-        #check
-
-        response_data = get_response_data(request)
-
-        sample_audio_clip_metric_0.refresh_from_db()
-
-        self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
-        self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
-        self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
-        self.assertEqual(AudioClipLikesDislikes.objects.filter(pk=sample_audio_clip_like_dislike_0.id).count(), 0)
-
-
-    def test_audio_clip_deletions__delete_banned_audio_clip(self):
-
-        self.users[0].is_superuser = True
-        self.users[0].save()
-
-        all_users = [
-            self.users[0],
-            self.users[1],
-            self.users[2],
-        ]
-
-        for user in all_users:
-
-            self.login(user)
-
-            sample_event_0 = EventsFactory(
-                event_created_by=self.users[1],
-                event_generic_status_generic_status_name='deleted',
-            )
-            sample_audio_clip_0 = AudioClipsFactory(
-                audio_clip_user=self.users[1],
-                audio_clip_audio_clip_role_audio_clip_role_name='originator',
-                audio_clip_event=sample_event_0,
-                audio_clip_generic_status_generic_status_name='deleted',
-                is_banned=True
-            )
-            sample_audio_clip_metric_0 = AudioClipMetricsFactory(
-                audio_clip_metric_audio_clip=sample_audio_clip_0,
-            )
-            sample_audio_clip_1 = AudioClipsFactory(
-                audio_clip_user=self.users[2],
-                audio_clip_audio_clip_role_audio_clip_role_name='responder',
-                audio_clip_event=sample_event_0,
-                audio_clip_generic_status_generic_status_name='deleted',
-                is_banned=True
-            )
-            sample_audio_clip_metric_1 = AudioClipMetricsFactory(
-                audio_clip_metric_audio_clip=sample_audio_clip_1,
-            )
-
-            #no need to update user.ban_count and user.banned_until, due to decorator
-
-            request = self.client.delete(
-                reverse('audio_clip_deletions_api'),
-                data={
-                    'audio_clip_id': sample_audio_clip_0.id,
-                }
-            )
-
-            sample_audio_clip_0.refresh_from_db()
-            sample_audio_clip_metric_0.refresh_from_db()
-
-            self.assertEqual(request.status_code, 400)
-            self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
-            self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
-            self.assertTrue(sample_audio_clip_0.is_banned)
-            self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
-            self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
-            self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
-            self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
-
-            request = self.client.post(
-                reverse('audio_clip_deletions_api'),
-                data={
-                    'audio_clip_id': sample_audio_clip_1.id,
-                }
-            )
-
-            sample_audio_clip_1.refresh_from_db()
-            sample_audio_clip_metric_1.refresh_from_db()
-
-            self.assertEqual(request.status_code, 400)
-            self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
-            self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
-            self.assertTrue(sample_audio_clip_1.is_banned)
-            self.assertEqual(sample_audio_clip_metric_1.like_count, 0)
-            self.assertEqual(sample_audio_clip_metric_1.dislike_count, 0)
-            self.assertEqual(sample_audio_clip_metric_1.like_ratio, 0)
-            self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 0)
-
-
-    def test_audio_clip_bans__missing_audio_clip_metrics(self):
-
-        sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='incomplete',
-        )
-        sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='ok',
-        )
-
-        self.users[1].is_superuser = True
-        self.users[1].save()
-
-        self.login(self.users[1])
-
-        request = self.client.post(
-            reverse('audio_clip_bans_api'),
-            data={
-                'audio_clip_id': sample_audio_clip_0.id,
-            },
-            content_type='application/json',
-        )
-
-        self.users[0].refresh_from_db()
-        sample_event_0.refresh_from_db()
-        sample_audio_clip_0.refresh_from_db()
-
-        self.assertEqual(request.status_code, 400)
-        self.assertEqual(self.users[0].ban_count, 0)
-        self.assertEqual(self.users[0].banned_until, None)
-        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
-        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'ok')
-
-
-    def test_audio_clip_deletions__missing_audio_clip_metrics(self):
-
-        sample_event_0 = EventsFactory(
-            event_created_by=self.users[0],
-            event_generic_status_generic_status_name='incomplete',
-        )
-        sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='ok',
-        )
-
-        self.users[1].is_superuser = True
-        self.users[1].save()
-
-        self.login(self.users[1])
-
-        request = self.client.delete(
-            reverse('audio_clip_deletions_api'),
-            data={
-                'audio_clip_id': sample_audio_clip_0.id,
-            },
-            content_type='application/json',
-        )
-
-        self.users[0].refresh_from_db()
-        sample_event_0.refresh_from_db()
-        sample_audio_clip_0.refresh_from_db()
-
-        self.assertEqual(request.status_code, 400)
-        self.assertEqual(self.users[0].ban_count, 0)
-        self.assertEqual(self.users[0].banned_until, None)
-        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
-        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'ok')
-
-
-
-
-    def test_cronjob_ban_audio_clips__missing_audio_clip_metrics(self):
-        pass
-
-
-    def test_check_bans_deletions_cronjobbanaudioclips_do_they_remove_like_dislike_records(self):
-        pass
 
 
 
