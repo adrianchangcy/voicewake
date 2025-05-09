@@ -1284,6 +1284,16 @@ class Core_TestCase(TestCase):
         self.assertEqual(UserOTP.objects.count(), 0)
 
 
+    def test_cronjob_ban_audio_clips__missing_audio_clip_metrics(self):
+        pass
+
+
+    def test_check_bans_deletions_cronjobbanaudioclips_do_they_remove_like_dislike_records(self):
+        pass
+
+
+
+
 
 @override_settings(
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
