@@ -3593,6 +3593,7 @@ class AudioClipDeletionsAPI(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated]
 
 
+    @method_decorator(app_decorators.deny_if_banned("response"))
     def delete(self, request, *args, **kwargs):
 
         #allow if user performing the action is superuser or is the one who created the audio_clip
