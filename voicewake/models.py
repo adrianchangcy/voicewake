@@ -209,6 +209,8 @@ class AudioClipMetrics(models.Model):
     audio_clip = models.OneToOneField('AudioClips', on_delete=models.CASCADE)
     like_count = models.IntegerField(default=0)
     dislike_count = models.IntegerField(default=0)
+    #when like_ratio=0, then .save(), will return 0
+    #when like_ratio=0.2, then .save(), will return Decimal('0.2')
     like_ratio = models.DecimalField(default=Decimal('0.00'), decimal_places=2, max_digits=3)   #0.00 to 1.00
     when_created = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)

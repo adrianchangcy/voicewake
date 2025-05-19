@@ -469,9 +469,11 @@ BAN_AUDIO_CLIP_LIKE_RATIO = 0.25   #0 to 1
 BAN_AUDIO_CLIP_DISLIKE_COUNT = 100
 BAN_AUDIO_CLIP_MIN_AGE_S = 1800    #30 minutes
 CRONJOB_BAN_AUDIO_CLIP_QUANTITY_LIMIT = 100
-CRONJOB_AUDIO_CLIP_BAN_DAYS = 5     #this ** ban_count
-CRONJOB_AUDIO_CLIP_MAX_BAN_DAYS = 1830 #366 days * 5, i.e. 5 years
-LIST_AUDIO_CLIP_QUANTITY_PER_PAGE = 20
+#ban duration limit done via community dislikes at cronjob
+CRONJOB_AUDIO_CLIP_MAX_BAN_DAYS = 4
+#ban duration limit done via admin manually banning
+ADMIN_AUDIO_CLIP_BASE_BAN_DAYS = 5 #this ** ban_count
+ADMIN_AUDIO_CLIP_MAX_BAN_DAYS = 1830 #366 days * 5, i.e. 5 years
 
 
 #USER LIMITS

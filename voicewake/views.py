@@ -253,12 +253,6 @@ class GetEvents(TemplateView):
         #check if event is deleted
         is_deleted = event.generic_status.generic_status_name == 'deleted'
 
-        #count how many audio_clips exist for frontend skeleton
-        audio_clip_count = AudioClips.objects.filter(
-            event=event,
-            generic_status__generic_status_name='ok'
-        ).count()
-
         #prepare context early for consistency
         template_context = {
             'event_reply_choice_expiry_seconds': settings.EVENT_REPLY_CHOICE_MAX_DURATION_S,
@@ -267,7 +261,6 @@ class GetEvents(TemplateView):
             'event': event,
             'is_deleted': is_deleted,
             'is_deleted_json': json.dumps(is_deleted),
-            'audio_clip_count_json': json.dumps(audio_clip_count),
         }
 
         if event.generic_status.generic_status_name not in ['processing', 'incomplete'] or is_deleted is True:
