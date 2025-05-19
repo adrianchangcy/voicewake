@@ -40,7 +40,7 @@ class UsersFactory(DjangoModelFactory):
     )
     banned_until = factory.LazyAttribute(
         lambda o : (
-            settings.CRONJOB_AUDIO_CLIP_BAN_DAYS ** o.user_ban_count
+            get_datetime_now() + timedelta(days=o.user_ban_count)
             if o.user_is_banned is True
             else None
         )

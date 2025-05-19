@@ -3007,6 +3007,10 @@ class AudioClipLikesDislikesAPI(generics.GenericAPIView):
 
                         audio_clip_metric.like_ratio = audio_clip_metric.like_count / (audio_clip_metric.like_count + audio_clip_metric.dislike_count)
 
+                        if audio_clip_metric.like_ratio > 1:
+
+                            audio_clip_metric.like_ratio = 1
+
                     except ZeroDivisionError:
 
                         audio_clip_metric.like_ratio = 0
@@ -3423,7 +3427,7 @@ class AudioClipReportsAPI(generics.GenericAPIView):
                 data={
                     'message': 'This recording has already been banned.',
                 },
-                status=status.HTTP_200_OK
+                status=status.HTTP_400_BAD_REQUEST
             )
 
         #check if audio_clip is eligible to be reported
@@ -3581,6 +3585,7 @@ class AudioClipBansAPI(generics.GenericAPIView):
                 EventReplyQueues.objects.filter(event=audio_clip.event).delete()
                 AudioClipLikesDislikes.objects.filter(audio_clip=audio_clip).delete()
                 AudioClipMetrics.objects.filter(audio_clip=audio_clip).update(like_count=0, dislike_count=0, like_ratio=0)
+                AudioClipReports.objects.filter(audio_clip=audio_clip).delete()
 
                 #handle event
 
@@ -3601,14 +3606,15 @@ class AudioClipBansAPI(generics.GenericAPIView):
 
                 #ban user
 
-                ban_days = settings.CRONJOB_AUDIO_CLIP_BAN_DAYS ** audio_clip.user.ban_count
+                audio_clip.user.ban_count += 1
+
+                ban_days = settings.ADMIN_AUDIO_CLIP_BASE_BAN_DAYS ** audio_clip.user.ban_count
 
                 #cap ban_days, else it can get out of hand
-                if ban_days > settings.CRONJOB_AUDIO_CLIP_MAX_BAN_DAYS:
+                if ban_days > settings.ADMIN_AUDIO_CLIP_MAX_BAN_DAYS:
 
-                    ban_days = settings.CRONJOB_AUDIO_CLIP_MAX_BAN_DAYS
+                    ban_days = settings.ADMIN_AUDIO_CLIP_MAX_BAN_DAYS
 
-                audio_clip.user.ban_count += 1
                 audio_clip.user.banned_until = get_datetime_now() + timedelta(days=ban_days)
                 audio_clip.user.save()
 
@@ -3691,7 +3697,11 @@ class AudioClipDeletionsAPI(generics.DestroyAPIView):
 
                 EventReplyQueues.objects.filter(event=audio_clip.event).delete()
                 AudioClipLikesDislikes.objects.filter(audio_clip=audio_clip).delete()
-                AudioClipMetrics.objects.filter(audio_clip=audio_clip).update(like_count=0, dislike_count=0, like_ratio=0)
+
+                #prevent users from purposely dodging cronjob
+                if AudioClipReports.objects.filter(audio_clip=audio_clip).exists() is False:
+
+                    AudioClipMetrics.objects.filter(audio_clip=audio_clip).update(like_count=0, dislike_count=0, like_ratio=0)
 
                 #handle event
 
