@@ -85,16 +85,17 @@ def cronjob_ban_audio_clips():
 
         #get guaranteed bans and rows from related tables
         #Q() is important since you cannot do comparison with NULL, e.g. >= NULL
+        #do not exclusively fetch rows that are already qualified for ban, because we want to always update audio_clip_report.last_evaluated
         audio_clip_reports = AudioClipReports.objects.select_for_update(
             of=('self', 'audio_clip',),
         ).select_related(
             'audio_clip',
-            'audio_clip__audio_clip_metric',
         ).prefetch_related(
             'audio_clip__event',
             'audio_clip__event__generic_status',
             'audio_clip__audio_clip_role',
             'audio_clip__user',
+            'audio_clip__audioclipmetrics',
         ).filter(
             (
                 Q(last_evaluated__isnull=True) |
@@ -103,10 +104,8 @@ def cronjob_ban_audio_clips():
                     Q(last_reported__gt=F('last_evaluated'))
                 )
             ),
-            audio_clip__generic_status__generic_status_name='ok',
+            audio_clip__generic_status__generic_status_name__in=('ok', 'deleted'),
             audio_clip__is_banned=False,
-            audio_clip__audio_clip_metric__like_ratio__lte=settings.BAN_AUDIO_CLIP_LIKE_RATIO,
-            audio_clip__audio_clip_metric__dislike_count__gte=settings.BAN_AUDIO_CLIP_DISLIKE_COUNT,
         ).order_by(
             F('last_evaluated').asc(nulls_first=True)
         )[:settings.CRONJOB_BAN_AUDIO_CLIP_QUANTITY_LIMIT]
@@ -131,6 +130,19 @@ def cronjob_ban_audio_clips():
             #update audio_clip_reports to log evaluation
 
             audio_clip_reports[index].last_evaluated = datetime_now
+
+            #check for unqualified reports
+            #if unqualified, must update only audio_clip_report.last_evaluated to prevent being consistently fetched
+            #do nothing else
+
+            #compare dislike_count first to mitigate group bullying
+            #do > instead of >= for like_ratio so that accidental 0 from settings does not suddenly skip every report
+            if (
+                audio_clip_reports[index].audio_clip.audioclipmetrics.dislike_count < settings.BAN_AUDIO_CLIP_DISLIKE_COUNT or
+                audio_clip_reports[index].audio_clip.audioclipmetrics.like_ratio > settings.BAN_AUDIO_CLIP_LIKE_RATIO
+            ):
+
+                continue
 
             #update events for originators to be "deleted", for responders will be "incomplete"
             #in cases where event reappears when banning originator and responder, "deleted" takes precedence
@@ -172,7 +184,7 @@ def cronjob_ban_audio_clips():
             audio_clip_report.audio_clip.last_modified = datetime_now
             audio_clip_report.audio_clip.generic_status = generic_status_deleted
 
-            audio_clips.append(audio_clip_report.audio_clip.id)
+            audio_clips.append(audio_clip_report.audio_clip)
 
             #update users to be banned
 
@@ -186,7 +198,10 @@ def cronjob_ban_audio_clips():
             target_user_index = user_ids.index(audio_clip_report.audio_clip.user.id)
 
             users[target_user_index].ban_count += 1
-            ban_days = settings.CRONJOB_AUDIO_CLIP_BAN_DAYS ** users[target_user_index].ban_count
+
+            #for ban_days from community dislikes, keep it low to make it tolerable towards false bans
+
+            ban_days = users[target_user_index].ban_count
 
             #cap ban_days, else it can get out of hand
             if ban_days > settings.CRONJOB_AUDIO_CLIP_MAX_BAN_DAYS:
@@ -201,10 +216,12 @@ def cronjob_ban_audio_clips():
         #for all banned users, delete all their existing event_reply_queues
         EventReplyQueues.objects.filter(locked_for_user_id__in=user_ids).delete()
 
+        #delete to save db space
         AudioClipLikesDislikes.objects.filter(audio_clip__in=audio_clips).delete()
-        AudioClipMetrics.objects.filter(audio_clip__in=audio_clips).update(like_count=0, dislike_count=0, like_ratio=0)
 
-        #update everything
+        #update everything else
+
+        AudioClipMetrics.objects.filter(audio_clip__in=audio_clips).update(like_count=0, dislike_count=0, like_ratio=0)
 
         AudioClipReports.objects.bulk_update(
             audio_clip_reports,

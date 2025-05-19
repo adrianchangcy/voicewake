@@ -4,9 +4,7 @@
         <!--loading-->
         <div v-if="is_fetching_event" class="flex flex-col gap-8">
 
-            <div v-for="x in audio_clip_count" :key="x">
-                <VAudioClipCardSkeleton/>
-            </div>
+            <VAudioClipCardSkeleton/>
         </div>
 
         <!--not loading-->
@@ -260,7 +258,6 @@
                 event_id: null as number|null,
                 event: null as EventsAndAudioClipsTypes|null,
 
-                audio_clip_count: 0,
                 original_document_title: "",
                 
                 is_fetching_event: false,
@@ -764,7 +761,6 @@
             this.audio_clip_processings_store.getStaticValuesFromTemplate(container);
 
             this.event_id = parseInt(container.getAttribute('data-event-id') as string);
-            this.audio_clip_count = JSON.parse(container.getAttribute('data-audio-clip-count') as string);
 
             //store original page title, so if user is no longer replying, can auto-revert
             this.original_document_title = document.title;
