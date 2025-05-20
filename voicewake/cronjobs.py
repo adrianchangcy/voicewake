@@ -162,6 +162,8 @@ def cronjob_ban_audio_clips():
                 audio_clip_report.audio_clip.event.generic_status = generic_status_deleted
                 events.append(audio_clip_report.audio_clip.event)
                 event_ids.append(audio_clip_report.audio_clip.event.id)
+
+                #for all potential responders involved, delete their queues
                 event_reply_queue_event_ids.append(audio_clip_report.audio_clip.event.id)
 
             elif (
@@ -214,6 +216,7 @@ def cronjob_ban_audio_clips():
         EventReplyQueues.objects.filter(event_id__in=event_reply_queue_event_ids).delete()
 
         #for all banned users, delete all their existing event_reply_queues
+        #can just delete
         EventReplyQueues.objects.filter(locked_for_user_id__in=user_ids).delete()
 
         #delete to save db space
