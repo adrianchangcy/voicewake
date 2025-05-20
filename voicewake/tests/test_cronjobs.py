@@ -3057,7 +3057,7 @@ class Core_TransactionTestCase(TransactionTestCase):
                 BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
                 BAN_AUDIO_CLIP_MIN_AGE_S=11,
             ),
-            self.assertNumQueries(19)
+            self.assertNumQueries(18)
         ):
 
             cronjob_ban_audio_clips()
@@ -3267,7 +3267,7 @@ class Core_TransactionTestCase(TransactionTestCase):
                 BAN_AUDIO_CLIP_DISLIKE_COUNT=10,
                 BAN_AUDIO_CLIP_MIN_AGE_S=11,
             ),
-            self.assertNumQueries(19)
+            self.assertNumQueries(18)
         ):
 
             cronjob_ban_audio_clips()
