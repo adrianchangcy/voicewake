@@ -12096,7 +12096,7 @@ class Core_TestCase(TestCase):
         self.assertEqual(request.status_code, 404)
 
 
-    def test_audio_clip_deletions__delete_banned_audio_clip(self):
+    def test_audio_clip_deletions__post__banned_audio_clip(self):
 
         sample_event_0 = EventsFactory(
             event_created_by=self.users[0],

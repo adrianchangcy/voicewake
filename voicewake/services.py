@@ -1459,6 +1459,7 @@ class CreateAudioClips():
         #this is to maintain and respect any higher precedence statuses
 
         audio_clip_role_name = audio_clip.audio_clip_role.audio_clip_role_name
+        generic_status_deleted = GenericStatuses.objects.get(generic_status_name='deleted')
 
         if audio_clip_role_name == 'originator':
 
@@ -1479,13 +1480,14 @@ class CreateAudioClips():
 
                 if audio_clip.generic_status.generic_status_name == 'processing':
 
-                    audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
+                    audio_clip.generic_status = generic_status_deleted
                     audio_clip.save()
 
                 if event.generic_status.generic_status_name == 'processing':
 
                     #we don't need event to enforce limit
-                    event.delete()
+                    event.generic_status = generic_status_deleted
+                    event.save()
 
             return can_normalise
 
@@ -1510,7 +1512,7 @@ class CreateAudioClips():
 
                 if audio_clip.generic_status.generic_status_name == 'processing':
 
-                    audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
+                    audio_clip.generic_status = generic_status_deleted
                     audio_clip.save()
 
                 event_reply_queue.delete()

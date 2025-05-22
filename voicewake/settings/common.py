@@ -483,11 +483,6 @@ USER_BLOCKS_LIMIT = 200
 USER_FOLLOWS_LIMIT = 400
 
 
-#BATCH MINIMUM
-#minimum db queues required to start offloading to celery worker
-GENERAL_MIN_BATCH = 40
-
-
 #CACHE
 CACHE_AUDIO_CLIP_TONE_AGE_S = 1209600  #2 weeks
 
@@ -499,6 +494,7 @@ UNREGISTERED_USERS_DELETE_LIMIT = 100
 
 #PERFORMANCE
 BULK_CREATE_BATCH_SIZE = int(os.environ['BULK_CREATE_BATCH_SIZE'])
+BULK_UPDATE_BATCH_SIZE = int(os.environ['BULK_UPDATE_BATCH_SIZE'])
 
 
 #CELERY
@@ -538,15 +534,15 @@ CELERY_BEAT_SCHEDULE = {
             'expires': 30,    #30 seconds
         },
     },
-    'cronjob_delete_event_reply_queue_not_replying_overdue': {
-        'task': 'voicewake.cronjobs.cronjob_delete_event_reply_queue_not_replying_overdue',
+    'cronjob_delete_event_reply_queue__not_replying__overdue': {
+        'task': 'voicewake.cronjobs.cronjob_delete_event_reply_queue__not_replying__overdue',
         'schedule': (30 * 60),  #30 minutes
         'options': {
             'expires': 30,    #30 seconds
         },
     },
-    'cronjob_delete_event_reply_queue_is_replying_overdue': {
-        'task': 'voicewake.cronjobs.cronjob_delete_event_reply_queue_is_replying_overdue',
+    'cronjob_delete_event_reply_queue__delete_audio_clip__is_replying__overdue': {
+        'task': 'voicewake.cronjobs.cronjob_delete_event_reply_queue__delete_audio_clip__is_replying__overdue',
         'schedule': (30 * 60),  #30 minutes
         'options': {
             'expires': 30,    #30 seconds
@@ -555,13 +551,6 @@ CELERY_BEAT_SCHEDULE = {
     'cronjob_handle_originator_processing_overdue': {
         'task': 'voicewake.cronjobs.cronjob_handle_originator_processing_overdue',
         'schedule': (30 * 60),  #30 minutes
-        'options': {
-            'expires': 30,    #30 seconds
-        },
-    },
-    'cronjob_delete_audio_clip_processing_overdue': {
-        'task': 'voicewake.cronjobs.cronjob_delete_audio_clip_processing_overdue',
-        'schedule': (12 * 60 * 60),  #12 hours
         'options': {
             'expires': 30,    #30 seconds
         },

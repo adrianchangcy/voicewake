@@ -194,10 +194,11 @@ class AudioClips(models.Model):
         db_table = 'audio_clips'
         indexes = [
             #for cursor
+            #FYI, index direction does not matter, e.g. ASC+ASC being used for DESC+DESC, but will matter if ASC+DESC or DESC+ASC
             models.Index(
                 fields=('when_created', 'id',),
             ),
-            #this is for temporary solution for viewing banned audio_clips
+            #for temporary solution for viewing banned audio_clips
             models.Index(
                 fields=('last_modified', 'id',),
             ),
