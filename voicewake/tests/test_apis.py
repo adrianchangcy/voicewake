@@ -9315,8 +9315,14 @@ class Core_TestCase(TestCase):
         request = self.client.post(reverse('delete_audio_clip_processings_api'), data)
 
         self.assertTrue(request.status_code, 200)
-        self.assertFalse(Events.objects.filter(pk=sample_event_0.id).exists())
-        self.assertFalse(AudioClips.objects.filter(pk=sample_audio_clip_0.id).exists())
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+
+        self.assertTrue(Events.objects.filter(pk=sample_event_0.id).exists())
+        self.assertTrue(AudioClips.objects.filter(pk=sample_audio_clip_0.id).exists())
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
 
         target_cache = cache.get(target_cache_key)
 
@@ -9520,8 +9526,16 @@ class Core_TestCase(TestCase):
 
         self.assertTrue(request.status_code, 200)
         self.assertTrue(Events.objects.filter(pk=sample_event_0.id).exists())
-        self.assertFalse(AudioClips.objects.filter(pk=sample_audio_clip_1.id).exists())
+        self.assertTrue(AudioClips.objects.filter(pk=sample_audio_clip_1.id).exists())
         self.assertFalse(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists())
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+        sample_audio_clip_1.refresh_from_db()
+
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'ok')
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
 
         target_cache = cache.get(target_cache_key)
 
@@ -10876,7 +10890,7 @@ class Core_TestCase(TestCase):
         sample_audio_clip_metric_1.refresh_from_db()
         banned_until_day_difference = settings.ADMIN_AUDIO_CLIP_MAX_BAN_DAYS
 
-        self.assertEqual(self.users[0].ban_count, 1)
+        self.assertEqual(self.users[0].ban_count, minimum_ban_count+1)
         self.assertLess(self.users[0].banned_until, (get_datetime_now() + timedelta(days=banned_until_day_difference, seconds=10)))
         self.assertGreater(self.users[0].banned_until, (get_datetime_now() - timedelta(days=banned_until_day_difference, seconds=10)))
         self.assertEqual(sample_audio_clip_metric_1.like_count, 0)
@@ -10898,7 +10912,7 @@ class Core_TestCase(TestCase):
         )
 
         print_with_function_name(request.content)
-        self.assertEqual(request.status_code, 400)
+        self.assertEqual(request.status_code, 200)
 
 
     def test_audio_clip_bans__post__incomplete__ban_originator(self):
@@ -11538,9 +11552,9 @@ class Core_TestCase(TestCase):
         sample_audio_clip_metric_0.refresh_from_db()
 
         self.assertEqual(request.status_code, 204)
-        self.assertEqual(sample_audio_clip_0.event.generic_status.generic_status_name, 'incomplete')
-        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'ok')
-        self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 2)
+        self.assertEqual(sample_audio_clip_0.event.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_0).count(), 0)
         self.assertEqual(sample_audio_clip_metric_0.like_count, 0)
         self.assertEqual(sample_audio_clip_metric_0.dislike_count, 0)
         self.assertEqual(sample_audio_clip_metric_0.like_ratio, 0)
