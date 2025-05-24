@@ -276,13 +276,13 @@ def cronjob_handle_originator_processing_overdue():
             SET generic_status_id = (
                 SELECT id FROM generic_statuses
                 WHERE generic_status_name = %s
-            ),
+            )
             FROM target_audio_clips AS tac
             WHERE ac.id = tac.id
             RETURNING tac.id, tac.event_id, tac.user_id
         )
         UPDATE events AS e
-        SET e.generic_status_id = (
+        SET generic_status_id = (
             SELECT id FROM generic_statuses
             WHERE generic_status_name = %s        
         )

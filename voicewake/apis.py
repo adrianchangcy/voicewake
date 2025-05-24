@@ -3301,76 +3301,86 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
 
         #mark audio_clip and event_reply_queue as "deleted", delete from cache
 
-        with transaction.atomic():
+        try:
 
-            audio_clip = None
+            generic_status_deleted = GenericStatuses.objects.get(generic_status_name='deleted')
 
-            try:
+            with transaction.atomic():
 
-                audio_clip = AudioClips.objects.select_for_update().select_related('audio_clip_role',).get(
+                audio_clip = None
+
+                audio_clip = AudioClips.objects.select_for_update().select_related('audio_clip_role', 'generic_status',).get(
                     pk=request_data['audio_clip_id'],
                     user_id=request.user.id,
-                    generic_status__generic_status_name__in=['processing_overdue', 'processing_max_attempts_reached'],
                 )
 
-            except AudioClips.DoesNotExist:
+                if audio_clip.generic_status.generic_status_name not in ['processing', 'processing_overdue', 'processing_max_attempts_reached']:
 
-                return Response(
-                    data={
-                    },
-                    status=status.HTTP_404_NOT_FOUND
+                    return Response(
+                        data={
+                        },
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+                #start deleting
+
+                #delete queue, if responder
+
+                if audio_clip.audio_clip_role.audio_clip_role_name == 'responder':
+
+                    EventReplyQueues.objects.filter(
+                        locked_for_user_id=audio_clip.user_id,
+                        event_id=audio_clip.event_id,
+                        is_replying=True,
+                    ).delete()
+
+                    #no event involved, event at "incomplete" while processing fails is still "incomplete"
+                    #and if event becomes "deleted" halfway, no reason to override
+
+                #delete processing from cache
+
+                processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=request.user.id)
+                processing_cache = cache.get(processing_cache_key, None)
+
+                if processing_cache is None:
+
+                    #if unexpectedly no cache, auto-create
+
+                    processing_cache = CreateAudioClips.get_default_processing_cache_main_object()
+
+                    cache.set(processing_cache_key, processing_cache, timeout=settings.REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S)
+
+                processing_cache_processing = CreateAudioClips.get_processing_cache_processing_object(
+                    processing_cache=processing_cache,
+                    audio_clip_id=audio_clip.id
                 )
 
-            #start deleting
+                if processing_cache_processing is not None:
 
-            #delete queue, if responder
+                    processing_cache['processings'].pop(str(audio_clip.id))
 
-            if audio_clip.audio_clip_role.audio_clip_role_name == 'responder':
+                    CreateAudioClips.set_processing_cache(
+                        processing_cache_key=processing_cache_key,
+                        processing_cache=processing_cache
+                    )
 
-                EventReplyQueues.objects.filter(
-                    locked_for_user_id=request.user.id,
-                    event_id=audio_clip.event_id,
-                    is_replying=True,
-                ).delete()
+                #only update to "deleted" here, don't actually delete
 
-                #no event involved, event at "incomplete" while processing fails is still "incomplete"
-                #and if event becomes "deleted" halfway, no reason to override
+                if audio_clip.audio_clip_role.audio_clip_role_name == 'originator':
 
-            #delete processing from cache
+                    audio_clip.event.generic_status = generic_status_deleted
+                    audio_clip.event.save()
 
-            processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=request.user.id)
-            processing_cache = cache.get(processing_cache_key, None)
+                audio_clip.generic_status = generic_status_deleted
+                audio_clip.save()
 
-            if processing_cache is None:
+        except AudioClips.DoesNotExist:
 
-                #if unexpectedly no cache, auto-create
-
-                processing_cache = CreateAudioClips.get_default_processing_cache_main_object()
-
-                cache.set(processing_cache_key, processing_cache, timeout=settings.REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S)
-
-            processing_cache_processing = CreateAudioClips.get_processing_cache_processing_object(
-                processing_cache=processing_cache,
-                audio_clip_id=audio_clip.id
+            return Response(
+                data={
+                },
+                status=status.HTTP_404_NOT_FOUND
             )
-
-            if processing_cache_processing is not None:
-
-                processing_cache['processings'].pop(str(audio_clip.id))
-
-                CreateAudioClips.set_processing_cache(
-                    processing_cache_key=processing_cache_key,
-                    processing_cache=processing_cache
-                )
-
-            #only update to "deleted" here, don't actually delete
-
-            if audio_clip.audio_clip_role.audio_clip_role_name == 'originator':
-
-                Events.objects.filter(pk=audio_clip.event.id).update(generic_status__generic_status_name='deleted')
-
-            audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
-            audio_clip.save()
 
         return Response(
             data={
@@ -3684,12 +3694,8 @@ class AudioClipDeletionsAPI(generics.DestroyAPIView):
                     generic_status__generic_status_name='ok',
                 )
 
-                if request.user.is_superuser is True or request.user.id == audio_clip.user_id:
-
-                    audio_clip.generic_status = generic_status_deleted
-                    audio_clip.save()
-
-                else:
+                #allow either correct user or superuser
+                if request.user.id != audio_clip.user_id and request.user.is_superuser is False:
 
                     return Response(
                         data={
@@ -3707,6 +3713,11 @@ class AudioClipDeletionsAPI(generics.DestroyAPIView):
                 if AudioClipReports.objects.filter(audio_clip=audio_clip).exists() is False:
 
                     AudioClipMetrics.objects.filter(audio_clip=audio_clip).update(like_count=0, dislike_count=0, like_ratio=0)
+
+                #handle audio_clip
+
+                audio_clip.generic_status = generic_status_deleted
+                audio_clip.save()
 
                 #handle event
 
