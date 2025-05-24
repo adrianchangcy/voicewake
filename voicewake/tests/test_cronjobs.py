@@ -227,7 +227,7 @@ class Core_TestCase(TestCase):
 
             cronjob_handle_originator_processing_overdue()
 
-        self.assertFalse(Events.objects.filter(pk=sample_event_0.id).exists())
+        self.assertTrue(Events.objects.filter(pk=sample_event_0.id).exists())
         self.assertTrue(AudioClips.objects.filter(pk=sample_audio_clip_0.id).exists())
 
         target_cache = cache.get(target_cache_key, None)
@@ -235,9 +235,11 @@ class Core_TestCase(TestCase):
         self.assertIsNotNone(target_cache)
         self.assertEqual(len(target_cache['processings']), 0)
 
+        sample_event_0.refresh_from_db()
         sample_audio_clip_0.refresh_from_db()
 
         self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'processing_overdue')
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
 
 
     def test_cronjob_handle_originator_processing_overdue__multiple_ok(self):
@@ -322,7 +324,7 @@ class Core_TestCase(TestCase):
 
             cronjob_handle_originator_processing_overdue()
 
-        self.assertFalse(Events.objects.filter(pk=sample_event_0.id).exists())
+        self.assertTrue(Events.objects.filter(pk=sample_event_0.id).exists())
         self.assertTrue(AudioClips.objects.filter(pk=sample_audio_clip_0.id).exists())
 
         target_cache = cache.get(target_cache_key, None)
@@ -330,13 +332,17 @@ class Core_TestCase(TestCase):
         self.assertIsNotNone(target_cache)
         self.assertEqual(len(target_cache['processings']), 0)
 
-        self.assertFalse(Events.objects.filter(pk=sample_event_1.id).exists())
+        self.assertTrue(Events.objects.filter(pk=sample_event_1.id).exists())
         self.assertTrue(AudioClips.objects.filter(pk=sample_audio_clip_1.id).exists())
 
+        sample_event_0.refresh_from_db()
         sample_audio_clip_0.refresh_from_db()
+        sample_event_1.refresh_from_db()
         sample_audio_clip_1.refresh_from_db()
 
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
         self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'processing_overdue')
+        self.assertEqual(sample_event_1.generic_status.generic_status_name, 'deleted')
         self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'processing_overdue')
 
 
