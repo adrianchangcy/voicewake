@@ -1,5 +1,5 @@
 from time import sleep
-from django.test import TestCase, Client, TransactionTestCase, override_settings
+from django.test import TestCase, Client, TransactionTestCase, SimpleTestCase, override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.db.models import Count
@@ -43,10 +43,22 @@ class RealisticBulkData():
         self.is_audio_clip_tone_quantity_reduced = is_audio_clip_tone_quantity_reduced
         self.db_batch_size = db_batch_size
 
-        self.user_quantity = 10 * batch_quantity
+        #4 users (e.g. block/blocked/mutualblock/none), scenarios in 3 ranges (earliest/middle/latest users), i.e. 4*3
+        self.unique_users = {
+            'earliest_user_ids': [],
+            'middle_user_ids': [],
+            'latest_user_ids': [],
+        }
+        self.is_unique_users_ready = False
+
+        #increase this as needed
+        self.minimum_unique_users_per_range = 4
+
+        #current minimum for user_quantity is due to requiring unique identifiable users
+        self.user_quantity = (len(self.unique_users) * self.minimum_unique_users_per_range) * batch_quantity
         self.user_prefix = "testuser"
         self.user_count = 0
-        self.users = []
+        self.new_users = []
         self.audio_file = os.path.join(
             settings.BASE_DIR,
             'voicewake/tests/file_samples/audio_ok_1.mp3'
@@ -101,11 +113,11 @@ class RealisticBulkData():
 
     def _check_ready(self):
 
-        if len(self.users) == 0:
+        if len(self.new_users) == 0:
 
             raise ValueError('No users created. Call .prepare_users() first.')
         
-        elif len(self.users) < 2:
+        elif len(self.new_users) < 2:
 
             raise ValueError('Minimum 2 users required.')
 
@@ -190,7 +202,10 @@ class RealisticBulkData():
         }
 
 
-    def prepare_new_users(self):
+    def create_new_users(self):
+
+        #reset so it doesn't become exponential
+        self.new_users = []
 
         user_count = 0
 
@@ -211,7 +226,7 @@ class RealisticBulkData():
             new_username = self.user_prefix + str(x)
             new_email = new_username + '@gmail.com'
 
-            self.users.append(
+            self.new_users.append(
                 get_user_model().objects.create_user(
                     username=new_username,
                     email=new_email,
@@ -219,7 +234,135 @@ class RealisticBulkData():
                 )
             )
 
-            print('Created test user: ' + self.users[-1].username)
+            print('Created test user: ' + self.new_users[-1].username)
+
+
+    def _determine_unique_users_after_no_new_users_left_to_create(self):
+
+        #venn diagram
+        #D[  A  ][C][  B  ]D
+        #we want earliest/middle/latest ranges to look for dip in performance from no/misconfigured indexing in db
+        #currently only need 4 users for every range, e.g.:
+            #A blocks everyone
+            #everyone blocks B
+            #C blocks everyone and everyone blocks C
+            #no blocking for D
+
+        self.user_ids = get_user_model().objects.all().exclude(is_superuser=True).order_by('id').values_list('id', flat=True)
+
+        #earliest
+
+        for x in range(self.minimum_unique_users_per_range):
+
+            self.unique_users['earliest_user_ids'].append(self.user_ids[x])
+
+        #middle
+
+        middle_index = math.floor(len(self.user_ids)/2)
+        self.unique_users['middle_user_ids'] = [
+            self.user_ids[middle_index-2],
+            self.user_ids[middle_index-1],
+            self.user_ids[middle_index],
+            self.user_ids[middle_index+1],
+        ]
+
+        #latest
+
+        for x in range(self.minimum_unique_users_per_range):
+
+            #offset x by +1
+            index = len(self.user_ids)-(x+1)
+
+            self.unique_users['latest_user_ids'].append(self.user_ids[index])
+
+        total_user_count = (
+            len(self.unique_users['earliest_user_ids']) +
+            len(self.unique_users['middle_user_ids']) +
+            len(self.unique_users['latest_user_ids'])
+        )
+
+        if len(self.user_ids) < total_user_count:
+
+            raise ValueError('Not enough users.')
+
+        #update targeted users to make them easy to find
+        #retire past unique users if they do not match with new ones
+
+        for index, user_id in enumerate(self.unique_users['earliest_user_ids']):
+
+            try:
+
+                past_unique_user = get_user_model().objects.get(username_lowercase=f'earliest_{index}')
+
+                if past_unique_user.id != user_id:
+
+                    past_unique_user.username = f'retired_earliest_{index}'
+                    past_unique_user.username_lowercase = f'retired_earliest_{index}'
+                    past_unique_user.save()
+
+            except get_user_model().DoesNotExist:
+
+                get_user_model().objects.filter(pk=user_id).update(username=f'earliest_{index}', username_lowercase=f'earliest_{index}')
+
+        for index, user_id in enumerate(self.unique_users['middle_user_ids']):
+
+            try:
+
+                past_unique_user = get_user_model().objects.get(username_lowercase=f'middle_{index}')
+
+                if past_unique_user.id != user_id:
+
+                    past_unique_user.username = f'retired_middle_{index}'
+                    past_unique_user.username_lowercase = f'retired_middle_{index}'
+                    past_unique_user.save()
+
+            except get_user_model().DoesNotExist:
+
+                get_user_model().objects.filter(pk=user_id).update(username=f'middle_{index}', username_lowercase=f'middle_{index}')
+
+        for index, user_id in enumerate(self.unique_users['latest_user_ids']):
+
+            try:
+
+                past_unique_user = get_user_model().objects.get(username_lowercase=f'latest_{index}')
+
+                if past_unique_user.id != user_id:
+
+                    past_unique_user.username = f'retired_latest_{index}'
+                    past_unique_user.username_lowercase = f'retired_latest_{index}'
+                    past_unique_user.save()
+
+            except get_user_model().DoesNotExist:
+
+                get_user_model().objects.filter(pk=user_id).update(username=f'latest_{index}', username_lowercase=f'latest_{index}')
+
+        self.is_unique_users_ready = True
+
+
+    @staticmethod
+    def get_unique_users():
+
+        realistic_bulk_data_class = RealisticBulkData()
+
+        unique_users = {
+            'earliest_users': [],
+            'middle_users': [],
+            'latest_users': [],
+        }
+
+        #earliest
+
+        for x in range(realistic_bulk_data_class.minimum_unique_users_per_range):
+
+            unique_users['earliest_users'].append(
+                get_user_model().objects.get(username=f'earliest_{x}')
+            )
+            unique_users['middle_users'].append(
+                get_user_model().objects.get(username=f'middle_{x}')
+            )
+            unique_users['latest_users'].append(
+                get_user_model().objects.get(username=f'latest_{x}')
+            )
 
 
     def prepare_like_dislike_estimate(self):
@@ -228,24 +371,24 @@ class RealisticBulkData():
 
             raise ValueError('To keep things simple, please maintain a minimum of 10.')
 
-        if len(self.users) == 0:
+        if len(self.new_users) == 0:
 
-            raise ValueError('No users. Call .prepare_new_users() first.')
+            raise ValueError('No users. Call .create_new_users() first.')
 
         #to prevent full exponential scaling, allow an amount of users to not vote at every audio_clip
 
         #len(users) must not be divisible by (like_count + dislike_count), else one user has only likes, the other dislikes, etc.
         #this is easily achieved by doing (len(users)/2)+1
         #better +1 than -1, since having too few also means some users have only likes/dislikes
-        self.like_count = math.ceil(len(self.users) * 0.25)
-        self.dislike_count = math.ceil(len(self.users) * 0.5) + 1
+        self.like_count = math.ceil(len(self.new_users) * 0.25)
+        self.dislike_count = math.ceil(len(self.new_users) * 0.5) + 1
 
         self.like_ratio = (self.like_count / (self.like_count + self.dislike_count))
 
 
     #initially though only running this once for all create() is more efficient
     #but that doesn't help when everything is too slow, so this will be coupled into all individual create(), then use threading to execute
-    def _create_audio_clip_likes_dislikes(self, audio_clips):
+    def create_audio_clip_likes_dislikes(self, audio_clips):
 
         full_sql = ''
         full_params = []
@@ -270,12 +413,12 @@ class RealisticBulkData():
 
                 try:
 
-                    current_user = self.users[user_index]
+                    current_user = self.new_users[user_index]
 
                 except IndexError:
 
                     user_index = 0
-                    current_user = self.users[user_index]
+                    current_user = self.new_users[user_index]
 
                 full_sql += '(%s,%s,%s,%s,%s),'
                 full_params.extend([
@@ -294,12 +437,12 @@ class RealisticBulkData():
 
                 try:
 
-                    current_user = self.users[user_index]
+                    current_user = self.new_users[user_index]
 
                 except IndexError:
 
                     user_index = 0
-                    current_user = self.users[user_index]
+                    current_user = self.new_users[user_index]
 
                 full_sql += '(%s,%s,%s,%s,%s),'
                 full_params.extend([
@@ -325,6 +468,81 @@ class RealisticBulkData():
             cursor.execute(full_sql, full_params)
 
 
+    def create_user_blocks(self):
+
+        self._determine_unique_users_after_no_new_users_left_to_create()
+
+        user_block_rows = []
+
+        #for UserBlocks, you cannot block yourself
+        #instead of exponential if-statements checking for it, we only check once after all for-loops
+
+        #block every user
+        for user_id in self.user_ids:
+
+            user_block_rows.append(
+                UserBlocks(user_id=self.unique_users['earliest_user_ids'][0], blocked_user_id=user_id)
+            )
+            user_block_rows.append(
+                UserBlocks(user_id=self.unique_users['middle_user_ids'][0], blocked_user_id=user_id)
+            )
+            user_block_rows.append(
+                UserBlocks(user_id=self.unique_users['latest_user_ids'][0], blocked_user_id=user_id)
+            )
+
+        #blocked by every user
+        for user_id in self.user_ids:
+
+            user_block_rows.append(
+                UserBlocks(user_id=self.unique_users['earliest_user_ids'][1], blocked_user_id=user_id)
+            )
+            user_block_rows.append(
+                UserBlocks(user_id=self.unique_users['middle_user_ids'][1], blocked_user_id=user_id)
+            )
+            user_block_rows.append(
+                UserBlocks(user_id=self.unique_users['latest_user_ids'][1], blocked_user_id=user_id)
+            )
+
+        #mutual blocking
+        for user_id in self.user_ids:
+
+            user_block_rows.append(
+                UserBlocks(user_id=self.unique_users['earliest_user_ids'][2], blocked_user_id=user_id)
+            )
+            user_block_rows.append(
+                UserBlocks(user_id=self.unique_users['middle_user_ids'][2], blocked_user_id=user_id)
+            )
+            user_block_rows.append(
+                UserBlocks(user_id=self.unique_users['latest_user_ids'][2], blocked_user_id=user_id)
+            )
+
+        #no blocking
+        UserBlocks.objects.filter(user_id=self.unique_users['earliest_user_ids'][3]).delete()
+        UserBlocks.objects.filter(user_id=self.unique_users['middle_user_ids'][3]).delete()
+        UserBlocks.objects.filter(user_id=self.unique_users['latest_user_ids'][3]).delete()
+        UserBlocks.objects.filter(blocked_user_id=self.unique_users['earliest_user_ids'][3]).delete()
+        UserBlocks.objects.filter(blocked_user_id=self.unique_users['middle_user_ids'][3]).delete()
+        UserBlocks.objects.filter(blocked_user_id=self.unique_users['latest_user_ids'][3]).delete()
+
+        #check for self-blocks
+
+        index = 0
+
+        while index < len(user_block_rows):
+
+            if user_block_rows[index].user_id == user_block_rows[index].blocked_user_id:
+
+                user_block_rows.pop(index)
+
+            else:
+
+                index += 1
+
+        #create rows
+        #rely on unique constraint and ignore_conflicts=True to remove duplicates
+        UserBlocks.objects.bulk_create(user_block_rows, ignore_conflicts=True, batch_size=self.db_batch_size)
+
+
     def create_event_incomplete(self, is_replying:bool=False, skipped_by_users:bool=False):
 
         self._check_ready()
@@ -348,7 +566,7 @@ class RealisticBulkData():
 
             events = []
             
-            for user in self.users:
+            for user in self.new_users:
                 
                 events.extend(
                     EventsFactory.create_batch(
@@ -397,7 +615,7 @@ class RealisticBulkData():
 
                         #use this statement to check for IndexError
                         #also might as well +=1 if users are the same
-                        if self.users[replying_user_index] == event.created_by.pk:
+                        if self.new_users[replying_user_index] == event.created_by.pk:
 
                             replying_user_index += 1
 
@@ -406,7 +624,7 @@ class RealisticBulkData():
                         #out of range, restart
                         replying_user_index = 0
 
-                        if self.users[replying_user_index] == event.created_by.pk:
+                        if self.new_users[replying_user_index] == event.created_by.pk:
 
                             replying_user_index += 1
 
@@ -415,7 +633,7 @@ class RealisticBulkData():
                             None,
                             event.id,
                             when_locked,
-                            self.users[replying_user_index].id,
+                            self.new_users[replying_user_index].id,
                             True,
                             datetime_now,
                             datetime_now,
@@ -427,9 +645,9 @@ class RealisticBulkData():
 
                 if skipped_by_users is True:
 
-                    for user in self.users:
+                    for user in self.new_users:
 
-                        if is_replying is True and self.users[replying_user_index].id == user.id:
+                        if is_replying is True and self.new_users[replying_user_index].id == user.id:
 
                             continue
 
@@ -476,7 +694,7 @@ class RealisticBulkData():
                 user_events = UserEvents.objects.bulk_create(user_events, batch_size=self.db_batch_size)
                 reset_queries()
 
-            self._create_audio_clip_likes_dislikes(audio_clips)
+            self.create_audio_clip_likes_dislikes(audio_clips)
             reset_queries()
 
             stopwatch.stop()
@@ -506,7 +724,7 @@ class RealisticBulkData():
 
             events = []
 
-            for user in self.users:
+            for user in self.new_users:
 
                 #if we only need originator, use current user
                 #if we need responder, use user_index+1
@@ -549,7 +767,7 @@ class RealisticBulkData():
                     )
                 )
 
-                #for responder, we +1 self.users until the end, then restart from 0
+                #for responder, we +1 self.new_users until the end, then restart from 0
                 #originator and responder cannot be the same
                 responder = None
 
@@ -557,7 +775,7 @@ class RealisticBulkData():
 
                     #use this statement to check for IndexError
                     #also might as well +=1 if users are the same
-                    if self.users[responder_user_index] == event.created_by.pk:
+                    if self.new_users[responder_user_index] == event.created_by.pk:
 
                         responder_user_index += 1
 
@@ -566,11 +784,11 @@ class RealisticBulkData():
                     #out of range, restart
                     responder_user_index = 0
 
-                    if self.users[responder_user_index] == event.created_by.pk:
+                    if self.new_users[responder_user_index] == event.created_by.pk:
 
                         responder_user_index += 1
 
-                responder = self.users[responder_user_index]
+                responder = self.new_users[responder_user_index]
                 responder_user_index += 1
 
                 audio_clips.append(
@@ -610,18 +828,62 @@ class RealisticBulkData():
             audio_clip_metrics = AudioClipMetrics.objects.bulk_create(audio_clip_metrics, batch_size=self.db_batch_size)
             reset_queries()
 
-            self._create_audio_clip_likes_dislikes(audio_clips)
+            self.create_audio_clip_likes_dislikes(audio_clips)
             reset_queries()
 
             stopwatch.stop()
             print(f'Done with audio_clip_tone #{audio_clip_tone_index} in {stopwatch.diff_seconds()}s.')
 
 
-    def create_event_deleted(self, has_reply:bool=False, deleted_and_banned:bool=False):
+    def create_event_deleted(self, has_responder:bool, is_originator_banned:bool, is_responder_banned:bool=False):
+
+        if (
+            #can't specify responder to be banned if no responder
+            (has_responder is False and is_responder_banned is True) or
+            #don't create incomplete events using this function
+            (has_responder is False and is_originator_banned is False)
+        ):
+
+            raise ValueError('Invalid arg combination.')
 
         self._check_ready()
 
-        print_with_function_name(f"Started. has_reply={str(has_reply)}, deleted_and_banned={str(deleted_and_banned)}.")
+        print_with_function_name(f"Started.
+            has-responder={str(has_responder)},
+            is_originator_banned={str(is_originator_banned)},
+            is_responder_banned={str(is_responder_banned)},
+        ")
+
+        #decide event and audio_clip statuses in advance
+
+        event_generic_status = None
+        originator_audio_clip_generic_status = None
+        responder_audio_clip_generic_status = None
+
+        if has_responder is True:
+
+            if is_originator_banned is True and is_responder_banned is True:
+
+                event_generic_status = self.generic_statuses['deleted']
+                originator_audio_clip_generic_status = self.generic_statuses['deleted']
+                responder_audio_clip_generic_status = self.generic_statuses['deleted']
+
+            elif is_originator_banned is True and is_responder_banned is False:
+
+                event_generic_status = self.generic_statuses['deleted']
+                originator_audio_clip_generic_status = self.generic_statuses['deleted']
+                responder_audio_clip_generic_status = self.generic_statuses['ok']
+
+            elif is_originator_banned is False and is_responder_banned is True:
+
+                event_generic_status = self.generic_statuses['incomplete']
+                originator_audio_clip_generic_status = self.generic_statuses['ok']
+                responder_audio_clip_generic_status = self.generic_statuses['deleted']
+
+        else:
+
+                event_generic_status = self.generic_statuses['deleted']
+                originator_audio_clip_generic_status = self.generic_statuses['deleted']
 
         datetime_now = get_datetime_now()
         stopwatch = Stopwatch()
@@ -640,7 +902,7 @@ class RealisticBulkData():
 
             events = []
 
-            for user in self.users:
+            for user in self.new_users:
 
                 #if we only need originator, use current user
                 #if we need responder, use user_index+1
@@ -651,7 +913,7 @@ class RealisticBulkData():
                 events.extend(
                     EventsFactory.create_batch(
                         event_created_by=user,
-                        event_generic_status_generic_status_name='deleted',
+                        event_generic_status_generic_status_name=event_generic_status,
                         size=self.event_quantity,
                     )
                 )
@@ -673,21 +935,21 @@ class RealisticBulkData():
                         self.audio_clip_roles['originator'].id,
                         audio_clip_tone.id,
                         event.id,
-                        self.generic_statuses['deleted'].id,
+                        originator_audio_clip_generic_status,
                         self.audio_file,
                         10,
                         [],
-                        deleted_and_banned,
+                        is_originator_banned,
                         datetime_now,
                         datetime_now,
                     )
                 )
 
-                if has_reply is False:
+                if has_responder is False:
 
                     continue
 
-                #for responder, we +1 self.users until the end, then restart from 0
+                #for responder, we +1 self.new_users until the end, then restart from 0
                 #originator and responder cannot be the same
                 responder = None
 
@@ -695,7 +957,7 @@ class RealisticBulkData():
 
                     #use this statement to check for IndexError
                     #also might as well +=1 if users are the same
-                    if self.users[responder_user_index] == event.created_by.pk:
+                    if self.new_users[responder_user_index] == event.created_by.pk:
 
                         responder_user_index += 1
 
@@ -704,11 +966,11 @@ class RealisticBulkData():
                     #out of range, restart
                     responder_user_index = 0
 
-                    if self.users[responder_user_index] == event.created_by.pk:
+                    if self.new_users[responder_user_index] == event.created_by.pk:
 
                         responder_user_index += 1
 
-                responder = self.users[responder_user_index]
+                responder = self.new_users[responder_user_index]
                 responder_user_index += 1
 
                 audio_clips.append(
@@ -718,11 +980,11 @@ class RealisticBulkData():
                         self.audio_clip_roles['responder'].id,
                         audio_clip_tone.id,
                         event.id,
-                        self.generic_statuses['ok'].id,
+                        responder_audio_clip_generic_status,
                         self.audio_file,
                         10,
                         [],
-                        False,
+                        is_responder_banned,
                         datetime_now,
                         datetime_now,
                     )
@@ -748,28 +1010,32 @@ class RealisticBulkData():
             audio_clip_metrics = AudioClipMetrics.objects.bulk_create(audio_clip_metrics, batch_size=self.db_batch_size)
             reset_queries()
 
-            self._create_audio_clip_likes_dislikes(audio_clips)
+            self.create_audio_clip_likes_dislikes(audio_clips)
             reset_queries()
 
             stopwatch.stop()
             print(f'Done with audio_clip_tone #{audio_clip_tone_index} in {stopwatch.diff_seconds()}s.')
 
 
+    #if you want more rows, specify max_randomness_iteration_count (5 is good, be careful of more because it's exponential)
+    #cmd:
+        #python manage.py shell -c "from voicewake.tests.test_metrics import RealisticBulkData; RealisticBulkData.sample_run();"
     @staticmethod
-    def sample_run():
+    def sample_run(max_randomness_iteration_count=5):
 
-        #cmd:
-            #python manage.py shell -c "from voicewake.tests.test_metrics import RealisticBulkData; RealisticBulkData.sample_run();"
+        #add anything here for rows to be "earlier", beneficial for tests
+
+        #user * blocks * blocked * is_originator(many/few/0) * is_responder(many/few/0)
+        #ensure these special users are identifiable and retrievable, via username/email
 
         #this improves realism of randomness
-        max_randomness_iteration_count = 5
         current_randomness_iteration_count = 0
 
         while current_randomness_iteration_count < max_randomness_iteration_count:
 
             realistic_bulk_data_class = RealisticBulkData(batch_quantity=2, is_audio_clip_tone_quantity_reduced=False, db_batch_size=500)
 
-            realistic_bulk_data_class.prepare_new_users()
+            realistic_bulk_data_class.create_new_users()
             realistic_bulk_data_class.prepare_like_dislike_estimate()
 
             threads = []
@@ -782,10 +1048,11 @@ class RealisticBulkData():
             threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_completed))
             threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_completed))
 
-            threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted, args=(True, False)))
+            threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted, args=(True, True, False)))
+            threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted, args=(True, False, True)))
+            threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted, args=(True, True, True)))
+
             threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted, args=(False, True)))
-            threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted, args=(True, True)))
-            threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted, args=(False, False)))
 
             random.shuffle(threads)
 
@@ -822,7 +1089,13 @@ class RealisticBulkData():
 
                     thread_index += 1
 
+                #GMT+8 for MY time
+                print((get_datetime_now() + timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') + ': Done with one round of threads.')
+
             current_randomness_iteration_count += 1
+
+        #blocks, only perform after everything to ensure no new users come after
+        realistic_bulk_data_class.create_user_blocks()
 
 
 
@@ -892,7 +1165,7 @@ class RealisticBulkData_TestCase(TestCase):
 
         realistic_bulk_data_class = RealisticBulkData()
 
-        realistic_bulk_data_class.prepare_new_users()
+        realistic_bulk_data_class.create_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
         realistic_bulk_data_class.create_event_incomplete()
         self.metrics.update({
@@ -904,7 +1177,7 @@ class RealisticBulkData_TestCase(TestCase):
 
         realistic_bulk_data_class = RealisticBulkData()
 
-        realistic_bulk_data_class.prepare_new_users()
+        realistic_bulk_data_class.create_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
         realistic_bulk_data_class.create_event_incomplete(is_replying=True)
         self.metrics.update({
@@ -916,7 +1189,7 @@ class RealisticBulkData_TestCase(TestCase):
 
         realistic_bulk_data_class = RealisticBulkData()
 
-        realistic_bulk_data_class.prepare_new_users()
+        realistic_bulk_data_class.create_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
         realistic_bulk_data_class.create_event_incomplete(skipped_by_users=True)
         self.metrics.update({
@@ -928,7 +1201,7 @@ class RealisticBulkData_TestCase(TestCase):
 
         realistic_bulk_data_class = RealisticBulkData()
 
-        realistic_bulk_data_class.prepare_new_users()
+        realistic_bulk_data_class.create_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
         realistic_bulk_data_class.create_event_incomplete(is_replying=True, skipped_by_users=True)
         self.metrics.update({
@@ -940,7 +1213,7 @@ class RealisticBulkData_TestCase(TestCase):
 
         realistic_bulk_data_class = RealisticBulkData()
 
-        realistic_bulk_data_class.prepare_new_users()
+        realistic_bulk_data_class.create_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
         realistic_bulk_data_class.create_event_completed()
         self.metrics.update({
@@ -948,28 +1221,85 @@ class RealisticBulkData_TestCase(TestCase):
         })
 
 
-    def test_realistic_bulk_data__event_deleted_no_reply(self):
+    def test_realistic_bulk_data__event_deleted__true_true_false(self):
 
         realistic_bulk_data_class = RealisticBulkData()
 
-        realistic_bulk_data_class.prepare_new_users()
+        realistic_bulk_data_class.create_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
-        realistic_bulk_data_class.create_event_deleted(has_reply=False, deleted_and_banned=False)
+        realistic_bulk_data_class.create_event_deleted(has_responder=True, is_originator_banned=True, is_responder_banned=False)
         self.metrics.update({
             inspect.currentframe().f_code.co_name: realistic_bulk_data_class.get_db_row_count()
         })
 
 
-    def test_realistic_bulk_data__event_deleted_has_reply(self):
+    def test_realistic_bulk_data__event_deleted__true_false_true(self):
 
         realistic_bulk_data_class = RealisticBulkData()
 
-        realistic_bulk_data_class.prepare_new_users()
+        realistic_bulk_data_class.create_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
-        realistic_bulk_data_class.create_event_deleted(has_reply=True, deleted_and_banned=False)
+        realistic_bulk_data_class.create_event_deleted(has_responder=True, is_originator_banned=False, is_responder_banned=True)
         self.metrics.update({
             inspect.currentframe().f_code.co_name: realistic_bulk_data_class.get_db_row_count()
         })
+
+
+    def test_realistic_bulk_data__event_deleted__true_true_true(self):
+
+        realistic_bulk_data_class = RealisticBulkData()
+
+        realistic_bulk_data_class.create_new_users()
+        realistic_bulk_data_class.prepare_like_dislike_estimate()
+        realistic_bulk_data_class.create_event_deleted(has_responder=True, is_originator_banned=True, is_responder_banned=True)
+        self.metrics.update({
+            inspect.currentframe().f_code.co_name: realistic_bulk_data_class.get_db_row_count()
+        })
+
+
+    def test_realistic_bulk_data__event_deleted__true_false_false(self):
+
+        realistic_bulk_data_class = RealisticBulkData()
+
+        realistic_bulk_data_class.create_new_users()
+        realistic_bulk_data_class.prepare_like_dislike_estimate()
+        realistic_bulk_data_class.create_event_deleted(has_responder=True, is_originator_banned=False, is_responder_banned=False)
+        self.metrics.update({
+            inspect.currentframe().f_code.co_name: realistic_bulk_data_class.get_db_row_count()
+        })
+
+
+    def test_realistic_bulk_data__event_deleted__false_true_none(self):
+
+        realistic_bulk_data_class = RealisticBulkData()
+
+        realistic_bulk_data_class.create_new_users()
+        realistic_bulk_data_class.prepare_like_dislike_estimate()
+        realistic_bulk_data_class.create_event_deleted(has_responder=False, is_originator_banned=True)
+        self.metrics.update({
+            inspect.currentframe().f_code.co_name: realistic_bulk_data_class.get_db_row_count()
+        })
+
+
+    def test_realistic_bulk_data__event_deleted__expected_failures(self):
+
+        realistic_bulk_data_class = RealisticBulkData()
+
+        realistic_bulk_data_class.create_new_users()
+        realistic_bulk_data_class.prepare_like_dislike_estimate()
+
+        try:
+            realistic_bulk_data_class.create_event_deleted(has_responder=False, is_originator_banned=False)
+            raise ValueError('Expected to fail.')
+        except:
+            pass
+
+        try:
+            realistic_bulk_data_class.create_event_deleted(has_responder=False, is_originator_banned=True, is_responder_banned=True)
+            raise ValueError('Expected to fail.')
+        except:
+            pass
+
 
 
 
@@ -1704,12 +2034,15 @@ class BulkCreateOptimisation_TestCase(TransactionTestCase):
 
 
 
-#since we have cursor tokens, always test (latest->back/to), (earliest->back/to)
-#for tests that test on filtering, we iterate through list of filters in a single test case, else exponential
-    #a test case for filters then becomes unique by differentiating into latest/earliest/empty rows to test db indexing
-#you may see a repeat queryset between audio_clip_tone_id and expected_rows
-    #this is necessary so we can do [:1] and guarantee all expected_rows later only has the same audio_clip_tone
-    #expected_rows on its own cannot guarantee that all rows have the same audio_clip_tone
+#cmd:
+    #python manage.py test --keepdb voicewake.tests.test_metrics.Core_TestCase
+#logic behaviours:
+    #since we have cursor tokens, always test (latest->back/to), (earliest->back/to)
+    #for tests that test on filtering, we iterate through list of filters in a single test case, else exponential
+        #a test case for filters then becomes unique by differentiating into latest/earliest/empty rows to test db indexing
+    #you may see a repeat queryset between audio_clip_tone_id and expected_rows
+        #this is necessary so we can do [:1] and guarantee all expected_rows later only has the same audio_clip_tone
+        #expected_rows on its own cannot guarantee that all rows have the same audio_clip_tone
 @override_settings(
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
     DEBUG=True,
@@ -1720,13 +2053,10 @@ class Core_TestCase(TestCase):
     metrics = {}
 
     @classmethod
-    def setUpTestData(cls):
+    def setUp(cls):
 
         cls.realistic_bulk_data_class = RealisticBulkData()
-        raise ValueError('Figure out how to make this test class use specified db')
-        #also, update everything related to "self.realistic_bulk_data_class" in this test class
-
-        cls.metrics.update({'all_rows': RealisticBulkData.get_db_row_count()})
+        # cls.realistic_bulk_data_class.get_users_that_have_rows()
 
 
     @classmethod
@@ -3631,11 +3961,13 @@ class Core_TestCase(TestCase):
                 full_params
             )
 
-            return audio_clips
+            print(audio_clips.query)
 
+            return audio_clips
+        old()
 
         #new0
-        #ORDER BY audio_clips.when_created
+        #ORDER BY events.when_created?
         def new0(self, audio_clip_tone_id:int|None=None):
 
             #this must be balanced between "give older unreplied events a chance" and "new events get replied fast enough"
@@ -3707,7 +4039,6 @@ class Core_TestCase(TestCase):
                         SELECT id FROM generic_statuses
                         WHERE generic_status_name = %s
                     )
-                    ORDER BY audio_clips.when_created ASC
                     LIMIT %s
             '''
 
@@ -3739,6 +4070,241 @@ class Core_TestCase(TestCase):
             )
 
             return audio_clips
+
+
+
+
+
+
+
+
+
+@override_settings(
+    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    DEBUG=True,
+    DATABASES=settings.DATABASES['default'].update({
+        'TEST': {
+            'NAME': 'test_'+ settings.DATABASES['default']['NAME'],
+            'MIRROR': 'default',
+        },
+    })
+)
+class OptimiseReplyChoiceQuery_TestCase(SimpleTestCase):
+
+    databases = '__all__'
+
+    #{test_function_name: anything}
+    metrics = {}
+
+    #create your db indexes here
+    @classmethod
+    def setUp(cls):
+
+        with connection.cursor() as cursor:
+
+            cursor.execute(
+                '''
+                    CREATE INDEX events_when_created_1 ON events (when_created);
+                '''
+            )
+
+
+    def _test_query__no_tone(self, current_user_id:int, when_created:datetime):
+
+        stopwatch = Stopwatch()
+
+        with connection.cursor() as cursor:
+
+            stopwatch.start()
+
+            query = cursor.execute(
+                '''
+                    WITH
+                        excluded_events_1 AS (
+                            SELECT event_id FROM audio_clips
+                            WHERE user_id = %s
+                        ),
+                        excluded_events_2 AS (
+                            SELECT event_id FROM user_events
+                            WHERE user_id = %s
+                            AND when_excluded_for_reply IS NOT NULL
+                        ),
+                        excluded_users_1 AS (
+                            SELECT blocked_user_id AS id FROM user_blocks
+                            WHERE user_id = %s
+                        ),
+                        excluded_users_2 AS (
+                            SELECT user_id AS id FROM user_blocks
+                            WHERE blocked_user_id = %s
+                        ),
+                        narrowed_down_events AS (
+                            SELECT events.id FROM events
+                            WHERE generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name = %s)
+                            AND when_created >= %s
+                            ORDER BY when_created
+                        ),
+                        target_events AS (
+                            SELECT events.* FROM events
+                            INNER JOIN narrowed_down_events ON narrowed_down_events.id = events.id
+                            LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
+                            LEFT JOIN excluded_events_1 ON excluded_events_1.event_id = events.id
+                            LEFT JOIN excluded_events_2 ON excluded_events_2.event_id = events.id
+                            LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
+                            LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
+                            WHERE event_reply_queues.event_id IS NULL
+                            AND excluded_events_1.event_id IS NULL
+                            AND excluded_events_2.event_id IS NULL
+                            AND excluded_users_1.id IS NULL
+                            AND excluded_users_2.id IS NULL
+                            LIMIT 1
+                        )
+                        SELECT
+                            audio_clips.*,
+                            audio_clip_likes_dislikes.is_liked AS is_liked_by_user,
+                            audio_clip_metrics.like_count AS like_count,
+                            audio_clip_metrics.dislike_count AS dislike_count
+                        FROM audio_clips
+                        INNER JOIN target_events ON audio_clips.event_id = target_events.id
+                        LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
+                            AND audio_clip_likes_dislikes.user_id = 1
+                        LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
+                        WHERE audio_clips.is_banned IS FALSE
+                        AND audio_clips.audio_clip_role_id = (
+                            SELECT id FROM audio_clip_roles
+                            WHERE audio_clip_role_name = %s
+                        )
+                        AND audio_clips.generic_status_id = (
+                            SELECT id FROM generic_statuses
+                            WHERE generic_status_name = %s
+                        )
+                        LIMIT 1
+                ''',
+                params=[
+                    current_user_id,
+                    current_user_id,
+                    current_user_id,
+                    current_user_id,
+                    'incomplete',
+                    when_created,
+                    'originator',
+                    'ok',
+                ]
+            )
+
+            stopwatch.stop()
+
+            return {
+                'query_result': query,
+                'time_elapsed': stopwatch.diff_seconds(),
+            }
+
+
+    def _test_query__has_tone(self, current_user_id:int, when_created:datetime):
+
+        stopwatch = Stopwatch()
+
+        with connection.cursor() as cursor:
+
+            stopwatch.start()
+
+            query = cursor.execute(
+                '''
+                    WITH
+                        excluded_events_1 AS (
+                            SELECT event_id FROM audio_clips
+                            WHERE user_id = %s
+                        ),
+                        excluded_events_2 AS (
+                            SELECT event_id FROM user_events
+                            WHERE user_id = %s
+                            AND when_excluded_for_reply IS NOT NULL
+                        ),
+                        excluded_users_1 AS (
+                            SELECT blocked_user_id AS id FROM user_blocks
+                            WHERE user_id = %s
+                        ),
+                        excluded_users_2 AS (
+                            SELECT user_id AS id FROM user_blocks
+                            WHERE blocked_user_id = %s
+                        ),
+                        narrowed_down_events AS (
+                            SELECT events.id FROM events
+                            WHERE generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name = %s)
+                            AND when_created >= %s
+                            ORDER BY when_created
+                        ),
+                        specific_tone_events AS (
+                            SELECT events.id FROM events
+                            INNER JOIN narrowed_down_events ON events.id = narrowed_down_events.id
+                            INNER JOIN audio_clips ON events.id = audio_clips.event_id
+                            WHERE audio_clips.audio_clip_tone_id = 10
+                            AND audio_clips.audio_clip_role_id = (SELECT id FROM audio_clip_roles WHERE audio_clip_role_name=%s)
+                            AND audio_clips.generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name=%s)
+                        ),
+                        target_events AS (
+                            SELECT events.* FROM events
+                            INNER JOIN specific_tone_events ON specific_tone_events.id = events.id
+                            LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
+                            LEFT JOIN excluded_events_1 ON excluded_events_1.event_id = events.id
+                            LEFT JOIN excluded_events_2 ON excluded_events_2.event_id = events.id
+                            LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
+                            LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
+                            WHERE event_reply_queues.event_id IS NULL
+                            AND excluded_events_1.event_id IS NULL
+                            AND excluded_events_2.event_id IS NULL
+                            AND excluded_users_1.id IS NULL
+                            AND excluded_users_2.id IS NULL
+                            LIMIT 1
+                        )
+                        SELECT
+                            audio_clips.*,
+                            audio_clip_likes_dislikes.is_liked AS is_liked_by_user,
+                            audio_clip_metrics.like_count AS like_count,
+                            audio_clip_metrics.dislike_count AS dislike_count
+                        FROM audio_clips
+                        INNER JOIN target_events ON audio_clips.event_id = target_events.id
+                        LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
+                            AND audio_clip_likes_dislikes.user_id = 1
+                        LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
+                        WHERE audio_clips.is_banned IS FALSE
+                        AND audio_clips.audio_clip_role_id = (
+                            SELECT id FROM audio_clip_roles
+                            WHERE audio_clip_role_name = %s
+                        )
+                        AND audio_clips.generic_status_id = (
+                            SELECT id FROM generic_statuses
+                            WHERE generic_status_name = %s
+                        )
+                        LIMIT 1
+                ''',
+                params=[
+                    current_user_id,
+                    current_user_id,
+                    current_user_id,
+                    current_user_id,
+                    'incomplete',
+                    when_created,
+                    'originator',
+                    'ok',
+                    'originator',
+                    'ok',
+                ]
+            )
+
+            stopwatch.stop()
+
+            return {
+                'query_result': query,
+                'time_elapsed': stopwatch.diff_seconds(),
+            }
+
+
+    def test__no_tone__earlier_later_user__earlier_later_event__no_yes_user_blocks__no_yes_blocked__no_few_many_past_queues(self):
+        pass
+
+
+    def test__has_tone__earlier_later_user__earlier_later_event__no_yes_user_blocks__no_yes_blocked__no_few_many_past_queues(self):
+        pass
 
 
 

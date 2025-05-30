@@ -5,6 +5,19 @@ DEBUG = True
 DEBUG_PROPAGATE_EXCEPTIONS = True   #shows detailed exceptions instead of simple 500
 
 
+#during tests, also use 'default' db
+#by specifying ['TEST']['MIRROR'] to 'default', test queries to db will be redirected to real db
+#this overrides tests from creating their own db
+#you must specify "python manage.py test --keepdb" to do this successfully
+DATABASES['default'].update({
+    'TEST': {
+        #'NAME' does not seem to matter but must be specified
+        'NAME': 'test_' + DATABASES['default']['NAME'],
+        'MIRROR': 'default',
+    },
+})
+
+
 REQUEST_TIME_DELAY = 0  #seconds
 SHOW_DJANGO_DEBUG_TOOLBAR = False
 
