@@ -545,6 +545,12 @@ class Stopwatch:
         return round(self.stop_time - self.start_time, 3)
 
 
+    def print_pretty_difference(self):
+
+        datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC')) + timedelta(hours=8)
+        print(f'{datetime_now.strftime('%Y-%m-%d %H:%M:%S')}: {self.diff_seconds()} seconds.')
+
+
 
 #for OTP
 class TOTPVerification:
