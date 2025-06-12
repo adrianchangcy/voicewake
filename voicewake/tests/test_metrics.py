@@ -412,6 +412,8 @@ class RealisticBulkData():
                 get_user_model().objects.get(username=f'latest_{x}')
             )
 
+        return unique_users
+
 
     def prepare_like_dislike_estimate(self):
 
@@ -1308,8 +1310,8 @@ class RealisticBulkData():
                 realistic_bulk_data_class.create_event_incomplete(True,)
                 realistic_bulk_data_class.create_event_incomplete(False,)
 
-                realistic_bulk_data_class.create_event_completed
-                realistic_bulk_data_class.create_event_completed
+                realistic_bulk_data_class.create_event_completed()
+                realistic_bulk_data_class.create_event_completed()
 
                 realistic_bulk_data_class.create_event_deleted(True, True, False,)
                 realistic_bulk_data_class.create_event_deleted(True, False, True,)
@@ -4667,9 +4669,7 @@ class Core_TestCase(TestCase):
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
     DEBUG=True,
 )
-class OptimiseReplyChoiceQuery_TestCase(SimpleTestCase):
-
-    databases = '__all__'
+class OptimiseReplyChoiceQuery_TestCase(TestCase):
 
     #{test_function_name: anything}
     metrics = {}
@@ -4687,7 +4687,7 @@ class OptimiseReplyChoiceQuery_TestCase(SimpleTestCase):
             )
 
 
-    def _test_query__no_tone(self, current_user_id:int, when_created:datetime):
+    def _query__no_tone(self, current_user_id:int, when_created:datetime):
 
         stopwatch = Stopwatch()
 
@@ -4695,7 +4695,7 @@ class OptimiseReplyChoiceQuery_TestCase(SimpleTestCase):
 
             stopwatch.start()
 
-            query = cursor.execute(
+            cursor.execute(
                 '''
                     WITH
                         excluded_events_1 AS (
@@ -4715,7 +4715,7 @@ class OptimiseReplyChoiceQuery_TestCase(SimpleTestCase):
                             SELECT user_id AS id FROM user_blocks
                             WHERE blocked_user_id = %s
                         ),
-                        narrowed_down_events AS (
+                        narrowed_events AS (
                             SELECT events.id FROM events
                             WHERE generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name = %s)
                             AND when_created >= %s
@@ -4723,7 +4723,7 @@ class OptimiseReplyChoiceQuery_TestCase(SimpleTestCase):
                         ),
                         target_events AS (
                             SELECT events.* FROM events
-                            INNER JOIN narrowed_down_events ON narrowed_down_events.id = events.id
+                            INNER JOIN narrowed_events ON narrowed_events.id = events.id
                             LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
                             LEFT JOIN excluded_events_1 ON excluded_events_1.event_id = events.id
                             LEFT JOIN excluded_events_2 ON excluded_events_2.event_id = events.id
@@ -4772,12 +4772,12 @@ class OptimiseReplyChoiceQuery_TestCase(SimpleTestCase):
             stopwatch.stop()
 
             return {
-                'query_result': query,
+                'query_result': cursor.fetchall(),
                 'time_elapsed': stopwatch.diff_seconds(),
             }
 
 
-    def _test_query__has_tone(self, current_user_id:int, when_created:datetime):
+    def _query__has_tone(self, current_user_id:int, audio_clip_tone_id:int, when_created:datetime):
 
         stopwatch = Stopwatch()
 
@@ -4785,7 +4785,7 @@ class OptimiseReplyChoiceQuery_TestCase(SimpleTestCase):
 
             stopwatch.start()
 
-            query = cursor.execute(
+            cursor.execute(
                 '''
                     WITH
                         excluded_events_1 AS (
@@ -4815,7 +4815,7 @@ class OptimiseReplyChoiceQuery_TestCase(SimpleTestCase):
                             SELECT events.id FROM events
                             INNER JOIN narrowed_down_events ON events.id = narrowed_down_events.id
                             INNER JOIN audio_clips ON events.id = audio_clips.event_id
-                            WHERE audio_clips.audio_clip_tone_id = 10
+                            WHERE audio_clips.audio_clip_tone_id = %s
                             AND audio_clips.audio_clip_role_id = (SELECT id FROM audio_clip_roles WHERE audio_clip_role_name=%s)
                             AND audio_clips.generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name=%s)
                         ),
@@ -4862,6 +4862,7 @@ class OptimiseReplyChoiceQuery_TestCase(SimpleTestCase):
                     current_user_id,
                     'incomplete',
                     when_created,
+                    audio_clip_tone_id,
                     'originator',
                     'ok',
                     'originator',
@@ -4872,17 +4873,139 @@ class OptimiseReplyChoiceQuery_TestCase(SimpleTestCase):
             stopwatch.stop()
 
             return {
-                'query_result': query,
+                'query_result': cursor.fetchall(),
                 'time_elapsed': stopwatch.diff_seconds(),
             }
 
 
-    def test__no_tone__earlier_later_user__earlier_later_event__no_yes_user_blocks__no_yes_blocked__no_few_many_past_queues(self):
-        pass
+    def test__no_tone(self):
+
+        stopwatch = Stopwatch()
+        unique_users = RealisticBulkData.get_unique_users()
+
+        minimum_datetimes = []
+
+        earliest_event = Events.objects.filter(generic_status__generic_status_name='incomplete').order_by('id').first()
+        latest_event = Events.objects.filter(generic_status__generic_status_name='incomplete').order_by('id').last()
+
+        minimum_datetimes.append(earliest_event.when_created)
+        minimum_datetimes.append(latest_event.when_created)
+
+        for unique_user_key in unique_users:
+
+            for unique_user in unique_users[unique_user_key]:
+
+                for minimum_datetime in minimum_datetimes:
+
+                    result = self._query__no_tone(
+                        current_user_id=unique_user.id,
+                        when_created=minimum_datetime,
+                    )
+
+                    print({
+                        'unique_user_username': unique_user.username,
+                        'minimum_datetime': minimum_datetime,
+                    })
+                    print(result)
+                    print('\n')
 
 
-    def test__has_tone__earlier_later_user__earlier_later_event__no_yes_user_blocks__no_yes_blocked__no_few_many_past_queues(self):
-        pass
+    def test__has_tone(self):
+
+        stopwatch = Stopwatch()
+        unique_users = RealisticBulkData.get_unique_users()
+
+        excluded_audio_clip_tone_ids = []
+        expected_audio_clip_tone_ids = []
+
+        realistic_bulk_data_class = RealisticBulkData()
+
+        #add excluded audio_clip_tones
+        for audio_clip_tone_index in realistic_bulk_data_class.excluded_audio_clip_tones_indexes:
+
+            excluded_audio_clip_tone_ids.append(
+                realistic_bulk_data_class.audio_clip_tones[audio_clip_tone_index].id
+            )
+
+            #since excluded tones are specified in earliest/middle/latest manner,
+            #and will never use first and last,
+            #can just -1 +1
+            expected_audio_clip_tone_ids.append(
+                realistic_bulk_data_class.audio_clip_tones[audio_clip_tone_index - 1].id
+            )
+            expected_audio_clip_tone_ids.append(
+                realistic_bulk_data_class.audio_clip_tones[audio_clip_tone_index + 1].id
+            )
+
+        for unique_user_key in unique_users:
+
+            for unique_user in unique_users[unique_user_key]:
+
+                #expect rows matching tone to exist
+                for audio_clip_tone_id in expected_audio_clip_tone_ids:
+
+                    minimum_datetimes = []
+
+                    earliest_audio_clip = AudioClips.objects.filter(
+                        generic_status__generic_status_name='ok',
+                        audio_clip_role__audio_clip_role_name='originator',
+                        event__generic_status__generic_status_name='incomplete',
+                        audio_clip_tone_id=audio_clip_tone_id,
+                    ).order_by('id').first()
+
+                    latest_audio_clip = AudioClips.objects.filter(
+                        generic_status__generic_status_name='ok',
+                        audio_clip_role__audio_clip_role_name='originator',
+                        event__generic_status__generic_status_name='incomplete',
+                        audio_clip_tone_id=audio_clip_tone_id,
+                    ).order_by('id').last()
+
+                    if earliest_audio_clip is None or latest_audio_clip is None:
+
+                        raise ValueError('Either test rows have not been set up properly, or rules for excluding tones in RealisticBulkData has changed.')
+
+                    minimum_datetimes.append(earliest_audio_clip.when_created)
+                    minimum_datetimes.append(latest_audio_clip.when_created)
+
+                    for minimum_datetime in minimum_datetimes:
+
+                        result = self._query__has_tone(
+                            current_user_id=unique_user.id,
+                            audio_clip_tone_id=audio_clip_tone_id,
+                            when_created=minimum_datetime,
+                        )
+
+                        print({
+                            'row_for_tone_exists': True,
+                            'unique_user_username': unique_user.username,
+                            'minimum_datetime': minimum_datetime,
+                        })
+                        print(result)
+                        print('\n')
+
+                #expect rows matching tone to not exist
+                for audio_clip_tone_id in expected_audio_clip_tone_ids:
+
+                    #arbitrary start time, 10 years
+                    minimum_datetime = get_datetime_now() - timedelta(weeks=521)
+
+                    result = self._query__has_tone(
+                        current_user_id=unique_user.id,
+                        audio_clip_tone_id=audio_clip_tone_id,
+                        when_created=minimum_datetime,
+                    )
+
+                    print({
+                        'row_for_tone_exists': False,
+                        'unique_user_username': unique_user.username,
+                        'minimum_datetime': minimum_datetime,
+                    })
+                    print(result)
+                    print('\n')
+
+
+
+
 
 
 
