@@ -545,6 +545,12 @@ class Stopwatch:
         return round(self.stop_time - self.start_time, 3)
 
 
+    def diff_milliseconds(self):
+
+        #000ms
+        return int(round(self.stop_time - self.start_time, 3) * 1000)
+
+
     def print_pretty_difference(self):
 
         datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC')) + timedelta(hours=8)

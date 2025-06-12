@@ -4773,7 +4773,7 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
 
             return {
                 'query_result': cursor.fetchall(),
-                'time_elapsed': stopwatch.diff_seconds(),
+                'time_elapsed_ms': stopwatch.diff_milliseconds(),
             }
 
 
@@ -4874,11 +4874,11 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
 
             return {
                 'query_result': cursor.fetchall(),
-                'time_elapsed': stopwatch.diff_seconds(),
+                'time_elapsed_ms': stopwatch.diff_milliseconds(),
             }
 
 
-    def test__no_tone(self):
+    def test__no_tone(self, minimum_time_elapsed_ms=150):
 
         stopwatch = Stopwatch()
         unique_users = RealisticBulkData.get_unique_users()
@@ -4902,15 +4902,29 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
                         when_created=minimum_datetime,
                     )
 
-                    print({
-                        'unique_user_username': unique_user.username,
-                        'minimum_datetime': minimum_datetime,
-                    })
-                    print(result)
-                    print('\n')
+                    #will always have row
+                    if result['time_elapsed_ms'] < minimum_time_elapsed_ms:
+
+                        print(f'Below minimum_time_elapsed_ms: {result['time_elapsed_ms']}.')
+                        print('\n')
+                        continue
+
+                    else:
+
+                        if len(result['query_result']) == 0:
+
+                            print('REEEEEEEEEEEEEEEEEE')
+
+                        print({
+                            'unique_user_username': unique_user.username,
+                            'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                            'rows_fetched': len(result['query_result']),
+                            'time_elapsed_ms': result['time_elapsed_ms'],
+                        })
+                        print('\n')
 
 
-    def test__has_tone(self):
+    def test__has_tone(self, minimum_time_elapsed_ms=150):
 
         stopwatch = Stopwatch()
         unique_users = RealisticBulkData.get_unique_users()
@@ -4975,13 +4989,26 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
                             when_created=minimum_datetime,
                         )
 
-                        print({
-                            'row_for_tone_exists': True,
-                            'unique_user_username': unique_user.username,
-                            'minimum_datetime': minimum_datetime,
-                        })
-                        print(result)
-                        print('\n')
+                        if result['time_elapsed_ms'] < minimum_time_elapsed_ms:
+
+                            print(f'Below minimum_time_elapsed_ms: {result['time_elapsed_ms']}.')
+                            print('\n')
+                            continue
+
+                        else:
+
+                            if len(result['query_result']) == 0:
+
+                                print('REEEEEEEEEEEEEEEEEE')
+
+                            print({
+                                'expecting_rows': True,
+                                'unique_user_username': unique_user.username,
+                                'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                                'rows_fetched': len(result['query_result']),
+                                'time_elapsed_ms': result['time_elapsed_ms'],
+                            })
+                            print('\n')
 
                 #expect rows matching tone to not exist
                 for audio_clip_tone_id in expected_audio_clip_tone_ids:
@@ -4995,13 +5022,26 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
                         when_created=minimum_datetime,
                     )
 
-                    print({
-                        'row_for_tone_exists': False,
-                        'unique_user_username': unique_user.username,
-                        'minimum_datetime': minimum_datetime,
-                    })
-                    print(result)
-                    print('\n')
+                    if result['time_elapsed_ms'] < minimum_time_elapsed_ms:
+
+                        print(f'Below minimum_time_elapsed_ms: {result['time_elapsed_ms']}.')
+                        print('\n')
+                        continue
+
+                    else:
+
+                        if len(result['query_result']) > 0:
+
+                            print('REEEEEEEEEEEEEEEEEE')
+
+                        print({
+                            'expecting_rows': False,
+                            'unique_user_username': unique_user.username,
+                            'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                            'rows_fetched': len(result['query_result']),
+                            'time_elapsed_ms': result['time_elapsed_ms'],
+                        })
+                        print('\n')
 
 
 
