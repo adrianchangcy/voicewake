@@ -38,19 +38,20 @@ class RealisticBulkData():
         self.batch_quantity = batch_quantity
         self.db_batch_size = db_batch_size
 
+        self.user_ids = get_user_model().objects.all().exclude(is_superuser=True).order_by('id').values_list('id', flat=True)
+
         #4 users (e.g. block/blocked/mutualblock/none), scenarios in 3 ranges (earliest/middle/latest users), i.e. 4*3
-        self.unique_users = {
+        self.unique_user_ids = {
             'earliest_user_ids': [],
             'middle_user_ids': [],
             'latest_user_ids': [],
         }
-        self.is_unique_users_ready = False
 
         #increase this as needed
         self.minimum_unique_users_per_range = 4
 
         #current minimum for user_quantity is due to requiring unique identifiable users
-        self.user_quantity = (len(self.unique_users) * self.minimum_unique_users_per_range) * batch_quantity
+        self.user_quantity = (len(self.unique_user_ids) * self.minimum_unique_users_per_range) * batch_quantity
         self.user_prefix = "testuser"
         self.user_count = 0
         self.new_users = []
@@ -253,18 +254,16 @@ class RealisticBulkData():
             #C blocks everyone and everyone blocks C
             #no blocking for D
 
-        self.user_ids = get_user_model().objects.all().exclude(is_superuser=True).order_by('id').values_list('id', flat=True)
-
         #earliest
 
         for x in range(self.minimum_unique_users_per_range):
 
-            self.unique_users['earliest_user_ids'].append(self.user_ids[x])
+            self.unique_user_ids['earliest_user_ids'].append(self.user_ids[x])
 
         #middle
 
         middle_index = math.floor(len(self.user_ids)/2)
-        self.unique_users['middle_user_ids'] = [
+        self.unique_user_ids['middle_user_ids'] = [
             self.user_ids[middle_index-2],
             self.user_ids[middle_index-1],
             self.user_ids[middle_index],
@@ -278,12 +277,12 @@ class RealisticBulkData():
             #offset x by +1
             index = len(self.user_ids)-(x+1)
 
-            self.unique_users['latest_user_ids'].append(self.user_ids[index])
+            self.unique_user_ids['latest_user_ids'].append(self.user_ids[index])
 
         total_user_count = (
-            len(self.unique_users['earliest_user_ids']) +
-            len(self.unique_users['middle_user_ids']) +
-            len(self.unique_users['latest_user_ids'])
+            len(self.unique_user_ids['earliest_user_ids']) +
+            len(self.unique_user_ids['middle_user_ids']) +
+            len(self.unique_user_ids['latest_user_ids'])
         )
 
         if len(self.user_ids) < total_user_count:
@@ -324,7 +323,7 @@ class RealisticBulkData():
 
         #start updating usernames
 
-        for user_id in self.unique_users['earliest_user_ids']:
+        for user_id in self.unique_user_ids['earliest_user_ids']:
 
             try:
 
@@ -344,7 +343,7 @@ class RealisticBulkData():
 
             retired_earliest_index += 1
 
-        for user_id in self.unique_users['middle_user_ids']:
+        for user_id in self.unique_user_ids['middle_user_ids']:
 
             try:
 
@@ -364,7 +363,7 @@ class RealisticBulkData():
 
             retired_middle_index += 1
 
-        for user_id in self.unique_users['latest_user_ids']:
+        for user_id in self.unique_user_ids['latest_user_ids']:
 
             try:
 
@@ -384,35 +383,32 @@ class RealisticBulkData():
 
             retired_latest_index += 1
 
-        self.is_unique_users_ready = True
-
 
     @staticmethod
-    def get_unique_users():
+    def get_unique_user_ids():
 
         realistic_bulk_data_class = RealisticBulkData()
 
-        unique_users = {
-            'earliest_users': [],
-            'middle_users': [],
-            'latest_users': [],
+        unique_user_ids = {
+            'earliest_user_ids': [],
+            'middle_user_ids': [],
+            'latest_user_ids': [],
         }
 
         #earliest
 
         for x in range(realistic_bulk_data_class.minimum_unique_users_per_range):
 
-            unique_users['earliest_users'].append(
-                get_user_model().objects.get(username=f'earliest_{x}')
-            )
-            unique_users['middle_users'].append(
-                get_user_model().objects.get(username=f'middle_{x}')
-            )
-            unique_users['latest_users'].append(
-                get_user_model().objects.get(username=f'latest_{x}')
-            )
+            target_user = get_user_model().objects.get(username=f'earliest_{x}')
+            unique_user_ids['earliest_user_ids'].append(target_user.id)
 
-        return unique_users
+            target_user = get_user_model().objects.get(username=f'middle_{x}')
+            unique_user_ids['middle_user_ids'].append(target_user.id)
+
+            target_user = get_user_model().objects.get(username=f'latest_{x}')
+            unique_user_ids['latest_user_ids'].append(target_user.id)
+
+        return unique_user_ids
 
 
     def prepare_like_dislike_estimate(self):
@@ -520,59 +516,97 @@ class RealisticBulkData():
 
     def create_user_blocks(self):
 
-        self._determine_unique_users_after_no_new_users_left_to_create()
+        user_ids = []
+        unique_user_ids = None
 
-        user_block_rows = []
+        #get unique user_ids
+
+        try:
+
+            unique_user_ids = self.get_unique_user_ids()
+
+        except get_user_model().DoesNotExist:
+
+            self._determine_unique_users_after_no_new_users_left_to_create()
+            unique_user_ids = self.unique_user_ids
+
+        #take out users that must not have blocks
+
+        excluded_user_ids = [
+            unique_user_ids['earliest_user_ids'][3],
+            unique_user_ids['middle_user_ids'][3],
+            unique_user_ids['latest_user_ids'][3],
+        ]
+
+        for user_id in self.user_ids:
+
+            matched_excluded_user_id_index = None
+
+            for index, excluded_user_id in enumerate(excluded_user_ids):
+
+                if user_id == excluded_user_id:
+
+                    matched_excluded_user_id_index = index
+
+            if matched_excluded_user_id_index is not None:
+
+                excluded_user_ids.pop(matched_excluded_user_id_index)
+                continue
+
+            user_ids.append(user_id)
 
         #for UserBlocks, you cannot block yourself
         #instead of exponential if-statements checking for it, we only check once after all for-loops
 
+        user_block_rows = []
+
         #block every user
-        for user_id in self.user_ids:
+        for user_id in user_ids:
 
             user_block_rows.append(
-                UserBlocks(user_id=self.unique_users['earliest_user_ids'][0], blocked_user_id=user_id)
+                UserBlocks(user_id=unique_user_ids['earliest_user_ids'][0], blocked_user_id=user_id)
             )
             user_block_rows.append(
-                UserBlocks(user_id=self.unique_users['middle_user_ids'][0], blocked_user_id=user_id)
+                UserBlocks(user_id=unique_user_ids['middle_user_ids'][0], blocked_user_id=user_id)
             )
             user_block_rows.append(
-                UserBlocks(user_id=self.unique_users['latest_user_ids'][0], blocked_user_id=user_id)
+                UserBlocks(user_id=unique_user_ids['latest_user_ids'][0], blocked_user_id=user_id)
             )
 
         #blocked by every user
-        for user_id in self.user_ids:
+        for user_id in user_ids:
 
             user_block_rows.append(
-                UserBlocks(user_id=self.unique_users['earliest_user_ids'][1], blocked_user_id=user_id)
+                UserBlocks(user_id=user_id, blocked_user_id=unique_user_ids['earliest_user_ids'][1])
             )
             user_block_rows.append(
-                UserBlocks(user_id=self.unique_users['middle_user_ids'][1], blocked_user_id=user_id)
+                UserBlocks(user_id=user_id, blocked_user_id=unique_user_ids['middle_user_ids'][1])
             )
             user_block_rows.append(
-                UserBlocks(user_id=self.unique_users['latest_user_ids'][1], blocked_user_id=user_id)
+                UserBlocks(user_id=user_id, blocked_user_id=unique_user_ids['latest_user_ids'][1])
             )
 
         #mutual blocking
-        for user_id in self.user_ids:
+        for user_id in user_ids:
 
             user_block_rows.append(
-                UserBlocks(user_id=self.unique_users['earliest_user_ids'][2], blocked_user_id=user_id)
+                UserBlocks(user_id=unique_user_ids['earliest_user_ids'][2], blocked_user_id=user_id)
             )
             user_block_rows.append(
-                UserBlocks(user_id=self.unique_users['middle_user_ids'][2], blocked_user_id=user_id)
+                UserBlocks(user_id=unique_user_ids['middle_user_ids'][2], blocked_user_id=user_id)
             )
             user_block_rows.append(
-                UserBlocks(user_id=self.unique_users['latest_user_ids'][2], blocked_user_id=user_id)
+                UserBlocks(user_id=unique_user_ids['latest_user_ids'][2], blocked_user_id=user_id)
             )
-
-        #no blocking
-        UserBlocks.objects.filter(user_id=self.unique_users['earliest_user_ids'][3]).delete()
-        UserBlocks.objects.filter(user_id=self.unique_users['middle_user_ids'][3]).delete()
-        UserBlocks.objects.filter(user_id=self.unique_users['latest_user_ids'][3]).delete()
-        UserBlocks.objects.filter(blocked_user_id=self.unique_users['earliest_user_ids'][3]).delete()
-        UserBlocks.objects.filter(blocked_user_id=self.unique_users['middle_user_ids'][3]).delete()
-        UserBlocks.objects.filter(blocked_user_id=self.unique_users['latest_user_ids'][3]).delete()
+            user_block_rows.append(
+                UserBlocks(user_id=user_id, blocked_user_id=unique_user_ids['earliest_user_ids'][2])
+            )
+            user_block_rows.append(
+                UserBlocks(user_id=user_id, blocked_user_id=unique_user_ids['middle_user_ids'][2])
+            )
+            user_block_rows.append(
+                UserBlocks(user_id=user_id, blocked_user_id=unique_user_ids['latest_user_ids'][2])
+            )
 
         #check for self-blocks
 
@@ -1385,6 +1419,12 @@ class RealisticBulkData():
 
         #blocks, only perform after everything to ensure no new users come after
         realistic_bulk_data_class.create_user_blocks()
+
+
+
+
+
+
 
 
 
@@ -4665,6 +4705,7 @@ class Core_TestCase(TestCase):
 
 
 
+#see RealisticBulkData._determine_unique_users_after_no_new_users_left_to_create, only expect rows from name_3
 @override_settings(
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
     DEBUG=True,
@@ -4687,247 +4728,645 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
             )
 
 
-    def _query__no_tone(self, current_user_id:int, when_created:datetime):
+    #always no tone specified
+    def _query_0(self, current_user_id:int, when_created:datetime):
 
         stopwatch = Stopwatch()
 
-        with connection.cursor() as cursor:
+        stopwatch.start()
 
-            stopwatch.start()
+        query = '''
+            WITH
+                excluded_events_1 AS (
+                    SELECT event_id FROM audio_clips
+                    WHERE user_id = %s
+                ),
+                excluded_events_2 AS (
+                    SELECT event_id FROM user_events
+                    WHERE user_id = %s
+                    AND when_excluded_for_reply IS NOT NULL
+                ),
+                excluded_users_1 AS (
+                    SELECT blocked_user_id AS id FROM user_blocks
+                    WHERE user_id = %s
+                ),
+                excluded_users_2 AS (
+                    SELECT user_id AS id FROM user_blocks
+                    WHERE blocked_user_id = %s
+                ),
+                narrowed_events AS (
+                    SELECT events.id FROM events
+                    WHERE generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name = %s)
+                    AND when_created >= %s
+                    ORDER BY when_created
+                ),
+                target_events AS (
+                    SELECT events.* FROM events
+                    INNER JOIN narrowed_events ON narrowed_events.id = events.id
+                    LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
+                    LEFT JOIN excluded_events_1 ON excluded_events_1.event_id = events.id
+                    LEFT JOIN excluded_events_2 ON excluded_events_2.event_id = events.id
+                    LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
+                    LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
+                    WHERE event_reply_queues.event_id IS NULL
+                    AND excluded_events_1.event_id IS NULL
+                    AND excluded_events_2.event_id IS NULL
+                    AND excluded_users_1.id IS NULL
+                    AND excluded_users_2.id IS NULL
+                    LIMIT 1
+                )
+                SELECT
+                    audio_clips.*,
+                    audio_clip_likes_dislikes.is_liked AS is_liked_by_user,
+                    audio_clip_metrics.like_count AS like_count,
+                    audio_clip_metrics.dislike_count AS dislike_count
+                FROM audio_clips
+                INNER JOIN target_events ON audio_clips.event_id = target_events.id
+                LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
+                    AND audio_clip_likes_dislikes.user_id = 1
+                LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
+                WHERE audio_clips.is_banned IS FALSE
+                AND audio_clips.audio_clip_role_id = (
+                    SELECT id FROM audio_clip_roles
+                    WHERE audio_clip_role_name = %s
+                )
+                AND audio_clips.generic_status_id = (
+                    SELECT id FROM generic_statuses
+                    WHERE generic_status_name = %s
+                )
+                LIMIT 1
+        '''
 
-            cursor.execute(
-                '''
-                    WITH
-                        excluded_events_1 AS (
-                            SELECT event_id FROM audio_clips
-                            WHERE user_id = %s
-                        ),
-                        excluded_events_2 AS (
-                            SELECT event_id FROM user_events
-                            WHERE user_id = %s
-                            AND when_excluded_for_reply IS NOT NULL
-                        ),
-                        excluded_users_1 AS (
-                            SELECT blocked_user_id AS id FROM user_blocks
-                            WHERE user_id = %s
-                        ),
-                        excluded_users_2 AS (
-                            SELECT user_id AS id FROM user_blocks
-                            WHERE blocked_user_id = %s
-                        ),
-                        narrowed_events AS (
-                            SELECT events.id FROM events
-                            WHERE generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name = %s)
-                            AND when_created >= %s
-                            ORDER BY when_created
-                        ),
-                        target_events AS (
-                            SELECT events.* FROM events
-                            INNER JOIN narrowed_events ON narrowed_events.id = events.id
-                            LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
-                            LEFT JOIN excluded_events_1 ON excluded_events_1.event_id = events.id
-                            LEFT JOIN excluded_events_2 ON excluded_events_2.event_id = events.id
-                            LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
-                            LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
-                            WHERE event_reply_queues.event_id IS NULL
-                            AND excluded_events_1.event_id IS NULL
-                            AND excluded_events_2.event_id IS NULL
-                            AND excluded_users_1.id IS NULL
-                            AND excluded_users_2.id IS NULL
-                            LIMIT 1
-                        )
-                        SELECT
-                            audio_clips.*,
-                            audio_clip_likes_dislikes.is_liked AS is_liked_by_user,
-                            audio_clip_metrics.like_count AS like_count,
-                            audio_clip_metrics.dislike_count AS dislike_count
-                        FROM audio_clips
-                        INNER JOIN target_events ON audio_clips.event_id = target_events.id
-                        LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
-                            AND audio_clip_likes_dislikes.user_id = 1
-                        LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
-                        WHERE audio_clips.is_banned IS FALSE
-                        AND audio_clips.audio_clip_role_id = (
-                            SELECT id FROM audio_clip_roles
-                            WHERE audio_clip_role_name = %s
-                        )
-                        AND audio_clips.generic_status_id = (
-                            SELECT id FROM generic_statuses
-                            WHERE generic_status_name = %s
-                        )
-                        LIMIT 1
-                ''',
-                params=[
-                    current_user_id,
-                    current_user_id,
-                    current_user_id,
-                    current_user_id,
-                    'incomplete',
-                    when_created,
-                    'originator',
-                    'ok',
-                ]
-            )
+        params = [
+            current_user_id,
+            current_user_id,
+            current_user_id,
+            current_user_id,
+            'incomplete',
+            when_created,
+            'originator',
+            'ok',
+        ]
 
-            stopwatch.stop()
+        audio_clips = AudioClips.objects.prefetch_related(
+            'audio_clip_role',
+            'event__generic_status',
+            'event',
+            'audio_clip_tone',
+            'generic_status',
+            'user',
+        ).raw(
+            query,
+            params
+        )
 
-            return {
-                'query_result': cursor.fetchall(),
-                'time_elapsed_ms': stopwatch.diff_milliseconds(),
+        #immediately execute, else 0 at stopwatch
+        len(audio_clips)
+
+        stopwatch.stop()
+
+        return {
+            'query_result': audio_clips,
+            'time_elapsed_ms': stopwatch.diff_milliseconds(),
+            'raw_query': connection.cursor().mogrify(query, params),
+        }
+
+
+    #always has tone specified
+    def _query_1(self, current_user_id:int, audio_clip_tone_id:int, when_created:datetime):
+
+        stopwatch = Stopwatch()
+
+        stopwatch.start()
+
+        query = '''
+            WITH
+                excluded_events_1 AS (
+                    SELECT event_id FROM audio_clips
+                    WHERE user_id = %s
+                ),
+                excluded_events_2 AS (
+                    SELECT event_id FROM user_events
+                    WHERE user_id = %s
+                    AND when_excluded_for_reply IS NOT NULL
+                ),
+                excluded_users_1 AS (
+                    SELECT blocked_user_id AS id FROM user_blocks
+                    WHERE user_id = %s
+                ),
+                excluded_users_2 AS (
+                    SELECT user_id AS id FROM user_blocks
+                    WHERE blocked_user_id = %s
+                ),
+                narrowed_down_events AS (
+                    SELECT events.id FROM events
+                    WHERE generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name = %s)
+                    AND when_created >= %s
+                    ORDER BY when_created
+                ),
+                specific_tone_events AS (
+                    SELECT events.id FROM events
+                    INNER JOIN narrowed_down_events ON events.id = narrowed_down_events.id
+                    INNER JOIN audio_clips ON events.id = audio_clips.event_id
+                    WHERE audio_clips.audio_clip_tone_id = %s
+                    AND audio_clips.audio_clip_role_id = (SELECT id FROM audio_clip_roles WHERE audio_clip_role_name=%s)
+                    AND audio_clips.generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name=%s)
+                ),
+                target_events AS (
+                    SELECT events.* FROM events
+                    INNER JOIN specific_tone_events ON specific_tone_events.id = events.id
+                    LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
+                    LEFT JOIN excluded_events_1 ON excluded_events_1.event_id = events.id
+                    LEFT JOIN excluded_events_2 ON excluded_events_2.event_id = events.id
+                    LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
+                    LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
+                    WHERE event_reply_queues.event_id IS NULL
+                    AND excluded_events_1.event_id IS NULL
+                    AND excluded_events_2.event_id IS NULL
+                    AND excluded_users_1.id IS NULL
+                    AND excluded_users_2.id IS NULL
+                    LIMIT 1
+                )
+                SELECT
+                    audio_clips.*,
+                    audio_clip_likes_dislikes.is_liked AS is_liked_by_user,
+                    audio_clip_metrics.like_count AS like_count,
+                    audio_clip_metrics.dislike_count AS dislike_count
+                FROM audio_clips
+                INNER JOIN target_events ON audio_clips.event_id = target_events.id
+                LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
+                    AND audio_clip_likes_dislikes.user_id = 1
+                LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
+                WHERE audio_clips.is_banned IS FALSE
+                AND audio_clips.audio_clip_role_id = (
+                    SELECT id FROM audio_clip_roles
+                    WHERE audio_clip_role_name = %s
+                )
+                AND audio_clips.generic_status_id = (
+                    SELECT id FROM generic_statuses
+                    WHERE generic_status_name = %s
+                )
+                LIMIT 1
+        '''
+        
+        params = [
+            current_user_id,
+            current_user_id,
+            current_user_id,
+            current_user_id,
+            'incomplete',
+            when_created,
+            audio_clip_tone_id,
+            'originator',
+            'ok',
+            'originator',
+            'ok',
+        ]
+
+        audio_clips = AudioClips.objects.prefetch_related(
+            'audio_clip_role',
+            'event__generic_status',
+            'event',
+            'audio_clip_tone',
+            'generic_status',
+            'user',
+        ).raw(
+            query,
+            params
+        )
+
+        #immediately execute, else 0 at stopwatch
+        len(audio_clips)
+
+        stopwatch.stop()
+
+        return {
+            'query_result': audio_clips,
+            'time_elapsed_ms': stopwatch.diff_milliseconds(),
+            'raw_query': connection.cursor().mogrify(query, params),
+        }
+
+
+    #always no tone specified
+    #changes:
+        #no ORDER_BY when_created for narrowed_events
+    #pros:
+        #reliably fast when user has list of user_blocks
+    #cons:
+        #cannot guarantee that every event gets an equal chance
+    def _query_2(self, current_user_id:int, when_created:datetime):
+
+        stopwatch = Stopwatch()
+
+        stopwatch.start()
+
+        query = '''
+            WITH
+                excluded_events_1 AS (
+                    SELECT event_id FROM audio_clips
+                    WHERE user_id = %s
+                ),
+                excluded_events_2 AS (
+                    SELECT event_id FROM user_events
+                    WHERE user_id = %s
+                    AND when_excluded_for_reply IS NOT NULL
+                ),
+                excluded_users_1 AS (
+                    SELECT blocked_user_id AS id FROM user_blocks
+                    WHERE user_id = %s
+                ),
+                excluded_users_2 AS (
+                    SELECT user_id AS id FROM user_blocks
+                    WHERE blocked_user_id = %s
+                ),
+                narrowed_events AS (
+                    SELECT events.id FROM events
+                    WHERE generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name = %s)
+                    AND when_created >= %s
+                ),
+                target_events AS (
+                    SELECT events.* FROM events
+                    INNER JOIN narrowed_events ON narrowed_events.id = events.id
+                    LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
+                    LEFT JOIN excluded_events_1 ON excluded_events_1.event_id = events.id
+                    LEFT JOIN excluded_events_2 ON excluded_events_2.event_id = events.id
+                    LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
+                    LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
+                    WHERE event_reply_queues.event_id IS NULL
+                    AND excluded_events_1.event_id IS NULL
+                    AND excluded_events_2.event_id IS NULL
+                    AND excluded_users_1.id IS NULL
+                    AND excluded_users_2.id IS NULL
+                    LIMIT 1
+                )
+                SELECT
+                    audio_clips.*,
+                    audio_clip_likes_dislikes.is_liked AS is_liked_by_user,
+                    audio_clip_metrics.like_count AS like_count,
+                    audio_clip_metrics.dislike_count AS dislike_count
+                FROM audio_clips
+                INNER JOIN target_events ON audio_clips.event_id = target_events.id
+                LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
+                    AND audio_clip_likes_dislikes.user_id = 1
+                LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
+                WHERE audio_clips.is_banned IS FALSE
+                AND audio_clips.audio_clip_role_id = (
+                    SELECT id FROM audio_clip_roles
+                    WHERE audio_clip_role_name = %s
+                )
+                AND audio_clips.generic_status_id = (
+                    SELECT id FROM generic_statuses
+                    WHERE generic_status_name = %s
+                )
+                LIMIT 1
+        '''
+
+        params = [
+            current_user_id,
+            current_user_id,
+            current_user_id,
+            current_user_id,
+            'incomplete',
+            when_created,
+            'originator',
+            'ok',
+        ]
+
+        audio_clips = AudioClips.objects.prefetch_related(
+            'audio_clip_role',
+            'event__generic_status',
+            'event',
+            'audio_clip_tone',
+            'generic_status',
+            'user',
+        ).raw(
+            query,
+            params
+        )
+
+        #immediately execute, else 0 at stopwatch
+        len(audio_clips)
+
+        stopwatch.stop()
+
+        return {
+            'query_result': audio_clips,
+            'time_elapsed_ms': stopwatch.diff_milliseconds(),
+            'raw_query': connection.cursor().mogrify(query, params),
+        }
+
+
+    def test__list_event_reply_choice(self, has_tone=False, minimum_time_elapsed_ms=180, show_test_failed_query=True,):
+
+        stopwatch = Stopwatch()
+        realistic_bulk_data_class = RealisticBulkData()
+        unique_user_ids = realistic_bulk_data_class.get_unique_user_ids()
+
+        #do this for no tone so loop below can stay the same
+        audio_clip_tone_ids = {
+            'no_audio_clip_tone': [None],
+        }
+
+        if has_tone is True:
+
+            audio_clip_tone_ids = {
+                'excluded': [],
+                'expected': [],
             }
 
+            #add excluded audio_clip_tones
+            for audio_clip_tone_index in realistic_bulk_data_class.excluded_audio_clip_tones_indexes:
 
-    def _query__has_tone(self, current_user_id:int, audio_clip_tone_id:int, when_created:datetime):
+                audio_clip_tone_ids['excluded'].append(
+                    realistic_bulk_data_class.audio_clip_tones[audio_clip_tone_index].id
+                )
+
+                #since excluded tones are specified in earliest/middle/latest manner,
+                #and will never use first and last,
+                #can just -1 +1
+                audio_clip_tone_ids['expected'].append(
+                    realistic_bulk_data_class.audio_clip_tones[audio_clip_tone_index - 1].id
+                )
+                audio_clip_tone_ids['expected'].append(
+                    realistic_bulk_data_class.audio_clip_tones[audio_clip_tone_index + 1].id
+                )
+
+        test_pass_count = 0
+        test_fail_count = 0
+
+        for unique_user_key in unique_user_ids:
+
+            for unique_user_id in unique_user_ids[unique_user_key]:
+
+                for audio_clip_tone_type in audio_clip_tone_ids:
+
+                    for audio_clip_tone_id in audio_clip_tone_ids[audio_clip_tone_type]:
+
+                        minimum_datetimes = []
+
+                        earliest_audio_clip = None
+                        latest_audio_clip = None
+
+                        if has_tone is True:
+
+                            #must avoid retrieving events that had been skipped before
+
+                            earliest_audio_clip = AudioClips.objects.raw(
+                                '''
+                                    WITH excluded_events AS (
+                                        SELECT event_id FROM user_events
+                                        WHERE user_id = %s
+                                        AND when_excluded_for_reply IS NOT NULL
+                                    )
+                                    SELECT ac.* FROM audio_clips AS ac
+                                    INNER JOIN events ON ac.event_id = events.id
+                                    LEFT JOIN excluded_events ON ac.event_id = excluded_events.event_id
+                                    WHERE excluded_events.event_id IS NULL
+                                    AND ac.audio_clip_tone_id = %s
+                                    AND ac.audio_clip_role_id = (
+                                        SELECT id FROM audio_clip_roles WHERE audio_clip_role_name = 'originator'
+                                    )
+                                    AND ac.generic_status_id = (
+                                        SELECT id FROM generic_statuses WHERE generic_status_name = 'ok'
+                                    )
+                                    AND events.generic_status_id = (
+                                        SELECT id FROM generic_statuses WHERE generic_status_name = 'incomplete'
+                                    )
+                                    AND events.created_by_id != %s
+                                    ORDER BY ac.id ASC
+                                    LIMIT 1
+                                    ;
+                                ''',
+                                [
+                                    unique_user_id,
+                                    audio_clip_tone_id,
+                                    unique_user_id,
+                                ]
+                            )
+
+                            latest_audio_clip = AudioClips.objects.raw(
+                                '''
+                                    WITH excluded_events AS (
+                                        SELECT event_id FROM user_events
+                                        WHERE user_id = %s
+                                        AND when_excluded_for_reply IS NOT NULL
+                                    )
+                                    SELECT ac.* FROM audio_clips AS ac
+                                    INNER JOIN events ON ac.event_id = events.id
+                                    LEFT JOIN excluded_events ON ac.event_id = excluded_events.event_id
+                                    WHERE excluded_events.event_id IS NULL
+                                    AND ac.audio_clip_tone_id = %s
+                                    AND ac.audio_clip_role_id = (
+                                        SELECT id FROM audio_clip_roles WHERE audio_clip_role_name = 'originator'
+                                    )
+                                    AND ac.generic_status_id = (
+                                        SELECT id FROM generic_statuses WHERE generic_status_name = 'ok'
+                                    )
+                                    AND events.generic_status_id = (
+                                        SELECT id FROM generic_statuses WHERE generic_status_name = 'incomplete'
+                                    )
+                                    AND events.created_by_id != %s
+                                    ORDER BY ac.id DESC
+                                    LIMIT 1
+                                    ;
+                                ''',
+                                [
+                                    unique_user_id,
+                                    audio_clip_tone_id,
+                                    unique_user_id,
+                                ]
+                            )
+
+                        else:
+
+                            earliest_audio_clip = AudioClips.objects.raw(
+                                '''
+                                    WITH excluded_events AS (
+                                        SELECT event_id FROM user_events
+                                        WHERE user_id = %s
+                                        AND when_excluded_for_reply IS NOT NULL
+                                    ),
+                                    excluded_users_1 AS (
+                                        SELECT user_id AS id FROM user_blocks
+                                        WHERE user_id = %s
+                                    ),
+                                    excluded_users_2 AS (
+                                        SELECT user_id AS id FROM user_blocks
+                                        WHERE blocked_user_id = %s
+                                    )
+                                    SELECT ac.* FROM audio_clips AS ac
+                                    INNER JOIN events ON ac.event_id = events.id
+                                    LEFT JOIN excluded_events ON events.id = excluded_events.event_id
+                                    LEFT JOIN excluded_users_1 ON ac.user_id = excluded_users_1.id
+                                    LEFT JOIN excluded_users_2 ON ac.user_id = excluded_users_2.id
+                                    WHERE excluded_events.event_id IS NULL
+                                    AND excluded_users_1.id IS NULL
+                                    AND excluded_users_2.id IS NULL
+                                    AND ac.audio_clip_role_id = (
+                                        SELECT id FROM audio_clip_roles WHERE audio_clip_role_name = 'originator'
+                                    )
+                                    AND ac.generic_status_id = (
+                                        SELECT id FROM generic_statuses WHERE generic_status_name = 'ok'
+                                    )
+                                    AND events.generic_status_id = (
+                                        SELECT id FROM generic_statuses WHERE generic_status_name = 'incomplete'
+                                    )
+                                    AND events.created_by_id != %s
+                                    ORDER BY ac.id ASC
+                                    LIMIT 1
+                                    ;
+                                ''',
+                                [
+                                    unique_user_id,
+                                    unique_user_id,
+                                    unique_user_id,
+                                    unique_user_id,
+                                ]
+                            )
+
+                            latest_audio_clip = AudioClips.objects.raw(
+                                '''
+                                    WITH excluded_events AS (
+                                        SELECT event_id FROM user_events
+                                        WHERE user_id = %s
+                                        AND when_excluded_for_reply IS NOT NULL
+                                    ),
+                                    excluded_users_1 AS (
+                                        SELECT user_id AS id FROM user_blocks
+                                        WHERE user_id = %s
+                                    ),
+                                    excluded_users_2 AS (
+                                        SELECT user_id AS id FROM user_blocks
+                                        WHERE blocked_user_id = %s
+                                    )
+                                    SELECT ac.* FROM audio_clips AS ac
+                                    INNER JOIN events ON ac.event_id = events.id
+                                    LEFT JOIN excluded_events ON events.id = excluded_events.event_id
+                                    LEFT JOIN excluded_users_1 ON ac.user_id = excluded_users_1.id
+                                    LEFT JOIN excluded_users_2 ON ac.user_id = excluded_users_2.id
+                                    WHERE excluded_events.event_id IS NULL
+                                    AND excluded_users_1.id IS NULL
+                                    AND excluded_users_2.id IS NULL
+                                    AND ac.audio_clip_role_id = (
+                                        SELECT id FROM audio_clip_roles WHERE audio_clip_role_name = 'originator'
+                                    )
+                                    AND ac.generic_status_id = (
+                                        SELECT id FROM generic_statuses WHERE generic_status_name = 'ok'
+                                    )
+                                    AND events.generic_status_id = (
+                                        SELECT id FROM generic_statuses WHERE generic_status_name = 'incomplete'
+                                    )
+                                    AND events.created_by_id != %s
+                                    ORDER BY ac.id DESC
+                                    LIMIT 1
+                                    ;
+                                ''',
+                                [
+                                    unique_user_id,
+                                    unique_user_id,
+                                    unique_user_id,
+                                    unique_user_id,
+                                ]
+                            )
+
+                        earliest_audio_clip = earliest_audio_clip[0]
+                        latest_audio_clip = latest_audio_clip[0]
+
+                        minimum_datetimes.append(earliest_audio_clip.event.when_created)
+                        minimum_datetimes.append(latest_audio_clip.event.when_created)
+
+                        for minimum_datetime in minimum_datetimes:
+
+                            result = None
+
+                            if has_tone is True:
+
+                                result = self._query_1(
+                                    current_user_id=unique_user_id,
+                                    audio_clip_tone_id=audio_clip_tone_id,
+                                    when_created=minimum_datetime,
+                                )
+
+                            else:
+
+                                result = self._query_2(
+                                    current_user_id=unique_user_id,
+                                    when_created=minimum_datetime,
+                                )
+
+                            #name_3 will always have row
+                            #we want to do "_3" so we don't let "33" pass
+                            current_user = get_user_model().objects.get(pk=unique_user_id)
+                            current_user_group = current_user.username[len(current_user.username)-2 : len(current_user.username)]
+
+                            #check
+
+                            is_row_count_ok = False
+
+                            if len(result['query_result']) == 1:
+
+                                #since group _3 has no blocks, query should naturally always land on their rows
+
+                                fetched_user = result['query_result'][0].user
+                                fetched_user_group = fetched_user.username[len(fetched_user.username)-2 : len(fetched_user.username)]
+
+                                if current_user_group == '_3' or fetched_user_group == '_3':
+
+                                    is_row_count_ok = True
+
+                            #specify minimum_time_elapsed_ms to hide/show benchmark that matters
+                            if is_row_count_ok is True and result['time_elapsed_ms'] < minimum_time_elapsed_ms:
+                            
+                                print('\n')
+                                print('Good')
+                                print({
+                                    'unique_user_username': current_user.username,
+                                    'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                                    'time_elapsed_ms': result['time_elapsed_ms'],
+                                })
+                                print('\n')
+
+                                test_pass_count += 1
+
+                                continue
+                            
+                            print('\n')
+
+                            if show_test_failed_query is True:
+                            
+                                print(result['raw_query'])
+
+                            #put {} if row count has issues, else None
+
+                            row_count_issues = None
+
+                            if is_row_count_ok is False:
+                            
+                                row_count_issues = {
+                                    'is_expecting_rows': True,
+                                    'query_row_count': len(result['query_result']),
+                                }
+
+                            print({
+                                'row_count_issues': row_count_issues,
+                                'unique_user_username': current_user.username,
+                                'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                                'time_elapsed_ms': result['time_elapsed_ms'],
+                            })
+                            print('\n')
+
+                            test_fail_count += 1
+
+        print({
+            'tests_passed': test_pass_count,
+            'tests_failed': test_fail_count,
+        })
+
+
+    def test__has_tone(self, minimum_time_elapsed_ms=200, show_test_failed_query=False,):
 
         stopwatch = Stopwatch()
-
-        with connection.cursor() as cursor:
-
-            stopwatch.start()
-
-            cursor.execute(
-                '''
-                    WITH
-                        excluded_events_1 AS (
-                            SELECT event_id FROM audio_clips
-                            WHERE user_id = %s
-                        ),
-                        excluded_events_2 AS (
-                            SELECT event_id FROM user_events
-                            WHERE user_id = %s
-                            AND when_excluded_for_reply IS NOT NULL
-                        ),
-                        excluded_users_1 AS (
-                            SELECT blocked_user_id AS id FROM user_blocks
-                            WHERE user_id = %s
-                        ),
-                        excluded_users_2 AS (
-                            SELECT user_id AS id FROM user_blocks
-                            WHERE blocked_user_id = %s
-                        ),
-                        narrowed_down_events AS (
-                            SELECT events.id FROM events
-                            WHERE generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name = %s)
-                            AND when_created >= %s
-                            ORDER BY when_created
-                        ),
-                        specific_tone_events AS (
-                            SELECT events.id FROM events
-                            INNER JOIN narrowed_down_events ON events.id = narrowed_down_events.id
-                            INNER JOIN audio_clips ON events.id = audio_clips.event_id
-                            WHERE audio_clips.audio_clip_tone_id = %s
-                            AND audio_clips.audio_clip_role_id = (SELECT id FROM audio_clip_roles WHERE audio_clip_role_name=%s)
-                            AND audio_clips.generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name=%s)
-                        ),
-                        target_events AS (
-                            SELECT events.* FROM events
-                            INNER JOIN specific_tone_events ON specific_tone_events.id = events.id
-                            LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
-                            LEFT JOIN excluded_events_1 ON excluded_events_1.event_id = events.id
-                            LEFT JOIN excluded_events_2 ON excluded_events_2.event_id = events.id
-                            LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
-                            LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
-                            WHERE event_reply_queues.event_id IS NULL
-                            AND excluded_events_1.event_id IS NULL
-                            AND excluded_events_2.event_id IS NULL
-                            AND excluded_users_1.id IS NULL
-                            AND excluded_users_2.id IS NULL
-                            LIMIT 1
-                        )
-                        SELECT
-                            audio_clips.*,
-                            audio_clip_likes_dislikes.is_liked AS is_liked_by_user,
-                            audio_clip_metrics.like_count AS like_count,
-                            audio_clip_metrics.dislike_count AS dislike_count
-                        FROM audio_clips
-                        INNER JOIN target_events ON audio_clips.event_id = target_events.id
-                        LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
-                            AND audio_clip_likes_dislikes.user_id = 1
-                        LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
-                        WHERE audio_clips.is_banned IS FALSE
-                        AND audio_clips.audio_clip_role_id = (
-                            SELECT id FROM audio_clip_roles
-                            WHERE audio_clip_role_name = %s
-                        )
-                        AND audio_clips.generic_status_id = (
-                            SELECT id FROM generic_statuses
-                            WHERE generic_status_name = %s
-                        )
-                        LIMIT 1
-                ''',
-                params=[
-                    current_user_id,
-                    current_user_id,
-                    current_user_id,
-                    current_user_id,
-                    'incomplete',
-                    when_created,
-                    audio_clip_tone_id,
-                    'originator',
-                    'ok',
-                    'originator',
-                    'ok',
-                ]
-            )
-
-            stopwatch.stop()
-
-            return {
-                'query_result': cursor.fetchall(),
-                'time_elapsed_ms': stopwatch.diff_milliseconds(),
-            }
-
-
-    def test__no_tone(self, minimum_time_elapsed_ms=150):
-
-        stopwatch = Stopwatch()
-        unique_users = RealisticBulkData.get_unique_users()
-
-        minimum_datetimes = []
-
-        earliest_event = Events.objects.filter(generic_status__generic_status_name='incomplete').order_by('id').first()
-        latest_event = Events.objects.filter(generic_status__generic_status_name='incomplete').order_by('id').last()
-
-        minimum_datetimes.append(earliest_event.when_created)
-        minimum_datetimes.append(latest_event.when_created)
-
-        for unique_user_key in unique_users:
-
-            for unique_user in unique_users[unique_user_key]:
-
-                for minimum_datetime in minimum_datetimes:
-
-                    result = self._query__no_tone(
-                        current_user_id=unique_user.id,
-                        when_created=minimum_datetime,
-                    )
-
-                    #will always have row
-                    if result['time_elapsed_ms'] < minimum_time_elapsed_ms:
-
-                        print(f'Below minimum_time_elapsed_ms: {result['time_elapsed_ms']}.')
-                        print('\n')
-                        continue
-
-                    else:
-
-                        if len(result['query_result']) == 0:
-
-                            print('REEEEEEEEEEEEEEEEEE')
-
-                        print({
-                            'unique_user_username': unique_user.username,
-                            'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
-                            'rows_fetched': len(result['query_result']),
-                            'time_elapsed_ms': result['time_elapsed_ms'],
-                        })
-                        print('\n')
-
-
-    def test__has_tone(self, minimum_time_elapsed_ms=150):
-
-        stopwatch = Stopwatch()
-        unique_users = RealisticBulkData.get_unique_users()
+        unique_user_ids = RealisticBulkData.get_unique_user_ids()
 
         excluded_audio_clip_tone_ids = []
         expected_audio_clip_tone_ids = []
@@ -4951,9 +5390,12 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
                 realistic_bulk_data_class.audio_clip_tones[audio_clip_tone_index + 1].id
             )
 
-        for unique_user_key in unique_users:
+        test_pass_count = 0
+        test_fail_count = 0
 
-            for unique_user in unique_users[unique_user_key]:
+        for unique_user_key in unique_user_ids:
+
+            for unique_user in unique_user_ids[unique_user_key]:
 
                 #expect rows matching tone to exist
                 for audio_clip_tone_id in expected_audio_clip_tone_ids:
@@ -4983,65 +5425,100 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
 
                     for minimum_datetime in minimum_datetimes:
 
-                        result = self._query__has_tone(
+                        result = self._query_1(
                             current_user_id=unique_user.id,
                             audio_clip_tone_id=audio_clip_tone_id,
                             when_created=minimum_datetime,
                         )
 
-                        if result['time_elapsed_ms'] < minimum_time_elapsed_ms:
+                        is_row_count_expected = len(result['query_result']) > 0
 
-                            print(f'Below minimum_time_elapsed_ms: {result['time_elapsed_ms']}.')
-                            print('\n')
-                            continue
+                        if is_row_count_expected is True and result['time_elapsed_ms'] < minimum_time_elapsed_ms:
 
-                        else:
-
-                            if len(result['query_result']) == 0:
-
-                                print('REEEEEEEEEEEEEEEEEE')
-
+                            print('Good')
                             print({
-                                'expecting_rows': True,
+                                'audio_clip_tone_id': audio_clip_tone_id,
                                 'unique_user_username': unique_user.username,
                                 'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
-                                'rows_fetched': len(result['query_result']),
                                 'time_elapsed_ms': result['time_elapsed_ms'],
                             })
-                            print('\n')
+
+                            test_pass_count += 1
+
+                            continue
+
+                        print('\n')
+
+                        if show_test_failed_query is True:
+
+                            print(result['raw_query'])
+
+                        print({
+                            'is_row_count_expected': is_row_count_expected,
+                            'rows_fetched': len(result['query_result']),
+                            'audio_clip_tone_id': audio_clip_tone_id,
+                            'unique_user_username': unique_user.username,
+                            'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                            'time_elapsed_ms': result['time_elapsed_ms'],
+                        })
+                        print('\n')
+
+                        test_fail_count += 1
 
                 #expect rows matching tone to not exist
-                for audio_clip_tone_id in expected_audio_clip_tone_ids:
+                for audio_clip_tone_id in excluded_audio_clip_tone_ids:
 
                     #arbitrary start time, 10 years
                     minimum_datetime = get_datetime_now() - timedelta(weeks=521)
 
-                    result = self._query__has_tone(
+                    result = self._query_1(
                         current_user_id=unique_user.id,
                         audio_clip_tone_id=audio_clip_tone_id,
                         when_created=minimum_datetime,
                     )
 
-                    if result['time_elapsed_ms'] < minimum_time_elapsed_ms:
+                    is_row_count_expected = len(result['query_result']) == 0
 
-                        print(f'Below minimum_time_elapsed_ms: {result['time_elapsed_ms']}.')
-                        print('\n')
-                        continue
+                    if is_row_count_expected is True and result['time_elapsed_ms'] < minimum_time_elapsed_ms:
 
-                    else:
-
-                        if len(result['query_result']) > 0:
-
-                            print('REEEEEEEEEEEEEEEEEE')
-
+                        print('Good')
                         print({
-                            'expecting_rows': False,
+                            'audio_clip_tone_id': audio_clip_tone_id,
                             'unique_user_username': unique_user.username,
                             'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
-                            'rows_fetched': len(result['query_result']),
                             'time_elapsed_ms': result['time_elapsed_ms'],
                         })
-                        print('\n')
+
+                        test_pass_count += 1
+
+                        continue
+
+                    print('\n')
+
+                    if show_test_failed_query is True:
+
+                        print(result['raw_query'])
+
+                    print({
+                        'is_row_count_expected': is_row_count_expected,
+                        'rows_fetched': len(result['query_result']),
+                        'audio_clip_tone_id': audio_clip_tone_id,
+                        'unique_user_username': unique_user.username,
+                        'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                        'time_elapsed_ms': result['time_elapsed_ms'],
+                    })
+                    print('\n')
+
+                    test_fail_count += 1
+
+        print({
+            'tests_passed': test_pass_count,
+            'tests_failed': test_fail_count,
+        })
+
+
+
+
 
 
 
