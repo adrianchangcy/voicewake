@@ -1955,7 +1955,7 @@ class EventReplyChoicesAPI(generics.GenericAPIView):
     #excludes event started by user
     #excludes event that user has talked in before, e.g. talked and banned, etc.
     #excludes those that blocked user, as well as those that the user has blocked, i.e. goes both ways
-    def get_audio_clips_by_incomplete_events(self, audio_clip_tone_id:int|None=None):
+    def get_audio_clips_by_incomplete_events(self):
 
         #this must be balanced between "give older unreplied events a chance" and "new events get replied fast enough"
         oldest_when_created = (get_datetime_now() - timedelta(seconds=settings.EVENT_INCOMPLETE_QUEUE_MAX_AGE_S))
@@ -1965,28 +1965,18 @@ class EventReplyChoicesAPI(generics.GenericAPIView):
         #we select only events.id in selected_events, followed by events JOIN
         #because if we do events.* in selected_events, we'll have to write all columns in GROUP BY clause
 
-        audio_clip_tone_sql = ''
-        audio_clip_tone_params = []
-
-        if audio_clip_tone_id is not None:
-
-            audio_clip_tone_sql = '''
-                AND audio_clips.audio_clip_tone_id = %s
-            '''
-            audio_clip_tone_params.append(audio_clip_tone_id)
-
         #doing "events.when_created >= datetime" is better, since with "<=", you'd need "restart search from latest" feature
         full_sql = '''
             WITH
-				excluded_events_1 AS (
-                    SELECT event_id FROM audio_clips
-                    WHERE user_id = %s
-				),
-				excluded_events_2 AS (
-                    SELECT event_id FROM user_events
+                excluded_events_1 AS (
+                    SELECT id FROM events
+                    WHERE created_by_id = %s
+                ),
+                excluded_events_2 AS (
+                    SELECT event_id AS id FROM user_events
                     WHERE user_id = %s
                     AND when_excluded_for_reply IS NOT NULL
-				),
+                ),
                 excluded_users_1 AS (
                     SELECT blocked_user_id AS id FROM user_blocks
                     WHERE user_id = %s
@@ -1994,30 +1984,38 @@ class EventReplyChoicesAPI(generics.GenericAPIView):
                 excluded_users_2 AS (
                     SELECT user_id AS id FROM user_blocks
                     WHERE blocked_user_id = %s
-				)
-				SELECT
+                ),
+                narrowed_events AS (
+                    SELECT events.id FROM events
+                    WHERE generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name = %s)
+                    AND when_created >= %s
+                ),
+                target_events AS (
+                    SELECT events.* FROM events
+                    INNER JOIN narrowed_events ON narrowed_events.id = events.id
+                    LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
+                    LEFT JOIN excluded_events_1 ON excluded_events_1.id = events.id
+                    LEFT JOIN excluded_events_2 ON excluded_events_2.id = events.id
+                    LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
+                    LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
+                    WHERE event_reply_queues.event_id IS NULL
+                    AND excluded_events_1.id IS NULL
+                    AND excluded_events_2.id IS NULL
+                    AND excluded_users_1.id IS NULL
+                    AND excluded_users_2.id IS NULL
+                    LIMIT 1
+                )
+                SELECT
                     audio_clips.*,
                     audio_clip_likes_dislikes.is_liked AS is_liked_by_user,
                     audio_clip_metrics.like_count AS like_count,
                     audio_clip_metrics.dislike_count AS dislike_count
                 FROM audio_clips
-                INNER JOIN events ON audio_clips.event_id = events.id
-				LEFT JOIN event_reply_queues ON events.id = event_reply_queues.event_id
-				LEFT JOIN excluded_events_1 ON events.id = excluded_events_1.event_id
-				LEFT JOIN excluded_events_2 ON events.id = excluded_events_2.event_id
-				LEFT JOIN excluded_users_1 ON audio_clips.user_id = excluded_users_1.id
-				LEFT JOIN excluded_users_2 ON audio_clips.user_id = excluded_users_2.id
+                INNER JOIN target_events ON audio_clips.event_id = target_events.id
                 LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
                     AND audio_clip_likes_dislikes.user_id = %s
                 LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
-				WHERE audio_clips.is_banned IS FALSE
-				''' + audio_clip_tone_sql + '''
-				AND event_reply_queues.id IS NULL
-				AND excluded_events_1.event_id IS NULL
-				AND excluded_events_2.event_id IS NULL
-				AND excluded_users_1.id IS NULL
-				AND excluded_users_2.id IS NULL
-				AND events.when_created >= %s
+                WHERE audio_clips.is_banned IS FALSE
                 AND audio_clips.audio_clip_role_id = (
                     SELECT id FROM audio_clip_roles
                     WHERE audio_clip_role_name = %s
@@ -2026,11 +2024,8 @@ class EventReplyChoicesAPI(generics.GenericAPIView):
                     SELECT id FROM generic_statuses
                     WHERE generic_status_name = %s
                 )
-                AND events.generic_status_id = (
-                    SELECT id FROM generic_statuses
-                    WHERE generic_status_name = %s
-                )
-				LIMIT %s
+                ORDER BY target_events.when_created ASC
+                LIMIT %s
         '''
 
         full_params = [
@@ -2038,12 +2033,11 @@ class EventReplyChoicesAPI(generics.GenericAPIView):
             self.request.user.id,
             self.request.user.id,
             self.request.user.id,
-            self.request.user.id,
-        ] + audio_clip_tone_params + [
+            'incomplete',
             oldest_when_created,
+            self.request.user.id,
             'originator',
             'ok',
-            'incomplete',
             1,  #frontend currently can only handle 1
         ]
 
@@ -2325,7 +2319,7 @@ class EventReplyChoicesAPI(generics.GenericAPIView):
 
             #proceed with getting new reply choices
 
-            audio_clips = self.get_audio_clips_by_incomplete_events(audio_clip_tone_id=request_data['audio_clip_tone_id'])
+            audio_clips = self.get_audio_clips_by_incomplete_events()
 
             if len(audio_clips) == 0:
 

@@ -4719,16 +4719,11 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
     @classmethod
     def setUp(cls):
 
-        with connection.cursor() as cursor:
-
-            cursor.execute(
-                '''
-                    CREATE INDEX events_when_created_1 ON events (when_created);
-                '''
-            )
+        pass
 
 
     #always no tone specified
+    #has ORDER BY events.when_created
     def _query_0(self, current_user_id:int, when_created:datetime):
 
         stopwatch = Stopwatch()
@@ -4738,11 +4733,11 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
         query = '''
             WITH
                 excluded_events_1 AS (
-                    SELECT event_id FROM audio_clips
-                    WHERE user_id = %s
+                    SELECT id FROM events
+                    WHERE created_by_id = %s
                 ),
                 excluded_events_2 AS (
-                    SELECT event_id FROM user_events
+                    SELECT event_id AS id FROM user_events
                     WHERE user_id = %s
                     AND when_excluded_for_reply IS NOT NULL
                 ),
@@ -4758,19 +4753,18 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
                     SELECT events.id FROM events
                     WHERE generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name = %s)
                     AND when_created >= %s
-                    ORDER BY when_created
                 ),
                 target_events AS (
                     SELECT events.* FROM events
                     INNER JOIN narrowed_events ON narrowed_events.id = events.id
                     LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
-                    LEFT JOIN excluded_events_1 ON excluded_events_1.event_id = events.id
-                    LEFT JOIN excluded_events_2 ON excluded_events_2.event_id = events.id
+                    LEFT JOIN excluded_events_1 ON excluded_events_1.id = events.id
+                    LEFT JOIN excluded_events_2 ON excluded_events_2.id = events.id
                     LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
                     LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
                     WHERE event_reply_queues.event_id IS NULL
-                    AND excluded_events_1.event_id IS NULL
-                    AND excluded_events_2.event_id IS NULL
+                    AND excluded_events_1.id IS NULL
+                    AND excluded_events_2.id IS NULL
                     AND excluded_users_1.id IS NULL
                     AND excluded_users_2.id IS NULL
                     LIMIT 1
@@ -4783,7 +4777,7 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
                 FROM audio_clips
                 INNER JOIN target_events ON audio_clips.event_id = target_events.id
                 LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
-                    AND audio_clip_likes_dislikes.user_id = 1
+                    AND audio_clip_likes_dislikes.user_id = %s
                 LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
                 WHERE audio_clips.is_banned IS FALSE
                 AND audio_clips.audio_clip_role_id = (
@@ -4794,6 +4788,7 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
                     SELECT id FROM generic_statuses
                     WHERE generic_status_name = %s
                 )
+                ORDER BY target_events.when_created ASC
                 LIMIT 1
         '''
 
@@ -4804,6 +4799,7 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
             current_user_id,
             'incomplete',
             when_created,
+            current_user_id,
             'originator',
             'ok',
         ]
@@ -4963,11 +4959,11 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
         query = '''
             WITH
                 excluded_events_1 AS (
-                    SELECT event_id FROM audio_clips
-                    WHERE user_id = %s
+                    SELECT id FROM events
+                    WHERE created_by_id = %s
                 ),
                 excluded_events_2 AS (
-                    SELECT event_id FROM user_events
+                    SELECT event_id AS id FROM user_events
                     WHERE user_id = %s
                     AND when_excluded_for_reply IS NOT NULL
                 ),
@@ -4988,13 +4984,13 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
                     SELECT events.* FROM events
                     INNER JOIN narrowed_events ON narrowed_events.id = events.id
                     LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
-                    LEFT JOIN excluded_events_1 ON excluded_events_1.event_id = events.id
-                    LEFT JOIN excluded_events_2 ON excluded_events_2.event_id = events.id
+                    LEFT JOIN excluded_events_1 ON excluded_events_1.id = events.id
+                    LEFT JOIN excluded_events_2 ON excluded_events_2.id = events.id
                     LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
                     LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
                     WHERE event_reply_queues.event_id IS NULL
-                    AND excluded_events_1.event_id IS NULL
-                    AND excluded_events_2.event_id IS NULL
+                    AND excluded_events_1.id IS NULL
+                    AND excluded_events_2.id IS NULL
                     AND excluded_users_1.id IS NULL
                     AND excluded_users_2.id IS NULL
                     LIMIT 1
@@ -5007,7 +5003,7 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
                 FROM audio_clips
                 INNER JOIN target_events ON audio_clips.event_id = target_events.id
                 LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
-                    AND audio_clip_likes_dislikes.user_id = 1
+                    AND audio_clip_likes_dislikes.user_id = %s
                 LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
                 WHERE audio_clips.is_banned IS FALSE
                 AND audio_clips.audio_clip_role_id = (
@@ -5028,6 +5024,7 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
             current_user_id,
             'incomplete',
             when_created,
+            current_user_id,
             'originator',
             'ok',
         ]
@@ -5056,7 +5053,7 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
         }
 
 
-    def test__list_event_reply_choice(self, has_tone=False, minimum_time_elapsed_ms=180, show_test_failed_query=True,):
+    def test__list_event_reply_choice(self, has_tone=False, minimum_time_elapsed_ms=180, show_test_failed_query=True, show_test_passed_query=False):
 
         stopwatch = Stopwatch()
         realistic_bulk_data_class = RealisticBulkData()
@@ -5109,110 +5106,45 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
 
                         if has_tone is True:
 
-                            #must avoid retrieving events that had been skipped before
-
-                            earliest_audio_clip = AudioClips.objects.raw(
-                                '''
-                                    WITH excluded_events AS (
-                                        SELECT event_id FROM user_events
-                                        WHERE user_id = %s
-                                        AND when_excluded_for_reply IS NOT NULL
-                                    )
-                                    SELECT ac.* FROM audio_clips AS ac
-                                    INNER JOIN events ON ac.event_id = events.id
-                                    LEFT JOIN excluded_events ON ac.event_id = excluded_events.event_id
-                                    WHERE excluded_events.event_id IS NULL
-                                    AND ac.audio_clip_tone_id = %s
-                                    AND ac.audio_clip_role_id = (
-                                        SELECT id FROM audio_clip_roles WHERE audio_clip_role_name = 'originator'
-                                    )
-                                    AND ac.generic_status_id = (
-                                        SELECT id FROM generic_statuses WHERE generic_status_name = 'ok'
-                                    )
-                                    AND events.generic_status_id = (
-                                        SELECT id FROM generic_statuses WHERE generic_status_name = 'incomplete'
-                                    )
-                                    AND events.created_by_id != %s
-                                    ORDER BY ac.id ASC
-                                    LIMIT 1
-                                    ;
-                                ''',
-                                [
-                                    unique_user_id,
-                                    audio_clip_tone_id,
-                                    unique_user_id,
-                                ]
-                            )
-
-                            latest_audio_clip = AudioClips.objects.raw(
-                                '''
-                                    WITH excluded_events AS (
-                                        SELECT event_id FROM user_events
-                                        WHERE user_id = %s
-                                        AND when_excluded_for_reply IS NOT NULL
-                                    )
-                                    SELECT ac.* FROM audio_clips AS ac
-                                    INNER JOIN events ON ac.event_id = events.id
-                                    LEFT JOIN excluded_events ON ac.event_id = excluded_events.event_id
-                                    WHERE excluded_events.event_id IS NULL
-                                    AND ac.audio_clip_tone_id = %s
-                                    AND ac.audio_clip_role_id = (
-                                        SELECT id FROM audio_clip_roles WHERE audio_clip_role_name = 'originator'
-                                    )
-                                    AND ac.generic_status_id = (
-                                        SELECT id FROM generic_statuses WHERE generic_status_name = 'ok'
-                                    )
-                                    AND events.generic_status_id = (
-                                        SELECT id FROM generic_statuses WHERE generic_status_name = 'incomplete'
-                                    )
-                                    AND events.created_by_id != %s
-                                    ORDER BY ac.id DESC
-                                    LIMIT 1
-                                    ;
-                                ''',
-                                [
-                                    unique_user_id,
-                                    audio_clip_tone_id,
-                                    unique_user_id,
-                                ]
-                            )
+                            raise ValueError('Cannot use has_tone=True yet.')
 
                         else:
 
-                            earliest_audio_clip = AudioClips.objects.raw(
+                            earliest_event = Events.objects.raw(
                                 '''
-                                    WITH excluded_events AS (
-                                        SELECT event_id FROM user_events
+                                    WITH
+                                    excluded_events_1 AS (
+                                        SELECT id FROM events
+                                        WHERE created_by_id = %s
+                                    ),
+                                    excluded_events_2 AS (
+                                        SELECT event_id AS id FROM user_events
                                         WHERE user_id = %s
                                         AND when_excluded_for_reply IS NOT NULL
                                     ),
                                     excluded_users_1 AS (
-                                        SELECT user_id AS id FROM user_blocks
+                                        SELECT blocked_user_id AS id FROM user_blocks
                                         WHERE user_id = %s
                                     ),
                                     excluded_users_2 AS (
                                         SELECT user_id AS id FROM user_blocks
                                         WHERE blocked_user_id = %s
                                     )
-                                    SELECT ac.* FROM audio_clips AS ac
-                                    INNER JOIN events ON ac.event_id = events.id
-                                    LEFT JOIN excluded_events ON events.id = excluded_events.event_id
-                                    LEFT JOIN excluded_users_1 ON ac.user_id = excluded_users_1.id
-                                    LEFT JOIN excluded_users_2 ON ac.user_id = excluded_users_2.id
-                                    WHERE excluded_events.event_id IS NULL
+                                    SELECT events.* FROM events
+                                    LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
+                                    LEFT JOIN excluded_events_1 ON excluded_events_1.id = events.id
+                                    LEFT JOIN excluded_events_2 ON excluded_events_2.id = events.id
+                                    LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
+                                    LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
+                                    WHERE event_reply_queues.event_id IS NULL
+                                    AND excluded_events_1.id IS NULL
+                                    AND excluded_events_2.id IS NULL
                                     AND excluded_users_1.id IS NULL
                                     AND excluded_users_2.id IS NULL
-                                    AND ac.audio_clip_role_id = (
-                                        SELECT id FROM audio_clip_roles WHERE audio_clip_role_name = 'originator'
-                                    )
-                                    AND ac.generic_status_id = (
-                                        SELECT id FROM generic_statuses WHERE generic_status_name = 'ok'
-                                    )
                                     AND events.generic_status_id = (
                                         SELECT id FROM generic_statuses WHERE generic_status_name = 'incomplete'
                                     )
-                                    AND events.created_by_id != %s
-                                    ORDER BY ac.id ASC
+                                    ORDER BY events.when_created ASC
                                     LIMIT 1
                                     ;
                                 ''',
@@ -5224,40 +5156,41 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
                                 ]
                             )
 
-                            latest_audio_clip = AudioClips.objects.raw(
+                            latest_event = Events.objects.raw(
                                 '''
-                                    WITH excluded_events AS (
-                                        SELECT event_id FROM user_events
+                                    WITH
+                                    excluded_events_1 AS (
+                                        SELECT id FROM events
+                                        WHERE created_by_id = %s
+                                    ),
+                                    excluded_events_2 AS (
+                                        SELECT event_id AS id FROM user_events
                                         WHERE user_id = %s
                                         AND when_excluded_for_reply IS NOT NULL
                                     ),
                                     excluded_users_1 AS (
-                                        SELECT user_id AS id FROM user_blocks
+                                        SELECT blocked_user_id AS id FROM user_blocks
                                         WHERE user_id = %s
                                     ),
                                     excluded_users_2 AS (
                                         SELECT user_id AS id FROM user_blocks
                                         WHERE blocked_user_id = %s
                                     )
-                                    SELECT ac.* FROM audio_clips AS ac
-                                    INNER JOIN events ON ac.event_id = events.id
-                                    LEFT JOIN excluded_events ON events.id = excluded_events.event_id
-                                    LEFT JOIN excluded_users_1 ON ac.user_id = excluded_users_1.id
-                                    LEFT JOIN excluded_users_2 ON ac.user_id = excluded_users_2.id
-                                    WHERE excluded_events.event_id IS NULL
+                                    SELECT events.* FROM events
+                                    LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
+                                    LEFT JOIN excluded_events_1 ON excluded_events_1.id = events.id
+                                    LEFT JOIN excluded_events_2 ON excluded_events_2.id = events.id
+                                    LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
+                                    LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
+                                    WHERE event_reply_queues.event_id IS NULL
+                                    AND excluded_events_1.id IS NULL
+                                    AND excluded_events_2.id IS NULL
                                     AND excluded_users_1.id IS NULL
                                     AND excluded_users_2.id IS NULL
-                                    AND ac.audio_clip_role_id = (
-                                        SELECT id FROM audio_clip_roles WHERE audio_clip_role_name = 'originator'
-                                    )
-                                    AND ac.generic_status_id = (
-                                        SELECT id FROM generic_statuses WHERE generic_status_name = 'ok'
-                                    )
                                     AND events.generic_status_id = (
                                         SELECT id FROM generic_statuses WHERE generic_status_name = 'incomplete'
                                     )
-                                    AND events.created_by_id != %s
-                                    ORDER BY ac.id DESC
+                                    ORDER BY events.when_created DESC
                                     LIMIT 1
                                     ;
                                 ''',
@@ -5269,13 +5202,13 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
                                 ]
                             )
 
-                        earliest_audio_clip = earliest_audio_clip[0]
-                        latest_audio_clip = latest_audio_clip[0]
+                        earliest_event = earliest_event[0]
+                        latest_event = latest_event[0]
 
-                        minimum_datetimes.append(earliest_audio_clip.event.when_created)
-                        minimum_datetimes.append(latest_audio_clip.event.when_created)
+                        minimum_datetimes.append(earliest_event.when_created)
+                        minimum_datetimes.append(latest_event.when_created)
 
-                        for minimum_datetime in minimum_datetimes:
+                        for minimum_datetime_index, minimum_datetime in enumerate(minimum_datetimes):
 
                             result = None
 
@@ -5289,7 +5222,7 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
 
                             else:
 
-                                result = self._query_2(
+                                result = self._query_0(
                                     current_user_id=unique_user_id,
                                     when_created=minimum_datetime,
                                 )
@@ -5305,7 +5238,9 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
 
                             if len(result['query_result']) == 1:
 
-                                #since group _3 has no blocks, query should naturally always land on their rows
+                                #will always have 1 row, and row belonging to _3 username group
+                                #provided that user_blocks are created correctly,
+                                #and _3 users have proper incomplete events that fulfill reply choice criteria
 
                                 fetched_user = result['query_result'][0].user
                                 fetched_user_group = fetched_user.username[len(fetched_user.username)-2 : len(fetched_user.username)]
@@ -5318,6 +5253,11 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
                             if is_row_count_ok is True and result['time_elapsed_ms'] < minimum_time_elapsed_ms:
                             
                                 print('\n')
+
+                                if show_test_passed_query is True:
+                                
+                                    print(result['raw_query'])
+
                                 print('Good')
                                 print({
                                     'unique_user_username': current_user.username,
@@ -5350,6 +5290,7 @@ class OptimiseReplyChoiceQuery_TestCase(TestCase):
                             print({
                                 'row_count_issues': row_count_issues,
                                 'unique_user_username': current_user.username,
+                                'earliest_or_latest_datetime': 'earliest' if minimum_datetime_index == 0 else 'latest',
                                 'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
                                 'time_elapsed_ms': result['time_elapsed_ms'],
                             })
