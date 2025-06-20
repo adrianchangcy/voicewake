@@ -847,7 +847,9 @@ class AudioClips_TestCase(TestCase):
     #if ban, expect 400 on fail, 404 if id does not exist in db, 200 on success
     #if still processing, cannot cancel reply, cannot skip reply choice, cannot delete with is_processing=True, cannot ban
     #if originator suddenly banned, expect can_retry=False for responder
+    #EventReplyChoicesAPI.get_audio_clips_by_incomplete_events() now does not use audio_clip_tone
 #should use FactoryBoy to prevent future changes from requiring every individual test case to be edited
+#see if we can make reverse() use NGINX base url
 @override_settings(
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
     MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'voicewake/tests'),
