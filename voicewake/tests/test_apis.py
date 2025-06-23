@@ -2086,7 +2086,7 @@ class Core_TestCase(TestCase):
         self.assertEqual(request.status_code, 400)
 
 
-    def test_get_event_ok(self):
+    def test_get_event_incomplete__ok(self):
 
         #prepare data
 
@@ -2131,8 +2131,12 @@ class Core_TestCase(TestCase):
         self.assertTrue('responder' in response_data[0])
         self.assertFalse('event_reply_queue' in response_data[0])
 
+        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(len(response_data[0]['responder']), 0)
 
-    def test_get_event__has_event_reply_queue__same_request_user__not_replying(self):
+
+    def test_get_event__incomplete__has_event_reply_queue__same_request_user__not_replying(self):
 
         #prepare data
 
@@ -2185,11 +2189,14 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
+        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertTrue('event_reply_queue' in response_data[0])
         self.assertFalse(response_data[0]['event_reply_queue']['is_replying'])
 
 
-    def test_get_event__has_event_reply_queue__same_request_user__is_replying(self):
+    def test_get_event__incomplete__has_event_reply_queue__same_request_user__is_replying(self):
 
         #prepare data
 
@@ -2242,11 +2249,14 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
+        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertTrue('event_reply_queue' in response_data[0])
         self.assertTrue(response_data[0]['event_reply_queue']['is_replying'])
 
 
-    def test_get_event__has_event_reply_queue__different_request_user__not_replying(self):
+    def test_get_event__incomplete__has_event_reply_queue__different_request_user__not_replying(self):
 
         #prepare data
 
@@ -2299,10 +2309,13 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
+        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
 
-    def test_get_event__has_event_reply_queue__different_request_user__is_replying(self):
+    def test_get_event__incomplete__has_event_reply_queue__different_request_user__is_replying(self):
 
         #prepare data
 
@@ -2355,10 +2368,13 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
+        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
 
-    def test_get_event__has_event_reply_queue__not_replying__only_responder_can_get_queue(self):
+    def test_get_event__incomplete__has_event_reply_queue__not_replying__only_responder_can_get_queue(self):
 
         #prepare data
 
@@ -2429,6 +2445,9 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
+        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
         #get as originator
@@ -2452,6 +2471,9 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
+        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
         #get as any random irrelevant user
@@ -2475,6 +2497,9 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
+        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
         #get as different responder
@@ -2498,6 +2523,9 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
+        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
         #get as correct responder
@@ -2521,10 +2549,13 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
+        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertTrue('event_reply_queue' in response_data[0])
 
 
-    def test_get_event__has_event_reply_queue__is_replying__only_responder_can_get_queue(self):
+    def test_get_event__incomplete__has_event_reply_queue__is_replying__only_responder_can_get_queue(self):
 
         #prepare data
 
@@ -2595,6 +2626,9 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
+        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
         #get as originator
@@ -2618,6 +2652,9 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
+        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
         #get as any random irrelevant user
@@ -2641,6 +2678,9 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
+        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
         #get as different responder
@@ -2664,6 +2704,9 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
+        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
         #get as correct responder
@@ -2687,10 +2730,13 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
+        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertTrue('event_reply_queue' in response_data[0])
 
 
-    def test_get_event_no_audio_clips(self):
+    def test_get_event__incomplete__no_audio_clips(self):
 
         #prepare data
 
@@ -2714,6 +2760,263 @@ class Core_TestCase(TestCase):
 
         self.assertEqual(request.status_code, 200)
         print_with_function_name(request.content)
+
+        response_data = get_response_data(request)['data']
+
+        self.assertEqual(len(response_data), 0)
+
+
+    def test_get_event__completed__ok(self):
+
+        #prepare data
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="completed",
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
+
+        #start
+
+        self.login(self.users[1])
+
+        data = {'event_id': sample_event_0.id}
+
+        request = self.client.get(
+            reverse(
+                'get_events_api',
+                kwargs=data
+            )
+        )
+
+        self.assertEqual(request.status_code, 200)
+        print_with_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)['data']
+
+        self.assertEqual(len(response_data), 1)
+        self.assertTrue('event' in response_data[0])
+        self.assertTrue('originator' in response_data[0])
+        self.assertTrue('responder' in response_data[0])
+        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(len(response_data[0]['responder']), 1)
+        self.assertFalse('event_reply_queue' in response_data[0])
+
+
+    def test_get_event__completed__deleted_same_responders(self):
+
+        #prepare data
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="completed",
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_generic_status_generic_status_name='deleted',
+            audio_clip_is_banned=False,
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_2 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_generic_status_generic_status_name='deleted',
+            audio_clip_is_banned=True,
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_3 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
+        sample_audio_clip_metric_2 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_2,
+        )
+        sample_audio_clip_metric_3 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_3,
+        )
+
+        #start
+
+        self.login(self.users[1])
+
+        data = {'event_id': sample_event_0.id}
+
+        request = self.client.get(
+            reverse(
+                'get_events_api',
+                kwargs=data
+            )
+        )
+
+        self.assertEqual(request.status_code, 200)
+        print_with_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)['data']
+
+        self.assertEqual(len(response_data), 1)
+        self.assertTrue('event' in response_data[0])
+        self.assertTrue('originator' in response_data[0])
+        self.assertTrue('responder' in response_data[0])
+        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(len(response_data[0]['responder']), 1)
+        self.assertFalse('event_reply_queue' in response_data[0])
+
+        self.assertEqual(response_data[0]['responder'][0].id, sample_audio_clip_3.id)
+
+
+    def test_get_event__completed__deleted_different_responders(self):
+
+        #prepare data
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="completed",
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_generic_status_generic_status_name='deleted',
+            audio_clip_is_banned=False,
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_2 = AudioClipsFactory(
+            audio_clip_user=self.users[2],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_generic_status_generic_status_name='deleted',
+            audio_clip_is_banned=True,
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_3 = AudioClipsFactory(
+            audio_clip_user=self.users[3],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
+        sample_audio_clip_metric_2 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_2,
+        )
+        sample_audio_clip_metric_3 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_3,
+        )
+
+        #start
+
+        self.login(self.users[1])
+
+        data = {'event_id': sample_event_0.id}
+
+        request = self.client.get(
+            reverse(
+                'get_events_api',
+                kwargs=data
+            )
+        )
+
+        self.assertEqual(request.status_code, 200)
+        print_with_function_name(request.content)
+
+        #check
+
+        response_data = get_response_data(request)['data']
+
+        self.assertEqual(len(response_data), 1)
+        self.assertTrue('event' in response_data[0])
+        self.assertTrue('originator' in response_data[0])
+        self.assertTrue('responder' in response_data[0])
+        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(len(response_data[0]['responder']), 1)
+        self.assertFalse('event_reply_queue' in response_data[0])
+
+        self.assertEqual(response_data[0]['responder'][0].id, sample_audio_clip_3.id)
+
+
+    def test_get_event__completed__no_audio_clips(self):
+
+        #prepare data
+
+        sample_event_0 = EventsFactory(
+            event_created_by=self.users[0],
+            event_generic_status_generic_status_name="completed",
+        )
+
+        #start
+
+        self.login(self.users[1])
+
+        data = {'event_id': sample_event_0.id}
+
+        request = self.client.get(
+            reverse(
+                'get_events_api',
+                kwargs=data
+            )
+        )
+
+        self.assertEqual(request.status_code, 200)
+        print_with_function_name(request.content)
+
+        response_data = get_response_data(request)['data']
+
+        self.assertEqual(len(response_data), 0)
 
 
     def test_list_event_reply_choices_daily_limit_reached(self):
