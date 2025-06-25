@@ -72,13 +72,16 @@ def delete_audio_file(absolute_path):
     return False
 
 
+#returns datetime.datetime
 def get_datetime_now(to_string:bool=False):
 
     datetime_now = datetime.now().astimezone(tz=ZoneInfo('UTC'))
 
     if to_string is True:
 
-        return datetime_now.strftime('%Y-%m-%d %H:%M:%S %z')
+        #exact format, which datetime.datetime and Django's models.DateTimeField uses
+        #%f is microseconds
+        return datetime_now.strftime('%Y-%m-%d %H:%M:%S.%f %z')
     
     return datetime_now
 
@@ -87,16 +90,18 @@ def get_datetime_now(to_string:bool=False):
         #hours_passed = (get_datetime_now() - event_reply_queue.when_locked).total_seconds() / 60 / 60
 
 
+#accepts datetime.datetime
 def get_datetime_from_string(datetime_string:str):
 
-    #follows same format as get_datetime_now
-    return datetime.strptime(datetime_string, '%Y-%m-%d %H:%M:%S %z')
+    #exact format of datetime.datetime, which Django's models.DateTimeField uses
+    #%f is microseconds
+    return datetime.strptime(datetime_string, '%Y-%m-%d %H:%M:%S.%f %z')
 
     #datetime.strptime()
         #for Python >= 3.2, if format has %z, timezone is maintained
         #deducting then doing .total_seconds() also works
         #e.g.:
-            #datetime.strptime(get_datetime_now(to_string=True), '%Y-%m-%d %H:%M:%S %z')
+            #datetime.strptime(get_datetime_now(to_string=True), '%Y-%m-%d %H:%M:%S.%f %z')
 
 
 def get_pretty_datetime(seconds:int)->str:
@@ -331,7 +336,7 @@ def get_datetime_between(timeframe:Literal['day', 'week', 'month', 'all']='all')
         #getting earliest audio_clips.when_created adds 5-10ms
         #using custom function get_id_of_events_by_when_created() adds 40ms+
         #arbitrary datetime that is guaranteed beyond earliest audio_clips row is the best so far
-        datetime_from = '2020-01-01 01:01:01 +00'
+        datetime_from = '2020-01-01 01:01:01.000000 +0000'
 
     return {
         'datetime_from': datetime_from,
