@@ -2754,9 +2754,100 @@ class BrowseEvents_TestCase(TestCase):
         self.client.force_login(user_instance)
 
 
-    def test_browse_events__main_page__no_tone(self):
+    #response_data['data']: [{event:event,originator:[],responder:[]}]
+    def _general_row_check(self, response_data, audio_clip_role_name:Literal['originator','responder'],):
 
-        metrics = {}
+        opposite_audio_clip_role_name = 'originator'
+
+        if opposite_audio_clip_role_name == audio_clip_role_name:
+
+            opposite_audio_clip_role_name = 'responder'
+
+        previous_row = response_data['data'][0]
+
+        #first checks for precedence
+        #all following rows must have the same values
+        self.assertEqual(previous_row['event']['generic_status']['generic_status_name'], 'completed')
+        self.assertEqual(previous_row[audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], audio_clip_role_name)
+        self.assertEqual(previous_row[audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
+        self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=previous_row[audio_clip_role_name][0]['id']), False)
+        self.assertEqual(previous_row[audio_clip_role_name][0]['event_id'], previous_row['event']['id'])
+        self.assertEqual(previous_row[opposite_audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], opposite_audio_clip_role_name)
+        self.assertEqual(previous_row[opposite_audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
+        self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=previous_row[opposite_audio_clip_role_name][0]['id']), False)
+        self.assertEqual(previous_row[opposite_audio_clip_role_name][0]['event_id'], previous_row['event']['id'])
+
+        for data_index in range(1, len(response_data['data'])):
+
+            #just to occupy less space
+            current_row = response_data['data'][data_index]
+
+            #same role
+            self.assertEqual(
+                current_row[audio_clip_role_name][0]['audio_clip_role']['id'],
+                previous_row[audio_clip_role_name][0]['audio_clip_role']['id'],
+            )
+
+            #smaller id
+            self.assertLess(
+                current_row[audio_clip_role_name][0]['id'],
+                previous_row[audio_clip_role_name][0]['id'],
+            )
+
+            #smaller or equal when_created
+            self.assertLessEqual(
+                AudioClips.objects.values_list('when_created', flat=True,).get(
+                    pk=current_row[audio_clip_role_name][0]['id']
+                ),
+                AudioClips.objects.values_list('when_created', flat=True,).get(
+                    pk=previous_row[audio_clip_role_name][0]['id']
+                )
+            )
+
+            #general correctness
+            self.assertEqual(current_row[audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], audio_clip_role_name)
+            self.assertEqual(current_row[audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
+            self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=current_row[audio_clip_role_name][0]['id']), False)
+            self.assertEqual(current_row[audio_clip_role_name][0]['event_id'], current_row['event']['id'])
+            self.assertEqual(current_row[opposite_audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], opposite_audio_clip_role_name)
+            self.assertEqual(current_row[opposite_audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
+            self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=current_row[opposite_audio_clip_role_name][0]['id']), False)
+            self.assertEqual(current_row[opposite_audio_clip_role_name][0]['event_id'], current_row['event']['id'])
+
+            previous_row = current_row
+
+
+    def _general_cursor_token_check(self, response_data, audio_clip_role_name:Literal['originator','responder']):
+
+        decoded_cursor_token = decode_cursor_token(response_data['next_token'])
+
+        self.assertEqual(
+            AudioClips.objects.values_list('when_created', flat=True,).get(
+                pk=response_data['data'][-1][audio_clip_role_name][0]['id']
+            ),
+            get_datetime_from_string(decoded_cursor_token['when_created']),
+        )
+        self.assertEqual(
+            response_data['data'][-1][audio_clip_role_name][0]['id'],
+            decoded_cursor_token['id'],
+        )
+
+        decoded_cursor_token = decode_cursor_token(response_data['back_token'])
+
+        self.assertEqual(
+            AudioClips.objects.values_list('when_created', flat=True,).get(
+                pk=response_data['data'][0][audio_clip_role_name][0]['id']
+            ),
+            get_datetime_from_string(decoded_cursor_token['when_created']),
+        )
+        self.assertEqual(
+            response_data['data'][0][audio_clip_role_name][0]['id'],
+            decoded_cursor_token['id'],
+        )
+
+
+    def test_browse_events__main_page__no_tone(self, minimum_time_elapsed_ms=200):
+
         stopwatch = Stopwatch()
 
         test_index = 0
@@ -2782,7 +2873,13 @@ class BrowseEvents_TestCase(TestCase):
 
                     test_index += 1
 
+                    #========================================
+                    #part 1: from latest audio_clip
+                    #========================================
+
+                    #==========
                     #API next
+                    #==========
 
                     stopwatch.start()
 
@@ -2795,12 +2892,13 @@ class BrowseEvents_TestCase(TestCase):
 
                     stopwatch.stop()
 
-                    metrics.update({
-                        loop_title + '__next__no_token': {
-                            'data': current_kwargs.copy(),
-                            'time_ms': stopwatch.diff_milliseconds(),
-                        }
-                    })
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
 
                     #check
 
@@ -2812,69 +2910,18 @@ class BrowseEvents_TestCase(TestCase):
 
                     self.assertEqual(len(response_data['data']), settings.EVENT_QUANTITY_PER_PAGE)
 
-                    #for things that should be consistent for all rows, assert first row for precedence
+                    #check rows
+                    self._general_row_check(response_data, audio_clip_role_name)
 
-                    previous_row = response_data['data'][0]
-
-                    self.assertEqual(previous_row[audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], audio_clip_role_name)
-
-                    for data_index in range(1, len(response_data['data'])):
-
-                        #same role
-                        self.assertEqual(
-                            response_data['data'][data_index][audio_clip_role_name][0]['audio_clip_role']['id'],
-                            previous_row[audio_clip_role_name][0]['audio_clip_role']['id'],
-                        )
-
-                        #smaller id
-                        self.assertLess(
-                            response_data['data'][data_index][audio_clip_role_name][0]['id'],
-                            previous_row[audio_clip_role_name][0]['id'],
-                        )
-
-                        #smaller or equal when_created
-                        self.assertLessEqual(
-                            AudioClips.objects.values_list('when_created', flat=True,).get(
-                                pk=response_data['data'][data_index][audio_clip_role_name][0]['id']
-                            ),
-                            AudioClips.objects.values_list('when_created', flat=True,).get(
-                                pk=previous_row[audio_clip_role_name][0]['id']
-                            )
-                        )
-
-                        previous_row = response_data['data'][data_index]
-
+                    #keep this for next->back validation later
                     first_response_data = response_data['data'].copy()
 
-                    #decode and check tokens
+                    #check tokens
+                    self._general_cursor_token_check(response_data, audio_clip_role_name)
 
-                    decoded_cursor_token = decode_cursor_token(response_data['next_token'])
-
-                    self.assertEqual(
-                        AudioClips.objects.values_list('when_created', flat=True,).get(
-                            pk=response_data['data'][-1][audio_clip_role_name][0]['id']
-                        ),
-                        get_datetime_from_string(decoded_cursor_token['when_created']),
-                    )
-                    self.assertEqual(
-                        response_data['data'][-1][audio_clip_role_name][0]['id'],
-                        decoded_cursor_token['id'],
-                    )
-
-                    decoded_cursor_token = decode_cursor_token(response_data['back_token'])
-
-                    self.assertEqual(
-                        AudioClips.objects.values_list('when_created', flat=True,).get(
-                            pk=response_data['data'][0][audio_clip_role_name][0]['id']
-                        ),
-                        get_datetime_from_string(decoded_cursor_token['when_created']),
-                    )
-                    self.assertEqual(
-                        response_data['data'][0][audio_clip_role_name][0]['id'],
-                        decoded_cursor_token['id'],
-                    )
-
+                    #==========
                     #API next+token
+                    #==========
 
                     current_kwargs.update({
                         'cursor_token': response_data['next_token'],
@@ -2891,12 +2938,13 @@ class BrowseEvents_TestCase(TestCase):
 
                     stopwatch.stop()
 
-                    metrics.update({
-                        loop_title + '__next__no_token': {
-                            'data': current_kwargs.copy(),
-                            'time_ms': stopwatch.diff_milliseconds(),
-                        }
-                    })
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
 
                     #check
 
@@ -2908,75 +2956,15 @@ class BrowseEvents_TestCase(TestCase):
 
                     self.assertEqual(len(response_data['data']), settings.EVENT_QUANTITY_PER_PAGE)
 
-                    #for things that should be consistent for all rows, assert first row for precedence
+                    #check rows
+                    self._general_row_check(response_data, audio_clip_role_name)
 
-                    audio_clip_role_name = current_kwargs['audio_clip_role_name']
-                    previous_row = response_data['data'][0]
+                    #check tokens
+                    self._general_cursor_token_check(response_data, audio_clip_role_name)
 
-                    self.assertEqual(previous_row[audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], audio_clip_role_name)
-
-                    #check if first row in new request respects previous request via cursor_token arg
-
-                    self.assertLess(
-                        previous_row[audio_clip_role_name][0]['id'],
-                        first_response_data[0][audio_clip_role_name][0]['id']
-                    )
-
-                    for data_index in range(1, len(response_data['data'])):
-
-                        #same role
-                        self.assertEqual(
-                            response_data['data'][data_index][audio_clip_role_name][0]['audio_clip_role']['id'],
-                            previous_row[audio_clip_role_name][0]['audio_clip_role']['id'],
-                        )
-
-                        #smaller id
-                        self.assertLess(
-                            response_data['data'][data_index][audio_clip_role_name][0]['id'],
-                            previous_row[audio_clip_role_name][0]['id'],
-                        )
-
-                        #smaller or equal when_created
-                        self.assertLessEqual(
-                            AudioClips.objects.values_list('when_created', flat=True,).get(
-                                pk=response_data['data'][data_index][audio_clip_role_name][0]['id']
-                            ),
-                            AudioClips.objects.values_list('when_created', flat=True,).get(
-                                pk=previous_row[audio_clip_role_name][0]['id']
-                            )
-                        )
-
-                        previous_row = response_data['data'][data_index]
-
-                    #decode and check next_token and back_token
-
-                    decoded_cursor_token = decode_cursor_token(response_data['next_token'])
-
-                    self.assertEqual(
-                        AudioClips.objects.values_list('when_created', flat=True,).get(
-                            pk=response_data['data'][-1][audio_clip_role_name][0]['id']
-                        ),
-                        get_datetime_from_string(decoded_cursor_token['when_created']),
-                    )
-                    self.assertEqual(
-                        response_data['data'][-1][audio_clip_role_name][0]['id'],
-                        decoded_cursor_token['id'],
-                    )
-
-                    decoded_cursor_token = decode_cursor_token(response_data['back_token'])
-
-                    self.assertEqual(
-                        AudioClips.objects.values_list('when_created', flat=True,).get(
-                            pk=response_data['data'][0][audio_clip_role_name][0]['id']
-                        ),
-                        get_datetime_from_string(decoded_cursor_token['when_created']),
-                    )
-                    self.assertEqual(
-                        response_data['data'][0][audio_clip_role_name][0]['id'],
-                        decoded_cursor_token['id'],
-                    )
-
+                    #==========
                     #API back+token
+                    #==========
 
                     current_kwargs.update({
                         'next_or_back': 'back',
@@ -2994,12 +2982,13 @@ class BrowseEvents_TestCase(TestCase):
 
                     stopwatch.stop()
 
-                    metrics.update({
-                        loop_title + '__next__no_token': {
-                            'data': current_kwargs.copy(),
-                            'time_ms': stopwatch.diff_milliseconds(),
-                        }
-                    })
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
 
                     #check
 
@@ -3009,76 +2998,30 @@ class BrowseEvents_TestCase(TestCase):
                     #response_data['data']: [{event:event,originator:[],responder:[]}]
                     response_data = get_response_data(request)
 
-                    self.assertEqual(len(response_data['data']), settings.EVENT_QUANTITY_PER_PAGE)
+                    #check rows
+                    self._general_row_check(response_data, audio_clip_role_name)
 
-                    #for things that should be consistent for all rows, assert first row for precedence
+                    #check tokens
+                    self._general_cursor_token_check(response_data, audio_clip_role_name)
 
-                    audio_clip_role_name = current_kwargs['audio_clip_role_name']
-                    previous_row = response_data['data'][0]
+                    #ensure everything is the same as first response
 
-                    self.assertEqual(previous_row[audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], audio_clip_role_name)
+                    self.assertEqual(len(response_data['data']), len(first_response_data))
 
-                    for data_index in range(1, len(response_data['data'])):
+                    for index in range(len(response_data['data'])):
 
-                        #same role
                         self.assertEqual(
-                            response_data['data'][data_index][audio_clip_role_name][0]['audio_clip_role']['id'],
-                            previous_row[audio_clip_role_name][0]['audio_clip_role']['id'],
+                            response_data['data'][index]['originator'][0]['id'],
+                            first_response_data[index]['originator'][0]['id'],
                         )
-
-                        #smaller id
-                        self.assertLess(
-                            response_data['data'][data_index][audio_clip_role_name][0]['id'],
-                            previous_row[audio_clip_role_name][0]['id'],
-                        )
-
-                        #smaller or equal when_created
-                        self.assertLessEqual(
-                            AudioClips.objects.values_list('when_created', flat=True,).get(
-                                pk=response_data['data'][data_index][audio_clip_role_name][0]['id']
-                            ),
-                            AudioClips.objects.values_list('when_created', flat=True,).get(
-                                pk=previous_row[audio_clip_role_name][0]['id']
-                            )
-                        )
-
-                        #expect rows to match first request exactly
                         self.assertEqual(
-                            response_data['data'][data_index][audio_clip_role_name][0]['id'],
-                            first_response_data[data_index][audio_clip_role_name][0]['id'],
+                            response_data['data'][index]['responder'][0]['id'],
+                            first_response_data[index]['responder'][0]['id'],
                         )
 
-                        previous_row = response_data['data'][data_index]
-
-                    #decode and check next_token and back_token
-
-                    decoded_cursor_token = decode_cursor_token(response_data['next_token'])
-
-                    self.assertEqual(
-                        AudioClips.objects.values_list('when_created', flat=True,).get(
-                            pk=response_data['data'][-1][audio_clip_role_name][0]['id']
-                        ),
-                        get_datetime_from_string(decoded_cursor_token['when_created']),
-                    )
-                    self.assertEqual(
-                        response_data['data'][-1][audio_clip_role_name][0]['id'],
-                        decoded_cursor_token['id'],
-                    )
-
-                    decoded_cursor_token = decode_cursor_token(response_data['back_token'])
-
-                    self.assertEqual(
-                        AudioClips.objects.values_list('when_created', flat=True,).get(
-                            pk=response_data['data'][0][audio_clip_role_name][0]['id']
-                        ),
-                        get_datetime_from_string(decoded_cursor_token['when_created']),
-                    )
-                    self.assertEqual(
-                        response_data['data'][0][audio_clip_role_name][0]['id'],
-                        decoded_cursor_token['id'],
-                    )
-
+                    #==========
                     #API back+token again, expect no rows
+                    #==========
 
                     current_kwargs.update({
                         'next_or_back': 'back',
@@ -3096,12 +3039,13 @@ class BrowseEvents_TestCase(TestCase):
 
                     stopwatch.stop()
 
-                    metrics.update({
-                        loop_title + '__back_token__no_rows': {
-                            'data': current_kwargs.copy(),
-                            'time_ms': stopwatch.diff_milliseconds(),
-                        }
-                    })
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
 
                     #check
 
@@ -3112,14 +3056,20 @@ class BrowseEvents_TestCase(TestCase):
 
                     self.assertEqual(len(response_data['data']), 0)
 
+                    #========================================
+                    #part 2: from earliest audio_clip
+                    #========================================
+
+                    #construct our own cursor from earliest eligible audio_clip
+                    #expect 0 rows
+                    #do back, expect rows
+                    #do next, expect 0 rows
+
+
                 except Exception as e:
 
                     print(current_kwargs)
                     raise e
-
-        #done
-
-        self.metrics.update({inspect.currentframe().f_code.co_name: metrics})
 
 
     def test_browse_events__user_page__no_tone(self):
