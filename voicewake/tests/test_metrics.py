@@ -2846,11 +2846,51 @@ class BrowseEvents_TestCase(TestCase):
         )
 
 
-    def test_browse_events__main_page__no_tone(self, minimum_time_elapsed_ms=200):
+    def test_browse_events__main_page(self, minimum_time_elapsed_ms=200):
+
+        #pre-determine audio_clip_tones
+        #since excluded tones are specified in earliest/middle/latest manner, #and will never use first and last,
+        #can just make sure we don't -1 for earliest, and +1 for latest
+
+        excluded_audio_clip_tone_ids = []
+        expected_audio_clip_tone_ids = [None]
+
+        realistic_bulk_data_class = RealisticBulkData()
+
+        #get first tone to prevent repeated if-statements
+
+        excluded_audio_clip_tone_ids.append(
+            realistic_bulk_data_class.audio_clip_tones[
+                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0]
+            ].id
+        )
+
+        expected_audio_clip_tone_ids.append(
+            realistic_bulk_data_class.audio_clip_tones[
+                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0] + 1
+            ].id
+        )
+
+        #add excluded audio_clip_tones
+        for index in range(1, len(realistic_bulk_data_class.excluded_audio_clip_tones_indexes)):
+
+            excluded_index = realistic_bulk_data_class.excluded_audio_clip_tones_indexes[index]
+
+            excluded_audio_clip_tone_ids.append(
+                realistic_bulk_data_class.audio_clip_tones[excluded_index].id
+            )
+
+            expected_audio_clip_tone_ids.append(
+                realistic_bulk_data_class.audio_clip_tones[excluded_index - 1].id
+            )
 
         stopwatch = Stopwatch()
 
         test_index = 0
+
+        audio_clip_tone_ids = expected_audio_clip_tone_ids + excluded_audio_clip_tone_ids
+
+        is_excluded_audio_clip_tone = False
 
         for unique_user in self.unique_users:
 
@@ -2858,226 +2898,1657 @@ class BrowseEvents_TestCase(TestCase):
 
             for audio_clip_role_name in ['originator', 'responder']:
 
-                current_kwargs = {
-                    'latest_or_best': 'latest',
-                    'timeframe': 'all',
-                    'audio_clip_role_name': audio_clip_role_name,
-                    'next_or_back': 'next',
-                }
+                for audio_clip_tone_id_index, audio_clip_tone_id in audio_clip_tone_ids:
 
-                try:
+                    if (audio_clip_tone_id_index + 1) > len(expected_audio_clip_tone_ids):
 
-                    loop_title = 'loop #' + str(test_index)
+                        is_excluded_audio_clip_tone = True
 
-                    print(loop_title)
+                    current_kwargs = {
+                        'latest_or_best': 'latest',
+                        'timeframe': 'all',
+                        'audio_clip_role_name': audio_clip_role_name,
+                        'audio_clip_tone_id': audio_clip_tone_id,
+                        'next_or_back': 'next',
+                    }
 
-                    test_index += 1
+                    try:
 
-                    #========================================
-                    #part 1: from latest audio_clip
-                    #========================================
+                        loop_title = 'loop #' + str(test_index)
 
-                    #==========
-                    #API next
-                    #==========
+                        print(loop_title)
 
-                    stopwatch.start()
+                        test_index += 1
 
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
+                        #========================================
+                        #part 1: from latest audio_clip
+                        #========================================
 
-                    stopwatch.stop()
+                        #==========
+                        #API next
+                        #==========
 
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+                        stopwatch.start()
 
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    self.assertEqual(len(response_data['data']), settings.EVENT_QUANTITY_PER_PAGE)
-
-                    #check rows
-                    self._general_row_check(response_data, audio_clip_role_name)
-
-                    #keep this for next->back validation later
-                    first_response_data = response_data['data'].copy()
-
-                    #check tokens
-                    self._general_cursor_token_check(response_data, audio_clip_role_name)
-
-                    #==========
-                    #API next+token
-                    #==========
-
-                    current_kwargs.update({
-                        'cursor_token': response_data['next_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    self.assertEqual(len(response_data['data']), settings.EVENT_QUANTITY_PER_PAGE)
-
-                    #check rows
-                    self._general_row_check(response_data, audio_clip_role_name)
-
-                    #check tokens
-                    self._general_cursor_token_check(response_data, audio_clip_role_name)
-
-                    #==========
-                    #API back+token
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'back',
-                        'cursor_token': response_data['back_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    #check rows
-                    self._general_row_check(response_data, audio_clip_role_name)
-
-                    #check tokens
-                    self._general_cursor_token_check(response_data, audio_clip_role_name)
-
-                    #ensure everything is the same as first response
-
-                    self.assertEqual(len(response_data['data']), len(first_response_data))
-
-                    for index in range(len(response_data['data'])):
-
-                        self.assertEqual(
-                            response_data['data'][index]['originator'][0]['id'],
-                            first_response_data[index]['originator'][0]['id'],
-                        )
-                        self.assertEqual(
-                            response_data['data'][index]['responder'][0]['id'],
-                            first_response_data[index]['responder'][0]['id'],
+                        request = self.client.get(
+                            reverse(
+                                'browse_events_api',
+                                kwargs=current_kwargs
+                            )
                         )
 
-                    #==========
-                    #API back+token again, expect no rows
-                    #==========
+                        stopwatch.stop()
 
-                    current_kwargs.update({
-                        'next_or_back': 'back',
-                        'cursor_token': response_data['back_token'],
-                    })
+                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
 
-                    stopwatch.start()
+                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
 
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
+                        else:
+
+                            print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                        #check
+
+                        self.assertEqual(request.status_code, 200)
+
+                        #response_data: next_token, back_token, data
+                        #response_data['data']: [{event:event,originator:[],responder:[]}]
+                        response_data = get_response_data(request)
+
+                        self.assertEqual(len(response_data['data']), settings.EVENT_QUANTITY_PER_PAGE)
+
+                        #check rows
+                        self._general_row_check(response_data, audio_clip_role_name)
+
+                        #keep this for next->back validation later
+                        first_response_data = response_data['data'].copy()
+
+                        #check tokens
+                        self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                        #==========
+                        #API next+token
+                        #==========
+
+                        current_kwargs.update({
+                            'cursor_token': response_data['next_token'],
+                        })
+
+                        stopwatch.start()
+
+                        request = self.client.get(
+                            reverse(
+                                'browse_events_api',
+                                kwargs=current_kwargs
+                            )
                         )
-                    )
 
-                    stopwatch.stop()
+                        stopwatch.stop()
 
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
 
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
 
-                    else:
+                        else:
 
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
+                            print(f'Good: {stopwatch.diff_milliseconds()}')
 
-                    #check
+                        #check
 
-                    self.assertEqual(request.status_code, 200)
+                        self.assertEqual(request.status_code, 200)
 
-                    #next_token, back_token, data
-                    response_data = get_response_data(request)
+                        #response_data: next_token, back_token, data
+                        #response_data['data']: [{event:event,originator:[],responder:[]}]
+                        response_data = get_response_data(request)
 
-                    self.assertEqual(len(response_data['data']), 0)
+                        self.assertEqual(len(response_data['data']), settings.EVENT_QUANTITY_PER_PAGE)
 
-                    #========================================
-                    #part 2: from earliest audio_clip
-                    #========================================
+                        #check rows
+                        self._general_row_check(response_data, audio_clip_role_name)
 
-                    #construct our own cursor from earliest eligible audio_clip
-                    #expect 0 rows
-                    #do back, expect rows
-                    #do next, expect 0 rows
+                        #check tokens
+                        self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                        #==========
+                        #API back+token
+                        #==========
+
+                        current_kwargs.update({
+                            'next_or_back': 'back',
+                            'cursor_token': response_data['back_token'],
+                        })
+
+                        stopwatch.start()
+
+                        request = self.client.get(
+                            reverse(
+                                'browse_events_api',
+                                kwargs=current_kwargs
+                            )
+                        )
+
+                        stopwatch.stop()
+
+                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                        else:
+
+                            print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                        #check
+
+                        self.assertEqual(request.status_code, 200)
+
+                        #response_data: next_token, back_token, data
+                        #response_data['data']: [{event:event,originator:[],responder:[]}]
+                        response_data = get_response_data(request)
+
+                        #check rows
+                        self._general_row_check(response_data, audio_clip_role_name)
+
+                        #check tokens
+                        self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                        #ensure everything is the same as first response
+
+                        self.assertEqual(len(response_data['data']), len(first_response_data))
+
+                        for index in range(len(response_data['data'])):
+
+                            self.assertEqual(
+                                response_data['data'][index]['originator'][0]['id'],
+                                first_response_data[index]['originator'][0]['id'],
+                            )
+                            self.assertEqual(
+                                response_data['data'][index]['responder'][0]['id'],
+                                first_response_data[index]['responder'][0]['id'],
+                            )
+
+                        #==========
+                        #API back+token again, expect no rows
+                        #==========
+
+                        cursor_token = response_data['back_token']
+
+                        current_kwargs.update({
+                            'next_or_back': 'back',
+                            'cursor_token': response_data['back_token'],
+                        })
+
+                        stopwatch.start()
+
+                        request = self.client.get(
+                            reverse(
+                                'browse_events_api',
+                                kwargs=current_kwargs
+                            )
+                        )
+
+                        stopwatch.stop()
+
+                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                        else:
+
+                            print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                        #check
+
+                        self.assertEqual(request.status_code, 200)
+
+                        #next_token, back_token, data
+                        response_data = get_response_data(request)
+
+                        self.assertEqual(len(response_data['data']), 0)
+                        self.assertEqual(response_data['next_token'], response_data['back_token'])
+                        self.assertEqual(response_data['next_token'], cursor_token)
+
+                        #========================================
+                        #part 2: from earliest audio_clip
+                        #========================================
+
+                        #==========
+                        #API next with last row in db, expect 0 rows
+                        #==========
+
+                        #construct our own cursor from earliest eligible audio_clip
+
+                        earliest_audio_clip = AudioClips.objects.filter(
+                            audio_clip_role__audio_clip_role_name=audio_clip_role_name,
+                            generic_status__generic_status_name='ok',
+                            is_banned=False,
+                        ).order_by('-when_created', '-id').last()
+
+                        cursor_token = encode_cursor_token({
+                            'when_created': earliest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+                            'id': earliest_audio_clip.id,
+                        })
+
+                        current_kwargs.update({
+                            'next_or_back': 'next',
+                            'cursor_token': cursor_token,
+                        })
+
+                        stopwatch.start()
+
+                        request = self.client.get(
+                            reverse(
+                                'browse_events_api',
+                                kwargs=current_kwargs
+                            )
+                        )
+
+                        stopwatch.stop()
+
+                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                        else:
+
+                            print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                        #check
+
+                        self.assertEqual(request.status_code, 200)
+
+                        #next_token, back_token, data
+                        response_data = get_response_data(request)
+
+                        self.assertEqual(len(response_data['data']), 0)
+                        self.assertEqual(response_data['next_token'], response_data['back_token'])
+                        self.assertEqual(response_data['next_token'], cursor_token)
+
+                        #==========
+                        #API back+token
+                        #==========
+
+                        current_kwargs.update({
+                            'next_or_back': 'back',
+                            'cursor_token': response_data['back_token'],
+                        })
+
+                        stopwatch.start()
+
+                        request = self.client.get(
+                            reverse(
+                                'browse_events_api',
+                                kwargs=current_kwargs
+                            )
+                        )
+
+                        stopwatch.stop()
+
+                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                        else:
+
+                            print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                        #check
+
+                        self.assertEqual(request.status_code, 200)
+
+                        #response_data: next_token, back_token, data
+                        #response_data['data']: [{event:event,originator:[],responder:[]}]
+                        response_data = get_response_data(request)
+
+                        #check rows
+                        self._general_row_check(response_data, audio_clip_role_name)
+
+                        #check tokens
+                        self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                        #ensure everything is the same as first response
+
+                        self.assertEqual(len(response_data['data']), len(first_response_data))
+
+                        for index in range(len(response_data['data'])):
+
+                            self.assertEqual(
+                                response_data['data'][index]['originator'][0]['id'],
+                                first_response_data[index]['originator'][0]['id'],
+                            )
+                            self.assertEqual(
+                                response_data['data'][index]['responder'][0]['id'],
+                                first_response_data[index]['responder'][0]['id'],
+                            )
+
+                        #==========
+                        #API next+token, expect 0 rows
+                        #==========
+
+                        current_kwargs.update({
+                            'next_or_back': 'next',
+                            'cursor_token': response_data['next_token'],
+                        })
+
+                        stopwatch.start()
+
+                        request = self.client.get(
+                            reverse(
+                                'browse_events_api',
+                                kwargs=current_kwargs
+                            )
+                        )
+
+                        stopwatch.stop()
+
+                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                        else:
+
+                            print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                        #check
+
+                        self.assertEqual(request.status_code, 200)
+
+                        #response_data: next_token, back_token, data
+                        #response_data['data']: [{event:event,originator:[],responder:[]}]
+                        response_data = get_response_data(request)
+
+                        self.assertEqual(len(response_data['data']), 0)
+                        self.assertEqual(response_data['next_token'], response_data['back_token'])
+
+                    except Exception as e:
+
+                        print(current_kwargs)
+                        print(f'is_excluded_audio_clip_tone: {is_excluded_audio_clip_tone}')
+                        raise e
 
 
-                except Exception as e:
+    def test_browse_events__other_user_page(self, minimum_time_elapsed_ms=200):
 
-                    print(current_kwargs)
-                    raise e
+        #pre-determine audio_clip_tones
+        #since excluded tones are specified in earliest/middle/latest manner, #and will never use first and last,
+        #can just make sure we don't -1 for earliest, and +1 for latest
+
+        excluded_audio_clip_tone_ids = []
+        expected_audio_clip_tone_ids = [None]
+
+        realistic_bulk_data_class = RealisticBulkData()
+
+        #get first tone to prevent repeated if-statements
+
+        excluded_audio_clip_tone_ids.append(
+            realistic_bulk_data_class.audio_clip_tones[
+                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0]
+            ].id
+        )
+
+        expected_audio_clip_tone_ids.append(
+            realistic_bulk_data_class.audio_clip_tones[
+                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0] + 1
+            ].id
+        )
+
+        #add excluded audio_clip_tones
+        for index in range(1, len(realistic_bulk_data_class.excluded_audio_clip_tones_indexes)):
+
+            excluded_index = realistic_bulk_data_class.excluded_audio_clip_tones_indexes[index]
+
+            excluded_audio_clip_tone_ids.append(
+                realistic_bulk_data_class.audio_clip_tones[excluded_index].id
+            )
+
+            expected_audio_clip_tone_ids.append(
+                realistic_bulk_data_class.audio_clip_tones[excluded_index - 1].id
+            )
+
+        stopwatch = Stopwatch()
+
+        test_index = 0
+
+        audio_clip_tone_ids = expected_audio_clip_tone_ids + excluded_audio_clip_tone_ids
+
+        is_excluded_audio_clip_tone = False
+
+        for login_user in self.unique_users:
+
+            self.login(login_user)
+
+            for unique_user in self.unique_users:
+
+                if unique_user.id == login_user.id:
+
+                    #save users viewing their own page for another test case
+                    continue
+
+                for audio_clip_role_name in ['originator', 'responder']:
+
+                    for audio_clip_tone_id_index, audio_clip_tone_id in audio_clip_tone_ids:
+
+                        if (audio_clip_tone_id_index + 1) > len(expected_audio_clip_tone_ids):
+
+                            is_excluded_audio_clip_tone = True
+
+                        current_kwargs = {
+                            'username': unique_user.username,
+                            'latest_or_best': 'latest',
+                            'timeframe': 'all',
+                            'audio_clip_role_name': audio_clip_role_name,
+                            'audio_clip_tone_id': audio_clip_tone_id,
+                            'next_or_back': 'next',
+                        }
+
+                        try:
+
+                            loop_title = 'loop #' + str(test_index)
+
+                            print(loop_title)
+
+                            test_index += 1
+
+                            #========================================
+                            #part 1: from latest audio_clip
+                            #========================================
+
+                            #==========
+                            #API next
+                            #==========
+
+                            stopwatch.start()
+
+                            request = self.client.get(
+                                reverse(
+                                    'browse_events_api',
+                                    kwargs=current_kwargs
+                                )
+                            )
+
+                            stopwatch.stop()
+
+                            if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                                raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                            else:
+
+                                print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                            #check
+
+                            self.assertEqual(request.status_code, 200)
+
+                            #response_data: next_token, back_token, data
+                            #response_data['data']: [{event:event,originator:[],responder:[]}]
+                            response_data = get_response_data(request)
+
+                            self.assertEqual(len(response_data['data']), settings.EVENT_QUANTITY_PER_PAGE)
+
+                            #check rows
+                            self._general_row_check(response_data, audio_clip_role_name)
+
+                            #keep this for next->back validation later
+                            first_response_data = response_data['data'].copy()
+
+                            #check tokens
+                            self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                            #==========
+                            #API next+token
+                            #==========
+
+                            current_kwargs.update({
+                                'cursor_token': response_data['next_token'],
+                            })
+
+                            stopwatch.start()
+
+                            request = self.client.get(
+                                reverse(
+                                    'browse_events_api',
+                                    kwargs=current_kwargs
+                                )
+                            )
+
+                            stopwatch.stop()
+
+                            if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                                raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                            else:
+
+                                print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                            #check
+
+                            self.assertEqual(request.status_code, 200)
+
+                            #response_data: next_token, back_token, data
+                            #response_data['data']: [{event:event,originator:[],responder:[]}]
+                            response_data = get_response_data(request)
+
+                            self.assertEqual(len(response_data['data']), settings.EVENT_QUANTITY_PER_PAGE)
+
+                            #check rows
+                            self._general_row_check(response_data, audio_clip_role_name)
+
+                            #check tokens
+                            self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                            #==========
+                            #API back+token
+                            #==========
+
+                            current_kwargs.update({
+                                'next_or_back': 'back',
+                                'cursor_token': response_data['back_token'],
+                            })
+
+                            stopwatch.start()
+
+                            request = self.client.get(
+                                reverse(
+                                    'browse_events_api',
+                                    kwargs=current_kwargs
+                                )
+                            )
+
+                            stopwatch.stop()
+
+                            if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                                raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                            else:
+
+                                print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                            #check
+
+                            self.assertEqual(request.status_code, 200)
+
+                            #response_data: next_token, back_token, data
+                            #response_data['data']: [{event:event,originator:[],responder:[]}]
+                            response_data = get_response_data(request)
+
+                            #check rows
+                            self._general_row_check(response_data, audio_clip_role_name)
+
+                            #check tokens
+                            self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                            #ensure everything is the same as first response
+
+                            self.assertEqual(len(response_data['data']), len(first_response_data))
+
+                            for index in range(len(response_data['data'])):
+
+                                self.assertEqual(
+                                    response_data['data'][index]['originator'][0]['id'],
+                                    first_response_data[index]['originator'][0]['id'],
+                                )
+                                self.assertEqual(
+                                    response_data['data'][index]['responder'][0]['id'],
+                                    first_response_data[index]['responder'][0]['id'],
+                                )
+
+                            #==========
+                            #API back+token again, expect no rows
+                            #==========
+
+                            cursor_token = response_data['back_token']
+
+                            current_kwargs.update({
+                                'next_or_back': 'back',
+                                'cursor_token': response_data['back_token'],
+                            })
+
+                            stopwatch.start()
+
+                            request = self.client.get(
+                                reverse(
+                                    'browse_events_api',
+                                    kwargs=current_kwargs
+                                )
+                            )
+
+                            stopwatch.stop()
+
+                            if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                                raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                            else:
+
+                                print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                            #check
+
+                            self.assertEqual(request.status_code, 200)
+
+                            #next_token, back_token, data
+                            response_data = get_response_data(request)
+
+                            self.assertEqual(len(response_data['data']), 0)
+                            self.assertEqual(response_data['next_token'], response_data['back_token'])
+                            self.assertEqual(response_data['next_token'], cursor_token)
+
+                            #========================================
+                            #part 2: from earliest audio_clip
+                            #========================================
+
+                            #==========
+                            #API next with last row in db, expect 0 rows
+                            #==========
+
+                            #construct our own cursor from earliest eligible audio_clip
+
+                            earliest_audio_clip = AudioClips.objects.filter(
+                                audio_clip_role__audio_clip_role_name=audio_clip_role_name,
+                                generic_status__generic_status_name='ok',
+                                is_banned=False,
+                            ).order_by('-when_created', '-id').last()
+
+                            cursor_token = encode_cursor_token({
+                                'when_created': earliest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+                                'id': earliest_audio_clip.id,
+                            })
+
+                            current_kwargs.update({
+                                'next_or_back': 'next',
+                                'cursor_token': cursor_token,
+                            })
+
+                            stopwatch.start()
+
+                            request = self.client.get(
+                                reverse(
+                                    'browse_events_api',
+                                    kwargs=current_kwargs
+                                )
+                            )
+
+                            stopwatch.stop()
+
+                            if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                                raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                            else:
+
+                                print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                            #check
+
+                            self.assertEqual(request.status_code, 200)
+
+                            #next_token, back_token, data
+                            response_data = get_response_data(request)
+
+                            self.assertEqual(len(response_data['data']), 0)
+                            self.assertEqual(response_data['next_token'], response_data['back_token'])
+                            self.assertEqual(response_data['next_token'], cursor_token)
+
+                            #==========
+                            #API back+token
+                            #==========
+
+                            current_kwargs.update({
+                                'next_or_back': 'back',
+                                'cursor_token': response_data['back_token'],
+                            })
+
+                            stopwatch.start()
+
+                            request = self.client.get(
+                                reverse(
+                                    'browse_events_api',
+                                    kwargs=current_kwargs
+                                )
+                            )
+
+                            stopwatch.stop()
+
+                            if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                                raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                            else:
+
+                                print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                            #check
+
+                            self.assertEqual(request.status_code, 200)
+
+                            #response_data: next_token, back_token, data
+                            #response_data['data']: [{event:event,originator:[],responder:[]}]
+                            response_data = get_response_data(request)
+
+                            #check rows
+                            self._general_row_check(response_data, audio_clip_role_name)
+
+                            #check tokens
+                            self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                            #ensure everything is the same as first response
+
+                            self.assertEqual(len(response_data['data']), len(first_response_data))
+
+                            for index in range(len(response_data['data'])):
+
+                                self.assertEqual(
+                                    response_data['data'][index]['originator'][0]['id'],
+                                    first_response_data[index]['originator'][0]['id'],
+                                )
+                                self.assertEqual(
+                                    response_data['data'][index]['responder'][0]['id'],
+                                    first_response_data[index]['responder'][0]['id'],
+                                )
+
+                            #==========
+                            #API next+token, expect 0 rows
+                            #==========
+
+                            current_kwargs.update({
+                                'next_or_back': 'next',
+                                'cursor_token': response_data['next_token'],
+                            })
+
+                            stopwatch.start()
+
+                            request = self.client.get(
+                                reverse(
+                                    'browse_events_api',
+                                    kwargs=current_kwargs
+                                )
+                            )
+
+                            stopwatch.stop()
+
+                            if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                                raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                            else:
+
+                                print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                            #check
+
+                            self.assertEqual(request.status_code, 200)
+
+                            #response_data: next_token, back_token, data
+                            #response_data['data']: [{event:event,originator:[],responder:[]}]
+                            response_data = get_response_data(request)
+
+                            self.assertEqual(len(response_data['data']), 0)
+                            self.assertEqual(response_data['next_token'], response_data['back_token'])
+
+                        except Exception as e:
+
+                            print(current_kwargs)
+                            print(f'is_excluded_audio_clip_tone: {is_excluded_audio_clip_tone}')
+                            raise e
 
 
-    def test_browse_events__user_page__no_tone(self):
-        pass
+    #TODO: write extra APIs for guaranteeing "incomplete/completed" as originator, and "completed/deleted" as responder
+    def test_browse_events__own_page(self, minimum_time_elapsed_ms=200):
+
+        #pre-determine audio_clip_tones
+        #since excluded tones are specified in earliest/middle/latest manner, #and will never use first and last,
+        #can just make sure we don't -1 for earliest, and +1 for latest
+
+        excluded_audio_clip_tone_ids = []
+        expected_audio_clip_tone_ids = [None]
+
+        realistic_bulk_data_class = RealisticBulkData()
+
+        #get first tone to prevent repeated if-statements
+
+        excluded_audio_clip_tone_ids.append(
+            realistic_bulk_data_class.audio_clip_tones[
+                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0]
+            ].id
+        )
+
+        expected_audio_clip_tone_ids.append(
+            realistic_bulk_data_class.audio_clip_tones[
+                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0] + 1
+            ].id
+        )
+
+        #add excluded audio_clip_tones
+        for index in range(1, len(realistic_bulk_data_class.excluded_audio_clip_tones_indexes)):
+
+            excluded_index = realistic_bulk_data_class.excluded_audio_clip_tones_indexes[index]
+
+            excluded_audio_clip_tone_ids.append(
+                realistic_bulk_data_class.audio_clip_tones[excluded_index].id
+            )
+
+            expected_audio_clip_tone_ids.append(
+                realistic_bulk_data_class.audio_clip_tones[excluded_index - 1].id
+            )
+
+        stopwatch = Stopwatch()
+
+        test_index = 0
+
+        audio_clip_tone_ids = expected_audio_clip_tone_ids + excluded_audio_clip_tone_ids
+
+        is_excluded_audio_clip_tone = False
+
+        for unique_user in self.unique_users:
+
+            self.login(unique_user)
+
+            for audio_clip_role_name in ['originator', 'responder']:
+
+                for audio_clip_tone_id_index, audio_clip_tone_id in audio_clip_tone_ids:
+
+                    if (audio_clip_tone_id_index + 1) > len(expected_audio_clip_tone_ids):
+
+                        is_excluded_audio_clip_tone = True
+
+                    current_kwargs = {
+                        'username': unique_user.username,
+                        'latest_or_best': 'latest',
+                        'timeframe': 'all',
+                        'audio_clip_role_name': audio_clip_role_name,
+                        'audio_clip_tone_id': audio_clip_tone_id,
+                        'next_or_back': 'next',
+                    }
+
+                    try:
+
+                        loop_title = 'loop #' + str(test_index)
+
+                        print(loop_title)
+
+                        test_index += 1
+
+                        #========================================
+                        #part 1: from latest audio_clip
+                        #========================================
+
+                        #==========
+                        #API next
+                        #==========
+
+                        stopwatch.start()
+
+                        request = self.client.get(
+                            reverse(
+                                'browse_events_api',
+                                kwargs=current_kwargs
+                            )
+                        )
+
+                        stopwatch.stop()
+
+                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                        else:
+
+                            print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                        #check
+
+                        self.assertEqual(request.status_code, 200)
+
+                        #response_data: next_token, back_token, data
+                        #response_data['data']: [{event:event,originator:[],responder:[]}]
+                        response_data = get_response_data(request)
+
+                        self.assertEqual(len(response_data['data']), settings.EVENT_QUANTITY_PER_PAGE)
+
+                        #check rows
+                        self._general_row_check(response_data, audio_clip_role_name)
+
+                        #keep this for next->back validation later
+                        first_response_data = response_data['data'].copy()
+
+                        #check tokens
+                        self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                        #==========
+                        #API next+token
+                        #==========
+
+                        current_kwargs.update({
+                            'cursor_token': response_data['next_token'],
+                        })
+
+                        stopwatch.start()
+
+                        request = self.client.get(
+                            reverse(
+                                'browse_events_api',
+                                kwargs=current_kwargs
+                            )
+                        )
+
+                        stopwatch.stop()
+
+                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                        else:
+
+                            print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                        #check
+
+                        self.assertEqual(request.status_code, 200)
+
+                        #response_data: next_token, back_token, data
+                        #response_data['data']: [{event:event,originator:[],responder:[]}]
+                        response_data = get_response_data(request)
+
+                        self.assertEqual(len(response_data['data']), settings.EVENT_QUANTITY_PER_PAGE)
+
+                        #check rows
+                        self._general_row_check(response_data, audio_clip_role_name)
+
+                        #check tokens
+                        self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                        #==========
+                        #API back+token
+                        #==========
+
+                        current_kwargs.update({
+                            'next_or_back': 'back',
+                            'cursor_token': response_data['back_token'],
+                        })
+
+                        stopwatch.start()
+
+                        request = self.client.get(
+                            reverse(
+                                'browse_events_api',
+                                kwargs=current_kwargs
+                            )
+                        )
+
+                        stopwatch.stop()
+
+                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                        else:
+
+                            print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                        #check
+
+                        self.assertEqual(request.status_code, 200)
+
+                        #response_data: next_token, back_token, data
+                        #response_data['data']: [{event:event,originator:[],responder:[]}]
+                        response_data = get_response_data(request)
+
+                        #check rows
+                        self._general_row_check(response_data, audio_clip_role_name)
+
+                        #check tokens
+                        self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                        #ensure everything is the same as first response
+
+                        self.assertEqual(len(response_data['data']), len(first_response_data))
+
+                        for index in range(len(response_data['data'])):
+
+                            self.assertEqual(
+                                response_data['data'][index]['originator'][0]['id'],
+                                first_response_data[index]['originator'][0]['id'],
+                            )
+                            self.assertEqual(
+                                response_data['data'][index]['responder'][0]['id'],
+                                first_response_data[index]['responder'][0]['id'],
+                            )
+
+                        #==========
+                        #API back+token again, expect no rows
+                        #==========
+
+                        cursor_token = response_data['back_token']
+
+                        current_kwargs.update({
+                            'next_or_back': 'back',
+                            'cursor_token': response_data['back_token'],
+                        })
+
+                        stopwatch.start()
+
+                        request = self.client.get(
+                            reverse(
+                                'browse_events_api',
+                                kwargs=current_kwargs
+                            )
+                        )
+
+                        stopwatch.stop()
+
+                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                        else:
+
+                            print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                        #check
+
+                        self.assertEqual(request.status_code, 200)
+
+                        #next_token, back_token, data
+                        response_data = get_response_data(request)
+
+                        self.assertEqual(len(response_data['data']), 0)
+                        self.assertEqual(response_data['next_token'], response_data['back_token'])
+                        self.assertEqual(response_data['next_token'], cursor_token)
+
+                        #========================================
+                        #part 2: from earliest audio_clip
+                        #========================================
+
+                        #==========
+                        #API next with last row in db, expect 0 rows
+                        #==========
+
+                        #construct our own cursor from earliest eligible audio_clip
+
+                        earliest_audio_clip = AudioClips.objects.filter(
+                            audio_clip_role__audio_clip_role_name=audio_clip_role_name,
+                            generic_status__generic_status_name='ok',
+                            is_banned=False,
+                        ).order_by('-when_created', '-id').last()
+
+                        cursor_token = encode_cursor_token({
+                            'when_created': earliest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+                            'id': earliest_audio_clip.id,
+                        })
+
+                        current_kwargs.update({
+                            'next_or_back': 'next',
+                            'cursor_token': cursor_token,
+                        })
+
+                        stopwatch.start()
+
+                        request = self.client.get(
+                            reverse(
+                                'browse_events_api',
+                                kwargs=current_kwargs
+                            )
+                        )
+
+                        stopwatch.stop()
+
+                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                        else:
+
+                            print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                        #check
+
+                        self.assertEqual(request.status_code, 200)
+
+                        #next_token, back_token, data
+                        response_data = get_response_data(request)
+
+                        self.assertEqual(len(response_data['data']), 0)
+                        self.assertEqual(response_data['next_token'], response_data['back_token'])
+                        self.assertEqual(response_data['next_token'], cursor_token)
+
+                        #==========
+                        #API back+token
+                        #==========
+
+                        current_kwargs.update({
+                            'next_or_back': 'back',
+                            'cursor_token': response_data['back_token'],
+                        })
+
+                        stopwatch.start()
+
+                        request = self.client.get(
+                            reverse(
+                                'browse_events_api',
+                                kwargs=current_kwargs
+                            )
+                        )
+
+                        stopwatch.stop()
+
+                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                        else:
+
+                            print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                        #check
+
+                        self.assertEqual(request.status_code, 200)
+
+                        #response_data: next_token, back_token, data
+                        #response_data['data']: [{event:event,originator:[],responder:[]}]
+                        response_data = get_response_data(request)
+
+                        #check rows
+                        self._general_row_check(response_data, audio_clip_role_name)
+
+                        #check tokens
+                        self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                        #ensure everything is the same as first response
+
+                        self.assertEqual(len(response_data['data']), len(first_response_data))
+
+                        for index in range(len(response_data['data'])):
+
+                            self.assertEqual(
+                                response_data['data'][index]['originator'][0]['id'],
+                                first_response_data[index]['originator'][0]['id'],
+                            )
+                            self.assertEqual(
+                                response_data['data'][index]['responder'][0]['id'],
+                                first_response_data[index]['responder'][0]['id'],
+                            )
+
+                        #==========
+                        #API next+token, expect 0 rows
+                        #==========
+
+                        current_kwargs.update({
+                            'next_or_back': 'next',
+                            'cursor_token': response_data['next_token'],
+                        })
+
+                        stopwatch.start()
+
+                        request = self.client.get(
+                            reverse(
+                                'browse_events_api',
+                                kwargs=current_kwargs
+                            )
+                        )
+
+                        stopwatch.stop()
+
+                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                        else:
+
+                            print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                        #check
+
+                        self.assertEqual(request.status_code, 200)
+
+                        #response_data: next_token, back_token, data
+                        #response_data['data']: [{event:event,originator:[],responder:[]}]
+                        response_data = get_response_data(request)
+
+                        self.assertEqual(len(response_data['data']), 0)
+                        self.assertEqual(response_data['next_token'], response_data['back_token'])
+
+                    except Exception as e:
+
+                        print(current_kwargs)
+                        print(f'is_excluded_audio_clip_tone: {is_excluded_audio_clip_tone}')
+                        raise e
 
 
-    def test_browse_events__own_page__no_tone__likes_dislikes(self):
-        pass
+    #TODO: write extra APIs for guaranteeing "incomplete/completed" as originator, and "completed/deleted" as responder
+    def test_browse_events__own_likes_dislikes(self, minimum_time_elapsed_ms=200):
+
+        #pre-determine audio_clip_tones
+        #since excluded tones are specified in earliest/middle/latest manner, #and will never use first and last,
+        #can just make sure we don't -1 for earliest, and +1 for latest
+
+        excluded_audio_clip_tone_ids = []
+        expected_audio_clip_tone_ids = [None]
+
+        realistic_bulk_data_class = RealisticBulkData()
+
+        #get first tone to prevent repeated if-statements
+
+        excluded_audio_clip_tone_ids.append(
+            realistic_bulk_data_class.audio_clip_tones[
+                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0]
+            ].id
+        )
+
+        expected_audio_clip_tone_ids.append(
+            realistic_bulk_data_class.audio_clip_tones[
+                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0] + 1
+            ].id
+        )
+
+        #add excluded audio_clip_tones
+        for index in range(1, len(realistic_bulk_data_class.excluded_audio_clip_tones_indexes)):
+
+            excluded_index = realistic_bulk_data_class.excluded_audio_clip_tones_indexes[index]
+
+            excluded_audio_clip_tone_ids.append(
+                realistic_bulk_data_class.audio_clip_tones[excluded_index].id
+            )
+
+            expected_audio_clip_tone_ids.append(
+                realistic_bulk_data_class.audio_clip_tones[excluded_index - 1].id
+            )
+
+        stopwatch = Stopwatch()
+
+        test_index = 0
+
+        audio_clip_tone_ids = expected_audio_clip_tone_ids + excluded_audio_clip_tone_ids
+
+        is_excluded_audio_clip_tone = False
+
+        for unique_user in self.unique_users:
+
+            self.login(unique_user)
+
+            for audio_clip_role_name in ['originator', 'responder']:
+
+                for likes_or_dislikes in ['likes', 'dislikes']:
+
+                    for audio_clip_tone_id_index, audio_clip_tone_id in audio_clip_tone_ids:
+
+                        if (audio_clip_tone_id_index + 1) > len(expected_audio_clip_tone_ids):
+
+                            is_excluded_audio_clip_tone = True
+
+                        current_kwargs = {
+                            'username': unique_user.username,
+                            'latest_or_best': 'latest',
+                            'timeframe': 'all',
+                            'audio_clip_role_name': audio_clip_role_name,
+                            'audio_clip_tone_id': audio_clip_tone_id,
+                            'next_or_back': 'next',
+                            'likes_or_dislikes': likes_or_dislikes,
+                        }
+
+                        try:
+
+                            loop_title = 'loop #' + str(test_index)
+
+                            print(loop_title)
+
+                            test_index += 1
+
+                            #========================================
+                            #part 1: from latest audio_clip
+                            #========================================
+
+                            #==========
+                            #API next
+                            #==========
+
+                            stopwatch.start()
+
+                            request = self.client.get(
+                                reverse(
+                                    'browse_events_api',
+                                    kwargs=current_kwargs
+                                )
+                            )
+
+                            stopwatch.stop()
+
+                            if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                                raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                            else:
+
+                                print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                            #check
+
+                            self.assertEqual(request.status_code, 200)
+
+                            #response_data: next_token, back_token, data
+                            #response_data['data']: [{event:event,originator:[],responder:[]}]
+                            response_data = get_response_data(request)
+
+                            self.assertEqual(len(response_data['data']), settings.EVENT_QUANTITY_PER_PAGE)
+
+                            #check rows
+                            self._general_row_check(response_data, audio_clip_role_name)
+
+                            #keep this for next->back validation later
+                            first_response_data = response_data['data'].copy()
+
+                            #check tokens
+                            self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                            #==========
+                            #API next+token
+                            #==========
+
+                            current_kwargs.update({
+                                'cursor_token': response_data['next_token'],
+                            })
+
+                            stopwatch.start()
+
+                            request = self.client.get(
+                                reverse(
+                                    'browse_events_api',
+                                    kwargs=current_kwargs
+                                )
+                            )
+
+                            stopwatch.stop()
+
+                            if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                                raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                            else:
+
+                                print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                            #check
+
+                            self.assertEqual(request.status_code, 200)
+
+                            #response_data: next_token, back_token, data
+                            #response_data['data']: [{event:event,originator:[],responder:[]}]
+                            response_data = get_response_data(request)
+
+                            self.assertEqual(len(response_data['data']), settings.EVENT_QUANTITY_PER_PAGE)
+
+                            #check rows
+                            self._general_row_check(response_data, audio_clip_role_name)
+
+                            #check tokens
+                            self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                            #==========
+                            #API back+token
+                            #==========
+
+                            current_kwargs.update({
+                                'next_or_back': 'back',
+                                'cursor_token': response_data['back_token'],
+                            })
+
+                            stopwatch.start()
+
+                            request = self.client.get(
+                                reverse(
+                                    'browse_events_api',
+                                    kwargs=current_kwargs
+                                )
+                            )
+
+                            stopwatch.stop()
+
+                            if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                                raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                            else:
+
+                                print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                            #check
+
+                            self.assertEqual(request.status_code, 200)
+
+                            #response_data: next_token, back_token, data
+                            #response_data['data']: [{event:event,originator:[],responder:[]}]
+                            response_data = get_response_data(request)
+
+                            #check rows
+                            self._general_row_check(response_data, audio_clip_role_name)
+
+                            #check tokens
+                            self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                            #ensure everything is the same as first response
+
+                            self.assertEqual(len(response_data['data']), len(first_response_data))
+
+                            for index in range(len(response_data['data'])):
+
+                                self.assertEqual(
+                                    response_data['data'][index]['originator'][0]['id'],
+                                    first_response_data[index]['originator'][0]['id'],
+                                )
+                                self.assertEqual(
+                                    response_data['data'][index]['responder'][0]['id'],
+                                    first_response_data[index]['responder'][0]['id'],
+                                )
+
+                            #==========
+                            #API back+token again, expect no rows
+                            #==========
+
+                            cursor_token = response_data['back_token']
+
+                            current_kwargs.update({
+                                'next_or_back': 'back',
+                                'cursor_token': response_data['back_token'],
+                            })
+
+                            stopwatch.start()
+
+                            request = self.client.get(
+                                reverse(
+                                    'browse_events_api',
+                                    kwargs=current_kwargs
+                                )
+                            )
+
+                            stopwatch.stop()
+
+                            if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                                raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                            else:
+
+                                print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                            #check
+
+                            self.assertEqual(request.status_code, 200)
+
+                            #next_token, back_token, data
+                            response_data = get_response_data(request)
+
+                            self.assertEqual(len(response_data['data']), 0)
+                            self.assertEqual(response_data['next_token'], response_data['back_token'])
+                            self.assertEqual(response_data['next_token'], cursor_token)
+
+                            #========================================
+                            #part 2: from earliest audio_clip
+                            #========================================
+
+                            #==========
+                            #API next with last row in db, expect 0 rows
+                            #==========
+
+                            #construct our own cursor from earliest eligible audio_clip
+
+                            earliest_audio_clip = AudioClips.objects.filter(
+                                audio_clip_role__audio_clip_role_name=audio_clip_role_name,
+                                generic_status__generic_status_name='ok',
+                                is_banned=False,
+                            ).order_by('-when_created', '-id').last()
+
+                            cursor_token = encode_cursor_token({
+                                'when_created': earliest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+                                'id': earliest_audio_clip.id,
+                            })
+
+                            current_kwargs.update({
+                                'next_or_back': 'next',
+                                'cursor_token': cursor_token,
+                            })
+
+                            stopwatch.start()
+
+                            request = self.client.get(
+                                reverse(
+                                    'browse_events_api',
+                                    kwargs=current_kwargs
+                                )
+                            )
+
+                            stopwatch.stop()
+
+                            if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                                raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                            else:
+
+                                print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                            #check
+
+                            self.assertEqual(request.status_code, 200)
+
+                            #next_token, back_token, data
+                            response_data = get_response_data(request)
+
+                            self.assertEqual(len(response_data['data']), 0)
+                            self.assertEqual(response_data['next_token'], response_data['back_token'])
+                            self.assertEqual(response_data['next_token'], cursor_token)
+
+                            #==========
+                            #API back+token
+                            #==========
+
+                            current_kwargs.update({
+                                'next_or_back': 'back',
+                                'cursor_token': response_data['back_token'],
+                            })
+
+                            stopwatch.start()
+
+                            request = self.client.get(
+                                reverse(
+                                    'browse_events_api',
+                                    kwargs=current_kwargs
+                                )
+                            )
+
+                            stopwatch.stop()
+
+                            if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                                raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                            else:
+
+                                print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                            #check
+
+                            self.assertEqual(request.status_code, 200)
+
+                            #response_data: next_token, back_token, data
+                            #response_data['data']: [{event:event,originator:[],responder:[]}]
+                            response_data = get_response_data(request)
+
+                            #check rows
+                            self._general_row_check(response_data, audio_clip_role_name)
+
+                            #check tokens
+                            self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                            #ensure everything is the same as first response
+
+                            self.assertEqual(len(response_data['data']), len(first_response_data))
+
+                            for index in range(len(response_data['data'])):
+
+                                self.assertEqual(
+                                    response_data['data'][index]['originator'][0]['id'],
+                                    first_response_data[index]['originator'][0]['id'],
+                                )
+                                self.assertEqual(
+                                    response_data['data'][index]['responder'][0]['id'],
+                                    first_response_data[index]['responder'][0]['id'],
+                                )
+
+                            #==========
+                            #API next+token, expect 0 rows
+                            #==========
+
+                            current_kwargs.update({
+                                'next_or_back': 'next',
+                                'cursor_token': response_data['next_token'],
+                            })
+
+                            stopwatch.start()
+
+                            request = self.client.get(
+                                reverse(
+                                    'browse_events_api',
+                                    kwargs=current_kwargs
+                                )
+                            )
+
+                            stopwatch.stop()
+
+                            if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                                raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                            else:
+
+                                print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                            #check
+
+                            self.assertEqual(request.status_code, 200)
+
+                            #response_data: next_token, back_token, data
+                            #response_data['data']: [{event:event,originator:[],responder:[]}]
+                            response_data = get_response_data(request)
+
+                            self.assertEqual(len(response_data['data']), 0)
+                            self.assertEqual(response_data['next_token'], response_data['back_token'])
+
+                        except Exception as e:
+
+                            print(current_kwargs)
+                            print(f'is_excluded_audio_clip_tone: {is_excluded_audio_clip_tone}')
+                            raise e
+
+
+
+
+
+
+
+
+
+    #DELETE FOLLOWING TESTS ONCE TESTS ABOVE ARE DONE
 
 
     def test_browse_events__no_audio_clip_tone(self):
