@@ -1038,7 +1038,12 @@ class BrowseEventsAPI(generics.GenericAPIView):
     serializer_class = EventsAndAudioClipsAPISerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
-
+    #audio_clips must always be "ok"
+    #without username
+        #event is always completed
+    #with username
+        #for originator, event can be incomplete/completed
+        #for responder, event can be completed/deleted
     def list_latest_grouped_audio_clips(
         self,
         username:str='',
@@ -1434,7 +1439,10 @@ class BrowseEventsAPI(generics.GenericAPIView):
 
 
     #ready to handle any user's likes/dislikes, but frontend isn't, so can only view own likes/dislikes for now
-    #frontend shall accept "deleted" event, but audio_clips must always be "ok", to ensure 1:1 originator:responder
+    #audio_clips must always be "ok"
+        #to ensure 1:1 originator:responder
+    #for originator, event can be incomplete/completed
+    #for responder, event can be completed/deleted
     def list_latest_liked_disliked_audio_clips(
         self,
         username:str,
@@ -1542,7 +1550,7 @@ class BrowseEventsAPI(generics.GenericAPIView):
             event_generic_status_name_sql = '''
                 AND e.generic_status_id IN (
                     SELECT id FROM generic_statuses
-                    WHERE generic_status_name IN ('incomplete', 'completed', 'deleted')
+                    WHERE generic_status_name IN ('incomplete', 'completed')
                 )
             '''
 
@@ -1656,7 +1664,7 @@ class BrowseEventsAPI(generics.GenericAPIView):
             #takes 660ms, as planner makes full index scan in this case
 
 
-    #get event.id to simply view
+    #event.id is used for simple per-event view
     def get(self, request, *args, **kwargs):
 
         #validate, as a lot of our params accept only specific values
