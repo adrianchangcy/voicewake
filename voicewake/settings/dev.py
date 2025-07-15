@@ -7,13 +7,12 @@ DEBUG_PROPAGATE_EXCEPTIONS = True   #shows detailed exceptions instead of simple
 
 #during tests, also use 'default' db
 #by specifying ['TEST']['MIRROR'] to 'default', test queries to db will be redirected to real db
+    #this also means that other types of test cases, like TransactionTestCase, that should roll back, will not roll back
 #this overrides tests from creating their own db
-#you must specify "python manage.py test --keepdb" to do this successfully
 DATABASES['default'].update({
     'TEST': {
         #'NAME' does not seem to matter but must be specified
         'NAME': 'test_' + DATABASES['default']['NAME'],
-        'MIRROR': 'default',
     },
 })
 
