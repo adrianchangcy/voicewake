@@ -1,5 +1,6 @@
 from time import sleep
 from django.test import TestCase, Client, TransactionTestCase, SimpleTestCase, override_settings
+from django.test.runner import DiscoverRunner
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 from django.db.models import Count
@@ -18,6 +19,36 @@ from typing import Literal
 import inspect
 import time
 import threading
+
+
+
+
+
+
+
+
+
+
+
+#this is the only simple solution available
+#***IMPORTANT***
+#python manage.py test voicewake.tests.test_metrics.Your_TestCase --testrunner='voicewake.tests.test_metrics.TestRunnerWithMirror'
+#***************
+#custom test runner to allow for toggling of "MIRROR" at db
+#since TEST_RUNNER cannot be changed via @override_settings, i.e. too late
+class TestRunnerWithMirror(DiscoverRunner):
+
+    def setup_databases(self, **kwargs):
+
+        # Override DATABASES before test DB setup
+        settings.DATABASES['default']['TEST'].update({'MIRROR': 'default'})
+        return super().setup_databases(**kwargs)
+
+
+
+
+
+
 
 
 
@@ -2717,6 +2748,8 @@ class BulkCreateOptimisation_TestCase(TestCase):
 
 
 
+#how to test:
+    #test each test_() individually, as running all tests concurrently will have worse performance
 #this test handles full validation and performance of apis.BrowseEvents
     #easier to do it here than to duplicate into test_apis and test_metrics
     #uses RealisticBulkData
@@ -5084,6 +5117,8 @@ class BrowseEvents_TestCase(TestCase):
 
 
 
+#how to test:
+    #test each test_() individually, as running all tests concurrently will have worse performance
 #see RealisticBulkData._determine_unique_users_after_no_new_users_left_to_create, only expect rows from name_3
 #only test for basic correctness and db test data setup
 #leave API correctness at test_apis
@@ -5091,7 +5126,7 @@ class BrowseEvents_TestCase(TestCase):
     DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
     DEBUG=True,
 )
-class ListReplyChoices_TestCase(TestCase):
+class ListEventReplyChoices_TestCase(TestCase):
 
     #{test_function_name: anything}
     metrics = {}
@@ -5432,7 +5467,7 @@ class ListReplyChoices_TestCase(TestCase):
         }
 
 
-    def test_list_event_reply_choice(self, has_tone=False, minimum_time_elapsed_ms=180, show_test_failed_query=True, show_test_passed_query=False):
+    def test_list_event_reply_choices(self, has_tone=False, minimum_time_elapsed_ms=180, show_test_failed_query=True, show_test_passed_query=False):
 
         stopwatch = Stopwatch()
         realistic_bulk_data_class = RealisticBulkData()
@@ -5683,7 +5718,7 @@ class ListReplyChoices_TestCase(TestCase):
         })
 
 
-    def test__has_tone(self, minimum_time_elapsed_ms=200, show_test_failed_query=False,):
+    def test_experimental__has_tone(self, minimum_time_elapsed_ms=200, show_test_failed_query=False,):
 
         stopwatch = Stopwatch()
         unique_user_ids = RealisticBulkData.get_unique_user_ids()

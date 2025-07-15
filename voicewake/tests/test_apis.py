@@ -2131,8 +2131,11 @@ class Core_TestCase(TestCase):
         self.assertTrue('responder' in response_data[0])
         self.assertFalse('event_reply_queue' in response_data[0])
 
-        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(response_data[0]['event']['id'], sample_event_0.id)
         self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(response_data[0]['originator'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['originator'][0]['user']['username'], sample_audio_clip_0.user.username)
+        self.assertEqual(response_data[0]['originator'][0]['generic_status']['generic_status_name'], sample_audio_clip_0.generic_status.generic_status_name)
         self.assertEqual(len(response_data[0]['responder']), 0)
 
 
@@ -2189,8 +2192,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
-        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(response_data[0]['event']['id'], sample_event_0.id)
         self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(response_data[0]['originator'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['originator'][0]['user']['username'], sample_audio_clip_0.user.username)
+        self.assertEqual(response_data[0]['originator'][0]['generic_status']['generic_status_name'], sample_audio_clip_0.generic_status.generic_status_name)
         self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertTrue('event_reply_queue' in response_data[0])
         self.assertFalse(response_data[0]['event_reply_queue']['is_replying'])
@@ -2249,8 +2255,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
-        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(response_data[0]['event']['id'], sample_event_0.id)
         self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(response_data[0]['originator'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['originator'][0]['user']['username'], sample_audio_clip_0.user.username)
+        self.assertEqual(response_data[0]['originator'][0]['generic_status']['generic_status_name'], sample_audio_clip_0.generic_status.generic_status_name)
         self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertTrue('event_reply_queue' in response_data[0])
         self.assertTrue(response_data[0]['event_reply_queue']['is_replying'])
@@ -2309,8 +2318,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
-        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(response_data[0]['event']['id'], sample_event_0.id)
         self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(response_data[0]['originator'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['originator'][0]['user']['username'], sample_audio_clip_0.user.username)
+        self.assertEqual(response_data[0]['originator'][0]['generic_status']['generic_status_name'], sample_audio_clip_0.generic_status.generic_status_name)
         self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
@@ -2368,8 +2380,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
-        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(response_data[0]['event']['id'], sample_event_0.id)
         self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(response_data[0]['originator'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['originator'][0]['user']['username'], sample_audio_clip_0.user.username)
+        self.assertEqual(response_data[0]['originator'][0]['generic_status']['generic_status_name'], sample_audio_clip_0.generic_status.generic_status_name)
         self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
@@ -2445,8 +2460,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
-        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(response_data[0]['event']['id'], sample_event_0.id)
         self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(response_data[0]['originator'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['originator'][0]['user']['username'], sample_audio_clip_0.user.username)
+        self.assertEqual(response_data[0]['originator'][0]['generic_status']['generic_status_name'], sample_audio_clip_0.generic_status.generic_status_name)
         self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
@@ -2471,8 +2489,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
-        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(response_data[0]['event']['id'], sample_event_0.id)
         self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(response_data[0]['originator'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['originator'][0]['user']['username'], sample_audio_clip_0.user.username)
+        self.assertEqual(response_data[0]['originator'][0]['generic_status']['generic_status_name'], sample_audio_clip_0.generic_status.generic_status_name)
         self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
@@ -2497,8 +2518,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
-        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(response_data[0]['event']['id'], sample_event_0.id)
         self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(response_data[0]['originator'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['originator'][0]['user']['username'], sample_audio_clip_0.user.username)
+        self.assertEqual(response_data[0]['originator'][0]['generic_status']['generic_status_name'], sample_audio_clip_0.generic_status.generic_status_name)
         self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
@@ -2523,8 +2547,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
-        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(response_data[0]['event']['id'], sample_event_0.id)
         self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(response_data[0]['originator'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['originator'][0]['user']['username'], sample_audio_clip_0.user.username)
+        self.assertEqual(response_data[0]['originator'][0]['generic_status']['generic_status_name'], sample_audio_clip_0.generic_status.generic_status_name)
         self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
@@ -2549,8 +2576,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
-        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(response_data[0]['event']['id'], sample_event_0.id)
         self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(response_data[0]['originator'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['originator'][0]['user']['username'], sample_audio_clip_0.user.username)
+        self.assertEqual(response_data[0]['originator'][0]['generic_status']['generic_status_name'], sample_audio_clip_0.generic_status.generic_status_name)
         self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertTrue('event_reply_queue' in response_data[0])
 
@@ -2626,8 +2656,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
-        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(response_data[0]['event']['id'], sample_event_0.id)
         self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(response_data[0]['originator'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['originator'][0]['user']['username'], sample_audio_clip_0.user.username)
+        self.assertEqual(response_data[0]['originator'][0]['generic_status']['generic_status_name'], sample_audio_clip_0.generic_status.generic_status_name)
         self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
@@ -2652,8 +2685,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
-        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(response_data[0]['event']['id'], sample_event_0.id)
         self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(response_data[0]['originator'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['originator'][0]['user']['username'], sample_audio_clip_0.user.username)
+        self.assertEqual(response_data[0]['originator'][0]['generic_status']['generic_status_name'], sample_audio_clip_0.generic_status.generic_status_name)
         self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
@@ -2678,8 +2714,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
-        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(response_data[0]['event']['id'], sample_event_0.id)
         self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(response_data[0]['originator'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['originator'][0]['user']['username'], sample_audio_clip_0.user.username)
+        self.assertEqual(response_data[0]['originator'][0]['generic_status']['generic_status_name'], sample_audio_clip_0.generic_status.generic_status_name)
         self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
@@ -2704,8 +2743,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
-        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(response_data[0]['event']['id'], sample_event_0.id)
         self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(response_data[0]['originator'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['originator'][0]['user']['username'], sample_audio_clip_0.user.username)
+        self.assertEqual(response_data[0]['originator'][0]['generic_status']['generic_status_name'], sample_audio_clip_0.generic_status.generic_status_name)
         self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertFalse('event_reply_queue' in response_data[0])
 
@@ -2730,8 +2772,11 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)['data']
 
         self.assertEqual(len(response_data), 1)
-        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(response_data[0]['event']['id'], sample_event_0.id)
         self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(response_data[0]['originator'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['originator'][0]['user']['username'], sample_audio_clip_0.user.username)
+        self.assertEqual(response_data[0]['originator'][0]['generic_status']['generic_status_name'], sample_audio_clip_0.generic_status.generic_status_name)
         self.assertEqual(len(response_data[0]['responder']), 0)
         self.assertTrue('event_reply_queue' in response_data[0])
 
@@ -2819,9 +2864,15 @@ class Core_TestCase(TestCase):
         self.assertTrue('event' in response_data[0])
         self.assertTrue('originator' in response_data[0])
         self.assertTrue('responder' in response_data[0])
-        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(response_data[0]['event']['id'], sample_event_0.id)
         self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(response_data[0]['originator'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['originator'][0]['user']['username'], sample_audio_clip_0.user.username)
+        self.assertEqual(response_data[0]['originator'][0]['generic_status']['generic_status_name'], sample_audio_clip_0.generic_status.generic_status_name)
         self.assertEqual(len(response_data[0]['responder']), 1)
+        self.assertEqual(response_data[0]['responder'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['responder'][0]['user']['username'], sample_audio_clip_1.user.username)
+        self.assertEqual(response_data[0]['responder'][0]['generic_status']['generic_status_name'], sample_audio_clip_1.generic_status.generic_status_name)
         self.assertFalse('event_reply_queue' in response_data[0])
 
 
@@ -2899,12 +2950,16 @@ class Core_TestCase(TestCase):
         self.assertTrue('event' in response_data[0])
         self.assertTrue('originator' in response_data[0])
         self.assertTrue('responder' in response_data[0])
-        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(response_data[0]['event']['id'], sample_event_0.id)
         self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(response_data[0]['originator'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['originator'][0]['user']['username'], sample_audio_clip_0.user.username)
+        self.assertEqual(response_data[0]['originator'][0]['generic_status']['generic_status_name'], sample_audio_clip_0.generic_status.generic_status_name)
         self.assertEqual(len(response_data[0]['responder']), 1)
+        self.assertEqual(response_data[0]['responder'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['responder'][0]['user']['username'], sample_audio_clip_3.user.username)
+        self.assertEqual(response_data[0]['responder'][0]['generic_status']['generic_status_name'], sample_audio_clip_3.generic_status.generic_status_name)
         self.assertFalse('event_reply_queue' in response_data[0])
-
-        self.assertEqual(response_data[0]['responder'][0].id, sample_audio_clip_3.id)
 
 
     def test_get_event__completed__deleted_different_responders(self):
@@ -2981,12 +3036,16 @@ class Core_TestCase(TestCase):
         self.assertTrue('event' in response_data[0])
         self.assertTrue('originator' in response_data[0])
         self.assertTrue('responder' in response_data[0])
-        self.assertEqual(len(response_data[0]['event']), 1)
+        self.assertEqual(response_data[0]['event']['id'], sample_event_0.id)
         self.assertEqual(len(response_data[0]['originator']), 1)
+        self.assertEqual(response_data[0]['originator'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['originator'][0]['user']['username'], sample_audio_clip_0.user.username)
+        self.assertEqual(response_data[0]['originator'][0]['generic_status']['generic_status_name'], sample_audio_clip_0.generic_status.generic_status_name)
         self.assertEqual(len(response_data[0]['responder']), 1)
+        self.assertEqual(response_data[0]['responder'][0]['event_id'], sample_event_0.id)
+        self.assertEqual(response_data[0]['responder'][0]['user']['username'], sample_audio_clip_3.user.username)
+        self.assertEqual(response_data[0]['responder'][0]['generic_status']['generic_status_name'], sample_audio_clip_3.generic_status.generic_status_name)
         self.assertFalse('event_reply_queue' in response_data[0])
-
-        self.assertEqual(response_data[0]['responder'][0].id, sample_audio_clip_3.id)
 
 
     def test_get_event__completed__no_audio_clips(self):
@@ -3168,17 +3227,27 @@ class Core_TestCase(TestCase):
         self.assertTrue('responder' in response_data and len(response_data['responder']) == 0)
         self.assertTrue('event_reply_queue' in response_data and type(response_data['event_reply_queue']) == dict)
 
-        event_reply_queue = EventReplyQueues.objects.first()
-        user_event = UserEvents.objects.first()
+        event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.users[1])
+        user_event = UserEvents.objects.get(user=self.users[1], event=event_reply_queue.event)
+        originator_audio_clip = AudioClips.objects.get(event=event_reply_queue.event, audio_clip_role__audio_clip_role_name='originator')
 
         self.assertTrue(response_data['event_reply_queue']['when_locked'] is not None)
         self.assertEqual(response_data['event_reply_queue']['is_replying'], event_reply_queue.is_replying)
         self.assertEqual(response_data['event']['id'], event_reply_queue.event_id)
         self.assertEqual(event_reply_queue.locked_for_user_id, self.users[1].id)
-        self.assertEqual(UserEvents.objects.all().count(), 1)
-        self.assertEqual(user_event.event_id, sample_event_0.id)
         self.assertEqual(user_event.user_id, self.users[1].id)
         self.assertIsNotNone(user_event.when_excluded_for_reply)
+        self.assertEqual(event_reply_queue.event.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(originator_audio_clip.generic_status.generic_status_name, 'ok')
+        self.assertNotEqual(originator_audio_clip.user.id, self.users[1].id)
+        self.assertEqual(
+            AudioClips.objects.filter(
+                event=event_reply_queue.event,
+                audio_clip_role__audio_clip_role_name='responder',
+                generic_status__generic_status_name='ok',
+            ).count(),
+            0
+        )
 
 
     def test_list_reply_choices_first_time_has_unlock(self):
@@ -3221,18 +3290,27 @@ class Core_TestCase(TestCase):
         self.assertTrue('responder' in response_data and len(response_data['responder']) == 0)
         self.assertTrue('event_reply_queue' in response_data and type(response_data['event_reply_queue']) == dict)
 
-        event_reply_queue = EventReplyQueues.objects.first()
-        user_event = UserEvents.objects.first()
+        event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.users[1])
+        user_event = UserEvents.objects.get(user=self.users[1], event=event_reply_queue.event)
+        originator_audio_clip = AudioClips.objects.get(event=event_reply_queue.event, audio_clip_role__audio_clip_role_name='originator')
 
         self.assertTrue(response_data['event_reply_queue']['when_locked'] is not None)
         self.assertEqual(response_data['event_reply_queue']['is_replying'], event_reply_queue.is_replying)
         self.assertEqual(response_data['event']['id'], event_reply_queue.event_id)
-        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
         self.assertEqual(event_reply_queue.locked_for_user_id, self.users[1].id)
-        self.assertEqual(UserEvents.objects.all().count(), 1)
-        self.assertEqual(user_event.event_id, sample_event_0.id)
         self.assertEqual(user_event.user_id, self.users[1].id)
         self.assertIsNotNone(user_event.when_excluded_for_reply)
+        self.assertEqual(event_reply_queue.event.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(originator_audio_clip.generic_status.generic_status_name, 'ok')
+        self.assertNotEqual(originator_audio_clip.user.id, self.users[1].id)
+        self.assertEqual(
+            AudioClips.objects.filter(
+                event=event_reply_queue.event,
+                audio_clip_role__audio_clip_role_name='responder',
+                generic_status__generic_status_name='ok',
+            ).count(),
+            0
+        )
 
 
     def test_list_reply_choices__has_event_but_outdated__no_rows(self):
@@ -3516,10 +3594,13 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertEqual(sample_event_0.id, response_data['data'][0]['event']['id'])
-        self.assertEqual(UserEvents.objects.all().count(), 1)
-        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
-        self.assertEqual(EventReplyQueues.objects.first().id, sample_event_reply_queue_0.id)
-        self.assertEqual(EventReplyQueues.objects.first().when_locked, sample_event_reply_queue_0.when_locked)
+        self.assertEqual(UserEvents.objects.filter(event=sample_event_0, user=self.users[1]).count(), 1)
+        self.assertEqual(EventReplyQueues.objects.filter(event=sample_event_0, locked_for_user=self.users[1]).count(), 1)
+
+        event_reply_queue = EventReplyQueues.objects.get(event=sample_event_0, locked_for_user=self.users[1])
+
+        self.assertEqual(event_reply_queue.id, sample_event_reply_queue_0.id)
+        self.assertEqual(event_reply_queue.when_locked, sample_event_reply_queue_0.when_locked)
 
 
     def test_list_reply_choices_has_something_locked__skip_existing_locked_rows(self):
@@ -3588,9 +3669,10 @@ class Core_TestCase(TestCase):
         new_user_event = UserEvents.objects.get(user=self.users[1], event_id=new_event_id)
         new_event_reply_queue = EventReplyQueues.objects.get(locked_for_user=self.users[1], event_id=new_event_id)
 
-        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
-        self.assertEqual(UserEvents.objects.all().count(), 2)
-        self.assertEqual(new_event_id, sample_event_1.id)
+        self.assertEqual(EventReplyQueues.objects.filter(event_id=sample_event_0.id, locked_for_user_id=self.users[1].id).count(), 0)
+        self.assertEqual(EventReplyQueues.objects.filter(event_id=new_event_id, locked_for_user_id=self.users[1].id).count(), 1)
+        self.assertEqual(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0).count(), 1)
+        self.assertEqual(UserEvents.objects.filter(user=self.users[1], event_id=new_event_id).count(), 1)
         self.assertIsNotNone(new_user_event.when_excluded_for_reply)
         self.assertNotEqual(new_event_reply_queue.when_locked, sample_event_reply_queue_0.when_locked)
 
@@ -3708,9 +3790,10 @@ class Core_TestCase(TestCase):
         new_event_id = response_data['data'][0]['event']['id']
         new_user_event = UserEvents.objects.get(user=self.users[1], event_id=new_event_id)
 
-        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
-        self.assertEqual(UserEvents.objects.all().count(), 2)
-        self.assertEqual(new_event_id, sample_event_1.id)
+        self.assertEqual(EventReplyQueues.objects.filter(event_id=sample_event_0.id, locked_for_user_id=self.users[1].id).count(), 0)
+        self.assertEqual(EventReplyQueues.objects.filter(event_id=new_event_id, locked_for_user_id=self.users[1].id).count(), 1)
+        self.assertEqual(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0).count(), 1)
+        self.assertEqual(UserEvents.objects.filter(user=self.users[1], event_id=new_event_id).count(), 1)
         self.assertIsNotNone(new_user_event.when_excluded_for_reply)
 
 
@@ -3778,9 +3861,10 @@ class Core_TestCase(TestCase):
         new_event_id = response_data['data'][0]['event']['id']
         new_user_event = UserEvents.objects.get(user=self.users[1], event_id=new_event_id)
 
-        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
-        self.assertEqual(UserEvents.objects.all().count(), 2)
-        self.assertEqual(new_event_id, sample_event_1.id)
+        self.assertEqual(EventReplyQueues.objects.filter(event_id=sample_event_0.id, locked_for_user_id=self.users[1].id).count(), 0)
+        self.assertEqual(EventReplyQueues.objects.filter(event_id=new_event_id, locked_for_user_id=self.users[1].id).count(), 1)
+        self.assertEqual(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0).count(), 1)
+        self.assertEqual(UserEvents.objects.filter(user=self.users[1], event_id=new_event_id).count(), 1)
         self.assertIsNotNone(new_user_event.when_excluded_for_reply)
 
 
@@ -3862,9 +3946,10 @@ class Core_TestCase(TestCase):
 
         self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
         self.assertNotEqual(new_event_reply_queue.pk, sample_event_reply_queue_0.id)
-        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
-        self.assertEqual(UserEvents.objects.all().count(), 2)
-        self.assertEqual(new_event_id, sample_event_1.id)
+        self.assertEqual(EventReplyQueues.objects.filter(event_id=sample_event_0.id, locked_for_user_id=self.users[1].id).count(), 0)
+        self.assertEqual(EventReplyQueues.objects.filter(event_id=new_event_id, locked_for_user_id=self.users[1].id).count(), 1)
+        self.assertEqual(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0).count(), 1)
+        self.assertEqual(UserEvents.objects.filter(user=self.users[1], event_id=new_event_id).count(), 1)
         self.assertIsNotNone(new_user_event.when_excluded_for_reply)
         self.assertNotEqual(new_event_reply_queue.when_locked, sample_event_reply_queue_0.when_locked)
 
@@ -3948,9 +4033,10 @@ class Core_TestCase(TestCase):
 
         self.assertFalse(EventReplyQueues.objects.filter(locked_for_user=self.users[1], event_id=sample_event_0.id).exists())
         self.assertNotEqual(new_event_reply_queue.pk, sample_event_reply_queue_0.id)
-        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
-        self.assertEqual(UserEvents.objects.all().count(), 2)
-        self.assertEqual(new_event_id, sample_event_1.id)
+        self.assertEqual(EventReplyQueues.objects.filter(event_id=sample_event_0.id, locked_for_user_id=self.users[1].id).count(), 0)
+        self.assertEqual(EventReplyQueues.objects.filter(event_id=new_event_id, locked_for_user_id=self.users[1].id).count(), 1)
+        self.assertEqual(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0).count(), 1)
+        self.assertEqual(UserEvents.objects.filter(user=self.users[1], event_id=new_event_id).count(), 1)
         self.assertIsNotNone(new_user_event.when_excluded_for_reply)
         self.assertNotEqual(new_event_reply_queue.when_locked, sample_event_reply_queue_0.when_locked)
 
@@ -4413,7 +4499,14 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertFalse(response_data['can_retry'])
-        self.assertEqual(EventReplyQueues.objects.all().count(), 0)
+        self.assertEqual(
+            EventReplyQueues.objects.filter(
+                event_id=sample_event_0.id,
+                locked_for_user_id=self.users[1].id,
+                is_replying=False,
+            ).count(),
+            0
+        )
         self.assertEqual(
             UserEvents.objects.filter(
                 user=self.users[1],
@@ -4487,7 +4580,13 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertFalse(response_data['can_retry'])
-        self.assertEqual(EventReplyQueues.objects.all().count(), 0)
+        self.assertEqual(
+            EventReplyQueues.objects.filter(
+                event_id=sample_event_0.id,
+                locked_for_user_id=self.users[1].id,
+            ).count(),
+            0
+        )
         self.assertEqual(
             UserEvents.objects.filter(
                 user=self.users[1],
@@ -4562,7 +4661,13 @@ class Core_TestCase(TestCase):
         response_data = get_response_data(request)
 
         self.assertFalse(response_data['can_retry'])
-        self.assertEqual(EventReplyQueues.objects.all().count(), 0)
+        self.assertEqual(
+            EventReplyQueues.objects.filter(
+                event_id=sample_event_0.id,
+                locked_for_user_id=self.users[1].id,
+            ).count(),
+            0
+        )
         self.assertEqual(
             UserEvents.objects.filter(
                 user=self.users[1],
@@ -4620,9 +4725,9 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        event_reply_queue = EventReplyQueues.objects.get(event_id=sample_event_0.id, locked_for_user=self.users[2])
+        sample_event_reply_queue_0.refresh_from_db()
 
-        self.assertEqual(EventReplyQueues.objects.all().count(), 1)
+        self.assertEqual(sample_event_reply_queue_0.is_replying, False)
         self.assertEqual(
             UserEvents.objects.filter(
                 user=self.users[2],
@@ -7819,7 +7924,7 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertEqual(UserBlocks.objects.all().count(), 1)
+        self.assertEqual(UserBlocks.objects.filter(user=self.users[1], blocked_user=self.users[0]).count(), 1)
         self.assertIsNone(response_data.get('when_last_action_s', None))
 
 
@@ -7842,7 +7947,7 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertEqual(UserBlocks.objects.all().count(), 0)
+        self.assertEqual(UserBlocks.objects.filter(user=self.users[1], blocked_user=self.users[0]).count(), 0)
 
         #start
 
@@ -7859,7 +7964,7 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertEqual(UserBlocks.objects.all().count(), 0)
+        self.assertEqual(UserBlocks.objects.filter(user=self.users[1], blocked_user=self.users[0]).count(), 0)
 
 
     def test_user_block__faulty_args(self):
@@ -7883,7 +7988,7 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertEqual(UserBlocks.objects.all().count(), 0)
+        self.assertEqual(UserBlocks.objects.filter(user=self.users[1], blocked_user=self.users[0]).count(), 0)
 
         #start
 
@@ -7902,7 +8007,7 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertEqual(UserBlocks.objects.all().count(), 0)
+        self.assertEqual(UserBlocks.objects.filter(user=self.users[1], blocked_user=self.users[0]).count(), 0)
 
 
     def test_user_block__limit_reached(self):
@@ -7929,7 +8034,8 @@ class Core_TestCase(TestCase):
 
         #check
 
-        self.assertEqual(UserBlocks.objects.all().count(), 2)
+        self.assertEqual(UserBlocks.objects.filter(user=self.users[0], blocked_user=self.users[1]).count(), 1)
+        self.assertEqual(UserBlocks.objects.filter(user=self.users[0], blocked_user=self.users[2]).count(), 1)
 
 
     def test_user_block__already_blocked(self):
@@ -7955,7 +8061,7 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertEqual(UserBlocks.objects.all().count(), 1)
+        self.assertEqual(UserBlocks.objects.filter(user=self.users[0], blocked_user=self.users[1]).count(), 1)
 
 
     def test_user_block__block_themselves(self):
@@ -7976,7 +8082,7 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertEqual(UserBlocks.objects.all().count(), 0)
+        self.assertEqual(UserBlocks.objects.filter(user=self.users[0], blocked_user=self.users[0]).count(), 0)
 
 
     def test_user_block__user_does_not_exist(self):
@@ -7998,7 +8104,7 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertEqual(UserBlocks.objects.all().count(), 0)
+        self.assertEqual(UserBlocks.objects.filter(user=self.users[1], blocked_user__username=self.non_existent_username).count(), 0)
 
 
     def test_user_block_unblock_ok(self):
@@ -8024,7 +8130,7 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertEqual(UserBlocks.objects.all().count(), 0)
+        self.assertEqual(UserBlocks.objects.filter(user=self.users[1], blocked_user=self.users[0]).count(), 0)
 
         #refetch using when_last_action_s
 
@@ -8396,7 +8502,8 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
-        self.assertEqual(UserBlocks.objects.all().count(), 1)
+        self.assertEqual(UserBlocks.objects.filter(user=self.users[0], blocked_user=self.users[1]).count(), 1)
+        self.assertEqual(UserBlocks.objects.filter(user=self.users[0], blocked_user=self.banned_users[1]).count(), 0)
 
 
     def test_user_block__response_size_at_limit(self):
