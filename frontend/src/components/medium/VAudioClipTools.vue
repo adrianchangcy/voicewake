@@ -132,20 +132,24 @@
         </div>
 
         <!--arrow and menu-->
-        <div class="w-full h-0 relative">
+        <div
+            v-if="is_extra_options_menu_open"
+            class="w-full h-0 relative"
+        >
 
             <!--menu-->
             <div
-                v-show="is_extra_options_menu_open"
                 v-click-outside="{
                     bool_status_variable_or_callback: forceCloseExtraOptionsMenu,
                     refs_to_exclude: ['open_close_extra_options_menu_button']
                 }"
                 class="absolute top-3 w-28 h-fit right-0 m-auto p-2 flex flex-col rounded-lg border-2 border-theme-black dark:border-dark-theme-white-2 bg-theme-light dark:bg-theme-dark"
             >
+
                 <VActionText
-                    @click="submitReport()"
-                    :prop-is-enabled="!is_reporting"
+                    v-if="propIsSuperuser || is_own_audio_clip"
+                    @click="submitDelete()"
+                    :prop-is-enabled="isAnyExtraOptionProcessing"
                     propElement="button"
                     type="button"
                     propFontSize="s"
@@ -154,14 +158,62 @@
                     class="w-full"
                 >
 
-                    <span class="w-fit mx-auto">
+                    <span class="w-fit">
+                        <VLoading
+                            v-if="is_deleting"
+                            prop-element-size="s"
+                        />
+                        <span v-else>
+                            <FontAwesomeIcon icon="fas fa-flag" class="text-sm px-2"/>
+                            <span>Delete</span>
+                        </span>
+                    </span>
+                </VActionText>
+
+                <VActionText
+                    v-if="propIsSuperuser"
+                    @click="submitBan()"
+                    :prop-is-enabled="isAnyExtraOptionProcessing"
+                    propElement="button"
+                    type="button"
+                    propFontSize="s"
+                    propElementSize="s"
+                    :prop-is-icon-only="true"
+                    class="w-full"
+                >
+
+                    <span class="w-fit">
+                        <VLoading
+                            v-if="is_banning"
+                            prop-element-size="s"
+                        />
+                        <span v-else>
+                            <FontAwesomeIcon icon="fas fa-flag" class="text-sm px-2"/>
+                            <span>Ban</span>
+                        </span>
+                    </span>
+                </VActionText>
+
+                <VActionText
+                    v-if="!is_own_audio_clip"
+                    @click="submitReport()"
+                    :prop-is-enabled="isAnyExtraOptionProcessing"
+                    propElement="button"
+                    type="button"
+                    propFontSize="s"
+                    propElementSize="s"
+                    :prop-is-icon-only="true"
+                    class="w-full"
+                >
+
+                    <span class="w-fit">
                         <VLoading
                             v-if="is_reporting"
                             prop-element-size="s"
                         />
                         <span v-else>
-                            <FontAwesomeIcon icon="fas fa-flag" class="text-sm"/>
-                            <span class="pl-2">Report</span>
+                            <FontAwesomeIcon icon="fas fa-flag" class="text-sm px-2"/>
+                            <span>Report</span>
                         </span>
                     </span>
                 </VActionText>
@@ -171,17 +223,12 @@
             <div class="grid grid-cols-6 gap-1">
                 <div class="col-start-6 col-span-1 relative">
                     <div
-                        v-show="is_extra_options_menu_open"
                         class="w-2 h-2 absolute top-2 left-0 right-0 mx-auto bg-theme-light dark:bg-theme-dark border-l-2 border-t-2 border-theme-black dark:border-dark-theme-white-2 rotate-45"
                     ></div>
                 </div>
             </div>
+
         </div>
-
-
-
-
-
     </div>
 </template>
 
@@ -220,6 +267,8 @@
             return {
                 pop_up_manager_store: usePopUpManagerStore(),
 
+                is_own_audio_clip: false,
+
                 is_liked: null as boolean|null,
                 previous_is_liked: null as boolean|null,
                 like_count: 0,
@@ -231,6 +280,8 @@
                 has_shared: false,
                 has_shared_timeout: null as number|null,
 
+                is_deleting: false,
+                is_banning: false,
                 is_reporting: false,
 
                 is_extra_options_menu_open: false,
@@ -244,6 +295,22 @@
             propHasVirtualScroll: {
                 type: Boolean,
                 default: false,
+            },
+            propCallablePopUpLoginRequired: {
+                type: Function,
+                required: true,
+            },
+            propIsLoggedIn: {
+                type: Boolean,
+                required: true,
+            },
+            propIsSuperuser: {
+                type: Boolean,
+                required: true,
+            },
+            propUsername: {
+                type: String,
+                required: true,
             },
         },
         computed: {
@@ -278,6 +345,14 @@
 
                 return (is_percentage_ok === true && is_count_ok === true);
             },
+            isAnyExtraOptionProcessing() : boolean {
+
+                return (
+                    this.is_deleting === false &&
+                    this.is_banning === false &&
+                    this.is_reporting === false
+                );
+            }
         },
         watch: {
             propAudioClip(){
@@ -296,11 +371,11 @@
             'newIsLiked',
         ],
         methods: {
-            async forceCloseExtraOptionsMenu() : Promise<void> {
+            forceCloseExtraOptionsMenu() : void {
 
                 this.toggleExtraOptionsMenu(false);
             },
-            async toggleExtraOptionsMenu(force_is_open:boolean|null=null) : Promise<void> {
+            toggleExtraOptionsMenu(force_is_open:boolean|null=null) : void {
 
                 const final_state = force_is_open === null ? !this.is_extra_options_menu_open : force_is_open;
 
@@ -343,7 +418,10 @@
 
                 this.submit_timeout !== null ? clearTimeout(this.submit_timeout) : null;
 
-                const audio_clip = this.propAudioClip;
+                //do Object.assign in case prop changes while API is still running
+                let audio_clip = {} as AudioClipsAndLikeDetailsTypes;
+                Object.assign(audio_clip, this.propAudioClip);
+
                 const is_liked = this.is_liked;
 
                 //we use this to counter spam-clicking
@@ -390,9 +468,9 @@
             },
             checkIsLoggedIn() : boolean {
 
-                if(this.pop_up_manager_store.isLoggedIn === false){
+                if(this.propIsLoggedIn === false){
 
-                    this.pop_up_manager_store.openPopUp('login_required');
+                    this.propCallablePopUpLoginRequired();
                     return false;
                 }
 
@@ -402,6 +480,7 @@
 
                 if(this.checkIsLoggedIn() === false){
 
+                    //already shown dialog
                     return;
                 }
 
@@ -471,49 +550,6 @@
 
                 //submit
                 this.submitLikeDislike();
-            },
-            async submitReport() : Promise<void> {
-
-                if(this.checkIsLoggedIn() === false){
-
-                    return;
-                }
-
-                this.is_reporting = true;
-
-                let data = new FormData();
-                
-                data.append('audio_clip_id', JSON.stringify(this.propAudioClip['id']));
-
-                axios.post(window.location.origin + '/api/audio-clips/reports', data)
-                .then(() => {
-
-                    notify({
-                        type: 'generic',
-                        title: 'Recording reported',
-                        text: 'We will evaluate this recording soon.',
-                        icon: {'font_awesome': 'fas fa-flag'},
-                    }, 3000);
-
-                }).catch((error:any) => {
-
-                    let error_text = 'Oops! Unable to report this recording.';
-
-                    if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
-
-                        error_text = error.response.data['message'];
-                    }
-
-                    notify({
-                        type: 'error',
-                        title: 'Report failed',
-                        text: error_text,
-                    }, 3000);
-
-                }).finally(() => {
-
-                    this.is_reporting = false;
-                });
             },
             animeLikeDislike(is_liked:boolean, is_adding:boolean) : void {
 
@@ -585,10 +621,149 @@
                     'new_is_liked': new_is_liked,
                 });
             },
+            async submitBan() : Promise<void> {
+
+                if(this.isAnyExtraOptionProcessing === false){
+
+                    return;
+                }
+
+                this.is_banning = true;
+
+                let audio_clip = {} as AudioClipsAndLikeDetailsTypes;
+                Object.assign(audio_clip, this.propAudioClip);
+
+                let data = new FormData();
+
+                data.append('audio_clip_id', JSON.stringify(audio_clip.id));
+
+                await axios.post(window.location.origin + '/api/audio-clips/bans', data)
+                .then(() => {
+
+                }).catch((error:any) => {
+
+                    let error_text = 'Oops! Something went wrong.';
+
+                    if(
+                        Object.hasOwn(error, 'request') === true &&
+                        Object.hasOwn(error, 'response') === true &&
+                        Object.hasOwn(error.response, 'data') === true &&
+                        Object.hasOwn(error.response.data, 'message') === true &&
+                        error.response.data['message'].length > 0
+                    ){
+
+                        error_text = error.response.data['message'];
+                    }
+
+                    notify({
+                        type: 'error',
+                        title: 'Action failed',
+                        text: error_text,
+                    }, 3000);
+
+                }).finally(() => {
+
+                    this.is_banning = false;
+                });
+            },
+            async submitDelete() : Promise<void> {
+
+                if(this.isAnyExtraOptionProcessing === false){
+
+                    return;
+                }
+
+                this.is_deleting = true;
+
+                let audio_clip = {} as AudioClipsAndLikeDetailsTypes;
+                Object.assign(audio_clip, this.propAudioClip);
+
+                let data = new FormData();
+
+                data.append('audio_clip_id', JSON.stringify(audio_clip.id));
+
+                await axios.post(window.location.origin + '/api/audio-clips/deletions', data)
+                .then(() => {
+
+                }).catch((error:any) => {
+
+                    let error_text = 'Oops! Something went wrong.';
+
+                    if(
+                        Object.hasOwn(error, 'request') === true &&
+                        Object.hasOwn(error, 'response') === true &&
+                        Object.hasOwn(error.response, 'data') === true &&
+                        Object.hasOwn(error.response.data, 'message') === true &&
+                        error.response.data['message'].length > 0
+                    ){
+
+                        error_text = error.response.data['message'];
+                    }
+
+                    notify({
+                        type: 'error',
+                        title: 'Action failed',
+                        text: error_text,
+                    }, 3000);
+
+                }).finally(() => {
+
+                    this.is_deleting = false;
+                });
+            },
+            async submitReport() : Promise<void> {
+
+                if(this.checkIsLoggedIn() === false){
+
+                    //already shown dialog
+                    return;
+                }
+
+                this.is_reporting = true;
+
+                let audio_clip = {} as AudioClipsAndLikeDetailsTypes;
+                Object.assign(audio_clip, this.propAudioClip);
+
+                let data = new FormData();
+                
+                data.append('audio_clip_id', JSON.stringify(audio_clip.id));
+
+                axios.post(window.location.origin + '/api/audio-clips/reports', data)
+                .then(() => {
+
+                    notify({
+                        type: 'generic',
+                        title: 'Recording reported',
+                        text: 'We will evaluate this recording soon.',
+                        icon: {'font_awesome': 'fas fa-flag'},
+                    }, 3000);
+
+                }).catch((error:any) => {
+
+                    let error_text = 'Oops! Unable to report this recording.';
+
+                    if(Object.hasOwn(error, 'request') === true && Object.hasOwn(error, 'response') === true){
+
+                        error_text = error.response.data['message'];
+                    }
+
+                    notify({
+                        type: 'error',
+                        title: 'Report failed',
+                        text: error_text,
+                    }, 3000);
+
+                }).finally(() => {
+
+                    this.is_reporting = false;
+                });
+            },
         },
         beforeMount(){
 
             this.syncLikesDislikes();
+
+            this.is_own_audio_clip = this.propUsername === this.propAudioClip.user.username;
         },
     });
 </script>

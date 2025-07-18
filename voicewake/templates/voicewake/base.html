@@ -33,9 +33,10 @@
         {% block extra_head %}
         {% endblock %}
 
-        <!--use getDataFromTemplate() helper function at Vue to retrieve these data-->
+        <!--use getDataFromTemplateJSONScript() helper function at Vue to retrieve these data-->
         {{user.username | json_script:"data-user-username"}}
         {{user.is_authenticated | json_script:"data-user-is-authenticated"}}
+        {{user.is_superuser | json_script:"data-user-is-superuser"}}
 
         <!--ensure main CSS is loaded first before content-->
         <link href="{% static 'voicewake/css/output.css' %}{{STATIC_CACHE_BUST_VERSION}}" rel="stylesheet"/>

@@ -1,5 +1,6 @@
 <template>
     <VNavBar
+        :propIsLoggedIn="is_logged_in"
         :propUsername="username"
     />
 
@@ -26,12 +27,11 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import { getDataFromTemplateJSONScript } from '@/helper_functions';
     import { usePageRefreshTriggerStore } from '@/stores/PageRefreshTriggerStore';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     import { useRedrawCanvasesStore } from '@/stores/RedrawCanvasesStore';
     import { notify } from '@/wrappers/notify_wrapper';
-    import { axiosCSRFSetup } from '@/helper_functions';
+    import { axiosCSRFSetup, isLoggedIn, getUsername } from '@/helper_functions';
 
     export default defineComponent({
         name: 'BaseApp',
@@ -41,7 +41,8 @@
                 pop_up_manager_store: usePopUpManagerStore(),
                 redraw_canvases_store: useRedrawCanvasesStore(),
 
-                username: "",
+                is_logged_in: false,
+                username: null as string|null,
             };
         },
         computed: {
@@ -52,7 +53,7 @@
                 //currently not used
                 //only need consent if collecting user data
 
-                if(this.pop_up_manager_store.isLoggedIn === false || localStorage.getItem('user_consents_to_cookies') !== null){
+                if(this.is_logged_in === false || localStorage.getItem('user_consents_to_cookies') !== null){
 
                     return;
                 }
@@ -87,17 +88,10 @@
             axiosCSRFSetup();
 
             //is logged in
-            this.pop_up_manager_store.setIsLoggedIn(
-                getDataFromTemplateJSONScript("data-user-is-authenticated") as boolean
-            );
+            this.is_logged_in = isLoggedIn();
 
             //username
-            const username = getDataFromTemplateJSONScript("data-user-username") as string|null;
-
-            if(username !== null){
-
-                this.username = username;
-            }
+            this.username = getUsername();
 
             //refresh all tabs when necessary
             //provided that every tab has BaseApp.vue

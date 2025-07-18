@@ -164,18 +164,18 @@
 <script lang="ts">
     import { PropType, defineComponent } from 'vue';
     import { notify } from '@/wrappers/notify_wrapper';
-    import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     import { useUserBlocksStore } from '@/stores/UserBlocksStore';
     import { useUserFollowsStore } from '@/stores/UserFollowsStore';
+    import { isLoggedIn } from '@/helper_functions';
     // import anime from 'animejs';
 
     export default defineComponent({
         data(){
             return {
-                pop_up_manager_store: usePopUpManagerStore(),
                 user_blocks_store: useUserBlocksStore(),
                 user_follows_store: useUserFollowsStore(),
 
+                is_logged_in: false,
                 username: '',
                 has_shared: false,
                 has_shared_timeout: null as number|null,
@@ -205,7 +205,7 @@
             canUseUserActions() : boolean {
 
                 return (
-                    this.pop_up_manager_store.isLoggedIn === true &&
+                    this.is_logged_in === true &&
                     this.is_own_user_page === false
                 );
             },
@@ -279,6 +279,8 @@
             },
         },
         beforeMount(){
+
+            this.is_logged_in = isLoggedIn();
 
             if(this.propPageContext === 'user_profile'){
 

@@ -128,7 +128,7 @@
         <div class="w-full h-0 flex flex-col">
 
             <!--nav menu-->
-            <!--don't show when lg and pop_up_manager_store.isLoggedIn, because the button to open will become a URL-->
+            <!--don't show when lg and propIsLoggedIn, because the button to open will become a URL-->
             <TransitionFade>
                 <div
                     v-show="pop_up_manager_store.isNavMenuOpen"
@@ -160,7 +160,7 @@
 
                                 <!--logged in, can click to view profile-->
                                 <VActionText
-                                    v-if="pop_up_manager_store.isLoggedIn"
+                                    v-if="propIsLoggedIn"
                                     prop-element="a"
                                     :prop-is-icon-only="false"
                                     :href="getProfileURL()"
@@ -193,7 +193,7 @@
 
                             <!--log in / sign up / dark mode-->
                             <div
-                                v-if="pop_up_manager_store.isLoggedIn === false"
+                                v-if="propIsLoggedIn === false"
                                 class="h-fit flex flex-col gap-1"
                             >
                                 <!--log in-->
@@ -280,7 +280,7 @@
 
                             <!--main URLs-->
                             <div
-                                v-if="pop_up_manager_store.isLoggedIn === true"
+                                v-if="propIsLoggedIn === true"
                                 class="flex flex-col gap-1"
                             >
 
@@ -421,11 +421,11 @@
 
                                 <!--log out-->
                                 <div
-                                    v-if="pop_up_manager_store.isLoggedIn === true"
+                                    v-if="propIsLoggedIn === true"
                                     class="h-fit flex flex-col"
                                 >
                                     <VActionText
-                                        v-if="pop_up_manager_store.isLoggedIn === true"
+                                        v-if="propIsLoggedIn === true"
                                         :prop-is-enabled="!is_log_out_loading"
                                         @click="logOut()"
                                         prop-element="button"
@@ -475,7 +475,7 @@
             <!--no v-click-outside, because these are more important-->
             <!--furthermore, v-click-outside here cannot target VAudioClipTools for login_required-->
             <div
-                v-if="!pop_up_manager_store.isLoggedIn"
+                v-if="!propIsLoggedIn"
                 class="h-0 relative"
             >
                 <div
@@ -588,15 +588,19 @@
             };
         },
         props: {
+            propIsLoggedIn: {
+                type: Boolean,
+                required: true,
+            },
             propUsername: {
                 type: String,
-                default: ""
+                required: true,
             },
         },
         computed: {
             canShowLogInSignUpAtNav() : boolean {
                 return (
-                    this.pop_up_manager_store.isLoggedIn === false &&
+                    this.propIsLoggedIn === false &&
                     this.is_currently_log_in_sign_up_static_page === false &&
                     this.pop_up_manager_store.current_popup_context !== 'log_in' &&
                     this.pop_up_manager_store.current_popup_context !== 'sign_up'
@@ -627,7 +631,12 @@
         methods: {
             getProfileURL() : string {
 
-                return window.location.origin + '/user/' + this.propUsername;
+                if(this.propUsername.length > 0){
+
+                    return window.location.origin + '/user/' + this.propUsername;
+                }
+
+                return "";
             },
             openVUserLogInSignUp(section:"log-in-section"|"sign-up-section") : void {
 

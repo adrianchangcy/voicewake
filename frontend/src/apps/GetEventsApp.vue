@@ -16,6 +16,10 @@
                 :prop-event="event!"
                 :prop-show-title="false"
                 :prop-load-v-audio-clip-cards-only="!canReply"
+                :prop-is-logged-in="is_logged_in"
+                :prop-is-superuser="is_superuser"
+                :prop-username="username"
+                :prop-callable-pop-up-login-required="callableOpenPopUpLoginRequired"
                 @new-is-liked="event_reply_choices_store.newAudioClipIsLiked($event)"
                 @new-v-playback-teleport-id="handleNewVPlaybackTeleportId($event)"
                 class="pb-8"
@@ -233,12 +237,13 @@
 
 <script lang="ts">
     import { defineComponent, } from 'vue';
-    import { timeFromNowMS, getDataFromTemplateJSONScript, prettyTimePassed, prettyTimeRemaining, getPiniaDateObject } from '@/helper_functions';
+    import { timeFromNowMS, prettyTimePassed, prettyTimeRemaining, getPiniaDateObject, isLoggedIn, isSuperuser, getUsername } from '@/helper_functions';
     import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
     import { notify } from '@/wrappers/notify_wrapper';
     import { useEventReplyChoicesStore } from '@/stores/EventReplyChoicesStore';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
     import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
+    import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     import axios from 'axios';
 
 
@@ -249,7 +254,10 @@
                 audio_clip_processings_store: useAudioClipProcessingsStore(),
                 event_reply_choices_store: useEventReplyChoicesStore(),
                 vplayback_store: useVPlaybackStore(),
+                pop_up_manager_store: usePopUpManagerStore(),
 
+                is_logged_in: false,
+                is_superuser: false,
                 username: '',
 
                 reupload_audio_clip_id: null as number|null,
@@ -731,12 +739,16 @@
                     throw new Error('Missing or unrecognised data.');
                 }
             },
+            callableOpenPopUpLoginRequired() : void {
+
+                this.pop_up_manager_store.openPopUp('login_required');
+            },
         },
         beforeMount(){
 
-            //username
-            //empty string if not found
-            this.username = getDataFromTemplateJSONScript('data-user-username') as string;
+            this.is_logged_in = isLoggedIn();
+            this.is_superuser = isSuperuser();
+            this.username = getUsername();
 
             //get data from SSR template
             const container = document.getElementById('data-container-get-events') as HTMLElement;
