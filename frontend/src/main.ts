@@ -6,7 +6,7 @@ import VueVirtualScroller from 'vue-virtual-scroller';
 
 import BaseApp from '../src/apps/BaseApp.vue';
 import CreateEventsApp from '../src/apps/CreateEventsApp.vue';
-import EventReplyChoicesApp from '../src/apps/EventReplyChoicesApp.vue';
+import ListEventReplyChoicesApp from '../src/apps/ListEventReplyChoicesApp.vue';
 import ListUserBannedAudioClipsApp from '../src/apps/ListUserBannedAudioClipsApp.vue';
 import ListUserBlocksApp from '../src/apps/ListUserBlocksApp.vue';
 import ListUserFollowsApp from '../src/apps/ListUserFollowsApp.vue';
@@ -143,7 +143,7 @@ if(document.querySelector('#create-events-app')){
 
 if(document.querySelector('#list-event-choices-app')){
 
-    createApp(EventReplyChoicesApp)
+    createApp(ListEventReplyChoicesApp)
         .directive('click-outside', clickOutside)
         .mount('#list-event-choices-app');
 }

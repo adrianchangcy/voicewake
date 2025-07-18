@@ -396,6 +396,10 @@
                                 :prop-show-title="true"
                                 :prop-has-border="true"
                                 :prop-is-v-playback-open="isVEventCardOpen"
+                                :prop-is-logged-in="is_logged_in"
+                                :prop-is-superuser="is_superuser"
+                                :prop-username="username"
+                                :prop-callable-pop-up-login-required="callableOpenPopUpLoginRequired"
                                 @new-is-liked="event_reply_choices_store.newAudioClipIsLiked($event)"
                             />
                         </keep-alive>
@@ -465,7 +469,7 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import { timeFromNowMS, prettyTimeRemaining } from '@/helper_functions';
+    import { timeFromNowMS, prettyTimeRemaining, isLoggedIn, isSuperuser, getUsername } from '@/helper_functions';
     // import { notify } from '@/wrappers/notify_wrapper';
     import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
     import { useEventReplyChoicesStore } from '@/stores/EventReplyChoicesStore';
@@ -482,6 +486,10 @@
                 event_reply_choices_store: useEventReplyChoicesStore(),
                 pop_up_manager_store: usePopUpManagerStore(),
                 audio_clip_processings_store: useAudioClipProcessingsStore(),
+
+                is_logged_in: false,
+                is_superuser: false,
+                username: '',
 
                 //if false, then queue without removing previous locks
                 has_searched_once: false,
@@ -800,8 +808,16 @@
                     this.is_event_cancelling = false;
                 })
             },
+            callableOpenPopUpLoginRequired() : void {
+
+                this.pop_up_manager_store.openPopUp('login_required');
+            },
         },
         beforeMount(){
+
+            this.is_logged_in = isLoggedIn();
+            this.is_superuser = isSuperuser();
+            this.username = getUsername();
 
             const container = document.getElementById('data-container-list-event-choices') as HTMLElement;
 

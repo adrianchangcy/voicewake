@@ -78,6 +78,10 @@
                     <VAudioClipTools
                         :prop-audio-clip="propEvent.originator[0]!"
                         :prop-has-virtual-scroll="propHasVirtualScroll"
+                        :prop-is-logged-in="propIsLoggedIn"
+                        :prop-is-superuser="propIsSuperuser"
+                        :prop-username="propUsername"
+                        :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
                         @new-is-liked="emitNewIsLiked($event)"
                     />
                 </div>
@@ -108,6 +112,10 @@
                     <VAudioClipTools
                         :prop-audio-clip="propEvent.responder[0]!"
                         :prop-has-virtual-scroll="propHasVirtualScroll"
+                        :prop-is-logged-in="propIsLoggedIn"
+                        :prop-is-superuser="propIsSuperuser"
+                        :prop-username="propUsername"
+                        :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
                         @new-is-liked="emitNewIsLiked($event)"
                     />
                 </div>
@@ -143,6 +151,10 @@
                     <VAudioClipTools
                         :prop-audio-clip="propEvent.originator[0]!"
                         :prop-has-virtual-scroll="propHasVirtualScroll"
+                        :prop-is-logged-in="propIsLoggedIn"
+                        :prop-is-superuser="propIsSuperuser"
+                        :prop-username="propUsername"
+                        :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
                         @new-is-liked="emitNewIsLiked($event)"
                     />
                 </div>
@@ -178,6 +190,10 @@
                         <VAudioClipTools
                             :prop-audio-clip="audio_clip"
                             :prop-has-virtual-scroll="propHasVirtualScroll"
+                            :prop-is-logged-in="propIsLoggedIn"
+                            :prop-is-superuser="propIsSuperuser"
+                            :prop-username="propUsername"
+                            :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
                             @new-is-liked="emitNewIsLiked($event)"
                         />
                     </div>
@@ -201,6 +217,10 @@
                         <VAudioClipTools
                             :prop-audio-clip="audio_clip"
                             :prop-has-virtual-scroll="propHasVirtualScroll"
+                            :prop-is-logged-in="propIsLoggedIn"
+                            :prop-is-superuser="propIsSuperuser"
+                            :prop-username="propUsername"
+                            :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
                             @new-is-liked="emitNewIsLiked($event)"
                         />
                     </div>
@@ -230,6 +250,10 @@
                         <VAudioClipTools
                             :prop-audio-clip="audio_clip"
                             :prop-has-virtual-scroll="propHasVirtualScroll"
+                            :prop-is-logged-in="propIsLoggedIn"
+                            :prop-is-superuser="propIsSuperuser"
+                            :prop-username="propUsername"
+                            :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
                             @new-is-liked="emitNewIsLiked($event)"
                         />
                     </div>
@@ -253,6 +277,10 @@
                         <VAudioClipTools
                             :prop-audio-clip="audio_clip"
                             :prop-has-virtual-scroll="propHasVirtualScroll"
+                            :prop-is-logged-in="propIsLoggedIn"
+                            :prop-is-superuser="propIsSuperuser"
+                            :prop-username="propUsername"
+                            :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
                             @new-is-liked="emitNewIsLiked($event)"
                         />
                     </div>
@@ -317,6 +345,22 @@
             propIsVPlaybackOpen: {
                 type: Boolean,
                 default: true,
+            },
+            propIsLoggedIn: {
+                type: Boolean,
+                required: true,
+            },
+            propIsSuperuser: {
+                type: Boolean,
+                required: true,
+            },
+            propCallablePopUpLoginRequired: {
+                type: Function,
+                required: true,
+            },
+            propUsername: {
+                type: String,
+                required: true,
             },
         },
         computed: {

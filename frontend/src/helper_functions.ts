@@ -524,6 +524,28 @@ export function getShortenedString(passed_string:string, max_character_count:num
 }
 
 
+export function isLoggedIn() : boolean {
+
+    //always present in base.html
+    return getDataFromTemplateJSONScript("data-user-is-authenticated") as boolean;
+}
+
+
+export function isSuperuser() : boolean {
+
+    //always present in base.html
+    return getDataFromTemplateJSONScript("data-user-is-superuser") as boolean;
+}
+
+
+export function getUsername() : string {
+
+    //always present in base.html
+    return getDataFromTemplateJSONScript("data-user-username") as string;
+}
+
+
+
 
 
 

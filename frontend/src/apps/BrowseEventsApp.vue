@@ -187,6 +187,10 @@
                                 :prop-has-border="true"
                                 :prop-load-v-audio-clip-cards-only="true"
                                 :prop-has-virtual-scroll="true"
+                                :prop-is-logged-in="is_logged_in"
+                                :prop-is-superuser="is_superuser"
+                                :prop-username="username"
+                                :prop-callable-pop-up-login-required="callableOpenPopUpLoginRequired"
                                 @new-is-liked="filtered_events_store.newAudioClipIsLiked($event)"
                                 @new-v-playback-teleport-id="handleNewVPlaybackTeleportId($event)"
                             />
@@ -365,7 +369,8 @@
     import AudioClipsTypes from '@/types/AudioClips.interface';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
     import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
-    import { isPageAccessedByBackForward } from '@/helper_functions';
+    import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
+    import { isPageAccessedByBackForward, isLoggedIn, isSuperuser, getUsername } from '@/helper_functions';
     import axios from 'axios';
 
 
@@ -375,10 +380,13 @@
             return {
                 vplayback_store: useVPlaybackStore(),
                 filtered_events_store: useFilteredEventsStore(this.propPageContext),
+                pop_up_manager_store: usePopUpManagerStore(),
+
+                is_logged_in: false,
+                is_superuser: false,
+                username: '',
 
                 //data-container
-                username: "",
-                is_own_page: false,
                 is_blocked: false,
 
                 is_audio_clip_tone_menu_open: false,
@@ -866,7 +874,10 @@
 
                 this.username = new_value;
             },
+            callableOpenPopUpLoginRequired() : void {
 
+                this.pop_up_manager_store.openPopUp('login_required');
+            },
         },
         beforeMount(){
 
@@ -875,20 +886,12 @@
             //however, since store always changes/resets for latest content, "auto" is terrible
             history.scrollRestoration = 'manual';
 
+            this.is_logged_in = isLoggedIn();
+            this.is_superuser = isSuperuser();
+            this.username = getUsername();
+
             //reset store if not navigated from back/forward
             this.resetStores();
-
-            //we have to get username here, cannot wait for VUserCard
-            if(this.propPageContext === 'user_profile'){
-
-                const container = (document.getElementById('data-container-get-user-profile') as HTMLElement);
-                this.username = (container.getAttribute('data-username') as string);
-
-            }else if(this.propPageContext === 'user_likes_dislikes'){
-
-                const container = (document.getElementById('data-container-list-user-likes-dislikes') as HTMLElement);
-                this.username = (container.getAttribute('data-username') as string);
-            }
 
             //sync vplayback_store if filtered_events_store has persisted
             if(this.filtered_events_store.getLastSelectedAudioClip !== null){
