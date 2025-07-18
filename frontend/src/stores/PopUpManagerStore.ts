@@ -13,9 +13,6 @@ export const usePopUpManagerStore = defineStore('pop_up_manager', {
         current_popup_context: "" as PopUpContextsTypes,
     }),    
     getters: {
-        isLoggedIn: (state)=>{
-            return state.is_logged_in;
-        },
         isNavMenuOpen: (state)=>{
             return state.current_popup_context === 'nav_menu';
         },
