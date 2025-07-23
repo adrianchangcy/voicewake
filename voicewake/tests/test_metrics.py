@@ -705,7 +705,7 @@ class RealisticBulkData():
                         generic_status=self.generic_statuses['ok'],
                         audio_file=self.audio_file,
                         audio_duration_s=10,
-                        audio_volume_peaks=[],
+                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7],
                         is_banned=False,
                     )
                 )
@@ -848,7 +848,7 @@ class RealisticBulkData():
                     generic_status=self.generic_statuses['ok'],
                     audio_file=self.audio_file,
                     audio_duration_s=10,
-                    audio_volume_peaks=[],
+                    audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7],
                     is_banned=False,
                 )
             )
@@ -984,18 +984,15 @@ class RealisticBulkData():
 
                 originator_audio_clips.append(
                     AudioClips(
-                        None,
-                        event.created_by.id,
-                        self.audio_clip_roles['originator'].id,
-                        audio_clip_tone.id,
-                        event.id,
-                        self.generic_statuses['ok'].id,
-                        self.audio_file,
-                        10,
-                        [],
-                        False,
-                        datetime_now,
-                        datetime_now,
+                        user=event.created_by,
+                        audio_clip_role=self.audio_clip_roles['originator'],
+                        audio_clip_tone=audio_clip_tone,
+                        event=event,
+                        generic_status=self.generic_statuses['ok'],
+                        audio_file=self.audio_file,
+                        audio_duration_s=10,
+                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7],
+                        is_banned=False,
                     )
                 )
 
@@ -1025,18 +1022,15 @@ class RealisticBulkData():
 
                 responder_audio_clips.append(
                     AudioClips(
-                        None,
-                        responder.id,
-                        self.audio_clip_roles['responder'].id,
-                        audio_clip_tone.id,
-                        event.id,
-                        self.generic_statuses['ok'].id,
-                        self.audio_file,
-                        10,
-                        [],
-                        False,
-                        datetime_now,
-                        datetime_now,
+                        user=responder,
+                        audio_clip_role=self.audio_clip_roles['responder'],
+                        audio_clip_tone=audio_clip_tone,
+                        event=event,
+                        generic_status=self.generic_statuses['ok'],
+                        audio_file=self.audio_file,
+                        audio_duration_s=10,
+                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7],
+                        is_banned=False,
                     )
                 )
 
@@ -1220,7 +1214,7 @@ class RealisticBulkData():
                         generic_status=originator_audio_clip_generic_status,
                         audio_file=self.audio_file,
                         audio_duration_s=10,
-                        audio_volume_peaks=[],
+                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7],
                         is_banned=is_originator_banned,
                     )
                 )
@@ -1262,7 +1256,7 @@ class RealisticBulkData():
                         generic_status=responder_audio_clip_generic_status,
                         audio_file=self.audio_file,
                         audio_duration_s=10,
-                        audio_volume_peaks=[],
+                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7],
                         is_banned=is_responder_banned,
                     )
                 )
@@ -1558,6 +1552,9 @@ class RealisticBulkData_TestCase(TestCase):
         self.assertEqual(result['originator_audio_clips'][0].generic_status.generic_status_name, 'ok')
         self.assertEqual(result['originator_audio_clips'][-1].generic_status.generic_status_name, 'ok')
 
+        self.assertEqual(result['originator_audio_clips'][0].audio_clip_role.audio_clip_role_name, 'originator')
+        self.assertEqual(result['originator_audio_clips'][-1].audio_clip_role.audio_clip_role_name, 'originator')
+
         self.assertGreater(AudioClipLikesDislikes.objects.filter(audio_clip_id=result['originator_audio_clips'][0], is_liked=True).count(), 0)
         self.assertGreater(AudioClipLikesDislikes.objects.filter(audio_clip_id=result['originator_audio_clips'][0], is_liked=False).count(), 0)
         self.assertGreater(AudioClipLikesDislikes.objects.filter(audio_clip_id=result['originator_audio_clips'][-1], is_liked=True).count(), 0)
@@ -1597,15 +1594,18 @@ class RealisticBulkData_TestCase(TestCase):
         self.assertEqual(result['originator_audio_clips'][0].generic_status.generic_status_name, 'ok')
         self.assertEqual(result['originator_audio_clips'][-1].generic_status.generic_status_name, 'ok')
 
+        self.assertEqual(result['originator_audio_clips'][0].audio_clip_role.audio_clip_role_name, 'originator')
+        self.assertEqual(result['originator_audio_clips'][-1].audio_clip_role.audio_clip_role_name, 'originator')
+
         #-1 since originator cannot skip own events
         self.assertEqual(
             len(result['user_events']),
             (
                 (len(realistic_bulk_data_class.audio_clip_tones) - len(realistic_bulk_data_class.excluded_audio_clip_tones_indexes))
                 * realistic_bulk_data_class.event_quantity
-                * len(realistic_bulk_data_class.new_users)
+                * len(realistic_bulk_data_class.users)
                 #-1 because we simply skip creation if originator == current_user
-                * (len(realistic_bulk_data_class.new_users) - 1)
+                * (len(realistic_bulk_data_class.users) - 1)
             )
         )
 
@@ -1641,6 +1641,9 @@ class RealisticBulkData_TestCase(TestCase):
 
         self.assertEqual(result['originator_audio_clips'][0].generic_status.generic_status_name, 'ok')
         self.assertEqual(result['originator_audio_clips'][-1].generic_status.generic_status_name, 'ok')
+
+        self.assertEqual(result['originator_audio_clips'][0].audio_clip_role.audio_clip_role_name, 'originator')
+        self.assertEqual(result['originator_audio_clips'][-1].audio_clip_role.audio_clip_role_name, 'originator')
 
         self.assertEqual(result['event_reply_queues'][0].is_replying, False)
         self.assertEqual(result['event_reply_queues'][-1].is_replying, False)
@@ -1678,6 +1681,9 @@ class RealisticBulkData_TestCase(TestCase):
 
         self.assertEqual(result['originator_audio_clips'][0].generic_status.generic_status_name, 'ok')
         self.assertEqual(result['originator_audio_clips'][-1].generic_status.generic_status_name, 'ok')
+
+        self.assertEqual(result['originator_audio_clips'][0].audio_clip_role.audio_clip_role_name, 'originator')
+        self.assertEqual(result['originator_audio_clips'][-1].audio_clip_role.audio_clip_role_name, 'originator')
 
         self.assertEqual(result['event_reply_queues'][0].is_replying, True)
         self.assertEqual(result['event_reply_queues'][-1].is_replying, True)
@@ -1719,6 +1725,11 @@ class RealisticBulkData_TestCase(TestCase):
         self.assertEqual(result['originator_audio_clips'][-1].generic_status.generic_status_name, 'ok')
         self.assertEqual(result['responder_audio_clips'][0].generic_status.generic_status_name, 'ok')
         self.assertEqual(result['responder_audio_clips'][-1].generic_status.generic_status_name, 'ok')
+
+        self.assertEqual(result['originator_audio_clips'][0].audio_clip_role.audio_clip_role_name, 'originator')
+        self.assertEqual(result['originator_audio_clips'][-1].audio_clip_role.audio_clip_role_name, 'originator')
+        self.assertEqual(result['responder_audio_clips'][0].audio_clip_role.audio_clip_role_name, 'responder')
+        self.assertEqual(result['responder_audio_clips'][-1].audio_clip_role.audio_clip_role_name, 'responder')
 
         self.assertGreater(AudioClipLikesDislikes.objects.filter(audio_clip_id=result['originator_audio_clips'][0], is_liked=True).count(), 0)
         self.assertGreater(AudioClipLikesDislikes.objects.filter(audio_clip_id=result['originator_audio_clips'][0], is_liked=False).count(), 0)
@@ -1778,6 +1789,11 @@ class RealisticBulkData_TestCase(TestCase):
         self.assertEqual(result['responder_audio_clips'][0].is_banned, False)
         self.assertEqual(result['responder_audio_clips'][-1].is_banned, False)
 
+        self.assertEqual(result['originator_audio_clips'][0].audio_clip_role.audio_clip_role_name, 'originator')
+        self.assertEqual(result['originator_audio_clips'][-1].audio_clip_role.audio_clip_role_name, 'originator')
+        self.assertEqual(result['responder_audio_clips'][0].audio_clip_role.audio_clip_role_name, 'responder')
+        self.assertEqual(result['responder_audio_clips'][-1].audio_clip_role.audio_clip_role_name, 'responder')
+
         self.assertGreater(AudioClipLikesDislikes.objects.filter(audio_clip_id=result['originator_audio_clips'][0], is_liked=True).count(), 0)
         self.assertGreater(AudioClipLikesDislikes.objects.filter(audio_clip_id=result['originator_audio_clips'][0], is_liked=False).count(), 0)
         self.assertGreater(AudioClipLikesDislikes.objects.filter(audio_clip_id=result['originator_audio_clips'][-1], is_liked=True).count(), 0)
@@ -1836,6 +1852,11 @@ class RealisticBulkData_TestCase(TestCase):
         self.assertEqual(result['responder_audio_clips'][0].is_banned, True)
         self.assertEqual(result['responder_audio_clips'][-1].is_banned, True)
 
+        self.assertEqual(result['originator_audio_clips'][0].audio_clip_role.audio_clip_role_name, 'originator')
+        self.assertEqual(result['originator_audio_clips'][-1].audio_clip_role.audio_clip_role_name, 'originator')
+        self.assertEqual(result['responder_audio_clips'][0].audio_clip_role.audio_clip_role_name, 'responder')
+        self.assertEqual(result['responder_audio_clips'][-1].audio_clip_role.audio_clip_role_name, 'responder')
+
         self.metrics.update({
             inspect.currentframe().f_code.co_name: {
                 'events': len(result['events']),
@@ -1884,6 +1905,11 @@ class RealisticBulkData_TestCase(TestCase):
         self.assertEqual(result['responder_audio_clips'][0].is_banned, True)
         self.assertEqual(result['responder_audio_clips'][-1].is_banned, True)
 
+        self.assertEqual(result['originator_audio_clips'][0].audio_clip_role.audio_clip_role_name, 'originator')
+        self.assertEqual(result['originator_audio_clips'][-1].audio_clip_role.audio_clip_role_name, 'originator')
+        self.assertEqual(result['responder_audio_clips'][0].audio_clip_role.audio_clip_role_name, 'responder')
+        self.assertEqual(result['responder_audio_clips'][-1].audio_clip_role.audio_clip_role_name, 'responder')
+
         self.metrics.update({
             inspect.currentframe().f_code.co_name: {
                 'events': len(result['events']),
@@ -1924,6 +1950,9 @@ class RealisticBulkData_TestCase(TestCase):
         self.assertEqual(result['originator_audio_clips'][-1].generic_status.generic_status_name, 'deleted')
         self.assertEqual(result['originator_audio_clips'][0].is_banned, True)
         self.assertEqual(result['originator_audio_clips'][-1].is_banned, True)
+
+        self.assertEqual(result['originator_audio_clips'][0].audio_clip_role.audio_clip_role_name, 'originator')
+        self.assertEqual(result['originator_audio_clips'][-1].audio_clip_role.audio_clip_role_name, 'originator')
 
         self.metrics.update({
             inspect.currentframe().f_code.co_name: {
