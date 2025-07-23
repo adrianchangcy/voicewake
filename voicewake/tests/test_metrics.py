@@ -705,7 +705,7 @@ class RealisticBulkData():
                         generic_status=self.generic_statuses['ok'],
                         audio_file=self.audio_file,
                         audio_duration_s=10,
-                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7],
+                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7, 0.3, 0.3, 0.5, 0.6, 0.4, 0.8, 0.7, 0.6, 0.2, 0.1],
                         is_banned=False,
                     )
                 )
@@ -848,7 +848,7 @@ class RealisticBulkData():
                     generic_status=self.generic_statuses['ok'],
                     audio_file=self.audio_file,
                     audio_duration_s=10,
-                    audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7],
+                    audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7, 0.3, 0.3, 0.5, 0.6, 0.4, 0.8, 0.7, 0.6, 0.2, 0.1],
                     is_banned=False,
                 )
             )
@@ -991,7 +991,7 @@ class RealisticBulkData():
                         generic_status=self.generic_statuses['ok'],
                         audio_file=self.audio_file,
                         audio_duration_s=10,
-                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7],
+                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7, 0.3, 0.3, 0.5, 0.6, 0.4, 0.8, 0.7, 0.6, 0.2, 0.1],
                         is_banned=False,
                     )
                 )
@@ -1029,7 +1029,7 @@ class RealisticBulkData():
                         generic_status=self.generic_statuses['ok'],
                         audio_file=self.audio_file,
                         audio_duration_s=10,
-                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7],
+                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7, 0.3, 0.3, 0.5, 0.6, 0.4, 0.8, 0.7, 0.6, 0.2, 0.1],
                         is_banned=False,
                     )
                 )
@@ -1214,7 +1214,7 @@ class RealisticBulkData():
                         generic_status=originator_audio_clip_generic_status,
                         audio_file=self.audio_file,
                         audio_duration_s=10,
-                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7],
+                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7, 0.3, 0.3, 0.5, 0.6, 0.4, 0.8, 0.7, 0.6, 0.2, 0.1],
                         is_banned=is_originator_banned,
                     )
                 )
@@ -1256,7 +1256,7 @@ class RealisticBulkData():
                         generic_status=responder_audio_clip_generic_status,
                         audio_file=self.audio_file,
                         audio_duration_s=10,
-                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7],
+                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7, 0.3, 0.3, 0.5, 0.6, 0.4, 0.8, 0.7, 0.6, 0.2, 0.1],
                         is_banned=is_responder_banned,
                     )
                 )
