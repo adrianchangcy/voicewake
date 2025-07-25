@@ -1590,12 +1590,8 @@
 
             //add uuid to list of active uuids
             //we then always focus on first UUID, useful when we have multiple VPlayback
-            (async ()=>{
-                await this.vplayback_store.addActiveVPlaybackUUID(this.instance_uuid)
-                .then(()=>{
-                    this.vplayback_store.focusFirstVPlaybackUUID();
-                });
-            })();
+            this.vplayback_store.addActiveVPlaybackUUID(this.instance_uuid);
+            this.vplayback_store.focusFirstVPlaybackUUID();
 
             //handle when propAudioClip already exists on mounted, which means it's from API
             if(this.propAudioClip !== null && this.propAudioClip.audio_file.length > 0){

@@ -83,6 +83,7 @@
                         :prop-username="propUsername"
                         :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
                         @new-is-liked="emitNewIsLiked($event)"
+                        @new-audio-clip-action="handleNewAudioClipAction($event)"
                     />
                 </div>
             </div>
@@ -117,6 +118,7 @@
                         :prop-username="propUsername"
                         :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
                         @new-is-liked="emitNewIsLiked($event)"
+                        @new-audio-clip-action="handleNewAudioClipAction($event)"
                     />
                 </div>
             </div>
@@ -156,6 +158,7 @@
                         :prop-username="propUsername"
                         :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
                         @new-is-liked="emitNewIsLiked($event)"
+                        @new-audio-clip-action="handleNewAudioClipAction($event)"
                     />
                 </div>
             </div>
@@ -195,6 +198,7 @@
                             :prop-username="propUsername"
                             :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
                             @new-is-liked="emitNewIsLiked($event)"
+                            @new-audio-clip-action="handleNewAudioClipAction($event)"
                         />
                     </div>
                 </div>
@@ -222,6 +226,7 @@
                             :prop-username="propUsername"
                             :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
                             @new-is-liked="emitNewIsLiked($event)"
+                            @new-audio-clip-action="handleNewAudioClipAction($event)"
                         />
                     </div>
                 </div>
@@ -255,6 +260,7 @@
                             :prop-username="propUsername"
                             :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
                             @new-is-liked="emitNewIsLiked($event)"
+                            @new-audio-clip-action="handleNewAudioClipAction($event)"
                         />
                     </div>
                 </div>
@@ -282,6 +288,7 @@
                             :prop-username="propUsername"
                             :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
                             @new-is-liked="emitNewIsLiked($event)"
+                            @new-audio-clip-action="handleNewAudioClipAction($event)"
                         />
                     </div>
                 </div>
@@ -307,6 +314,7 @@
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
     import AudioClipsTypes from '@/types/AudioClips.interface';
+    import AudioClipActionsTypes from '@/types/AudioClipActions.interface';
 
     type GuaranteedEventGenericStatuses = "completed"|"incomplete"|"";
 
@@ -314,6 +322,7 @@
         data() {
             return {
                 vplayback_store: useVPlaybackStore(),
+                new_audio_clip_action: null as AudioClipActionsTypes|null,
             };
         },
         props: {
@@ -390,6 +399,18 @@
             ) : void {
 
                 this.$emit('newIsLiked', new_value);
+            },
+            handleNewAudioClipAction(new_value:AudioClipActionsTypes) : void {
+
+                this.new_audio_clip_action = new_value;
+
+                if(new_value.action === 'banned' || new_value.action === 'deleted'){
+
+                    //will pause if still playing
+                    this.vplayback_store.removeAudioClipFromStore(new_value.audio_clip_id);
+
+                    this.emitNewVPlaybackTeleportId('#temporary-vplayback-teleport');
+                }
             },
         },
     });
