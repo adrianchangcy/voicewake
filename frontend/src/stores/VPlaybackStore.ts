@@ -14,6 +14,7 @@ import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.inte
 //we separate them instead of storing as dict, because array.includes() makes checking easier
 export const useVPlaybackStore = defineStore('vplayback', {
     state: ()=>({
+        //allows for tracking of multiple VPlaybacks
         active_vplayback_uuids: [] as string[],
         last_interacted_vplayback_uuid: "",
 
@@ -46,6 +47,15 @@ export const useVPlaybackStore = defineStore('vplayback', {
 
             return state.pause_trigger;
         },
+        getPlayingAudioVolumePeaks: (state)=>{
+
+            if(state.playing_audio_clip === null){
+
+                return [];
+            }
+
+            return state.playing_audio_clip.audio_volume_peaks;
+        },
     },
     actions: {
         triggerPause(affect_last_interacted_vplayback:boolean=true) : void {
@@ -65,7 +75,7 @@ export const useVPlaybackStore = defineStore('vplayback', {
 
             this.last_interacted_vplayback_uuid = vplayback_uuid;
         },
-        async addAudioClipLastStoppedS(audio_clip_id:number, stopped_at_s:number) : Promise<void> {
+        addAudioClipLastStoppedS(audio_clip_id:number, stopped_at_s:number) : void {
 
             const target_index = this.audio_clip_id.indexOf(audio_clip_id);
 
@@ -100,18 +110,36 @@ export const useVPlaybackStore = defineStore('vplayback', {
 
             return this.stopped_at_s[target_index];
         },
-        async addActiveVPlaybackUUID(uuid:string) : Promise<void> {
+        addActiveVPlaybackUUID(uuid:string) : void {
 
             if(this.active_vplayback_uuids.indexOf(uuid) === -1){
 
                 this.active_vplayback_uuids.push(uuid);
             }
         },
-        async focusFirstVPlaybackUUID() : Promise<void> {
+        focusFirstVPlaybackUUID() : void {
 
             if(this.active_vplayback_uuids.length > 0){
 
                 this.last_interacted_vplayback_uuid = this.active_vplayback_uuids[0];
+            }
+        },
+        removeAudioClipFromStore(audio_clip_id:number, affect_last_interacted_vplayback:boolean=true) : void {
+
+            const target_index = this.audio_clip_id.indexOf(audio_clip_id);
+
+            if(target_index === -1){
+
+                return;
+            }
+
+            this.audio_clip_id.splice(target_index, 1);
+            this.stopped_at_s.splice(target_index, 1);
+
+            if(this.playing_audio_clip !== null && this.playing_audio_clip.id === audio_clip_id){
+
+                this.triggerPause(affect_last_interacted_vplayback);
+                this.playing_audio_clip = null;
             }
         },
     },

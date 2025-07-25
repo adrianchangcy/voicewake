@@ -207,7 +207,7 @@
             <VPlayback
                 :prop-audio-clip="vplayback_store.getPlayingAudioClip"
                 :prop-is-open="true"
-                :prop-audio-volume-peaks="getSelectedAudioClipAudioVolumePeaks"
+                :prop-audio-volume-peaks="vplayback_store.getPlayingAudioVolumePeaks"
                 :prop-bucket-quantity="20"
             />
         </Teleport>
@@ -322,15 +322,6 @@
             hasEvent() : boolean {
 
                 return this.event !== null;
-            },
-            getSelectedAudioClipAudioVolumePeaks() : number[] {
-
-                if(this.vplayback_store.getPlayingAudioClip === null){
-
-                    return [];
-                }
-
-                return this.vplayback_store.getPlayingAudioClip.audio_volume_peaks;
             },
             canShowLambdaAttemptsLeft() : boolean {
 

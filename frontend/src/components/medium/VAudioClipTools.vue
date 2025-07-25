@@ -262,6 +262,8 @@
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     import axios from 'axios';
 
+    import AudioClipActionsTypes from '@/types/AudioClipActions.interface';
+
     export default defineComponent({
         data(){
             return {
@@ -364,16 +366,35 @@
                 this.submit_timeout= null;
                 this.has_shared = false;
                 this.has_shared_timeout = null;
+                this.is_deleting = false;
+                this.is_banning = false;
                 this.is_reporting = false;
             },
         },
         emits: [
             'newIsLiked',
+            'newAudioClipAction',
         ],
         methods: {
             forceCloseExtraOptionsMenu() : void {
 
                 this.toggleExtraOptionsMenu(false);
+            },
+            emitNewIsLiked(audio_clip:AudioClipsAndLikeDetailsTypes, new_is_liked:boolean|null) : void {
+
+                this.$emit('newIsLiked', {
+                    'audio_clip': audio_clip,
+                    'new_is_liked': new_is_liked,
+                });
+            },
+            emitNewAudioClipAction(audio_clip_id:number, action:'deleted'|'banned'|'reported') : void {
+
+                //pass this to VEventCard -> VAudioClipCard
+                //at VAudioClipCard, when this emit reaches there, compare current audio_clip to this emit to decide on updating UI
+                this.$emit('newAudioClipAction', {
+                    'audio_clip_id': audio_clip_id,
+                    'action': action,
+                } as AudioClipActionsTypes);
             },
             toggleExtraOptionsMenu(force_is_open:boolean|null=null) : void {
 
@@ -614,13 +635,6 @@
                     this.previous_is_liked = this.propAudioClip.previous_is_liked_by_user!;
                 }
             },
-            async emitNewIsLiked(audio_clip:AudioClipsAndLikeDetailsTypes, new_is_liked:boolean|null) : Promise<void> {
-
-                this.$emit('newIsLiked', {
-                    'audio_clip': audio_clip,
-                    'new_is_liked': new_is_liked,
-                });
-            },
             async submitBan() : Promise<void> {
 
                 if(this.isAnyExtraOptionProcessing === false){
@@ -640,6 +654,14 @@
                 await axios.post(window.location.origin + '/api/audio-clips/bans', data)
                 .then(() => {
 
+                    this.emitNewAudioClipAction(audio_clip.id, 'banned');
+
+                    notify({
+                        type: 'ok',
+                        title: 'Recording banned',
+                        text: 'The recording and its owner has been banned.',
+                    }, 3000);
+
                 }).catch((error:any) => {
 
                     let error_text = 'Oops! Something went wrong.';
@@ -657,7 +679,7 @@
 
                     notify({
                         type: 'error',
-                        title: 'Action failed',
+                        title: 'Ban failed',
                         text: error_text,
                     }, 3000);
 
@@ -685,6 +707,14 @@
                 await axios.post(window.location.origin + '/api/audio-clips/deletions', data)
                 .then(() => {
 
+                    this.emitNewAudioClipAction(audio_clip.id, 'deleted');
+
+                    notify({
+                        type: 'ok',
+                        title: 'Recording deleted',
+                        text: 'The incomplete event has been removed from the front page.',
+                    }, 3000);
+
                 }).catch((error:any) => {
 
                     let error_text = 'Oops! Something went wrong.';
@@ -702,7 +732,7 @@
 
                     notify({
                         type: 'error',
-                        title: 'Action failed',
+                        title: 'Deletion failed',
                         text: error_text,
                     }, 3000);
 
@@ -730,6 +760,8 @@
 
                 axios.post(window.location.origin + '/api/audio-clips/reports', data)
                 .then(() => {
+
+                    this.emitNewAudioClipAction(audio_clip.id, 'reported');
 
                     notify({
                         type: 'generic',

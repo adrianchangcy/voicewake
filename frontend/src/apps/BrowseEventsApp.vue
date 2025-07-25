@@ -333,7 +333,7 @@
             <VPlayback
                 :prop-audio-clip="vplayback_store.getPlayingAudioClip"
                 :prop-is-open="canOpenVPlayback"
-                :prop-audio-volume-peaks="getSelectedAudioClipAudioVolumePeaks"
+                :prop-audio-volume-peaks="vplayback_store.getPlayingAudioVolumePeaks"
                 :prop-bucket-quantity="20"
             />
         </Teleport>
@@ -467,15 +467,6 @@
                     this.filtered_events_store.canStopFetching === false &&
                     this.is_error_on_previous_fetch === true
                 );
-            },
-            getSelectedAudioClipAudioVolumePeaks() : number[] {
-
-                if(this.vplayback_store.getPlayingAudioClip === null){
-
-                    return [];
-                }
-
-                return this.vplayback_store.getPlayingAudioClip.audio_volume_peaks;
             },
             canOpenVPlayback() : boolean {
 

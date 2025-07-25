@@ -83,10 +83,11 @@ class RealisticBulkData():
         self.user_quantity = (len(self.unique_user_ids) * self.minimum_unique_users_per_range)
         self.user_prefix = "testuser"
         self.users = []
-        self.audio_file = os.path.join(
-            settings.BASE_DIR,
-            'voicewake/tests/file_samples/audio_ok_1.mp3'
-        )
+
+        #audio_file
+        self.audio_file = 'audio_ok_1.mp3'
+        self.audio_volume_peaks = [0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7, 0.3, 0.3, 0.5, 0.6, 0.4, 0.8, 0.7, 0.6, 0.2, 0.1]
+        self.audio_duration_s = 26
 
         #2*minimum because our largest tests so far consist of "next" then "next+token" only
         self.event_quantity = 2 * settings.EVENT_QUANTITY_PER_PAGE
@@ -704,8 +705,8 @@ class RealisticBulkData():
                         event=event,
                         generic_status=self.generic_statuses['ok'],
                         audio_file=self.audio_file,
-                        audio_duration_s=10,
-                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7, 0.3, 0.3, 0.5, 0.6, 0.4, 0.8, 0.7, 0.6, 0.2, 0.1],
+                        audio_duration_s=self.audio_duration_s,
+                        audio_volume_peaks=self.audio_volume_peaks,
                         is_banned=False,
                     )
                 )
@@ -847,8 +848,8 @@ class RealisticBulkData():
                     event=event,
                     generic_status=self.generic_statuses['ok'],
                     audio_file=self.audio_file,
-                    audio_duration_s=10,
-                    audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7, 0.3, 0.3, 0.5, 0.6, 0.4, 0.8, 0.7, 0.6, 0.2, 0.1],
+                    audio_duration_s=self.audio_duration_s,
+                    audio_volume_peaks=self.audio_volume_peaks,
                     is_banned=False,
                 )
             )
@@ -990,8 +991,8 @@ class RealisticBulkData():
                         event=event,
                         generic_status=self.generic_statuses['ok'],
                         audio_file=self.audio_file,
-                        audio_duration_s=10,
-                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7, 0.3, 0.3, 0.5, 0.6, 0.4, 0.8, 0.7, 0.6, 0.2, 0.1],
+                        audio_duration_s=self.audio_duration_s,
+                        audio_volume_peaks=self.audio_volume_peaks,
                         is_banned=False,
                     )
                 )
@@ -1028,8 +1029,8 @@ class RealisticBulkData():
                         event=event,
                         generic_status=self.generic_statuses['ok'],
                         audio_file=self.audio_file,
-                        audio_duration_s=10,
-                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7, 0.3, 0.3, 0.5, 0.6, 0.4, 0.8, 0.7, 0.6, 0.2, 0.1],
+                        audio_duration_s=self.audio_duration_s,
+                        audio_volume_peaks=self.audio_volume_peaks,
                         is_banned=False,
                     )
                 )
@@ -1213,8 +1214,8 @@ class RealisticBulkData():
                         event=event,
                         generic_status=originator_audio_clip_generic_status,
                         audio_file=self.audio_file,
-                        audio_duration_s=10,
-                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7, 0.3, 0.3, 0.5, 0.6, 0.4, 0.8, 0.7, 0.6, 0.2, 0.1],
+                        audio_duration_s=self.audio_duration_s,
+                        audio_volume_peaks=self.audio_volume_peaks,
                         is_banned=is_originator_banned,
                     )
                 )
@@ -1255,8 +1256,8 @@ class RealisticBulkData():
                         event=event,
                         generic_status=responder_audio_clip_generic_status,
                         audio_file=self.audio_file,
-                        audio_duration_s=10,
-                        audio_volume_peaks=[0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7, 0.3, 0.3, 0.5, 0.6, 0.4, 0.8, 0.7, 0.6, 0.2, 0.1],
+                        audio_duration_s=self.audio_duration_s,
+                        audio_volume_peaks=self.audio_volume_peaks,
                         is_banned=is_responder_banned,
                     )
                 )
