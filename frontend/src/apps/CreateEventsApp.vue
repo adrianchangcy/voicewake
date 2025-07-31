@@ -11,7 +11,7 @@
 </template>
 
 <script setup lang="ts">
-    import VCreateAudioClips from '../components/main/VCreateAudioClips.vue';
+    import VCreateAudioClips from '@/components/main/VCreateAudioClips.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     import { library } from '@fortawesome/fontawesome-svg-core';

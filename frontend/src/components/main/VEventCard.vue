@@ -1,7 +1,7 @@
 <template>
     <div
         :class="[
-            propHasBorder === true ? 'px-2 sm:px-4 pt-8 pb-12      border border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-lg transition-colors' : '',
+            propHasBorder === true ? 'px-2 sm:px-4 pt-8 pb-12      border-b border-theme-gray-4 dark:border-dark-theme-gray-4 transition-colors' : '',
             'flex flex-col'
         ]"
     >
@@ -61,29 +61,35 @@
                     :propUsername="propEvent.originator[0]!.user.username"
                 />
                 <div class="flex flex-col gap-2">
-                    <VAudioClipCard
-                        v-if="propLoadVAudioClipCardsOnly === true"
-                        :prop-audio-clip="propEvent.originator[0]!"
-                        :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
-                        @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
-                        @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
-                    />
-                    <VPlayback
-                        v-else
-                        :prop-audio-clip="propEvent.originator[0]!"
-                        :prop-audio-volume-peaks="propEvent.originator[0]!.audio_volume_peaks"
-                        :prop-bucket-quantity="propEvent.originator[0]!.audio_volume_peaks.length"
-                        :prop-is-open="propIsVPlaybackOpen"
-                    />
+                    <!--v-show because component can be reused by virtual scroll-->
+                    <div v-show="haha_oopsie">
+                        <VAudioClipCard
+                            v-if="propLoadVAudioClipCardsOnly === true"
+                            :prop-audio-clip="propEvent.originator[0]!"
+                            :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
+                            @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
+                            @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
+                        />
+                        <VPlayback
+                            v-else
+                            :prop-audio-clip="propEvent.originator[0]!"
+                            :prop-audio-volume-peaks="propEvent.originator[0]!.audio_volume_peaks"
+                            :prop-bucket-quantity="propEvent.originator[0]!.audio_volume_peaks.length"
+                            :prop-is-open="propIsVPlaybackOpen"
+                        />
+                    </div>
+                    <div v-show="!haha_oopsie" class="w-full h-20 flex items-center text-center border border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-lg">
+                        <span class="w-full h-fit text-base">Recording deleted.</span>
+                    </div>
                     <VAudioClipTools
                         :prop-audio-clip="propEvent.originator[0]!"
                         :prop-has-virtual-scroll="propHasVirtualScroll"
                         :prop-is-logged-in="propIsLoggedIn"
                         :prop-is-superuser="propIsSuperuser"
                         :prop-username="propUsername"
-                        :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
+                        :prop-callable-popup-login-required="propCallablePopupLoginRequired"
                         @new-is-liked="emitNewIsLiked($event)"
-                        @new-audio-clip-action="handleNewAudioClipAction($event)"
+                        @new-audio-clip-action="emitNewAudioClipAction($event)"
                     />
                 </div>
             </div>
@@ -116,9 +122,9 @@
                         :prop-is-logged-in="propIsLoggedIn"
                         :prop-is-superuser="propIsSuperuser"
                         :prop-username="propUsername"
-                        :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
+                        :prop-callable-popup-login-required="propCallablePopupLoginRequired"
                         @new-is-liked="emitNewIsLiked($event)"
-                        @new-audio-clip-action="handleNewAudioClipAction($event)"
+                        @new-audio-clip-action="emitNewAudioClipAction($event)"
                     />
                 </div>
             </div>
@@ -156,9 +162,9 @@
                         :prop-is-logged-in="propIsLoggedIn"
                         :prop-is-superuser="propIsSuperuser"
                         :prop-username="propUsername"
-                        :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
+                        :prop-callable-popup-login-required="propCallablePopupLoginRequired"
                         @new-is-liked="emitNewIsLiked($event)"
-                        @new-audio-clip-action="handleNewAudioClipAction($event)"
+                        @new-audio-clip-action="emitNewAudioClipAction($event)"
                     />
                 </div>
             </div>
@@ -196,9 +202,9 @@
                             :prop-is-logged-in="propIsLoggedIn"
                             :prop-is-superuser="propIsSuperuser"
                             :prop-username="propUsername"
-                            :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
+                            :prop-callable-popup-login-required="propCallablePopupLoginRequired"
                             @new-is-liked="emitNewIsLiked($event)"
-                            @new-audio-clip-action="handleNewAudioClipAction($event)"
+                            @new-audio-clip-action="emitNewAudioClipAction($event)"
                         />
                     </div>
                 </div>
@@ -224,9 +230,9 @@
                             :prop-is-logged-in="propIsLoggedIn"
                             :prop-is-superuser="propIsSuperuser"
                             :prop-username="propUsername"
-                            :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
+                            :prop-callable-popup-login-required="propCallablePopupLoginRequired"
                             @new-is-liked="emitNewIsLiked($event)"
-                            @new-audio-clip-action="handleNewAudioClipAction($event)"
+                            @new-audio-clip-action="emitNewAudioClipAction($event)"
                         />
                     </div>
                 </div>
@@ -258,9 +264,9 @@
                             :prop-is-logged-in="propIsLoggedIn"
                             :prop-is-superuser="propIsSuperuser"
                             :prop-username="propUsername"
-                            :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
+                            :prop-callable-popup-login-required="propCallablePopupLoginRequired"
                             @new-is-liked="emitNewIsLiked($event)"
-                            @new-audio-clip-action="handleNewAudioClipAction($event)"
+                            @new-audio-clip-action="emitNewAudioClipAction($event)"
                         />
                     </div>
                 </div>
@@ -286,9 +292,9 @@
                             :prop-is-logged-in="propIsLoggedIn"
                             :prop-is-superuser="propIsSuperuser"
                             :prop-username="propUsername"
-                            :prop-callable-pop-up-login-required="propCallablePopUpLoginRequired"
+                            :prop-callable-popup-login-required="propCallablePopupLoginRequired"
                             @new-is-liked="emitNewIsLiked($event)"
-                            @new-audio-clip-action="handleNewAudioClipAction($event)"
+                            @new-audio-clip-action="emitNewAudioClipAction($event)"
                         />
                     </div>
                 </div>
@@ -298,12 +304,12 @@
 </template>
 
 <script setup lang="ts">
-    import VTitle from '../small/VTitle.vue';
-    import VPlayback from '../medium/VPlayback.vue';
-    import VAudioClipCard from '../medium/VAudioClipCard.vue';
-    import VAudioClipTools from '../medium/VAudioClipTools.vue';
-    import VUsernameURL from '../small/VUsernameURL.vue';
-    import VActionText from '../small/VActionText.vue';
+    import VTitle from '@/components/small/VTitle.vue';
+    import VPlayback from '@/components/medium/VPlayback.vue';
+    import VAudioClipCard from '@/components/medium/VAudioClipCard.vue';
+    import VAudioClipTools from '@/components/medium/VAudioClipTools.vue';
+    import VUsernameURL from '@/components/small/VUsernameURL.vue';
+    import VActionText from '@/components/small/VActionText.vue';
 </script>
 
 
@@ -322,13 +328,18 @@
         data() {
             return {
                 vplayback_store: useVPlaybackStore(),
-                new_audio_clip_action: null as AudioClipActionsTypes|null,
+                haha_oopsie: false,
             };
         },
         props: {
             propEvent: {
                 type: Object as PropType<EventsAndAudioClipsTypes>,
                 required: true,
+            },
+            propEventListIndex: {
+                //this is if VEventCard is used in for-loop of events []
+                type: Number,
+                default: null,
             },
             propGuaranteedEventGenericStatus: {
                 //this is useful for avoiding v-for, so child components are never unmounted
@@ -363,7 +374,7 @@
                 type: Boolean,
                 required: true,
             },
-            propCallablePopUpLoginRequired: {
+            propCallablePopupLoginRequired: {
                 type: Function,
                 required: true,
             },
@@ -387,7 +398,7 @@
             }
         },
         emits: [
-            'newIsLiked', 'newVPlaybackTeleportId',
+            'newIsLiked', 'newVPlaybackTeleportId', 'newAudioClipAction',
         ],
         methods: {
             emitNewVPlaybackTeleportId(teleport_id:string) : void {
@@ -400,17 +411,14 @@
 
                 this.$emit('newIsLiked', new_value);
             },
-            handleNewAudioClipAction(new_value:AudioClipActionsTypes) : void {
+            emitNewAudioClipAction(new_value:AudioClipActionsTypes) : void {
 
-                this.new_audio_clip_action = new_value;
+                if(this.propEventListIndex !== null){
 
-                if(new_value.action === 'banned' || new_value.action === 'deleted'){
-
-                    //will pause if still playing
-                    this.vplayback_store.removeAudioClipFromStore(new_value.audio_clip_id);
-
-                    this.emitNewVPlaybackTeleportId('#temporary-vplayback-teleport');
+                    new_value.event_list_index = this.propEventListIndex;
                 }
+
+                this.$emit('newAudioClipAction', new_value);
             },
         },
     });

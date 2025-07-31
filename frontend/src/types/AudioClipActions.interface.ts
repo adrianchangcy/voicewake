@@ -1,6 +1,10 @@
+import AudioClipsAndLikeDetailsTypes from "./AudioClipsAndLikeDetails.interface";
+
 interface AudioClipActionsTypes{
-    audio_clip_id: number,
-    action: 'deleted'|'banned'|'reported',
+    audio_clip: AudioClipsAndLikeDetailsTypes,
+    action: 'delete'|'ban'|'report',
+    api_request: ()=>Promise<void>,
+    event_list_index: number|null,
 }
 
 export default AudioClipActionsTypes;

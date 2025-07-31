@@ -4,18 +4,18 @@ import piniaPluginPersistedState from 'pinia-plugin-persistedstate';
 import { PiniaSharedState } from 'pinia-shared-state';
 import VueVirtualScroller from 'vue-virtual-scroller';
 
-import BaseApp from '../src/apps/BaseApp.vue';
-import CreateEventsApp from '../src/apps/CreateEventsApp.vue';
-import ListEventReplyChoicesApp from '../src/apps/ListEventReplyChoicesApp.vue';
-import ListUserBannedAudioClipsApp from '../src/apps/ListUserBannedAudioClipsApp.vue';
-import ListUserBlocksApp from '../src/apps/ListUserBlocksApp.vue';
-import ListUserFollowsApp from '../src/apps/ListUserFollowsApp.vue';
-import GetEventsApp from '../src/apps/GetEventsApp.vue';
-import BrowseEventsApp from '../src/apps/BrowseEventsApp.vue';
-import VUserLogInSignUp from '../src/components/main/VUserLogInSignUp.vue';
-import VUserUsername from '../src/components/medium/VUserUsername.vue';
-import VBackdropAnime from '../src/components/small/VBackdropAnime.vue';
-import TestingStuff from '../src/components/main/TestingStuff.vue';
+import BaseApp from '@/apps/BaseApp.vue';
+import CreateEventsApp from '@/apps/CreateEventsApp.vue';
+import ListEventReplyChoicesApp from '@/apps/ListEventReplyChoicesApp.vue';
+import ListUserBannedAudioClipsApp from '@/apps/ListUserBannedAudioClipsApp.vue';
+import ListUserBlocksApp from '@/apps/ListUserBlocksApp.vue';
+import ListUserFollowsApp from '@/apps/ListUserFollowsApp.vue';
+import GetEventsApp from '@/apps/GetEventsApp.vue';
+import BrowseEventsApp from '@/apps/BrowseEventsApp.vue';
+import VUserLogInSignUp from '@/components/main/VUserLogInSignUp.vue';
+import VUserUsername from '@/components/medium/VUserUsername.vue';
+import VBackdropAnime from '@/components/small/VBackdropAnime.vue';
+import TestingStuff from '@/components/main/TestingStuff.vue';
 
 interface BindingValueTypes {
     refs_to_exclude: string[],
@@ -50,7 +50,6 @@ const clickOutside = {
 
     beforeMount: (element:any, binding:any) => {
 
-        //2022-12-28
         //QUESTION: where did event come from?
         element.clickOutsideEventHandler = (event:any) => {
 
@@ -80,7 +79,7 @@ const clickOutside = {
                         "Your excluded ref element is probably not available when referenced."
                         +" Your element to exclude for ref must be static and not Vue-generated."
                         +" An easy fix is to wrap your excluded element in another div, and put your ref at this now-sibling div."
-                        +" With this now-sibling div, avoid styling it so it wraps its child completely."
+                        +" Avoid styling the parent of this now-sibling div so it wraps its child completely."
                     );
                 }
             }

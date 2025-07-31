@@ -33,7 +33,7 @@
 
 
 <script setup lang="ts">
-    import VInputLabel from '../small/VInputLabel.vue';
+    import VInputLabel from '@/components/small/VInputLabel.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';

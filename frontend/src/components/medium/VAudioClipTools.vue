@@ -148,7 +148,7 @@
 
                 <VActionText
                     v-if="propIsSuperuser || is_own_audio_clip"
-                    @click="submitDelete()"
+                    @click="emitNewAudioClipAction('delete')"
                     :prop-is-enabled="isAnyExtraOptionProcessing"
                     propElement="button"
                     type="button"
@@ -172,7 +172,7 @@
 
                 <VActionText
                     v-if="propIsSuperuser"
-                    @click="submitBan()"
+                    @click="emitNewAudioClipAction('ban')"
                     :prop-is-enabled="isAnyExtraOptionProcessing"
                     propElement="button"
                     type="button"
@@ -196,7 +196,7 @@
 
                 <VActionText
                     v-if="!is_own_audio_clip"
-                    @click="submitReport()"
+                    @click="emitNewAudioClipAction('report')"
                     :prop-is-enabled="isAnyExtraOptionProcessing"
                     propElement="button"
                     type="button"
@@ -235,8 +235,8 @@
 
 <script setup lang="ts">
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
-    import VActionText from '../small/VActionText.vue';
-    import VLoading from '../small/VLoading.vue';
+    import VActionText from '@/components/small/VActionText.vue';
+    import VLoading from '@/components/small/VLoading.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     import { library } from '@fortawesome/fontawesome-svg-core';
@@ -298,7 +298,7 @@
                 type: Boolean,
                 default: false,
             },
-            propCallablePopUpLoginRequired: {
+            propCallablePopupLoginRequired: {
                 type: Function,
                 required: true,
             },
@@ -387,13 +387,40 @@
                     'new_is_liked': new_is_liked,
                 });
             },
-            emitNewAudioClipAction(audio_clip_id:number, action:'deleted'|'banned'|'reported') : void {
+            emitNewAudioClipAction(action:'delete'|'ban'|'report') : void {
 
-                //pass this to VEventCard -> VAudioClipCard
-                //at VAudioClipCard, when this emit reaches there, compare current audio_clip to this emit to decide on updating UI
+                if(this.isAnyExtraOptionProcessing === false){
+
+                    return;
+                }
+
+                let api_request:()=>Promise<void>;
+
+                if(action === 'delete'){
+
+                    api_request = this.submitDelete;
+
+                }else if(action === 'ban'){
+
+                    api_request = this.submitBan;
+
+                }else if(action === 'report'){
+
+                    api_request = this.submitReport;
+
+                }else{
+
+                    throw new Error('Unrecognised action.');
+                }
+
+                let audio_clip = {} as AudioClipsAndLikeDetailsTypes;
+                Object.assign(audio_clip, this.propAudioClip);
+
                 this.$emit('newAudioClipAction', {
-                    'audio_clip_id': audio_clip_id,
+                    'audio_clip': audio_clip,
                     'action': action,
+                    'api_request': api_request,
+                    'event_list_index': null,   //filled by VEventCard if necessary
                 } as AudioClipActionsTypes);
             },
             toggleExtraOptionsMenu(force_is_open:boolean|null=null) : void {
@@ -491,7 +518,7 @@
 
                 if(this.propIsLoggedIn === false){
 
-                    this.propCallablePopUpLoginRequired();
+                    this.propCallablePopupLoginRequired();
                     return false;
                 }
 
@@ -624,7 +651,7 @@
                     });
                 }
             },
-            async syncLikesDislikes() : Promise<void> {
+            syncLikesDislikes() : void {
 
                 this.like_count = this.propAudioClip.like_count;
                 this.dislike_count = this.propAudioClip.dislike_count;
@@ -635,65 +662,7 @@
                     this.previous_is_liked = this.propAudioClip.previous_is_liked_by_user!;
                 }
             },
-            async submitBan() : Promise<void> {
-
-                if(this.isAnyExtraOptionProcessing === false){
-
-                    return;
-                }
-
-                this.is_banning = true;
-
-                let audio_clip = {} as AudioClipsAndLikeDetailsTypes;
-                Object.assign(audio_clip, this.propAudioClip);
-
-                let data = new FormData();
-
-                data.append('audio_clip_id', JSON.stringify(audio_clip.id));
-
-                await axios.post(window.location.origin + '/api/audio-clips/bans', data)
-                .then(() => {
-
-                    this.emitNewAudioClipAction(audio_clip.id, 'banned');
-
-                    notify({
-                        type: 'ok',
-                        title: 'Recording banned',
-                        text: 'The recording and its owner has been banned.',
-                    }, 3000);
-
-                }).catch((error:any) => {
-
-                    let error_text = 'Oops! Something went wrong.';
-
-                    if(
-                        Object.hasOwn(error, 'request') === true &&
-                        Object.hasOwn(error, 'response') === true &&
-                        Object.hasOwn(error.response, 'data') === true &&
-                        Object.hasOwn(error.response.data, 'message') === true &&
-                        error.response.data['message'].length > 0
-                    ){
-
-                        error_text = error.response.data['message'];
-                    }
-
-                    notify({
-                        type: 'error',
-                        title: 'Ban failed',
-                        text: error_text,
-                    }, 3000);
-
-                }).finally(() => {
-
-                    this.is_banning = false;
-                });
-            },
             async submitDelete() : Promise<void> {
-
-                if(this.isAnyExtraOptionProcessing === false){
-
-                    return;
-                }
 
                 this.is_deleting = true;
 
@@ -704,10 +673,8 @@
 
                 data.append('audio_clip_id', JSON.stringify(audio_clip.id));
 
-                await axios.post(window.location.origin + '/api/audio-clips/deletions', data)
+                return axios.post(window.location.origin + '/api/audio-clips/deletions', data)
                 .then(() => {
-
-                    this.emitNewAudioClipAction(audio_clip.id, 'deleted');
 
                     notify({
                         type: 'ok',
@@ -741,13 +708,53 @@
                     this.is_deleting = false;
                 });
             },
+            async submitBan() : Promise<void> {
+
+                this.is_banning = true;
+
+                let audio_clip = {} as AudioClipsAndLikeDetailsTypes;
+                Object.assign(audio_clip, this.propAudioClip);
+
+                let data = new FormData();
+
+                data.append('audio_clip_id', JSON.stringify(audio_clip.id));
+
+                return axios.post(window.location.origin + '/api/audio-clips/bans', data)
+                .then(() => {
+
+                    notify({
+                        type: 'ok',
+                        title: 'Recording banned',
+                        text: 'The recording and its owner has been banned.',
+                    }, 3000);
+
+                }).catch((error:any) => {
+
+                    let error_text = 'Oops! Something went wrong.';
+
+                    if(
+                        Object.hasOwn(error, 'request') === true &&
+                        Object.hasOwn(error, 'response') === true &&
+                        Object.hasOwn(error.response, 'data') === true &&
+                        Object.hasOwn(error.response.data, 'message') === true &&
+                        error.response.data['message'].length > 0
+                    ){
+
+                        error_text = error.response.data['message'];
+                    }
+
+                    notify({
+                        type: 'error',
+                        title: 'Ban failed',
+                        text: error_text,
+                    }, 3000);
+
+                }).finally(() => {
+
+                    this.is_banning = false;
+                });
+            },
             async submitReport() : Promise<void> {
-
-                if(this.checkIsLoggedIn() === false){
-
-                    //already shown dialog
-                    return;
-                }
 
                 this.is_reporting = true;
 
@@ -758,10 +765,8 @@
                 
                 data.append('audio_clip_id', JSON.stringify(audio_clip.id));
 
-                axios.post(window.location.origin + '/api/audio-clips/reports', data)
+                return axios.post(window.location.origin + '/api/audio-clips/reports', data)
                 .then(() => {
-
-                    this.emitNewAudioClipAction(audio_clip.id, 'reported');
 
                     notify({
                         type: 'generic',

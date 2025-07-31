@@ -61,7 +61,7 @@
 
 
 <script setup lang="ts">
-    import VAction from '../small/VAction.vue';
+    import VAction from '@/components/small/VAction.vue';
 </script>
 
 

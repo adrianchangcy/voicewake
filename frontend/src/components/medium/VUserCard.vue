@@ -142,9 +142,9 @@
 
 <script setup lang="ts">
     // import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
-    import VLoading from '../small/VLoading.vue';
-    import VActionBorder from '../small/VActionBorder.vue';
-    import VActionText from '../small/VActionText.vue';
+    import VLoading from '@/components/small/VLoading.vue';
+    import VActionBorder from '@/components/small/VActionBorder.vue';
+    import VActionText from '@/components/small/VActionText.vue';
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';

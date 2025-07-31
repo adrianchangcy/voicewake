@@ -19,7 +19,7 @@
                 :prop-is-logged-in="is_logged_in"
                 :prop-is-superuser="is_superuser"
                 :prop-username="username"
-                :prop-callable-pop-up-login-required="callableOpenPopUpLoginRequired"
+                :prop-callable-popup-login-required="callableOpenPopupLoginRequired"
                 @new-is-liked="event_reply_choices_store.newAudioClipIsLiked($event)"
                 @new-v-playback-teleport-id="handleNewVPlaybackTeleportId($event)"
                 class="pb-8"
@@ -215,14 +215,14 @@
 </template>
 
 <script setup lang="ts">
-    import VEventCard from '../components/main/VEventCard.vue';
-    import VActionDanger from '../components/small/VActionDanger.vue';
-    import VActionBorder from '../components/small/VActionBorder.vue';
-    import VCreateAudioClips from '../components/main/VCreateAudioClips.vue';
-    import VTitle from '../components/small/VTitle.vue';
-    import VPlayback from '../components/medium/VPlayback.vue';
-    import VAudioClipCardSkeleton from '../components/skeleton/VAudioClipCardSkeleton.vue';
-    import VLoading from '../components/small/VLoading.vue';
+    import VEventCard from '@/components/main/VEventCard.vue';
+    import VActionDanger from '@/components/small/VActionDanger.vue';
+    import VActionBorder from '@/components/small/VActionBorder.vue';
+    import VCreateAudioClips from '@/components/main/VCreateAudioClips.vue';
+    import VTitle from '@/components/small/VTitle.vue';
+    import VPlayback from '@/components/medium/VPlayback.vue';
+    import VAudioClipCardSkeleton from '@/components/skeleton/VAudioClipCardSkeleton.vue';
+    import VLoading from '@/components/small/VLoading.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     import { library } from '@fortawesome/fontawesome-svg-core';
@@ -730,9 +730,9 @@
                     throw new Error('Missing or unrecognised data.');
                 }
             },
-            callableOpenPopUpLoginRequired() : void {
+            callableOpenPopupLoginRequired() : void {
 
-                this.pop_up_manager_store.openPopUp('login_required');
+                this.pop_up_manager_store.openPopup({context: 'login_required', kwargs: null});
             },
         },
         beforeMount(){

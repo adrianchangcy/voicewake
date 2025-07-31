@@ -32,7 +32,7 @@
 </template>
 
 <script setup lang="ts">
-    import VInputLabel from '../small/VInputLabel.vue';
+    import VInputLabel from '@/components/small/VInputLabel.vue';
 </script>
 
 <script lang="ts">

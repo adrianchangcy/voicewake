@@ -67,7 +67,7 @@
                     class="h-full flex items-center"
                 >
                     <VActionSpecial
-                        @click.stop="openVUserLogInSignUp('sign-up-section')"
+                        @click="openVUserLogInSignUp('sign-up-section')"
                         prop-element="button"
                         prop-font-size="s"
                         prop-element-size="s"
@@ -89,7 +89,7 @@
             >
                 <!--not logged in-->
                 <VActionText
-                    @click.stop="pop_up_manager_store.openPopUp('nav_menu')"
+                    @click="pop_up_manager_store.openPopup({context: 'nav_menu', kwargs: null})"
                     prop-element="button"
                     type="button"
                     :propIsIconOnly="true"
@@ -150,7 +150,7 @@
 
                         <div
                             v-click-outside="{
-                                bool_status_variable_or_callback: pop_up_manager_store.closeNavMenuPopUp,
+                                bool_status_variable_or_callback: pop_up_manager_store.closeNavMenuPopup,
                                 refs_to_exclude: ['nav_menu_opener']
                             }"
                             class="absolute w-full h-[calc(100vh-4.5rem)] overflow-auto px-2 md:px-4 pb-10 bg-theme-nav dark:bg-dark-theme-nav    border-l border-theme-gray-2 dark:border-transparent"
@@ -516,10 +516,10 @@
                     class="absolute flex items-center w-full h-[calc(100vh-4.5rem)] bg-theme-light/90 dark:bg-theme-dark/90"
                 >
                     <div
-                        class="w-5/6 sm:w-fit max-h-[90%] min-h-fit m-auto px-4 pb-14 border border-theme-gray-2 dark:border-dark-theme-gray-2 bg-theme-light dark:bg-theme-dark rounded-lg"
+                        class="w-5/6 sm:w-fit max-h-[90%] min-h-fit m-auto"
                     >
-                        <VLoginRequiredPrompt
-                            @force-close="pop_up_manager_store.closeLoginRequiredPopUp()"
+                        <VPopupLoginRequired
+                            @force-close="pop_up_manager_store.closeLoginRequiredPopup()"
                         />
                     </div>
                 </div>
@@ -530,13 +530,13 @@
 
 <script setup lang="ts">
     // import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
-    import TransitionFade from '/src/transitions/TransitionFade.vue';
-    import VActionText from '../small/VActionText.vue';
-    import VActionSpecial from '../small/VActionSpecial.vue';
-    import VLoading from '../small/VLoading.vue';
-    import VSwitch from '../small/VSwitch.vue';
+    import TransitionFade from '@/transitions/TransitionFade.vue';
+    import VActionText from '@/components/small/VActionText.vue';
+    import VActionSpecial from '@/components/small/VActionSpecial.vue';
+    import VLoading from '@/components/small/VLoading.vue';
+    import VSwitch from '@/components/small/VSwitch.vue';
     // import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
-    import VLoginRequiredPrompt from '../medium/VLoginRequiredPrompt.vue';
+    import VPopupLoginRequired from '@/components/medium/VPopupLoginRequired.vue';
     import VUserLogInSignUp from './VUserLogInSignUp.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -544,8 +544,9 @@
     import { faWaveSquare } from '@fortawesome/free-solid-svg-icons/faWaveSquare';
     import { faComment } from '@fortawesome/free-solid-svg-icons/faComment';
     import { faComments } from '@fortawesome/free-solid-svg-icons/faComments';
-    import { faCircleUser } from '@fortawesome/free-solid-svg-icons/faCircleUser';
     import { faRightToBracket } from '@fortawesome/free-solid-svg-icons/faRightToBracket';
+
+    import { faCircleUser } from '@fortawesome/free-solid-svg-icons/faCircleUser';
     import { faBan } from '@fortawesome/free-solid-svg-icons/faBan';
     import { faDoorOpen } from '@fortawesome/free-solid-svg-icons/faDoorOpen';
     import { faMicrophoneLines } from '@fortawesome/free-solid-svg-icons/faMicrophoneLines';
@@ -602,8 +603,8 @@
                 return (
                     this.propIsLoggedIn === false &&
                     this.is_currently_log_in_sign_up_static_page === false &&
-                    this.pop_up_manager_store.current_popup_context !== 'log_in' &&
-                    this.pop_up_manager_store.current_popup_context !== 'sign_up'
+                    this.pop_up_manager_store.getCurrentPopupContext !== 'log_in' &&
+                    this.pop_up_manager_store.getCurrentPopupContext !== 'sign_up'
                 );
             },
             getDarkModeScreenReaderText() : string {
@@ -642,11 +643,11 @@
 
                 if(section === 'log-in-section'){
 
-                    this.pop_up_manager_store.openPopUp('log_in');
+                    this.pop_up_manager_store.openPopup({context: 'log_in', kwargs: null});
 
                 }else if(section === 'sign-up-section'){
 
-                    this.pop_up_manager_store.openPopUp('sign_up');
+                    this.pop_up_manager_store.openPopup({context: 'sign_up', kwargs: null});
                 }
             },
             async logOut() : Promise<void> {

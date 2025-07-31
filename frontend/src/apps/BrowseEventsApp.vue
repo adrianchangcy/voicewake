@@ -157,6 +157,9 @@
             </div>
         </div>
 
+        <!--first top border for first VEventCard-->
+        <div class="border-b border-theme-gray-4 dark:border-dark-theme-gray-4 transition-colors"></div>
+
         <div>
             <!--must specify a unique attribute as unique key for the scroller via "key-field"-->
             <DynamicScroller
@@ -179,18 +182,19 @@
                         :index="index"
                         :active="active"
                     >
-                        <div class="px-1 pb-6">
+                        <div class="p-1">
                             <VEventCard
                                 :prop-guaranteed-event-generic-status="isHomePage ? 'completed' : ''"
                                 :prop-show-title="true"
                                 :prop-event="item"
+                                :prop-event-list-index="index"
                                 :prop-has-border="true"
                                 :prop-load-v-audio-clip-cards-only="true"
                                 :prop-has-virtual-scroll="true"
                                 :prop-is-logged-in="is_logged_in"
                                 :prop-is-superuser="is_superuser"
                                 :prop-username="username"
-                                :prop-callable-pop-up-login-required="callableOpenPopUpLoginRequired"
+                                :prop-callable-popup-login-required="callableOpenPopupLoginRequired"
                                 @new-is-liked="filtered_events_store.newAudioClipIsLiked($event)"
                                 @new-v-playback-teleport-id="handleNewVPlaybackTeleportId($event)"
                             />
@@ -342,16 +346,16 @@
 
 
 <script setup lang="ts">
-    import VEventCard from '../components/main/VEventCard.vue';
-    import VEventCardSkeleton from '../components/skeleton/VEventCardSkeleton.vue';
-    import VPlayback from '../components/medium/VPlayback.vue';
+    import VEventCard from '@/components/main/VEventCard.vue';
+    import VEventCardSkeleton from '@/components/skeleton/VEventCardSkeleton.vue';
+    import VPlayback from '@/components/medium/VPlayback.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
-    import VAudioClipToneMenu from '../components/medium/VAudioClipToneMenu.vue';
-    import VActionSpecial from '../components/small/VActionSpecial.vue';
-    import VActionText from '../components/small/VActionText.vue';
-    import VDialogPlain from '../components/small/VDialogPlain.vue';
-    import VUserCard from '../components/medium/VUserCard.vue';
+    import VAudioClipToneMenu from '@/components/medium/VAudioClipToneMenu.vue';
+    import VActionSpecial from '@/components/small/VActionSpecial.vue';
+    import VActionText from '@/components/small/VActionText.vue';
+    import VDialogPlain from '@/components/small/VDialogPlain.vue';
+    import VUserCard from '@/components/medium/VUserCard.vue';
     import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -372,6 +376,8 @@
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     import { isPageAccessedByBackForward, isLoggedIn, isSuperuser, getUsername } from '@/helper_functions';
     import axios from 'axios';
+
+    import AudioClipActionsTypes from '@/types/AudioClipActions.interface';
 
 
     export default defineComponent({
@@ -857,17 +863,99 @@
 
                 }, 250);
             },
-            handleNewVPlaybackTeleportId(teleport_id:string) : void {
+            handleNewVPlaybackTeleportId(teleport_id:string|'#temporary-vplayback-teleport') : void {
 
                 this.teleport_id = teleport_id;
             },
-            handleNewUsername(new_value:string) : void {
+            handleNewAudioClipAction(new_value:AudioClipActionsTypes) : void {
 
-                this.username = new_value;
+                let popup_title = '';
+                let popup_description = '';
+                let popup_cancellation_term = '';
+                let popup_confirmation_term = '';
+
+                if(new_value.audio_clip.audio_clip_role.audio_clip_role_name === 'originator'){
+
+
+                }else if(new_value.audio_clip.audio_clip_role.audio_clip_role_name === 'responder'){
+
+                }
+
+                if(new_value.action === 'ban'){
+
+                    popup_title = 'Ban recording?';
+                    popup_description = 'User will incur a temporary ban.';
+                    popup_cancellation_term = 'Cancel';
+                    popup_confirmation_term = 'Ban';
+
+                }else if(new_value.action === 'delete'){
+
+                    if(new_value.audio_clip.audio_clip_role.audio_clip_role_name === 'originator'){
+
+                        popup_description = 'The event will also be deleted.';
+
+                    }else if(new_value.audio_clip.audio_clip_role.audio_clip_role_name === 'responder'){
+
+                        popup_description = 'This action cannot be undone.';
+                    }
+
+                    popup_title = 'Delete recording?';
+                    popup_cancellation_term = 'Cancel';
+                    popup_confirmation_term = 'Delete';
+
+                }else if(new_value.action === 'report'){
+
+                    popup_title = 'Report recording?';
+                    popup_description = 'The recording will be evaluated for a ban.';
+                    popup_cancellation_term = 'Cancel';
+                    popup_confirmation_term = 'Report';
+
+                }else{
+
+                    throw new Error('Invalid action.');
+                }
+
+                //prepare removal from store
+                //get current filter indexes first
+                // this.filtered_events_store.get
+
+                //do nothing on cancel
+                const popup_cancellation_callback = ()=>{};
+
+                //prepare callback on confirmation
+                const popup_confirmation_callback = async ()=>{
+
+                    await new_value.api_request().then(()=>{
+
+                        if(new_value.action === 'ban' || new_value.action === 'delete'){
+
+                            //will also check if playing and pause if true
+                            this.vplayback_store.removeAudioClipFromStore(new_value.audio_clip.id);
+
+                            this.handleNewVPlaybackTeleportId('#temporary-vplayback-teleport');
+                        }
+
+                        //remove from store
+                        //check if user is still at current indexes, get row based on event_list_index, check if same row, delete if true
+                    });
+                };
+
+                //open dialog
+                this.pop_up_manager_store.openPopup({
+                    context: 'cancel_confirm',
+                    kwargs: {
+                        prop_title: popup_title,
+                        prop_description: popup_description,
+                        prop_cancellation_term: popup_cancellation_term,
+                        prop_cancellation_callback: popup_cancellation_callback,
+                        prop_confirmation_term: popup_confirmation_term,
+                        prop_confirmation_callback: popup_confirmation_callback,
+                    }
+                });
             },
-            callableOpenPopUpLoginRequired() : void {
+            callableOpenPopupLoginRequired() : void {
 
-                this.pop_up_manager_store.openPopUp('login_required');
+                this.pop_up_manager_store.openPopup({context: 'login_required', kwargs: null});
             },
         },
         beforeMount(){

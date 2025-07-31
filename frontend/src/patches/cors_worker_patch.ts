@@ -58,10 +58,10 @@
 //
 //Usage:
     // ```ts
-    //place this file at vue_app/src/...
-    //then at vue_app../small/comp.vue:
+    //place this file at vue_app@/...
+    //then at vue_app@/components/small/comp.vue:
         //<script lang="ts">
-            //import '/src/patches/cors_worker_patch';
+            //import '@/patches/cors_worker_patch';
             //...
     // ```
 typeof window !== "undefined" &&
