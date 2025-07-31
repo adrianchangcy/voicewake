@@ -2,78 +2,109 @@ import { defineStore } from 'pinia';
 
 
 
-type PopUpContextsTypes = ""|"nav_menu"|"login_required"|"log_in"|"sign_up";
+type PopupOptions =
+    | {
+        context: ""|"nav_menu"|"login_required"|"log_in"|"sign_up",
+        kwargs: null,
+    } | {
+        context: "cancel_confirm",
+        kwargs: {
+            prop_title: string,
+            prop_description: string,
+            prop_cancellation_term: string,
+            prop_cancellation_callback: Function,
+            prop_confirmation_term: string,
+            prop_confirmation_callback: Function,
+        }
+    };
+
 
 //helps us manage pop-ups
 //currently using redundant way of ensuring other pop-ups are closed when one opens
 //still manageable because we have limited pop-ups
 export const usePopUpManagerStore = defineStore('pop_up_manager', {
     state: ()=>({
-        is_logged_in: false,
-        current_popup_context: "" as PopUpContextsTypes,
-    }),    
+        current_popup_option: {context: '', kwargs: null} as PopupOptions,
+    }),
     getters: {
+        getPopupOptionForReset: ()=>{
+            return {context: '', kwargs: null} as PopupOptions;
+        },
         isNavMenuOpen: (state)=>{
-            return state.current_popup_context === 'nav_menu';
+            return state.current_popup_option.context === 'nav_menu';
         },
         isLoginRequiredOpen: (state)=>{
-            return state.current_popup_context === 'login_required';
+            return state.current_popup_option.context === 'login_required';
         },
         isLogInOpen: (state)=>{
-            return state.current_popup_context === 'log_in';
+            return state.current_popup_option.context === 'log_in';
         },
         isSignUpOpen: (state)=>{
-            return state.current_popup_context === 'sign_up';
+            return state.current_popup_option.context === 'sign_up';
+        },
+        isCancelConfirmOpen: (state)=>{
+            return state.current_popup_option.context === 'cancel_confirm';
+        },
+        getCurrentPopupContext: (state)=>{
+            return state.current_popup_option.context;
+        },
+        getCurrentPopupKwargs: (state)=>{
+            return state.current_popup_option.kwargs;
         },
     },
     actions: {
-        setIsLoggedIn(new_value:boolean) : void {
-            
-            this.is_logged_in = new_value;
-        },
-        openPopUp(new_value:PopUpContextsTypes) : void {
+        openPopup(new_option:PopupOptions) : void {
 
-            if(new_value === this.current_popup_context){
+            //enables a button to behave as toggling, simply with @click="openPopup(new_option)"
+            if(new_option.context === this.current_popup_option.context){
 
-                this.current_popup_context = '';
+                //close/reset
+                this.current_popup_option = this.getPopupOptionForReset;
 
             }else{
 
-                this.current_popup_context = new_value;
+                this.current_popup_option = new_option;
             }
         },
-        //doesn't seem like.bind() works as callbacks for Vue, so we have individual functions for every pop-up
-        closeNavMenuPopUp() : void {
+        //doesn't seem like .bind() works as callbacks for Vue, so we have individual functions for every pop-up
+        closeNavMenuPopup() : void {
 
-            if(this.current_popup_context === 'nav_menu'){
+            if(this.current_popup_option.context === 'nav_menu'){
 
-                this.current_popup_context = '';
+                this.current_popup_option = this.getPopupOptionForReset;
             }
         },
-        closeLoginRequiredPopUp() : void {
+        closeLoginRequiredPopup() : void {
 
-            if(this.current_popup_context === 'login_required'){
+            if(this.current_popup_option.context === 'login_required'){
 
-                this.current_popup_context = '';
+                this.current_popup_option = this.getPopupOptionForReset;
             }
         },
-        closeLogInPopUp() : void {
+        closeLogInPopup() : void {
 
-            if(this.current_popup_context === 'log_in'){
+            if(this.current_popup_option.context === 'log_in'){
 
-                this.current_popup_context = '';
+                this.current_popup_option = this.getPopupOptionForReset;
             }
         },
-        closeSignUpPopUp() : void {
+        closeSignUpPopup() : void {
 
-            if(this.current_popup_context === 'sign_up'){
+            if(this.current_popup_option.context === 'sign_up'){
 
-                this.current_popup_context = '';
+                this.current_popup_option = this.getPopupOptionForReset;
             }
         },
-        closeAllPopUps() : void {
+        closeCancelConfirmPopup() : void {
 
-            this.current_popup_context = '';
+            if(this.current_popup_option.context === 'cancel_confirm'){
+
+                this.current_popup_option = this.getPopupOptionForReset;
+            }
+        },
+        closeAllPopups() : void {
+
+            this.current_popup_option = this.getPopupOptionForReset;
         },
     },
 });

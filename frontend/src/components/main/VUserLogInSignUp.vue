@@ -592,15 +592,15 @@
 
 
 <script setup lang="ts">
-    import VInput from '../small/VInput.vue';
-    import VTitle from '../small/VTitle.vue';
-    import VNumberSlots from '../small/VNumberSlots.vue';
-    import VActionText from '../small/VActionText.vue';
+    import VInput from '@/components/small/VInput.vue';
+    import VTitle from '@/components/small/VTitle.vue';
+    import VNumberSlots from '@/components/small/VNumberSlots.vue';
+    import VActionText from '@/components/small/VActionText.vue';
     import TransitionGroupSlide from '@/transitions/TransitionGroupSlide.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
-    import VAction from '../small/VAction.vue';
-    import VActionSpecial from '../small/VActionSpecial.vue';
-    import VLoading from '../small/VLoading.vue';
+    import VAction from '@/components/small/VAction.vue';
+    import VActionSpecial from '@/components/small/VActionSpecial.vue';
+    import VLoading from '@/components/small/VLoading.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     import { library } from '@fortawesome/fontawesome-svg-core';
@@ -1051,11 +1051,11 @@
 
                 if(this.current_section === 'log-in-section'){
 
-                    this.pop_up_manager_store.closeLogInPopUp();
+                    this.pop_up_manager_store.closeLogInPopup();
 
                 }else if(this.current_section === 'sign-up-section'){
 
-                    this.pop_up_manager_store.closeSignUpPopUp();
+                    this.pop_up_manager_store.closeSignUpPopup();
                 }
             },
         },

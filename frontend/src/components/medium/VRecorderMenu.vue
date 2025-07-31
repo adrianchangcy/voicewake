@@ -40,9 +40,9 @@
 
 
 <script setup lang="ts">
-    import VRecorder from '../medium/VRecorder.vue';
-    import VPlayback from '../medium/VPlayback.vue';
-    import VAudioVisualiser from '../small/VAudioVisualiser.vue';
+    import VRecorder from '@/components/medium/VRecorder.vue';
+    import VPlayback from '@/components/medium/VPlayback.vue';
+    import VAudioVisualiser from '@/components/small/VAudioVisualiser.vue';
 </script>
 
 

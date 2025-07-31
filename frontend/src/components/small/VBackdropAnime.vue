@@ -43,7 +43,7 @@
     import { defineComponent } from 'vue';
     // import { notify } from '@/wrappers/notify_wrapper';
     import anime from 'animejs';
-    // import VPlayback from '../medium/VPlayback.vue';
+    // import VPlayback from '@/components/medium/VPlayback.vue';
     import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
     import { getRandomNumber } from '@/helper_functions';
     import axios from 'axios';

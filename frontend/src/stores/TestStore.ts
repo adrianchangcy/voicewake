@@ -6,16 +6,23 @@ import { defineStore } from 'pinia';
 export const useTestStore = defineStore('test_store', {
     state: ()=>({
         add_count: 0,
+        option: {context: ''},
     }),
     getters: {
         getCount: (state) => {
             return state.add_count;
         },
+        getOptionContext: (state) => {
+            return state.option.context;
+        }
     },
     actions: {
         addCount() : void {
             this.add_count += 1;
             console.log('new count is: ' + this.add_count.toString());
+        },
+        updateOptionContext(new_context:string) : void {
+            this.option = {context: new_context};
         },
     },
     //all things considered, we get overall better usability with persistence than without

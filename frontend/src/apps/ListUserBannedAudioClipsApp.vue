@@ -33,9 +33,9 @@
 
 
 <script setup lang="ts">
-    import VDialogPlain from '../components/small/VDialogPlain.vue';
+    import VDialogPlain from '@/components/small/VDialogPlain.vue';
     import TransitionFade from '@/transitions/TransitionFade.vue';
-    import VAudioClipsCard from '../components/main/VAudioClipsCard.vue';
+    import VAudioClipsCard from '@/components/main/VAudioClipsCard.vue';
 </script>
 
 

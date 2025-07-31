@@ -159,11 +159,11 @@
 
 
 <script setup lang="ts">
-    // import VActionText from '../small/VActionText.vue';
-    import VProgressBar from '../small/VProgressBar.vue';
-    import VActionText from '../small/VActionText.vue';
-    import VActionBorder from '../small/VActionBorder.vue';
-    import VLoading from '../small/VLoading.vue';
+    // import VActionText from '@/components/small/VActionText.vue';
+    import VProgressBar from '@/components/small/VProgressBar.vue';
+    import VActionText from '@/components/small/VActionText.vue';
+    import VActionBorder from '@/components/small/VActionBorder.vue';
+    import VLoading from '@/components/small/VLoading.vue';
 
     import { AudioClipProcessingDetailsTypes } from '@/types/AudioClipProcessingDetails.interface';
 

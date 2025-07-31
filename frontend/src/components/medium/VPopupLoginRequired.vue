@@ -1,5 +1,5 @@
 <template>
-    <div class="">
+    <div class="px-4 pb-14 border border-theme-gray-2 dark:border-dark-theme-gray-2 bg-theme-light dark:bg-theme-dark rounded-lg">
 
         <div class="relative h-10">
             <VActionText
@@ -12,12 +12,13 @@
                 class="absolute w-10 -right-4"
             >
                 <FontAwesomeIcon icon="fas fa-xmark" class="mx-auto"/>
+                <span class="sr-only">close menu</span>
             </VActionText>
         </div>
 
         <div class="pt-4 flex flex-col gap-1">
-            <VTitle propFontSize="l" class="text-center">
-                <template #titleDescription>
+            <VTitle propFontSize="m" class="text-center">
+                <template #title>
                     <span>{{ propPromptText }}</span>
                 </template>
             </VTitle>
@@ -52,10 +53,10 @@
 </template>
 
 <script setup lang="ts">
-    import VAction from '../small/VAction.vue';
-    import VActionText from '../small/VActionText.vue';
-    import VActionSpecial from '../small/VActionSpecial.vue';
-    import VTitle from '../small/VTitle.vue';
+    import VAction from '@/components/small/VAction.vue';
+    import VActionText from '@/components/small/VActionText.vue';
+    import VActionSpecial from '@/components/small/VActionSpecial.vue';
+    import VTitle from '@/components/small/VTitle.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     import { library } from '@fortawesome/fontawesome-svg-core';
@@ -75,10 +76,6 @@
         },
         emits: ['forceClose'],
         props: {
-            propIsOpen: {
-                type: Boolean,
-                default: false
-            },
             propPromptText: {
                 type: String,
                 default: "Log in to perform that action.",

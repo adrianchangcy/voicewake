@@ -57,10 +57,10 @@
 
 
 <script setup lang="ts">
-    import VInput from '../small/VInput.vue';
-    import VActionSpecial from '../small/VActionSpecial.vue';
-    import VLoading from '../small/VLoading.vue';
-    import VTitle from '../small/VTitle.vue';
+    import VInput from '@/components/small/VInput.vue';
+    import VActionSpecial from '@/components/small/VActionSpecial.vue';
+    import VLoading from '@/components/small/VLoading.vue';
+    import VTitle from '@/components/small/VTitle.vue';
 </script>
 
 <script lang="ts">
