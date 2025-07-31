@@ -89,7 +89,7 @@
 
 
 <script setup lang="ts">
-    import VAction from '../small/VAction.vue';
+    import VAction from '@/components/small/VAction.vue';
     import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -109,7 +109,7 @@
     //fixes native recorded webm's missing/buggy duration
     import fixWebmDuration from 'fix-webm-duration';
     //fixes web worker import not working when fetched from another origin
-    import '/src/patches/cors_worker_patch';
+    import '@/patches/cors_worker_patch';
     import RecordRTC from 'recordrtc';
 
     type recorderStates = "inactive" | "recording" | "stopped" | "paused" | "destroyed";
@@ -206,7 +206,7 @@
             createRecordingIntervalWorker(){
 
                 this.recording_interval_worker = new Worker(
-                    new URL('/src/workers/IntervalTimer.ts', import.meta.url),
+                    new URL('@/workers/IntervalTimer.ts', import.meta.url),
                 );
             },
             startRecordingIntervalWorker(){

@@ -30,9 +30,9 @@
 
 <script setup lang="ts">
     // import { Menu, MenuButton, MenuItems, MenuItem } from '@headlessui/vue';
-    // import VActionText from '../small/VActionText.vue';
-    // import VTest from '../small/VTest.vue';
-    // import VPlayback from '../medium/VPlayback.vue';
+    // import VActionText from '@/components/small/VActionText.vue';
+    // import VTest from '@/components/small/VTest.vue';
+    // import VPlayback from '@/components/medium/VPlayback.vue';
 
     // import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     // import { library } from '@fortawesome/fontawesome-svg-core';
@@ -46,7 +46,7 @@
     import { defineComponent } from 'vue';
     import { notify } from '@/wrappers/notify_wrapper';
     // import anime from 'animejs';
-    // import VPlayback from '../medium/VPlayback.vue';
+    // import VPlayback from '@/components/medium/VPlayback.vue';
     // import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
     import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
     // import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';

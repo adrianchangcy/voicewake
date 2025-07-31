@@ -95,7 +95,7 @@ services:
       - type: bind
         source: ./requirements.txt
         target: /requirements.txt
-    # restart: always
+    restart: unless-stopped
     env_file:
       - /env/.env
     ports:
@@ -273,6 +273,7 @@ services:
       #allows for hot reload for JS dev, e.g. Vue/React/etc.
       #hot reload will not work without it
       - CHOKIDAR_USEPOLLING=true
+    restart: unless-stopped
 
   tailwind:
     #must use tty
@@ -301,6 +302,7 @@ services:
         target: /tailwind.config.js
       #in container, specify the folder we want to ignore from bind-mount
       - /frontend/node_modules
+    restart: unless-stopped
 volumes:
   static:
     #leave empty to use the container engine's default configuration for creating a volume

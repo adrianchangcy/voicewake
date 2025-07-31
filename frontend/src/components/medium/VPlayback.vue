@@ -270,9 +270,9 @@
 
 
 <script setup lang="ts">
-    import VSliderYSmall from '../small/VSliderYSmall.vue';
-    import VActionText from '../small/VActionText.vue';
-    import VLoading from '../small/VLoading.vue';
+    import VSliderYSmall from '@/components/small/VSliderYSmall.vue';
+    import VActionText from '@/components/small/VActionText.vue';
+    import VLoading from '@/components/small/VLoading.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     import { library } from '@fortawesome/fontawesome-svg-core';

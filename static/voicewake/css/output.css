@@ -1519,6 +1519,11 @@ video {
   border-color: rgb(197 199 187 / var(--tw-border-opacity));
 }
 
+.border-theme-gray-4 {
+  --tw-border-opacity: 1;
+  border-color: rgb(128 126 120 / var(--tw-border-opacity));
+}
+
 .border-theme-gray-form-field {
   --tw-border-opacity: 1;
   border-color: rgb(202 204 192 / var(--tw-border-opacity));
@@ -2789,6 +2794,11 @@ input[data-autocompleted]{
 .dark\:border-dark-theme-gray-2:is([class="dark"] *) {
   --tw-border-opacity: 1;
   border-color: rgb(61 61 61 / var(--tw-border-opacity));
+}
+
+.dark\:border-dark-theme-gray-4:is([class="dark"] *) {
+  --tw-border-opacity: 1;
+  border-color: rgb(122 122 122 / var(--tw-border-opacity));
 }
 
 .dark\:border-dark-theme-gray-form-field:is([class="dark"] *) {

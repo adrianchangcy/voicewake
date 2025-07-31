@@ -49,9 +49,9 @@
 </template>
 
 <script setup lang="ts">
-    import VAudioClipCard from '../medium/VAudioClipCard.vue';
+    import VAudioClipCard from '@/components/medium/VAudioClipCard.vue';
     import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
-    import VPlayback from '../medium/VPlayback.vue';
+    import VPlayback from '@/components/medium/VPlayback.vue';
 </script>
 
 

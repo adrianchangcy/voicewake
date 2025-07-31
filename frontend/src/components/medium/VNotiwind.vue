@@ -150,8 +150,8 @@
 
 <script setup lang="ts">
     import {Notification, NotificationGroup} from 'notiwind';
-    import VActionText from '../small/VActionText.vue';
-    import VActionBorder from '../small/VActionBorder.vue';
+    import VActionText from '@/components/small/VActionText.vue';
+    import VActionBorder from '@/components/small/VActionBorder.vue';
 
     //this is for notify({icon: {font_awesome: "fas fa-..."}}) when allowed to specify
     //fontawesome icons must be imported once here to be used

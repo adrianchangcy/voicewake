@@ -198,15 +198,15 @@
 
 
 <script setup lang="ts">
-    import VActionSpecial from '../small/VActionSpecial.vue';
-    import VTextArea from '../small/VTextArea.vue';
-    import VActionBorder from '../small/VActionBorder.vue';
-    import VAudioClipToneField from '../medium/VAudioClipToneField.vue';
-    import VAudioClipToneMenu from '../medium/VAudioClipToneMenu.vue';
-    import VRecorderField from '../medium/VRecorderField.vue';
-    import VRecorderMenu from '../medium/VRecorderMenu.vue';
-    import VProgressBar from '../small/VProgressBar.vue';
-    import VDialogPlain from '../small/VDialogPlain.vue';
+    import VActionSpecial from '@/components/small/VActionSpecial.vue';
+    import VTextArea from '@/components/small/VTextArea.vue';
+    import VActionBorder from '@/components/small/VActionBorder.vue';
+    import VAudioClipToneField from '@/components/medium/VAudioClipToneField.vue';
+    import VAudioClipToneMenu from '@/components/medium/VAudioClipToneMenu.vue';
+    import VRecorderField from '@/components/medium/VRecorderField.vue';
+    import VRecorderMenu from '@/components/medium/VRecorderMenu.vue';
+    import VProgressBar from '@/components/small/VProgressBar.vue';
+    import VDialogPlain from '@/components/small/VDialogPlain.vue';
     import TransitionGroupFadeSlow from '@/transitions/TransitionGroupFadeSlow.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';

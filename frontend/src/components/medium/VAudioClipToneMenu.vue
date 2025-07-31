@@ -92,7 +92,7 @@
 </template>
 
 <script setup lang="ts">
-    import VDialogPlain from '../small/VDialogPlain.vue';
+    import VDialogPlain from '@/components/small/VDialogPlain.vue';
 </script>
 
 <script lang="ts">

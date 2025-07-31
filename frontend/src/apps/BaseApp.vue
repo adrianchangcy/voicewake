@@ -4,8 +4,18 @@
         :propUsername="username"
     />
 
-    <!--extra popups can belong here so we can ensure that only one shows at a time-->
+    <!--extra popups can belong here-->
     <div class="w-full h-0 relative">
+        <VPopupCancelConfirm
+            v-if="pop_up_manager_store.isCancelConfirmOpen && pop_up_manager_store.getCurrentPopupKwargs !== null"
+            :propTitle="pop_up_manager_store.getCurrentPopupKwargs.prop_title"
+            :propDescription="pop_up_manager_store.getCurrentPopupKwargs.prop_description"
+            :propCancellationTerm="pop_up_manager_store.getCurrentPopupKwargs.prop_cancellation_term"
+            :propCancellationCallback="pop_up_manager_store.getCurrentPopupKwargs.prop_cancellation_callback"
+            :propConfirmationTerm="pop_up_manager_store.getCurrentPopupKwargs.prop_confirmation_term"
+            :propConfirmationCallback="pop_up_manager_store.getCurrentPopupKwargs.prop_confirmation_callback"
+            @force-close="pop_up_manager_store.closeCancelConfirmPopup()"
+        />
     </div>
 
     <!--toasts-->
@@ -20,9 +30,10 @@
 
 
 <script setup lang="ts">
-    import VNotiwind from '../components/medium/VNotiwind.vue';
+    import VNotiwind from '@/components/medium/VNotiwind.vue';
     import VAudioClipProcessings from '@/components/medium/VAudioClipProcessings.vue';
-    import VNavBar from '../components/main/VNavBar.vue';
+    import VNavBar from '@/components/main/VNavBar.vue';
+    import VPopupCancelConfirm from '@/components/medium/VPopupCancelConfirm.vue';
 </script>
 
 <script lang="ts">
@@ -42,7 +53,7 @@
                 redraw_canvases_store: useRedrawCanvasesStore(),
 
                 is_logged_in: false,
-                username: null as string|null,
+                username: "",
             };
         },
         computed: {
@@ -75,11 +86,11 @@
 
                 localStorage.setItem('user_consents_to_cookies', JSON.stringify(true));
             },
-            closeAllPopUpsOnEsc(event:KeyboardEvent) : void {
+            closeAllPopupsOnEsc(event:KeyboardEvent) : void {
 
                 if(event.key === 'Escape'){
 
-                    this.pop_up_manager_store.closeAllPopUps();
+                    this.pop_up_manager_store.closeAllPopups();
                 }
             },
         },
@@ -103,13 +114,13 @@
             });
 
             //allow use of ESC key to close popups
-            window.addEventListener('keydown', this.closeAllPopUpsOnEsc);
+            window.addEventListener('keydown', this.closeAllPopupsOnEsc);
             window.addEventListener('resize', this.redraw_canvases_store.redrawAllAudioVolumePeakCanvases);
 
         },
         beforeUnmount(){
 
-            window.removeEventListener('keydown', this.closeAllPopUpsOnEsc);
+            window.removeEventListener('keydown', this.closeAllPopupsOnEsc);
             window.removeEventListener('resize', this.redraw_canvases_store.redrawAllAudioVolumePeakCanvases);
         }
     });
