@@ -3,8 +3,7 @@ interface EventsTypes{
         event_name: string,
         when_created: string,
         generic_status: {
-            id: number,
-            generic_status_name: string,
+            generic_status_name: 'incomplete'|'completed'|'deleted',
         },
 }
 

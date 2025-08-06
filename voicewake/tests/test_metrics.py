@@ -2043,6 +2043,7 @@ class RealisticBulkData_SampleRun_TestCase(TestCase):
 
 
 
+#CAUTION: optimisation tests can be out-of-date
 #using TransactionTestCase to allow tests to run one by one
 #conclusion from tests
     #little to no impact

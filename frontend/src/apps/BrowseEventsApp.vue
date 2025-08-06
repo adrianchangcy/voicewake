@@ -158,7 +158,7 @@
         </div>
 
         <!--first top border for first VEventCard-->
-        <div class="border-b border-theme-gray-4 dark:border-dark-theme-gray-4 transition-colors"></div>
+        <div class="border-b border-theme-gray-1 dark:border-dark-theme-gray-1 transition-colors"></div>
 
         <div>
             <!--must specify a unique attribute as unique key for the scroller via "key-field"-->
@@ -184,7 +184,8 @@
                     >
                         <div class="p-1">
                             <VEventCard
-                                :prop-guaranteed-event-generic-status="isHomePage ? 'completed' : ''"
+                                :prop-guaranteed-originator-count="isHomePage ? 1 : 0"
+                                :prop-guaranteed-responder-count="isHomePage ? 1 : 0"
                                 :prop-show-title="true"
                                 :prop-event="item"
                                 :prop-event-list-index="index"
@@ -197,6 +198,7 @@
                                 :prop-callable-popup-login-required="callableOpenPopupLoginRequired"
                                 @new-is-liked="filtered_events_store.newAudioClipIsLiked($event)"
                                 @new-v-playback-teleport-id="handleNewVPlaybackTeleportId($event)"
+                                @new-audio-clip-action="handleNewAudioClipAction($event)"
                             />
                         </div>
                     </DynamicScrollerItem>
@@ -372,7 +374,7 @@
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
     import AudioClipsTypes from '@/types/AudioClips.interface';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
-    import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
+    import { useFilteredEventsStore, CurrentFilterChoices } from '@/stores/FilteredEventsStore';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     import { isPageAccessedByBackForward, isLoggedIn, isSuperuser, getUsername } from '@/helper_functions';
     import axios from 'axios';
@@ -630,7 +632,7 @@
                     //put this after insertEvents(), for potential are_all_rows_fetched=true
                     this.is_error_on_previous_fetch = false;
 
-                }).catch(async()=>{
+                }).catch(()=>{
 
                     this.is_error_on_previous_fetch = true;
 
@@ -727,7 +729,7 @@
 
                 this.is_audio_clip_tone_menu_open = !this.is_audio_clip_tone_menu_open;
             },
-            async handleNewSelectedAudioClip(audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null) : Promise<void> {
+            handleNewSelectedAudioClip(audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null) : void {
 
                 if(audio_clip === null){
 
@@ -791,17 +793,17 @@
                     );
                 };
             },
-            async resetStores() : Promise<void> {
+            resetStores() : void {
 
                 if(
                     this.isHomePage === true &&
                     isPageAccessedByBackForward() === false
                 ){
 
-                    await this.filtered_events_store.partialResetStore();
+                    this.filtered_events_store.partialResetStore();
                 }
             },
-            async handleWindowResize() : Promise<void> {
+            handleWindowResize() : void {
 
                 //we do our best to cater to user's viewport height to ensure sufficient buffer size
                 //else elements are late to render, causing tab focus and whitespace issues
@@ -809,11 +811,11 @@
                 this.window_resize_timeout !== null ? clearTimeout(this.window_resize_timeout) : null;
 
                 //run this delayed one next, in case immediate call had fired before dimension is fixed
-                this.window_resize_timeout = window.setTimeout(async ()=>{
+                this.window_resize_timeout = window.setTimeout(()=>{
                     this.dynamic_scroller_buffer = window.innerHeight * 2;
                 }, 200);
             },
-            async storeScrollY() : Promise<void> {
+            storeScrollY() : void {
 
                 window.clearTimeout(this.store_scroll_position_timeout);
 
@@ -823,7 +825,7 @@
 
                 }, 250);
             },
-            async restoreScrollY() : Promise<void> {
+            restoreScrollY() : void {
 
                 if(this.has_restored_scroll_once === false){
 
@@ -832,7 +834,7 @@
                     this.has_restored_scroll_once = true;
                 }
             },
-            async canShowFilterOptionBelowVNavBar() : Promise<void> {
+            canShowFilterOptionBelowVNavBar() : void {
 
                 //currently not used
                 //we want to improve accessibility first, e.g. ESC --> nav bar --> fixed filters --> ESC --> resume content
@@ -840,7 +842,7 @@
                 window.clearTimeout(this.scrolling_timeout);
 
                 //start evaluating past x distance downwards, and showing when user scrolls upwards a bit
-                this.scrolling_timeout = window.setTimeout(async ()=>{
+                this.scrolling_timeout = window.setTimeout(()=>{
 
                     const target = (this.$refs.sorting_options_container as HTMLElement);
 
@@ -869,17 +871,20 @@
             },
             handleNewAudioClipAction(new_value:AudioClipActionsTypes) : void {
 
+                //must be logged in
+
+                if(this.is_logged_in === false){
+
+                    this.pop_up_manager_store.openPopup({'context': 'login_required', 'kwargs': null});
+                    return;
+                }
+
+                //proceed
+
                 let popup_title = '';
                 let popup_description = '';
                 let popup_cancellation_term = '';
                 let popup_confirmation_term = '';
-
-                if(new_value.audio_clip.audio_clip_role.audio_clip_role_name === 'originator'){
-
-
-                }else if(new_value.audio_clip.audio_clip_role.audio_clip_role_name === 'responder'){
-
-                }
 
                 if(new_value.action === 'ban'){
 
@@ -917,7 +922,8 @@
 
                 //prepare removal from store
                 //get current filter indexes first
-                // this.filtered_events_store.get
+                const current_filter_choices = {} as CurrentFilterChoices;
+                Object.assign(current_filter_choices, this.filtered_events_store.getCurrentFilterChoices);
 
                 //do nothing on cancel
                 const popup_cancellation_callback = ()=>{};
@@ -935,8 +941,15 @@
                             this.handleNewVPlaybackTeleportId('#temporary-vplayback-teleport');
                         }
 
-                        //remove from store
-                        //check if user is still at current indexes, get row based on event_list_index, check if same row, delete if true
+                        if(new_value.event_list_index !== null){
+
+                            //update store
+                            this.filtered_events_store.updateAudioClipGenericStatusDeleted(
+                                new_value.event_list_index,
+                                new_value.audio_clip.audio_clip_role.audio_clip_role_name,
+                                current_filter_choices
+                            );
+                        }
                     });
                 };
 

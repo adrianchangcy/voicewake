@@ -1,7 +1,7 @@
 <template>
     <div
         :class="[
-            propHasBorder === true ? 'px-2 sm:px-4 pt-8 pb-12      border-b border-theme-gray-4 dark:border-dark-theme-gray-4 transition-colors' : '',
+            propHasBorder === true ? 'px-2 sm:px-4 pt-8 pb-12      border-b border-theme-gray-1 dark:border-dark-theme-gray-1 transition-colors' : '',
             'flex flex-col'
         ]"
     >
@@ -32,7 +32,7 @@
                             v-else
                             class="italic"
                         >
-                            Event and original recording deleted.
+                            Event deleted.
                         </span>
                     </template>
                 </VTitle>
@@ -48,8 +48,9 @@
             </VTitle>
         </div>
 
+        <!--always completed-->
         <div
-            v-if="propGuaranteedEventGenericStatus === 'completed'"
+            v-if="propGuaranteedOriginatorCount === 1 && propGuaranteedResponderCount === 1"
             class="flex flex-col gap-8"
         >
 
@@ -62,7 +63,13 @@
                 />
                 <div class="flex flex-col gap-2">
                     <!--v-show because component can be reused by virtual scroll-->
-                    <div v-show="haha_oopsie">
+                    <div
+                        v-show="propEvent.originator[0]!.generic_status.generic_status_name === 'deleted'"
+                        class="w-full h-20 flex items-center text-center border border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-lg"
+                    >
+                        <span class="w-full h-fit text-base">Recording deleted.</span>
+                    </div>
+                    <div v-show="propEvent.originator[0]!.generic_status.generic_status_name === 'ok'">
                         <VAudioClipCard
                             v-if="propLoadVAudioClipCardsOnly === true"
                             :prop-audio-clip="propEvent.originator[0]!"
@@ -77,9 +84,6 @@
                             :prop-bucket-quantity="propEvent.originator[0]!.audio_volume_peaks.length"
                             :prop-is-open="propIsVPlaybackOpen"
                         />
-                    </div>
-                    <div v-show="!haha_oopsie" class="w-full h-20 flex items-center text-center border border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-lg">
-                        <span class="w-full h-fit text-base">Recording deleted.</span>
                     </div>
                     <VAudioClipTools
                         :prop-audio-clip="propEvent.originator[0]!"
@@ -102,20 +106,28 @@
                     :propUsername="propEvent.responder[0]!.user.username"
                 />
                 <div class="flex flex-col gap-2">
-                    <VAudioClipCard
-                        v-if="propLoadVAudioClipCardsOnly === true"
-                        :prop-audio-clip="propEvent.responder[0]!"
-                        :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
-                        @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
-                        @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
-                    />
-                    <VPlayback
-                        v-else
-                        :prop-audio-clip="propEvent.responder[0]!"
-                        :prop-audio-volume-peaks="propEvent.responder[0]!.audio_volume_peaks"
-                        :prop-bucket-quantity="propEvent.responder[0]!.audio_volume_peaks.length"
-                        :prop-is-open="propIsVPlaybackOpen"
-                    />
+                    <div
+                        v-show="propEvent.responder[0]!.generic_status.generic_status_name === 'deleted'"
+                        class="w-full h-20 flex items-center text-center border border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-lg"
+                    >
+                        <span class="w-full h-fit text-base">Recording deleted.</span>
+                    </div>
+                    <div v-show="propEvent.responder[0]!.generic_status.generic_status_name === 'ok'">
+                        <VAudioClipCard
+                            v-if="propLoadVAudioClipCardsOnly === true"
+                            :prop-audio-clip="propEvent.responder[0]!"
+                            :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
+                            @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
+                            @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
+                        />
+                        <VPlayback
+                            v-else
+                            :prop-audio-clip="propEvent.responder[0]!"
+                            :prop-audio-volume-peaks="propEvent.responder[0]!.audio_volume_peaks"
+                            :prop-bucket-quantity="propEvent.responder[0]!.audio_volume_peaks.length"
+                            :prop-is-open="propIsVPlaybackOpen"
+                        />
+                    </div>
                     <VAudioClipTools
                         :prop-audio-clip="propEvent.responder[0]!"
                         :prop-has-virtual-scroll="propHasVirtualScroll"
@@ -130,8 +142,9 @@
             </div>
         </div>
 
+        <!--always incomplete-->
         <div
-            v-else-if="propGuaranteedEventGenericStatus === 'incomplete'"
+            v-else-if="propGuaranteedOriginatorCount === 1"
             class="flex flex-col gap-8"
         >
             <!--originator-->
@@ -142,20 +155,28 @@
                     :propUsername="propEvent.originator[0]!.user.username"
                 />
                 <div class="flex flex-col gap-2">
-                    <VAudioClipCard
-                        v-if="propLoadVAudioClipCardsOnly === true"
-                        :prop-audio-clip="propEvent.originator[0]!"
-                        :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
-                        @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
-                        @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
-                    />
-                    <VPlayback
-                        v-else
-                        :prop-audio-clip="propEvent.originator[0]!"
-                        :prop-audio-volume-peaks="propEvent.originator[0]!.audio_volume_peaks"
-                        :prop-bucket-quantity="propEvent.originator[0]!.audio_volume_peaks.length"
-                        :prop-is-open="propIsVPlaybackOpen"
-                    />
+                    <div
+                        v-show="propEvent.originator[0]!.generic_status.generic_status_name === 'deleted'"
+                        class="w-full h-20 flex items-center text-center border border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-lg"
+                    >
+                        <span class="w-full h-fit text-base">Recording deleted.</span>
+                    </div>
+                    <div v-show="propEvent.originator[0]!.generic_status.generic_status_name === 'ok'">
+                        <VAudioClipCard
+                            v-if="propLoadVAudioClipCardsOnly === true"
+                            :prop-audio-clip="propEvent.originator[0]!"
+                            :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
+                            @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
+                            @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
+                        />
+                        <VPlayback
+                            v-else
+                            :prop-audio-clip="propEvent.originator[0]!"
+                            :prop-audio-volume-peaks="propEvent.originator[0]!.audio_volume_peaks"
+                            :prop-bucket-quantity="propEvent.originator[0]!.audio_volume_peaks.length"
+                            :prop-is-open="propIsVPlaybackOpen"
+                        />
+                    </div>
                     <VAudioClipTools
                         :prop-audio-clip="propEvent.originator[0]!"
                         :prop-has-virtual-scroll="propHasVirtualScroll"
@@ -176,6 +197,7 @@
         <div
             v-else
         >
+            <!--use VAudioClipCard as first render-->
             <div
                 v-if="propLoadVAudioClipCardsOnly"
                 class="flex flex-col gap-8"
@@ -190,12 +212,20 @@
                         :propUsername="audio_clip.user.username"
                     />
                     <div class="flex flex-col gap-2">
-                        <VAudioClipCard
-                            :prop-audio-clip="audio_clip"
-                            :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
-                            @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
-                            @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
-                        />
+                        <div
+                            v-show="audio_clip.generic_status.generic_status_name === 'deleted'"
+                            class="w-full h-20 flex items-center text-center border border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-lg"
+                        >
+                            <span class="w-full h-fit text-base">Recording deleted.</span>
+                        </div>
+                        <div v-show="audio_clip.generic_status.generic_status_name === 'ok'">
+                            <VAudioClipCard
+                                :prop-audio-clip="audio_clip"
+                                :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
+                                @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
+                                @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
+                            />
+                        </div>
                         <VAudioClipTools
                             :prop-audio-clip="audio_clip"
                             :prop-has-virtual-scroll="propHasVirtualScroll"
@@ -218,12 +248,20 @@
                         :propUsername="audio_clip.user.username"
                     />
                     <div class="flex flex-col gap-2">
-                        <VAudioClipCard
-                            :prop-audio-clip="audio_clip"
-                            :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
-                            @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
-                            @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
-                        />
+                        <div
+                            v-show="audio_clip.generic_status.generic_status_name === 'deleted'"
+                            class="w-full h-20 flex items-center text-center border border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-lg"
+                        >
+                            <span class="w-full h-fit text-base">Recording deleted.</span>
+                        </div>
+                        <div v-show="audio_clip.generic_status.generic_status_name === 'ok'">
+                            <VAudioClipCard
+                                :prop-audio-clip="audio_clip"
+                                :prop-selected-audio-clip="vplayback_store.getPlayingAudioClip"
+                                @selectedAudioClip="vplayback_store.updatePlayingAudioClip($event)"
+                                @newVPlaybackTeleportId="emitNewVPlaybackTeleportId($event)"
+                            />
+                        </div>
                         <VAudioClipTools
                             :prop-audio-clip="audio_clip"
                             :prop-has-virtual-scroll="propHasVirtualScroll"
@@ -238,6 +276,7 @@
                 </div>
             </div>
         
+            <!--use VPlayback as first render-->
             <div
                 v-else
                 class="flex flex-col gap-8"
@@ -252,12 +291,20 @@
                         :propUsername="audio_clip.user.username"
                     />
                     <div class="flex flex-col gap-2">
-                        <VPlayback
-                            :prop-audio-clip="audio_clip"
-                            :prop-audio-volume-peaks="audio_clip.audio_volume_peaks"
-                            :prop-bucket-quantity="audio_clip.audio_volume_peaks.length"
-                            :prop-is-open="propIsVPlaybackOpen"
-                        />
+                        <div
+                            v-show="audio_clip.generic_status.generic_status_name === 'deleted'"
+                            class="w-full h-20 flex items-center text-center border border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-lg"
+                        >
+                            <span class="w-full h-fit text-base">Recording deleted.</span>
+                        </div>
+                        <div v-show="audio_clip.generic_status.generic_status_name === 'ok'">
+                            <VPlayback
+                                :prop-audio-clip="audio_clip"
+                                :prop-audio-volume-peaks="audio_clip.audio_volume_peaks"
+                                :prop-bucket-quantity="audio_clip.audio_volume_peaks.length"
+                                :prop-is-open="propIsVPlaybackOpen"
+                            />
+                        </div>
                         <VAudioClipTools
                             :prop-audio-clip="audio_clip"
                             :prop-has-virtual-scroll="propHasVirtualScroll"
@@ -280,12 +327,20 @@
                         :propUsername="audio_clip.user.username"
                     />
                     <div class="flex flex-col gap-2">
-                        <VPlayback
-                            :prop-audio-clip="audio_clip"
-                            :prop-audio-volume-peaks="audio_clip.audio_volume_peaks"
-                            :prop-bucket-quantity="audio_clip.audio_volume_peaks.length"
-                            :prop-is-open="propIsVPlaybackOpen"
-                        />
+                        <div
+                            v-show="audio_clip.generic_status.generic_status_name === 'deleted'"
+                            class="w-full h-20 flex items-center text-center border border-theme-gray-2 dark:border-dark-theme-gray-2 rounded-lg"
+                        >
+                            <span class="w-full h-fit text-base">Recording deleted.</span>
+                        </div>
+                        <div v-show="audio_clip.generic_status.generic_status_name === 'ok'">
+                            <VPlayback
+                                :prop-audio-clip="audio_clip"
+                                :prop-audio-volume-peaks="audio_clip.audio_volume_peaks"
+                                :prop-bucket-quantity="audio_clip.audio_volume_peaks.length"
+                                :prop-is-open="propIsVPlaybackOpen"
+                            />
+                        </div>
                         <VAudioClipTools
                             :prop-audio-clip="audio_clip"
                             :prop-has-virtual-scroll="propHasVirtualScroll"
@@ -322,13 +377,10 @@
     import AudioClipsTypes from '@/types/AudioClips.interface';
     import AudioClipActionsTypes from '@/types/AudioClipActions.interface';
 
-    type GuaranteedEventGenericStatuses = "completed"|"incomplete"|"";
-
     export default defineComponent({
         data() {
             return {
                 vplayback_store: useVPlaybackStore(),
-                haha_oopsie: false,
             };
         },
         props: {
@@ -341,10 +393,15 @@
                 type: Number,
                 default: null,
             },
-            propGuaranteedEventGenericStatus: {
+            propGuaranteedOriginatorCount: {
                 //this is useful for avoiding v-for, so child components are never unmounted
-                type: String as PropType<GuaranteedEventGenericStatuses>,
-                default: "",
+                type: Number,
+                default: null,
+            },
+            propGuaranteedResponderCount: {
+                //this is useful for avoiding v-for, so child components are never unmounted
+                type: Number,
+                default: null,
             },
             propShowTitle: {
                 type: Boolean,

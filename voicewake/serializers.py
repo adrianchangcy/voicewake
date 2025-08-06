@@ -54,7 +54,7 @@ class AudioClipLikesDislikesSerializer(serializers.ModelSerializer):
 class GenericStatusesSerializer(serializers.ModelSerializer):
     class Meta:
         model = GenericStatuses
-        exclude = ['when_created', 'last_modified']
+        fields = ['generic_status_name']
 
 
 
