@@ -6,16 +6,24 @@
 
     <!--extra popups can belong here-->
     <div class="w-full h-0 relative">
-        <VPopupCancelConfirm
+        <div
             v-if="pop_up_manager_store.isCancelConfirmOpen && pop_up_manager_store.getCurrentPopupKwargs !== null"
-            :propTitle="pop_up_manager_store.getCurrentPopupKwargs.prop_title"
-            :propDescription="pop_up_manager_store.getCurrentPopupKwargs.prop_description"
-            :propCancellationTerm="pop_up_manager_store.getCurrentPopupKwargs.prop_cancellation_term"
-            :propCancellationCallback="pop_up_manager_store.getCurrentPopupKwargs.prop_cancellation_callback"
-            :propConfirmationTerm="pop_up_manager_store.getCurrentPopupKwargs.prop_confirmation_term"
-            :propConfirmationCallback="pop_up_manager_store.getCurrentPopupKwargs.prop_confirmation_callback"
-            @force-close="pop_up_manager_store.closeCancelConfirmPopup()"
-        />
+            class="absolute flex flex-row w-full h-[calc(100vh-4.5rem)] bg-theme-light/90 dark:bg-theme-dark/90"
+        >
+            <div
+                class="w-5/6 sm:w-fit max-h-[90%] min-h-fit m-auto"
+            >
+                <VPopupCancelConfirm
+                    :propTitle="pop_up_manager_store.getCurrentPopupKwargs.prop_title"
+                    :propDescription="pop_up_manager_store.getCurrentPopupKwargs.prop_description"
+                    :propCancellationTerm="pop_up_manager_store.getCurrentPopupKwargs.prop_cancellation_term"
+                    :propCancellationCallback="pop_up_manager_store.getCurrentPopupKwargs.prop_cancellation_callback"
+                    :propConfirmationTerm="pop_up_manager_store.getCurrentPopupKwargs.prop_confirmation_term"
+                    :propConfirmationCallback="pop_up_manager_store.getCurrentPopupKwargs.prop_confirmation_callback"
+                    @force-close="pop_up_manager_store.closeCancelConfirmPopup()"
+                />
+            </div>
+        </div>
     </div>
 
     <!--toasts-->

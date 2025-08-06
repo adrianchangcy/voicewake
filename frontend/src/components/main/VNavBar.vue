@@ -480,7 +480,7 @@
             >
                 <div
                     v-show="pop_up_manager_store.isLogInOpen || pop_up_manager_store.isSignUpOpen"
-                    class="absolute hidden lg:flex flex-row w-full h-[calc(100vh-4.5rem)] bg-theme-light/90 dark:bg-theme-dark/90"
+                    class="absolute flex flex-row w-full h-[calc(100vh-4.5rem)] bg-theme-light/90 dark:bg-theme-dark/90"
                 >
                     <div
                         v-show="pop_up_manager_store.isLogInOpen"

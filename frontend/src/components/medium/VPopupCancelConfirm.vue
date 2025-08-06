@@ -1,11 +1,13 @@
 <template>
-    <div class="px-4 py-10 border border-theme-gray-2 dark:border-dark-theme-gray-2 bg-theme-light dark:bg-theme-dark rounded-lg">
+    <div class="px-4 py-8 border border-theme-gray-2 dark:border-dark-theme-gray-2 bg-theme-light dark:bg-theme-dark rounded-lg">
 
-        <div class="flex flex-col gap-1">
+        <div class="flex flex-col">
             <VTitle propFontSize="m" class="text-left">
                 <template #title>
                     <span>{{ propTitle }}</span>
-                </template>                
+                </template>
+            </VTitle>
+            <VTitle propFontSize="m" class="text-left pt-2">
                 <template #titleDescription>
                     <span>{{ propDescription }}</span>
                 </template>
