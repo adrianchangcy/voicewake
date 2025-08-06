@@ -31,6 +31,15 @@ interface FilteredEventsStructure {
     }
 }
 
+export interface CurrentFilterChoices {
+    current_like_dislike_choice_index: number,
+    current_event_generic_status_name_index: number,
+    current_main_filter_index: number,
+    current_timeframe_index: number,
+    current_audio_clip_role_name_index: number,
+    current_audio_clip_tone_id: number,
+}
+
 
 export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_likes_dislikes"){
 
@@ -40,6 +49,10 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
     //we let all indexes initialise on non-null and non-zero-string values
     return defineStore(store_id, {
         state: ()=>({
+            //from browse page API, all audio_clips will always have generic_status_name 'ok'
+            //but at frontend, generic_status_name can be turned into 'deleted'
+            //store will not track is_loading for VAudioClipTools, as there is no way to not persist only a deep key-value
+            //updating existing audio_clip instead of completely removing it, also prevents inaccurate list index for subsequent actions
             filtered_events_structure: {} as FilteredEventsStructure,
 
             current_like_dislike_choice_index: 0,
@@ -72,6 +85,17 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
             getFilteredEventsStructure: (state):FilteredEventsStructure => {
 
                 return state.filtered_events_structure;
+            },
+            getCurrentFilterChoices: (state):CurrentFilterChoices => {
+
+                return {
+                    'current_like_dislike_choice_index': state.current_like_dislike_choice_index,
+                    'current_event_generic_status_name_index': state.current_event_generic_status_name_index,
+                    'current_main_filter_index': state.current_main_filter_index,
+                    'current_timeframe_index': state.current_timeframe_index,
+                    'current_audio_clip_role_name_index': state.current_audio_clip_role_name_index,
+                    'current_audio_clip_tone_id': state.current_audio_clip_tone_id,
+                };
             },
             getEventsForBrowsing: (state):EventsAndAudioClipsTypes[] => {
 
@@ -323,7 +347,7 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
                     return this.current_audio_clip_tone_id === audio_clip_tone.id;
                 }
             },
-            async updateLastSelectedAudioClip(audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null) : Promise<void> {
+            updateLastSelectedAudioClip(audio_clip:AudioClipsTypes|AudioClipsAndLikeDetailsTypes|null) : void {
 
                 this.filtered_events_structure[
                     this.current_like_dislike_choice_index
@@ -551,7 +575,7 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
                         'last_selected_audio_clip': null,
                         'next_url': '',
                         'back_url': '',
-                        is_fetching: false,
+                        'is_fetching': false,
                     };
                 }
             },
@@ -575,20 +599,20 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
 
                 return this.filtered_events_structure[args_list[0]][args_list[1]][args_list[2]][args_list[3]][args_list[4]][args_list[5]]['events'].length > 0;
             },
-            async partialResetStore() : Promise<void> {
+            partialResetStore() : void {
 
                 this.filtered_events_structure = {};
                 this.current_audio_clip_role_name_index = 0;
                 this.updateCurrentAudioClipTone(null);
                 this.last_scroll_y = 0;
             },
-            async setLastScrollY(scrollY_value:number) : Promise<void> {
+            setLastScrollY(scrollY_value:number) : void {
 
                 this.last_scroll_y = scrollY_value;
             },
-            async newAudioClipIsLiked(
+            newAudioClipIsLiked(
                 new_value:{audio_clip:AudioClipsAndLikeDetailsTypes, new_is_liked:boolean|null}
-            ) : Promise<void> {
+            ) : void {
 
                 //since objects are passed by reference, just pass the audio_clip here
 
@@ -672,6 +696,108 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
                 ][
                     current_audio_clip_tone_id
                 ]['is_fetching'] = is_fetching;
+            },
+            updateAudioClipGenericStatusDeleted(
+                events_list_index: number,
+                audio_clip_role_name: 'originator'|'responder',
+                filter_choices: CurrentFilterChoices,
+            ) : void {
+
+                //decide new generic_status_name for event
+
+                let can_update_event = false;
+
+                let current_event_generic_status_name = this.filtered_events_structure[
+                    filter_choices.current_like_dislike_choice_index
+                ][
+                    filter_choices.current_event_generic_status_name_index
+                ][
+                    filter_choices.current_main_filter_index
+                ][
+                    filter_choices.current_timeframe_index
+                ][
+                    filter_choices.current_audio_clip_role_name_index
+                ][
+                    filter_choices.current_audio_clip_tone_id
+                ][
+                    'events'
+                ][
+                    events_list_index
+                ][
+                    'event'
+                ][
+                    'generic_status'
+                ][
+                    'generic_status_name'
+                ];
+
+                let event_generic_status_name = '';
+
+                if(audio_clip_role_name === 'originator'){
+
+                    event_generic_status_name = 'deleted';
+                    can_update_event = true;
+
+                }else if(audio_clip_role_name === 'responder' && current_event_generic_status_name === 'completed'){
+
+                    event_generic_status_name = 'incomplete';
+                    can_update_event = true;
+                }
+
+                //update event
+                if(can_update_event === true){
+
+                    this.filtered_events_structure[
+                        filter_choices.current_like_dislike_choice_index
+                    ][
+                        filter_choices.current_event_generic_status_name_index
+                    ][
+                        filter_choices.current_main_filter_index
+                    ][
+                        filter_choices.current_timeframe_index
+                    ][
+                        filter_choices.current_audio_clip_role_name_index
+                    ][
+                        filter_choices.current_audio_clip_tone_id
+                    ][
+                        'events'
+                    ][
+                        events_list_index
+                    ][
+                        'event'
+                    ][
+                        'generic_status'
+                    ][
+                        'generic_status_name'
+                    ] = event_generic_status_name as 'deleted'|'incomplete';
+                }
+
+                //update audio_clip
+                this.filtered_events_structure[
+                    filter_choices.current_like_dislike_choice_index
+                ][
+                    filter_choices.current_event_generic_status_name_index
+                ][
+                    filter_choices.current_main_filter_index
+                ][
+                    filter_choices.current_timeframe_index
+                ][
+                    filter_choices.current_audio_clip_role_name_index
+                ][
+                    filter_choices.current_audio_clip_tone_id
+                ][
+                    'events'
+                ][
+                    events_list_index
+                ][
+                    audio_clip_role_name
+                ][
+                    0
+                ][
+                    'generic_status'
+                ][
+                    'generic_status_name'
+                ] = 'deleted';
             },
         },
         //use localStorage, call .$reset() on logout to remove user's interactions

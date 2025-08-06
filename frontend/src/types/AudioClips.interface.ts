@@ -15,7 +15,6 @@ interface AudioClipsTypes{
     },
     event_id: number,
     generic_status: {
-        id: number,
         generic_status_name: 'ok'|'deleted',
     },
     audio_file: string,
