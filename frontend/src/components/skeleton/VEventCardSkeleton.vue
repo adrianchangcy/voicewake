@@ -1,7 +1,8 @@
 <template>
     <div
         :class="[
-            propHasBorder === true ? 'border-b px-2 sm:px-4 pt-8 pb-12 border-theme-gray-1 dark:border-dark-theme-gray-1' : '',
+            propHasBorder === true ? 'border-y border-theme-gray-1 dark:border-dark-theme-gray-1' : '',
+            propHasPadding === true ? 'px-2 sm:px-4 pt-8 pb-12' : '',
             'flex flex-col'
         ]"
     >
@@ -37,6 +38,10 @@
     export default defineComponent({
         props: {
             propHasBorder: {
+                type: Boolean,
+                default: false
+            },
+            propHasPadding: {
                 type: Boolean,
                 default: false
             },

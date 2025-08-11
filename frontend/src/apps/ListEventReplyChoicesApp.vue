@@ -395,6 +395,7 @@
                                 prop-guaranteed-event-generic-status="incomplete"
                                 :prop-show-title="true"
                                 :prop-has-border="true"
+                                :prop-has-padding="true"
                                 :prop-is-v-playback-open="isVEventCardOpen"
                                 :prop-is-logged-in="is_logged_in"
                                 :prop-is-superuser="is_superuser"
@@ -420,6 +421,7 @@
                         v-show="isLoading && is_searching"
                         :prop-audio-clip-quantity="1"
                         :prop-has-border="true"
+                        :prop-has-padding="true"
                         class="w-full"
                     />
 

@@ -16,6 +16,8 @@
                 :prop-event="event!"
                 :prop-show-title="false"
                 :prop-load-v-audio-clip-cards-only="!canReply"
+                :prop-has-padding="false"
+                :prop-has-border="false"
                 :prop-is-logged-in="is_logged_in"
                 :prop-is-superuser="is_superuser"
                 :prop-username="username"

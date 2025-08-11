@@ -66,7 +66,27 @@ def about(request):
 @app_decorators.deny_if_already_logged_in("redirect")
 def log_in(request):
 
-    return render(request, template_name='registration/log_in.html')
+    redirected_from_values = ['start', 'reply']
+
+    redirect_message = ''
+
+    if 'redirected_from' in request.GET and request.GET['redirected_from'] in redirected_from_values:
+
+        if request.GET['redirected_from'] == 'start':
+
+            redirect_message = 'Log in to create events.'
+
+        elif request.GET['redirected_from'] == 'reply':
+
+            redirect_message = 'Log in to reply in events.'
+
+    return render(
+        request,
+        template_name='registration/log_in.html',
+        context={
+            'redirected_message': redirect_message
+        }
+    )
 
 
 
@@ -208,7 +228,7 @@ class ListUserLikesDislikes(TemplateView):
 #handles originator audio_clips
 @method_decorator(
     [
-        app_decorators.deny_if_not_logged_in("redirect"),
+        app_decorators.deny_if_not_logged_in("redirect", extra_url_string="?redirected_from=start"),
         app_decorators.deny_if_no_username("redirect"),
         app_decorators.deny_if_banned("redirect"),
     ],
@@ -359,7 +379,7 @@ class GetEvents(TemplateView):
 #for finding reply choices
 @method_decorator(
     [
-        app_decorators.deny_if_not_logged_in("redirect"),
+        app_decorators.deny_if_not_logged_in("redirect", extra_url_string="?redirected_from=reply"),
         app_decorators.deny_if_no_username("redirect"),
         app_decorators.deny_if_banned("redirect"),
     ],
