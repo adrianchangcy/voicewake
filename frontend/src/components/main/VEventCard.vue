@@ -1,7 +1,8 @@
 <template>
     <div
         :class="[
-            propHasBorder === true ? 'px-2 sm:px-4 pt-8 pb-12      border-b border-theme-gray-1 dark:border-dark-theme-gray-1 transition-colors' : '',
+            propHasBorder === true ? 'border-y border-theme-gray-1 dark:border-dark-theme-gray-1' : '',
+            propHasPadding === true ? 'px-2 sm:px-4 pt-8 pb-12' : '',
             'flex flex-col'
         ]"
     >
@@ -408,6 +409,10 @@
                 default: true,
             },
             propHasBorder: {
+                type: Boolean,
+                default: false,
+            },
+            propHasPadding: {
                 type: Boolean,
                 default: false,
             },
