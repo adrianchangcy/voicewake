@@ -114,8 +114,11 @@ urlpatterns += [
     path('user/<str:username>', views.GetUserProfile.as_view(), name='user_profile'),
     path('likes', views.ListUserLikesDislikes.as_view(), name='user_likes_dislikes'),
     path('username/new', views.SetUsername.as_view(), name='set_username'),
+
+    #update decorator deny_if_not_logged_in(extra_url_string) for these views if these URLs ever change
     path('start', views.CreateEvents.as_view(), name='create_events'),
     path('reply', views.EventReplyChoices.as_view(), name='list_event_reply_choices'),
+
     path('event/<int:event_id>', views.GetEvents.as_view(), name='get_events'),
     path('maintenance', views.UnderMaintenance.as_view(), name='under_maintenance'),
 

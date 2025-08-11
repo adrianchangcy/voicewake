@@ -157,8 +157,8 @@
             </div>
         </div>
 
-        <!--first top border for first VEventCard-->
-        <div class="border-b border-theme-gray-1 dark:border-dark-theme-gray-1 transition-colors"></div>
+        <!--first border to maintain "only one line" aesthetics-->
+        <div class="mx-1 border-t border-theme-gray-1 dark:border-dark-theme-gray-1"></div>
 
         <div>
             <!--must specify a unique attribute as unique key for the scroller via "key-field"-->
@@ -182,14 +182,16 @@
                         :index="index"
                         :active="active"
                     >
-                        <div class="p-1">
+                        <!--specify only border-b to maintain "only one line" aesthetics-->
+                        <div class="px-1 border-b border-theme-gray-1 dark:border-dark-theme-gray-1">
                             <VEventCard
                                 :prop-guaranteed-originator-count="isHomePage ? 1 : 0"
                                 :prop-guaranteed-responder-count="isHomePage ? 1 : 0"
                                 :prop-show-title="true"
                                 :prop-event="item"
                                 :prop-event-list-index="index"
-                                :prop-has-border="true"
+                                :prop-has-border="false"
+                                :prop-has-padding="true"
                                 :prop-load-v-audio-clip-cards-only="true"
                                 :prop-has-virtual-scroll="true"
                                 :prop-is-logged-in="is_logged_in"
@@ -213,12 +215,15 @@
             <TransitionGroupFade>
 
                 <!--fetching-->
-                <VEventCardSkeleton
-                    v-show="filtered_events_store.isFetching"
-                    :prop-has-border="true"
-                    :prop-audio-clip-quantity="2"
-                    class="w-full"
-                />
+                <div class="px-1 border-b border-theme-gray-1 dark:border-dark-theme-gray-1">
+                    <VEventCardSkeleton
+                        v-show="filtered_events_store.isFetching"
+                        :prop-has-border="false"
+                        :prop-has-padding="true"
+                        :prop-audio-clip-quantity="2"
+                        class="w-full"
+                    />
+                </div>
 
                 <!--no events at all-->
                 <VDialogPlain

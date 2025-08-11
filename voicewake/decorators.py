@@ -18,7 +18,7 @@ from voicewake.services import get_datetime_now
 
 
 
-def deny_if_not_logged_in(return_instance:Literal["redirect"]):
+def deny_if_not_logged_in(return_instance:Literal["redirect"], extra_url_string:str=''):
 
     if return_instance not in ["redirect"]:
 
@@ -31,6 +31,10 @@ def deny_if_not_logged_in(return_instance:Literal["redirect"]):
         def inner(request, *args, **kwargs):
 
             redirect_url = reverse('log_in')
+
+            if len(extra_url_string) > 0:
+
+                redirect_url += extra_url_string
 
             if request.user.is_authenticated is False and request.path != redirect_url:
 
