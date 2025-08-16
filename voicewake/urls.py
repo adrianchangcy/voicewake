@@ -82,7 +82,7 @@ urlpatterns += [
     path('api/audio-clips/tones/list', apis.AudioClipTonesAPI.as_view(), name='audio_clip_tones_api'),
     path('api/audio-clips/likes-dislikes', apis.AudioClipLikesDislikesAPI.as_view(), name='audio_clip_likes_dislikes_api'),
     path('api/audio-clips/bans', apis.AudioClipBansAPI.as_view(), name="audio_clip_bans_api"),
-    path('api/audio-clips/deletions', apis.AudioClipDeletionsAPI.as_view(), name="audio_clip_deletions_api"),
+    path('api/audio-clips/delete/<int:audio_clip_id>', apis.AudioClipDeletionsAPI.as_view(), name="audio_clip_deletions_api"),
 
     path('api/users/blocks', apis.UserBlocksAPI.as_view(), name="user_blocks_api"),
     path('api/users/follows', apis.UserFollowsAPI.as_view(), name="user_follows_api"),

@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia';
 import EventsAndAudioClipsTypes from '@/types/EventsAndAudioClips.interface';
 import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
-import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
 import { notify } from '@/wrappers/notify_wrapper';
 
 import axios from 'axios';
@@ -15,6 +14,7 @@ type CurrentStatuses = ""|"no_new_event_reply_choices"|"event_reply_choices_expi
 
 export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
     state: ()=>({
+        //when reply choice is chosen, it gets copied to replying_event, and event_reply_choices becomes []
         event_reply_choices: [] as EventsAndAudioClipsTypes[],
         replying_event: null as EventsAndAudioClipsTypes|null,
 
@@ -165,7 +165,7 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
             new_value.audio_clip.previous_is_liked_by_user = new_value.audio_clip.is_liked_by_user;
             new_value.audio_clip.is_liked_by_user = new_value.new_is_liked;
         },
-        async queueNextEventReplyChoices(audio_clip_tone:AudioClipTonesTypes|null, unlock_all_locked_events:boolean) : Promise<void> {
+        async queueNextEventReplyChoices(unlock_all_locked_events:boolean) : Promise<void> {
 
             //if is first time, we pass unlock_all_locked_events=false
             //this allows us to get previous choices or currently replying events
@@ -173,15 +173,6 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
             this.softReset();
 
             const data = new FormData();
-
-            //id at db starts from 1
-            if(audio_clip_tone !== null){
-
-                data.append(
-                    'audio_clip_tone_id',
-                    JSON.stringify(audio_clip_tone.id)
-                );
-            }
 
             //for first List page visit, we get any replying events or any existing choices
             data.append(
@@ -213,7 +204,10 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                     return;
                 }
 
-                if(Object.hasOwn(error.response.data, 'event_reply_daily_limit_reached') === true){
+                if(
+                    Object.hasOwn(error.response.data, 'event_reply_daily_limit_reached') === true &&
+                    error.response.data['event_reply_daily_limit_reached'] === true
+                ){
 
                     this.updateSharedDialogContext('event_reply_daily_limit_reached');
 
@@ -222,6 +216,21 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                         text: error.response.data['message'],
                         type: 'generic',
                         icon: {'font_awesome': 'fas fa-battery-empty'},
+                    }, 4000);
+
+                    return;
+
+                }else if(
+                    error.request.status === 400 &&
+                    Object.hasOwn(error.response.data, 'has_recording_processing') === true &&
+                    error.response.data['has_recording_processing'] === true
+                ){
+
+                    notify({
+                        title: 'Processing in progress',
+                        text: error.response.data['message'],
+                        type: 'error',
+                        icon: {'font_awesome': 'fas fa-exclamation'},
                     }, 4000);
 
                     return;
@@ -370,6 +379,21 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                     }, 3000);
 
                     return;
+
+                }else if(
+                    error.request.status === 400 &&
+                    Object.hasOwn(error.response.data, 'has_recording_processing') === true &&
+                    error.response.data['has_recording_processing'] === true
+                ){
+
+                    notify({
+                        title: 'Processing in progress',
+                        text: error.response.data['message'],
+                        type: 'error',
+                        icon: {'font_awesome': 'fas fa-exclamation'},
+                    }, 4000);
+
+                    return;
                 }
 
                 notify({
@@ -393,6 +417,71 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                 //use this when replying_event does not exist and is retrieved from GetEventsApp
                 this.replying_event = replying_event;
             }
+        },
+        updateAudioClipDeleted(
+            event_id:number,
+            audio_clip_role_name: 'originator'|'responder'
+        ) : void {
+
+            //this is called after API request
+            //between "action" and "API done", data can change
+            //when this is called, try to find the correct data, and if not found, do nothing
+
+            if(this.event_reply_choices.length === 0 || this.replying_event === null){
+
+                return;
+            }
+
+            //if event is in event_reply_choices
+
+            for(let x=0; x<this.event_reply_choices.length; x++){
+
+                if(this.event_reply_choices[x].event.id !== event_id){
+
+                    continue;
+                }
+
+                if(audio_clip_role_name === 'originator'){
+
+                    //event "deleted"
+                    this.event_reply_choices[x].event.generic_status.generic_status_name = 'deleted';
+
+                }else if(
+                    audio_clip_role_name === 'responder' &&
+                    this.event_reply_choices[x].event.generic_status.generic_status_name === 'completed'
+                ){
+
+                    //event "incomplete"
+                    this.event_reply_choices[x].event.generic_status.generic_status_name = 'incomplete';
+                }
+
+                //audio_clip "deleted"
+                this.event_reply_choices[x][audio_clip_role_name][0].generic_status.generic_status_name = 'deleted';
+
+                return;
+            }
+
+            if(this.replying_event.event.id !== event_id){
+
+                return;
+            }
+
+            if(audio_clip_role_name === 'originator'){
+
+                //event "deleted"
+                this.replying_event.event.generic_status.generic_status_name = 'deleted';
+
+            }else if(
+                audio_clip_role_name === 'responder' &&
+                this.replying_event.event.generic_status.generic_status_name === 'completed'
+            ){
+
+                //event "incomplete"
+                this.replying_event.event.generic_status.generic_status_name = 'incomplete';
+            }
+
+            //audio_clip "deleted"
+            this.replying_event[audio_clip_role_name][0].generic_status.generic_status_name = 'deleted';
         },
         softReset() : void {
 

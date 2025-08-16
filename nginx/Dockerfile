@@ -20,3 +20,9 @@ EXPOSE 8080
 #for normal NGINX, skip CMD, let NGINX use its own entrypoint
 #for debug, use CMD below, and specify "...error.log debug;" at nginx.conf
 # CMD ["nginx-debug", "-g", "daemon off;"]
+
+#if using command at docker compose:
+    #command: nginx-debug -g 'daemon off;'
+
+#on file change, manually reload at container's exec bash (no straightforward hot reload available):
+    #nginx -s reload

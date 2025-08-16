@@ -1,14 +1,17 @@
 <template>
-    <div>
+    <div class="h-10 flex flex-row items-end pb-2 text-sm text-theme-black dark:text-dark-theme-white-2">
         <a
             :href="getUsernameURL"
-            class="w-fit h-10 flex text-theme-black dark:text-dark-theme-white-2 text-sm rounded-md transition-colors    action-text-hover active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline"
+            class="w-fit h-full flex items-end rounded-md transition-colors    action-text-hover active:bg-theme-gray-3 dark:active:bg-dark-theme-gray-3    focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline"
         >
-            <div class="w-fit h-fit self-end flex flex-row items-center gap-2 overflow-hidden pb-2">
+            <div class="w-fit h-fit flex flex-row gap-2 overflow-hidden">
                 <FontAwesomeIcon icon="fas fa-user" class="text-base"/>
                 <span class="h-fit">{{ propUsername }}</span>
             </div>
         </a>
+        <span v-if="propShowRepliedText" class="italic w-fit h-fit">
+            &nbsp;replied
+        </span>
     </div>
 </template>
 
@@ -33,7 +36,11 @@
         props: {
             propUsername: {
                 type: String,
-                default: ''
+                default: '',
+            },
+            propShowRepliedText: {
+                type: Boolean,
+                default: false,
             },
         },
         computed: {

@@ -669,12 +669,13 @@
                 let audio_clip = {} as AudioClipsAndLikeDetailsTypes;
                 Object.assign(audio_clip, this.propAudioClip);
 
-                let data = new FormData();
+                return axios.delete(`${window.location.origin}/api/audio-clips/delete/${audio_clip.id}`)
+                .then((result:any) => {
 
-                data.append('audio_clip_id', JSON.stringify(audio_clip.id));
+                    if(result.request.status !== 204){
 
-                return axios.post(window.location.origin + '/api/audio-clips/deletions', data)
-                .then(() => {
+                        throw new Error(`result.request.status of ${result.request.status} is not recognised.`);
+                    }
 
                     notify({
                         type: 'ok',
@@ -720,7 +721,12 @@
                 data.append('audio_clip_id', JSON.stringify(audio_clip.id));
 
                 return axios.post(window.location.origin + '/api/audio-clips/bans', data)
-                .then(() => {
+                .then((result:any) => {
+
+                    if(result.request.status !== 200){
+
+                        throw new Error(`result.request.status of ${result.request.status} is not recognised.`);
+                    }
 
                     notify({
                         type: 'ok',
