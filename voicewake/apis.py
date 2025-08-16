@@ -1895,7 +1895,7 @@ class CreateEventsAPI(generics.GenericAPIView):
 
             elif self.url_context == 'process':
 
-                error_response = create_audio_clips_class.start_normalisation(
+                error_response = create_audio_clips_class.prepare_normalisation(
                     audio_clip_id=request_data['audio_clip_id'],
                 )
 
@@ -2259,7 +2259,7 @@ class EventReplyChoicesAPI(generics.GenericAPIView):
             return Response(
                 data={
                     'message': 'Please wait for your recording to process before you explore new events.',
-                    'is_processing': True,
+                    'has_recording_processing': True,
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -2550,7 +2550,7 @@ class EventRepliesAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'has_processing': True,
+                    'has_recording_processing': True,
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -2716,7 +2716,7 @@ class EventRepliesAPI(generics.GenericAPIView):
 
             elif self.url_context == 'process':
 
-                error_response = create_audio_clips_class.start_normalisation(
+                error_response = create_audio_clips_class.prepare_normalisation(
                     audio_clip_id=request_data['audio_clip_id'],
                 )
 
@@ -3662,9 +3662,14 @@ class AudioClipDeletionsAPI(generics.DestroyAPIView):
     #allow if user performing the action is superuser or is the one who created the audio_clip
     #only use this to delete clips that are already processed, i.e. "ok", due to cache being no longer involved
     @method_decorator(app_decorators.deny_if_banned("response"))
-    def delete(self, request, *args, **kwargs):
+    def delete(self, request, audio_clip_id:int):
 
-        serializer = DeleteAudioClipDeletionsAPISerializer(data=request.data, many=False)
+        serializer = DeleteAudioClipDeletionsAPISerializer(
+            data={
+                'audio_clip_id': audio_clip_id,
+            },
+            many=False
+        )
 
         #validate
         if serializer.is_valid() is False:

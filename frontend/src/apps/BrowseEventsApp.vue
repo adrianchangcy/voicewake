@@ -382,9 +382,8 @@
     import { useFilteredEventsStore, CurrentFilterChoices } from '@/stores/FilteredEventsStore';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     import { isPageAccessedByBackForward, isLoggedIn, isSuperuser, getUsername } from '@/helper_functions';
-    import axios from 'axios';
-
     import AudioClipActionsTypes from '@/types/AudioClipActions.interface';
+    import axios from 'axios';
 
 
     export default defineComponent({
@@ -949,7 +948,7 @@
                         if(new_value.event_list_index !== null){
 
                             //update store
-                            this.filtered_events_store.updateAudioClipGenericStatusDeleted(
+                            this.filtered_events_store.updateAudioClipDeleted(
                                 new_value.event_list_index,
                                 new_value.audio_clip.audio_clip_role.audio_clip_role_name,
                                 current_filter_choices

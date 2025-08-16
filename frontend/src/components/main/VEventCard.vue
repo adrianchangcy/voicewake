@@ -42,7 +42,7 @@
                 prop-font-size="s"
             >
                 <template #titleDescription>
-                    <span v-if="!isEventDeleted">
+                    <span>
                         {{ prettyWhenCreated }}
                     </span>
                 </template>
@@ -103,9 +103,12 @@
             <div
                 class="flex flex-col"
             >
-                <VUsernameURL
-                    :propUsername="propEvent.responder[0]!.user.username"
-                />
+                <span>
+                    <VUsernameURL
+                        :propUsername="propEvent.responder[0]!.user.username"
+                        :propShowRepliedText="true"
+                    />
+                </span>
                 <div class="flex flex-col gap-2">
                     <div
                         v-show="propEvent.responder[0]!.generic_status.generic_status_name === 'deleted'"
@@ -247,6 +250,7 @@
                 >
                     <VUsernameURL
                         :propUsername="audio_clip.user.username"
+                        :propShowRepliedText="true"
                     />
                     <div class="flex flex-col gap-2">
                         <div
@@ -326,6 +330,7 @@
                 >
                     <VUsernameURL
                         :propUsername="audio_clip.user.username"
+                        :propShowRepliedText="true"
                     />
                     <div class="flex flex-col gap-2">
                         <div

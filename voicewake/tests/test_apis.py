@@ -840,14 +840,6 @@ class AudioClips_TestCase(TestCase):
 
 
 
-#new frontend changes:
-    #expect 400 and is_processing=True if canceling reply while processing
-    #expect 400 and is_processing=True if skipping reply choice while processing
-    #if delete, expect 404 on fail, 204 on success
-    #if ban, expect 400 on fail, 404 if id does not exist in db, 200 on success
-    #if still processing, cannot cancel reply, cannot skip reply choice, cannot delete with is_processing=True, cannot ban
-    #if originator suddenly banned, expect can_retry=False for responder
-    #EventReplyChoicesAPI.get_audio_clips_by_incomplete_events() now does not use audio_clip_tone
 #should use FactoryBoy to prevent future changes from requiring every individual test case to be edited
 #see if we can make reverse() use NGINX base url
 @override_settings(
@@ -4095,7 +4087,7 @@ class Core_TestCase(TestCase):
 
         self.assertTrue(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists())
         self.assertTrue(UserEvents.objects.filter(pk=sample_user_event_0.id).exists())
-        self.assertTrue(response_data['is_processing'])
+        self.assertTrue(response_data['has_recording_processing'])
 
         #start
 
@@ -4114,7 +4106,7 @@ class Core_TestCase(TestCase):
 
         self.assertTrue(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists())
         self.assertTrue(UserEvents.objects.filter(pk=sample_user_event_0.id).exists())
-        self.assertTrue(response_data['is_processing'])
+        self.assertTrue(response_data['has_recording_processing'])
 
 
     def test_list_reply_choices__originator_deleted__no_rows(self):
@@ -7554,7 +7546,7 @@ class Core_TestCase(TestCase):
         self.assertEqual(AudioClips.objects.count(), 2)
         self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'processing')
         self.assertTrue(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0.id).exists())
-        self.assertTrue(response_data['has_processing'])
+        self.assertTrue(response_data['has_recording_processing'])
 
         target_cache = cache.get(target_cache_key, None)
 

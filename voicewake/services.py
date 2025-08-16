@@ -1971,7 +1971,7 @@ class CreateAudioClips():
     #checks if can start, but will not reset things if checking fails
     #returns None if can start, or Response if cannot
     #should ideally just return True/False and provide getCannotStartNormalisationResponse() for apis.py
-    def start_normalisation(self, audio_clip_id:int)->None|Response:
+    def prepare_normalisation(self, audio_clip_id:int)->None|Response:
 
         #doing "add normalisation to queue" here would cause circular import error, so we call at apis.py instead
         #get relevant records
