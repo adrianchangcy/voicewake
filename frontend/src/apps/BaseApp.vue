@@ -11,7 +11,7 @@
             class="absolute flex flex-row w-full h-[calc(100vh-4.5rem)] bg-theme-light/90 dark:bg-theme-dark/90"
         >
             <div
-                class="w-5/6 sm:w-fit max-h-[90%] min-h-fit m-auto"
+                class="w-3/4 sm:w-2/4 md:w-1/4 xl:w-3/12 2xl:w-2/12 max-h-[90%] min-h-fit m-auto"
             >
                 <VPopupCancelConfirm
                     :propTitle="pop_up_manager_store.getCurrentPopupKwargs.prop_title"

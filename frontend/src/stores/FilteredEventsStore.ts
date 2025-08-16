@@ -697,15 +697,13 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
                     current_audio_clip_tone_id
                 ]['is_fetching'] = is_fetching;
             },
-            updateAudioClipGenericStatusDeleted(
+            updateAudioClipDeleted(
                 events_list_index: number,
                 audio_clip_role_name: 'originator'|'responder',
                 filter_choices: CurrentFilterChoices,
             ) : void {
 
                 //decide new generic_status_name for event
-
-                let can_update_event = false;
 
                 let current_event_generic_status_name = this.filtered_events_structure[
                     filter_choices.current_like_dislike_choice_index
@@ -731,22 +729,9 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
                     'generic_status_name'
                 ];
 
-                let event_generic_status_name = '';
-
                 if(audio_clip_role_name === 'originator'){
 
-                    event_generic_status_name = 'deleted';
-                    can_update_event = true;
-
-                }else if(audio_clip_role_name === 'responder' && current_event_generic_status_name === 'completed'){
-
-                    event_generic_status_name = 'incomplete';
-                    can_update_event = true;
-                }
-
-                //update event
-                if(can_update_event === true){
-
+                    //event "deleted"
                     this.filtered_events_structure[
                         filter_choices.current_like_dislike_choice_index
                     ][
@@ -769,10 +754,37 @@ export function useFilteredEventsStore(page_context:"home"|"user_profile"|"user_
                         'generic_status'
                     ][
                         'generic_status_name'
-                    ] = event_generic_status_name as 'deleted'|'incomplete';
+                    ] = 'deleted';
+
+                }else if(audio_clip_role_name === 'responder' && current_event_generic_status_name === 'completed'){
+
+                    //event "incomplete"
+                    this.filtered_events_structure[
+                        filter_choices.current_like_dislike_choice_index
+                    ][
+                        filter_choices.current_event_generic_status_name_index
+                    ][
+                        filter_choices.current_main_filter_index
+                    ][
+                        filter_choices.current_timeframe_index
+                    ][
+                        filter_choices.current_audio_clip_role_name_index
+                    ][
+                        filter_choices.current_audio_clip_tone_id
+                    ][
+                        'events'
+                    ][
+                        events_list_index
+                    ][
+                        'event'
+                    ][
+                        'generic_status'
+                    ][
+                        'generic_status_name'
+                    ] = 'incomplete';
                 }
 
-                //update audio_clip
+                //audio_clip "deleted"
                 this.filtered_events_structure[
                     filter_choices.current_like_dislike_choice_index
                 ][

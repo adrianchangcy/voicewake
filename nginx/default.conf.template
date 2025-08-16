@@ -184,9 +184,9 @@ http {
             proxy_pass http://main$request_uri;
             limit_req zone=common_list_apis burst=10;
         }
-        location ^~ /api/audio-clips/deletions {
+        location ^~ /api/audio-clips/delete {
             proxy_pass http://main$request_uri;
-            limit_req zone=common_list_apis burst=10;
+            limit_req zone=account_apis burst=10;
         }
 
         location = /api/users/blocks {

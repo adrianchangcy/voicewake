@@ -24,6 +24,7 @@
                 :prop-callable-popup-login-required="callableOpenPopupLoginRequired"
                 @new-is-liked="event_reply_choices_store.newAudioClipIsLiked($event)"
                 @new-v-playback-teleport-id="handleNewVPlaybackTeleportId($event)"
+                @new-audio-clip-action="handleNewAudioClipAction($event)"
                 class="pb-8"
             />
 
@@ -246,6 +247,7 @@
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
     import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
+    import AudioClipActionsTypes from '@/types/AudioClipActions.interface';
     import axios from 'axios';
 
 
@@ -735,6 +737,122 @@
             callableOpenPopupLoginRequired() : void {
 
                 this.pop_up_manager_store.openPopup({context: 'login_required', kwargs: null});
+            },
+            handleNewAudioClipAction(new_value:AudioClipActionsTypes) : void {
+
+                //must be logged in
+
+                if(this.is_logged_in === false){
+
+                    this.pop_up_manager_store.openPopup({'context': 'login_required', 'kwargs': null});
+                    return;
+                }
+
+                //proceed
+
+                let popup_title = '';
+                let popup_description = '';
+                let popup_cancellation_term = '';
+                let popup_confirmation_term = '';
+
+                if(new_value.action === 'ban'){
+
+                    popup_title = 'Ban recording?';
+                    popup_description = 'User will incur a temporary ban.';
+                    popup_cancellation_term = 'Cancel';
+                    popup_confirmation_term = 'Ban';
+
+                }else if(new_value.action === 'delete'){
+
+                    if(new_value.audio_clip.audio_clip_role.audio_clip_role_name === 'originator'){
+
+                        popup_description = 'The event will also be deleted.';
+
+                    }else if(new_value.audio_clip.audio_clip_role.audio_clip_role_name === 'responder'){
+
+                        popup_description = 'This action cannot be undone.';
+                    }
+
+                    popup_title = 'Delete recording?';
+                    popup_cancellation_term = 'Cancel';
+                    popup_confirmation_term = 'Delete';
+
+                }else if(new_value.action === 'report'){
+
+                    popup_title = 'Report recording?';
+                    popup_description = 'The recording will be evaluated for a ban.';
+                    popup_cancellation_term = 'Cancel';
+                    popup_confirmation_term = 'Report';
+
+                }else{
+
+                    throw new Error('Invalid action.');
+                }
+
+                //do nothing on cancel
+                const popup_cancellation_callback = ()=>{};
+
+                //prepare callback on confirmation
+                const popup_confirmation_callback = async ()=>{
+
+                    await new_value.api_request().then(()=>{
+
+                        if(new_value.action === 'ban' || new_value.action === 'delete'){
+
+                            //will also check if playing and pause if true
+                            this.vplayback_store.removeAudioClipFromStore(new_value.audio_clip.id);
+
+                            this.handleNewVPlaybackTeleportId('#temporary-vplayback-teleport');
+
+                            //update event at reply store, let itself check if exists
+                            this.event_reply_choices_store.updateAudioClipDeleted(
+                                new_value.audio_clip.event_id,
+                                new_value.audio_clip.audio_clip_role.audio_clip_role_name
+                            );
+
+                            //update event of this page
+
+                            if(this.event === null || this.event.event.id !== new_value.audio_clip.event_id){
+
+                                return;
+                            }
+
+                            const current_audio_clip_role_name = new_value.audio_clip.audio_clip_role.audio_clip_role_name;
+
+                            if(current_audio_clip_role_name === 'originator'){
+
+                                //event "deleted"
+                                this.event.event.generic_status.generic_status_name = 'deleted';
+
+                            }else if(
+                                current_audio_clip_role_name === 'responder' &&
+                                this.event.event.generic_status.generic_status_name === 'completed'
+                            ){
+
+                                //event "incomplete"
+                                this.event.event.generic_status.generic_status_name = 'incomplete';
+                            }
+
+                            //audio_clip "deleted"
+                            this.event[current_audio_clip_role_name][0].generic_status.generic_status_name = 'deleted';
+                        }
+
+                        //do nothing to filtered events store to keep frontend logic simpler
+                    });
+                };
+
+                //open dialog
+                this.pop_up_manager_store.openPopup({
+                    context: 'cancel_confirm',
+                    kwargs: {
+                        prop_title: popup_title,
+                        prop_description: popup_description,
+                        prop_cancellation_term: popup_cancellation_term,
+                        prop_cancellation_callback: popup_cancellation_callback,
+                        prop_confirmation_term: popup_confirmation_term,
+                        prop_confirmation_callback: popup_confirmation_callback,
+                    }
+                });
             },
         },
         beforeMount(){

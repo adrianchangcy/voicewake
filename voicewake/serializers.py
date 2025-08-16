@@ -367,7 +367,6 @@ class AWSLambdaNormaliseAudioClipsAPISerializer(serializers.Serializer):
 
 class EventReplyChoicesAPISerializer(serializers.Serializer):
 
-    audio_clip_tone_id = serializers.IntegerField(required=False, default=None, min_value=1)
     unlock_all_locked_events = serializers.BooleanField()
 
 
