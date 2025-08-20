@@ -3585,7 +3585,7 @@ class AudioClipBansAPI(generics.GenericAPIView):
                     #not qualified for ban
                     return Response(
                         data={
-                            'message': 'Recording is not eligible for ban.',
+                            'message': '',
                         },
                         status=status.HTTP_400_BAD_REQUEST
                     )
@@ -3646,7 +3646,7 @@ class AudioClipBansAPI(generics.GenericAPIView):
 
             return Response(
                 data={
-                    'message': get_serializer_error_message(serializer),
+                    'message': 'Recording does not exist.',
                 },
                 status=status.HTTP_404_NOT_FOUND
             )
@@ -3698,7 +3698,6 @@ class AudioClipDeletionsAPI(generics.DestroyAPIView):
                     'event',
                 ).get(
                     pk=request_data['audio_clip_id'],
-                    generic_status__generic_status_name='ok',
                 )
 
                 #allow either correct user or superuser
@@ -3709,6 +3708,26 @@ class AudioClipDeletionsAPI(generics.DestroyAPIView):
                             'message': 'You do not have permission to perform this action.',
                         },
                         status=status.HTTP_403_FORBIDDEN
+                    )
+
+                if audio_clip.generic_status.generic_status_name == 'deleted':
+
+                    #already deleted
+                    return Response(
+                        data={
+                            'message': 'Recording has been deleted.',
+                        },
+                        status=status.HTTP_204_NO_CONTENT
+                    )
+
+                elif audio_clip.generic_status.generic_status_name != 'ok':
+
+                    #cannot delete
+                    return Response(
+                        data={
+                            'message': '',
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
                     )
 
                 #remove relevant rows
@@ -3754,7 +3773,7 @@ class AudioClipDeletionsAPI(generics.DestroyAPIView):
 
             return Response(
                 data={
-                    'message': get_serializer_error_message(serializer),
+                    'message': 'Recording does not exist.',
                 },
                 status=status.HTTP_404_NOT_FOUND
             )

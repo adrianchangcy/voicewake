@@ -49,7 +49,7 @@
             </VTitle>
         </div>
 
-        <!--always completed-->
+        <!--originally completed-->
         <div
             v-if="propGuaranteedOriginatorCount === 1 && propGuaranteedResponderCount === 1"
             class="flex flex-col gap-8"
@@ -146,7 +146,7 @@
             </div>
         </div>
 
-        <!--always incomplete-->
+        <!--originally incomplete-->
         <div
             v-else-if="propGuaranteedOriginatorCount === 1"
             class="flex flex-col gap-8"

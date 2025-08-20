@@ -3042,6 +3042,10 @@ input[data-autocompleted]{
     grid-column-start: 6;
   }
 
+  .sm\:w-2\/4 {
+    width: 50%;
+  }
+
   .sm\:w-3\/4 {
     width: 75%;
   }
@@ -3049,10 +3053,6 @@ input[data-autocompleted]{
   .sm\:w-fit {
     width: -moz-fit-content;
     width: fit-content;
-  }
-
-  .sm\:w-2\/4 {
-    width: 50%;
   }
 
   .sm\:translate-x-0 {
@@ -3100,12 +3100,12 @@ input[data-autocompleted]{
 }
 
 @media (min-width: 768px) {
-  .md\:w-2\/4 {
-    width: 50%;
-  }
-
   .md\:w-1\/4 {
     width: 25%;
+  }
+
+  .md\:w-2\/4 {
+    width: 50%;
   }
 
   .md\:px-4 {
@@ -3186,16 +3186,12 @@ input[data-autocompleted]{
     grid-column-start: 10;
   }
 
-  .xl\:w-5\/12 {
-    width: 41.666667%;
-  }
-
-  .xl\:w-4\/12 {
-    width: 33.333333%;
-  }
-
   .xl\:w-3\/12 {
     width: 25%;
+  }
+
+  .xl\:w-5\/12 {
+    width: 41.666667%;
   }
 
   .xl\:grid-cols-12 {
@@ -3216,15 +3212,11 @@ input[data-autocompleted]{
     grid-column-start: 11;
   }
 
-  .\32xl\:w-4\/12 {
-    width: 33.333333%;
-  }
-
-  .\32xl\:w-3\/12 {
-    width: 25%;
-  }
-
   .\32xl\:w-2\/12 {
     width: 16.666667%;
+  }
+
+  .\32xl\:w-4\/12 {
+    width: 33.333333%;
   }
 }

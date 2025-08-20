@@ -338,7 +338,7 @@
                     <div class="col-span-1 justify-self-end">
                         <VActionSpecial
                             @click="confirmEventReplyChoice(0)"
-                            :propIsEnabled="!isLoading && event_reply_choices_store.hasEventReplyChoices"
+                            :propIsEnabled="canReply"
                             propElement="button"
                             type="button"
                             propElementSize="l"
@@ -366,7 +366,7 @@
                     <div class="col-span-1">
                         <VAction
                             @click="queueNextEventReplyChoices()"
-                            :propIsEnabled="!isLoading && event_reply_choices_store.hasEventReplyChoices"
+                            :propIsEnabled="canSkip"
                             propElement="button"
                             type="button"
                             propElementSize="l"
@@ -383,7 +383,7 @@
 
                     <!--event preview-->
                     <div
-                        v-show="isVEventCardOpen"
+                        v-show="canVEventCardOpen"
                         class="w-full"
                     >
                         <!--must use v-if since VEventCard cannot exist with null-->
@@ -396,7 +396,7 @@
                                 :prop-show-title="true"
                                 :prop-has-border="true"
                                 :prop-has-padding="true"
-                                :prop-is-v-playback-open="isVEventCardOpen"
+                                :prop-is-v-playback-open="canVEventCardOpen"
                                 :prop-is-logged-in="is_logged_in"
                                 :prop-is-superuser="is_superuser"
                                 :prop-username="username"
@@ -478,6 +478,7 @@
     import { useEventReplyChoicesStore } from '@/stores/EventReplyChoicesStore';
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
+    import { useVPlaybackStore } from '@/stores/VPlaybackStore';
     import { AudioClipProcessingStatusesTypes } from '@/types/AudioClipProcessingDetails.interface';
     import AudioClipActionsTypes from '@/types/AudioClipActions.interface';
 
@@ -489,6 +490,7 @@
                 event_reply_choices_store: useEventReplyChoicesStore(),
                 pop_up_manager_store: usePopUpManagerStore(),
                 audio_clip_processings_store: useAudioClipProcessingsStore(),
+                vplayback_store: useVPlaybackStore(),
 
                 is_logged_in: false,
                 is_superuser: false,
@@ -526,7 +528,7 @@
 
                 return this.isLoading === false;
             },
-            isVEventCardOpen() : boolean {
+            canVEventCardOpen() : boolean {
 
                 //keep this open even when reply is confirming
                 return (
@@ -564,6 +566,21 @@
                 return this.audio_clip_processings_store.determineReuploadURL(
                     processing['event'].id,
                     audio_clip_id
+                );
+            },
+            canReply() : boolean {
+
+                return (
+                    this.isLoading === false &&
+                    this.event_reply_choices_store.hasEventReplyChoices === true &&
+                    this.event_reply_choices_store.getEventReplyChoices[0].event.generic_status.generic_status_name !== 'deleted'
+                );
+            },
+            canSkip() : boolean {
+
+                return (
+                    this.isLoading === false
+                    && this.event_reply_choices_store.hasEventReplyChoices === true
                 );
             },
         },
@@ -876,12 +893,22 @@
                         //do nothing to vplayback_store
                         //do nothing to filtered events store to keep frontend logic simpler
 
+                        //since VEventCard is using its own VPlayback, we have no other choice but to trigger pause
+
                         if(new_value.action === 'ban' || new_value.action === 'delete'){
 
                             this.event_reply_choices_store.updateAudioClipDeleted(
                                 new_value.audio_clip.event_id,
                                 new_value.audio_clip.audio_clip_role.audio_clip_role_name
                             );
+
+                            if(
+                                this.event_reply_choices_store.getMainEvent !== null &&
+                                new_value.audio_clip.event_id === this.event_reply_choices_store.getMainEvent.event.id
+                            ){
+
+                                this.vplayback_store.triggerPause();
+                            }
                         }
                     });
                 };
