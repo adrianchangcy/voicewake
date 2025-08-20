@@ -423,65 +423,62 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
             audio_clip_role_name: 'originator'|'responder'
         ) : void {
 
-            //this is called after API request
-            //between "action" and "API done", data can change
-            //when this is called, try to find the correct data, and if not found, do nothing
+            //between when API is called and when it completes, once done, try to find the correct data, and do nothing at store if not found
 
-            if(this.event_reply_choices.length === 0 || this.replying_event === null){
+            if(this.event_reply_choices.length === 0 && this.replying_event === null){
 
                 return;
             }
 
             //if event is in event_reply_choices
 
-            for(let x=0; x<this.event_reply_choices.length; x++){
+            if(this.event_reply_choices.length > 0){
 
-                if(this.event_reply_choices[x].event.id !== event_id){
+                for(let x=0; x<this.event_reply_choices.length; x++){
 
-                    continue;
+                    if(this.event_reply_choices[x].event.id !== event_id){
+
+                        continue;
+                    }
+
+                    if(audio_clip_role_name === 'originator'){
+
+                        //event "deleted"
+                        this.event_reply_choices[x].event.generic_status.generic_status_name = 'deleted';
+
+                    }else if(
+                        audio_clip_role_name === 'responder' &&
+                        this.event_reply_choices[x].event.generic_status.generic_status_name === 'completed'
+                    ){
+
+                        //event "incomplete"
+                        this.event_reply_choices[x].event.generic_status.generic_status_name = 'incomplete';
+                    }
+
+                    //audio_clip "deleted"
+                    this.event_reply_choices[x][audio_clip_role_name][0].generic_status.generic_status_name = 'deleted';
                 }
+            }
+
+            if(this.replying_event !== null){
 
                 if(audio_clip_role_name === 'originator'){
 
                     //event "deleted"
-                    this.event_reply_choices[x].event.generic_status.generic_status_name = 'deleted';
+                    this.replying_event.event.generic_status.generic_status_name = 'deleted';
 
                 }else if(
                     audio_clip_role_name === 'responder' &&
-                    this.event_reply_choices[x].event.generic_status.generic_status_name === 'completed'
+                    this.replying_event.event.generic_status.generic_status_name === 'completed'
                 ){
 
                     //event "incomplete"
-                    this.event_reply_choices[x].event.generic_status.generic_status_name = 'incomplete';
+                    this.replying_event.event.generic_status.generic_status_name = 'incomplete';
                 }
 
                 //audio_clip "deleted"
-                this.event_reply_choices[x][audio_clip_role_name][0].generic_status.generic_status_name = 'deleted';
-
-                return;
+                this.replying_event[audio_clip_role_name][0].generic_status.generic_status_name = 'deleted';
             }
-
-            if(this.replying_event.event.id !== event_id){
-
-                return;
-            }
-
-            if(audio_clip_role_name === 'originator'){
-
-                //event "deleted"
-                this.replying_event.event.generic_status.generic_status_name = 'deleted';
-
-            }else if(
-                audio_clip_role_name === 'responder' &&
-                this.replying_event.event.generic_status.generic_status_name === 'completed'
-            ){
-
-                //event "incomplete"
-                this.replying_event.event.generic_status.generic_status_name = 'incomplete';
-            }
-
-            //audio_clip "deleted"
-            this.replying_event[audio_clip_role_name][0].generic_status.generic_status_name = 'deleted';
         },
         softReset() : void {
 
