@@ -572,8 +572,7 @@ class TOTPVerification:
     def __init__(self, totp_number_of_digits, totp_validity_seconds, totp_tolerance_seconds):
 
         #1 byte is 8 bits, so therefore minimum 15 bytes, recommended 20 bytes
-        #it seems that key must always be a new random one on every new token
-        #else you will forever get the same token, all things being equal
+        #same key produces same token, so every user must have their own unique key
         self.key = None
 
         # counter with which last token was verified.
@@ -593,6 +592,10 @@ class TOTPVerification:
         self.token_validity_tolerance = totp_tolerance_seconds
 
 
+    #if you want to add an extra layer of security towards user secrets being easy to view and copy maliciously:
+        #maybe enough: using .env and combine with key here
+        #sounds expensive/hacky: encrypt/decrypt db column and store encryption key in .env
+    #since you can just copy the user's bytes from db and generate token
     def totp_obj(self):
 
         # create a TOTP object

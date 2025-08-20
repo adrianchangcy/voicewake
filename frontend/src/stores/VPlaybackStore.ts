@@ -26,7 +26,7 @@ export const useVPlaybackStore = defineStore('vplayback', {
         //this is needed when we have multiple VPlayback instances
         can_pause_trigger_affect_last_interacted_vplayback: true,
 
-        audio_clip_id: [] as number[],   //left to right, oldest to newest
+        audio_clip_ids: [] as number[],   //left to right, oldest to newest
         stopped_at_s: [] as number[],   //left to right, oldest to newest
         max_stopped_at_quantity: 10,
     }),
@@ -77,21 +77,21 @@ export const useVPlaybackStore = defineStore('vplayback', {
         },
         addAudioClipLastStoppedS(audio_clip_id:number, stopped_at_s:number) : void {
 
-            const target_index = this.audio_clip_id.indexOf(audio_clip_id);
+            const target_index = this.audio_clip_ids.indexOf(audio_clip_id);
 
             if(target_index === -1){
 
                 //does not exist
 
                 //if limit has been reached, remove oldest via shift() until 1 item away from limit
-                while(this.audio_clip_id.length >= this.max_stopped_at_quantity){
+                while(this.audio_clip_ids.length >= this.max_stopped_at_quantity){
 
-                    this.audio_clip_id.shift();
+                    this.audio_clip_ids.shift();
                     this.stopped_at_s.shift();
                 }
 
                 //push() as newest
-                this.audio_clip_id.push(audio_clip_id);
+                this.audio_clip_ids.push(audio_clip_id);
                 this.stopped_at_s.push(stopped_at_s);
                 return;
             }
@@ -101,7 +101,9 @@ export const useVPlaybackStore = defineStore('vplayback', {
         },
         getAudioClipLastStoppedS(audio_clip_id:number) : number|null {
 
-            const target_index = this.audio_clip_id.indexOf(audio_clip_id);
+            //only used at VPlayback for old audio_clip whenever a new one is loaded in
+
+            const target_index = this.audio_clip_ids.indexOf(audio_clip_id);
 
             if(target_index === -1){
 
@@ -124,19 +126,21 @@ export const useVPlaybackStore = defineStore('vplayback', {
                 this.last_interacted_vplayback_uuid = this.active_vplayback_uuids[0];
             }
         },
+        isPlayingAudioClip(audio_clip_id:number) : boolean {
+
+            return this.playing_audio_clip !== null && this.playing_audio_clip.id === audio_clip_id;
+        },
         removeAudioClipFromStore(audio_clip_id:number, affect_last_interacted_vplayback:boolean=true) : void {
 
-            const target_index = this.audio_clip_id.indexOf(audio_clip_id);
+            const target_index = this.audio_clip_ids.indexOf(audio_clip_id);
 
-            if(target_index === -1){
+            if(target_index > -1){
 
-                return;
+                this.audio_clip_ids.splice(target_index, 1);
+                this.stopped_at_s.splice(target_index, 1);
             }
 
-            this.audio_clip_id.splice(target_index, 1);
-            this.stopped_at_s.splice(target_index, 1);
-
-            if(this.playing_audio_clip !== null && this.playing_audio_clip.id === audio_clip_id){
+            if(this.isPlayingAudioClip(audio_clip_id) === true){
 
                 this.triggerPause(affect_last_interacted_vplayback);
                 this.playing_audio_clip = null;

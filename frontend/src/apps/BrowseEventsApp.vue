@@ -939,10 +939,16 @@
 
                         if(new_value.action === 'ban' || new_value.action === 'delete'){
 
+                            //store check result earlier before removal
+                            const is_playing_audio_clip = this.vplayback_store.isPlayingAudioClip(new_value.audio_clip.id);
+
                             //will also check if playing and pause if true
                             this.vplayback_store.removeAudioClipFromStore(new_value.audio_clip.id);
 
-                            this.handleNewVPlaybackTeleportId('#temporary-vplayback-teleport');
+                            if(is_playing_audio_clip === true){
+
+                                this.handleNewVPlaybackTeleportId('#temporary-vplayback-teleport');
+                            }
                         }
 
                         if(new_value.event_list_index !== null){

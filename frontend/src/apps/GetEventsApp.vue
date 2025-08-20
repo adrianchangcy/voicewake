@@ -799,10 +799,19 @@
 
                         if(new_value.action === 'ban' || new_value.action === 'delete'){
 
-                            //will also check if playing and pause if true
-                            this.vplayback_store.removeAudioClipFromStore(new_value.audio_clip.id);
+                            if(this.canReply === false){
 
-                            this.handleNewVPlaybackTeleportId('#temporary-vplayback-teleport');
+                                //store check result earlier before removal
+                                const is_playing_audio_clip = this.vplayback_store.isPlayingAudioClip(new_value.audio_clip.id);
+
+                                //will also check if playing and pause if true
+                                this.vplayback_store.removeAudioClipFromStore(new_value.audio_clip.id);
+
+                                if(is_playing_audio_clip === true){
+
+                                    this.handleNewVPlaybackTeleportId('#temporary-vplayback-teleport');
+                                }
+                            }
 
                             //update event at reply store, let itself check if exists
                             this.event_reply_choices_store.updateAudioClipDeleted(
@@ -818,6 +827,8 @@
                             }
 
                             const current_audio_clip_role_name = new_value.audio_clip.audio_clip_role.audio_clip_role_name;
+
+                            console.log(current_audio_clip_role_name);
 
                             if(current_audio_clip_role_name === 'originator'){
 
