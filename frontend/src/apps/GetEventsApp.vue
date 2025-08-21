@@ -402,7 +402,7 @@
                     this.is_fetching_event = false;
                 });
             },
-            startExpiryInterval(is_replying:boolean): void {
+            handleExpiryInterval(is_replying:boolean): void {
 
                 //if user is reuploading, use reupload expiry
                 //if user is responder, responder expiry may be longer/shorter than reply expiry
@@ -508,7 +508,7 @@
                             if(this.canReply === true){
 
                                 //cancellation failed, restart expiry
-                                this.startExpiryInterval(true);
+                                this.handleExpiryInterval(true);
                             }
                         });
 
@@ -639,7 +639,7 @@
 
                     //restart expiry
                     this.is_event_submitting = false;
-                    this.startExpiryInterval(true);
+                    this.handleExpiryInterval(true);
                     return;
                 }
 
@@ -681,7 +681,7 @@
                     if(this.canReply === true){
 
                         //failed, restart expiry
-                        this.startExpiryInterval(true);
+                        this.handleExpiryInterval(true);
                     }
                 });
             },
@@ -917,7 +917,7 @@
                 //rewrite title
                 document.title = "Replying: " + this.original_document_title;
 
-                this.startExpiryInterval(true);
+                this.handleExpiryInterval(true);
 
             }else{
 
@@ -933,7 +933,7 @@
                         //rewrite title
                         document.title = "Replying: " + this.original_document_title;
 
-                        this.startExpiryInterval(true);
+                        this.handleExpiryInterval(true);
                         this.vplayback_store.autoplayOnChange(false);
                     }
                 });
