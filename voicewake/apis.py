@@ -2560,7 +2560,6 @@ class EventRepliesAPI(generics.GenericAPIView):
         delete_quantity, delete_quantity_by_model = EventReplyQueues.objects.filter(
             locked_for_user=self.request.user,
             event_id=event_id,
-            is_replying=True
         ).delete()
 
         if delete_quantity == 0:
@@ -2770,8 +2769,10 @@ class EventRepliesAPI(generics.GenericAPIView):
         
         except EventReplyQueues.DoesNotExist:
 
+            #no message because nothing important to tell the user
             return Response(
                 data={
+                    'message': '',
                     'can_retry': False,
                 },
                 status=status.HTTP_404_NOT_FOUND

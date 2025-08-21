@@ -145,7 +145,7 @@
                 icon: {'audio_clip_tone': {
                     'audio_clip_tone_name': 'ha',
                     'audio_clip_tone_symbol': '🙂',
-                }},
+            }},
                 // actions: [
                 //     {
                 //         callback: ()=>null,

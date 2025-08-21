@@ -7,7 +7,7 @@ import axios from 'axios';
 
 
 type CurrentStatuses = ""|"no_new_event_reply_choices"|"event_reply_choices_expired"|
-    "reply_cancelled"|"reply_expired"|"event_reply_daily_limit_reached";
+    "reply_cancelled"|"reply_expired"|"event_reply_daily_limit_reached"|"generic_event_unavailable";
 
 
 //this store resets when user logs out, since this is user-specific
@@ -19,6 +19,7 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
         replying_event: null as EventsAndAudioClipsTypes|null,
 
         shared_dialog_context: "" as CurrentStatuses,
+        generic_dialog_text: "",
 
         event_reply_choice_expiry_ms: 0,   //will be replaced with SSR data on beforeMount()
         event_reply_expiry_ms: 0,   //will be replaced with SSR data on beforeMount()
@@ -63,6 +64,10 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
         getSharedDialogContext: (state)=>{
 
             return state.shared_dialog_context;
+        },
+        getGenericDialogText: (state)=>{
+
+            return state.generic_dialog_text;
         },
         hasEventReplyChoices: (state)=>{
 
@@ -281,11 +286,17 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                     Object.hasOwn(error, 'response') === false
                 ){
 
-                    return;
+                    throw new Error('Missing crucial values.');
                 }
 
-                //if we get can_retry=false, we must move on
+                let error_text = 'Try again later.';
 
+                if(Object.hasOwn(error.response.data, 'message') && error.response.data['message'].length > 0){
+
+                    error_text = error.response.data['message'];
+                }
+
+                //if we get can_retry=false, current event can no longer be used, must move on
                 if(
                     Object.hasOwn(error.response.data, 'can_retry') === true &&
                     error.response.data['can_retry'] === false
@@ -293,21 +304,21 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
 
                     this.softReset();
 
-                    notify({
-                        title: 'Reply choice skipped',
-                        text: "The event was unexpectedly unavailable.",
-                        type: 'generic',
-                        icon: {'font_awesome': 'far fa-face-meh-blank'},
-                    }, 4000);
+                    this.updateSharedDialogContext('generic_event_unavailable');
+
+                    error_text = 'Feel free to search for more events!';
+
+                    this.generic_dialog_text = error_text;
 
                     return;
                 }
 
+                //use notify for smaller errors
                 notify({
-                    title: 'Error',
-                    text: error.response.data['message'],
+                    title: 'Unexpected error',
+                    text: error_text,
                     type: 'error',
-                }, 3000);
+                }, 4000);
             });
         },
         async cancelEvent(is_replying:boolean, to_expire:boolean=true) : Promise<void> {
@@ -358,49 +369,61 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                     Object.hasOwn(error, 'response') === false
                 ){
 
-                    throw error;
+                    throw new Error('Missing crucial values.');
                 }
 
-                //if we get can_retry=false, we must move on
+                //get error message
+                let error_text = 'Try again later.';
 
+                if(Object.hasOwn(error.response.data, 'message') && error.response.data['message'].length > 0){
+
+                    error_text = error.response.data['message'];
+                }
+
+                //if we get can_retry=false, current event can no longer be used, must move on
                 if(
-                    error.request.status === 404 &&
                     Object.hasOwn(error.response.data, 'can_retry') === true &&
                     error.response.data['can_retry'] === false
                 ){
 
                     this.softReset();
 
-                    notify({
-                        title: 'Reply choice removed',
-                        text: "The event is no longer unavailable.",
-                        type: 'generic',
-                        icon: {'font_awesome': 'far fa-face-meh-blank'},
-                    }, 3000);
+                    this.updateSharedDialogContext('generic_event_unavailable');
+
+                    error_text = 'Feel free to search for more events!';
+
+                    this.generic_dialog_text = error_text;
 
                     return;
+                }
 
-                }else if(
+                //cannot cancel if processing
+                if(
                     error.request.status === 400 &&
                     Object.hasOwn(error.response.data, 'has_recording_processing') === true &&
                     error.response.data['has_recording_processing'] === true
                 ){
 
-                    notify({
-                        title: 'Processing in progress',
-                        text: error.response.data['message'],
-                        type: 'error',
-                        icon: {'font_awesome': 'fas fa-exclamation'},
-                    }, 4000);
+                    if(to_expire === false){
+
+                        //only notify if user manually cancels
+                        notify({
+                            title: 'Processing in progress',
+                            text: error.response.data['message'],
+                            type: 'error',
+                            icon: {'font_awesome': 'fas fa-exclamation'},
+                        }, 4000);
+                    }
 
                     return;
                 }
 
+                //use notify for smaller errors
                 notify({
                     title: 'Unexpected error',
-                    text: "Try again later.",
+                    text: error_text,
                     type: 'error',
-                }, 3000);
+                }, 4000);
             });
         },
         updateReplyingEvent(replying_event:EventsAndAudioClipsTypes|null) : void {
@@ -486,6 +509,7 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
             this.replying_event = null;
 
             this.shared_dialog_context = "";
+            this.generic_dialog_text = "";
         },
     },
     persist: {

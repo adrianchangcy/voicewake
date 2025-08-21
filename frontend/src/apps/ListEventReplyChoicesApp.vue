@@ -168,6 +168,26 @@
                                         <span>Come back later!</span>
                                     </template>
                                 </VDialogPlain>
+
+
+                                <VDialogPlain
+                                    v-else-if="event_reply_choices_store.getSharedDialogContext === 'generic_event_unavailable'"
+                                    :prop-has-border="false"
+                                    :prop-has-auto-space-logo="false"
+                                    :prop-has-auto-space-title="false"
+                                    :prop-has-auto-space-content="false"
+                                    class="w-full"
+                                >
+                                    <template #logo>
+                                        <FontAwesomeIcon icon="far fa-face-meh-blank"/>
+                                    </template>
+                                    <template #title>
+                                        <span>Event unavailable.</span>
+                                    </template>
+                                    <template #content>
+                                        <span>{{event_reply_choices_store.getGenericDialogText}}</span>
+                                    </template>
+                                </VDialogPlain>
                             </TransitionFade>
                         </div>
                     </div>
@@ -633,7 +653,7 @@
                     }
 
                     //clear interval, and restart if there are events
-                    this.startExpiryInterval(false);
+                    this.handleExpiryInterval(false);
                 });
             },
             async confirmEventReplyChoice(index:number) : Promise<void> {
@@ -656,15 +676,13 @@
                     //no need to undo loading when redirecting, else buttons momentarily become available
                     window.location.href = this.event_reply_choices_store.getReplyingEventURL;
 
-                })
-                .catch(()=>{
-
+                }).finally(()=>{
+                    
                     this.is_reply_confirming = false;
-
-                    this.startExpiryInterval(false);
+                    this.handleExpiryInterval(false);
                 });
             },
-            async startExpiryInterval(is_replying:boolean): Promise<void> {
+            async handleExpiryInterval(is_replying:boolean): Promise<void> {
 
                 if(this.isLoading === true){
 
@@ -696,6 +714,7 @@
 
                 }else{
 
+                    //no new interval needed
                     return;
                 }
 
@@ -767,6 +786,7 @@
 
                         this.is_event_expiring = true;
 
+                        //currently does nothing if auto expiry cancels and fails
                         await this.event_reply_choices_store.cancelEvent(is_replying).finally(()=>{
 
                             this.is_event_expiring = false;
@@ -948,12 +968,12 @@
 
             if(this.event_reply_choices_store.hasEventReplyChoices === true){
 
-                this.startExpiryInterval(false);
+                this.handleExpiryInterval(false);
                 this.has_searched_once = true;
 
             }else if(this.event_reply_choices_store.isReplying === true){
 
-                this.startExpiryInterval(true);
+                this.handleExpiryInterval(true);
                 this.has_searched_once = true;
             }
         },

@@ -7257,14 +7257,14 @@ class Core_TestCase(TestCase):
 
         request = self.client.post(reverse('cancel_replies_api'), data)
 
-        self.assertEqual(request.status_code, 404)
+        self.assertEqual(request.status_code, 200)
         print_with_function_name(request.content)
 
         #check
 
         response_data = get_response_data(request)
 
-        self.assertTrue(
+        self.assertFalse(
             EventReplyQueues.objects.filter(
                 locked_for_user=self.users[1],
                 event_id=sample_event_0.id
@@ -7273,9 +7273,6 @@ class Core_TestCase(TestCase):
         self.assertEqual(Events.objects.count(), 1)
         self.assertEqual(AudioClips.objects.count(), 1)
         self.assertTrue(UserEvents.objects.filter(user=self.users[1], event_id=sample_event_0.id).exists())
-
-        self.assertTrue('can_retry' in response_data)
-        self.assertFalse(response_data['can_retry'])
 
 
     def test_cancel_reply__only_own_rows_allowed(self):
