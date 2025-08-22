@@ -428,7 +428,7 @@ GENERAL_ROW_QUANTITY_PER_PAGE = 20
 EVENT_CREATE_DAILY_LIMIT = 4      #compares from 00:00:00 UTC
 EVENT_REPLY_DAILY_LIMIT = 8       #compares from 00:00:00 UTC
 EVENT_REPLY_CHOICE_MAX_DURATION_S = 1200      #20 mins, when locked but is_replying=False
-EVENT_REPLY_MAX_DURATION_S = 3600       #60 mins, when locked and is_replying=True
+EVENT_REPLY_MAX_DURATION_S = 3600       #60 mins, for is_replying=True/False, and processing must be done strictly before this is reached
 EVENT_QUANTITY_PER_PAGE = 10
 #this must be balanced between "give older unreplied events a chance" and "new events get replied fast enough"
 EVENT_INCOMPLETE_QUEUE_MAX_AGE_S = 302400   #3 days 12 hours

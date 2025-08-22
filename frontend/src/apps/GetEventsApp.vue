@@ -394,7 +394,7 @@
                     notify({
                         type: 'error',
                         title: 'Error',
-                        text: 'Unable to get recordings for this event.',
+                        text: 'Unable to get recordings for this event. Try again later.',
                     }, 4000);
 
                 }).finally(()=>{
@@ -483,13 +483,15 @@
 
                         //replying
 
-                        await this.event_reply_choices_store.cancelEvent(
+                        await this.event_reply_choices_store.cancelEventAPI(
                             is_replying
-                        ).then(()=>{
+                        ).finally(()=>{
 
-                            //success
+                            this.is_event_expiring = false;
 
-                            //get audio_clip_id, delete processing
+                            //when expiry auto-cancels, always show as successful at frontend
+                            //rather than timer staying awkwardly at 0 with no consequences
+                            //no need to restart expiry
 
                             const audio_clip_id = this.audio_clip_processings_store.getAudioClipIdByEventId(this.event_id!);
 
@@ -500,16 +502,6 @@
 
                             this.dialog_context = 'reply_expired';
                             document.title = this.original_document_title;
-
-                        }).finally(()=>{
-
-                            this.is_event_expiring = false;
-
-                            if(this.canReply === true){
-
-                                //cancellation failed, restart expiry
-                                this.handleExpiryInterval(true);
-                            }
                         });
 
                         return;
@@ -659,20 +651,31 @@
                 this.expiry_interval = null;
                 this.expiry_string = '';
 
-                await this.event_reply_choices_store.cancelEvent(true, false)
+                //nothing to catch on error
+                await this.event_reply_choices_store.cancelEventAPI(true, false)
                 .then(()=>{
 
-                    //get audio_clip_id, delete processing
+                    //make sure cancel is successful
+                    //API will have notify() on error
+                    if(this.event_reply_choices_store.getSharedDialogContext === 'reply_cancelled'){
 
-                    const audio_clip_id = this.audio_clip_processings_store.getAudioClipIdByEventId(this.event_id!);
+                        //get audio_clip_id, delete processing if any
 
-                    if(audio_clip_id !== null){
+                        const audio_clip_id = this.audio_clip_processings_store.getAudioClipIdByEventId(this.event_id!);
 
-                        this.audio_clip_processings_store.deleteAudioClipProcessing(audio_clip_id);
+                        if(audio_clip_id !== null){
+
+                            this.audio_clip_processings_store.deleteAudioClipProcessing(audio_clip_id);
+                        }
+
+                        this.dialog_context = 'cancelled';
+                        document.title = this.original_document_title;
                     }
 
-                    this.dialog_context = 'cancelled';
-                    document.title = this.original_document_title;
+                }).catch(()=>{
+
+                    //cannot cancel and context is unrelated
+                    //do nothing so user can retry
 
                 }).finally(()=>{
 
