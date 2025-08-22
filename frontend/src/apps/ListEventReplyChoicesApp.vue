@@ -736,9 +736,23 @@
 
                     this.is_event_expiring = true;
 
-                    await this.event_reply_choices_store.cancelEvent(is_replying).finally(()=>{
+                    await this.event_reply_choices_store.cancelEventAPI(is_replying).finally(()=>{
 
                         this.is_event_expiring = false;
+
+                        //if replying, get audio_clip_id, delete processing if any
+
+                        if(this.event_reply_choices_store.getReplyingEventId !== null){
+
+                            const audio_clip_id = this.audio_clip_processings_store.getAudioClipIdByEventId(
+                                this.event_reply_choices_store.getReplyingEventId
+                            );
+
+                            if(audio_clip_id !== null){
+
+                                this.audio_clip_processings_store.deleteAudioClipProcessing(audio_clip_id);
+                            }
+                        }
                     });
 
                     return;
@@ -786,10 +800,23 @@
 
                         this.is_event_expiring = true;
 
-                        //currently does nothing if auto expiry cancels and fails
-                        await this.event_reply_choices_store.cancelEvent(is_replying).finally(()=>{
+                        await this.event_reply_choices_store.cancelEventAPI(is_replying).finally(()=>{
 
                             this.is_event_expiring = false;
+
+                            //if replying, get audio_clip_id, delete processing if any
+
+                            if(this.event_reply_choices_store.getReplyingEventId !== null){
+
+                                const audio_clip_id = this.audio_clip_processings_store.getAudioClipIdByEventId(
+                                    this.event_reply_choices_store.getReplyingEventId
+                                );
+
+                                if(audio_clip_id !== null){
+
+                                    this.audio_clip_processings_store.deleteAudioClipProcessing(audio_clip_id);
+                                }
+                            }
                         });
 
                         return;

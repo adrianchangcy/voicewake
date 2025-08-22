@@ -321,7 +321,7 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                 }, 4000);
             });
         },
-        async cancelEvent(is_replying:boolean, to_expire:boolean=true) : Promise<void> {
+        async cancelEventAPI(is_replying:boolean, to_expire:boolean=true) : Promise<void> {
 
             if(
                 (is_replying === true && this.replying_event === null) ||
@@ -381,6 +381,7 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                 }
 
                 //if we get can_retry=false, current event can no longer be used, must move on
+                //move on by not giving error to parent
                 if(
                     Object.hasOwn(error.response.data, 'can_retry') === true &&
                     error.response.data['can_retry'] === false
@@ -424,6 +425,9 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
                     text: error_text,
                     type: 'error',
                 }, 4000);
+
+                //let parent know so users can retry
+                throw error;
             });
         },
         updateReplyingEvent(replying_event:EventsAndAudioClipsTypes|null) : void {

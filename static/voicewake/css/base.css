@@ -10,14 +10,17 @@
 } */
 
 /*fonts*/
-/* @font-face {
-    font-family: fun-font;
-    src: url(Dongle-Regular.ttf);
+@font-face {
+    font-family: 'Itim';
+    src: url('../fonts/Itim-Regular.woff2') format('woff2'),
+        url('../fonts/Itim-Regular.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
 }
-.fun-font {
-    font-family: fun-font;
-    font-size: 2rem;
-} */
+main {
+    font-family: 'Itim';
+}
 
 /*since we use placeholders for label, make them more visible*/
 ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */

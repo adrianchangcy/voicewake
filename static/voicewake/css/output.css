@@ -2165,14 +2165,22 @@ video {
 
 /*fonts*/
 
-/* @font-face {
-    font-family: fun-font;
-    src: url(Dongle-Regular.ttf);
+@font-face {
+  font-family: 'Dongle';
+
+  src: url('../fonts/Dongle-Regular.woff2') format('woff2'),
+        url('../fonts/Dongle-Regular.woff') format('woff');
+
+  font-weight: normal;
+
+  font-style: normal;
+
+  font-display: swap;
 }
-.fun-font {
-    font-family: fun-font;
-    font-size: 2rem;
-} */
+
+main {
+  font-family: 'Dongle';
+}
 
 /*since we use placeholders for label, make them more visible*/
 

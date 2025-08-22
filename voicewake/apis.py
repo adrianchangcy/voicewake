@@ -2540,7 +2540,6 @@ class EventRepliesAPI(generics.GenericAPIView):
             )
 
 
-    #only delete if is_replying=True
     #only mark audio clip as deleted, and not actually delete, so we can enforce daily limit
     def cancel_reply_in_event(self, event_id:int)->Response:
 
