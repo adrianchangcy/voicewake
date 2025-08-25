@@ -2180,6 +2180,7 @@ video {
 
 main {
   font-family: 'Dongle';
+  text-underline-position: from-font;
 }
 
 /*since we use placeholders for label, make them more visible*/

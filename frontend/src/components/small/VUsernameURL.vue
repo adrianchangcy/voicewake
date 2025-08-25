@@ -9,7 +9,7 @@
                 <span class="h-fit">{{ propUsername }}</span>
             </div>
         </a>
-        <span v-if="propShowRepliedText" class="italic w-fit h-fit">
+        <span v-if="propShowRepliedText" class="w-fit h-fit">
             &nbsp;replied
         </span>
     </div>
