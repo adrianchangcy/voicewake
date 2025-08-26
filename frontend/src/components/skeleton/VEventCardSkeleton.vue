@@ -1,8 +1,9 @@
 <template>
+    <!--py instead of pt pb like event, because no texts here to make dimensions irregular-->
     <div
         :class="[
             propHasBorder === true ? 'border-y border-theme-gray-1 dark:border-dark-theme-gray-1' : '',
-            propHasPadding === true ? 'px-2 sm:px-4 pt-8 pb-12' : '',
+            propHasPadding === true ? 'px-2 sm:px-4 pt-8 pb-11' : '',
             'flex flex-col'
         ]"
     >

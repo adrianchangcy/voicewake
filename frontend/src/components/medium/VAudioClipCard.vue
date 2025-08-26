@@ -12,7 +12,7 @@
                 prop-element="button"
                 prop-element-size="m"
                 prop-font-size="m"
-                :prop-is-icon-only="true"
+                
                 type="button"
                 class="w-full shadow-md active:shadow-sm"
                 @click="emitSelectedAudioClip()"

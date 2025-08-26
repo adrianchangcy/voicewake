@@ -9,7 +9,7 @@
             class="h-10 relative"
         >
             <VActionText
-                :propIsIconOnly="true"
+                
                 @click.stop="forceClose()"
                 propElement="button"
                 propElementSize="s"
@@ -91,7 +91,7 @@
                                     <span class="text-base block">Don't have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
                                         <VActionText
-                                            :propIsIconOnly="true"
+                                            
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -102,7 +102,7 @@
                                     </div>
                                     <div v-else>
                                         <VActionText
-                                            :propIsIconOnly="true"
+                                            
                                             @click="doNavigation('sign-up-section', 'sign-up-step-1')"
                                             propElement="button"
                                             propElementSize="s"
@@ -162,7 +162,7 @@
                                     <span class="text-base block">Don't have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
                                         <VActionText
-                                            :propIsIconOnly="true"
+                                            
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -173,7 +173,7 @@
                                     </div>
                                     <div v-else>
                                         <VActionText
-                                            :propIsIconOnly="true"
+                                            
                                             @click="doNavigation('sign-up-section', 'sign-up-step-1')"
                                             propElement="button"
                                             propElementSize="s"
@@ -194,7 +194,7 @@
                         >
 
                             <VActionText
-                                :propIsIconOnly="true"
+                                
                                 @click="[doNavigation('log-in-section', 'log-in-step-1', false), rerenderEmailField()]"
                                 propElement="button"
                                 propElementSize="s"
@@ -245,7 +245,7 @@
                                     {{ otp_request_status_text }}&nbsp;
                                 </span>
                                 <VActionText
-                                    :propIsIconOnly="true"
+                                    
                                     v-show="canSubmitEmailAndRequestOTP"
                                     @click="submitEmailAndRequestOTP('log-in', true)"
                                     propElement="button"
@@ -291,7 +291,7 @@
                                     <span class="text-base block">Don't have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
                                         <VActionText
-                                            :propIsIconOnly="true"
+                                            
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -302,7 +302,7 @@
                                     </div>
                                     <div v-else>
                                         <VActionText
-                                            :propIsIconOnly="true"
+                                            
                                             @click="doNavigation('sign-up-section', 'sign-up-step-1')"
                                             propElement="button"
                                             propElementSize="s"
@@ -357,7 +357,7 @@
                                     <span class="text-base block">Already have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
                                         <VActionText
-                                            :propIsIconOnly="true"
+                                            
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -368,7 +368,7 @@
                                     </div>
                                     <div v-else>
                                         <VActionText
-                                            :propIsIconOnly="true"
+                                            
                                             @click="doNavigation('log-in-section', 'log-in-step-1')"
                                             propElement="button"
                                             propElementSize="s"
@@ -428,7 +428,7 @@
                                     <span class="text-base block">Already have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
                                         <VActionText
-                                            :propIsIconOnly="true"
+                                            
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -439,7 +439,7 @@
                                     </div>
                                     <div v-else>
                                         <VActionText
-                                            :propIsIconOnly="true"
+                                            
                                             @click="doNavigation('log-in-section', 'log-in-step-1')"
                                             propElement="button"
                                             propElementSize="s"
@@ -460,7 +460,7 @@
                         >
 
                             <VActionText
-                                :propIsIconOnly="true"
+                                
                                 @click="[doNavigation('sign-up-section', 'sign-up-step-1', false), rerenderEmailField()]"
                                 propElement="button"
                                 propElementSize="s"
@@ -511,7 +511,7 @@
                                     {{ otp_request_status_text }}&nbsp;
                                 </span>
                                 <VActionText
-                                    :propIsIconOnly="true"
+                                    
                                     v-show="canSubmitEmailAndRequestOTP"
                                     @click="submitEmailAndRequestOTP('sign-up', true)"
                                     propElement="button"
@@ -555,7 +555,7 @@
                                     <span class="text-base block">Already have an account?&nbsp;</span>
                                     <div v-if="propIsForStaticPage === true">
                                         <VActionText
-                                            :propIsIconOnly="true"
+                                            
                                             propElement="a"
                                             propElementSize="s"
                                             propFontSize="s"
@@ -566,7 +566,7 @@
                                     </div>
                                     <div v-else>
                                         <VActionText
-                                            :propIsIconOnly="true"
+                                            
                                             @click="doNavigation('log-in-section', 'log-in-step-1')"
                                             propElement="button"
                                             propElementSize="s"

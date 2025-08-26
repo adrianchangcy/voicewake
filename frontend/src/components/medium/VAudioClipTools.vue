@@ -154,7 +154,7 @@
                     type="button"
                     propFontSize="s"
                     propElementSize="s"
-                    :prop-is-icon-only="true"
+                    
                     class="w-full"
                 >
 
@@ -163,10 +163,10 @@
                             v-if="is_deleting"
                             prop-element-size="s"
                         />
-                        <span v-else>
-                            <FontAwesomeIcon icon="fas fa-flag" class="text-sm px-2"/>
+                        <div v-else class="flex items-center">
+                            <FontAwesomeIcon icon="fas fa-trash" class="text-sm px-2 pb-0.5"/>
                             <span>Delete</span>
-                        </span>
+                        </div>
                     </span>
                 </VActionText>
 
@@ -178,7 +178,7 @@
                     type="button"
                     propFontSize="s"
                     propElementSize="s"
-                    :prop-is-icon-only="true"
+                    
                     class="w-full"
                 >
 
@@ -187,10 +187,10 @@
                             v-if="is_banning"
                             prop-element-size="s"
                         />
-                        <span v-else>
+                        <div v-else class="flex items-center">
                             <FontAwesomeIcon icon="fas fa-flag" class="text-sm px-2"/>
                             <span>Ban</span>
-                        </span>
+                        </div>
                     </span>
                 </VActionText>
 
@@ -202,7 +202,7 @@
                     type="button"
                     propFontSize="s"
                     propElementSize="s"
-                    :prop-is-icon-only="true"
+                    
                     class="w-full"
                 >
 
@@ -211,10 +211,10 @@
                             v-if="is_reporting"
                             prop-element-size="s"
                         />
-                        <span v-else>
+                        <div v-else class="flex items-center">
                             <FontAwesomeIcon icon="fas fa-flag" class="text-sm px-2"/>
                             <span>Report</span>
-                        </span>
+                        </div>
                     </span>
                 </VActionText>
             </div>
@@ -248,8 +248,9 @@
     import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
     import { faEllipsisVertical } from '@fortawesome/free-solid-svg-icons/faEllipsisVertical';
     import { faFlag } from '@fortawesome/free-solid-svg-icons/faFlag';
+    import { faTrash } from '@fortawesome/free-solid-svg-icons/faTrash';
 
-    library.add(farThumbsUp, fasThumbsUp, farThumbsDown, fasThumbsDown, faShare, faCheck, faEllipsisVertical, faFlag);
+    library.add(farThumbsUp, fasThumbsUp, farThumbsDown, fasThumbsDown, faShare, faCheck, faEllipsisVertical, faFlag, faTrash);
 </script>
 
 

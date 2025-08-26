@@ -24,7 +24,7 @@
                         prop-font-size="s"
                         prop-element="button"
                         :prop-is-enabled="true"
-                        :prop-is-icon-only="true"
+                        
                         type="button"
                     >
                         <span class="mx-auto flex items-center text-center">
@@ -50,7 +50,7 @@
                         bool_status_variable_or_callback: 'is_user_card_options_menu_open',
                         refs_to_exclude: ['open_close_user_card_options_menu_button']
                     }"
-                    class="absolute z-20 top-2 right-0 w-[50%] rounded-lg p-4 border-2 border-theme-black dark:border-dark-theme-white-2 bg-theme-light dark:bg-theme-dark"
+                    class="absolute z-20 top-2 right-0 w-[50%] rounded-lg px-2 py-4 border-2 border-theme-black dark:border-dark-theme-white-2 bg-theme-light dark:bg-theme-dark"
                 >
                     <!--block-->
                     <VActionText
@@ -62,20 +62,15 @@
                         :prop-is-enabled="!is_block_processing"
                         :prop-is-icon-only="is_block_processing"
                         type="button"
-                        class="w-full"
+                        class="w-full p-2"
                     >
-                        <div v-show="is_block_processing" class="w-full h-full flex items-center">
-                            <div class="mx-auto">
-                                <VLoading prop-element-size="s"/>
-                            </div>
+                        <div v-show="is_block_processing" class="w-full h-full flex items-center mx-auto">
+                            <VLoading prop-element-size="s"/>
                         </div>
-                        <div v-show="!is_block_processing" class="w-full h-full flex items-center">
-                            <div class="mx-auto">
-                                <FontAwesomeIcon v-show="!is_blocked" icon="fas fa-ban" class="text-base"/>
-                                <FontAwesomeIcon v-show="is_blocked" icon="fas fa-check" class="text-base"/>
-                                <span v-show="!is_blocked" class="pl-2">Block</span>
-                                <span v-show="is_blocked" class="pl-2">Blocked</span>
-                            </div>
+                        <div v-show="!is_block_processing" class="w-full h-full flex items-center mx-auto">
+                            <FontAwesomeIcon icon="fas fa-ban" class="text-base"/>
+                            <span v-show="!is_blocked" class="pl-2">Block</span>
+                            <span v-show="is_blocked" class="pl-2">Unblock</span>
                         </div>
                     </VActionText>
                 </div>
@@ -93,20 +88,14 @@
                     type="button"
                     class="col-span-1"
                 >
-                    <TransitionGroupFade>
-                        <div v-show="!has_shared" class="w-full h-full flex items-center">
-                            <div class="mx-auto">
-                                <FontAwesomeIcon icon="fas fa-share" class="text-base"/>
-                                <span class="pl-2">Share</span>
-                            </div>
-                        </div>
-                        <div v-show="has_shared" class="w-full h-full flex items-center">
-                            <div class="mx-auto">
-                                <FontAwesomeIcon icon="fas fa-check" class="text-base"/>
-                                <span class="pl-2">Copied</span>
-                            </div>
-                        </div>
-                    </TransitionGroupFade>
+                    <div v-show="!has_shared" class="w-fit h-full flex items-center mx-auto">
+                        <FontAwesomeIcon icon="fas fa-share"/>
+                        <span class="pl-2">Share</span>
+                    </div>
+                    <div v-show="has_shared" class="w-fit h-full flex items-center mx-auto">
+                        <FontAwesomeIcon icon="fas fa-check"/>
+                        <span class="pl-2">Copied</span>
+                    </div>
                 </VActionBorder>
 
                 <VActionBorder
@@ -120,18 +109,14 @@
                     type="button"
                     class="col-span-1"
                 >
-                    <div v-show="is_follow_processing" class="w-full h-full flex items-center">
-                        <div class="mx-auto">
-                            <VLoading prop-element-size="s"/>
-                        </div>
+                    <div v-show="is_follow_processing" class="w-fit h-full flex items-center mx-auto">
+                        <VLoading prop-element-size="s"/>
                     </div>
-                    <div v-show="!is_follow_processing" class="w-full h-full flex items-center">
-                        <div class="mx-auto">
-                            <FontAwesomeIcon v-show="!is_following" icon="fas fa-star" class="text-base"/>
-                            <FontAwesomeIcon v-show="is_following" icon="fas fa-check" class="text-base"/>
-                            <span v-show="!is_following" class="pl-2">Follow</span>
-                            <span v-show="is_following" class="pl-2">Following</span>
-                        </div>
+                    <div v-show="!is_follow_processing" class="w-fit h-full flex items-center mx-auto">
+                        <FontAwesomeIcon v-show="!is_following" icon="fas fa-star" class="pb-0.5"/>
+                        <FontAwesomeIcon v-show="is_following" icon="fas fa-check"/>
+                        <span v-show="!is_following" class="pl-2">Follow</span>
+                        <span v-show="is_following" class="pl-2">Following</span>
                     </div>
                 </VActionBorder>
             </div>
@@ -145,7 +130,6 @@
     import VLoading from '@/components/small/VLoading.vue';
     import VActionBorder from '@/components/small/VActionBorder.vue';
     import VActionText from '@/components/small/VActionText.vue';
-    import TransitionGroupFade from '@/transitions/TransitionGroupFade.vue';
 
     import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
     import { library } from '@fortawesome/fontawesome-svg-core';

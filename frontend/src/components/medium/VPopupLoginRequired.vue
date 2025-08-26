@@ -8,7 +8,7 @@
                 type="button"
                 prop-element-size="s"
                 prop-font-size="s"
-                :prop-is-icon-only="true"
+                
                 class="absolute w-10 -right-4"
             >
                 <FontAwesomeIcon icon="fas fa-xmark" class="mx-auto"/>

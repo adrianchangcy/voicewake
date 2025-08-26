@@ -135,7 +135,6 @@
                             ]"
                             prop-element="button"
                             prop-element-size="s"
-                            :prop-is-icon-only="true"
                             class="w-10 h-10 shrink-0 flex items-center justify-center focus-visible:-outline-offset-4"
                         >
                             <FontAwesomeIcon icon="fas fa-xmark" class="text-xl mx-auto"/>

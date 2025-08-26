@@ -19,23 +19,7 @@
         :disabled="!propIsEnabled"
     >
         <!--current font sinks too low, hence pb-->
-        <div
-            v-if="propIsIconOnly"
-            class="w-full h-full flex items-center"
-        >
-            <slot></slot>
-        </div>
-        <div
-            v-else
-            :class="[
-                propElementSize === 's' ? 'pb-[0.1875rem]' : '',
-                propElementSize === 'm' ? 'pb-[0.3125rem]' : '',
-                propElementSize === 'l' ? 'pb-2' : '',
-                propElementSize === 'xl' ? 'pb-2' : '',
-                propElementSize === '2xl' ? 'pb-2' : '',
-                'w-full h-full flex items-center'
-            ]"
-        >
+        <div class="w-full h-full flex items-center pretty-font">
             <slot></slot>
         </div>
     </component>
@@ -71,10 +55,6 @@
             propIsEnabled: {
                 type: Boolean,
                 default: true
-            },
-            propIsIconOnly: {   //if only fa icon, being absolute lets it not move lower like text would
-                type: Boolean,
-                default: false
             },
         }
     });
