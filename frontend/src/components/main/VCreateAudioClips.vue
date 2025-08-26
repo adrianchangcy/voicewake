@@ -179,7 +179,7 @@
                                 prop-element="a"
                                 prop-element-size="s"
                                 prop-font-size="s"
-                                :prop-is-icon-only="true"
+                                
                                 href="/"
                                 class="w-fit mx-auto"
                             >

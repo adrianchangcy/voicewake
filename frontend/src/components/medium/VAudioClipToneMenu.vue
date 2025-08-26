@@ -65,7 +65,7 @@
                             'is-audio-clip-tone-button      w-10 h-10 flex items-center border-2 border-transparent rounded-md transition-colors   focus:outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-theme-outline dark:focus-visible:outline-dark-theme-outline'
                         ]"
                     >
-                        <span class="is-inner-audio-clip-tone-button   w-fit text-sm font-medium mx-auto">Any</span>
+                        <span class="is-inner-audio-clip-tone-button pretty-font   w-fit text-sm font-medium mx-auto">Any</span>
                     </button>
                 </div>
 

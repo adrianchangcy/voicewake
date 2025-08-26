@@ -38,7 +38,7 @@
                         prop-element="button"
                         prop-element-size="s"
                         prop-font-size="s"
-                        :prop-is-icon-only="true"
+                        
                         class="w-full relative focus-visible:-outline-offset-2"
                     >
                         <span class="w-fit mx-auto">{{ filter_type }}</span>
@@ -67,7 +67,7 @@
                             prop-element="button"
                             prop-element-size="s"
                             prop-font-size="s"
-                            :prop-is-icon-only="true"
+                            
                             class="w-full relative focus-visible:-outline-offset-2"
                         >
                             <span class="w-fit mx-auto">{{ pretty_audio_clip_role_name }}</span>
@@ -99,7 +99,7 @@
                             prop-element="button"
                             prop-element-size="s"
                             prop-font-size="s"
-                            :prop-is-icon-only="true"
+                            
                             class="w-full focus-visible:-outline-offset-2"
                         >
                             <span
@@ -209,19 +209,18 @@
         </div>
 
         <!--loading and dialogs-->
-        <!--px-1 to match scroller-->
-        <div class="px-1">
+        <div>
 
             <TransitionGroupFade>
 
                 <!--fetching-->
-                <div class="px-1 border-b border-theme-gray-1 dark:border-dark-theme-gray-1">
+                <div>
                     <VEventCardSkeleton
                         v-show="filtered_events_store.isFetching"
                         :prop-has-border="false"
                         :prop-has-padding="true"
                         :prop-audio-clip-quantity="2"
-                        class="w-full"
+                        class="w-full border-b border-theme-gray-1 dark:border-dark-theme-gray-1"
                     />
                 </div>
 
@@ -232,7 +231,7 @@
                     :prop-has-auto-space-logo="false"
                     :prop-has-auto-space-title="false"
                     :prop-has-auto-space-content="false"
-                    class="w-full"
+                    class="w-full pt-8"
                 >
                     <template #logo>
                         <FontAwesomeIcon icon="far fa-face-meh-blank"/>
@@ -289,7 +288,7 @@
                                 prop-element="button"
                                 prop-element-size="s"
                                 prop-font-size="s"
-                                :prop-is-icon-only="false"
+                                
                                 type="button"
                                 class="w-full"
                             >
@@ -323,7 +322,6 @@
                                 prop-element="button"
                                 prop-element-size="s"
                                 prop-font-size="s"
-                                :prop-is-icon-only="false"
                                 type="button"
                                 class="w-full"
                             >

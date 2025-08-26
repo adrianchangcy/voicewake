@@ -2,7 +2,7 @@
     <div
         :class="[
             propHasBorder === true ? 'border-y border-theme-gray-1 dark:border-dark-theme-gray-1' : '',
-            propHasPadding === true ? 'px-2 sm:px-4 pt-8 pb-12' : '',
+            propHasPadding === true ? 'px-2 sm:px-4 pt-8 pb-10' : '',
             'flex flex-col'
         ]"
     >

@@ -51,7 +51,7 @@
                     :propIsEnabled="!isProcessing"
                     propElement="button"
                     type="button"
-                    :propIsIconOnly="true"
+                    
                     class="w-full h-full focus-visible:-outline-offset-2"
                 >
 
@@ -194,7 +194,7 @@
                             @keydown.enter="toggleMute(true)"
                             propElement="button"
                             type="button"
-                            :propIsIconOnly="true"
+                            
                             class="w-full h-[2.1875rem] absolute bottom-0 focus-visible:-outline-offset-2 focus-visible:outline-1"
                         >
                             <div class="w-full h-full relative">
@@ -204,10 +204,11 @@
                                         'w-fit h-fit absolute inset-0 m-auto transition-transform'
                                     ]"
                                 >
-                                    <FontAwesomeIcon v-show="isMuted" icon="fas fa-volume-xmark"/>
-                                    <FontAwesomeIcon v-show="isLowVolume" icon="fas fa-volume-low"/>
-                                    <FontAwesomeIcon v-show="isHighVolume" icon="fas fa-volume-high"/>
+                                    <FontAwesomeIcon v-show="isMuted" icon="fas fa-volume-xmark" class="align-middle block"/>
+                                    <FontAwesomeIcon v-show="isLowVolume" icon="fas fa-volume-low" class="align-middle block"/>
+                                    <FontAwesomeIcon v-show="isHighVolume" icon="fas fa-volume-high" class="align-middle block"/>
                                 </span>
+
                             </div>
                             <span v-show="isMuted" class="sr-only">
                                 unmute to bring volume back to {{ getBackupVolume }}

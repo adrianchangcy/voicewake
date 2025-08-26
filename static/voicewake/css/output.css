@@ -849,10 +849,6 @@ video {
   margin-top: 0.5rem;
 }
 
-.mt-4 {
-  margin-top: 1rem;
-}
-
 .mt-6 {
   margin-top: 1.5rem;
 }
@@ -969,6 +965,10 @@ video {
   height: 2rem;
 }
 
+.h-9 {
+  height: 2.25rem;
+}
+
 .h-\[1px\] {
   height: 1px;
 }
@@ -1053,6 +1053,10 @@ video {
 
 .w-28 {
   width: 7rem;
+}
+
+.w-3 {
+  width: 0.75rem;
 }
 
 .w-3\/4 {
@@ -1525,11 +1529,6 @@ video {
   border-color: rgb(225 227 213 / var(--tw-border-opacity));
 }
 
-.border-theme-gray-3 {
-  --tw-border-opacity: 1;
-  border-color: rgb(197 199 187 / var(--tw-border-opacity));
-}
-
 .border-theme-gray-form-field {
   --tw-border-opacity: 1;
   border-color: rgb(202 204 192 / var(--tw-border-opacity));
@@ -1707,6 +1706,11 @@ video {
   padding-bottom: 0.5rem;
 }
 
+.py-4 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
 .py-5 {
   padding-top: 1.25rem;
   padding-bottom: 1.25rem;
@@ -1727,6 +1731,10 @@ video {
 
 .pb-1 {
   padding-bottom: 0.25rem;
+}
+
+.pb-1\.5 {
+  padding-bottom: 0.375rem;
 }
 
 .pb-10 {
@@ -1773,14 +1781,6 @@ video {
   padding-bottom: 2.25rem;
 }
 
-.pb-\[0\.1875rem\] {
-  padding-bottom: 0.1875rem;
-}
-
-.pb-\[0\.3125rem\] {
-  padding-bottom: 0.3125rem;
-}
-
 .pl-1 {
   padding-left: 0.25rem;
 }
@@ -1801,24 +1801,12 @@ video {
   padding-right: 2.5rem;
 }
 
-.pr-11 {
-  padding-right: 2.75rem;
-}
-
 .pr-2 {
   padding-right: 0.5rem;
 }
 
 .pr-4 {
   padding-right: 1rem;
-}
-
-.pt-0 {
-  padding-top: 0px;
-}
-
-.pt-0\.5 {
-  padding-top: 0.125rem;
 }
 
 .pt-1 {
@@ -1869,6 +1857,10 @@ video {
   padding-top: 1px;
 }
 
+.pb-11 {
+  padding-bottom: 2.75rem;
+}
+
 .text-left {
   text-align: left;
 }
@@ -1879,6 +1871,10 @@ video {
 
 .text-right {
   text-align: right;
+}
+
+.align-middle {
+  vertical-align: middle;
 }
 
 .text-2xl {
@@ -1944,10 +1940,6 @@ video {
 
 .font-semibold {
   font-weight: 600;
-}
-
-.uppercase {
-  text-transform: uppercase;
 }
 
 .italic {
@@ -2165,6 +2157,16 @@ video {
 
 /*fonts*/
 
+/*
+    edge cases:
+        -<FontAwesomeIcon/> placed in absolute element, with parent having this font applied
+            -see VPlayback's volume button
+            -problem: shifting, not dead-centered, <svg> having extra space
+            -solution, apply to <FontAwesomeIcon/>: vertical-align: middle; display: block;
+    usage:
+        -for things with maximum readability, e.g. VNotiwind, no need to use this font
+*/
+
 @font-face {
   font-family: 'Dongle';
 
@@ -2178,7 +2180,7 @@ video {
   font-display: swap;
 }
 
-main {
+.pretty-font {
   font-family: 'Dongle';
   text-underline-position: from-font;
 }

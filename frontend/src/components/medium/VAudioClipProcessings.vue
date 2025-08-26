@@ -136,7 +136,7 @@
                         :prop-is-enabled="!isClosing(processing)"
                         prop-element="button"
                         prop-element-size="s"
-                        :prop-is-icon-only="true"
+                        
                         class="w-10 h-10 flex items-center focus-visible:-outline-offset-4"
                     >
                         <VLoading
