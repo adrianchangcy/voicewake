@@ -10,6 +10,15 @@
 } */
 
 /*fonts*/
+/*
+    edge cases:
+        -<FontAwesomeIcon/> placed in absolute element, with parent having this font applied
+            -see VPlayback's volume button
+            -problem: shifting, not dead-centered, <svg> having extra space
+            -solution, apply to <FontAwesomeIcon/>: vertical-align: middle; display: block;
+    usage:
+        -for things with maximum readability, e.g. VNotiwind, no need to use this font
+*/
 @font-face {
     font-family: 'Dongle';
     src: url('../fonts/Dongle-Regular.woff2') format('woff2'),
@@ -18,7 +27,7 @@
     font-style: normal;
     font-display: swap;
 }
-main {
+.pretty-font {
     font-family: 'Dongle';
     text-underline-position: from-font;
 }

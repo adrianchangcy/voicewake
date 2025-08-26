@@ -1,9 +1,9 @@
 <template>
     <div class="flex flex-col">
         <!--user-->
-        <div class="h-10 relative">
-            <div class="absolute w-full left-0 bottom-2 h-5 flex flex-row gap-2">
-                <div class="w-4 h-full rounded-full skeleton"></div>
+        <div class="h-9 relative">
+            <div class="absolute w-full left-0 bottom-2 h-5 flex flex-row gap-1">
+                <div class="w-3 h-full rounded-full skeleton"></div>
                 <div class="w-[25%] h-full rounded-lg skeleton"></div>
             </div>
         </div>

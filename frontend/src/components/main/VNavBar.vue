@@ -1,5 +1,5 @@
 <template>
-    <div class="h-full">
+    <div class="h-full pretty-font">
 
         <!--main nav-->
         <!--px-5 to align with main content-->
@@ -13,7 +13,7 @@
                     prop-element="a"
                     prop-font-size="m"
                     href="/"
-                    :propIsIconOnly="false"
+                    
                     class="w-full h-full pb-0.5"
                 >
                     <FontAwesomeIcon icon="fas fa-wave-square" class="mx-auto"/>
@@ -22,7 +22,6 @@
             </div>
 
             <!--start-->
-            <!--intentional propIsIconOnly="false"-->
             <div
                 class="col-start-2 col-span-1 lg:col-start-4 lg:col-span-1"
             >
@@ -30,7 +29,7 @@
                     prop-element="a"
                     prop-font-size="m"
                     href="/start"
-                    :propIsIconOnly="false"
+                    
                     class="w-full h-full pb-0.5"
                 >
                     <FontAwesomeIcon icon="fas fa-comment" class="mx-auto text-lg"/>
@@ -39,7 +38,6 @@
             </div>
 
             <!--reply-->
-            <!--intentional propIsIconOnly="false"-->
             <div
                 class="col-start-3 col-span-1 lg:col-start-5 lg:col-span-1"
             >
@@ -47,7 +45,7 @@
                     prop-element="a"
                     prop-font-size="m"
                     href="/reply"
-                    :propIsIconOnly="false"
+                    
                     class="w-full h-full pb-0.5"
                 >
                     <FontAwesomeIcon icon="fas fa-comments" class="mx-auto text-lg"/>
@@ -92,7 +90,7 @@
                     @click="pop_up_manager_store.openPopup({context: 'nav_menu', kwargs: null})"
                     prop-element="button"
                     type="button"
-                    :propIsIconOnly="true"
+                    
                     class="w-full h-full"
                 >
                     <!--burger-->
@@ -162,7 +160,7 @@
                                 <VActionText
                                     v-if="propIsLoggedIn"
                                     prop-element="a"
-                                    :prop-is-icon-only="false"
+                                    
                                     :href="getProfileURL()"
                                     class="w-full h-fit py-10"
                                 >
@@ -202,12 +200,12 @@
                                     href="/login"
                                     prop-font-size="s"
                                     prop-element-size="s"
-                                    :prop-is-icon-only="false"
+                                    
                                     class=""
                                 >
                                     <div class="h-full flex flex-row">
                                         <div class="pl-2 pr-4 md:pr-6 flex items-center">
-                                            <FontAwesomeIcon fixed-width icon="fas fa-circle-user" class="pt-0.5 mx-auto"/>
+                                            <FontAwesomeIcon fixed-width icon="fas fa-circle-user" class="pb-0.5 mx-auto"/>
                                         </div>
                                         <div class="flex items-center">
                                             <span class="text-left break-all">
@@ -223,12 +221,12 @@
                                     href="/signup"
                                     prop-font-size="s"
                                     prop-element-size="s"
-                                    :prop-is-icon-only="false"
+                                    
                                     class=""
                                 >
                                     <div class="h-full flex flex-row">
                                         <div class="pl-2 pr-4 md:pr-6 flex items-center">
-                                            <FontAwesomeIcon fixed-width icon="fas fa-right-to-bracket" class="pt-0.5 mx-auto"/>
+                                            <FontAwesomeIcon fixed-width icon="fas fa-right-to-bracket" class="pb-0.5 mx-auto"/>
                                         </div>
                                         <div class="flex items-center">
                                             <span class="text-left break-all">
@@ -244,12 +242,12 @@
                                     href="/about"
                                     prop-font-size="s"
                                     prop-element-size="s"
-                                    :prop-is-icon-only="false"
+                                    
                                     class=""
                                 >
                                     <div class="h-full flex flex-row">
                                         <div class="pl-2 pr-4 md:pr-6 flex items-center">
-                                            <FontAwesomeIcon fixed-width icon="fas fa-question" class="pt-0.5 mx-auto"/>
+                                            <FontAwesomeIcon fixed-width icon="fas fa-question" class="pb-0.5 mx-auto"/>
                                         </div>
                                         <div class="flex items-center">
                                             <span class="text-left break-all">
@@ -262,10 +260,10 @@
                                 <!--light/dark theme-->
                                 <div class="flex flex-row">
                                     <div class="pl-2 pr-4 md:pr-6 flex items-center">
-                                        <FontAwesomeIcon fixed-width icon="fas fa-moon" class="mx-auto"/>
+                                        <FontAwesomeIcon fixed-width icon="fas fa-moon" class="pb-0.5 mx-auto"/>
                                     </div>
                                     <!--follows "s" size action-->
-                                    <div class="w-full flex items-center text-base font-medium pb-0.5">
+                                    <div class="w-full flex items-center text-base font-medium">
                                         <span class="text-left break-all">
                                             Dark mode
                                         </span>
@@ -293,11 +291,11 @@
                                         :href="getProfileURL()"
                                         prop-font-size="s"
                                         prop-element-size="s"
-                                        :prop-is-icon-only="false"
+                                        
                                     >
                                         <div class="h-full flex flex-row">
                                             <div class="pl-2 pr-4 md:pr-6 flex items-center">
-                                                <FontAwesomeIcon fixed-width icon="fas fa-microphone-lines" class="pt-0.5 mx-auto"/>
+                                                <FontAwesomeIcon fixed-width icon="fas fa-microphone-lines" class="pb-0.5 mx-auto"/>
                                             </div>
                                             <div class="flex items-center">
                                                 <span class="text-left break-all">
@@ -317,11 +315,11 @@
                                         href="/likes"
                                         prop-font-size="s"
                                         prop-element-size="s"
-                                        :prop-is-icon-only="false"
+                                        
                                     >
                                         <div class="h-full flex flex-row">
                                             <div class="pl-2 pr-4 md:pr-6 flex items-center">
-                                                <FontAwesomeIcon fixed-width icon="fas fa-thumbs-up" class="mx-auto"/>
+                                                <FontAwesomeIcon fixed-width icon="fas fa-thumbs-up" class="pb-0.5 mx-auto"/>
                                             </div>
                                             <div class="flex items-center">
                                                 <span class="text-left break-all">
@@ -341,11 +339,11 @@
                                         href="/following"
                                         prop-font-size="s"
                                         prop-element-size="s"
-                                        :prop-is-icon-only="false"
+                                        
                                     >
                                         <div class="h-full flex flex-row">
                                             <div class="pl-2 pr-4 md:pr-6 flex items-center">
-                                                <FontAwesomeIcon fixed-width icon="fas fa-star" class="pt-0.5 mx-auto"/>
+                                                <FontAwesomeIcon fixed-width icon="fas fa-star" class="pb-0.5 mx-auto"/>
                                             </div>
                                             <div class="flex items-center">
                                                 <span class="text-left break-all">
@@ -365,11 +363,11 @@
                                         href="/block"
                                         prop-font-size="s"
                                         prop-element-size="s"
-                                        :prop-is-icon-only="false"
+                                        
                                     >
                                         <div class="h-full flex flex-row">
                                             <div class="pl-2 pr-4 md:pr-6 flex items-center">
-                                                <FontAwesomeIcon fixed-width icon="fas fa-ban" class="pt-0.5 mx-auto"/>
+                                                <FontAwesomeIcon fixed-width icon="fas fa-ban" class="pb-0.5 mx-auto"/>
                                             </div>
                                             <div class="flex items-center">
                                                 <span class="text-left break-all">
@@ -386,12 +384,12 @@
                                     href="/about"
                                     prop-font-size="s"
                                     prop-element-size="s"
-                                    :prop-is-icon-only="false"
+                                    
                                     class=""
                                 >
                                     <div class="h-full flex flex-row">
                                         <div class="pl-2 pr-4 md:pr-6 flex items-center">
-                                            <FontAwesomeIcon fixed-width icon="fas fa-question" class="pt-0.5 mx-auto"/>
+                                            <FontAwesomeIcon fixed-width icon="fas fa-question" class="pb-0.5 mx-auto"/>
                                         </div>
                                         <div class="flex items-center">
                                             <span class="text-left break-all">
@@ -404,10 +402,10 @@
                                 <!--light/dark theme-->
                                 <div class="flex flex-row">
                                     <div class="pl-2 pr-4 md:pr-6 flex items-center">
-                                        <FontAwesomeIcon fixed-width icon="fas fa-moon" class="mx-auto"/>
+                                        <FontAwesomeIcon fixed-width icon="fas fa-moon" class="pb-0.5 mx-auto"/>
                                     </div>
                                     <!--follows "s" size action-->
-                                    <div class="w-full flex items-center text-base font-medium pb-0.5">
+                                    <div class="w-full flex items-center text-base font-medium">
                                         <span class="text-left break-all">
                                             Dark mode
                                         </span>
@@ -431,7 +429,7 @@
                                         prop-element="button"
                                         prop-font-size="s"
                                         prop-element-size="s"
-                                        :prop-is-icon-only="false"
+                                        
                                         type="button"
                                         class="w-full"
                                     >
@@ -442,9 +440,7 @@
                                                     prop-element-size="s"
                                                     class="mx-auto"
                                                 />
-                                                <span v-else class="mx-auto">
-                                                    <FontAwesomeIcon fixed-width icon="fas fa-door-open"/>
-                                                </span>
+                                                <FontAwesomeIcon v-else fixed-width icon="fas fa-door-open" class="pb-0.5 mx-auto"/>
                                             </div>
                                             <div class="flex items-center">
                                                 <span class="text-left break-all">

@@ -75,7 +75,7 @@
                             href="/reply"
                             propElementSize="s"
                             propFontSize="s"
-                            :prop-is-icon-only="true"
+                            
                             class="w-fit mx-auto"
                         >
                             <span class="flex items-center px-4">

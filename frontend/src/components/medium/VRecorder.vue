@@ -14,7 +14,7 @@
                     propElement="button"
                     type="button"
                     propElementSize="m"
-                    :propIsIconOnly="true"
+                    
                     class="w-full"
                 >
                     <FontAwesomeIcon icon="fas fa-microphone-lines" class="text-4xl mx-auto"/>
@@ -35,7 +35,7 @@
                         propElement="button"
                         type="button"
                         propElementSize="m"
-                        :propIsIconOnly="true"
+                        
                         class="col-start-1 row-span-2 col-span-1"
                     >
                         <FontAwesomeIcon icon="fas fa-xmark" class="text-2xl mx-auto"/>
@@ -57,7 +57,7 @@
                         propElement="button"
                         type="button"
                         propElementSize="s"
-                        :propIsIconOnly="true"
+                        
                         class="row-start-2 row-span-1 col-span-2 h-full"
                     >
                         <FontAwesomeIcon v-show="recorder_state === 'recording'" icon="fas fa-pause" class="text-2xl mx-auto"/>
@@ -72,7 +72,7 @@
                         propElement="button"
                         type="button"
                         propElementSize="m"
-                        :propIsIconOnly="true"
+                        
                         class="col-start-4 row-span-2 col-span-1"
                     >
                         <FontAwesomeIcon icon="fas fa-check" class="text-2xl mx-auto"/>
