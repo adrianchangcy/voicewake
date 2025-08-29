@@ -9,28 +9,6 @@
     outline: 1px solid #f00 !important;
 } */
 
-/*fonts*/
-/*
-    edge cases:
-        -<FontAwesomeIcon/> placed in absolute element, with parent having this font applied
-            -see VPlayback's volume button
-            -problem: shifting, not dead-centered, <svg> having extra space
-            -solution, apply to <FontAwesomeIcon/>: vertical-align: middle; display: block;
-    usage:
-        -for things with maximum readability, e.g. VNotiwind, no need to use this font
-*/
-@font-face {
-    font-family: 'Dongle';
-    src: url('../fonts/Dongle-Regular.woff2') format('woff2'),
-        url('../fonts/Dongle-Regular.woff') format('woff');
-    font-weight: normal;
-    font-style: normal;
-    font-display: swap;
-}
-.pretty-font {
-    font-family: 'Dongle';
-    text-underline-position: from-font;
-}
 
 /*since we use placeholders for label, make them more visible*/
 ::placeholder { /* Chrome, Firefox, Opera, Safari 10.1+ */
@@ -43,6 +21,7 @@
 ::-ms-input-placeholder { /* Microsoft Edge */
     color: rgb(100, 100, 100) !important;
 }
+
 
 /*
 FOCUS AND FOCUS-VISIBLE
