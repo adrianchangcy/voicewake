@@ -38,8 +38,41 @@
         {{user.is_authenticated | json_script:"data-user-is-authenticated"}}
         {{user.is_superuser | json_script:"data-user-is-superuser"}}
 
-        <!--ensure main CSS is loaded first before content-->
-        <link href="{% static 'voicewake/css/output.css' %}{{STATIC_CACHE_BUST_VERSION}}" rel="stylesheet"/>
+        <!--ensure these are loaded first before content-->
+        <!--crossorigin, with default "anonymous", just means to not send user credentials unless same origin-->
+
+        <link href="{% static 'voicewake/css/output.css' %}{{STATIC_CACHE_BUST_VERSION}}" rel="stylesheet" crossorigin/>
+
+        <!--loading fonts here is faster than in .css, due to one less request-->
+        <link href="{% static 'voicewake/fonts/Dongle-Regular.woff2' %}{{STATIC_CACHE_BUST_VERSION}}" as="font" type="type/woff2" crossorigin/>
+        <link href="{% static 'voicewake/fonts/Dongle-Regular.woff' %}{{STATIC_CACHE_BUST_VERSION}}" as="font" type="type/woff" crossorigin/>
+        
+        <!--.css cannot use dependency-injected links-->
+        <style>
+            @font-face {
+                font-family: 'Dongle';
+                src: url("{% static 'voicewake/fonts/Dongle-Regular.woff2' %}{{STATIC_CACHE_BUST_VERSION}}") format('woff2'),
+                url("{% static 'voicewake/fonts/Dongle-Regular.woff' %}{{STATIC_CACHE_BUST_VERSION}}") format('woff');
+                font-weight: normal;
+                font-style: normal;
+                font-display: swap;
+            }
+            .pretty-font {
+                font-family: 'Dongle';
+                text-underline-position: from-font;
+            }
+        </style>
+
+        <!--
+            fonts:
+                edge cases:
+                    -<FontAwesomeIcon/> placed in absolute element, with parent having this font applied
+                        -see VPlayback's volume button
+                        -problem: shifting, not dead-centered, <svg> having extra space
+                        -solution: apply to <FontAwesomeIcon/>: vertical-align: middle; display: block;
+                usage:
+                    -for things with maximum readability, e.g. VNotiwind, no need to use this font
+        -->
     </head>
 
     {% block body %}
