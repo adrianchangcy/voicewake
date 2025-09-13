@@ -2,7 +2,8 @@ FROM node:current-alpine
 
 WORKDIR .
 
-COPY ./package*.json ./
+COPY ./package.json ./
+COPY ./yarn.lock ./
 
 COPY . .
 
@@ -33,4 +34,4 @@ EXPOSE 3000
         #saw a comment saying that file system events don't work when Docker is running in Hyper-V
             #if you have server script, also use polling, e.g. "nodemon -L server.js"
 
-CMD ["npx", "tailwindcss", "-i", "./static/voicewake/css/base.css", "-o", "./static/voicewake/css/output.css", "--watch", "--poll"]
+CMD ["npx", "@tailwindcss/cli", "-i", "./static/voicewake/css/base.css", "-o", "./static/voicewake/css/output.css", "--watch", "--poll"]

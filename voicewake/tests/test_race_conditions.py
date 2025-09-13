@@ -57,7 +57,7 @@ from django.conf import settings
 
 #multithreading only works properly with TransactionTestCase
 @override_settings(
-    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    
     DEBUG=True,
     CELERY_TASK_ALWAYS_EAGER=True,
 )

@@ -42,7 +42,7 @@
 <script lang="ts">
     import { defineComponent } from 'vue';
     // import { notify } from '@/wrappers/notify_wrapper';
-    import anime from 'animejs';
+    import { animate } from 'animejs';
     // import VPlayback from '@/components/medium/VPlayback.vue';
     import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
     import { getRandomNumber } from '@/helper_functions';
@@ -87,14 +87,14 @@
                     }
 
                     //start anime
-                    this.startAnime();
+                    this.startAnimate();
 
                 }).catch(()=>{
 
                     //fail silently, since this component is not important
                 });
             },
-            async startAnime() : Promise<void> {
+            async startAnimate() : Promise<void> {
 
                 if(this.randomised_audio_clip_tones_indexes.length < this.quantity_used){
 
@@ -135,16 +135,15 @@
                     //use completed as sort of an infinite loop
                     //we specify more opacity values so we can reach 0 to 1 as early as possible
                     //otherwise, reaching opacity 1 too slowly causes undesired gap above
-                    anime({
-                        targets: (this.$refs.audio_clip_tones_elements as HTMLElement[])[x],
+                    animate((this.$refs.audio_clip_tones_elements as HTMLElement[])[x], {
                         translateY: [translate_y_start.toString() + 'px', translate_y_end.toString() + 'px'],
                         opacity: ['0', '1', '0.6', '0.4', '0.2', '0'],
                         delay: random_delay,
-                        easing: 'linear',
+                        ease: 'linear',
                         autoplay: true,
                         duration: random_duration,
                         loop: true,
-                        loopComplete: ()=>{
+                        onLoop: ()=>{
 
                             //replace audio_clip_tone_symbol randomly
                             this.randomised_audio_clip_tones_indexes[x] = Math.floor(getRandomNumber(0, this.audio_clip_tones.length));

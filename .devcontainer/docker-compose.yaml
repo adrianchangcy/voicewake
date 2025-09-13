@@ -1,0 +1,23 @@
+name: vw_dev_workspace
+services:
+  #vscode will attach to this container
+  dev_container:
+    build:
+      #set context to project root so our dockerfile can reference host machine files properly, since ".." is not allowed
+      context: ../
+      dockerfile: ./.devcontainer/Dockerfile
+    volumes:
+      #bind everything to /workspace
+      - type: bind
+        source: ../.
+        target: /workspace
+      #create anonymous volumes in container, mount paths below in container (no :), and hide from other mounts
+      #basically exclude from mounting back to host machine
+      - /workspace/frontend/node_modules
+      - /workspace/.venv
+    env_file:
+      - ../env/.env
+    restart: unless-stopped
+    tty: true
+    # network_mode: service:postgres  #idk if important at all
+    command: sleep infinity

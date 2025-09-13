@@ -1,0 +1,22 @@
+{
+    "dockerComposeFile": "./docker-compose.yaml",
+    "service": "dev_container",
+    //default path to open when attaching to new container
+    "workspaceFolder": "/workspace",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "jomeinaster.bracket-peek",
+                "dbaeumer.vscode-eslint",
+                "batisteo.vscode-django",
+                "oderwat.indent-rainbow",
+                "YoavBls.pretty-ts-errors",
+                "ms-python.vscode-pylance",
+                "ms-python.python",
+                "ms-python.debugpy",
+                "bradlc.vscode-tailwindcss",
+                "Vue.volar"
+            ]
+        }
+    }
+}

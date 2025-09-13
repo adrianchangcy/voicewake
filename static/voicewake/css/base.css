@@ -1,8 +1,11 @@
 /*put these here so tailwind can listen*/
-/*ignore syntax error, they are a non-issue*/
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/*prefer to be explicit because tailwind should look at /voicewake and /frontend*/
+/* https://tailwindcss.com/docs/detecting-classes-in-source-files#disabling-automatic-detection */
+@import "tailwindcss" source(none);
+@config "../../../tailwind.config.js";
+@source "../../../voicewake/templates/**/*.html";
+@source "../../../voicewake/static/**/*.{js,svg}";
+@source "../../../frontend/src/**/*.{vue,js,ts,jsx,tsx}";
 
 /*enable this to troubleshoot css errors*/
 /* * {
@@ -209,9 +212,9 @@ textarea {
         90deg,
         /*for opacity, do it like #facc15xx, (00...99...FF lowest to highest)*/
         /*last colour must not have coma symbol, else it breaks*/
-        theme(colors.transparent),
+        rgba(255,0,0,0),
         theme(colors.theme-gray-3),
-        theme(colors.transparent)
+        rgba(255,0,0,0)
     );
     animation: shimmer 1s infinite linear;
     content: '';
@@ -228,9 +231,9 @@ textarea {
         90deg,
         /*for opacity, do it like #facc15xx, (00...99...FF lowest to highest)*/
         /*last colour must not have coma symbol, else it breaks*/
-        theme(colors.transparent),
+        rgba(255,0,0,0),
         theme(colors.dark-theme-gray-3),
-        theme(colors.transparent)
+        rgba(255,0,0,0)
     );
     animation: shimmer 1s infinite linear;
     content: '';

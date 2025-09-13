@@ -1,10 +1,6 @@
-FROM python:3.12-bullseye
+FROM python:bookworm
 
 RUN pip install --upgrade pip
-
-# activate virtual environment
-ENV VIRTUAL_ENV=/.venv
-ENV PATH="/.venv/bin:$PATH"
 
 COPY ./requirements.txt ./
 

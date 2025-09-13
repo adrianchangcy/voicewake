@@ -3,17 +3,6 @@
 #.dockerignore is expected to be at root directory of build context, i.e. where you are running "docker build" from
 name: vw_dev
 services:
-  test_service:
-    env_file:
-      - ./env/.env
-    build:
-      context: .  #. because it relies on ./static
-      dockerfile: ./test_service.dockerfile
-    ports:
-      - "5000:5000"
-    networks:
-      - backend
-
   postgres:
     image: postgres:latest
     ports:
@@ -81,20 +70,6 @@ services:
       - type: bind
         source: ./django_runserver.py
         target: /django_runserver.py
-      - type: bind
-        source: ./manage.py
-        target: /manage.py
-      #perhaps we bind these dependency files so we don't have to download at host
-      #and we can edit code from inside container for VSCode plugins to work
-      - type: bind
-        source: ./package.json
-        target: /package.json
-      - type: bind
-        source: ./package-lock.json
-        target: /package-lock.json
-      - type: bind
-        source: ./requirements.txt
-        target: /requirements.txt
     restart: unless-stopped
     env_file:
       - /env/.env
@@ -269,6 +244,12 @@ services:
       - type: bind
         source: ./frontend
         target: /frontend
+      # - type: bind
+      #   source: ./voicewake
+      #   target: /voicewake
+      # - type: bind
+      #   source: ./tailwind.config.js
+      #   target: /tailwind.config.js
       #in container, specify the folder we want to ignore from bind-mount
       - /frontend/node_modules
     ports:

@@ -61,7 +61,7 @@ def ensure_otp_is_always_wrong(otp):
 #POTENTIAL SOLUTION
     #for any select_for_update() code, separate it into another test case class, and inherit TransactionTestCase instead
 @override_settings(
-    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    
     MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'voicewake/tests'),
     UNREGISTERED_USERS_MAX_INACTIVE_DURATION_S=10,
     CRONJOB_DEFAULT_ROW_LIMIT=10,
@@ -1119,7 +1119,7 @@ class Core_TestCase(TestCase):
 
 
 @override_settings(
-    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    
     MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'voicewake/tests'),
     UNREGISTERED_USERS_MAX_INACTIVE_DURATION_S=10,
 )
