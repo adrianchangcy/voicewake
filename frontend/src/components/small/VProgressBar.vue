@@ -21,7 +21,7 @@
 
 <script lang="ts">
     import { PropType, defineComponent } from 'vue';
-    import anime from 'animejs';
+    import { animate, utils, createTimeline } from 'animejs';
 
     //cumulative
     //pause must always be < duration
@@ -78,7 +78,7 @@
                 const target_el = this.$refs.progress_bar as HTMLElement;
 
                 //remove
-                anime.remove(target_el);
+                utils.remove(target_el);
 
                 //if animating first part, and not first time, reset scale
                 //this is to clean up from previous completion
@@ -87,11 +87,12 @@
                     target_el.style.transform = 'scaleX(0)';
                 }
 
-                const current_anime = anime.timeline({
-                    targets: target_el,
-                    easing: 'linear',
-                    loop: false,
-                    autoplay: false,
+                const current_anime = utils.createTimeline({
+                    defaults: {
+                        ease: 'linear',
+                        loop: false,
+                        autoplay: false,
+                    }
                 });
 
                 //for very first time, opacity will be 0
@@ -105,7 +106,7 @@
 
                     //reset element to desired initial state via anime
                     //do it here to prevent flashing, compared to immediate change via .style
-                    current_anime.add({
+                    current_anime.add(target_el, {
                         opacity: 1,
                         scaleX: 0,
                         duration: 1,
@@ -114,7 +115,7 @@
                 }else{
 
                     //has previous part unfinished
-                    current_anime.add({
+                    current_anime.add(target_el, {
                         scaleX: this.propTimestampsMs.scales[part_index - 1],
                         duration: 100,
                     });
@@ -122,7 +123,7 @@
 
                 //actual anime
                 //we do 0.75 so we can wait for overdue request
-                current_anime.add({
+                current_anime.add(target_el, {
                     scaleX: this.propTimestampsMs.scales[part_index] * 0.86,
                     duration: this.propTimestampsMs.durations[part_index] * 0.86,
                 });
@@ -134,14 +135,13 @@
                 const target_el = this.$refs.progress_bar as HTMLElement;
 
                 //remove
-                anime.remove(target_el);
+                utils.remove(target_el);
 
                 //don't reset opacity
                 //when watcher value changes too quickly, it only recognises latest value
                 //i.e. it would skip step 0
-                anime({
-                    targets: target_el,
-                    easing: 'linear',
+                animate(target_el, {
+                    ease: 'linear',
                     loop: false,
                     autoplay: true,
                     scaleX: 1,

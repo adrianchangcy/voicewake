@@ -151,7 +151,7 @@
     import { useUserBlocksStore } from '@/stores/UserBlocksStore';
     import { useUserFollowsStore } from '@/stores/UserFollowsStore';
     import { isLoggedIn } from '@/helper_functions';
-    // import anime from 'animejs';
+    // import { animate } from 'animejs';
 
     export default defineComponent({
         data(){

@@ -1471,7 +1471,7 @@ class RealisticBulkData():
 
 
 @override_settings(
-    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    
     DEBUG=True,
     EVENT_QUANTITY_PER_PAGE=4, #for faster tests
 )
@@ -1994,7 +1994,7 @@ class RealisticBulkData_TestCase(TestCase):
 
 #instead of using TransactionTestCase, do use_threads=False for .sample_run() then use TestCase
 @override_settings(
-    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    
     DEBUG=True,
     EVENT_QUANTITY_PER_PAGE=4,  #for faster tests
 )
@@ -2056,7 +2056,7 @@ class RealisticBulkData_SampleRun_TestCase(TestCase):
             #trigger that also performs sql within itself is what slowed things down during bulk actions
 #update: trigger is no longer used in production
 @override_settings(
-    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    
     DEBUG=True,
 )
 class BulkCreateOptimisation_TestCase(TestCase):
@@ -2795,7 +2795,7 @@ class BulkCreateOptimisation_TestCase(TestCase):
     #sometimes if db has no active caching, it will take nearly 300ms
         #after first test run and caching is done, it will be at optimal times of 50ms-150ms
 @override_settings(
-    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    
     DEBUG=True,
 )
 class BrowseEvents_TestCase(TestCase):
@@ -5154,7 +5154,7 @@ class BrowseEvents_TestCase(TestCase):
 #only test for basic correctness and db test data setup
 #leave API correctness at test_apis
 @override_settings(
-    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    
     DEBUG=True,
 )
 class ListEventReplyChoices_TestCase(TestCase):
@@ -5926,7 +5926,7 @@ class ListEventReplyChoices_TestCase(TestCase):
 #only test for basic correctness and db test data setup
 #leave API correctness at test_apis
 @override_settings(
-    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    
     DEBUG=True,
 )
 class OptimiseBrowseEvents_TestCase(TestCase):

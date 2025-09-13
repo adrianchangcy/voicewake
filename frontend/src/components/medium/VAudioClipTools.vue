@@ -256,7 +256,7 @@
 
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
-    import anime from 'animejs';
+    import { animate, utils } from 'animejs';
     import { prettyCount } from '@/helper_functions';
     import { notify } from '@/wrappers/notify_wrapper';
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
@@ -606,11 +606,11 @@
                 const dislike_element = this.$refs.dislike_logo as HTMLElement;
 
                 //always remove anime on new action to prevent old anime from trying to finish
-                anime.remove(like_element);
+                utils.remove(like_element);
                 like_element.style.transform = 'scale(100%)';
                 like_element.style.rotate = '0deg';
 
-                anime.remove(dislike_element);
+                utils.remove(dislike_element);
                 dislike_element.style.transform = 'scale(100%)';
                 dislike_element.style.rotate = '0deg';
 
@@ -629,26 +629,24 @@
                 if(is_adding){
 
                     //i.e. from nothing to liked
-                    anime({
-                        targets: target,
+                    animate(target, {
                         rotate: ['-45deg', '15deg', '0deg'],
                         scale: ['150%', '100%'],
                         duration: 500,
                         autoplay: true,
                         loop: false,
-                        easing: 'linear',
+                        ease: 'linear',
                     });
 
                 }else{
 
                     //i.e. from liked to unliked
-                    anime({
-                        targets: target,
+                    animate(target, {
                         rotate: ['-15deg', '15deg', '0deg'],
                         duration: 500,
                         autoplay: true,
                         loop: false,
-                        easing: 'linear',
+                        ease: 'linear',
                     });
                 }
             },

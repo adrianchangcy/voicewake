@@ -28,7 +28,7 @@
 
 <script lang="ts">
     import { defineComponent } from 'vue';
-    import anime from 'animejs';
+    import { animate, utils } from 'animejs';
 
     export default defineComponent({
         data(){
@@ -71,9 +71,8 @@
                 ];
 
                 //scale does not accept % or px, only percentage digit
-                anime({
-                    targets: recording_visualiser_circles,
-                    easing: 'linear',
+                animate(recording_visualiser_circles, {
+                    ease: 'linear',
                     loop: false,
                     autoplay: true,
                     scaleX: '0',
@@ -93,7 +92,7 @@
                 const base_target_percentage = 0.1;
                 const percentage_increment = 0.3;
                 
-                anime.remove(recording_visualiser_circles);
+                utils.remove(recording_visualiser_circles);
 
                 for(let x=0; x < recording_visualiser_circles.length; x++){
 
@@ -101,12 +100,11 @@
                     const final_target_percentage = (new_value * extra_target_percentage) + base_target_percentage;
 
                     //scale does not accept % or px, only percentage digit
-                    anime({
-                        targets: recording_visualiser_circles[x],
+                    animate(recording_visualiser_circles[x], {
                         scaleX: final_target_percentage.toString(),
                         scaleY: final_target_percentage.toString(),
                         autoplay: true,
-                        easing: 'linear',
+                        ease: 'linear',
                         loop: false,
                         duration: this.propIntervalMs,
                     });
