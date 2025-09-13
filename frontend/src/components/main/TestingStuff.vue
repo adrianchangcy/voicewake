@@ -45,7 +45,7 @@
 <script lang="ts">
     import { defineComponent } from 'vue';
     import { notify } from '@/wrappers/notify_wrapper';
-    // import anime from 'animejs';
+    // import { animate } from 'animejs';
     // import VPlayback from '@/components/medium/VPlayback.vue';
     // import { useFilteredEventsStore } from '@/stores/FilteredEventsStore';
     import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';

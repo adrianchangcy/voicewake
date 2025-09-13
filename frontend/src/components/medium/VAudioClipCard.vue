@@ -67,7 +67,7 @@
 
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
-    import anime from 'animejs';
+    import { animate } from 'animejs';
     import AudioClipsTypes from '@/types/AudioClips.interface';
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
     import { prettyDuration, drawCanvasRipples } from '@/helper_functions';
@@ -79,7 +79,7 @@
                 redraw_canvases_store: useRedrawCanvasesStore(),
                 redraw_canvases_store_index: null as number|null,
 
-                main_anime: null as InstanceType<typeof anime> | null,
+                main_anime: null as InstanceType<typeof animate> | null,
             };
         },
         props: {

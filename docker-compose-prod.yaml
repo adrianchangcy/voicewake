@@ -31,6 +31,29 @@ services:
     networks:
       - backend
 
+  #using own redis instead of AWS Elasticache to save cost
+  #reliability from AWES Elasticache is not as important yet, due to low traffic and implementation at code on Redis downtime
+  redis:
+    working_dir: /redis
+    image: redis:latest
+    #if always restart, then when a service has error/ends, it will restart again
+    # restart: always
+    ports:
+      - "6379:6379"
+    # volumes:
+      # - /path/to/local/dаta:/root/redis
+      # - /path/to/local/redis.conf:/usr/local/etc/redis/redis.conf
+    restart: unless-stopped
+    healthcheck:
+      #even when loading, Redis can still return exit code 0, so to be sure it's ready, expect "PONG"
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+    networks:
+      - backend
+
   django_celery_worker:
     build:
       #. because it relies on files like manage.py

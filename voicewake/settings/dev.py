@@ -1,4 +1,5 @@
 from .common import *
+import sys
 
 
 DEBUG = True
@@ -18,13 +19,25 @@ DATABASES['default'].update({
 
 
 REQUEST_TIME_DELAY = 0  #seconds
-SHOW_DJANGO_DEBUG_TOOLBAR = False
 
 
-#hide/show debug toolbar, may cause issues when shown during tests
-DEBUG_TOOLBAR_CONFIG = {
-    'SHOW_TOOLBAR_CALLBACK': lambda r: SHOW_DJANGO_DEBUG_TOOLBAR,
-}
+#fix for tests being unable to run due to debug toolbar
+#DEBUG=False does not guarantee toolbar won't initialise, so only way is to prevent adding it to INSTALLED_APPS
+#old solution was to set DEBUG_TOOLBAR_CONFIG['SHOW_TOOLBAR_CALLBACK'] to False
+#https://github.com/django-commons/django-debug-toolbar/issues/1920
+ENABLE_DEBUG_TOOLBAR = DEBUG is True and "test" not in sys.argv
+
+if ENABLE_DEBUG_TOOLBAR is True:
+
+    #add as earliest
+    INSTALLED_APPS = [
+        "debug_toolbar",
+    ] + INSTALLED_APPS
+
+    #add as earliest
+    MIDDLEWARE = [
+        "debug_toolbar.middleware.DebugToolbarMiddleware",
+    ] + MIDDLEWARE
 
 
 TEMPLATES[0]['OPTIONS']['context_processors'].extend([
@@ -35,18 +48,7 @@ TEMPLATES[0]['OPTIONS']['context_processors'].extend([
 #add these middleware to be earliest
 MIDDLEWARE = [
     'voicewake.middleware.drf_api_delay_middleware.TimeDelayMiddleware',
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
 ] + MIDDLEWARE
-
-
-#add these middleware to be latest
-MIDDLEWARE = MIDDLEWARE + [
-]
-
-
-INSTALLED_APPS = [
-    'debug_toolbar',
-] + INSTALLED_APPS
 
 
 MEDIAFILES_LOCATION = 'media/dev'

@@ -68,7 +68,7 @@ def ensure_otp_is_always_wrong(otp):
 
 
 @override_settings(
-    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    
     MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'voicewake/tests'),
     CELERY_TASK_ALWAYS_EAGER=True,
 )
@@ -117,7 +117,7 @@ class Random_TestCase(TestCase):
 
 
 @override_settings(
-    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    
     MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'voicewake/tests'),
 )
 class AWS_TestCase(TestCase):
@@ -843,7 +843,6 @@ class AudioClips_TestCase(TestCase):
 #should use FactoryBoy to prevent future changes from requiring every individual test case to be edited
 #see if we can make reverse() use NGINX base url
 @override_settings(
-    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
     MEDIA_ROOT=os.path.join(settings.BASE_DIR, 'voicewake/tests'),
     CELERY_TASK_ALWAYS_EAGER=True,
     USER_BLOCKS_LIMIT=2,
@@ -13459,7 +13458,7 @@ class Core_TestCase(TestCase):
 
 #these involve AWS in one way or another
 @override_settings(
-    DEBUG_TOOLBAR_CONFIG={'SHOW_TOOLBAR_CALLBACK': lambda r: False},
+    
     DEBUG=True,
     CELERY_TASK_ALWAYS_EAGER=True,
 )

@@ -291,7 +291,7 @@
 <script lang="ts">
     import { defineComponent, PropType } from 'vue';
     import { prettyDuration, getRandomUUID, drawCanvasRipples } from '@/helper_functions';
-    import anime from 'animejs';
+    import { animate, utils } from 'animejs';
     import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.interface';
     import AudioClipsTypes from '@/types/AudioClips.interface';
     // import VSliderTypes from '@/types/values/VSlider';
@@ -313,7 +313,7 @@
                 pretty_playback_duration: '00:00',
                 playback_paused: true,
                 play_promise: null as Promise<void>|null,
-                main_anime: null as InstanceType<typeof anime> | null,   //to store animePlaybackStates() anime
+                main_anime: null as InstanceType<typeof animate> | null,   //to store animePlaybackStates() anime
 
                 is_playback_slider_ready: false,
                 is_playback_attached: false,
@@ -325,8 +325,8 @@
                 playback_slider_value: 0,
                 is_playback_slider_drag: false,
                 playback_slider_dimension: null as DOMRect | null,
-                playback_slider_knob_anime: null as InstanceType<typeof anime> | null, //we play/pause instead of new anime() for best results
-                playback_slider_progress_anime: null as InstanceType<typeof anime> | null, //we play/pause instead of new anime() for best results
+                playback_slider_knob_anime: null as InstanceType<typeof animate> | null, //we play/pause instead of new animate() for best results
+                playback_slider_progress_anime: null as InstanceType<typeof animate> | null, //we play/pause instead of new animate() for best results
                 stay_paused_on_drag: true,  //if user pauses, then navigating will not auto-play
 
                 playback_rate: 1,   //allows 0 to 2, but we handle 0.5, 1, 1.5
@@ -501,7 +501,7 @@
 
                         }else if(this.adjustPlaybackSliderDimension() === true && this.isPlaybackReady === true){
 
-                            this.createPlaybackSliderAnime();
+                            this.createPlaybackSliderAnimate();
                             await this.syncSliderAnimeAfterSuspend();
                             this.drawRipples();
                         }
@@ -905,7 +905,7 @@
 
                     if(this.isPlaybackReady === true && isNaN((this.$refs.audio_element as HTMLAudioElement).duration) === false){
                         
-                        this.createPlaybackSliderAnime();
+                        this.createPlaybackSliderAnimate();
                         await this.syncSliderAnimeAfterSuspend();
                     }
 
@@ -922,7 +922,7 @@
             },
             async syncSliderAnimeAfterSuspend() : Promise<void> {
 
-                //we need this because anime.suspendDocumentWhenHidden=false does not work
+                //we need this because anime's engine.pauseOnDocumentHidden=false does not work
                 //basically just to reposition slider anime to playback, else it doesn't do that
                 //must call pause() first, else seek() is inaccurate
 
@@ -953,7 +953,7 @@
                     }
                 }
             },
-            createPlaybackSliderAnime() : void {
+            createPlaybackSliderAnimate() : void {
 
                 //to be called during handleHasMetadata(), window resize, changePlaybackRate()
                 //we can then use .play/.pause/.seek
@@ -972,7 +972,7 @@
                 this.is_playback_slider_processing = true;
 
                 //remove
-                anime.remove([
+                utils.remove([
                     this.$refs.playback_slider_knob,
                     this.$refs.playback_slider_progress
                 ]);
@@ -987,9 +987,8 @@
                 const anime_duration = ((this.$refs.audio_element as HTMLAudioElement).duration / this.playback_rate) * 1000;
 
                 //create new anime
-                this.playback_slider_knob_anime = anime({
-                    targets: this.$refs.playback_slider_knob,
-                    easing: 'linear',
+                this.playback_slider_knob_anime = animate(this.$refs.playback_slider_knob, {
+                    ease: 'linear',
                     autoplay: false,
                     loop: false,
                     duration: anime_duration,
@@ -998,9 +997,8 @@
                         ending_translateX.toString() + 'px'
                     ],
                 });
-                this.playback_slider_progress_anime = anime({
-                    targets: this.$refs.playback_slider_progress,
-                    easing: 'linear',
+                this.playback_slider_progress_anime = animate(this.$refs.playback_slider_progress, {
+                    ease: 'linear',
                     autoplay: false,
                     loop: false,
                     duration: anime_duration,
@@ -1276,7 +1274,7 @@
                 localStorage.setItem('playback_rate', JSON.stringify(new_value));
 
                 //adjust anime
-                this.createPlaybackSliderAnime();
+                this.createPlaybackSliderAnimate();
                 this.playback_slider_knob_anime.seek(this.playback_slider_value * this.playback_slider_knob_anime.duration);
                 this.playback_slider_progress_anime.seek(this.playback_slider_value * this.playback_slider_progress_anime.duration);
 
@@ -1498,7 +1496,7 @@
 
                     this.adjustPlaybackSliderDimension();
                     this.drawRipples();
-                    this.createPlaybackSliderAnime();
+                    this.createPlaybackSliderAnimate();
                     this.setInitialPlaybackSliderValue();
                     this.seekPlayback();
                     this.handleInitialAutoplay();

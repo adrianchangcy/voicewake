@@ -1,12 +1,8 @@
 #alpine is too slim, and had caused "could not build wheels" error
 #there is also the opinion where upon using alpine, after a few installs for missing packages/wheels, it gets a lot bigger than other images
-FROM python:3.12-bullseye
+FROM python:bookworm
 
 RUN pip install --upgrade pip
-
-# activate virtual environment
-ENV VIRTUAL_ENV=/.venv
-ENV PATH="/.venv/bin:$PATH"
 
 #destination is "./" so that we guarantee it is added under "/"
 #for deployment, do not use cache to save storage space, since no one else will install the same packages
