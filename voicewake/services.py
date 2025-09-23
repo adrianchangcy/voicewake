@@ -1023,10 +1023,10 @@ class S3PostWrapper:
 
         #no starting slash
         #.format() converts args into str for us
-        #we want to set MEDIAFILES_LOCATION here, instead of determining via dev/prod at serializer
+        #we want to set MEDIA_AWS_S3_START_PATH here, instead of determining via dev/prod at serializer
         #this helps to guarantee the separation between files created in dev and prod
         file_path = '{0}/audio_clips/year_{1}/month_{2}/day_{3}/user_id_{4}/'.format(
-            settings.MEDIAFILES_LOCATION,
+            settings.MEDIA_AWS_S3_START_PATH,
             datetime_now.strftime('%Y'),
             datetime_now.strftime('%m'),
             datetime_now.strftime('%d'),

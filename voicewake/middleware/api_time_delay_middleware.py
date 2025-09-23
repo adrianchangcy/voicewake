@@ -1,7 +1,7 @@
 import time
 from django.conf import settings
 
-class TimeDelayMiddleware(object):
+class APITimeDelayMiddleware(object):
 
     def __init__(self, get_response):
 

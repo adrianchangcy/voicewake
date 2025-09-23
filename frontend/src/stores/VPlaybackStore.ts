@@ -12,7 +12,7 @@ import AudioClipsAndLikeDetailsTypes from '@/types/AudioClipsAndLikeDetails.inte
 
 //make sure to sync the order of audio_clip_id with stopped_at_s
 //we separate them instead of storing as dict, because array.includes() makes checking easier
-export const useVPlaybackStore = defineStore('vplayback', {
+export const useVPlaybackStore = defineStore('vplayback_store', {
     state: ()=>({
         //allows for tracking of multiple VPlaybacks
         active_vplayback_uuids: [] as string[],
@@ -150,7 +150,7 @@ export const useVPlaybackStore = defineStore('vplayback', {
     //all things considered, we get overall better usability with persistence than without
     persist: {
         //persist these states
-        paths: [
+        pick: [
             'audio_clip_id', 'stopped_at_s',
         ],
     },

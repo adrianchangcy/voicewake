@@ -72,10 +72,10 @@
                         type="button"
                         class="w-full"
                     >
-                        <span class="mx-auto px-2">
+                        <div class="flex items-center mx-auto px-2">
                             <FontAwesomeIcon icon="fas fa-right-to-bracket" class="sm:pr-2"/>
                             <span>Sign up</span>
-                        </span>
+                        </div>
                     </VActionSpecial>
                 </div>
             </div>

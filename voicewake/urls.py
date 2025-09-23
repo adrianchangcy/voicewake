@@ -129,9 +129,9 @@ urlpatterns += [
     # path('favicon.ico', RedirectView.as_view(url=staticfiles_storage.url('voicewake/tab-icon.svg'), permanent=True)),
 ]
 
-#media files, only for dev
-if settings.DEBUG is True:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+#no need to do this, since delivering absolute cloudfront URL to frontend will reduce server load
+# if settings.DEBUG is True:
+#     urlpatterns += static((settings.MEDIA_URL + settings.LOCAL_MEDIA_URL), document_root=settings.LOCAL_MEDIA_ROOT)
 
 
 #do this to enable specifying .json extension at URL
