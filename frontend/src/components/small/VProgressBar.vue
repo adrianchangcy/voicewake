@@ -87,7 +87,7 @@
                     target_el.style.transform = 'scaleX(0)';
                 }
 
-                const current_anime = utils.createTimeline({
+                const current_anime = createTimeline({
                     defaults: {
                         ease: 'linear',
                         loop: false,

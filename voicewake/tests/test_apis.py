@@ -13528,8 +13528,6 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
     @classmethod
     def tearDownClass(cls):
 
-        shutil.rmtree(os.path.join(settings.MEDIA_ROOT, 'audio_clips'), ignore_errors=True)
-
         try:
             cache.clear()
         except:

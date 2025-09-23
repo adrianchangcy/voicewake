@@ -541,7 +541,16 @@ export function isSuperuser() : boolean {
 export function getUsername() : string {
 
     //always present in base.html
-    return getDataFromTemplateJSONScript("data-user-username") as string;
+    //can be null, since not interested in doing if-check at template, so ensure string guarantee
+
+    const username = getDataFromTemplateJSONScript("data-user-username") as string|null;
+
+    if(username === null){
+
+        return "";
+    }
+
+    return username;
 }
 
 
