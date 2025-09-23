@@ -15,7 +15,8 @@
                 "ms-python.python",
                 "ms-python.debugpy",
                 "bradlc.vscode-tailwindcss",
-                "Vue.volar"
+                "Vue.volar",
+                "eamodio.gitlens"
             ]
         }
     }

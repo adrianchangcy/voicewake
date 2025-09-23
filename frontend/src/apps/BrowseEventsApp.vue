@@ -158,7 +158,7 @@
         </div>
 
         <!--first border to maintain "only one line" aesthetics-->
-        <div class="mx-1 border-t border-theme-gray-1 dark:border-dark-theme-gray-1"></div>
+        <div v-show="canShowBeginningBorder" class="mx-1 border-t border-theme-gray-1 dark:border-dark-theme-gray-1"></div>
 
         <div>
             <!--must specify a unique attribute as unique key for the scroller via "key-field"-->
@@ -481,6 +481,13 @@
             canOpenVPlayback() : boolean {
 
                 return this.filtered_events_store.getLastSelectedAudioClip !== null;
+            },
+            canShowBeginningBorder() : boolean {
+
+                return (
+                    this.filtered_events_store.isFetching === true ||
+                    this.filtered_events_store.getEventsForBrowsing.length > 0
+                );
             },
         },
         methods: {

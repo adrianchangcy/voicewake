@@ -47,27 +47,27 @@ TEMPLATES[0]['OPTIONS']['context_processors'].extend([
 
 #add these middleware to be earliest
 MIDDLEWARE = [
-    'voicewake.middleware.drf_api_delay_middleware.TimeDelayMiddleware',
+    'voicewake.middleware.api_time_delay_middleware.APITimeDelayMiddleware',
 ] + MIDDLEWARE
 
 
-MEDIAFILES_LOCATION = 'media/dev'
 AWS_S3_CUSTOM_DOMAIN = os.environ['AWS_S3_CUSTOM_DOMAIN']
 
 
+#this is the starting portion of S3 path, since there's media/dev, media/stage, media/prod, etc.
+#the API that determines paths of new files will use this
+    #services.S3PostWrapper.generate_unprocessed_object_key
+#for auto-generated rows, refer to one identical file from cloudfront, e.g. media/test/test0.mp3
+#serializer will serve absolute cloudfront paths to frontend, instead of redirecting at urls.py and eating server load
+MEDIA_AWS_S3_START_PATH = 'media/dev'
+MEDIA_TEST_AWS_S3_START_PATH = 'media/test'
+
+
 #for MEDIA, always use S3
-#low cost even for testing, and also due to how integrated the S3 processes are to our code base
-#implementing local file upload procedures would be redundant
-BASE_S3_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
-
-#from S3
-# MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{MEDIAFILES_LOCATION}/'
-# MEDIA_ROOT = f'https://{AWS_S3_CUSTOM_DOMAIN}/{MEDIAFILES_LOCATION}/'
-
-#from local files
-MEDIA_URL = 'media/'
-MEDIA_ROOT = 'voicewake/tests/file_samples'
-
+#fetch rows via serializer and have the serializer serve absolute paths using MEDIA_URL
+    #serializers.AudioClipsSerializer.get_audio_file
+MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+MEDIA_ROOT = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'deploy/static')
 

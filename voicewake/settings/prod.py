@@ -10,6 +10,7 @@ CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
 
 
+#allows us to upload to S3
 INSTALLED_APPS = ["storages"] + INSTALLED_APPS
 
 
@@ -21,17 +22,16 @@ REST_FRAMEWORK.update({
 })
 
 
-STATICFILES_LOCATION = 'static/prod'
-MEDIAFILES_LOCATION = 'media/prod'
+STATIC_AWS_S3_START_PATH = 'static/prod'
+MEDIA_AWS_S3_START_PATH = 'media/prod'
 AWS_S3_CUSTOM_DOMAIN = os.environ['AWS_S3_CUSTOM_DOMAIN']
 AWS_S3_STATIC_BUCKET_NAME = os.environ['AWS_S3_STATIC_BUCKET_NAME']
 
 
-BASE_S3_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
-MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{MEDIAFILES_LOCATION}/'
-MEDIA_ROOT = f'https://{AWS_S3_CUSTOM_DOMAIN}/{MEDIAFILES_LOCATION}/'
-STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{STATICFILES_LOCATION}/'
-STATIC_ROOT = f'https://{AWS_S3_CUSTOM_DOMAIN}/{STATICFILES_LOCATION}/'
+MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+MEDIA_ROOT = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{STATIC_AWS_S3_START_PATH}/'
+STATIC_ROOT = f'https://{AWS_S3_CUSTOM_DOMAIN}/{STATIC_AWS_S3_START_PATH}/'
 
 
 #for EC2 <--> S3, if EC2 has IAM role assigned, set these None to let boto auto-search for IAM role credentials at EC2
@@ -63,7 +63,7 @@ STORAGES = {
             'region_name': os.environ['AWS_S3_REGION_NAME'],
             'object_parameters': {"CacheControl": "max-age=172800"}, #2 days
             'file_overwrite': True, #default True
-            'location': STATICFILES_LOCATION, #folder name from S3 bucket root
+            'location': STATIC_AWS_S3_START_PATH, #folder name from S3 bucket root
         },
     },
 }

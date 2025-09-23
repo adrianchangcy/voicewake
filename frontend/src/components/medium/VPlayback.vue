@@ -1308,6 +1308,13 @@
 
                     this.stay_paused_on_drag = false;
 
+                    //fixed: playback ends --> play --> knob and progress still at end
+                    if(this.playback_slider_knob_anime.completed === true && this.playback_slider_progress_anime.completed === true){
+
+                        this.playback_slider_knob_anime.restart();
+                        this.playback_slider_progress_anime.restart();
+                    }
+
                     if(this.is_playback_buffering === false){
 
                         this.playback_slider_knob_anime.play();

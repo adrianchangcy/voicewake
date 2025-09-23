@@ -166,9 +166,16 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
         
                     break;
             }
-        
+
+            //this affects UI just fine, but does not persist
+            //props should be passing as pure reference, but is it not?
+            //if no better solution, consider injecting like/dislike callback when fetched, to maintain reference (for browse and this)
             new_value.audio_clip.previous_is_liked_by_user = new_value.audio_clip.is_liked_by_user;
             new_value.audio_clip.is_liked_by_user = new_value.new_is_liked;
+
+            this.getMainEvent!.originator[0].is_liked_by_user = new_value.audio_clip.is_liked_by_user;
+            this.getMainEvent!.originator[0].like_count = new_value.audio_clip.like_count;
+            this.getMainEvent!.originator[0].dislike_count = new_value.audio_clip.dislike_count;
         },
         async queueNextEventReplyChoices(unlock_all_locked_events:boolean) : Promise<void> {
 
@@ -517,7 +524,7 @@ export const useEventReplyChoicesStore = defineStore('event_reply_choices', {
         },
     },
     persist: {
-        paths: ['event_reply_choices', 'replying_event'],
+        pick: ['event_reply_choices', 'replying_event'],
     },
     share: {
         //array of fields that the plugin will ignore

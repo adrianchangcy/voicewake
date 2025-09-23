@@ -176,7 +176,7 @@ class AudioClips(models.Model):
     audio_clip_tone = models.ForeignKey('AudioClipTones', on_delete=models.SET_DEFAULT, blank=False, null=True, default=None)
     event = models.ForeignKey('Events', on_delete=models.CASCADE, blank=False, null=False)
     generic_status = models.ForeignKey('GenericStatuses', on_delete=models.PROTECT, default=get_default_generic_status)
-    audio_file = models.CharField(max_length=300)   #no starting slash, so settings.MEDIA_ROOT + 'folder1/myfile.mp3'
+    audio_file = models.CharField(max_length=300)   #no starting slash, so settings.MEDIA_URL + 'folder1/myfile.mp3'
     audio_duration_s = models.IntegerField(default=0)  #seconds, is not used for VPlayback functionality
     audio_volume_peaks = ArrayField(
         models.DecimalField(default=0, max_digits=3, decimal_places=2), #0 to 0.49 to 1

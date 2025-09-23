@@ -572,6 +572,11 @@
                         return;
                     }
 
+                    if(start_date === null){
+
+                        throw new Error('start_date is null.');
+                    }
+
                     //get time difference
                     const time_elapsed_ms = timeFromNowMS(start_date);
 

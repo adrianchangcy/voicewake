@@ -46,22 +46,3 @@ ENV PATH="/workspace/.venv/bin:$PATH"
 RUN pip install -r requirements.txt --no-cache-dir --verbose --default-timeout=100
 
 ENTRYPOINT sleep infinity
-
-#PROBLEM FIXED
-#better for .devcontainer to have standalone docker-compose.yaml
-    #context
-        #based on error logs, it will run "docker compose config"
-        #when "docker compose config" is run, it checks if substituting your placeholders with actual env values will be ok
-            #it will fetch .env from same folder as docker-compose.yaml
-        #we already have project_root/env to store all env files
-    #problem
-        #you cannot explicitly define where your .env is for docker to use during "build"
-        #when "docker compose config" runs, it checks substitution for all services in the compose file
-        #thus, when our dev container was initially placed in docker-compose-dev.yaml, it kept failing "docker compose config"
-        #defining "runArgs" in hopes of passing --env-file flag did not work
-    #solution
-        #isolate devcontainer
-            #/project_root/.devcontainer/devcontainer.json
-            #/project_root/.devcontainer/docker-compose.yaml
-            #/project_root/.devcontainer/Dockerfile
-        #this way, no other services using substitution is involved
