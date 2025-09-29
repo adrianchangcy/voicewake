@@ -341,10 +341,12 @@ def cronjob_handle_originator_processing_overdue():
 
             processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
 
-            if processing_cache_key in processing_cache_keys:
+            if (
+                processing_cache_key in processing_caches and
+                str(audio_clip_id) in processing_caches[processing_cache_key]['processings']
+            ):
 
                 processing_caches[processing_cache_key]['processings'].pop(str(audio_clip_id))
-                processing_caches[processing_cache_key]['last_updated'] = datetime_now
 
         #save
 
@@ -468,10 +470,12 @@ def cronjob_delete_event_reply_queue__delete_audio_clip__is_replying__overdue():
 
             processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
 
-            if processing_cache_key in processing_caches:
+            if (
+                processing_cache_key in processing_caches and
+                str(audio_clip_id) in processing_caches[processing_cache_key]['processings']
+            ):
 
                 processing_caches[processing_cache_key]['processings'].pop(str(audio_clip_id))
-                processing_caches[processing_cache_key]['last_updated'] = datetime_now
 
         #save
 

@@ -1912,14 +1912,14 @@ class CreateEventsAPI(generics.GenericAPIView):
                     event_id=create_audio_clips_class.event.id,
                 ).delay()
 
-                processing_cache_processing = create_audio_clips_class.get_processing_cache_processing_object(
-                    create_audio_clips_class.processing_cache,
-                    request_data['audio_clip_id']
+                processing_object = CreateAudioClips.get_processing_object_from_processing_cache(
+                    processing_cache=create_audio_clips_class.processing_cache,
+                    audio_clip_id=request_data['audio_clip_id']
                 )
 
                 return Response(
                     data={
-                        'attempts_left': processing_cache_processing['attempts_left'],
+                        'attempts_left': processing_object['attempts_left'],
                     },
                     status=status.HTTP_200_OK
                 )
@@ -2589,7 +2589,7 @@ class EventRepliesAPI(generics.GenericAPIView):
 
         #update audio_clip
 
-        if audio_clip.generic_status.generic_status_name == 'processing':
+        if audio_clip.generic_status.generic_status_name == 'processing' or audio_clip.generic_status.generic_status_name == 'processing_failed':
 
             audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
             audio_clip.save()
@@ -2611,12 +2611,12 @@ class EventRepliesAPI(generics.GenericAPIView):
                 status=status.HTTP_200_OK
             )
 
-        processing_cache_processing = CreateAudioClips.get_processing_cache_processing_object(
+        processing_object = CreateAudioClips.get_processing_object_from_processing_cache(
             processing_cache=processing_cache,
             audio_clip_id=audio_clip.id
         )
 
-        if processing_cache_processing is not None:
+        if processing_object is not None:
 
             processing_cache['processings'].pop(str(audio_clip.id))
 
@@ -2731,14 +2731,14 @@ class EventRepliesAPI(generics.GenericAPIView):
                     event_id=create_audio_clips_class.event.id,
                 ).delay()
 
-                processing_cache_processing = CreateAudioClips.get_processing_cache_processing_object(
+                processing_object = CreateAudioClips.get_processing_object_from_processing_cache(
                     processing_cache=create_audio_clips_class.processing_cache,
                     audio_clip_id=request_data['audio_clip_id']
                 )
 
                 return Response(
                     data={
-                        'attempts_left': processing_cache_processing['attempts_left'],
+                        'attempts_left': processing_object['attempts_left'],
                     },
                     status=status.HTTP_200_OK
                 )
@@ -3048,7 +3048,8 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
     processing_statuses = ['processing', 'processed', 'not_found', 'lambda_error']
 
 
-    #will minimally validate, no invalidation
+    #will determine what to return to UI
+    #only queries to db if audio_clip_id isn't found in cache
     def check_normalisation_status(self, processing_cache:dict, audio_clip_id:int, return_type:Literal['string', 'response'])->str|Response:
 
         #do not create or modify anything here
@@ -3064,11 +3065,11 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
                 dev_message='Invalid return_type.',
             )
 
-        processing_cache_processing = None
+        processing_object = None
 
         if processing_cache is not None:
 
-            processing_cache_processing = CreateAudioClips.get_processing_cache_processing_object(
+            processing_object = CreateAudioClips.get_processing_object_from_processing_cache(
                 processing_cache=processing_cache,
                 audio_clip_id=audio_clip_id
             )
@@ -3077,11 +3078,11 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
         #when cache is not yet created,
         #it is when normalisation is just about to start
 
-        if processing_cache_processing is not None:
+        if processing_object is not None:
 
             response_status = None
 
-            if processing_cache_processing['is_processing'] is True:
+            if processing_object['is_processing'] is True:
 
                 response_status = status.HTTP_409_CONFLICT
 
@@ -3095,7 +3096,7 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
 
             if return_type == 'string':
 
-                if processing_cache_processing['is_processing'] is True:
+                if processing_object['is_processing'] is True:
 
                     return 'processing'
 
@@ -3107,8 +3108,8 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
 
                 return Response(
                     data={
-                        'is_processing': processing_cache_processing['is_processing'],
-                        'attempts_left': processing_cache_processing['attempts_left'],
+                        'is_processing': processing_object['is_processing'],
+                        'attempts_left': processing_object['attempts_left'],
                     },
                     status=response_status
                 )
@@ -3212,8 +3213,12 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
             #ensure main cache exists
             if processing_cache is None:
 
-                processing_cache = CreateAudioClips.get_default_processing_cache_main_object()
-                cache.set(processing_cache_key, processing_cache, timeout=settings.REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S)
+                processing_cache = CreateAudioClips.get_default_processing_cache_per_user()
+
+                CreateAudioClips.set_processing_cache(
+                    processing_cache_key=processing_cache_key,
+                    processing_cache=processing_cache
+                )
 
             return self.check_normalisation_status(
                 processing_cache=processing_cache,
@@ -3223,18 +3228,38 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
 
         elif self.url_context == 'list':
 
-            #TODO: consider listing qualified audio_clips from db first, to ensure cache stays true to source of truth
-            #wouldn't want simple cache unavailability to cause people to lose track of processing clips
-            #to reduce load on db, maybe use time-based sync
-
             processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=request.user.id)
             processing_cache = cache.get(processing_cache_key, None)
+
+            must_sync_to_db = False
 
             #ensure main cache exists
             if processing_cache is None:
 
-                processing_cache = CreateAudioClips.get_default_processing_cache_main_object()
-                cache.set(processing_cache_key, processing_cache, timeout=settings.REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S)
+                processing_cache = CreateAudioClips.get_default_processing_cache_per_user()
+
+                CreateAudioClips.set_processing_cache(
+                    processing_cache_key=processing_cache_key,
+                    processing_cache=processing_cache
+                )
+
+                must_sync_to_db = True
+
+            #check if it's time to sync
+            db_sync_time_difference_s = get_datetime_difference_s(
+                get_datetime_now(),
+                datetime.fromisoformat(processing_cache['last_sync_from_db']),
+            )
+
+            if db_sync_time_difference_s >= settings.REDIS_AUDIO_CLIP_PROCESSING_CACHE_LAST_SYNC_FROM_DB_MIN_S:
+
+                must_sync_to_db = True
+
+            #sync only "processing" rows from db, which can mean still in process, or has failed before and can retry
+            #if still in process, task will update cache when done
+            #if has failed before and can retry, user ???
+            #most elegant answer is to put "processing_failed" at db, make task update cache and db
+
 
             #add "status" to processing
 
@@ -3348,16 +3373,19 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
 
                     #if unexpectedly no cache, auto-create
 
-                    processing_cache = CreateAudioClips.get_default_processing_cache_main_object()
+                    processing_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
-                    cache.set(processing_cache_key, processing_cache, timeout=settings.REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S)
+                    CreateAudioClips.set_processing_cache(
+                        processing_cache_key=processing_cache_key,
+                        processing_cache=processing_cache
+                    )
 
-                processing_cache_processing = CreateAudioClips.get_processing_cache_processing_object(
+                processing_object = CreateAudioClips.get_processing_object_from_processing_cache(
                     processing_cache=processing_cache,
                     audio_clip_id=audio_clip.id
                 )
 
-                if processing_cache_processing is not None:
+                if processing_object is not None:
 
                     processing_cache['processings'].pop(str(audio_clip.id))
 

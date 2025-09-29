@@ -70,6 +70,7 @@ def fill_necessary_data(apps, schema_editor):
             GenericStatuses(generic_status_name='incomplete'),
             GenericStatuses(generic_status_name='completed'),
             GenericStatuses(generic_status_name='processing'),
+            GenericStatuses(generic_status_name='processing_failed'),
             GenericStatuses(generic_status_name='processing_max_attempts_reached'),
             GenericStatuses(generic_status_name='processing_overdue'),
         ],

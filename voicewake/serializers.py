@@ -600,7 +600,6 @@ class ListAudioClipProcessingsAPISerializer(serializers.Serializer):
         child=ProcessingCacheProcessingsSerializer(),
         allow_empty=True,
     )
-    last_updated = serializers.DateTimeField()
 
 
 
