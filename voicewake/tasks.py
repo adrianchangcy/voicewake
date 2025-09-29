@@ -76,40 +76,9 @@ def task_send_otp_email(context:Literal['log_in', 'sign_up'], email:str, otp:str
 
 #will validate and invalidate
 #must be able to invalidate, since task can potentially start much later than when originally called
+#db is source of truth for backend (i.e. here), while cache is source of truth for frontend
 @shared_task
 def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int, event_id:int):
-
-    #get cache
-    processing_cache = cache.get(processing_cache_key, None)
-
-    if processing_cache is None:
-
-        #cache must exist
-        raise custom_error(
-            ValueError,
-            __name__,
-            dev_message="No cache found."
-        )
-
-    if processing_cache['processings'].get(str(audio_clip_id), None) is None:
-
-        #processing must exist
-        raise custom_error(
-            ValueError,
-            __name__,
-            dev_message="No processing found."
-        )
-
-    processing_cache_processing = processing_cache['processings'][str(audio_clip_id)]
-
-    if processing_cache_processing['is_processing'] is True:
-
-        #already processing
-        raise custom_error(
-            ValueError,
-            __name__,
-            dev_message="Already processing."
-        )
 
     target_audio_clip = None
     target_event = None
@@ -157,6 +126,10 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
             dev_message="EventReplyQueues.DoesNotExist"
         )
 
+    #prepare cache
+
+    processing_cache = CreateAudioClips.get_or_create_processing_cache(user_id)
+
     #check db if can normalise
 
     can_normalise = CreateAudioClips.check_db_can_normalise(
@@ -167,20 +140,33 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
 
     if can_normalise is False:
 
-        #remove processing
+        #remove any processing from cache
 
-        processing_cache['processings'].pop(processing_cache_key)
+        if str(audio_clip_id) in processing_cache['processings']:
 
-        CreateAudioClips.set_processing_cache(
-            processing_cache_key=processing_cache_key,
-            processing_cache=processing_cache
-        )
+            processing_cache['processings'].pop(str(audio_clip_id))
+
+            CreateAudioClips.set_processing_cache(
+                processing_cache_key=processing_cache_key,
+                processing_cache=processing_cache
+            )
 
         raise custom_error(
             ValueError,
             __name__,
             dev_message="Can no longer normalise."
         )
+
+    #since can normalise, ensure processing object exists
+
+    processing_cache = CreateAudioClips.ensure_processing_object_exists_in_processing_cache(
+        processing_cache_key=processing_cache_key,
+        processing_cache=processing_cache,
+        event=target_event,
+        audio_clip=target_audio_clip,
+    )
+
+    #just confirm audio_file is fine in db
 
     determined_processed_upload_key = CreateAudioClips.determine_processed_upload_key(
         unprocessed_upload_key=target_audio_clip.audio_file,
@@ -195,16 +181,19 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
             ValueError,
             __name__,
             dev_message=f'''
-                Unexpected AudioClips.audio_file.
+                AudioClips.audio_file already has processed extension.
                 AudioClips.id: {str(audio_clip_id)}
             '''
         )
 
-    #call lambda
-    #may take a while, so consider cronjobs and race conditions that may affect db rows
+    #update db if this is not the first processing attempt
 
-    #increment attempt early
-    #to better prevent spam
+    if target_audio_clip.generic_status.generic_status_name == 'processing_failed':
+
+        target_audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='processing')
+        target_audio_clip.save()
+
+    #update attempt at cache early to better prevent spam
 
     processing_cache['processings'][str(audio_clip_id)]['is_processing'] = True
     processing_cache['processings'][str(audio_clip_id)]['attempts_left'] -= 1
@@ -213,6 +202,12 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
         processing_cache_key=processing_cache_key,
         processing_cache=processing_cache
     )
+
+    #to maintain attempt accuracy if redis suddenly goes down, we preserve the object
+    processing_object = processing_cache['processings'][str(audio_clip_id)]
+
+    #call lambda
+    #may take a while, so consider cronjobs and race conditions that may affect db rows
 
     lambda_response_data = None
 
@@ -248,18 +243,8 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
             user_message='Something went wrong. Try again later.'
         )
 
-    finally:
-
-        #no longer processing
-        processing_cache['processings'][str(audio_clip_id)]['is_processing'] = False
-
-        CreateAudioClips.set_processing_cache(
-            processing_cache_key=processing_cache_key,
-            processing_cache=processing_cache
-        )
-
-    #refetch rows from db to prevent race condition
-    #will raise DoesNotExist if they've been deleted
+    #refetch rows from db to mitigate race condition
+    #db will raise DoesNotExist if they've been deleted
 
     try:
 
@@ -295,7 +280,38 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
             dev_message="EventReplyQueues.DoesNotExist"
         )
 
-    #check db if can normalise
+    #no need to check db if can normalise again
+    #there should be no normal logic that can turn it from True to False while audio_clip is still 'processing'
+
+    #refetch cache to mitigate race condition
+    #intentionally done after the queries above for sake of mitigation
+
+    processing_cache = CreateAudioClips.get_or_create_processing_cache(user_id)
+
+    #reuse processing_object from above for best accuracy
+    #ensure it exists in refetched cache
+
+    if str(audio_clip_id) in processing_cache['processings']:
+
+        processing_cache['processings'].update({
+            str(audio_clip_id): processing_object
+        })
+
+    else:
+
+        processing_cache['processings'][str(audio_clip_id)] = processing_object
+
+    #no longer processing right now
+    #set cache first to be safe
+
+    processing_cache['processings'][str(audio_clip_id)]['is_processing'] = False
+
+    CreateAudioClips.set_processing_cache(
+        processing_cache_key,
+        processing_cache
+    )
+
+    #check if rows in db are still ok
 
     can_normalise = CreateAudioClips.check_db_can_normalise(
         audio_clip=target_audio_clip,
@@ -322,6 +338,8 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
 
     serializer = AWSLambdaNormaliseAudioClipsAPISerializer(data=lambda_response_data, many=False)
 
+    #handle lambda failure
+
     if (
         serializer.is_valid() is False or
         serializer.validated_data['lambda_status_code'] != 200
@@ -331,9 +349,18 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
 
         if processing_cache['processings'][str(audio_clip_id)]['attempts_left'] > 0:
 
+            #can reattempt
+
+            target_audio_clip.generic_status = GenericStatuses.objects.get(
+                generic_status_name='processing_failed'
+            )
+            target_audio_clip.save()
+
             return
 
         #max attempts reached
+
+        #update cache
 
         processing_cache['processings'].pop(str(audio_clip_id))
 
@@ -431,17 +458,6 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
         ).delete()
 
     #delete lambda call record from cache on success
-
-    #ensure cache is up-to-date to avoid race condition
-    processing_cache = cache.get(processing_cache_key, None)
-
-    if processing_cache is None:
-
-        raise custom_error(
-            ValueError,
-            __name__,
-            dev_message="Cache is unexpectedly None after normalisation success."
-        )
 
     processing_cache['processings'].pop(str(audio_clip_id))
 
