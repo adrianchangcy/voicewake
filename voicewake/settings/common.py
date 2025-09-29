@@ -403,6 +403,10 @@ CACHES = {
 REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S=int(os.environ['REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S'])
 
 
+#how long from last sync to db before new sync is needed
+REDIS_AUDIO_CLIP_PROCESSING_CACHE_LAST_SYNC_FROM_DB_MIN_S = int(os.environ['REDIS_AUDIO_CLIP_PROCESSING_CACHE_LAST_SYNC_FROM_DB_MIN_S'])
+
+
 #if file uploaded to Django server is below this, store in memory, else disk
 #not relevant for S3 presigned POST URL
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5000000   #4.77mb

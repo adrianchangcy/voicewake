@@ -1709,10 +1709,10 @@ class Core_TestCase(TestCase):
             user_id=self.users[0].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_object(
                 event=sample_event_0,
                 audio_clip=sample_audio_clip_0,
             ),
@@ -1877,10 +1877,10 @@ class Core_TestCase(TestCase):
             user_id=self.users[0].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_object(
                 event=sample_audio_clip_0.event,
                 audio_clip=sample_audio_clip_0,
             ),
@@ -1954,10 +1954,10 @@ class Core_TestCase(TestCase):
             user_id=self.users[0].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_object(
                 event=sample_audio_clip_0.event,
                 audio_clip=sample_audio_clip_0,
             ),
@@ -6308,10 +6308,10 @@ class Core_TestCase(TestCase):
             user_id=self.users[1].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_object(
                 event=sample_audio_clip_1.event,
                 audio_clip=sample_audio_clip_1,
             ),
@@ -6506,10 +6506,10 @@ class Core_TestCase(TestCase):
             user_id=self.users[1].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_object(
                 event=sample_audio_clip_1.event,
                 audio_clip=sample_audio_clip_1,
             ),
@@ -6589,10 +6589,10 @@ class Core_TestCase(TestCase):
             user_id=self.users[1].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_object(
                 event=sample_audio_clip_1.event,
                 audio_clip=sample_audio_clip_1,
             ),
@@ -6684,10 +6684,10 @@ class Core_TestCase(TestCase):
             user_id=self.users[1].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_object(
                 event=sample_audio_clip_1.event,
                 audio_clip=sample_audio_clip_1,
             ),
@@ -6778,10 +6778,10 @@ class Core_TestCase(TestCase):
             user_id=self.users[1].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_object(
                 event=sample_audio_clip_1.event,
                 audio_clip=sample_audio_clip_1,
             ),
@@ -6880,10 +6880,10 @@ class Core_TestCase(TestCase):
             user_id=self.users[1].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_object(
                 event=sample_audio_clip_1.event,
                 audio_clip=sample_audio_clip_1,
             ),
@@ -7514,10 +7514,10 @@ class Core_TestCase(TestCase):
             user_id=self.users[1].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_object(
                 event=sample_audio_clip_1.event,
                 audio_clip=sample_audio_clip_1,
             ),
@@ -9192,10 +9192,10 @@ class Core_TestCase(TestCase):
             user_id=self.users[0].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_object(
                 event=sample_event_0,
                 audio_clip=sample_audio_clip_0,
             ),
@@ -9246,10 +9246,10 @@ class Core_TestCase(TestCase):
             user_id=self.users[0].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_object(
                 event=sample_event_0,
                 audio_clip=sample_audio_clip_0,
             ),
@@ -9295,7 +9295,7 @@ class Core_TestCase(TestCase):
             user_id=self.users[0].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         cache.set(target_cache_key, target_cache)
 
@@ -9365,10 +9365,10 @@ class Core_TestCase(TestCase):
             user_id=self.users[0].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_object(
                 event=sample_event_0,
                 audio_clip=sample_audio_clip_0,
             ),
@@ -9430,10 +9430,10 @@ class Core_TestCase(TestCase):
             user_id=self.users[0].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_object(
                 event=sample_event_0,
                 audio_clip=sample_audio_clip_0,
             ),
@@ -9573,10 +9573,10 @@ class Core_TestCase(TestCase):
             user_id=self.users[0].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_object(
                 event=sample_event_0,
                 audio_clip=sample_audio_clip_0,
             ),
@@ -9703,10 +9703,10 @@ class Core_TestCase(TestCase):
             user_id=self.users[0].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_object(
                 event=sample_event_0,
                 audio_clip=sample_audio_clip_0,
             ),
@@ -9767,10 +9767,10 @@ class Core_TestCase(TestCase):
             user_id=self.users[0].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_object(
                 event=sample_event_0,
                 audio_clip=sample_audio_clip_0,
             ),
@@ -9824,7 +9824,7 @@ class Core_TestCase(TestCase):
             user_id=self.users[0].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         cache.set(target_cache_key, target_cache)
 
@@ -9913,10 +9913,10 @@ class Core_TestCase(TestCase):
             user_id=self.users[1].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_object(
                 event=sample_audio_clip_1.event,
                 audio_clip=sample_audio_clip_1,
             ),
@@ -10005,10 +10005,10 @@ class Core_TestCase(TestCase):
             user_id=self.users[1].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_object(
                 event=sample_audio_clip_1.event,
                 audio_clip=sample_audio_clip_1,
             ),
@@ -10086,7 +10086,7 @@ class Core_TestCase(TestCase):
             user_id=self.users[1].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         cache.set(target_cache_key, target_cache)
 
@@ -13763,10 +13763,10 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
             user_id=self.users[0].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_object(
                 event=sample_event_0,
                 audio_clip=sample_audio_clip_0,
             ),
@@ -13820,10 +13820,10 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
             user_id=self.users[0].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_object(
                 event=sample_event_0,
                 audio_clip=sample_audio_clip_0,
             ),
@@ -13980,10 +13980,10 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
             user_id=self.users[1].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_object(
                 event=sample_audio_clip_1.event,
                 audio_clip=sample_audio_clip_1,
             ),
@@ -14055,10 +14055,10 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
             user_id=self.users[1].id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_main_object()
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
 
         target_cache['processings'].update({
-            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_cache_processing_object(
+            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_object(
                 event=sample_audio_clip_1.event,
                 audio_clip=sample_audio_clip_1,
             ),

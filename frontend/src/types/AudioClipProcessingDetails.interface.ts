@@ -22,7 +22,6 @@ export interface ProcessingCacheTypes{
             attempts_left: number|null,
         },
     },
-    last_updated: string,
 }
 export interface AudioClipProcessingDetailsTypes{
     audio_clip_role_name: 'originator'|'responder',
