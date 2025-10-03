@@ -2545,7 +2545,9 @@ class EventRepliesAPI(generics.GenericAPIView):
 
         #disallow if still processing
 
-        if AudioClips.objects.filter(user=self.request.user, event_id=event_id, generic_status__generic_status_name='processing').exists() is True:
+        if AudioClips.objects.filter(
+            user=self.request.user, event_id=event_id, generic_status__generic_status_name='processing'
+        ).exists() is True:
 
             return Response(
                 data={
@@ -2589,7 +2591,7 @@ class EventRepliesAPI(generics.GenericAPIView):
 
         #update audio_clip
 
-        if audio_clip.generic_status.generic_status_name == 'processing' or audio_clip.generic_status.generic_status_name == 'processing_failed':
+        if audio_clip.generic_status.generic_status_name != 'deleted':
 
             audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
             audio_clip.save()
@@ -3045,7 +3047,7 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
     available_contexts = ['list', 'check', 'delete']
     url_context:Literal['list', 'check', 'delete'] = 'check'
-    processing_statuses = ['processing', 'processed', 'not_found', 'lambda_error']
+    processing_statuses = ['processing', 'processed', 'not_found', 'processing_failed']
 
 
     #will determine what to return to UI
@@ -3102,7 +3104,7 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
 
                 else:
 
-                    return 'lambda_error'
+                    return 'processing_failed'
 
             else:
 
@@ -3753,7 +3755,7 @@ class AudioClipDeletionsAPI(generics.DestroyAPIView):
                     #cannot delete
                     return Response(
                         data={
-                            'message': '',
+                            'message': 'Recording is not suitable to be deleted.',
                         },
                         status=status.HTTP_400_BAD_REQUEST
                     )
@@ -3789,6 +3791,16 @@ class AudioClipDeletionsAPI(generics.DestroyAPIView):
                     #for responder, event changes from 'completed' to 'incomplete'
                     audio_clip.event.generic_status = generic_status_incomplete
                     audio_clip.event.save()
+
+                else:
+
+                    #cannot delete
+                    return Response(
+                        data={
+                            'message': 'Recording is not suitable to be deleted.',
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
 
                 return Response(
                     data={

@@ -1,6 +1,6 @@
 import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
 
-export type AudioClipProcessingStatusesTypes = 'processing'|'processed'|'not_found'|'lambda_error';
+export type AudioClipProcessingStatusesTypes = 'processing'|'processed'|'not_found'|'processing_failed';
 export interface EventsTypes{
     id:number,
     event_name: string,

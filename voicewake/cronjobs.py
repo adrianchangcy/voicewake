@@ -292,65 +292,68 @@ def cronjob_handle_originator_processing_overdue():
         ;
     '''
 
-    full_params = [
-        'originator',
-        when_created_checkpoint,
-        'processing',
-        settings.CRONJOB_DEFAULT_ROW_LIMIT,
-        'processing_overdue',
-        'deleted',
-    ]
+    #don't want to optimise IN statement, so do this instead
+    for target_generic_status_name in ['processing', 'processing_failed']:
 
-    with connection.cursor() as cursor:
+        full_params = [
+            'originator',
+            when_created_checkpoint,
+            target_generic_status_name,
+            settings.CRONJOB_DEFAULT_ROW_LIMIT,
+            'processing_overdue',
+            'deleted',
+        ]
 
-        cursor.execute(
-            sql=full_sql,
-            params=full_params,
-        )
+        with connection.cursor() as cursor:
 
-        #expect tuple based on last RETURNING
-        cursor_rows = cursor.fetchall()
+            cursor.execute(
+                sql=full_sql,
+                params=full_params,
+            )
 
-        datetime_now = get_datetime_now()
+            #expect tuple based on last RETURNING
+            cursor_rows = cursor.fetchall()
 
-        processing_cache_keys = []
+            datetime_now = get_datetime_now()
 
-        #prepare cache keys first, so we can use cache.get_many()
+            processing_cache_keys = []
 
-        for row in cursor_rows:
+            #prepare cache keys first, so we can use cache.get_many()
 
-            audio_clip_id, user_id = row
+            for row in cursor_rows:
 
-            #if processing_cache for this user already exists in this cronjob, use it
+                audio_clip_id, user_id = row
 
-            processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
+                #if processing_cache for this user already exists in this cronjob, use it
 
-            if processing_cache_key not in processing_cache_keys:
+                processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
 
-                processing_cache_keys.append(processing_cache_key)
+                if processing_cache_key not in processing_cache_keys:
 
-        #get caches
+                    processing_cache_keys.append(processing_cache_key)
 
-        processing_caches = cache.get_many(processing_cache_keys)
+            #get caches
 
-        #remove processings
+            processing_caches = cache.get_many(processing_cache_keys)
 
-        for row in cursor_rows:
+            #remove processings
 
-            audio_clip_id, user_id = row
+            for row in cursor_rows:
 
-            processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
+                audio_clip_id, user_id = row
 
-            if (
-                processing_cache_key in processing_caches and
-                str(audio_clip_id) in processing_caches[processing_cache_key]['processings']
-            ):
+                processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
 
-                processing_caches[processing_cache_key]['processings'].pop(str(audio_clip_id))
+                if (
+                    processing_cache_key in processing_caches and
+                    str(audio_clip_id) in processing_caches[processing_cache_key]['processings']
+                ):
 
-        #save
+                    processing_caches[processing_cache_key]['processings'].pop(str(audio_clip_id))
 
-        cache.set_many(processing_caches, timeout=settings.REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S)
+            #save
+
+            cache.set_many(processing_caches, timeout=settings.REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S)
 
 
 #delete queues only
