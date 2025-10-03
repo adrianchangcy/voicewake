@@ -198,7 +198,7 @@
     function isStatusError(processing:AudioClipProcessingDetailsTypes) : boolean {
 
         return (
-            processing.status === 'lambda_error' ||
+            processing.status === 'processing_failed' ||
             processing.status === 'not_found'
         );
     }

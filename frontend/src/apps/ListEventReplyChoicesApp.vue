@@ -274,7 +274,7 @@
 
                             <!--error, can reupload or cancel-->
                             <VDialogPlain
-                                v-else-if="reuploadStatus === 'lambda_error'"
+                                v-else-if="reuploadStatus === 'processing_failed'"
                                 class="w-full h-fit"
                                 :prop-has-auto-space-logo="false"
                             >

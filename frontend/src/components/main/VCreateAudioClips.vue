@@ -791,7 +791,7 @@
                         break;
                     }
 
-                    case 'lambda_error':
+                    case 'processing_failed':
 
                         //update attempts left
                         //if user is not at reupload page, redirect
