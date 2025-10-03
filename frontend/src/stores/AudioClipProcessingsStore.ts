@@ -226,7 +226,7 @@ export function useAudioClipProcessingsStore(){
             },
             async syncProcessingsAPI() : Promise<void> {
 
-                //cache only stores processing/lambda_error
+                //cache only stores processing/processing_failed
                 //which means if we have existing processed/not_found in this store, we do nothing to them
 
                 //prepare URL
@@ -352,7 +352,7 @@ export function useAudioClipProcessingsStore(){
                         const new_processing = this.updateProcessing(
                             audio_clip_id,
                             current_processing,
-                            'lambda_error',
+                            'processing_failed',
                             result.data['attempts_left']
                         );
 
@@ -613,7 +613,7 @@ export function useAudioClipProcessingsStore(){
             startPollingProcessings() : void {
 
                 //be sure to sync store first before calling this
-                //only check for those with statuses that have potential to change, i.e. "processing", "lambda_error"
+                //only check for those with statuses that have potential to change, i.e. "processing", "processing_failed"
 
                 this.polling_processings_timeout = window.setTimeout(async ()=>{
 
@@ -626,7 +626,7 @@ export function useAudioClipProcessingsStore(){
                         const audio_clip_id = Number(audio_clip_ids[x]);
 
                         if(
-                            this.audio_clip_processings[audio_clip_id].status === 'lambda_error' ||
+                            this.audio_clip_processings[audio_clip_id].status === 'processing_failed' ||
                             this.audio_clip_processings[audio_clip_id].status === 'processing'
                         ){
 
@@ -736,7 +736,7 @@ export function useAudioClipProcessingsStore(){
                         return processing;
                     }
 
-                    case 'lambda_error': {
+                    case 'processing_failed': {
 
                         const main_text = (
                             'Your recording for event "' +
@@ -747,7 +747,7 @@ export function useAudioClipProcessingsStore(){
                             '" has issues.'
                         );
 
-                        processing.status = 'lambda_error';
+                        processing.status = 'processing_failed';
                         processing.title = 'Recording error';
                         processing.main_text = main_text;
                         processing.attempts_left = attempts_left;
