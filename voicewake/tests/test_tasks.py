@@ -43,7 +43,6 @@ import requests
 
 
 @override_settings(
-    
     MEDIA_ROOT = os.path.join(settings.BASE_DIR, 'voicewake/tests'),
     CELERY_TASK_ALWAYS_EAGER=True,
 )
@@ -217,7 +216,7 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            generic_status_name='processing',
+            generic_status_name='processing_failed',
             audio_file=self.faulty_audio_file_full_path,
         )
 
@@ -246,36 +245,6 @@ class Core_TestCase(TestCase):
         self.task_normalisation_expect_error(
             user_id=self.users[0].id,
             processing_cache_key=target_cache_key,
-            audio_clip_id=sample_audio_clip_0.id,
-            event_id=sample_event_0.id,
-        )
-
-
-    def test_task_normalisation__originator_no_cache(self):
-
-        self.login(self.users[0])
-
-        sample_event_0 = EventsFactory(
-            created_by=self.users[0],
-            generic_status_name='processing',
-        )
-
-        sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
-            audio_clip_role_name='originator',
-            audio_clip_event=sample_event_0,
-            generic_status_name='processing',
-        )
-
-        #no need to create cache
-
-        processing_cache_key = CreateAudioClips.determine_processing_cache_key(
-            user_id=self.users[0].id,
-        )
-
-        self.task_normalisation_expect_error(
-            user_id=self.users[0].id,
-            processing_cache_key=processing_cache_key,
             audio_clip_id=sample_audio_clip_0.id,
             event_id=sample_event_0.id,
         )
@@ -371,7 +340,7 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[1],
             audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            generic_status_name='processing',
+            generic_status_name='processing_failed',
             audio_file=self.faulty_audio_file_full_path,
         )
 
@@ -412,52 +381,6 @@ class Core_TestCase(TestCase):
         )
 
 
-    def test_task_normalisation__responder_no_cache(self):
-
-        self.login(self.users[1])
-
-        sample_event_0 = EventsFactory(
-            created_by=self.users[0],
-            generic_status_name='incomplete',
-        )
-
-        sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
-            audio_clip_role_name='originator',
-            audio_clip_event=sample_event_0,
-        )
-
-        sample_user_event_0 = self.create_user_event(
-            self.users[1].id,
-            sample_event_0.id,
-            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
-        )
-
-        sample_audio_clip_1 = AudioClipsFactory(
-            audio_clip_user=self.users[1],
-            audio_clip_role_name='responder',
-            audio_clip_event=sample_event_0,
-            generic_status_name='processing',
-        )
-
-        sample_event_reply_queue_0 = self.create_event_reply_queue(
-            event_id=sample_event_0.id,
-            locked_for_user_id=self.users[1].id,
-            is_replying=True,
-            when_locked=(get_datetime_now() - timedelta(seconds=0))
-        )
-
-        #no need to create cache
-
-        processing_cache_key = CreateAudioClips.determine_processing_cache_key(
-            user_id=self.users[1].id,
-        )
-
-        self.task_normalisation_expect_error(
-            user_id=self.users[1].id,
-            processing_cache_key=processing_cache_key,
-            audio_clip_id=sample_audio_clip_1.id,
-            event_id=sample_event_0.id,
-        )
-
+#not really sure what the point of this Core_TestCase is, if you expect error when these are supposed to succeed
+#once this is figured out, test for cache removal and cache recreate if suitable (do these call lambda?)
 

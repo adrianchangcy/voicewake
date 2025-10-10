@@ -2074,7 +2074,7 @@ class EventReplyChoicesAPI(generics.GenericAPIView):
 
 
     #only to produce is_replying=False, i.e. choice
-    #does not involve is_replying=True, a.k.a. replying
+    #will have when_locked!=None
     def lock_events_for_reply_choices(self, audio_clips)->list[EventReplyQueues]:
 
         #this is to lock events to show to users as reply choices
@@ -2443,7 +2443,7 @@ class EventRepliesAPI(generics.GenericAPIView):
             ).delete()
 
 
-    #if user is already locked for event, change (is_replying=False) to (is_replying=True, when_locked!=None)
+    #if user is already locked for event, change is_replying=False to is_replying=True, update when_locked
     #no need to check for daily reply limit here
     def start_reply_in_event(self, event_id:int)->Response:
 
@@ -3343,7 +3343,9 @@ class AudioClipProcessingsAPI(generics.GenericAPIView):
                     user_id=request.user.id,
                 )
 
-                if audio_clip.generic_status.generic_status_name not in ['processing', 'processing_overdue', 'processing_max_attempts_reached']:
+                if audio_clip.generic_status.generic_status_name not in [
+                    'processing_pending', 'processing', 'processing_failed', 'processing_overdue', 'processing_max_attempts_reached'
+                ]:
 
                     return Response(
                         data={
