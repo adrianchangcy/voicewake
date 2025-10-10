@@ -40,6 +40,7 @@ import logging
 import requests
 import functools
 import sys
+import string
 
 #AWS
 import boto3
@@ -476,6 +477,18 @@ def get_response_data(request):
 
     response_data = (bytes(request.content).decode())
     return json.loads(response_data)
+
+
+def get_random_string(length:int=10):
+
+    full_string = ''
+
+    for x in range(length):
+
+        #not cryptographically secure
+        full_string.join(random.choice(string.ascii_uppercase + string.digits))
+
+    return full_string
 
 
 def do_celery_beat_healthcheck():
@@ -1485,16 +1498,21 @@ class CreateAudioClips():
         return processing_cache['processings'].get(str(audio_clip_id), None)
 
 
-    #validate db side of things
+    #validate and invalidate db side of things
+    #returns {'is_audio_clip_processing':bool, 'do_rows_match_context':bool}
     @staticmethod
-    def check_db_can_normalise(audio_clip, event, event_reply_queue)->bool:
+    def check_db_for_normalisation_context(audio_clip, event, event_reply_queue)->bool:
 
-        #if cannot normalise, only reset those that match normalise conditions
-        #this is to maintain and respect any higher precedence statuses
-        #event will not have 'processing_failed', since doing so to match audio_clip provides no value
+        return_dict = {
+            'is_audio_clip_processing': False,
+            'do_rows_match_context': False,
+        }
+
+        #when we update, make conditions be more specific to maintain precedence
+        #e.g. don't accidentally change "deleted" into "processing_overdue"
+        #event will only go processing->incomplete/completed, since matching generic_status to audio_clip provides no value
 
         audio_clip_role_name = audio_clip.audio_clip_role.audio_clip_role_name
-        generic_status_deleted = GenericStatuses.objects.get(generic_status_name='deleted')
 
         if audio_clip_role_name == 'originator':
 
@@ -1506,30 +1524,37 @@ class CreateAudioClips():
                     dev_message="Missing args."
                 )
 
-            is_audio_clip_eligible = (
-                audio_clip.generic_status.generic_status_name == 'processing' or
-                audio_clip.generic_status.generic_status_name == 'processing_failed'
+            if audio_clip.generic_status.generic_status_name == 'processing':
+
+                return_dict['is_audio_clip_processing'] = True
+
+            #must include 'processing' so invalidation code isn't executed
+            do_rows_match_context = (
+                event.generic_status.generic_status_name == 'processing' and
+                audio_clip.generic_status.generic_status_name in ['processing_pending', 'processing', 'processing_failed'] and
+                get_datetime_now() < (audio_clip.when_created + timedelta(seconds=settings.AUDIO_CLIP_UNPROCESSED_EXPIRY_S))
             )
 
-            can_normalise = (
-                is_audio_clip_eligible is True and
-                event.generic_status.generic_status_name == 'processing'
-            )
+            if do_rows_match_context is True:
 
-            if can_normalise is False:
+                return_dict['do_rows_match_context'] = True
 
-                if is_audio_clip_eligible is True:
+            else:
 
-                    audio_clip.generic_status = generic_status_deleted
-                    audio_clip.save()
+                if audio_clip.generic_status.generic_status_name in ['processing_pending', 'processing', 'processing_failed']:
 
-                if event.generic_status.generic_status_name == 'processing':
+                    with transaction.atomic():
 
-                    #we don't need event to enforce limit
-                    event.generic_status = generic_status_deleted
-                    event.save()
+                        generic_status_deleted = GenericStatuses.objects.get(generic_status_name='deleted')
+                        audio_clip.generic_status = generic_status_deleted
+                        audio_clip.save()
+                        event.generic_status = generic_status_deleted
+                        event.save()
 
-            return can_normalise
+            #no need to troubleshoot do_rows_match_context=False, since that's just a bandaid to potentially badly written code
+            #e.g. updated audio_clip but forgot to update event
+
+            return return_dict
 
         elif audio_clip_role_name == 'responder':
 
@@ -1541,28 +1566,37 @@ class CreateAudioClips():
                     dev_message="Missing args."
                 )
 
-            is_audio_clip_eligible = (
-                audio_clip.generic_status.generic_status_name == 'processing' or
-                audio_clip.generic_status.generic_status_name == 'processing_failed'
-            )
+            if audio_clip.generic_status.generic_status_name == 'processing':
 
-            can_normalise = (
-                is_audio_clip_eligible is True and
+                return_dict['is_audio_clip_processing'] = True
+
+            #must include 'processing' so invalidation code isn't executed
+            do_rows_match_context = (
                 event.generic_status.generic_status_name == 'incomplete' and
+                audio_clip.generic_status.generic_status_name in ['processing_pending', 'processing', 'processing_failed'] and
                 event_reply_queue.is_replying is True and
                 get_datetime_now() < (event_reply_queue.when_locked + timedelta(seconds=settings.EVENT_REPLY_MAX_DURATION_S))
             )
 
-            if can_normalise is False:
+            if do_rows_match_context is True:
 
-                if is_audio_clip_eligible is True:
+                return_dict['do_rows_match_context'] = True
 
-                    audio_clip.generic_status = generic_status_deleted
-                    audio_clip.save()
+            else:
 
-                event_reply_queue.delete()
+                #either event is no longer available, or queue has expired
 
-            return can_normalise
+                #extra precaution by being specific
+                if audio_clip.generic_status.generic_status_name in ['processing_pending', 'processing', 'processing_failed']:
+
+                    with transaction.atomic():
+
+                        audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
+                        audio_clip.save()
+
+                        event_reply_queue.delete()
+
+            return return_dict
 
         raise custom_error(
             ValueError,
@@ -1615,7 +1649,7 @@ class CreateAudioClips():
 
         if event is None or\
             audio_clip is None or\
-            audio_clip.generic_status.generic_status_name not in ['processing', 'processing_failed']\
+            audio_clip.generic_status.generic_status_name not in ['processing_pending', 'processing', 'processing_failed']\
         :
 
             raise ValueError('Incorrect conditions to expect processing_object from audio_clip.')
@@ -1625,6 +1659,13 @@ class CreateAudioClips():
             processing_cache['processings'].update({
                 str(audio_clip.id): CreateAudioClips.get_default_processing_object(event, audio_clip)
             })
+
+        elif (
+            audio_clip.generic_status.generic_status_name == 'processing_pending' and
+            processing_cache['processings'][str(audio_clip.id)]['is_processing'] is True
+        ):
+
+            processing_cache['processings'][str(audio_clip.id)]['is_processing'] = False
 
         elif (
             audio_clip.generic_status.generic_status_name == 'processing' and
@@ -1724,6 +1765,7 @@ class CreateAudioClips():
         audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='originator')
         audio_clip_tone = AudioClipTones.objects.get(pk=audio_clip_tone_id)
         generic_status_processing = GenericStatuses.objects.get(generic_status_name='processing')
+        generic_status_processing_pending = GenericStatuses.objects.get(generic_status_name='processing_pending')
 
         with transaction.atomic():
 
@@ -1744,7 +1786,7 @@ class CreateAudioClips():
                 audio_volume_peaks=[],
                 audio_duration_s=0,
                 audio_file=upload_key,
-                generic_status=generic_status_processing
+                generic_status=generic_status_processing_pending
             )
 
             AudioClipMetrics.objects.create(
@@ -1806,10 +1848,7 @@ class CreateAudioClips():
                     status=status.HTTP_200_OK
                 )
 
-            elif (
-                self.audio_clip.generic_status.generic_status_name != 'processing' and
-                self.audio_clip.generic_status.generic_status_name != 'processing_failed'
-            ):
+            elif self.audio_clip.generic_status.generic_status_name not in ['processing_pending', 'processing', 'processing_failed']:
 
                 #audio clip exists, but is not processing
                 #do nothing
@@ -1880,8 +1919,7 @@ class CreateAudioClips():
             with transaction.atomic():
 
                 if self.audio_clip is not None and (
-                    self.audio_clip.generic_status.generic_status_name == 'processing' or
-                    self.audio_clip.generic_status.generic_status_name == 'processing_failed'
+                    self.audio_clip.generic_status.generic_status_name in ['processing_pending', 'processing', 'processing_failed']
                 ):
 
                     self.audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
@@ -1905,8 +1943,7 @@ class CreateAudioClips():
             with transaction.atomic():
 
                 if self.audio_clip is not None and (
-                    self.audio_clip.generic_status.generic_status_name == 'processing' or
-                    self.audio_clip.generic_status.generic_status_name == 'processing_failed'
+                    self.audio_clip.generic_status.generic_status_name in ['processing_pending', 'processing', 'processing_failed']
                 ):
 
                     self.audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='deleted')
@@ -1941,7 +1978,7 @@ class CreateAudioClips():
         #create audio clip if it does not exist
         if self.audio_clip is None:
 
-            generic_status_processing = GenericStatuses.objects.get(generic_status_name='processing')
+            generic_status_processing_pending = GenericStatuses.objects.get(generic_status_name='processing_pending')
             audio_clip_role = AudioClipRoles.objects.get(audio_clip_role_name='responder')
             audio_clip_tone = AudioClipTones.objects.get(pk=audio_clip_tone_id)
 
@@ -1953,7 +1990,7 @@ class CreateAudioClips():
                 audio_volume_peaks=[],
                 audio_duration_s=0,
                 audio_file=upload_key,
-                generic_status=generic_status_processing
+                generic_status=generic_status_processing_pending
             )
 
             AudioClipMetrics.objects.create(
@@ -2013,7 +2050,7 @@ class CreateAudioClips():
         )
 
 
-    #checks if can start, but will not reset things if checking fails
+    #will validate and invalidate
     #returns None if can start, or Response if cannot
     #should ideally just return True/False and provide getCannotStartNormalisationResponse() for apis.py
     def prepare_normalisation(self, audio_clip_id:int)->None|Response:
@@ -2081,13 +2118,27 @@ class CreateAudioClips():
 
         #validate db rows, reset if cannot normalise
 
-        can_normalise = self.check_db_can_normalise(
+        db_check_before_normalise = CreateAudioClips.check_db_for_normalisation_context(
             audio_clip=self.audio_clip,
             event=self.event,
             event_reply_queue=self.event_reply_queue
         )
 
-        if can_normalise is False:
+        if db_check_before_normalise['is_audio_clip_processing'] is True:
+
+            #already processing
+
+            return Response(
+                data={
+                    "is_processing": True,
+                    "attempts_left": self.processing_cache['processings'][str(self.audio_clip.id)]['attempts_left'],
+                },
+                status=status.HTTP_409_CONFLICT
+            )
+
+        if db_check_before_normalise['do_rows_match_context'] is False:
+
+            #remove any processing from cache
 
             #delete processing object from cache if can no longer normalise
 
@@ -2095,7 +2146,7 @@ class CreateAudioClips():
 
                 self.processing_cache['processings'].pop(str(self.audio_clip.id))
 
-                self.set_processing_cache(self.processing_cache_key, self.processing_cache)
+                CreateAudioClips.set_processing_cache(self.processing_cache_key, self.processing_cache)
 
             return Response(
                 data={},
@@ -2130,16 +2181,6 @@ class CreateAudioClips():
             event=self.event,
             audio_clip=self.audio_clip
         )
-
-        if self.audio_clip.generic_status.generic_status_name == 'processing':
-
-            return Response(
-                data={
-                    "is_processing": True,
-                    "attempts_left": self.processing_cache['processings'][str(self.audio_clip.id)]['attempts_left'],
-                },
-                status=status.HTTP_409_CONFLICT
-            )
 
         #attempts_left will never be 0
         #cache will be deleted by task when done, be it on success, or 0 attempts_left on failure

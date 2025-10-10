@@ -1684,7 +1684,7 @@ class Core_TestCase(TestCase):
         self.assertTrue(response_data['is_processed'])
 
 
-    def test_create_events__process__still_processing(self):
+    def test_create_events__process__processing(self):
 
         self.login(self.users[0])
 
@@ -1738,6 +1738,70 @@ class Core_TestCase(TestCase):
         self.assertTrue("is_processing" in response_data)
 
         self.assertTrue(response_data['is_processing'])
+
+
+    def test_create_events__process__processing_overdue(self):
+
+        self.login(self.users[0])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing',
+        )
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
+        sample_audio_clip_0.when_created = get_datetime_now() + timedelta(seconds=settings.AUDIO_CLIP_UNPROCESSED_EXPIRY_S + 2)
+        sample_audio_clip_0.save()
+
+        #set cache
+
+        target_cache_key = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[0].id,
+        )
+
+        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
+
+        target_cache['processings'].update({
+            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_object(
+                event=sample_event_0,
+                audio_clip=sample_audio_clip_0,
+            ),
+        })
+
+        target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = True
+
+        cache.set(target_cache_key, target_cache)
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+
+        request = self.client.post(reverse('create_events_process_api'), data)
+
+        response_data = get_response_data(request)
+
+        print(request.content)
+        self.assertEqual(request.status_code, 404)
+        self.assertTrue("is_processing" in response_data)
+
+        self.assertTrue(response_data['is_processing'])
+
+        target_cache = cache.get(target_cache, None)
+
+        self.assertIsNotNone(target_cache)
+        self.assertFalse(str(sample_audio_clip_0.id) in target_cache['processings'])
 
 
     def test_create_events__process__out_of_attempts(self):
@@ -2022,25 +2086,9 @@ class Core_TestCase(TestCase):
             audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
-        #set cache
-
         target_cache_key = CreateAudioClips.determine_processing_cache_key(
             user_id=self.users[0].id,
         )
-
-        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
-
-        target_cache['processings'].update({
-            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_object(
-                event=sample_audio_clip_0.event,
-                audio_clip=sample_audio_clip_0,
-            ),
-        })
-
-        target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = False
-
-        cache.set(target_cache_key, target_cache)
 
         #delete, should fail
 
@@ -2087,25 +2135,9 @@ class Core_TestCase(TestCase):
             audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
-        #set cache
-
         target_cache_key = CreateAudioClips.determine_processing_cache_key(
             user_id=self.users[0].id,
         )
-
-        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
-
-        target_cache['processings'].update({
-            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_object(
-                event=sample_audio_clip_0.event,
-                audio_clip=sample_audio_clip_0,
-            ),
-        })
-
-        target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = False
-
-        cache.set(target_cache_key, target_cache)
 
         #ban, should fail
 
@@ -4425,6 +4457,8 @@ class Core_TestCase(TestCase):
 
         response_data = get_response_data(request)
 
+        old_when_locked = sample_event_reply_queue_0.when_locked
+
         sample_event_reply_queue_0.refresh_from_db()
 
         self.assertTrue(sample_event_reply_queue_0.is_replying)
@@ -4435,6 +4469,7 @@ class Core_TestCase(TestCase):
             ).replace(tzinfo=ZoneInfo('UTC')),
             sample_event_reply_queue_0.when_locked
         )
+        self.assertNotEqual(old_when_locked, sample_event_reply_queue_0.when_locked)
         self.assertEqual(
             response_data['data']['is_replying'], sample_event_reply_queue_0.is_replying
         )
@@ -6402,6 +6437,7 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
         )
 
         sample_audio_clip_metric_0 = AudioClipMetricsFactory(
@@ -6474,6 +6510,160 @@ class Core_TestCase(TestCase):
         self.assertTrue(
             EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
         )
+
+
+    def test_create_replies__process__queue_expired(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing_pending',
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
+
+        sample_event_reply_queue_0.when_locked = get_datetime_now() + timedelta(seconds=settings.EVENT_REPLY_MAX_DURATION_S + 2)
+        sample_event_reply_queue_0.save()
+
+        target_cache_key = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[1].id,
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_replies_process_api'), data)
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(request.status_code, 404)
+
+        sample_audio_clip_1.refresh_from_db()
+
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
+        self.assertFalse(
+            EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
+        )
+
+        target_cache = cache.get(target_cache_key, None)
+
+        self.assertIsNotNone(target_cache)
+        self.assertFalse(str(sample_audio_clip_1.id) in target_cache['processings'])
+
+
+    def test_create_replies__process__queue_ok__event_unavailable(self):
+
+        self.login(self.users[1])
+
+        sample_event_0 = EventsFactory(
+            event_created_by = self.users[0],
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=self.users[0],
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
+        sample_user_event_0 = self.create_user_event(
+            self.users[1].id,
+            sample_event_0.id,
+            when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        generic_status_deleted = GenericStatuses.objects.get(generic_status_name='deleted')
+
+        sample_event_0.generic_status = generic_status_deleted
+        sample_event_0.save()
+        sample_audio_clip_0.generic_status = generic_status_deleted
+        sample_audio_clip_0.save()
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=self.users[1].id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=self.users[1],
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing_pending',
+        )
+
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
+
+        target_cache_key = CreateAudioClips.determine_processing_cache_key(
+            user_id=self.users[1].id,
+        )
+
+        #proceed
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+
+        request = self.client.post(reverse('create_replies_process_api'), data)
+
+        response_data = get_response_data(request)
+
+        self.assertEqual(request.status_code, 404)
+
+        sample_audio_clip_1.refresh_from_db()
+
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
+        self.assertFalse(
+            EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
+        )
+
+        target_cache = cache.get(target_cache_key, None)
+
+        self.assertIsNotNone(target_cache)
+        self.assertFalse(str(sample_audio_clip_1.id) in target_cache['processings'])
 
 
     def test_create_replies__process__out_of_attempts(self):
@@ -6623,32 +6813,16 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[1],
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            audio_clip_generic_status_generic_status_name='processing_pending',
         )
 
         sample_audio_clip_metric_1 = AudioClipMetricsFactory(
             audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
-        #set cache
-
         target_cache_key = CreateAudioClips.determine_processing_cache_key(
             user_id=self.users[1].id,
         )
-
-        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
-
-        target_cache['processings'].update({
-            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_object(
-                event=sample_audio_clip_1.event,
-                audio_clip=sample_audio_clip_1,
-            ),
-        })
-
-        target_cache['processings'][str(sample_audio_clip_1.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'] = True
-
-        cache.set(target_cache_key, target_cache)
 
         #proceed
 
@@ -6667,7 +6841,7 @@ class Core_TestCase(TestCase):
         self.assertTrue(response_data['is_processing'])
         self.assertEqual(
             response_data['attempts_left'],
-            settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+            settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS
         )
 
 
@@ -6713,25 +6887,9 @@ class Core_TestCase(TestCase):
             audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
-        #set cache
-
         target_cache_key = CreateAudioClips.determine_processing_cache_key(
             user_id=self.users[1].id,
         )
-
-        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
-
-        target_cache['processings'].update({
-            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_object(
-                event=sample_audio_clip_1.event,
-                audio_clip=sample_audio_clip_1,
-            ),
-        })
-
-        target_cache['processings'][str(sample_audio_clip_1.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'] = True
-
-        cache.set(target_cache_key, target_cache)
 
         #delete
 
@@ -6859,6 +7017,7 @@ class Core_TestCase(TestCase):
         self.assertFalse(
             EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
         )
+        self.assertIsNone(str(sample_audio_clip_1.id) in cache.get(target_cache_key, None))
 
 
     def test_create_replies__process__processing__attempt_deletion_for_responder(self):
@@ -7004,25 +7163,9 @@ class Core_TestCase(TestCase):
             audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
-        #set cache
-
         target_cache_key = CreateAudioClips.determine_processing_cache_key(
             user_id=self.users[1].id,
         )
-
-        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
-
-        target_cache['processings'].update({
-            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_object(
-                event=sample_audio_clip_1.event,
-                audio_clip=sample_audio_clip_1,
-            ),
-        })
-
-        target_cache['processings'][str(sample_audio_clip_1.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'] = True
-
-        cache.set(target_cache_key, target_cache)
 
         #ban, should fail
 
@@ -7107,25 +7250,9 @@ class Core_TestCase(TestCase):
             audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
-        #set cache
-
         target_cache_key = CreateAudioClips.determine_processing_cache_key(
             user_id=self.users[1].id,
         )
-
-        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
-
-        target_cache['processings'].update({
-            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_object(
-                event=sample_audio_clip_1.event,
-                audio_clip=sample_audio_clip_1,
-            ),
-        })
-
-        target_cache['processings'][str(sample_audio_clip_1.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'] = False
-
-        cache.set(target_cache_key, target_cache)
 
         #delete
 
@@ -7201,26 +7328,6 @@ class Core_TestCase(TestCase):
         sample_audio_clip_metric_1 = AudioClipMetricsFactory(
             audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
-
-        #set cache
-
-        target_cache_key = CreateAudioClips.determine_processing_cache_key(
-            user_id=self.users[1].id,
-        )
-
-        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
-
-        target_cache['processings'].update({
-            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_object(
-                event=sample_audio_clip_1.event,
-                audio_clip=sample_audio_clip_1,
-            ),
-        })
-
-        target_cache['processings'][str(sample_audio_clip_1.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'] = False
-
-        cache.set(target_cache_key, target_cache)
 
         #ban
 
@@ -13550,7 +13657,7 @@ class Core_TestCase(TestCase):
             self.assertEqual(AudioClipLikesDislikes.objects.filter(audio_clip=sample_audio_clip_1).count(), 0)
 
 
-    def test_audio_clip_delete__audio_clip__delete_unaffected(self):
+    def test_audio_clip_delete__processing__delete_unaffected(self):
 
         self.users[3].is_superuser = True
         self.users[3].save()
@@ -14053,6 +14160,8 @@ class Core_TestCase(TestCase):
 
 
 #these involve AWS in one way or another
+#for test cases with Redis, only way to guarantee cache isolation have unique target_user for every test case
+#cannot chain first+next+last attempts in one single test case, because we're also testing how cache is guaranteed to exist at all attempts
 @override_settings(
     
     DEBUG=True,
@@ -14079,7 +14188,7 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
 
             cls.users.append(current_user)
 
-        #file paths
+        #local file paths
         cls.shorter_audio_file_full_path = os.path.join(
             settings.BASE_DIR,
             'voicewake/tests/file_samples/audio_ok_10s.webm'
@@ -14099,9 +14208,9 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
 
         #objects in s3 should exist before starting tests
 
-        #unprocessed/processed object keys
-        cls.unprocessed_object_key = 'test/test0.webm'
-        cls.processed_object_key = 'test/test0.mp3'
+        #unprocessed/processed object keys in S3
+        cls.unprocessed_object_key = 'test/audio_ok_10s.webm'
+        cls.processed_object_key = 'test/audio_ok_10s.mp3'
 
         #ensure test files exist in s3 before we run tests
         cls._prepare_s3_unprocessed_audio_file(
@@ -14111,8 +14220,8 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
         )
 
         #ensure faulty file exists
-        cls.faulty_audio_file_unprocessed_object_key = 'test/test1.webm'
-        cls.faulty_audio_file_processed_object_key = 'test/test1.mp3'
+        cls.faulty_audio_file_unprocessed_object_key_0 = 'test/text_as_fake_webm.webm'
+        cls.faulty_audio_file_unprocessed_object_key_1 = 'test/audio_not_mp3.wav'
 
         cls._prepare_s3_unprocessed_audio_file(
             unprocessed_object_key=cls.faulty_audio_file_unprocessed_object_key,
@@ -14164,6 +14273,21 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
             event_id=event_id,
             when_excluded_for_reply=when_excluded_for_reply
         )
+
+
+    def create_user(self):
+
+        random_string = get_random_string(10)
+
+        current_user = get_user_model().objects.create_user(
+            username='useR'+random_string,
+            email='user'+random_string+'@gmail.com',
+        )
+
+        current_user = get_user_model().objects.get(username_lowercase="user"+random_string)
+
+        current_user.is_active = True
+        current_user.save()
 
 
     @staticmethod
@@ -14282,185 +14406,108 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
                     #1024mb is the winner
 
 
-    def test_create_events__process__ok(self):
+    #chances of redis crashing within the <20s processing time is rare enough to not worry about
+    #no way for user to manually crash redis
+    def test_edge_case__create_events__process__cache_gone_means_attempt_count_lost(self):
 
-        self.login(self.users[0])
+        #do first attempt fail > delete cache > do next attempt fail
 
-        sample_event_0 = EventsFactory(
-            event_created_by = self.users[0],
-            event_generic_status_generic_status_name = 'processing',
-        )
+        #since cache uses user.id, always create new user for every test case to ensure cache isolation
+        target_user = self.create_user()
 
-        sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
-            audio_clip_audio_file=self.unprocessed_object_key,
-        )
-
-        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
-            audio_clip_metric_audio_clip=sample_audio_clip_0,
-        )
-
-        #let fresh cache be auto-created when it doesn't exist, and use it
-
-        #proceed
-
-        data = {
-            'audio_clip_id': sample_audio_clip_0.id,
-        }
-
-        request = self.client.post(reverse('create_events_process_api'), data)
-        request_data = get_response_data(request)
-
-        self.assertEqual(request.status_code, 200)
-
-        sample_audio_clip_0.refresh_from_db()
-        sample_audio_clip_metric_0.refresh_from_db()
-
-        self.assertEqual(
-            sample_audio_clip_0.generic_status.generic_status_name,
-            'ok'
-        )
-        self.assertEqual(
-            sample_audio_clip_0.audio_file,
-            self.processed_object_key
-        )
-
-        #don't evaluate actual value, as it is always -1 in test, but has late -1 in prod due to the nature of task queue
-        self.assertTrue('attempts_left' in request_data)
-
-
-    def test_create_events__process__reattempt_ok(self):
-
-        self.login(self.users[0])
-
-        sample_event_0 = EventsFactory(
-            event_created_by = self.users[0],
-            event_generic_status_generic_status_name = 'processing',
-        )
-
-        sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing_failed',
-            audio_clip_audio_file=self.unprocessed_object_key,
-        )
-
-        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
-            audio_clip_metric_audio_clip=sample_audio_clip_0,
-        )
-
-        #set cache
+        self.login(target_user)
 
         target_cache_key = CreateAudioClips.determine_processing_cache_key(
-            user_id=self.users[0].id,
+            user_id=target_user.id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
-
-        target_cache['processings'].update({
-            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_object(
-                event=sample_event_0,
-                audio_clip=sample_audio_clip_0,
-            ),
-        })
-
-        target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 2
-        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = False
-
-        cache.set(target_cache_key, target_cache)
-
-        #proceed
-
-        data = {
-            'audio_clip_id': sample_audio_clip_0.id,
-        }
-
-        request = self.client.post(reverse('create_events_process_api'), data)
-
-        self.assertEqual(request.status_code, 200)
-
-        target_cache = cache.get(target_cache_key, None)
-
-        self.assertIsNotNone(target_cache)
-        self.assertEqual(len(target_cache['processings']), 0)
-
-
-    def test_create_events__process__last_reattempt_failed(self):
-
-        self.login(self.users[0])
+        #must not exist first
+        self.assertIsNone(
+            cache.get(target_cache_key, None)
+        )
 
         sample_event_0 = EventsFactory(
-            event_created_by = self.users[0],
+            event_created_by = target_user,
             event_generic_status_generic_status_name = 'processing',
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
+            audio_clip_user=target_user,
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing_failed',
-            audio_file=self.faulty_audio_file_unprocessed_object_key,
+            audio_clip_generic_status_generic_status_name='processing_pending',
+            audio_clip_audio_file=self.faulty_audio_file_unprocessed_object_key_0,
         )
 
         sample_audio_clip_metric_0 = AudioClipMetricsFactory(
             audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
-        #set cache
+        #first and next attempts
+        for loop_count in range(2):
+
+            #proceed
+    
+            data = {
+                'audio_clip_id': sample_audio_clip_0.id,
+            }
+    
+            request = self.client.post(reverse('create_events_process_api'), data)
+            response_data = get_response_data(request)
+    
+            self.assertEqual(request.status_code, 200)
+
+            sample_event_0.refresh_from_db()
+            sample_audio_clip_0.refresh_from_db()
+    
+            #has cache and processing object on normalise failure
+            #frontend uses last version of cache to check for completion
+
+            target_cache = cache.get(target_cache_key, None)
+
+            self.assertIsNotNone(target_cache)
+            self.assertTrue(str(sample_audio_clip_0.id) in target_cache['processings'])
+            self.assertFalse(target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'])
+
+            self.assertEqual(sample_event_0.generic_status.generic_status_name, 'processing')
+            self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'processing_failed')
+            self.assertEqual(
+                sample_audio_clip_0.audio_file,
+                self.faulty_audio_file_unprocessed_object_key_0
+            )
+
+            #this is the proof
+            self.assertEqual(
+                target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'],
+                settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+            )
+
+            #don't evaluate actual value, as it is always -1 in test, but has late -1 in prod due to the nature of task queue
+            self.assertTrue('attempts_left' in response_data)
+
+            #delete cache to prove it
+            cache.set(target_cache_key, None)
+
+
+    #chances of redis crashing within the <20s processing time is rare enough to not worry about
+    #no way for user to manually crash redis
+    def test_edge_case__create_replies__process__cache_gone_means_attempt_count_lost(self):
+
+        #do first attempt fail > delete cache > do next attempt fail
+
+        #since cache uses user.id, always create new user for every test case to ensure cache isolation
+        target_user = self.create_user()
+
+        self.login(target_user)
 
         target_cache_key = CreateAudioClips.determine_processing_cache_key(
-            user_id=self.users[0].id,
+            user_id=target_user.id,
         )
 
-        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
-
-        target_cache['processings'].update({
-            str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_object(
-                event=sample_event_0,
-                audio_clip=sample_audio_clip_0,
-            ),
-        })
-
-        target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = 1
-        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = False
-
-        cache.set(target_cache_key, target_cache)
-
-        #proceed
-
-        data = {
-            'audio_clip_id': sample_audio_clip_0.id,
-        }
-
-        request = self.client.post(reverse('create_events_process_api'), data)
-
-        sample_event_0.refresh_from_db()
-        sample_audio_clip_0.refresh_from_db()
-        sample_audio_clip_metric_0.refresh_from_db()
-
-        self.assertEqual(request.status_code, 200)
-        self.assertEqual(
-            sample_event_0.generic_status.generic_status_name,
-            'deleted'
+        #must not exist first
+        self.assertIsNone(
+            cache.get(target_cache_key, None)
         )
-        self.assertEqual(
-            sample_audio_clip_0.generic_status.generic_status_name,
-            'processing_max_attempts_reached'
-        )
-
-        target_cache = cache.get(target_cache_key, None)
-
-        self.assertIsNotNone(target_cache)
-        self.assertEqual(len(target_cache['processings']), 0)
-
-
-    def test_create_replies__process__ok(self):
-
-        self.login(self.users[1])
 
         sample_event_0 = EventsFactory(
             event_created_by = self.users[0],
@@ -14468,232 +14515,599 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
         )
 
         sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
+            audio_clip_user=target_user,
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='ok',
+            audio_clip_audio_file=self.processed_object_key,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
+        sample_event_reply_queue_0 = self.create_event_reply_queue(
+            event_id=sample_event_0.id,
+            locked_for_user_id=target_user.id,
+            is_replying=True,
+            when_locked=(get_datetime_now() - timedelta(seconds=0))
+        )
+
+        sample_audio_clip_1 = AudioClipsFactory(
+            audio_clip_user=target_user,
+            audio_clip_audio_clip_role_audio_clip_role_name='responder',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing_pending',
+            audio_clip_audio_file=self.faulty_audio_file_unprocessed_object_key_0,
+        )
+        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_1,
+        )
+
+        #first and next attempts
+        for loop_count in range(2):
+
+            #proceed
+    
+            data = {
+                'audio_clip_id': sample_audio_clip_1.id,
+            }
+    
+            request = self.client.post(reverse('create_events_process_api'), data)
+            response_data = get_response_data(request)
+    
+            self.assertEqual(request.status_code, 200)
+
+            sample_event_0.refresh_from_db()
+            sample_audio_clip_0.refresh_from_db()
+            sample_audio_clip_0.refresh_from_db()
+    
+            #has cache and processing object on normalise failure
+            #frontend uses last version of cache to check for completion
+
+            target_cache = cache.get(target_cache_key, None)
+
+            self.assertIsNotNone(target_cache)
+            self.assertTrue(str(sample_audio_clip_1.id) in target_cache['processings'])
+            self.assertFalse(target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'])
+
+            self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
+            self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'ok')
+            self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'processing_failed')
+            self.assertEqual(
+                sample_audio_clip_1.audio_file,
+                self.unprocessed_object_key
+            )
+            self.assertTrue(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists())
+
+            #this is the proof
+            self.assertEqual(
+                target_cache['processings'][str(sample_audio_clip_1.id)]['attempts_left'],
+                settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+            )
+
+            #don't evaluate actual value, as it is always -1 in test, but has late -1 in prod due to the nature of task queue
+            self.assertTrue('attempts_left' in response_data)
+
+            #delete cache to prove it
+            cache.set(target_cache_key, None)
+
+
+    #not_consecutive means once an attempt is ok, the rows cannot be reused
+    def test_create_events__process__not_consecutive__first_next_last_attempts_ok(self):
+
+        #since cache uses user.id, always create new user for every test case to ensure cache isolation
+        target_user = self.create_user()
+
+        self.login(target_user)
+
+        target_cache_key = CreateAudioClips.determine_processing_cache_key(
+            user_id=target_user.id,
+        )
+
+        #must not exist first
+        self.assertIsNone(
+            cache.get(target_cache_key, None)
+        )
+
+        for first_next_last_count in range(3):
+
+            #changes at each attempt
+
+            audio_clip_generic_status_name = ''
+            attempts_left = 0
+
+            if first_next_last_count == 0:
+
+                audio_clip_generic_status_name = 'processing_pending'
+                attempts_left = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS
+
+            elif first_next_last_count == 1:
+
+                audio_clip_generic_status_name = 'processing_failed'
+                attempts_left = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+
+            elif first_next_last_count == 2:
+
+                audio_clip_generic_status_name = 'processing_failed'
+                attempts_left = 1
+
+            #see how cache reconstructs itself
+
+            #for-loop is to check how logic guarantees cache is correct, from outermost to innermost cache
+            #loop_count 0, completely no cache
+            #loop_count 1, has user cache
+            #loop_count 2, has user cache + processing object
+            for loop_count in range(3):
+
+                sample_event_0 = EventsFactory(
+                    event_created_by = target_user,
+                    event_generic_status_generic_status_name = 'processing',
+                )
+
+                sample_audio_clip_0 = AudioClipsFactory(
+                    audio_clip_user=target_user,
+                    audio_clip_audio_clip_role_audio_clip_role_name='originator',
+                    audio_clip_event=sample_event_0,
+                    audio_clip_generic_status_generic_status_name=audio_clip_generic_status_name,
+                    audio_clip_audio_file=self.unprocessed_object_key,
+                )
+
+                sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+                    audio_clip_metric_audio_clip=sample_audio_clip_0,
+                )
+
+                #set cache
+
+                target_cache = None
+
+                if loop_count > 0:
+
+                    target_cache = CreateAudioClips.get_default_processing_cache_per_user()
+
+                    cache.set(target_cache_key, target_cache)
+
+                if loop_count > 1:
+
+                    target_cache['processings'].update({
+                        str(sample_audio_clip_0.id): CreateAudioClips.get_default_processing_object(
+                            event=sample_event_0,
+                            audio_clip=sample_audio_clip_0,
+                        ),
+                    })
+
+                    target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = attempts_left
+                    target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = False
+
+                    cache.set(target_cache_key, target_cache)
+
+                #proceed
+
+                data = {
+                    'audio_clip_id': sample_audio_clip_0.id,
+                }
+
+                request = self.client.post(reverse('create_events_process_api'), data)
+                response_data = get_response_data(request)
+
+                self.assertEqual(request.status_code, 200)
+
+                sample_audio_clip_0.refresh_from_db()
+
+                target_cache = cache.get(target_cache_key, None)
+
+                #has cache but no processing object on normalise success
+                #frontend uses last version of cache to check for completion
+
+                target_cache = cache.get(target_cache_key, None)
+
+                self.assertIsNotNone(target_cache)
+                self.assertFalse(str(sample_audio_clip_0.id) in target_cache['processings'])
+
+                #reset
+                cache.set(target_cache_key, None)
+
+                self.assertEqual(
+                    sample_audio_clip_0.audio_file,
+                    self.processed_object_key
+                )
+                self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
+                self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'ok')
+
+                #don't evaluate actual value, as it is always -1 in test, but has late -1 in prod due to the nature of task queue
+                self.assertTrue('attempts_left' in response_data)
+
+
+    #consecutive means the rows can be reused to repeatedly fail attempts
+    def test_create_events__process__consecutive__first_next_last_attempts_failed(self):
+
+        #since cache uses user.id, always create new user for every test case to ensure cache isolation
+        target_user = self.create_user()
+
+        self.login(target_user)
+
+        target_cache_key = CreateAudioClips.determine_processing_cache_key(
+            user_id=target_user.id,
+        )
+
+        #must not exist first
+        self.assertIsNone(
+            cache.get(target_cache_key, None)
+        )
+
+        sample_event_0 = EventsFactory(
+            event_created_by = target_user,
+            event_generic_status_generic_status_name = 'processing',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=target_user,
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='processing_pending',
+            audio_clip_audio_file=self.faulty_audio_file_unprocessed_object_key_0,
+        )
+
+        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+            audio_clip_metric_audio_clip=sample_audio_clip_0,
+        )
+
+        #first and next attempts
+        for loop_count in range(2):
+
+            #proceed
+    
+            data = {
+                'audio_clip_id': sample_audio_clip_0.id,
+            }
+    
+            request = self.client.post(reverse('create_events_process_api'), data)
+            response_data = get_response_data(request)
+    
+            self.assertEqual(request.status_code, 200)
+
+            sample_event_0.refresh_from_db()
+            sample_audio_clip_0.refresh_from_db()
+    
+            #has cache and processing object on normalise failure
+            #frontend uses last version of cache to check for completion
+
+            target_cache = cache.get(target_cache_key, None)
+
+            self.assertIsNotNone(target_cache)
+            self.assertTrue(str(sample_audio_clip_0.id) in target_cache['processings'])
+            self.assertFalse(target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'])
+
+            self.assertEqual(sample_event_0.generic_status.generic_status_name, 'processing')
+            self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'processing_failed')
+            self.assertEqual(
+                sample_audio_clip_0.audio_file,
+                self.unprocessed_object_key
+            )
+            self.assertEqual(
+                target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'],
+                settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - (loop_count + 1)
+            )
+
+            #don't evaluate actual value, as it is always -1 in test, but has late -1 in prod due to the nature of task queue
+            self.assertTrue('attempts_left' in response_data)
+
+        #last attempt
+
+        target_cache = cache.get(target_cache_key, None)
+        target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = 1
+        cache.set(target_cache_key, target_cache)
+
+        #proceed
+    
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+    
+        request = self.client.post(reverse('create_events_process_api'), data)
+        response_data = get_response_data(request)
+    
+        self.assertEqual(request.status_code, 404)
+
+        sample_event_0.refresh_from_db()
+        sample_audio_clip_0.refresh_from_db()
+    
+        #has cache and processing object on normalise failure
+        #frontend uses last version of cache to check for completion
+
+        target_cache = cache.get(target_cache_key, None)
+
+        self.assertIsNotNone(target_cache)
+        self.assertFalse(str(sample_audio_clip_0.id) in target_cache['processings'])
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+
+
+    def test_create_replies__process__not_consecutive_first_next_last_attempts_ok(self):
+
+        #since cache uses user.id, always create new user for every test case to ensure cache isolation
+        target_user = self.create_user()
+
+        self.login(target_user)
+
+        target_cache_key = CreateAudioClips.determine_processing_cache_key(
+            user_id=target_user.id,
+        )
+
+        #must not exist first
+        self.assertIsNone(
+            cache.get(target_cache_key, None)
+        )
+
+        for first_next_last_count in range(3):
+
+            #changes at each attempt
+
+            audio_clip_generic_status_name = ''
+            attempts_left = 0
+
+            if first_next_last_count == 0:
+
+                audio_clip_generic_status_name = 'processing_pending'
+                attempts_left = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS
+
+            elif first_next_last_count == 1:
+
+                audio_clip_generic_status_name = 'processing_failed'
+                attempts_left = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+
+            elif first_next_last_count == 2:
+
+                audio_clip_generic_status_name = 'processing_failed'
+                attempts_left = 1
+
+            #see how cache reconstructs itself
+
+            #for-loop is to check how logic guarantees cache is correct, from outermost to innermost cache
+            #loop_count 0, completely no cache
+            #loop_count 1, has user cache
+            #loop_count 2, has user cache + processing object
+            for loop_count in range(3):
+
+                sample_event_0 = EventsFactory(
+                    event_created_by = target_user,
+                    event_generic_status_generic_status_name = 'incomplete',
+                )
+
+                sample_audio_clip_0 = AudioClipsFactory(
+                    audio_clip_user=target_user,
+                    audio_clip_audio_clip_role_audio_clip_role_name='originator',
+                    audio_clip_event=sample_event_0,
+                    audio_clip_generic_status_generic_status_name='ok',
+                    audio_clip_audio_file=self.processed_object_key,
+                )
+                sample_audio_clip_metric_0 = AudioClipMetricsFactory(
+                    audio_clip_metric_audio_clip=sample_audio_clip_0,
+                )
+
+                sample_user_event_0 = self.create_user_event(
+                    target_user.id,
+                    sample_event_0.id,
+                    when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
+                )
+
+                sample_event_reply_queue_0 = self.create_event_reply_queue(
+                    event_id=sample_event_0.id,
+                    locked_for_user_id=target_user.id,
+                    is_replying=True,
+                    when_locked=(get_datetime_now() - timedelta(seconds=0))
+                )
+
+                sample_audio_clip_1 = AudioClipsFactory(
+                    audio_clip_user=target_user,
+                    audio_clip_audio_clip_role_audio_clip_role_name='responder',
+                    audio_clip_event=sample_event_0,
+                    audio_clip_generic_status_generic_status_name=audio_clip_generic_status_name,
+                    audio_clip_audio_file=self.unprocessed_object_key,
+                )
+                sample_audio_clip_metric_1 = AudioClipMetricsFactory(
+                    audio_clip_metric_audio_clip=sample_audio_clip_1,
+                )
+
+                #set cache
+
+                target_cache = None
+
+                if loop_count > 0:
+
+                    target_cache = CreateAudioClips.get_default_processing_cache_per_user()
+
+                    cache.set(target_cache_key, target_cache)
+
+                if loop_count > 1:
+
+                    target_cache['processings'].update({
+                        str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_object(
+                            event=sample_event_0,
+                            audio_clip=sample_audio_clip_1,
+                        ),
+                    })
+
+                    target_cache['processings'][str(sample_audio_clip_1.id)]['attempts_left'] = attempts_left
+                    target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'] = False
+
+                    cache.set(target_cache_key, target_cache)
+
+                #proceed
+
+                data = {
+                    'audio_clip_id': sample_audio_clip_1.id,
+                }
+
+                request = self.client.post(reverse('create_events_process_api'), data)
+                response_data = get_response_data(request)
+
+                self.assertEqual(request.status_code, 200)
+
+                sample_event_0.refresh_from_db()
+                sample_audio_clip_1.refresh_from_db()
+
+                target_cache = cache.get(target_cache_key, None)
+
+                #has cache but no processing object on normalise success
+                #frontend uses last version of cache to check for completion
+
+                target_cache = cache.get(target_cache_key, None)
+
+                self.assertIsNotNone(target_cache)
+                self.assertFalse(str(sample_audio_clip_1.id) in target_cache['processings'])
+
+                #reset
+                cache.set(target_cache_key, None)
+
+                self.assertFalse(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists())
+                self.assertEqual(
+                    sample_audio_clip_1.audio_file,
+                    self.processed_object_key
+                )
+                self.assertEqual(sample_event_0.generic_status.generic_status_name, 'completed')
+                self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'ok')
+
+                #don't evaluate actual value, as it is always -1 in test, but has late -1 in prod due to the nature of task queue
+                self.assertTrue('attempts_left' in response_data)
+
+
+    def test_create_replies__process__consecutive__first_next_last_attempts_failed(self):
+
+        #since cache uses user.id, always create new user for every test case to ensure cache isolation
+        target_user = self.create_user()
+
+        self.login(target_user)
+
+        target_cache_key = CreateAudioClips.determine_processing_cache_key(
+            user_id=target_user.id,
+        )
+
+        #must not exist first
+        self.assertIsNone(
+            cache.get(target_cache_key, None)
+        )
+
+        sample_event_0 = EventsFactory(
+            event_created_by = target_user,
+            event_generic_status_generic_status_name = 'incomplete',
+        )
+
+        sample_audio_clip_0 = AudioClipsFactory(
+            audio_clip_user=target_user,
+            audio_clip_audio_clip_role_audio_clip_role_name='originator',
+            audio_clip_event=sample_event_0,
+            audio_clip_generic_status_generic_status_name='ok',
+            audio_clip_audio_file=self.processed_object_key,
         )
         sample_audio_clip_metric_0 = AudioClipMetricsFactory(
             audio_clip_metric_audio_clip=sample_audio_clip_0,
         )
 
         sample_user_event_0 = self.create_user_event(
-            self.users[1].id,
+            target_user.id,
             sample_event_0.id,
             when_excluded_for_reply=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_event_reply_queue_0 = self.create_event_reply_queue(
             event_id=sample_event_0.id,
-            locked_for_user_id=self.users[1].id,
+            locked_for_user_id=target_user.id,
             is_replying=True,
             when_locked=(get_datetime_now() - timedelta(seconds=0))
         )
 
         sample_audio_clip_1 = AudioClipsFactory(
-            audio_clip_user=self.users[1],
+            audio_clip_user=target_user,
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing',
+            audio_clip_generic_status_generic_status_name='processing_pending',
             audio_clip_audio_file=self.unprocessed_object_key,
         )
         sample_audio_clip_metric_1 = AudioClipMetricsFactory(
             audio_clip_metric_audio_clip=sample_audio_clip_1,
         )
 
-        #let fresh cache be auto-created when it doesn't exist, and use it
+        #first and next attempts
+        for loop_count in range(2):
 
-        #proceed
+            #proceed
+    
+            data = {
+                'audio_clip_id': sample_audio_clip_0.id,
+            }
+    
+            request = self.client.post(reverse('create_events_process_api'), data)
+            response_data = get_response_data(request)
+    
+            self.assertEqual(request.status_code, 200)
 
-        data = {
-            'audio_clip_id': sample_audio_clip_1.id,
-        }
+            sample_event_0.refresh_from_db()
+            sample_audio_clip_1.refresh_from_db()
+    
+            #has cache and processing object on normalise failure
+            #frontend uses last version of cache to check for completion
 
-        request = self.client.post(reverse('create_replies_process_api'), data)
-        request_data = get_response_data(request)
+            target_cache = cache.get(target_cache_key, None)
 
-        self.assertEqual(request.status_code, 200)
+            self.assertIsNotNone(target_cache)
+            self.assertTrue(str(sample_audio_clip_1.id) in target_cache['processings'])
+            self.assertFalse(target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'])
 
-        sample_audio_clip_1.refresh_from_db()
-        sample_audio_clip_metric_1.refresh_from_db()
+            self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'processing_failed')
+            self.assertEqual(
+                sample_audio_clip_1.audio_file,
+                self.unprocessed_object_key
+            )
 
-        self.assertEqual(
-            sample_audio_clip_1.generic_status.generic_status_name,
-            'ok'
-        )
-        self.assertEqual(
-            sample_audio_clip_1.audio_file,
-            self.processed_object_key
-        )
-        self.assertFalse(
-            EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
-        )
+            #important part
+            self.assertEqual(
+                target_cache['processings'][str(sample_audio_clip_1.id)]['attempts_left'],
+                settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - (loop_count + 1)
+            )
 
-        #don't evaluate actual value, as it is always -1 in test, but has late -1 in prod due to the nature of task queue
-        self.assertTrue('attempts_left' in request_data)
+            #don't evaluate actual value, as it is always -1 in test, but has late -1 in prod due to the nature of task queue
+            self.assertTrue('attempts_left' in response_data)
 
-
-    def test_create_replies__process__reattempt_ok(self):
-
-        self.login(self.users[1])
-
-        sample_event_0 = EventsFactory(
-            event_created_by = self.users[0],
-            event_generic_status_generic_status_name = 'incomplete',
-        )
-
-        sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=sample_event_0,
-        )
-
-        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
-            audio_clip_metric_audio_clip=sample_audio_clip_0,
-        )
-
-        sample_audio_clip_1 = AudioClipsFactory(
-            audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='responder',
-            audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing_failed',
-            audio_clip_audio_file=self.unprocessed_object_key,
-        )
-        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
-            audio_clip_metric_audio_clip=sample_audio_clip_1,
-        )
-
-        sample_event_reply_queue_0 = self.create_event_reply_queue(
-            event_id=sample_event_0.id,
-            locked_for_user_id=self.users[1].id,
-            is_replying=True,
-            when_locked=(get_datetime_now() - timedelta(seconds=0))
-        )
-
-        #set cache
-
-        target_cache_key = CreateAudioClips.determine_processing_cache_key(
-            user_id=self.users[1].id,
-        )
-
-        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
-
-        target_cache['processings'].update({
-            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_object(
-                event=sample_audio_clip_1.event,
-                audio_clip=sample_audio_clip_1,
-            ),
-        })
-
-        target_cache['processings'][str(sample_audio_clip_1.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'] = False
-
-        cache.set(target_cache_key, target_cache)
-
-        #proceed
-
-        data = {
-            'audio_clip_id': sample_audio_clip_1.id,
-        }
-
-        request = self.client.post(reverse('create_replies_process_api'), data)
-
-        self.assertEqual(request.status_code, 200)
-        self.assertFalse(
-            EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
-        )
+        #last attempt
 
         target_cache = cache.get(target_cache_key, None)
-
-        self.assertIsNotNone(target_cache)
-        self.assertEqual(len(target_cache['processings']), 0)
-
-
-    def test_create_replies__process__last_reattempt_failed(self):
-
-        self.login(self.users[1])
-
-        sample_event_0 = EventsFactory(
-            event_created_by = self.users[0],
-            event_generic_status_generic_status_name = 'incomplete',
-        )
-
-        sample_audio_clip_0 = AudioClipsFactory(
-            audio_clip_user=self.users[0],
-            audio_clip_audio_clip_role_audio_clip_role_name='originator',
-            audio_clip_event=sample_event_0,
-        )
-        sample_audio_clip_metric_0 = AudioClipMetricsFactory(
-            audio_clip_metric_audio_clip=sample_audio_clip_0,
-        )
-
-        sample_audio_clip_1 = AudioClipsFactory(
-            audio_clip_user=self.users[1],
-            audio_clip_audio_clip_role_audio_clip_role_name='responder',
-            audio_clip_event=sample_event_0,
-            audio_clip_generic_status_generic_status_name='processing_failed',
-            audio_file=self.faulty_audio_file_unprocessed_object_key,
-        )
-        sample_audio_clip_metric_1 = AudioClipMetricsFactory(
-            audio_clip_metric_audio_clip=sample_audio_clip_1,
-        )
-
-        sample_event_reply_queue_0 = self.create_event_reply_queue(
-            event_id=sample_event_0.id,
-            locked_for_user_id=self.users[1].id,
-            is_replying=True,
-            when_locked=(get_datetime_now() - timedelta(seconds=0))
-        )
-
-        #set cache
-
-        target_cache_key = CreateAudioClips.determine_processing_cache_key(
-            user_id=self.users[1].id,
-        )
-
-        target_cache = CreateAudioClips.get_default_processing_cache_per_user()
-
-        target_cache['processings'].update({
-            str(sample_audio_clip_1.id): CreateAudioClips.get_default_processing_object(
-                event=sample_audio_clip_1.event,
-                audio_clip=sample_audio_clip_1,
-            ),
-        })
-
         target_cache['processings'][str(sample_audio_clip_1.id)]['attempts_left'] = 1
-        target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'] = False
-
         cache.set(target_cache_key, target_cache)
 
         #proceed
-
+    
         data = {
             'audio_clip_id': sample_audio_clip_1.id,
         }
+    
+        request = self.client.post(reverse('create_events_process_api'), data)
+        response_data = get_response_data(request)
+    
+        self.assertEqual(request.status_code, 404)
 
-        request = self.client.post(reverse('create_replies_process_api'), data)
-
-        sample_event_0.refresh_from_db()
         sample_audio_clip_1.refresh_from_db()
-        sample_audio_clip_metric_1.refresh_from_db()
-
-        self.assertEqual(request.status_code, 200)
-        self.assertEqual(
-            sample_event_0.generic_status.generic_status_name,
-            'incomplete'
-        )
-        self.assertEqual(
-            sample_audio_clip_1.generic_status.generic_status_name,
-            'processing_max_attempts_reached'
-        )
-        self.assertFalse(
-            EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists()
-        )
+    
+        #has cache and processing object on normalise failure
+        #frontend uses last version of cache to check for completion
 
         target_cache = cache.get(target_cache_key, None)
 
         self.assertIsNotNone(target_cache)
-        self.assertEqual(len(target_cache['processings']), 0)
+        self.assertFalse(str(sample_audio_clip_1.id) in target_cache['processings'])
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
+        self.assertFalse(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists())
+
+
+
+
+
+
+
+
+
+
+
 
 
 

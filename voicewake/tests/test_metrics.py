@@ -85,7 +85,7 @@ class RealisticBulkData():
         self.users = []
 
         #audio_file, use s3
-        self.audio_file = settings.MEDIA_TEST_AWS_S3_START_PATH + '/test0.mp3'
+        self.audio_file = settings.MEDIA_TEST_AWS_S3_START_PATH + '/audio_ok_10s.mp3'
         self.audio_volume_peaks = [0.2, 0.4, 0.8, 0.7, 0.5, 0.1, 0.2, 0.1, 0.4, 0.7, 0.3, 0.3, 0.5, 0.6, 0.4, 0.8, 0.7, 0.6, 0.2, 0.1]
         self.audio_duration_s = 26
 
