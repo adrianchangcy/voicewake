@@ -293,7 +293,7 @@ def cronjob_handle_originator_processing_overdue():
     '''
 
     #don't want to optimise IN statement, so do this instead
-    for target_generic_status_name in ['processing', 'processing_failed']:
+    for target_generic_status_name in ['processing_pending', 'processing', 'processing_failed']:
 
         full_params = [
             'originator',
@@ -427,62 +427,64 @@ def cronjob_delete_event_reply_queue__delete_audio_clip__is_replying__overdue():
         ;
     '''
 
-    full_params = [
-        when_locked_checkpoint,
-        settings.CRONJOB_DEFAULT_ROW_LIMIT,
-        'processing_overdue',
-    ]
+    for target_generic_status_name in ['processing_pending', 'processing', 'processing_failed']:
 
-    with connection.cursor() as cursor:
-
-        cursor.execute(
-            sql=full_sql,
-            params=full_params,
-        )
-
-        #expect tuple based on last RETURNING
-        cursor_rows = cursor.fetchall()
-
-        datetime_now = get_datetime_now()
-
-        processing_cache_keys = []
-
-        #prepare cache keys first, so we can use cache.get_many()
-
-        for row in cursor_rows:
-
-            audio_clip_id, user_id = row
-
-            #if processing_cache for this user already exists in this cronjob, use it
-
-            processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
-
-            if processing_cache_key not in processing_cache_keys:
-
-                processing_cache_keys.append(processing_cache_key)
-
-        #get caches
-
-        processing_caches = cache.get_many(processing_cache_keys)
-
-        #remove processings
-
-        for row in cursor_rows:
-
-            audio_clip_id, user_id = row
-
-            processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
-
-            if (
-                processing_cache_key in processing_caches and
-                str(audio_clip_id) in processing_caches[processing_cache_key]['processings']
-            ):
-
-                processing_caches[processing_cache_key]['processings'].pop(str(audio_clip_id))
-
-        #save
-
-        cache.set_many(processing_caches, timeout=settings.REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S)
+        full_params = [
+            when_locked_checkpoint,
+            settings.CRONJOB_DEFAULT_ROW_LIMIT,
+            target_generic_status_name,
+        ]
+    
+        with connection.cursor() as cursor:
+        
+            cursor.execute(
+                sql=full_sql,
+                params=full_params,
+            )
+    
+            #expect tuple based on last RETURNING
+            cursor_rows = cursor.fetchall()
+    
+            datetime_now = get_datetime_now()
+    
+            processing_cache_keys = []
+    
+            #prepare cache keys first, so we can use cache.get_many()
+    
+            for row in cursor_rows:
+            
+                audio_clip_id, user_id = row
+    
+                #if processing_cache for this user already exists in this cronjob, use it
+    
+                processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
+    
+                if processing_cache_key not in processing_cache_keys:
+                
+                    processing_cache_keys.append(processing_cache_key)
+    
+            #get caches
+    
+            processing_caches = cache.get_many(processing_cache_keys)
+    
+            #remove processings
+    
+            for row in cursor_rows:
+            
+                audio_clip_id, user_id = row
+    
+                processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
+    
+                if (
+                    processing_cache_key in processing_caches and
+                    str(audio_clip_id) in processing_caches[processing_cache_key]['processings']
+                ):
+    
+                    processing_caches[processing_cache_key]['processings'].pop(str(audio_clip_id))
+    
+            #save
+    
+            cache.set_many(processing_caches, timeout=settings.REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S)
 
 
 @shared_task

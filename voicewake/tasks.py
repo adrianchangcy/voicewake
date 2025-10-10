@@ -132,13 +132,21 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
 
     #check db if can normalise
 
-    can_normalise = CreateAudioClips.check_db_can_normalise(
+    db_check_before_normalise = CreateAudioClips.check_db_for_normalisation_context(
         audio_clip=target_audio_clip,
         event=target_event,
         event_reply_queue=target_event_reply_queue
     )
 
-    if can_normalise is False:
+    if db_check_before_normalise['is_audio_clip_processing'] is True:
+
+        raise custom_error(
+            ValueError,
+            __name__,
+            dev_message="Already processing."
+        )
+
+    if db_check_before_normalise['do_rows_match_context'] is False:
 
         #remove any processing from cache
 
@@ -186,9 +194,8 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
             '''
         )
 
-    #update db if this is not the first processing attempt
-
-    if target_audio_clip.generic_status.generic_status_name == 'processing_failed':
+    #update db
+    if target_audio_clip.generic_status.generic_status_name in ['processing_pending', 'processing_failed']:
 
         target_audio_clip.generic_status = GenericStatuses.objects.get(generic_status_name='processing')
         target_audio_clip.save()
@@ -311,22 +318,34 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
         processing_cache
     )
 
-    #check if rows in db are still ok
+    #validate db again
 
-    can_normalise = CreateAudioClips.check_db_can_normalise(
+    db_check_before_normalise = CreateAudioClips.check_db_for_normalisation_context(
         audio_clip=target_audio_clip,
         event=target_event,
         event_reply_queue=target_event_reply_queue
     )
 
-    if can_normalise is False:
+    if db_check_before_normalise['is_audio_clip_processing'] is True:
 
-        processing_cache['processings'].pop(str(audio_clip_id))
-
-        CreateAudioClips.set_processing_cache(
-            processing_cache_key=processing_cache_key,
-            processing_cache=processing_cache
+        raise custom_error(
+            ValueError,
+            __name__,
+            dev_message="Already processing."
         )
+
+    if db_check_before_normalise['do_rows_match_context'] is False:
+
+        #remove any processing from cache
+
+        if str(audio_clip_id) in processing_cache['processings']:
+
+            processing_cache['processings'].pop(str(audio_clip_id))
+
+            CreateAudioClips.set_processing_cache(
+                processing_cache_key=processing_cache_key,
+                processing_cache=processing_cache
+            )
 
         raise custom_error(
             ValueError,
@@ -345,11 +364,8 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
         serializer.validated_data['lambda_status_code'] != 200
     ):
 
-        #evaluate attempts again
-
+        #can reattempt
         if processing_cache['processings'][str(audio_clip_id)]['attempts_left'] > 0:
-
-            #can reattempt
 
             target_audio_clip.generic_status = GenericStatuses.objects.get(
                 generic_status_name='processing_failed'

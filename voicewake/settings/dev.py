@@ -57,7 +57,7 @@ AWS_S3_CUSTOM_DOMAIN = os.environ['AWS_S3_CUSTOM_DOMAIN']
 #this is the starting portion of S3 path, since there's media/dev, media/stage, media/prod, etc.
 #the API that determines paths of new files will use this
     #services.S3PostWrapper.generate_unprocessed_object_key
-#for auto-generated rows, refer to one identical file from cloudfront, e.g. media/test/test0.mp3
+#for auto-generated rows, refer to one identical file from cloudfront, e.g. media/test/audio_ok_10s.webm
 #serializer will serve absolute cloudfront paths to frontend, instead of redirecting at urls.py and eating server load
 MEDIA_AWS_S3_START_PATH = 'media/dev'
 MEDIA_TEST_AWS_S3_START_PATH = 'media/test'

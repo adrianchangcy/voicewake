@@ -112,7 +112,7 @@ class AudioClipsFactory(DjangoModelFactory):
         audio_clip_event = None
         audio_clip_generic_status_generic_status_name = 'ok'
         audio_clip_is_banned = False
-        audio_clip_audio_file = 'test/test.webm'
+        audio_clip_audio_file = 'test/audio_ok_10s.webm'    #S3
         audio_clip_audio_volume_peaks = [
             0.32, 0.47, 0.76, 0.75, 0.79, 0.59, 0.78, 0.83, 0.85, 0.77,
             0.62, 0.69, 0.97, 0.96, 0.97, 0.96, 0.96, 0.63, 0.47, 0.0
@@ -134,14 +134,14 @@ class AudioClipsFactory(DjangoModelFactory):
     audio_volume_peaks = factory.LazyAttribute(
         lambda o : (
             []
-            if o.audio_clip_generic_status_generic_status_name == 'processing'
+            if o.audio_clip_generic_status_generic_status_name in ['processing_pending', 'processing', 'processing_failed']
             else o.audio_clip_audio_volume_peaks
         )
     )
     audio_duration_s = factory.LazyAttribute(
         lambda o : (
             0
-            if o.audio_clip_generic_status_generic_status_name == 'processing'
+            if o.audio_clip_generic_status_generic_status_name in ['processing_pending', 'processing', 'processing_failed']
             else o.audio_clip_audio_duration_s
         )
     )
