@@ -585,12 +585,11 @@ class ProcessingCacheEventsSerializer(serializers.Serializer):
 
 class ProcessingCacheProcessingsSerializer(serializers.Serializer):
 
+    event = ProcessingCacheEventsSerializer()
     audio_clip_role_name = serializers.CharField()
     audio_clip_tone = AudioClipTonesSerializer()
-    event = ProcessingCacheEventsSerializer()
-    is_processing = serializers.BooleanField()
-    attempts_left = serializers.IntegerField()
     status = serializers.CharField()
+    attempts_left = serializers.IntegerField()
 
 
 

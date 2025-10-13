@@ -1320,7 +1320,6 @@ class CreateAudioClips():
         self.processing_cache_key = self.determine_processing_cache_key(self.user.id)
         self.processing_cache = self.get_or_create_processing_cache(
             self.user.id,
-            expect_processing_object_from_audio_clip=False,
         )
 
 
@@ -1465,28 +1464,25 @@ class CreateAudioClips():
             )
 
         if(
-            audio_clip.generic_status.generic_status_name != 'processing' and
-            audio_clip.generic_status.generic_status_name != 'processing_failed'
+            audio_clip.generic_status.generic_status_name not in ['processing_pending', 'processing', 'processing_failed']
         ):
 
-            raise ValueError('Cannot call this function when audio_clip is not processing/processing_failed.')
+            raise ValueError('Cannot call this function when audio_clip is not processing_pending/processing/processing_failed.')
 
         #proceed
 
-        is_processing = audio_clip.generic_status.generic_status_name == 'processing'
-
         return {
-            'audio_clip_role_name': audio_clip.audio_clip_role.audio_clip_role_name,
             'event': {
                 'id': event.id,
                 'event_name': event.event_name,
             },
+            'audio_clip_role_name': audio_clip.audio_clip_role.audio_clip_role_name,
             'audio_clip_tone': {
                 'id': audio_clip.audio_clip_tone.id,
                 'audio_clip_tone_name': audio_clip.audio_clip_tone.audio_clip_tone_name,
                 'audio_clip_tone_symbol': audio_clip.audio_clip_tone.audio_clip_tone_symbol,
             },
-            'is_processing': is_processing,
+            'status': audio_clip.generic_status.generic_status_name,
             'attempts_left': settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS,
         }
 
@@ -1541,7 +1537,8 @@ class CreateAudioClips():
 
             else:
 
-                if audio_clip.generic_status.generic_status_name in ['processing_pending', 'processing', 'processing_failed']:
+                #for simpler logic, do nothing if still processing, let cronjob handle that
+                if audio_clip.generic_status.generic_status_name in ['processing_pending', 'processing_failed']:
 
                     with transaction.atomic():
 
@@ -1586,8 +1583,8 @@ class CreateAudioClips():
 
                 #either event is no longer available, or queue has expired
 
-                #extra precaution by being specific
-                if audio_clip.generic_status.generic_status_name in ['processing_pending', 'processing', 'processing_failed']:
+                #for simpler logic, do nothing if still processing, let cronjob handle that
+                if audio_clip.generic_status.generic_status_name in ['processing_pending', 'processing_failed']:
 
                     with transaction.atomic():
 
@@ -1617,9 +1614,7 @@ class CreateAudioClips():
 
     #this just ensures processing_cache exists for user
     @staticmethod
-    def get_or_create_processing_cache(
-        user_id:int,
-    ):
+    def get_or_create_processing_cache(user_id:int):
 
         #start
 
@@ -1638,13 +1633,14 @@ class CreateAudioClips():
         return processing_cache
 
 
-    #use this you have audio_clip with processing/processing_failed, and you want to ensure cache has its object
+    #use this you have audio_clip with processing_pending/processing/processing_failed, and you want to ensure cache has its object
     @staticmethod
     def ensure_processing_object_exists_in_processing_cache(
         processing_cache_key,
         processing_cache,
         event:Events,
         audio_clip:AudioClips,
+        set_cache:bool=False,
     ):
 
         if event is None or\
@@ -1660,28 +1656,13 @@ class CreateAudioClips():
                 str(audio_clip.id): CreateAudioClips.get_default_processing_object(event, audio_clip)
             })
 
-        elif (
-            audio_clip.generic_status.generic_status_name == 'processing_pending' and
-            processing_cache['processings'][str(audio_clip.id)]['is_processing'] is True
-        ):
+        else:
 
-            processing_cache['processings'][str(audio_clip.id)]['is_processing'] = False
+            processing_cache['processings'][str(audio_clip.id)]['status'] = audio_clip.generic_status.generic_status_name
 
-        elif (
-            audio_clip.generic_status.generic_status_name == 'processing' and
-            processing_cache['processings'][str(audio_clip.id)]['is_processing'] is False
-        ):
+        if set_cache is True:
 
-            processing_cache['processings'][str(audio_clip.id)]['is_processing'] = True
-
-        elif (
-            audio_clip.generic_status.generic_status_name == 'processing_failed' and
-            processing_cache['processings'][str(audio_clip.id)]['is_processing'] is True
-        ):
-
-            processing_cache['processings'][str(audio_clip.id)]['is_processing'] = False
-
-        CreateAudioClips.set_processing_cache(processing_cache_key, processing_cache)
+            CreateAudioClips.set_processing_cache(processing_cache_key, processing_cache)
 
         return processing_cache
 
@@ -2012,20 +1993,23 @@ class CreateAudioClips():
 
 
     #will minimally validate, no invalidation
-    def regenerate_s3_endpoint(self, audio_clip_id:int)->Response:
+    def regenerate_s3_endpoint(self, audio_clip_id:int, audio_clip_role_name:Literal['originator','responder'])->Response:
 
         #check if audio_clip exists
         #users can only get their own records
 
-        audio_clip = None
-
         try:
 
-            audio_clip = AudioClips.objects.get(
+            self.audio_clip = AudioClips.objects.select_related('generic_status',).get(
                 pk=audio_clip_id,
                 user_id=self.user.id,
-                generic_status__generic_status_name='processing',
+                audio_clip_role__audio_clip_role_name=audio_clip_role_name,
             )
+
+            #checking only this is enough
+            if self.audio_clip.generic_status.generic_status_name not in ['processing_pending', 'processing', 'processing_failed']:
+
+                raise AudioClips.DoesNotExist
 
         except AudioClips.DoesNotExist:
 
@@ -2039,7 +2023,7 @@ class CreateAudioClips():
 
         self._initialise_s3_post_wrapper()
 
-        upload_info = self.s3_post_wrapper.generate_unprocessed_presigned_post_url(key=audio_clip.audio_file)
+        upload_info = self.s3_post_wrapper.generate_unprocessed_presigned_post_url(key=self.audio_clip.audio_file)
 
         return Response(
             data={
@@ -2053,7 +2037,7 @@ class CreateAudioClips():
     #will validate and invalidate
     #returns None if can start, or Response if cannot
     #should ideally just return True/False and provide getCannotStartNormalisationResponse() for apis.py
-    def prepare_normalisation(self, audio_clip_id:int)->None|Response:
+    def prepare_normalisation(self, audio_clip_id:int, audio_clip_role_name:Literal['originator','responder'])->None|Response:
 
         #doing "add normalisation to queue" here would cause circular import error, so we call at apis.py instead
         #get relevant records
@@ -2067,6 +2051,7 @@ class CreateAudioClips():
             ).get(
                 pk=audio_clip_id,
                 user_id=self.user.id,
+                audio_clip_role__audio_clip_role_name=audio_clip_role_name,
             )
 
             self.event = Events.objects.select_related(
@@ -2085,6 +2070,16 @@ class CreateAudioClips():
                         'is_processed': True,
                     },
                     status=status.HTTP_200_OK
+                )
+
+            elif self.audio_clip.generic_status.generic_status_name not in ['processing_pending', 'processing', 'processing_failed']:
+
+                #must check here for irrelevant context and exit early, since check_db_for_normalisation_context() is quite specific
+                #otherwise we end up doing things like setting up cache, only for it to be irrelevant
+
+                return Response(
+                    data={},
+                    status=status.HTTP_404_NOT_FOUND
                 )
 
             #when responder is not done processing, queue will still exist
@@ -2116,6 +2111,16 @@ class CreateAudioClips():
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        #ensure processing object exists in cache
+
+        self.processing_cache = self.ensure_processing_object_exists_in_processing_cache(
+            processing_cache_key=self.processing_cache_key,
+            processing_cache=self.processing_cache,
+            event=self.event,
+            audio_clip=self.audio_clip,
+            set_cache=True,
+        )
+
         #validate db rows, reset if cannot normalise
 
         db_check_before_normalise = CreateAudioClips.check_db_for_normalisation_context(
@@ -2130,7 +2135,7 @@ class CreateAudioClips():
 
             return Response(
                 data={
-                    "is_processing": True,
+                    "status": 'processing',
                     "attempts_left": self.processing_cache['processings'][str(self.audio_clip.id)]['attempts_left'],
                 },
                 status=status.HTTP_409_CONFLICT
@@ -2172,15 +2177,6 @@ class CreateAudioClips():
                     AudioClips.id: {str(self.audio_clip.id)}
                 '''
             )
-
-        #ensure processing object exists in cache
-
-        self.processing_cache = self.ensure_processing_object_exists_in_processing_cache(
-            processing_cache_key=self.processing_cache_key,
-            processing_cache=self.processing_cache,
-            event=self.event,
-            audio_clip=self.audio_clip
-        )
 
         #attempts_left will never be 0
         #cache will be deleted by task when done, be it on success, or 0 attempts_left on failure
