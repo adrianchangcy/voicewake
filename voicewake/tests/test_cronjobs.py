@@ -215,7 +215,7 @@ class Core_TestCase(TestCase):
         })
 
         target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = True
+        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = sample_audio_clip_0.generic_status.generic_status_name
 
         cache.set(target_cache_key, target_cache)
 
@@ -281,7 +281,7 @@ class Core_TestCase(TestCase):
         })
 
         target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = True
+        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = sample_audio_clip_0.generic_status.generic_status_name
 
         cache.set(target_cache_key, target_cache)
 
@@ -314,7 +314,7 @@ class Core_TestCase(TestCase):
         })
 
         target_cache['processings'][str(sample_audio_clip_1.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'] = False
+        target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'] = sample_audio_clip_1.generic_status.generic_status_name
 
         cache.set(target_cache_key, target_cache)
 
@@ -383,7 +383,7 @@ class Core_TestCase(TestCase):
         })
 
         target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = True
+        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = sample_audio_clip_0.generic_status.generic_status_name
 
         cache.set(target_cache_key, target_cache)
 
@@ -439,7 +439,7 @@ class Core_TestCase(TestCase):
         })
 
         target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = False
+        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = sample_audio_clip_0.generic_status.generic_status_name
 
         cache.set(target_cache_key, target_cache)
 
@@ -505,7 +505,7 @@ class Core_TestCase(TestCase):
         })
 
         target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = False
+        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = sample_audio_clip_0.generic_status.generic_status_name
 
         cache.set(target_cache_key, target_cache)
 
@@ -538,7 +538,7 @@ class Core_TestCase(TestCase):
         })
 
         target_cache['processings'][str(sample_audio_clip_1.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'] = False
+        target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'] = sample_audio_clip_1.generic_status.generic_status_name
 
         cache.set(target_cache_key, target_cache)
 
@@ -607,7 +607,7 @@ class Core_TestCase(TestCase):
         })
 
         target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = False
+        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = sample_audio_clip_0.generic_status.generic_status_name
 
         cache.set(target_cache_key, target_cache)
 

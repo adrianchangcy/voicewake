@@ -172,6 +172,7 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
         processing_cache=processing_cache,
         event=target_event,
         audio_clip=target_audio_clip,
+        set_cache=True,
     )
 
     #just confirm audio_file is fine in db
@@ -202,7 +203,7 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
 
     #update attempt at cache early to better prevent spam
 
-    processing_cache['processings'][str(audio_clip_id)]['is_processing'] = True
+    processing_cache['processings'][str(audio_clip_id)]['status'] = 'processing'
     processing_cache['processings'][str(audio_clip_id)]['attempts_left'] -= 1
 
     CreateAudioClips.set_processing_cache(
@@ -308,16 +309,6 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
 
         processing_cache['processings'][str(audio_clip_id)] = processing_object
 
-    #no longer processing right now
-    #set cache first to be safe
-
-    processing_cache['processings'][str(audio_clip_id)]['is_processing'] = False
-
-    CreateAudioClips.set_processing_cache(
-        processing_cache_key,
-        processing_cache
-    )
-
     #validate db again
 
     db_check_before_normalise = CreateAudioClips.check_db_for_normalisation_context(
@@ -366,6 +357,13 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
 
         #can reattempt
         if processing_cache['processings'][str(audio_clip_id)]['attempts_left'] > 0:
+
+            processing_cache['processings'][str(audio_clip_id)]['status'] = 'processing_failed'
+
+            CreateAudioClips.set_processing_cache(
+                processing_cache_key,
+                processing_cache
+            )
 
             target_audio_clip.generic_status = GenericStatuses.objects.get(
                 generic_status_name='processing_failed'
