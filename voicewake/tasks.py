@@ -317,12 +317,12 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
         event_reply_queue=target_event_reply_queue
     )
 
-    if db_check_before_normalise['is_audio_clip_processing'] is True:
+    if db_check_before_normalise['is_audio_clip_processing'] is False:
 
         raise custom_error(
             ValueError,
             __name__,
-            dev_message="Already processing."
+            dev_message="Expected to be processing."
         )
 
     if db_check_before_normalise['do_rows_match_context'] is False:
@@ -425,7 +425,6 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
 
     #get data
     lambda_response_data = serializer.validated_data
-    generic_status_ok = GenericStatuses.objects.get(generic_status_name='ok')
     datetime_now = get_datetime_now()
 
     #update audio clip
@@ -438,7 +437,7 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
             audio_duration_s=lambda_response_data['audio_duration_s'],
             audio_volume_peaks=lambda_response_data['audio_volume_peaks'],
             audio_file=determined_processed_upload_key,
-            generic_status=generic_status_ok,
+            generic_status=GenericStatuses.objects.get(generic_status_name='ok'),
             last_modified=datetime_now
         )
 
