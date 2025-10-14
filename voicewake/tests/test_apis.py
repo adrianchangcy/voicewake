@@ -1849,7 +1849,7 @@ class Core_TestCase(TestCase):
         })
 
         target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = sample_audio_clip_0.generic_status.generic_status_name
+        target_cache['processings'][str(sample_audio_clip_0.id)]['status'] = sample_audio_clip_0.generic_status.generic_status_name
 
         cache.set(target_cache_key, target_cache)
 
@@ -7584,7 +7584,7 @@ class Core_TestCase(TestCase):
         })
 
         target_cache['processings'][str(sample_audio_clip_1.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'] = sample_audio_clip_1.generic_status.generic_status_name
+        target_cache['processings'][str(sample_audio_clip_1.id)]['status'] = sample_audio_clip_1.generic_status.generic_status_name
 
         cache.set(target_cache_key, target_cache)
 
@@ -7674,7 +7674,7 @@ class Core_TestCase(TestCase):
         })
 
         target_cache['processings'][str(sample_audio_clip_1.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
-        target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'] = sample_audio_clip_1.generic_status.generic_status_name
+        target_cache['processings'][str(sample_audio_clip_1.id)]['status'] = sample_audio_clip_1.generic_status.generic_status_name
 
         cache.set(target_cache_key, target_cache)
 
@@ -8392,7 +8392,7 @@ class Core_TestCase(TestCase):
         })
 
         target_cache['processings'][str(sample_audio_clip_1.id)]['attempts_left'] -= 1
-        target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'] = sample_audio_clip_1.generic_status.generic_status_name
+        target_cache['processings'][str(sample_audio_clip_1.id)]['status'] = sample_audio_clip_1.generic_status.generic_status_name
 
         cache.set(target_cache_key, target_cache)
 
@@ -10318,7 +10318,7 @@ class Core_TestCase(TestCase):
         })
 
         target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] -= 1
-        target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = sample_audio_clip_0.generic_status.generic_status_name
+        target_cache['processings'][str(sample_audio_clip_0.id)]['status'] = sample_audio_clip_0.generic_status.generic_status_name
 
         cache.set(target_cache_key, target_cache)
 
@@ -14366,7 +14366,6 @@ class Core_TestCase(TestCase):
 #for test cases with Redis, only way to guarantee cache isolation have unique target_user for every test case
 #cannot chain first+next+last attempts in one single test case, because we're also testing how cache is guaranteed to exist at all attempts
 @override_settings(
-    
     DEBUG=True,
     CELERY_TASK_ALWAYS_EAGER=True,
 )
@@ -14400,9 +14399,13 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
             settings.BASE_DIR,
             'voicewake/tests/file_samples/audio_ok_120s.webm'
         )
-        cls.faulty_audio_file_full_path = os.path.join(
+        cls.faulty_audio_file_full_path_0 = os.path.join(
             settings.BASE_DIR,
             'voicewake/tests/file_samples/txt_as_fake_webm.webm'
+        )
+        cls.faulty_audio_file_full_path_1 = os.path.join(
+            settings.BASE_DIR,
+            'voicewake/tests/file_samples/audio_not_mp3.wav'
         )
 
         #files
@@ -14427,11 +14430,10 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
         cls.faulty_audio_file_unprocessed_object_key_1 = 'test/audio_not_mp3.wav'
 
         cls._prepare_s3_unprocessed_audio_file(
-            unprocessed_object_key=cls.faulty_audio_file_unprocessed_object_key,
+            unprocessed_object_key=cls.faulty_audio_file_unprocessed_object_key_0,
             file_extension='webm',
-            local_file_path=cls.faulty_audio_file_full_path
+            local_file_path=cls.faulty_audio_file_full_path_0
         )
-
 
     @classmethod
     def tearDownClass(cls):
@@ -14670,15 +14672,18 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
 
             target_cache = cache.get(target_cache_key, None)
 
-            self.assertIsNotNone(target_cache)
-            self.assertTrue(str(sample_audio_clip_0.id) in target_cache['processings'])
-            self.assertFalse(target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'])
-
             self.assertEqual(sample_event_0.generic_status.generic_status_name, 'processing')
             self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'processing_failed')
             self.assertEqual(
                 sample_audio_clip_0.audio_file,
                 self.faulty_audio_file_unprocessed_object_key_0
+            )
+
+            self.assertIsNotNone(target_cache)
+            self.assertTrue(str(sample_audio_clip_0.id) in target_cache['processings'])
+            self.assertEqual(
+                target_cache['processings'][str(sample_audio_clip_0.id)]['status'],
+                sample_audio_clip_0.generic_status.generic_status_name
             )
 
             #this is the proof
@@ -14758,32 +14763,35 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
                 'audio_clip_id': sample_audio_clip_1.id,
             }
     
-            request = self.client.post(reverse('create_events_process_api'), data)
+            request = self.client.post(reverse('create_replies_process_api'), data)
             response_data = get_response_data(request)
     
             self.assertEqual(request.status_code, 200)
 
             sample_event_0.refresh_from_db()
             sample_audio_clip_0.refresh_from_db()
-            sample_audio_clip_0.refresh_from_db()
+            sample_audio_clip_1.refresh_from_db()
     
             #has cache and processing object on normalise failure
             #frontend uses last version of cache to check for completion
 
             target_cache = cache.get(target_cache_key, None)
 
-            self.assertIsNotNone(target_cache)
-            self.assertTrue(str(sample_audio_clip_1.id) in target_cache['processings'])
-            self.assertFalse(target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'])
-
             self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
             self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'ok')
             self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'processing_failed')
             self.assertEqual(
                 sample_audio_clip_1.audio_file,
-                self.unprocessed_object_key
+                self.faulty_audio_file_unprocessed_object_key_0
             )
             self.assertTrue(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists())
+
+            self.assertIsNotNone(target_cache)
+            self.assertTrue(str(sample_audio_clip_1.id) in target_cache['processings'])
+            self.assertEqual(
+                target_cache['processings'][str(sample_audio_clip_1.id)]['status'],
+                sample_audio_clip_1.generic_status.generic_status_name
+            )
 
             #this is the proof
             self.assertEqual(
@@ -14882,7 +14890,7 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
                     })
 
                     target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'] = attempts_left
-                    target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'] = sample_audio_clip_0.generic_status.generic_status_name
+                    target_cache['processings'][str(sample_audio_clip_0.id)]['status'] = sample_audio_clip_0.generic_status.generic_status_name
 
                     cache.set(target_cache_key, target_cache)
 
@@ -14897,9 +14905,8 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
 
                 self.assertEqual(request.status_code, 200)
 
+                sample_event_0.refresh_from_db()
                 sample_audio_clip_0.refresh_from_db()
-
-                target_cache = cache.get(target_cache_key, None)
 
                 #has cache but no processing object on normalise success
                 #frontend uses last version of cache to check for completion
@@ -14981,13 +14988,15 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
 
             self.assertIsNotNone(target_cache)
             self.assertTrue(str(sample_audio_clip_0.id) in target_cache['processings'])
-            self.assertFalse(target_cache['processings'][str(sample_audio_clip_0.id)]['is_processing'])
-
+            self.assertEqual(
+                target_cache['processings'][str(sample_audio_clip_0.id)]['status'],
+                sample_audio_clip_0.generic_status.generic_status_name
+            )
             self.assertEqual(sample_event_0.generic_status.generic_status_name, 'processing')
             self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'processing_failed')
             self.assertEqual(
                 sample_audio_clip_0.audio_file,
-                self.unprocessed_object_key
+                self.faulty_audio_file_unprocessed_object_key_0
             )
             self.assertEqual(
                 target_cache['processings'][str(sample_audio_clip_0.id)]['attempts_left'],
@@ -15012,7 +15021,7 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
         request = self.client.post(reverse('create_events_process_api'), data)
         response_data = get_response_data(request)
     
-        self.assertEqual(request.status_code, 404)
+        self.assertEqual(request.status_code, 200)
 
         sample_event_0.refresh_from_db()
         sample_audio_clip_0.refresh_from_db()
@@ -15025,7 +15034,22 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
         self.assertIsNotNone(target_cache)
         self.assertFalse(str(sample_audio_clip_0.id) in target_cache['processings'])
         self.assertEqual(sample_event_0.generic_status.generic_status_name, 'deleted')
-        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_audio_clip_0.generic_status.generic_status_name, 'processing_max_attempts_reached')
+        self.assertEqual(
+            sample_audio_clip_0.audio_file,
+            self.faulty_audio_file_unprocessed_object_key_0
+        )
+
+        #future attempts will be 404
+
+        data = {
+            'audio_clip_id': sample_audio_clip_0.id,
+        }
+    
+        request = self.client.post(reverse('create_events_process_api'), data)
+        response_data = get_response_data(request)
+    
+        self.assertEqual(request.status_code, 404)
 
 
     def test_create_replies__process__not_consecutive_first_next_last_attempts_ok(self):
@@ -15134,7 +15158,7 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
                     })
 
                     target_cache['processings'][str(sample_audio_clip_1.id)]['attempts_left'] = attempts_left
-                    target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'] = sample_audio_clip_1.generic_status.generic_status_name
+                    target_cache['processings'][str(sample_audio_clip_1.id)]['status'] = sample_audio_clip_1.generic_status.generic_status_name
 
                     cache.set(target_cache_key, target_cache)
 
@@ -15144,15 +15168,13 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
                     'audio_clip_id': sample_audio_clip_1.id,
                 }
 
-                request = self.client.post(reverse('create_events_process_api'), data)
+                request = self.client.post(reverse('create_replies_process_api'), data)
                 response_data = get_response_data(request)
 
                 self.assertEqual(request.status_code, 200)
 
                 sample_event_0.refresh_from_db()
                 sample_audio_clip_1.refresh_from_db()
-
-                target_cache = cache.get(target_cache_key, None)
 
                 #has cache but no processing object on normalise success
                 #frontend uses last version of cache to check for completion
@@ -15227,7 +15249,7 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
             audio_clip_audio_clip_role_audio_clip_role_name='responder',
             audio_clip_event=sample_event_0,
             audio_clip_generic_status_generic_status_name='processing_pending',
-            audio_clip_audio_file=self.unprocessed_object_key,
+            audio_clip_audio_file=self.faulty_audio_file_unprocessed_object_key_0,
         )
         sample_audio_clip_metric_1 = AudioClipMetricsFactory(
             audio_clip_metric_audio_clip=sample_audio_clip_1,
@@ -15239,10 +15261,10 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
             #proceed
     
             data = {
-                'audio_clip_id': sample_audio_clip_0.id,
+                'audio_clip_id': sample_audio_clip_1.id,
             }
     
-            request = self.client.post(reverse('create_events_process_api'), data)
+            request = self.client.post(reverse('create_replies_process_api'), data)
             response_data = get_response_data(request)
     
             self.assertEqual(request.status_code, 200)
@@ -15255,14 +15277,17 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
 
             target_cache = cache.get(target_cache_key, None)
 
-            self.assertIsNotNone(target_cache)
-            self.assertTrue(str(sample_audio_clip_1.id) in target_cache['processings'])
-            self.assertFalse(target_cache['processings'][str(sample_audio_clip_1.id)]['is_processing'])
-
             self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'processing_failed')
             self.assertEqual(
                 sample_audio_clip_1.audio_file,
-                self.unprocessed_object_key
+                self.faulty_audio_file_unprocessed_object_key_0
+            )
+
+            self.assertIsNotNone(target_cache)
+            self.assertTrue(str(sample_audio_clip_1.id) in target_cache['processings'])
+            self.assertEqual(
+                target_cache['processings'][str(sample_audio_clip_1.id)]['status'],
+                sample_audio_clip_1.generic_status.generic_status_name
             )
 
             #important part
@@ -15286,11 +15311,12 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
             'audio_clip_id': sample_audio_clip_1.id,
         }
     
-        request = self.client.post(reverse('create_events_process_api'), data)
+        request = self.client.post(reverse('create_replies_process_api'), data)
         response_data = get_response_data(request)
     
-        self.assertEqual(request.status_code, 404)
+        self.assertEqual(request.status_code, 200)
 
+        sample_event_0.refresh_from_db()
         sample_audio_clip_1.refresh_from_db()
     
         #has cache and processing object on normalise failure
@@ -15300,10 +15326,25 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
 
         self.assertIsNotNone(target_cache)
         self.assertFalse(str(sample_audio_clip_1.id) in target_cache['processings'])
-        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'deleted')
+        self.assertEqual(sample_event_0.generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(sample_audio_clip_1.generic_status.generic_status_name, 'processing_max_attempts_reached')
         self.assertFalse(EventReplyQueues.objects.filter(pk=sample_event_reply_queue_0.id).exists())
 
+        self.assertEqual(
+            sample_audio_clip_1.audio_file,
+            self.faulty_audio_file_unprocessed_object_key_0
+        )
 
+        #future attempts will be 404
+
+        data = {
+            'audio_clip_id': sample_audio_clip_1.id,
+        }
+    
+        request = self.client.post(reverse('create_replies_process_api'), data)
+        response_data = get_response_data(request)
+    
+        self.assertEqual(request.status_code, 404)
 
 
 
