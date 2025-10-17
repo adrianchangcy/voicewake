@@ -314,8 +314,6 @@ def cronjob_handle_originator_processing_overdue():
             #expect tuple based on last RETURNING
             cursor_rows = cursor.fetchall()
 
-            datetime_now = get_datetime_now()
-
             processing_cache_keys = []
 
             #prepare cache keys first, so we can use cache.get_many()
@@ -393,12 +391,14 @@ def cronjob_delete_event_reply_queue__not_replying__overdue():
 #if clips exist related to deleted queues, update them to processing_overdue and update cache
 #no need to update event, since it is always "incomplete" until responder clip is processed
 @shared_task
-def cronjob_delete_event_reply_queue__delete_audio_clip__is_replying__overdue():
+def cronjob_delete_event_reply_queue__is_replying__delete_audio_clip__overdue():
 
     #audio clip is updated, instead of deleted, to enforce reply limit
 
     when_locked_checkpoint = get_datetime_now() - timedelta(seconds=settings.EVENT_REPLY_MAX_DURATION_S)
 
+    #updating audio_clips must strictly follow target_event_reply_queues, since qualified terq rows will be deleted
+    #if you do for-loop for processing_pending/processing/processing_failed, but terq is deleted before audio_clips can match, it's over
     full_sql = '''
         WITH
         target_event_reply_queues AS (
@@ -427,64 +427,60 @@ def cronjob_delete_event_reply_queue__delete_audio_clip__is_replying__overdue():
         ;
     '''
 
-    for target_generic_status_name in ['processing_pending', 'processing', 'processing_failed']:
+    full_params = [
+        when_locked_checkpoint,
+        settings.CRONJOB_DEFAULT_ROW_LIMIT,
+        'processing_overdue',
+    ]
 
-        full_params = [
-            when_locked_checkpoint,
-            settings.CRONJOB_DEFAULT_ROW_LIMIT,
-            target_generic_status_name,
-        ]
+    with connection.cursor() as cursor:
     
-        with connection.cursor() as cursor:
+        cursor.execute(
+            sql=full_sql,
+            params=full_params,
+        )
+
+        #expect tuple based on last RETURNING
+        cursor_rows = cursor.fetchall()
+
+        processing_cache_keys = []
+
+        #prepare cache keys first, so we can use cache.get_many()
+
+        for row in cursor_rows:
         
-            cursor.execute(
-                sql=full_sql,
-                params=full_params,
-            )
-    
-            #expect tuple based on last RETURNING
-            cursor_rows = cursor.fetchall()
-    
-            datetime_now = get_datetime_now()
-    
-            processing_cache_keys = []
-    
-            #prepare cache keys first, so we can use cache.get_many()
-    
-            for row in cursor_rows:
+            audio_clip_id, user_id = row
+
+            #if processing_cache for this user already exists in this cronjob, use it
+
+            processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
+
+            if processing_cache_key not in processing_cache_keys:
             
-                audio_clip_id, user_id = row
-    
-                #if processing_cache for this user already exists in this cronjob, use it
-    
-                processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
-    
-                if processing_cache_key not in processing_cache_keys:
-                
-                    processing_cache_keys.append(processing_cache_key)
-    
-            #get caches
-    
-            processing_caches = cache.get_many(processing_cache_keys)
-    
-            #remove processings
-    
-            for row in cursor_rows:
-            
-                audio_clip_id, user_id = row
-    
-                processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
-    
-                if (
-                    processing_cache_key in processing_caches and
-                    str(audio_clip_id) in processing_caches[processing_cache_key]['processings']
-                ):
-    
-                    processing_caches[processing_cache_key]['processings'].pop(str(audio_clip_id))
-    
-            #save
-    
-            cache.set_many(processing_caches, timeout=settings.REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S)
+                processing_cache_keys.append(processing_cache_key)
+
+        #get caches
+
+        processing_caches = cache.get_many(processing_cache_keys)
+
+        #remove processings
+
+        for row in cursor_rows:
+        
+            audio_clip_id, user_id = row
+
+            processing_cache_key = CreateAudioClips.determine_processing_cache_key(user_id=user_id)
+
+            if (
+                processing_cache_key in processing_caches and
+                str(audio_clip_id) in processing_caches[processing_cache_key]['processings']
+            ):
+
+                processing_caches[processing_cache_key]['processings'].pop(str(audio_clip_id))
+
+        #save
+
+        cache.set_many(processing_caches, timeout=settings.REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S)
 
 
 @shared_task
