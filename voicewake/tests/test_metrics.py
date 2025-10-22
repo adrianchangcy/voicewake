@@ -97,7 +97,9 @@ class RealisticBulkData():
             'incomplete': GenericStatuses.objects.get(generic_status_name='incomplete'),
             'completed': GenericStatuses.objects.get(generic_status_name='completed'),
             'deleted': GenericStatuses.objects.get(generic_status_name='deleted'),
+            'processing_pending': GenericStatuses.objects.get(generic_status_name='processing_pending'),
             'processing': GenericStatuses.objects.get(generic_status_name='processing'),
+            'processing_failed': GenericStatuses.objects.get(generic_status_name='processing_failed'),
         }
         self.audio_clip_roles = {
             'originator': AudioClipRoles.objects.get(audio_clip_role_name='originator'),
@@ -122,18 +124,7 @@ class RealisticBulkData():
         #closest to end, but not last
         self.excluded_audio_clip_tones_indexes.append(len(self.audio_clip_tones) - 2)
 
-        #check existing db
-        for index in self.excluded_audio_clip_tones_indexes:
-
-            row_count = AudioClips.objects.filter(audio_clip_tone_id=self.audio_clip_tones[index].id).count()
-
-            if row_count > 0:
-
-                raise ValueError('''
-                    Tones to be excluded has unexpected rows in existing db.
-                    This means your audio_clip_tones were updated.
-                    Please recreate db.
-                ''')
+        self.faulty_audio_file_unprocessed_object_key = 'test/text_as_fake_webm.webm'
 
         self.like_count = 0
         self.dislike_count = 0
@@ -218,10 +209,18 @@ class RealisticBulkData():
             raise ValueError('Trigger was not found.')
 
 
-    def create_new_users(self):
+    def create_new_users(self, user_quantity=None, save_to_instance=True):
 
-        #reset so it doesn't become exponential
-        self.users = []
+        target_user_quantity = self.user_quantity
+
+        if user_quantity is not None:
+
+            target_user_quantity = user_quantity
+
+        if save_to_instance is True:
+
+            #reset so it doesn't become exponential
+            self.users = []
 
         user_count = 0
 
@@ -243,12 +242,14 @@ class RealisticBulkData():
 
         #create users
 
-        for x in range(user_count, user_count+self.user_quantity):
+        new_users = []
+
+        for x in range(user_count, user_count+target_user_quantity):
 
             new_username = self.user_prefix + str(x)
             new_email = new_username + '@gmail.com'
 
-            self.users.append(
+            new_users.append(
                 get_user_model().objects.create_user(
                     username=new_username,
                     email=new_email,
@@ -256,12 +257,18 @@ class RealisticBulkData():
                 )
             )
 
-            print('Created test user: ' + self.users[-1].username)
+            print('Created test user: ' + new_users[-1].username)
+
+        if save_to_instance is True:
+
+            self.users.extend(new_users)
+
+        return new_users
 
 
     def reuse_existing_users(self):
 
-        self.users = get_user_model().objects.all().exclude(is_superuser=True)
+        self.users = get_user_model().objects.all().exclude(is_superuser=True)[:self.user_quantity]
 
         if len(self.users) == 0:
 
@@ -1333,6 +1340,329 @@ class RealisticBulkData():
         }
 
 
+    def create_processing_originators(self):
+
+        target_generic_statuses = [
+            self.generic_statuses['processing_pending'],
+            self.generic_statuses['processing'],
+            self.generic_statuses['processing_failed'],
+        ]
+
+        #1 originator can have a few processing_pending/processing/processing_failed
+        new_originators = self.create_new_users(
+            user_quantity=self.user_quantity * len(target_generic_statuses),
+            save_to_instance=False,
+        )
+
+        target_event_quantity = 10
+
+        events = []
+        originator_audio_clips = []
+        originator_audio_clip_metrics = []
+
+        stopwatch = Stopwatch()
+
+        print_with_function_name(f"Started.")
+        stopwatch.start()
+
+        for target_generic_status in target_generic_statuses:
+
+            for user in new_originators:
+
+                #since each originator can have multiple rows, use arbitrary number
+
+                #events must exist in db first before audio_clips, so we create them here
+                events.extend(
+                    EventsFactory.create_batch(
+                        event_created_by=user,
+                        event_generic_status_generic_status_name='processing',
+                        size=target_event_quantity
+                    )
+                )
+                reset_queries()
+
+                temporary_event_index = len(events) - target_event_quantity
+
+                for x in range(target_event_quantity):
+
+                    #randomise tone just because it's easier to code
+                    audio_clip_tone = random.randint(0, (len(self.audio_clip_tones) - 1))
+                    audio_clip_tone = self.audio_clip_tones[audio_clip_tone]
+
+                    originator_audio_clips.append(
+                        AudioClips(
+                            user=events[temporary_event_index+x].created_by,
+                            audio_clip_role=self.audio_clip_roles['originator'],
+                            audio_clip_tone=audio_clip_tone,
+                            event=events[temporary_event_index+x],
+                            generic_status=target_generic_status,
+                            audio_file=self.faulty_audio_file_unprocessed_object_key,
+                            is_banned=False,
+                        )
+                    )
+
+        stopwatch.stop()
+        stopwatch.print_pretty_difference()
+
+        stopwatch.start()
+        print('Creating audio_clips...')
+
+        originator_audio_clips = AudioClips.objects.bulk_create(originator_audio_clips, batch_size=self.db_batch_size)
+        reset_queries()
+
+        stopwatch.stop()
+        stopwatch.print_pretty_difference()
+
+        #cache
+
+        stopwatch.start()
+        print('Creating cache for users...')
+
+        for audio_clip in originator_audio_clips:
+
+            if audio_clip.generic_status.generic_status_name == 'processing_pending':
+
+                continue
+
+            target_cache_key = CreateAudioClips.determine_processing_cache_key(
+                user_id=audio_clip.user.id,
+            )
+            target_cache = cache.get(target_cache_key, None)
+            if target_cache is None:
+                target_cache = CreateAudioClips.get_default_processing_cache_per_user()
+            target_cache['processings'].update({
+                str(audio_clip.id): CreateAudioClips.get_default_processing_object(
+                    event=audio_clip.event,
+                    audio_clip=audio_clip,
+                ),
+            })
+            target_cache['processings'][str(audio_clip.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+            target_cache['processings'][str(audio_clip.id)]['status'] = audio_clip.generic_status.generic_status_name
+            cache.set(target_cache_key, target_cache)
+
+        stopwatch.stop()
+        stopwatch.print_pretty_difference()
+
+        stopwatch.start()
+        print('Creating audio_clip_metrics...')
+
+        for audio_clip in originator_audio_clips:
+
+            originator_audio_clip_metrics.append(
+                AudioClipMetrics(
+                    audio_clip=audio_clip,
+                    like_count=0,
+                    dislike_count=0,
+                    like_ratio=0,
+                )
+            )
+
+        originator_audio_clip_metrics = AudioClipMetrics.objects.bulk_create(originator_audio_clip_metrics, batch_size=self.db_batch_size)
+        reset_queries()
+
+        stopwatch.stop()
+        stopwatch.print_pretty_difference()
+
+        return {
+            'events': events,
+            'originator_audio_clips': originator_audio_clips,
+            'originator_audio_clip_metrics': originator_audio_clip_metrics,
+        }
+
+
+    def create_processing_responders(self):
+
+        target_generic_statuses = [
+            self.generic_statuses['processing_pending'],
+            self.generic_statuses['processing'],
+            self.generic_statuses['processing_failed'],
+        ]
+
+        target_event_quantity = 10
+
+        new_originators = self.create_new_users(
+            user_quantity=self.user_quantity * len(target_generic_statuses),
+            save_to_instance=False,
+        )
+        #every event must have unique responder
+        new_responders = self.create_new_users(
+            user_quantity=len(new_originators) * target_event_quantity * len(target_generic_statuses),
+            save_to_instance=False,
+        )
+
+        events = []
+        originator_audio_clips = []
+        originator_audio_clip_metrics = []
+        responder_audio_clips = []
+        responder_audio_clip_metrics = []
+        event_reply_queues = []
+
+        stopwatch = Stopwatch()
+
+        print_with_function_name(f"Started.")
+        stopwatch.start()
+
+        responder_index = 0
+
+        for target_generic_status in target_generic_statuses:
+
+            for originator in new_originators:
+
+                #events must exist in db first before audio_clips, so we create them here
+                events.extend(
+                    EventsFactory.create_batch(
+                        event_created_by=originator,
+                        event_generic_status_generic_status_name='incomplete',
+                        size=target_event_quantity
+                    )
+                )
+                reset_queries()
+
+                temporary_event_index = len(events) - target_event_quantity
+
+                for x in range(target_event_quantity):
+
+                    #randomise tone just because it's easier to code
+                    audio_clip_tone = random.randint(0, (len(self.audio_clip_tones) - 1))
+                    audio_clip_tone = self.audio_clip_tones[audio_clip_tone]
+
+                    originator_audio_clips.append(
+                        AudioClips(
+                            user=events[temporary_event_index+x].created_by,
+                            audio_clip_role=self.audio_clip_roles['originator'],
+                            audio_clip_tone=audio_clip_tone,
+                            event=events[temporary_event_index+x],
+                            generic_status=self.generic_statuses['ok'],
+                            audio_file=self.audio_file,
+                            audio_duration_s=self.audio_duration_s,
+                            audio_volume_peaks=self.audio_volume_peaks,
+                            is_banned=False,
+                        )
+                    )
+
+                    event_reply_queues.append(
+                        EventReplyQueues(
+                            event=events[temporary_event_index+x],
+                            locked_for_user=new_responders[responder_index],
+                            is_replying=True,
+                        )
+                    )
+
+                    responder_audio_clips.append(
+                        AudioClips(
+                            user=new_responders[responder_index],
+                            audio_clip_role=self.audio_clip_roles['responder'],
+                            audio_clip_tone=audio_clip_tone,
+                            event=events[temporary_event_index+x],
+                            generic_status=target_generic_status,
+                            audio_file=self.faulty_audio_file_unprocessed_object_key,
+                            is_banned=False,
+                        )
+                    )
+
+                    responder_index += 1
+
+        stopwatch.stop()
+        stopwatch.print_pretty_difference()
+
+        #queues
+
+        stopwatch.start()
+        print('Creating event_reply_queues...')
+
+        event_reply_queues = EventReplyQueues.objects.bulk_create(event_reply_queues, batch_size=self.db_batch_size)
+
+        stopwatch.stop()
+        stopwatch.print_pretty_difference()
+
+        #audio_clips
+
+        stopwatch.start()
+        print('Creating audio_clips...')
+
+        originator_audio_clips = AudioClips.objects.bulk_create(originator_audio_clips, batch_size=self.db_batch_size)
+        responder_audio_clips = AudioClips.objects.bulk_create(responder_audio_clips, batch_size=self.db_batch_size)
+        reset_queries()
+
+        stopwatch.stop()
+        stopwatch.print_pretty_difference()
+
+        #cache
+
+        stopwatch.start()
+        print('Creating cache for users...')
+
+        for audio_clip in responder_audio_clips:
+
+            if audio_clip.generic_status.generic_status_name == 'processing_pending':
+
+                continue
+
+            target_cache_key = CreateAudioClips.determine_processing_cache_key(
+                user_id=audio_clip.user.id,
+            )
+            target_cache = cache.get(target_cache_key, None)
+            if target_cache is None:
+                target_cache = CreateAudioClips.get_default_processing_cache_per_user()
+            target_cache['processings'].update({
+                str(audio_clip.id): CreateAudioClips.get_default_processing_object(
+                    event=audio_clip.event,
+                    audio_clip=audio_clip,
+                ),
+            })
+            target_cache['processings'][str(audio_clip.id)]['attempts_left'] = settings.AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS - 1
+            target_cache['processings'][str(audio_clip.id)]['status'] = audio_clip.generic_status.generic_status_name
+            cache.set(target_cache_key, target_cache)
+
+        stopwatch.stop()
+        stopwatch.print_pretty_difference()
+
+        stopwatch.start()
+        print('Creating audio_clip_metrics...')
+
+        for audio_clip in originator_audio_clips:
+
+            originator_audio_clip_metrics.append(
+                AudioClipMetrics(
+                    audio_clip=audio_clip,
+                    like_count=0,
+                    dislike_count=0,
+                    like_ratio=0,
+                )
+            )
+
+        originator_audio_clip_metrics = AudioClipMetrics.objects.bulk_create(originator_audio_clip_metrics, batch_size=self.db_batch_size)
+
+        reset_queries()
+
+        for audio_clip in responder_audio_clips:
+
+            responder_audio_clip_metrics.append(
+                AudioClipMetrics(
+                    audio_clip=audio_clip,
+                    like_count=0,
+                    dislike_count=0,
+                    like_ratio=0,
+                )
+            )
+
+        responder_audio_clip_metrics = AudioClipMetrics.objects.bulk_create(responder_audio_clip_metrics, batch_size=self.db_batch_size)
+
+        reset_queries()
+
+        stopwatch.stop()
+        stopwatch.print_pretty_difference()
+
+        return {
+            'events': events,
+            'originator_audio_clips': originator_audio_clips,
+            'originator_audio_clip_metrics': originator_audio_clip_metrics,
+            'event_reply_queues': event_reply_queues,
+            'responder_audio_clips': responder_audio_clips,
+            'responder_audio_clip_metrics': responder_audio_clip_metrics,
+        }
+
+
     #if you want more rows, specify max_randomness_iteration_count
         #1 is just enough for other tests
     #cmd:
@@ -1386,6 +1716,10 @@ class RealisticBulkData():
                 queue_is_replying = random.randint(0, 1) == 1
                 realistic_bulk_data_class.create_event_incomplete_and_event_reply_queue(queue_is_replying,)
 
+                #users are not shared in these cases
+                realistic_bulk_data_class.create_processing_originators()
+                realistic_bulk_data_class.create_processing_responders()
+
             else:
 
                 threads = []
@@ -1405,6 +1739,10 @@ class RealisticBulkData():
                 #call once only for every user
                 queue_is_replying = random.randint(0, 1) == 1
                 threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete_and_event_reply_queue, args=(queue_is_replying,)))
+
+                #users are not shared in these cases
+                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_originators,))
+                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_responders,))
 
                 random.shuffle(threads)
 
@@ -1986,6 +2324,225 @@ class RealisticBulkData_TestCase(TestCase):
             pass
 
 
+    def test_realistic_bulk_data__processing_originators(self):
+
+        realistic_bulk_data_class = RealisticBulkData()
+
+        result = realistic_bulk_data_class.create_processing_originators()
+
+        self.assertGreater(len(result['events']), 0)
+        self.assertGreater(len(result['originator_audio_clips']), 0)
+        self.assertGreater(len(result['originator_audio_clip_metrics']), 0)
+
+        self.assertEqual(len(result['events']), len(result['originator_audio_clips']))
+        self.assertEqual(len(result['events']), len(result['originator_audio_clip_metrics']))
+
+        middle_row_index = math.ceil(len(result['events']) / 2)
+
+        self.assertEqual(result['events'][0].generic_status.generic_status_name, 'processing')
+        self.assertEqual(result['events'][middle_row_index].generic_status.generic_status_name, 'processing')
+        self.assertEqual(result['events'][-1].generic_status.generic_status_name, 'processing')
+
+        self.assertEqual(result['originator_audio_clips'][0].generic_status.generic_status_name, 'processing_pending')
+        self.assertEqual(result['originator_audio_clips'][middle_row_index].generic_status.generic_status_name, 'processing')
+        self.assertEqual(result['originator_audio_clips'][-1].generic_status.generic_status_name, 'processing_failed')
+
+        self.assertEqual(result['originator_audio_clips'][0].audio_clip_role.audio_clip_role_name, 'originator')
+        self.assertEqual(result['originator_audio_clips'][middle_row_index].audio_clip_role.audio_clip_role_name, 'originator')
+        self.assertEqual(result['originator_audio_clips'][-1].audio_clip_role.audio_clip_role_name, 'originator')
+
+        #processing_pending, no processing object
+        target_cache = cache.get(
+            CreateAudioClips.determine_processing_cache_key(
+                user_id=result['originator_audio_clips'][0].user.id
+            ),
+            None
+        )
+        processing_object = CreateAudioClips.get_processing_object_from_processing_cache(
+            target_cache,
+            result['originator_audio_clips'][0].id
+        )
+        self.assertIsNone(processing_object)
+
+        #processing, has processing object
+        target_cache = cache.get(
+            CreateAudioClips.determine_processing_cache_key(
+                user_id=result['originator_audio_clips'][middle_row_index].user.id
+            ),
+            None
+        )
+        processing_object = CreateAudioClips.get_processing_object_from_processing_cache(
+            target_cache,
+            result['originator_audio_clips'][middle_row_index].id
+        )
+        self.assertIsNotNone(processing_object)
+        self.assertEqual(
+            processing_object['status'],
+            result['originator_audio_clips'][middle_row_index].generic_status.generic_status_name
+        )
+
+        #processing_failed, has processing object
+        target_cache = cache.get(
+            CreateAudioClips.determine_processing_cache_key(
+                user_id=result['originator_audio_clips'][-1].user.id
+            ),
+            None
+        )
+        processing_object = CreateAudioClips.get_processing_object_from_processing_cache(
+            target_cache,
+            result['originator_audio_clips'][-1].id
+        )
+        self.assertIsNotNone(processing_object)
+        self.assertEqual(
+            processing_object['status'],
+            result['originator_audio_clips'][-1].generic_status.generic_status_name
+        )
+
+        self.metrics.update({
+            inspect.currentframe().f_code.co_name: {
+                'events': len(result['events']),
+                'originator_audio_clips': len(result['originator_audio_clips']),
+                'originator_audio_clip_metrics': len(result['originator_audio_clip_metrics']),
+            }
+        })
+
+
+    def test_realistic_bulk_data__processing_responders(self):
+
+        realistic_bulk_data_class = RealisticBulkData()
+
+        result = realistic_bulk_data_class.create_processing_responders()
+
+        self.assertGreater(len(result['events']), 0)
+        self.assertGreater(len(result['originator_audio_clips']), 0)
+        self.assertGreater(len(result['originator_audio_clip_metrics']), 0)
+        self.assertGreater(len(result['event_reply_queues']), 0)
+        self.assertGreater(len(result['originator_audio_clips']), 0)
+        self.assertGreater(len(result['originator_audio_clip_metrics']), 0)
+
+        self.assertEqual(len(result['events']), len(result['originator_audio_clips']))
+        self.assertEqual(len(result['events']), len(result['originator_audio_clip_metrics']))
+        self.assertEqual(len(result['events']), len(result['event_reply_queues']))
+        self.assertEqual(len(result['events']), len(result['responder_audio_clips']))
+        self.assertEqual(len(result['events']), len(result['responder_audio_clip_metrics']))
+
+        middle_row_index = math.ceil(len(result['events']) / 2)
+
+        self.assertEqual(result['events'][0].generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(result['events'][middle_row_index].generic_status.generic_status_name, 'incomplete')
+        self.assertEqual(result['events'][-1].generic_status.generic_status_name, 'incomplete')
+
+        self.assertEqual(result['originator_audio_clips'][0].generic_status.generic_status_name, 'ok')
+        self.assertEqual(result['originator_audio_clips'][middle_row_index].generic_status.generic_status_name, 'ok')
+        self.assertEqual(result['originator_audio_clips'][-1].generic_status.generic_status_name, 'ok')
+
+        self.assertEqual(result['responder_audio_clips'][0].generic_status.generic_status_name, 'processing_pending')
+        self.assertEqual(result['responder_audio_clips'][middle_row_index].generic_status.generic_status_name, 'processing')
+        self.assertEqual(result['responder_audio_clips'][-1].generic_status.generic_status_name, 'processing_failed')
+
+        self.assertEqual(result['originator_audio_clips'][0].audio_clip_role.audio_clip_role_name, 'originator')
+        self.assertEqual(result['originator_audio_clips'][middle_row_index].audio_clip_role.audio_clip_role_name, 'originator')
+        self.assertEqual(result['originator_audio_clips'][-1].audio_clip_role.audio_clip_role_name, 'originator')
+
+        self.assertEqual(result['responder_audio_clips'][0].audio_clip_role.audio_clip_role_name, 'responder')
+        self.assertEqual(result['responder_audio_clips'][middle_row_index].audio_clip_role.audio_clip_role_name, 'responder')
+        self.assertEqual(result['responder_audio_clips'][-1].audio_clip_role.audio_clip_role_name, 'responder')
+
+        self.assertEqual(
+            result['event_reply_queues'][0].locked_for_user.id,
+            result['responder_audio_clips'][0].user.id,
+        )
+        self.assertEqual(
+            result['event_reply_queues'][middle_row_index].locked_for_user.id,
+            result['responder_audio_clips'][middle_row_index].user.id,
+        )
+        self.assertEqual(
+            result['event_reply_queues'][-1].locked_for_user.id,
+            result['responder_audio_clips'][-1].user.id,
+        )
+
+        self.assertEqual(result['event_reply_queues'][0].is_replying, True)
+        self.assertEqual(result['event_reply_queues'][middle_row_index].is_replying, True)
+        self.assertEqual(result['event_reply_queues'][-1].is_replying, True)
+
+        #processing_pending, no cache at all because responder is used only once
+        target_cache = cache.get(
+            CreateAudioClips.determine_processing_cache_key(
+                user_id=result['responder_audio_clips'][0].user.id
+            ),
+            None
+        )
+        self.assertIsNone(target_cache)
+
+        #processing, has processing object
+        target_cache = cache.get(
+            CreateAudioClips.determine_processing_cache_key(
+                user_id=result['responder_audio_clips'][middle_row_index].user.id
+            ),
+            None
+        )
+        processing_object = CreateAudioClips.get_processing_object_from_processing_cache(
+            target_cache,
+            result['responder_audio_clips'][middle_row_index].id
+        )
+        self.assertIsNotNone(processing_object)
+        self.assertEqual(
+            processing_object['status'],
+            result['responder_audio_clips'][middle_row_index].generic_status.generic_status_name
+        )
+
+        #processing_failed, has processing object
+        target_cache = cache.get(
+            CreateAudioClips.determine_processing_cache_key(
+                user_id=result['responder_audio_clips'][-1].user.id
+            ),
+            None
+        )
+        processing_object = CreateAudioClips.get_processing_object_from_processing_cache(
+            target_cache,
+            result['responder_audio_clips'][-1].id
+        )
+        self.assertIsNotNone(processing_object)
+        self.assertEqual(
+            processing_object['status'],
+            result['responder_audio_clips'][-1].generic_status.generic_status_name
+        )
+
+        self.metrics.update({
+            inspect.currentframe().f_code.co_name: {
+                'events': len(result['events']),
+                'originator_audio_clips': len(result['originator_audio_clips']),
+                'originator_audio_clip_metrics': len(result['originator_audio_clip_metrics']),
+                'event_reply_queues': len(result['event_reply_queues']),
+                'responder_audio_clips': len(result['responder_audio_clips']),
+                'responder_audio_clip_metrics': len(result['responder_audio_clip_metrics']),
+            }
+        })
+
+
+    #run this before testing sample_run()
+    def test_realistic_bulk_data__before_testing_sample_run(self):
+
+        #False first to create users
+        for must_reuse_all_users in [False, True]:
+
+            realistic_bulk_data_class = RealisticBulkData(
+                db_batch_size=500,
+            )
+
+            if must_reuse_all_users is True:
+
+                realistic_bulk_data_class.reuse_existing_users()
+
+            for x in range(2):
+
+                if must_reuse_all_users is False:
+
+                    #create users per while-loop for realistic non-hyperactive users
+                    realistic_bulk_data_class.create_new_users()
+
+                realistic_bulk_data_class.prepare_like_dislike_estimate()
+
 
 
 
@@ -2002,21 +2559,18 @@ class RealisticBulkData_SampleRun_TestCase(TestCase):
 
     def test_realistic_bulk_data__small_sample_run(self):
 
-        realistic_bulk_data_class = RealisticBulkData()
-        realistic_bulk_data_class.sample_run(max_randomness_iteration_count=1, reuse_all_users=False, use_threads=False,)
+        #first run
+        RealisticBulkData.sample_run(max_randomness_iteration_count=1, reuse_all_users=False, use_threads=False,)
 
         #test repeated calls
-        realistic_bulk_data_class = RealisticBulkData()
-        realistic_bulk_data_class.sample_run(max_randomness_iteration_count=1, reuse_all_users=False, use_threads=False,)
+        RealisticBulkData.sample_run(max_randomness_iteration_count=1, reuse_all_users=False, use_threads=False,)
 
         #now reuse users
 
-        realistic_bulk_data_class = RealisticBulkData()
-        realistic_bulk_data_class.sample_run(max_randomness_iteration_count=1, reuse_all_users=True, use_threads=False,)
+        RealisticBulkData.sample_run(max_randomness_iteration_count=1, reuse_all_users=True, use_threads=False,)
 
         #test repeated calls
-        realistic_bulk_data_class = RealisticBulkData()
-        realistic_bulk_data_class.sample_run(max_randomness_iteration_count=1, reuse_all_users=True, use_threads=False,)
+        RealisticBulkData.sample_run(max_randomness_iteration_count=1, reuse_all_users=True, use_threads=False,)
 
 
     def test_realistic_bulk_data__small_sample_run__tone_not_reduced(self):
