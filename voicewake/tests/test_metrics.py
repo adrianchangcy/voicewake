@@ -65,24 +65,42 @@ class RealisticBulkData():
         db_batch_size=500,
     ):
 
+        #venn diagram
+        #D[  A  ][C][  B  ]D
+            #A blocks everyone
+            #everyone blocks B
+            #C blocks everyone and everyone blocks C
+            #no blocking for D
+        #needed for: UserBlocks
+        #hence, ranges*scenarios at 3*4 means minimum 12 users
+        self.user_block_scenarios = 4
+
+        #processing_pending/processing/processing_failed
+        self.processing_scenarios = 3
+
         self.db_batch_size = db_batch_size
 
         self.user_ids = get_user_model().objects.all().exclude(is_superuser=True).order_by('id').values_list('id', flat=True)
 
-        #4 users (e.g. block/blocked/mutualblock/none), scenarios in 3 ranges (earliest/middle/latest users), i.e. 4*3
-        self.unique_user_ids = {
+        #per-range quantity
+        self.minimum_unique_users_per_set = self.user_block_scenarios * self.processing_scenarios
+
+        #as long as the size of users in a set is constant,
+        #self.get_main_user_ids() will dynamically pick the sets as new rows are created
+        self.main_user_id_sets = {
             'earliest_user_ids': [],
             'middle_user_ids': [],
             'latest_user_ids': [],
         }
 
-        #increase this as needed
-        self.minimum_unique_users_per_range = 4
+        #total quantity
+        #self.main_users is a flattened list of self.main_user_id_sets
+        self.minimum_main_user_quantity = len(self.main_user_id_sets) * self.minimum_unique_users_per_set
+        self.main_user_prefix = "testuser"
+        self.main_users = []
 
-        #current minimum for user_quantity is due to requiring unique identifiable users
-        self.user_quantity = (len(self.unique_user_ids) * self.minimum_unique_users_per_range)
-        self.user_prefix = "testuser"
-        self.users = []
+        #this is for those users who will not be tested, e.g. users whose only purpose is to reply once
+        self.filler_user_prefix = 'filleruser'
 
         #audio_file, use s3
         self.audio_file = settings.MEDIA_TEST_AWS_S3_START_PATH + '/audio_ok_10s.mp3'
@@ -133,11 +151,11 @@ class RealisticBulkData():
 
     def _check_ready(self):
 
-        if len(self.users) == 0:
+        if len(self.main_users) == 0:
 
             raise ValueError('No users created. Call .prepare_users() first.')
         
-        elif len(self.users) < 2:
+        elif len(self.main_users) < 2:
 
             raise ValueError('Minimum 2 users required.')
 
@@ -209,33 +227,26 @@ class RealisticBulkData():
             raise ValueError('Trigger was not found.')
 
 
-    def create_new_users(self, user_quantity=None, save_to_instance=True):
+    def create_new_users(self, user_quantity=None, replace_instance_main_users=True):
 
-        target_user_quantity = self.user_quantity
+        target_user_quantity = self.minimum_main_user_quantity
 
         if user_quantity is not None:
 
             target_user_quantity = user_quantity
 
-        if save_to_instance is True:
-
-            #reset so it doesn't become exponential
-            self.users = []
-
         user_count = 0
 
-        if get_user_model().objects.filter(username_lowercase__startswith=self.user_prefix).exists() is True:
+        if get_user_model().objects.filter(username_lowercase__startswith=self.main_user_prefix).exists() is True:
 
-            latest_test_user = get_user_model().objects.filter(email_lowercase__startswith=self.user_prefix.lower()).order_by('-date_joined')[:1]
+            latest_test_user = get_user_model().objects.filter(username_lowercase__startswith=self.main_user_prefix).order_by('-id')[:1]
             latest_test_user = latest_test_user[0]
 
-            print('Found latest test user by email: ' + latest_test_user.email_lowercase)
+            print('Found latest test user by username_lowercase: ' + latest_test_user.username_lowercase)
 
-            #separate "99" from "testuser99@gmail.com"
-            latest_user_index = latest_test_user.email_lowercase.split(self.user_prefix)
-            latest_user_index = latest_user_index[1]
-            latest_user_index = latest_user_index.split('@gmail.com')
-            latest_user_index = int(latest_user_index[0])
+            #separate "99" from "test_user99@gmail.com"
+            latest_user_index = latest_test_user.username_lowercase.split(self.main_user_prefix)
+            latest_user_index = int(latest_user_index[1])
 
             #if latest user is username99, we set starting count to 100 when creating new users
             user_count = latest_user_index + 1
@@ -246,7 +257,7 @@ class RealisticBulkData():
 
         for x in range(user_count, user_count+target_user_quantity):
 
-            new_username = self.user_prefix + str(x)
+            new_username = self.main_user_prefix + str(x)
             new_email = new_username + '@gmail.com'
 
             new_users.append(
@@ -259,197 +270,100 @@ class RealisticBulkData():
 
             print('Created test user: ' + new_users[-1].username)
 
-        if save_to_instance is True:
+        if replace_instance_main_users is True:
 
-            self.users.extend(new_users)
+            #replace instead of extend, so it doesn't become exponential when self.sample_run() reuses users
+            self.main_users = new_users
 
         return new_users
 
 
     def reuse_existing_users(self):
 
-        self.users = get_user_model().objects.all().exclude(is_superuser=True)[:self.user_quantity]
+        self.main_users = get_user_model().objects.all().exclude(is_superuser=True)[:self.minimum_main_user_quantity]
 
-        if len(self.users) == 0:
+        if len(self.main_users) == 0:
 
             raise ValueError('0 users in db.')
 
 
-    def _determine_unique_users_after_no_new_users_left_to_create(self):
+    #earliest/middle/latest users implies entire db
+    #as users increase, we must still reliably retrieve across earliest/middle/latest areas of db
+    def get_main_user_ids(self):
 
-        #venn diagram
-        #D[  A  ][C][  B  ]D
-        #we want earliest/middle/latest ranges to look for dip in performance from no/misconfigured indexing in db
-        #currently only need 4 users for every range, e.g.:
-            #A blocks everyone
-            #everyone blocks B
-            #C blocks everyone and everyone blocks C
-            #no blocking for D
-
-        #earliest
-
-        for x in range(self.minimum_unique_users_per_range):
-
-            self.unique_user_ids['earliest_user_ids'].append(self.user_ids[x])
-
-        #middle
-
-        middle_index = math.floor(len(self.user_ids)/2)
-        self.unique_user_ids['middle_user_ids'] = [
-            self.user_ids[middle_index-2],
-            self.user_ids[middle_index-1],
-            self.user_ids[middle_index],
-            self.user_ids[middle_index+1],
-        ]
-
-        #latest
-
-        for x in range(self.minimum_unique_users_per_range):
-
-            #offset x by +1
-            index = len(self.user_ids)-(x+1)
-
-            self.unique_user_ids['latest_user_ids'].append(self.user_ids[index])
-
-        total_user_count = (
-            len(self.unique_user_ids['earliest_user_ids']) +
-            len(self.unique_user_ids['middle_user_ids']) +
-            len(self.unique_user_ids['latest_user_ids'])
-        )
-
-        if len(self.user_ids) < total_user_count:
-
-            raise ValueError('Not enough users.')
-
-        #update targeted users to make them easy to find
-        #retire past unique users if they do not match with new ones
-        #modify only username, so future bulk data creation can still rely on email for latest user index
-
-        retired_earliest_index = get_user_model().objects.filter(username_lowercase__startswith='retired_earliest_').order_by('-username_lowercase')[:1]
-        retired_middle_index = get_user_model().objects.filter(username_lowercase__startswith='retired_middle_').order_by('-username_lowercase')[:1]
-        retired_latest_index = get_user_model().objects.filter(username_lowercase__startswith='retired_latest_').order_by('-username_lowercase')[:1]
-
-        if len(retired_earliest_index) == 0:
-
-            retired_earliest_index = 0
-
-        else:
-
-            retired_earliest_index = int(retired_earliest_index[0].username_lowercase.split('retired_earliest_')[1]) + 1
-
-        if len(retired_middle_index) == 0:
-
-            retired_middle_index = 0
-
-        else:
-
-            retired_middle_index = int(retired_middle_index[0].username_lowercase.split('retired_middle_')[1]) + 1
-
-        if len(retired_latest_index) == 0:
-
-            retired_latest_index = 0
-
-        else:
-
-            retired_latest_index = int(retired_latest_index[0].username_lowercase.split('retired_latest_')[1]) + 1
-
-        #start updating usernames
-
-        for user_id in self.unique_user_ids['earliest_user_ids']:
-
-            try:
-
-                past_unique_user = get_user_model().objects.get(username_lowercase=f'earliest_{retired_earliest_index}')
-
-                if past_unique_user.id != user_id:
-
-                    past_unique_user.username = f'retired_earliest_{retired_earliest_index}'
-                    past_unique_user.username_lowercase = f'retired_earliest_{retired_earliest_index}'
-                    past_unique_user.save()
-
-            except get_user_model().DoesNotExist:
-
-                get_user_model().objects.filter(pk=user_id).update(
-                    username=f'earliest_{retired_earliest_index}', username_lowercase=f'earliest_{retired_earliest_index}'
-                )
-
-            retired_earliest_index += 1
-
-        for user_id in self.unique_user_ids['middle_user_ids']:
-
-            try:
-
-                past_unique_user = get_user_model().objects.get(username_lowercase=f'middle_{retired_middle_index}')
-
-                if past_unique_user.id != user_id:
-
-                    past_unique_user.username = f'retired_middle_{retired_middle_index}'
-                    past_unique_user.username_lowercase = f'retired_middle_{retired_middle_index}'
-                    past_unique_user.save()
-
-            except get_user_model().DoesNotExist:
-
-                get_user_model().objects.filter(pk=user_id).update(
-                    username=f'middle_{retired_middle_index}', username_lowercase=f'middle_{retired_middle_index}'
-                )
-
-            retired_middle_index += 1
-
-        for user_id in self.unique_user_ids['latest_user_ids']:
-
-            try:
-
-                past_unique_user = get_user_model().objects.get(username_lowercase=f'latest_{retired_latest_index}')
-
-                if past_unique_user.id != user_id:
-
-                    past_unique_user.username = f'retired_latest_{retired_latest_index}'
-                    past_unique_user.username_lowercase = f'retired_latest_{retired_latest_index}'
-                    past_unique_user.save()
-
-            except get_user_model().DoesNotExist:
-
-                get_user_model().objects.filter(pk=user_id).update(
-                    username=f'latest_{retired_latest_index}', username_lowercase=f'latest_{retired_latest_index}'
-                )
-
-            retired_latest_index += 1
-
-
-    @staticmethod
-    def get_unique_user_ids():
-
-        realistic_bulk_data_class = RealisticBulkData()
-
-        unique_user_ids = {
+        main_user_id_sets = {
             'earliest_user_ids': [],
             'middle_user_ids': [],
             'latest_user_ids': [],
         }
 
-        #earliest
+        #get from 0 to x test users, split their usernames to determine index, then split into earliest/middle/latest
 
-        for x in range(realistic_bulk_data_class.minimum_unique_users_per_range):
+        earliest_test_user = get_user_model().objects.filter(
+            username_lowercase__startswith=self.main_user_prefix
+        ).order_by('id')[:1]
+        latest_test_user = get_user_model().objects.filter(
+            username_lowercase__startswith=self.main_user_prefix
+        ).order_by('-id')[:1]
 
-            target_user = get_user_model().objects.get(username=f'earliest_{x}')
-            unique_user_ids['earliest_user_ids'].append(target_user.id)
+        earliest_test_user_index = int(earliest_test_user.username_lowercase.split(self.main_user_prefix)[1])
+        latest_test_user_index = int(latest_test_user.username_lowercase.split(self.main_user_prefix)[1])
 
-            target_user = get_user_model().objects.get(username=f'middle_{x}')
-            unique_user_ids['middle_user_ids'].append(target_user.id)
+        if earliest_test_user_index != 0:
 
-            target_user = get_user_model().objects.get(username=f'latest_{x}')
-            unique_user_ids['latest_user_ids'].append(target_user.id)
+            raise ValueError(f'{self.main_user_prefix}x did not start from 0')
 
-        return unique_user_ids
+        if latest_test_user_index < (self.minimum_main_user_quantity - 1):
+
+            raise ValueError(f'users: expected minimum {(self.minimum_main_user_quantity - 1)}, got {latest_test_user_index}')
+
+        #determine middle set for earliest/middle/latest
+
+        if (latest_test_user_index + 1) % 4 != 0:
+
+            raise ValueError(f'expected sets of 4, got {latest_test_user_index / 4}')
+
+        #find out how many sets first
+        #can't just directly half, else it won't guarantee set order
+        middle_test_user_index = (latest_test_user_index + 1) / 4
+
+        #get most middle set
+        middle_test_user_index = math.ceil(middle_test_user_index / 2)
+
+        #get starting index of middle set
+        middle_test_user_index = (middle_test_user_index * 4) - 1
+
+        #start grouping
+
+        for x in range(self.minimum_unique_users_per_set):
+
+            #earliest, 0 to x
+            main_user_id_sets['earliest_user_ids'].append(
+                get_user_model().objects.get(username_lowercase=f'{self.main_user_prefix}{x}')
+            )
+
+            #middle, x to xx
+            main_user_id_sets['earliest_user_ids'].append(
+                get_user_model().objects.get(username_lowercase=f'{self.main_user_prefix}{middle_test_user_index + middle_test_user_index}')
+            )
+
+            #latest
+            #maintain order of set (ABCD venn diagram) by going backwards then iterating forward
+            temp_index = latest_test_user_index - self.minimum_unique_users_per_set + 1
+            main_user_id_sets['latest_user_ids'].append(
+                get_user_model().objects.get(username_lowercase=f'{self.main_user_prefix}{temp_index}')
+            )
+
+        return main_user_id_sets
 
 
     def prepare_like_dislike_estimate(self):
 
-        if self.user_quantity < 10:
+        if self.minimum_main_user_quantity < 10:
 
             raise ValueError('To keep things simple, please maintain a minimum of 10.')
 
-        if len(self.users) == 0:
+        if len(self.main_users) == 0:
 
             raise ValueError('No users. Call .create_new_users() first.')
 
@@ -458,8 +372,8 @@ class RealisticBulkData():
         #len(users) must not be divisible by (like_count + dislike_count), else one user has only likes, the other dislikes, etc.
         #this is easily achieved by doing (len(users)/2)+1
         #better +1 than -1, since having too few also means some users have only likes/dislikes
-        self.like_count = math.ceil(len(self.users) * 0.25)
-        self.dislike_count = math.ceil(len(self.users) * 0.5) + 1
+        self.like_count = math.ceil(len(self.main_users) * 0.25)
+        self.dislike_count = math.ceil(len(self.main_users) * 0.5) + 1
 
         self.like_ratio = (self.like_count / (self.like_count + self.dislike_count))
 
@@ -491,12 +405,12 @@ class RealisticBulkData():
 
                 try:
 
-                    current_user = self.users[user_index]
+                    current_user = self.main_users[user_index]
 
                 except IndexError:
 
                     user_index = 0
-                    current_user = self.users[user_index]
+                    current_user = self.main_users[user_index]
 
                 full_sql += '(%s,%s,%s,%s,%s),'
                 full_params.extend([
@@ -515,12 +429,12 @@ class RealisticBulkData():
 
                 try:
 
-                    current_user = self.users[user_index]
+                    current_user = self.main_users[user_index]
 
                 except IndexError:
 
                     user_index = 0
-                    current_user = self.users[user_index]
+                    current_user = self.main_users[user_index]
 
                 full_sql += '(%s,%s,%s,%s,%s),'
                 full_params.extend([
@@ -546,28 +460,22 @@ class RealisticBulkData():
             cursor.execute(full_sql, full_params)
 
 
+    #this is meant to be used only when there are no more users left to create
+    #if new users -> create blocks -> new users is a concern, consider only creating and deleting blocks on test run
     def create_user_blocks(self):
 
         user_ids = []
-        unique_user_ids = None
+        main_user_id_sets = None
 
         #get unique user_ids
+        main_user_id_sets = self.get_main_user_ids()
 
-        try:
-
-            unique_user_ids = self.get_unique_user_ids()
-
-        except get_user_model().DoesNotExist:
-
-            self._determine_unique_users_after_no_new_users_left_to_create()
-            unique_user_ids = self.unique_user_ids
-
-        #take out users that must not have blocks
+        #take out users that don't have blocks, i.e. Venn diagram "D" part
 
         excluded_user_ids = [
-            unique_user_ids['earliest_user_ids'][3],
-            unique_user_ids['middle_user_ids'][3],
-            unique_user_ids['latest_user_ids'][3],
+            main_user_id_sets['earliest_user_ids'][3],
+            main_user_id_sets['middle_user_ids'][3],
+            main_user_id_sets['latest_user_ids'][3],
         ]
 
         for user_id in self.user_ids:
@@ -596,48 +504,48 @@ class RealisticBulkData():
         for user_id in user_ids:
 
             user_block_rows.append(
-                UserBlocks(user_id=unique_user_ids['earliest_user_ids'][0], blocked_user_id=user_id)
+                UserBlocks(user_id=main_user_id_sets['earliest_user_ids'][0], blocked_user_id=user_id)
             )
             user_block_rows.append(
-                UserBlocks(user_id=unique_user_ids['middle_user_ids'][0], blocked_user_id=user_id)
+                UserBlocks(user_id=main_user_id_sets['middle_user_ids'][0], blocked_user_id=user_id)
             )
             user_block_rows.append(
-                UserBlocks(user_id=unique_user_ids['latest_user_ids'][0], blocked_user_id=user_id)
+                UserBlocks(user_id=main_user_id_sets['latest_user_ids'][0], blocked_user_id=user_id)
             )
 
         #blocked by every user
         for user_id in user_ids:
 
             user_block_rows.append(
-                UserBlocks(user_id=user_id, blocked_user_id=unique_user_ids['earliest_user_ids'][1])
+                UserBlocks(user_id=user_id, blocked_user_id=main_user_id_sets['earliest_user_ids'][1])
             )
             user_block_rows.append(
-                UserBlocks(user_id=user_id, blocked_user_id=unique_user_ids['middle_user_ids'][1])
+                UserBlocks(user_id=user_id, blocked_user_id=main_user_id_sets['middle_user_ids'][1])
             )
             user_block_rows.append(
-                UserBlocks(user_id=user_id, blocked_user_id=unique_user_ids['latest_user_ids'][1])
+                UserBlocks(user_id=user_id, blocked_user_id=main_user_id_sets['latest_user_ids'][1])
             )
 
         #mutual blocking
         for user_id in user_ids:
 
             user_block_rows.append(
-                UserBlocks(user_id=unique_user_ids['earliest_user_ids'][2], blocked_user_id=user_id)
+                UserBlocks(user_id=main_user_id_sets['earliest_user_ids'][2], blocked_user_id=user_id)
             )
             user_block_rows.append(
-                UserBlocks(user_id=unique_user_ids['middle_user_ids'][2], blocked_user_id=user_id)
+                UserBlocks(user_id=main_user_id_sets['middle_user_ids'][2], blocked_user_id=user_id)
             )
             user_block_rows.append(
-                UserBlocks(user_id=unique_user_ids['latest_user_ids'][2], blocked_user_id=user_id)
+                UserBlocks(user_id=main_user_id_sets['latest_user_ids'][2], blocked_user_id=user_id)
             )
             user_block_rows.append(
-                UserBlocks(user_id=user_id, blocked_user_id=unique_user_ids['earliest_user_ids'][2])
+                UserBlocks(user_id=user_id, blocked_user_id=main_user_id_sets['earliest_user_ids'][2])
             )
             user_block_rows.append(
-                UserBlocks(user_id=user_id, blocked_user_id=unique_user_ids['middle_user_ids'][2])
+                UserBlocks(user_id=user_id, blocked_user_id=main_user_id_sets['middle_user_ids'][2])
             )
             user_block_rows.append(
-                UserBlocks(user_id=user_id, blocked_user_id=unique_user_ids['latest_user_ids'][2])
+                UserBlocks(user_id=user_id, blocked_user_id=main_user_id_sets['latest_user_ids'][2])
             )
 
         #check for self-blocks
@@ -686,7 +594,7 @@ class RealisticBulkData():
             #events
             temp_events = []
 
-            for user in self.users:
+            for user in self.main_users:
 
                 #events must exist in db first before audio_clips, so we create them here
                 temp_events.extend(
@@ -723,7 +631,7 @@ class RealisticBulkData():
 
                 if skipped_by_users is True:
 
-                    for user in self.users:
+                    for user in self.main_users:
 
                         if event.created_by_id == user.id:
 
@@ -826,7 +734,7 @@ class RealisticBulkData():
         stopwatch.start()
         print('Creating events...')
 
-        for user in self.users:
+        for user in self.main_users:
 
             events.append(
                 Events(
@@ -894,7 +802,7 @@ class RealisticBulkData():
         event_reply_queues.append(
             EventReplyQueues(
                 event=events[-1],
-                locked_for_user=self.users[0],
+                locked_for_user=self.main_users[0],
                 is_replying=is_replying,
             )
         )
@@ -910,7 +818,7 @@ class RealisticBulkData():
                 event_reply_queues.append(
                     EventReplyQueues(
                         event=events[index],
-                        locked_for_user=self.users[index+1],
+                        locked_for_user=self.main_users[index+1],
                         is_replying=is_replying,
                     )
                 )
@@ -964,7 +872,7 @@ class RealisticBulkData():
             #events
             temp_events = []
 
-            for user in self.users:
+            for user in self.main_users:
 
                 #if we only need originator, use current user
                 #if we need responder, use user_index+1
@@ -1004,7 +912,7 @@ class RealisticBulkData():
                     )
                 )
 
-                #for responder, we +1 self.users until the end, then restart from 0
+                #for responder, we +1 self.main_users until the end, then restart from 0
                 #originator and responder cannot be the same
                 responder = None
 
@@ -1012,7 +920,7 @@ class RealisticBulkData():
 
                     #use this statement to check for IndexError
                     #also might as well +=1 if users are the same
-                    if self.users[responder_user_index] == event.created_by.pk:
+                    if self.main_users[responder_user_index] == event.created_by.pk:
 
                         responder_user_index += 1
 
@@ -1021,11 +929,11 @@ class RealisticBulkData():
                     #out of range, restart
                     responder_user_index = 0
 
-                    if self.users[responder_user_index] == event.created_by.pk:
+                    if self.main_users[responder_user_index] == event.created_by.pk:
 
                         responder_user_index += 1
 
-                responder = self.users[responder_user_index]
+                responder = self.main_users[responder_user_index]
                 responder_user_index += 1
 
                 responder_audio_clips.append(
@@ -1187,7 +1095,7 @@ class RealisticBulkData():
             #events
             temp_events = []
 
-            for user in self.users:
+            for user in self.main_users:
 
                 #if we only need originator, use current user
                 #if we need responder, use user_index+1
@@ -1231,7 +1139,7 @@ class RealisticBulkData():
 
                     continue
 
-                #for responder, we +1 self.users until the end, then restart from 0
+                #for responder, we +1 self.main_users until the end, then restart from 0
                 #originator and responder cannot be the same
                 responder = None
 
@@ -1239,7 +1147,7 @@ class RealisticBulkData():
 
                     #use this statement to check for IndexError
                     #also might as well +=1 if users are the same
-                    if self.users[responder_user_index] == event.created_by.pk:
+                    if self.main_users[responder_user_index] == event.created_by.pk:
 
                         responder_user_index += 1
 
@@ -1248,11 +1156,11 @@ class RealisticBulkData():
                     #out of range, restart
                     responder_user_index = 0
 
-                    if self.users[responder_user_index] == event.created_by.pk:
+                    if self.main_users[responder_user_index] == event.created_by.pk:
 
                         responder_user_index += 1
 
-                responder = self.users[responder_user_index]
+                responder = self.main_users[responder_user_index]
                 responder_user_index += 1
 
                 responder_audio_clips.append(
@@ -1340,7 +1248,8 @@ class RealisticBulkData():
         }
 
 
-    def create_processing_originators(self):
+    #can create rows just to fill db, then use specific testing users and create rows for them
+    def create_processing_originators(self, user_type:Literal['main', 'filler']):
 
         target_generic_statuses = [
             self.generic_statuses['processing_pending'],
@@ -1349,12 +1258,21 @@ class RealisticBulkData():
         ]
 
         #1 originator can have a few processing_pending/processing/processing_failed
-        new_originators = self.create_new_users(
-            user_quantity=self.user_quantity * len(target_generic_statuses),
-            save_to_instance=False,
-        )
+        originators = []
+        
+        if user_type == 'main':
 
-        target_event_quantity = 10
+            originators = self.main_users
+
+        else:
+
+            self.create_new_users(
+                user_quantity=self.minimum_main_user_quantity * len(target_generic_statuses),
+                replace_instance_main_users=False,
+            )
+
+        #don't need a lot
+        target_event_quantity = 5
 
         events = []
         originator_audio_clips = []
@@ -1367,7 +1285,7 @@ class RealisticBulkData():
 
         for target_generic_status in target_generic_statuses:
 
-            for user in new_originators:
+            for user in originators:
 
                 #since each originator can have multiple rows, use arbitrary number
 
@@ -1470,7 +1388,8 @@ class RealisticBulkData():
         }
 
 
-    def create_processing_responders(self):
+    #can create rows just to fill db, then use specific testing users and create rows for them
+    def create_processing_responders(self, user_type:Literal['main', 'filler']):
 
         target_generic_statuses = [
             self.generic_statuses['processing_pending'],
@@ -1478,17 +1397,43 @@ class RealisticBulkData():
             self.generic_statuses['processing_failed'],
         ]
 
-        target_event_quantity = 10
+        #each user can only be replying to one event at any time
+        target_event_quantity = 1
 
-        new_originators = self.create_new_users(
-            user_quantity=self.user_quantity * len(target_generic_statuses),
-            save_to_instance=False,
-        )
+        if user_type == 'filler':
+
+            #for fillers, we aim for more events, then fill with unique one-off users as responders
+            target_event_quantity = 10
+
+        #filler originators
         #every event must have unique responder
-        new_responders = self.create_new_users(
-            user_quantity=len(new_originators) * target_event_quantity * len(target_generic_statuses),
-            save_to_instance=False,
-        )
+        originators = []
+        responders = []
+
+        if user_type == 'main':
+
+            #fill only
+            originators = self.create_new_users(
+                user_quantity=len(self.main_users),
+                replace_instance_main_users=False,
+            )
+
+            #amount already accounted for via self.processing_scenarios
+            responders = self.main_users
+
+        else:
+
+            #fill to target_event_quantity
+            originators = self.create_new_users(
+                user_quantity=target_event_quantity * len(target_generic_statuses),
+                replace_instance_main_users=False,
+            )
+
+            #fill at one user for one responder
+            responders = self.create_new_users(
+                user_quantity=len(originators) * target_event_quantity * len(target_generic_statuses),
+                replace_instance_main_users=False,
+            )
 
         events = []
         originator_audio_clips = []
@@ -1506,7 +1451,7 @@ class RealisticBulkData():
 
         for target_generic_status in target_generic_statuses:
 
-            for originator in new_originators:
+            for originator in originators:
 
                 #events must exist in db first before audio_clips, so we create them here
                 events.extend(
@@ -1543,14 +1488,14 @@ class RealisticBulkData():
                     event_reply_queues.append(
                         EventReplyQueues(
                             event=events[temporary_event_index+x],
-                            locked_for_user=new_responders[responder_index],
+                            locked_for_user=responders[responder_index],
                             is_replying=True,
                         )
                     )
 
                     responder_audio_clips.append(
                         AudioClips(
-                            user=new_responders[responder_index],
+                            user=responders[responder_index],
                             audio_clip_role=self.audio_clip_roles['responder'],
                             audio_clip_tone=audio_clip_tone,
                             event=events[temporary_event_index+x],
@@ -1669,7 +1614,7 @@ class RealisticBulkData():
         #python manage.py shell -c "from voicewake.tests.test_metrics import RealisticBulkData; RealisticBulkData.sample_run(5, False, True);"
     #if you run this then lack rows for other tests, it's better if you delete db and recreate rows
     @staticmethod
-    def sample_run(max_randomness_iteration_count=1, reuse_all_users=True, use_threads=True):
+    def sample_run(max_randomness_iteration_count=1, reuse_main_users=True, use_threads=True):
 
         #add anything here for rows to be "earlier", beneficial for tests
 
@@ -1683,16 +1628,16 @@ class RealisticBulkData():
             db_batch_size=500,
         )
 
-        if reuse_all_users is True:
+        if reuse_main_users is True:
 
             realistic_bulk_data_class.reuse_existing_users()
 
         while current_randomness_iteration_count < max_randomness_iteration_count:
 
-            if reuse_all_users is False:
+            if reuse_main_users is False:
 
                 #create users per while-loop for realistic non-hyperactive users
-                realistic_bulk_data_class.create_new_users()
+                realistic_bulk_data_class.create_new_users(replace_instance_main_users=True)
 
             realistic_bulk_data_class.prepare_like_dislike_estimate()
 
@@ -1717,8 +1662,14 @@ class RealisticBulkData():
                 realistic_bulk_data_class.create_event_incomplete_and_event_reply_queue(queue_is_replying,)
 
                 #users are not shared in these cases
-                realistic_bulk_data_class.create_processing_originators()
-                realistic_bulk_data_class.create_processing_responders()
+                realistic_bulk_data_class.create_processing_originators(user_type='filler')
+                realistic_bulk_data_class.create_processing_responders(user_type='filler')
+
+                if reuse_main_users is False:
+
+                    #since not reusing users, create their processings now
+                    realistic_bulk_data_class.create_processing_originators(user_type='main')
+                    realistic_bulk_data_class.create_processing_responders(user_type='main')
 
             else:
 
@@ -1741,8 +1692,14 @@ class RealisticBulkData():
                 threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete_and_event_reply_queue, args=(queue_is_replying,)))
 
                 #users are not shared in these cases
-                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_originators,))
-                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_responders,))
+                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_originators,), args=('filler',))
+                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_responders,), args=('filler',))
+
+                if reuse_main_users is False:
+
+                    #since not reusing users, create their processings now
+                    threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_originators,), args=('test',))
+                    threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_responders,), args=('test',))
 
                 random.shuffle(threads)
 
@@ -1784,10 +1741,14 @@ class RealisticBulkData():
 
             current_randomness_iteration_count += 1
 
-        if reuse_all_users is False:
+        #processings for test users, only need to call once if the users are reused for main while-loop
+        if reuse_main_users is True:
 
-            #blocks, only perform after everything to ensure no new users come after
-            realistic_bulk_data_class.create_user_blocks()
+            realistic_bulk_data_class.create_processing_originators(user_type='main')
+            realistic_bulk_data_class.create_processing_responders(user_type='main')
+
+        #blocks, only perform after everything to ensure no new users come after
+        realistic_bulk_data_class.create_user_blocks()
 
 
 
@@ -2524,19 +2485,19 @@ class RealisticBulkData_TestCase(TestCase):
     def test_realistic_bulk_data__before_testing_sample_run(self):
 
         #False first to create users
-        for must_reuse_all_users in [False, True]:
+        for must_reuse_main_users in [False, True]:
 
             realistic_bulk_data_class = RealisticBulkData(
                 db_batch_size=500,
             )
 
-            if must_reuse_all_users is True:
+            if must_reuse_main_users is True:
 
                 realistic_bulk_data_class.reuse_existing_users()
 
             for x in range(2):
 
-                if must_reuse_all_users is False:
+                if must_reuse_main_users is False:
 
                     #create users per while-loop for realistic non-hyperactive users
                     realistic_bulk_data_class.create_new_users()
@@ -2560,36 +2521,36 @@ class RealisticBulkData_SampleRun_TestCase(TestCase):
     def test_realistic_bulk_data__small_sample_run(self):
 
         #first run
-        RealisticBulkData.sample_run(max_randomness_iteration_count=1, reuse_all_users=False, use_threads=False,)
+        RealisticBulkData.sample_run(max_randomness_iteration_count=1, reuse_main_users=False, use_threads=False,)
 
         #test repeated calls
-        RealisticBulkData.sample_run(max_randomness_iteration_count=1, reuse_all_users=False, use_threads=False,)
+        RealisticBulkData.sample_run(max_randomness_iteration_count=1, reuse_main_users=False, use_threads=False,)
 
         #now reuse users
 
-        RealisticBulkData.sample_run(max_randomness_iteration_count=1, reuse_all_users=True, use_threads=False,)
+        RealisticBulkData.sample_run(max_randomness_iteration_count=1, reuse_main_users=True, use_threads=False,)
 
         #test repeated calls
-        RealisticBulkData.sample_run(max_randomness_iteration_count=1, reuse_all_users=True, use_threads=False,)
+        RealisticBulkData.sample_run(max_randomness_iteration_count=1, reuse_main_users=True, use_threads=False,)
 
 
     def test_realistic_bulk_data__small_sample_run__tone_not_reduced(self):
 
         realistic_bulk_data_class = RealisticBulkData()
-        realistic_bulk_data_class.sample_run(max_randomness_iteration_count=1, reuse_all_users=False, use_threads=False,)
+        realistic_bulk_data_class.sample_run(max_randomness_iteration_count=1, reuse_main_users=False, use_threads=False,)
 
         #test repeated calls
         realistic_bulk_data_class = RealisticBulkData()
-        realistic_bulk_data_class.sample_run(max_randomness_iteration_count=1, reuse_all_users=False, use_threads=False,)
+        realistic_bulk_data_class.sample_run(max_randomness_iteration_count=1, reuse_main_users=False, use_threads=False,)
 
         #now reuse users
 
         realistic_bulk_data_class = RealisticBulkData()
-        realistic_bulk_data_class.sample_run(max_randomness_iteration_count=1, reuse_all_users=True, use_threads=False,)
+        realistic_bulk_data_class.sample_run(max_randomness_iteration_count=1, reuse_main_users=True, use_threads=False,)
 
         #test repeated calls
         realistic_bulk_data_class = RealisticBulkData()
-        realistic_bulk_data_class.sample_run(max_randomness_iteration_count=1, reuse_all_users=True, use_threads=False,)
+        realistic_bulk_data_class.sample_run(max_randomness_iteration_count=1, reuse_main_users=True, use_threads=False,)
 
 
 
@@ -2668,7 +2629,7 @@ class BulkCreateOptimisation_TestCase(TestCase):
 
         users = []
 
-        for x in range(self.user_quantity):
+        for x in range(self.minimum_main_user_quantity):
 
             users.append(
                 get_user_model().objects.create_user(
@@ -2731,7 +2692,7 @@ class BulkCreateOptimisation_TestCase(TestCase):
                     '',
                     10,
                     [],
-                    self.user_quantity,
+                    self.minimum_main_user_quantity,
                     0,
                     1,
                     False,
@@ -3013,9 +2974,9 @@ class BulkCreateOptimisation_TestCase(TestCase):
 
         self.bulk_quantity = new_value
 
-        self.user_quantity = 10 * self.bulk_quantity
+        self.minimum_main_user_quantity = 10 * self.bulk_quantity
         self.originator_quantity_per_user = 20 * self.bulk_quantity
-        self.audio_clip_like_dislike_quantity = self.user_quantity * self.originator_quantity_per_user
+        self.audio_clip_like_dislike_quantity = self.minimum_main_user_quantity * self.originator_quantity_per_user
 
 
     def test_behaviour__does_bulk_create_load_into_memory_without_evaluation(self):
@@ -3365,13 +3326,13 @@ class BrowseEvents_TestCase(TestCase):
         cls.realistic_bulk_data_class = RealisticBulkData()
 
         #get unique users
-        unique_user_ids = cls.realistic_bulk_data_class.get_unique_user_ids()
+        main_user_id_sets = cls.realistic_bulk_data_class.get_main_user_ids()
 
         #only need 1 user from each category
-        for category_name in unique_user_ids:
+        for category_name in main_user_id_sets:
 
             cls.unique_users.append(
-                get_user_model().objects.get(pk=unique_user_ids[category_name][0])
+                get_user_model().objects.get(pk=main_user_id_sets[category_name][0])
             )
 
 
@@ -5704,7 +5665,6 @@ class BrowseEvents_TestCase(TestCase):
 
 #how to test:
     #test each test_() individually, as running all tests concurrently will have worse performance
-#see RealisticBulkData._determine_unique_users_after_no_new_users_left_to_create, only expect rows from name_3
 #only test for basic correctness and db test data setup
 #leave API correctness at test_apis
 @override_settings(
@@ -6056,7 +6016,7 @@ class ListEventReplyChoices_TestCase(TestCase):
 
         stopwatch = Stopwatch()
         realistic_bulk_data_class = RealisticBulkData()
-        unique_user_ids = realistic_bulk_data_class.get_unique_user_ids()
+        main_user_id_sets = realistic_bulk_data_class.get_main_user_ids()
 
         #do this for no tone so loop below can stay the same
         audio_clip_tone_ids = {
@@ -6090,9 +6050,9 @@ class ListEventReplyChoices_TestCase(TestCase):
         test_pass_count = 0
         test_fail_count = 0
 
-        for unique_user_key in unique_user_ids:
+        for unique_user_key in main_user_id_sets:
 
-            for unique_user_id in unique_user_ids[unique_user_key]:
+            for unique_user_id in main_user_id_sets[unique_user_key]:
 
                 for audio_clip_tone_type in audio_clip_tone_ids:
 
@@ -6306,12 +6266,13 @@ class ListEventReplyChoices_TestCase(TestCase):
     def test_experimental__has_tone(self, minimum_time_elapsed_ms=200, show_test_failed_query=False,):
 
         stopwatch = Stopwatch()
-        unique_user_ids = RealisticBulkData.get_unique_user_ids()
 
         excluded_audio_clip_tone_ids = []
         expected_audio_clip_tone_ids = []
 
         realistic_bulk_data_class = RealisticBulkData()
+
+        main_user_id_sets = realistic_bulk_data_class.get_main_user_ids()
 
         #add excluded audio_clip_tones
         for audio_clip_tone_index in realistic_bulk_data_class.excluded_audio_clip_tones_indexes:
@@ -6333,9 +6294,9 @@ class ListEventReplyChoices_TestCase(TestCase):
         test_pass_count = 0
         test_fail_count = 0
 
-        for unique_user_key in unique_user_ids:
+        for unique_user_key in main_user_id_sets:
 
-            for unique_user in unique_user_ids[unique_user_key]:
+            for unique_user in main_user_id_sets[unique_user_key]:
 
                 #expect rows matching tone to exist
                 for audio_clip_tone_id in expected_audio_clip_tone_ids:
@@ -6473,26 +6434,6 @@ class ListEventReplyChoices_TestCase(TestCase):
 
 
 
-
-
-
-#see RealisticBulkData._determine_unique_users_after_no_new_users_left_to_create, only expect rows from name_3
-#only test for basic correctness and db test data setup
-#leave API correctness at test_apis
-@override_settings(
-    
-    DEBUG=True,
-)
-class OptimiseBrowseEvents_TestCase(TestCase):
-
-    #{test_function_name: anything}
-    metrics = {}
-
-    #create your db indexes here
-    @classmethod
-    def setUp(cls):
-
-        pass
 
 
 
