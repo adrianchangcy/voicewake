@@ -277,7 +277,7 @@ class RealisticBulkData():
             print('Found latest user by username_lowercase: ' + latest_test_user.username_lowercase)
 
             #separate "99" from "test_user99@gmail.com"
-            latest_test_user_index = latest_test_user.username_lowercase.split(self.main_user_prefix)
+            latest_test_user_index = latest_test_user.username_lowercase.split(target_user_prefix)
             latest_test_user_index = int(latest_test_user_index[1])
 
             #if latest user is username99, we set starting count to 100 when creating new users
@@ -329,7 +329,7 @@ class RealisticBulkData():
 
             for x in range(user_count, user_count+target_user_quantity):
 
-                new_username = self.main_user_prefix + str(x)
+                new_username = self.filler_user_prefix + str(x)
                 new_email = new_username + '@gmail.com'
 
                 new_users.append(
@@ -1914,6 +1914,16 @@ class RealisticBulkData_TestCase(TestCase):
             print(user.username)
             print(AudioClipLikesDislikes.objects.filter(user=user, is_liked=True).count())
             print(AudioClipLikesDislikes.objects.filter(user=user, is_liked=False).count())
+
+
+    def test_realistic_bulk_data__create_users__mixed(self):
+
+        realistic_bulk_data_class = RealisticBulkData()
+
+        realistic_bulk_data_class.create_new_users(user_type='main')
+        realistic_bulk_data_class.create_new_users(user_type='filler')
+        realistic_bulk_data_class.create_new_users(user_type='main')
+        realistic_bulk_data_class.create_new_users(user_type='filler')
 
 
     def test_realistic_bulk_data__get_main_users_relative_to_entire_db(self):
