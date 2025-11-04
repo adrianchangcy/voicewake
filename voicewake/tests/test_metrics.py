@@ -259,21 +259,29 @@ class RealisticBulkData():
 
             target_user_quantity = user_quantity
 
+        #get last user in db
+
         user_count = 0
+        target_user_prefix = self.main_user_prefix
 
-        if get_user_model().objects.filter(username_lowercase__startswith=self.main_user_prefix).exists() is True:
+        if user_type == 'filler':
 
-            latest_test_user = get_user_model().objects.filter(username_lowercase__startswith=self.main_user_prefix).order_by('-id')[:1]
+            target_user_prefix = self.filler_user_prefix
+
+        latest_test_user = get_user_model().objects.filter(username_lowercase__startswith=target_user_prefix).order_by('-id')[:1]
+
+        if len(latest_test_user) == 1:
+
             latest_test_user = latest_test_user[0]
 
-            print('Found latest test user by username_lowercase: ' + latest_test_user.username_lowercase)
+            print('Found latest user by username_lowercase: ' + latest_test_user.username_lowercase)
 
             #separate "99" from "test_user99@gmail.com"
-            latest_user_index = latest_test_user.username_lowercase.split(self.main_user_prefix)
-            latest_user_index = int(latest_user_index[1])
+            latest_test_user_index = latest_test_user.username_lowercase.split(self.main_user_prefix)
+            latest_test_user_index = int(latest_test_user_index[1])
 
             #if latest user is username99, we set starting count to 100 when creating new users
-            user_count = latest_user_index + 1
+            user_count = latest_test_user_index + 1
 
         #create users and add to group
 
@@ -1733,7 +1741,8 @@ class RealisticBulkData():
         while current_randomness_iteration_count < max_randomness_iteration_count:
 
             #create users per while-loop for realistic non-hyperactive users
-            realistic_bulk_data_class.create_new_users()
+            #filler users are automatically created within instance functions as one-off users
+            realistic_bulk_data_class.create_new_users(user_type='main')
 
             realistic_bulk_data_class.prepare_like_dislike_estimate()
 
@@ -1786,12 +1795,12 @@ class RealisticBulkData():
                 threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete_and_event_reply_queue, args=(queue_is_replying,)))
 
                 #users are not shared in these cases
-                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_originators,), args=('filler',))
-                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_responders,), args=('filler',))
+                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_originators, args=('filler',)))
+                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_responders, args=('filler',)))
 
                 #since not reusing users, create their processings now
-                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_originators,), args=('main',))
-                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_responders,), args=('main',))
+                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_originators, args=('main',)))
+                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_responders, args=('main',)))
 
                 random.shuffle(threads)
 
