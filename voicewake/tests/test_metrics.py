@@ -9,6 +9,7 @@ from django.core.cache import cache
 from django.db.models import Case, Value, When, Sum, Q, F, Count, BooleanField
 from django.conf import settings
 from django.db import connection, reset_queries
+from django.contrib.auth.models import Group
 
 from voicewake.models import *
 from voicewake.services import *
@@ -65,6 +66,11 @@ class RealisticBulkData():
         db_batch_size=500,
     ):
 
+        #SCENARIOS
+            #for every scenario, must have None where no rows should exist
+            #the None must always be placed as last item in array, so loops don't have to be painfully dynamic
+            #order of scenarios in the combination must always be the same, e.g. don't block*processing then processing*block for new users
+
         #venn diagram
         #D[  A  ][C][  B  ]D
             #A blocks everyone
@@ -73,31 +79,46 @@ class RealisticBulkData():
             #no blocking for D
         #needed for: UserBlocks
         #hence, ranges*scenarios at 3*4 means minimum 12 users
-        self.user_block_scenarios = 4
+        self.user_block_scenarios = ['blocking', 'blocked', 'mutual_block', None]
 
-        #processing_pending/processing/processing_failed
-        self.processing_scenarios = 3
+        #processing_pending/processing/processing_failed or nothing
+        self.processing_scenarios = [
+            GenericStatuses.objects.get(generic_status_name='processing_pending'),
+            GenericStatuses.objects.get(generic_status_name='processing'),
+            GenericStatuses.objects.get(generic_status_name='processing_failed'),
+            None
+        ]
 
         self.db_batch_size = db_batch_size
 
         self.user_ids = get_user_model().objects.all().exclude(is_superuser=True).order_by('id').values_list('id', flat=True)
 
         #per-range quantity
-        self.minimum_unique_users_per_set = self.user_block_scenarios * self.processing_scenarios
+        self.minimum_main_users_per_set = len(self.user_block_scenarios) * len(self.processing_scenarios)
 
+        #there are some scenarios where you cannot reuse users, e.g. "1 responder per user"
+        #"earliest" in old vs. new earliest/middle/latest will likely have some reused users
+        #this helps prevent that
+        self.is_newly_created_main_users = False
+
+        self.main_user_group, is_created = Group.objects.get_or_create(name='RealisticBulkData_main_users')
+
+        #we create our users in sets, and earliest/middle/latest is just picking sets across db
         #as long as the size of users in a set is constant,
-        #self.get_main_user_ids() will dynamically pick the sets as new rows are created
-        self.main_user_id_sets = {
-            'earliest_user_ids': [],
-            'middle_user_ids': [],
-            'latest_user_ids': [],
+        #self.get_main_users_relative_to_entire_db() will dynamically pick the sets as new rows are created
+        self.main_user_sets = {
+            'earliest': [],
+            'middle': [],
+            'latest': [],
         }
 
-        #total quantity
-        #self.main_users is a flattened list of self.main_user_id_sets
-        self.minimum_main_user_quantity = len(self.main_user_id_sets) * self.minimum_unique_users_per_set
-        self.main_user_prefix = "testuser"
+        #flattened from self.main_user_sets
         self.main_users = []
+
+        #total quantity
+        #self.main_user_sets is a flattened list of self.main_user_sets
+        self.minimum_main_user_quantity = len(self.main_user_sets) * self.minimum_main_users_per_set
+        self.main_user_prefix = "testuser"
 
         #this is for those users who will not be tested, e.g. users whose only purpose is to reply once
         self.filler_user_prefix = 'filleruser'
@@ -151,11 +172,11 @@ class RealisticBulkData():
 
     def _check_ready(self):
 
-        if len(self.main_users) == 0:
+        if len(self.main_user_sets) == 0:
 
             raise ValueError('No users created. Call .prepare_users() first.')
         
-        elif len(self.main_users) < 2:
+        elif len(self.main_user_sets) < 2:
 
             raise ValueError('Minimum 2 users required.')
 
@@ -227,7 +248,10 @@ class RealisticBulkData():
             raise ValueError('Trigger was not found.')
 
 
-    def create_new_users(self, user_quantity=None, replace_instance_main_users=True):
+    #main users in db are in sets
+    #earliest/middle/latest is just about selecting from these sets, e.g. earliest = earliest set in db
+    #for newly created main users, they will fully occupy earliest/middle/latest here, and does not actually retrieve "true earliest/etc." from db
+    def create_new_users(self, user_quantity=None, user_type:Literal['main', 'filler']='main'):
 
         target_user_quantity = self.minimum_main_user_quantity
 
@@ -251,110 +275,135 @@ class RealisticBulkData():
             #if latest user is username99, we set starting count to 100 when creating new users
             user_count = latest_user_index + 1
 
-        #create users
+        #create users and add to group
 
-        new_users = []
+        if user_type == 'main':
 
-        for x in range(user_count, user_count+target_user_quantity):
+            #reset
+            self.main_users = []
 
-            new_username = self.main_user_prefix + str(x)
-            new_email = new_username + '@gmail.com'
+            #create by per-set basis
+            for set_name in self.main_user_sets:
 
-            new_users.append(
-                get_user_model().objects.create_user(
-                    username=new_username,
-                    email=new_email,
-                    is_active=True,
+                new_users = []
+
+                for x in range(user_count, user_count+self.minimum_main_users_per_set):
+
+                    new_username = self.main_user_prefix + str(x)
+                    new_email = new_username + '@gmail.com'
+
+                    new_users.append(
+                        get_user_model().objects.create_user(
+                            username=new_username,
+                            email=new_email,
+                            is_active=True,
+                        )
+                    )
+
+                    self.main_user_group.user_set.add(new_users[-1])
+
+                    print('Created test user: ' + new_users[-1].username)
+
+                self.main_user_sets[set_name] = new_users
+                self.main_users.extend(new_users)
+
+                user_count += self.minimum_main_users_per_set
+
+            self.is_newly_created_main_users = True
+
+            return self.main_users
+
+        elif user_type == 'filler':
+
+            new_users = []
+
+            #no need to track filler users using groups so far
+
+            for x in range(user_count, user_count+target_user_quantity):
+
+                new_username = self.main_user_prefix + str(x)
+                new_email = new_username + '@gmail.com'
+
+                new_users.append(
+                    get_user_model().objects.create_user(
+                        username=new_username,
+                        email=new_email,
+                        is_active=True,
+                    )
                 )
-            )
 
-            print('Created test user: ' + new_users[-1].username)
+                print('Created test user: ' + new_users[-1].username)
 
-        if replace_instance_main_users is True:
+            return new_users
 
-            #replace instead of extend, so it doesn't become exponential when self.sample_run() reuses users
-            self.main_users = new_users
+        else:
 
-        return new_users
-
-
-    def reuse_existing_users(self):
-
-        self.main_users = get_user_model().objects.all().exclude(is_superuser=True)[:self.minimum_main_user_quantity]
-
-        if len(self.main_users) == 0:
-
-            raise ValueError('0 users in db.')
+            raise ValueError(f'invalid {user_type}')
 
 
     #earliest/middle/latest users implies entire db
-    #as users increase, we must still reliably retrieve across earliest/middle/latest areas of db
-    def get_main_user_ids(self):
+    #as users increase, we must still reliably retrieve across earliest/middle/latest sets in db
+    #WARNING: do not use this to create new rows, else earliest set is infinitely reused
+    #enforce this by doing @staticmethod
+    @staticmethod
+    def get_main_users_relative_to_entire_db():
 
-        main_user_id_sets = {
-            'earliest_user_ids': [],
-            'middle_user_ids': [],
-            'latest_user_ids': [],
-        }
+        realistic_bulk_data_class = RealisticBulkData()
 
-        #get from 0 to x test users, split their usernames to determine index, then split into earliest/middle/latest
+        main_users = []
+        main_user_sets = realistic_bulk_data_class.main_user_sets.copy()
 
-        earliest_test_user = get_user_model().objects.filter(
-            username_lowercase__startswith=self.main_user_prefix
-        ).order_by('id')[:1]
-        latest_test_user = get_user_model().objects.filter(
-            username_lowercase__startswith=self.main_user_prefix
-        ).order_by('-id')[:1]
+        #get count of users -> check if scenario combinations still match user count
 
-        earliest_test_user_index = int(earliest_test_user.username_lowercase.split(self.main_user_prefix)[1])
-        latest_test_user_index = int(latest_test_user.username_lowercase.split(self.main_user_prefix)[1])
+        total_main_user_count = realistic_bulk_data_class.main_user_group.user_set.all().count()
 
-        if earliest_test_user_index != 0:
+        if (total_main_user_count % realistic_bulk_data_class.minimum_main_user_quantity) != 0:
 
-            raise ValueError(f'{self.main_user_prefix}x did not start from 0')
+            raise ValueError('combination of scenarios and main_users did not match. please recreate db.')
 
-        if latest_test_user_index < (self.minimum_main_user_quantity - 1):
+        #get earliest and latest because it's easy
 
-            raise ValueError(f'users: expected minimum {(self.minimum_main_user_quantity - 1)}, got {latest_test_user_index}')
+        #0 to x
+        earliest_main_users = realistic_bulk_data_class.main_user_group.user_set.all().order_by('id')[
+            0 : realistic_bulk_data_class.minimum_main_users_per_set
+        ]
 
-        #determine middle set for earliest/middle/latest
+        #total-x (from-0 index) to total
+        #for [offset:limit], Django requires [offset:limit+offset]
+        latest_main_users = realistic_bulk_data_class.main_user_group.user_set.all().order_by('id')[
+            total_main_user_count - realistic_bulk_data_class.minimum_main_users_per_set : total_main_user_count
+        ]
 
-        if (latest_test_user_index + 1) % 4 != 0:
-
-            raise ValueError(f'expected sets of 4, got {latest_test_user_index / 4}')
+        #handle middle
 
         #find out how many sets first
         #can't just directly half, else it won't guarantee set order
-        middle_test_user_index = (latest_test_user_index + 1) / 4
+        middle_main_user_index = total_main_user_count / realistic_bulk_data_class.minimum_main_users_per_set
 
         #get most middle set
-        middle_test_user_index = math.ceil(middle_test_user_index / 2)
+        middle_main_user_index = math.floor(middle_main_user_index / 2)
 
         #get starting index of middle set
-        middle_test_user_index = (middle_test_user_index * 4) - 1
+        middle_main_user_index = (middle_main_user_index * realistic_bulk_data_class.minimum_main_users_per_set)
 
-        #start grouping
+        #for [offset:limit], Django requires [offset:limit+offset]
+        middle_main_users = realistic_bulk_data_class.main_user_group.user_set.all().order_by('id')[
+            middle_main_user_index : realistic_bulk_data_class.minimum_main_users_per_set + middle_main_user_index
+        ]
 
-        for x in range(self.minimum_unique_users_per_set):
+        #add to realistic_bulk_data_class.main_users and realistic_bulk_data_class.main_user_sets
+        main_users.extend(earliest_main_users)
+        main_users.extend(middle_main_users)
+        main_users.extend(latest_main_users)
 
-            #earliest, 0 to x
-            main_user_id_sets['earliest_user_ids'].append(
-                get_user_model().objects.get(username_lowercase=f'{self.main_user_prefix}{x}')
-            )
+        main_user_sets['earliest'] = earliest_main_users
+        main_user_sets['middle'] = middle_main_users
+        main_user_sets['latest'] = latest_main_users
 
-            #middle, x to xx
-            main_user_id_sets['earliest_user_ids'].append(
-                get_user_model().objects.get(username_lowercase=f'{self.main_user_prefix}{middle_test_user_index + middle_test_user_index}')
-            )
-
-            #latest
-            #maintain order of set (ABCD venn diagram) by going backwards then iterating forward
-            temp_index = latest_test_user_index - self.minimum_unique_users_per_set + 1
-            main_user_id_sets['latest_user_ids'].append(
-                get_user_model().objects.get(username_lowercase=f'{self.main_user_prefix}{temp_index}')
-            )
-
-        return main_user_id_sets
+        return {
+            'main_users': main_users,
+            'main_user_sets': main_user_sets,
+        }
 
 
     def prepare_like_dislike_estimate(self):
@@ -363,7 +412,7 @@ class RealisticBulkData():
 
             raise ValueError('To keep things simple, please maintain a minimum of 10.')
 
-        if len(self.main_users) == 0:
+        if len(self.main_user_sets) == 0:
 
             raise ValueError('No users. Call .create_new_users() first.')
 
@@ -372,8 +421,8 @@ class RealisticBulkData():
         #len(users) must not be divisible by (like_count + dislike_count), else one user has only likes, the other dislikes, etc.
         #this is easily achieved by doing (len(users)/2)+1
         #better +1 than -1, since having too few also means some users have only likes/dislikes
-        self.like_count = math.ceil(len(self.main_users) * 0.25)
-        self.dislike_count = math.ceil(len(self.main_users) * 0.5) + 1
+        self.like_count = math.ceil(len(self.main_user_sets) * 0.25)
+        self.dislike_count = math.ceil(len(self.main_user_sets) * 0.5) + 1
 
         self.like_ratio = (self.like_count / (self.like_count + self.dislike_count))
 
@@ -460,111 +509,55 @@ class RealisticBulkData():
             cursor.execute(full_sql, full_params)
 
 
-    #this is meant to be used only when there are no more users left to create
-    #if new users -> create blocks -> new users is a concern, consider only creating and deleting blocks on test run
-    def create_user_blocks(self):
+    def _tbd_combination_index_finder(
+        self,
+        block_scenario:Literal['block', 'blocked', 'mutual_block', None]=None,
+        processing_scenario:Literal['processing_pending', 'processing', 'processing_failed', None]=None,
+    ):
 
-        user_ids = []
-        main_user_id_sets = None
+        #consistent order matters, e.g. block*processing and processing*block will have different final ordering
+        scenario_0 = ['block', 'blocked', 'mutual_block', None]
+        scenario_1 = ['processing_pending', 'processing', 'processing_failed', None]
 
-        #get unique user_ids
-        main_user_id_sets = self.get_main_user_ids()
+        def lazy_inefficient():
 
-        #take out users that don't have blocks, i.e. Venn diagram "D" part
+            #combine first
+            combined_scenarios = []
 
-        excluded_user_ids = [
-            main_user_id_sets['earliest_user_ids'][3],
-            main_user_id_sets['middle_user_ids'][3],
-            main_user_id_sets['latest_user_ids'][3],
-        ]
+            for x in scenario_0:
+                for y in scenario_1:
+                    combined_scenarios.append([x,y])
 
-        for user_id in self.user_ids:
+            for index, combined_scenario in enumerate(combined_scenarios):
 
-            matched_excluded_user_id_index = None
+                if combined_scenario[0] == block_scenario and combined_scenario[1] == processing_scenario:
 
-            for index, excluded_user_id in enumerate(excluded_user_ids):
+                    return index
 
-                if user_id == excluded_user_id:
+        def more_like_breadth_first_search():
 
-                    matched_excluded_user_id_index = index
+            index = 0
 
-            if matched_excluded_user_id_index is not None:
+            for x in scenario_0:
 
-                excluded_user_ids.pop(matched_excluded_user_id_index)
-                continue
+                #multiply downwards until the end when it doesn't match up here
+                #e.g. if skipping scenario_0 when there's scenario_1 and scenario_2, do len(scenario_1) * len(scenario_2)
+                if x != scenario_0:
 
-            user_ids.append(user_id)
+                    #no -1 because we're starting next loop immediately
+                    #if next is coincidentally true, returns accurately
+                    index += len(scenario_1)
+                    continue
 
-        #for UserBlocks, you cannot block yourself
-        #instead of exponential if-statements checking for it, we only check once after all for-loops
+                for y in scenario_1:
 
-        user_block_rows = []
+                    if y != scenario_1:
 
-        #block every user
-        for user_id in user_ids:
+                        #only +1 for last combination because it's x*(y...y)
+                        index += 1
+                        continue
 
-            user_block_rows.append(
-                UserBlocks(user_id=main_user_id_sets['earliest_user_ids'][0], blocked_user_id=user_id)
-            )
-            user_block_rows.append(
-                UserBlocks(user_id=main_user_id_sets['middle_user_ids'][0], blocked_user_id=user_id)
-            )
-            user_block_rows.append(
-                UserBlocks(user_id=main_user_id_sets['latest_user_ids'][0], blocked_user_id=user_id)
-            )
-
-        #blocked by every user
-        for user_id in user_ids:
-
-            user_block_rows.append(
-                UserBlocks(user_id=user_id, blocked_user_id=main_user_id_sets['earliest_user_ids'][1])
-            )
-            user_block_rows.append(
-                UserBlocks(user_id=user_id, blocked_user_id=main_user_id_sets['middle_user_ids'][1])
-            )
-            user_block_rows.append(
-                UserBlocks(user_id=user_id, blocked_user_id=main_user_id_sets['latest_user_ids'][1])
-            )
-
-        #mutual blocking
-        for user_id in user_ids:
-
-            user_block_rows.append(
-                UserBlocks(user_id=main_user_id_sets['earliest_user_ids'][2], blocked_user_id=user_id)
-            )
-            user_block_rows.append(
-                UserBlocks(user_id=main_user_id_sets['middle_user_ids'][2], blocked_user_id=user_id)
-            )
-            user_block_rows.append(
-                UserBlocks(user_id=main_user_id_sets['latest_user_ids'][2], blocked_user_id=user_id)
-            )
-            user_block_rows.append(
-                UserBlocks(user_id=user_id, blocked_user_id=main_user_id_sets['earliest_user_ids'][2])
-            )
-            user_block_rows.append(
-                UserBlocks(user_id=user_id, blocked_user_id=main_user_id_sets['middle_user_ids'][2])
-            )
-            user_block_rows.append(
-                UserBlocks(user_id=user_id, blocked_user_id=main_user_id_sets['latest_user_ids'][2])
-            )
-
-        #check for self-blocks
-
-        index = 0
-
-        while index < len(user_block_rows):
-
-            if user_block_rows[index].user_id == user_block_rows[index].blocked_user_id:
-
-                user_block_rows.pop(index)
-
-            else:
-
-                index += 1
-
-        #create rows
-        #rely on unique constraint and ignore_conflicts=True to remove duplicates
-        UserBlocks.objects.bulk_create(user_block_rows, ignore_conflicts=True, batch_size=self.db_batch_size)
+                    return index
 
 
     def create_event_incomplete(self, skipped_by_users:bool=False):
@@ -802,7 +795,7 @@ class RealisticBulkData():
         event_reply_queues.append(
             EventReplyQueues(
                 event=events[-1],
-                locked_for_user=self.main_users[0],
+                locked_for_user=self.main_users[-1],
                 is_replying=is_replying,
             )
         )
@@ -912,7 +905,7 @@ class RealisticBulkData():
                     )
                 )
 
-                #for responder, we +1 self.main_users until the end, then restart from 0
+                #for responder, we +1 self.main_user_sets until the end, then restart from 0
                 #originator and responder cannot be the same
                 responder = None
 
@@ -920,7 +913,7 @@ class RealisticBulkData():
 
                     #use this statement to check for IndexError
                     #also might as well +=1 if users are the same
-                    if self.main_users[responder_user_index] == event.created_by.pk:
+                    if self.main_users[responder_user_index] == event.created_by.id:
 
                         responder_user_index += 1
 
@@ -929,7 +922,7 @@ class RealisticBulkData():
                     #out of range, restart
                     responder_user_index = 0
 
-                    if self.main_users[responder_user_index] == event.created_by.pk:
+                    if self.main_users[responder_user_index] == event.created_by.id:
 
                         responder_user_index += 1
 
@@ -1147,7 +1140,7 @@ class RealisticBulkData():
 
                     #use this statement to check for IndexError
                     #also might as well +=1 if users are the same
-                    if self.main_users[responder_user_index] == event.created_by.pk:
+                    if self.main_users[responder_user_index] == event.created_by.id:
 
                         responder_user_index += 1
 
@@ -1156,7 +1149,7 @@ class RealisticBulkData():
                     #out of range, restart
                     responder_user_index = 0
 
-                    if self.main_users[responder_user_index] == event.created_by.pk:
+                    if self.main_users[responder_user_index] == event.created_by.id:
 
                         responder_user_index += 1
 
@@ -1198,7 +1191,6 @@ class RealisticBulkData():
 
             originator_audio_clip_metrics.append(
                 AudioClipMetrics(
-                    None,
                     audio_clip=audio_clip,
                     like_count=0,
                     dislike_count=0,
@@ -1210,7 +1202,6 @@ class RealisticBulkData():
 
             responder_audio_clip_metrics.append(
                 AudioClipMetrics(
-                    None,
                     audio_clip=audio_clip,
                     like_count=0,
                     dislike_count=0,
@@ -1248,14 +1239,9 @@ class RealisticBulkData():
         }
 
 
-    #can create rows just to fill db, then use specific testing users and create rows for them
-    def create_processing_originators(self, user_type:Literal['main', 'filler']):
-
-        target_generic_statuses = [
-            self.generic_statuses['processing_pending'],
-            self.generic_statuses['processing'],
-            self.generic_statuses['processing_failed'],
-        ]
+    #originator can have infinite combination of processing/processing_pending/processing_failed audio_clips
+    #hence, minimum_user_quantity is used purely to maintain structure of "sets" in db
+    def create_processing_originators(self, user_type:Literal['main', 'filler'], events_per_user_per_processing_scenario=1):
 
         #1 originator can have a few processing_pending/processing/processing_failed
         originators = []
@@ -1266,13 +1252,10 @@ class RealisticBulkData():
 
         else:
 
-            self.create_new_users(
-                user_quantity=self.minimum_main_user_quantity * len(target_generic_statuses),
-                replace_instance_main_users=False,
+            originators = self.create_new_users(
+                user_quantity=self.minimum_main_user_quantity,
+                user_type='filler'
             )
-
-        #don't need a lot
-        target_event_quantity = 5
 
         events = []
         originator_audio_clips = []
@@ -1283,29 +1266,41 @@ class RealisticBulkData():
         print_with_function_name(f"Started.")
         stopwatch.start()
 
-        for target_generic_status in target_generic_statuses:
+        #since each originator can have multiple rows, no need to care about the scenario*scenario part
 
-            for user in originators:
+        #we do user*processing_scenarios so it's as consistent to test as for create_processing_responders()
+        for user in originators:
 
-                #since each originator can have multiple rows, use arbitrary number
+            for target_generic_status in self.processing_scenarios:
+
+                if target_generic_status is None:
+
+                    continue
 
                 #events must exist in db first before audio_clips, so we create them here
                 events.extend(
                     EventsFactory.create_batch(
                         event_created_by=user,
                         event_generic_status_generic_status_name='processing',
-                        size=target_event_quantity
+                        size=events_per_user_per_processing_scenario
                     )
                 )
                 reset_queries()
 
-                temporary_event_index = len(events) - target_event_quantity
+                temporary_event_index = len(events) - events_per_user_per_processing_scenario
 
-                for x in range(target_event_quantity):
+                for x in range(events_per_user_per_processing_scenario):
 
                     #randomise tone just because it's easier to code
-                    audio_clip_tone = random.randint(0, (len(self.audio_clip_tones) - 1))
-                    audio_clip_tone = self.audio_clip_tones[audio_clip_tone]
+                    audio_clip_tone_index = random.randint(0, (len(self.audio_clip_tones) - 1))
+
+                    #for benchmarks, excluded tones must be left alone
+                    while audio_clip_tone_index in self.excluded_audio_clip_tones_indexes:
+
+                        #reroll
+                        audio_clip_tone_index = random.randint(0, (len(self.audio_clip_tones) - 1))
+
+                    audio_clip_tone = self.audio_clip_tones[audio_clip_tone_index]
 
                     originator_audio_clips.append(
                         AudioClips(
@@ -1388,22 +1383,21 @@ class RealisticBulkData():
         }
 
 
-    #can create rows just to fill db, then use specific testing users and create rows for them
+    #responder can only have 1 row of any processing/processing_pending/processing_failed
+    #hence, proper RealisticBulkData.processing_scenarios is applied
+    #i.e. can have users with 0 responder row of any processing/processing_pending/processing_failed
     def create_processing_responders(self, user_type:Literal['main', 'filler']):
 
-        target_generic_statuses = [
-            self.generic_statuses['processing_pending'],
-            self.generic_statuses['processing'],
-            self.generic_statuses['processing_failed'],
-        ]
+        #OLD SOLUTION
+            #-1 self.processing_scenarios for lower target_event_quantity, just no rows created for "no row" users, skip responder loop
+            #this is rigid coding, and disrespects source of truth
+        #NEW SOLUTION
+            #just follow self.minimum_main_users_per_set, skip event for "no row" users
+            #more consistent and reliable, easier to code
 
         #each user can only be replying to one event at any time
-        target_event_quantity = 1
-
-        if user_type == 'filler':
-
-            #for fillers, we aim for more events, then fill with unique one-off users as responders
-            target_event_quantity = 10
+        #this quantity shall freely fulfill both main/filler user_type
+        target_event_quantity = self.minimum_main_user_quantity
 
         #filler originators
         #every event must have unique responder
@@ -1415,7 +1409,7 @@ class RealisticBulkData():
             #fill only
             originators = self.create_new_users(
                 user_quantity=len(self.main_users),
-                replace_instance_main_users=False,
+                user_type='filler'
             )
 
             #amount already accounted for via self.processing_scenarios
@@ -1425,14 +1419,14 @@ class RealisticBulkData():
 
             #fill to target_event_quantity
             originators = self.create_new_users(
-                user_quantity=target_event_quantity * len(target_generic_statuses),
-                replace_instance_main_users=False,
+                user_quantity=target_event_quantity,
+                user_type='filler'
             )
 
             #fill at one user for one responder
             responders = self.create_new_users(
-                user_quantity=len(originators) * target_event_quantity * len(target_generic_statuses),
-                replace_instance_main_users=False,
+                user_quantity=target_event_quantity,
+                user_type='filler'
             )
 
         events = []
@@ -1447,65 +1441,96 @@ class RealisticBulkData():
         print_with_function_name(f"Started.")
         stopwatch.start()
 
+        #due to block * processing scenarios, the processing scenarios goes as 0123->0123
+
+        #create originator+event first
+
+        for originator in originators:
+
+            #events must exist in db first before audio_clips, so we create them here
+            events.append(
+                EventsFactory(
+                    event_created_by=originator,
+                    event_generic_status_generic_status_name='incomplete',
+                )
+            )
+
+            #randomise tone just because it's easier to code
+            audio_clip_tone_index = random.randint(0, (len(self.audio_clip_tones) - 1))
+
+            #for benchmarks, excluded tones must be left alone
+            while audio_clip_tone_index in self.excluded_audio_clip_tones_indexes:
+
+                #reroll
+                audio_clip_tone_index = random.randint(0, (len(self.audio_clip_tones) - 1))
+
+            audio_clip_tone = self.audio_clip_tones[audio_clip_tone_index]
+
+            originator_audio_clips.append(
+                AudioClips(
+                    user=events[-1].created_by,
+                    audio_clip_role=self.audio_clip_roles['originator'],
+                    audio_clip_tone=audio_clip_tone,
+                    event=events[-1],
+                    generic_status=self.generic_statuses['ok'],
+                    audio_file=self.audio_file,
+                    audio_duration_s=self.audio_duration_s,
+                    audio_volume_peaks=self.audio_volume_peaks,
+                    is_banned=False,
+                )
+            )
+
+        #now for responder, use index to loop processing scenarios
+
+        processing_index = 0
         responder_index = 0
 
-        for target_generic_status in target_generic_statuses:
+        processing_index_to_skip = self.processing_scenarios.index(None)
 
-            for originator in originators:
+        for event in events:
 
-                #events must exist in db first before audio_clips, so we create them here
-                events.extend(
-                    EventsFactory.create_batch(
-                        event_created_by=originator,
-                        event_generic_status_generic_status_name='incomplete',
-                        size=target_event_quantity
-                    )
+            #since it's block*processing, user for processing_scenarios is going 0123 0123, so only need to skip 1 event at a time
+            if processing_index == processing_index_to_skip:
+
+                responder_index += 1
+                processing_index = 0
+
+                continue
+
+            #randomise tone just because it's easier to code
+
+            audio_clip_tone_index = random.randint(0, (len(self.audio_clip_tones) - 1))
+
+            #for benchmarks, excluded tones must be left alone
+            while audio_clip_tone_index in self.excluded_audio_clip_tones_indexes:
+
+                #reroll
+                audio_clip_tone_index = random.randint(0, (len(self.audio_clip_tones) - 1))
+
+            audio_clip_tone = self.audio_clip_tones[audio_clip_tone_index]
+
+            event_reply_queues.append(
+                EventReplyQueues(
+                    event=event,
+                    locked_for_user=responders[responder_index],
+                    is_replying=True,
                 )
-                reset_queries()
+            )
 
-                temporary_event_index = len(events) - target_event_quantity
+            responder_audio_clips.append(
+                AudioClips(
+                    user=responders[responder_index],
+                    audio_clip_role=self.audio_clip_roles['responder'],
+                    audio_clip_tone=audio_clip_tone,
+                    event=event,
+                    generic_status=self.processing_scenarios[processing_index],
+                    audio_file=self.faulty_audio_file_unprocessed_object_key,
+                    is_banned=False,
+                )
+            )
 
-                for x in range(target_event_quantity):
-
-                    #randomise tone just because it's easier to code
-                    audio_clip_tone = random.randint(0, (len(self.audio_clip_tones) - 1))
-                    audio_clip_tone = self.audio_clip_tones[audio_clip_tone]
-
-                    originator_audio_clips.append(
-                        AudioClips(
-                            user=events[temporary_event_index+x].created_by,
-                            audio_clip_role=self.audio_clip_roles['originator'],
-                            audio_clip_tone=audio_clip_tone,
-                            event=events[temporary_event_index+x],
-                            generic_status=self.generic_statuses['ok'],
-                            audio_file=self.audio_file,
-                            audio_duration_s=self.audio_duration_s,
-                            audio_volume_peaks=self.audio_volume_peaks,
-                            is_banned=False,
-                        )
-                    )
-
-                    event_reply_queues.append(
-                        EventReplyQueues(
-                            event=events[temporary_event_index+x],
-                            locked_for_user=responders[responder_index],
-                            is_replying=True,
-                        )
-                    )
-
-                    responder_audio_clips.append(
-                        AudioClips(
-                            user=responders[responder_index],
-                            audio_clip_role=self.audio_clip_roles['responder'],
-                            audio_clip_tone=audio_clip_tone,
-                            event=events[temporary_event_index+x],
-                            generic_status=target_generic_status,
-                            audio_file=self.faulty_audio_file_unprocessed_object_key,
-                            is_banned=False,
-                        )
-                    )
-
-                    responder_index += 1
+            responder_index += 1
+            processing_index += 1
 
         stopwatch.stop()
         stopwatch.print_pretty_difference()
@@ -1608,13 +1633,90 @@ class RealisticBulkData():
         }
 
 
+    #just call this once for entire db, delete in db and recreate if .sample_run() is called again
+    #simplicity is preferred here
+    def create_user_blocks(self):
+
+        #to avoid insane scaling when using entire db of users, we use only what self.get_main_users_relative_to_entire_db() gives
+
+        #so we go block*processing -> classify those users into block scenarios
+
+        is_blocking_users = []
+        is_blocked_users = []
+
+        for set_name in self.main_user_sets:
+
+            user_index = 0
+
+            for block_scenario in self.user_block_scenarios:
+
+                if block_scenario is None:
+
+                    break
+
+                elif block_scenario == 'blocking':
+
+                    for processing_scenario in self.processing_scenarios:
+
+                        is_blocking_users.append(self.main_user_sets[set_name][user_index])
+
+                        user_index += 1
+
+                elif block_scenario == 'blocked':
+
+                    for processing_scenario in self.processing_scenarios:
+
+                        is_blocked_users.append(self.main_user_sets[set_name][user_index])
+
+                        user_index += 1
+
+                elif block_scenario == 'mutual_block':
+
+                    for processing_scenario in self.processing_scenarios:
+
+                        is_blocking_users.append(self.main_user_sets[set_name][user_index])
+                        is_blocked_users.append(self.main_user_sets[set_name][user_index])
+
+                        user_index += 1
+
+                else:
+
+                    raise ValueError(f'invalid {block_scenario}')
+
+        #start
+
+        user_blocks = []
+
+        for user_a in is_blocking_users:
+
+            for user_b in is_blocked_users:
+
+                if user_a.id == user_b.id:
+
+                    #cannot block yourself
+                    continue
+
+                user_blocks.append(
+                    UserBlocks(user=user_a, blocked_user=user_b)
+                )
+
+        #delete rows in db to recreate according to latest version of db
+
+        UserBlocks.objects.all().delete()
+
+        #create
+        #rely on unique constraint and ignore_conflicts=True to remove duplicates
+
+        return UserBlocks.objects.bulk_create(user_blocks, ignore_conflicts=True, batch_size=self.db_batch_size)
+
+
     #if you want more rows, specify max_randomness_iteration_count
         #1 is just enough for other tests
     #cmd:
-        #python manage.py shell -c "from voicewake.tests.test_metrics import RealisticBulkData; RealisticBulkData.sample_run(5, False, True);"
+        #python manage.py shell -c "from voicewake.tests.test_metrics import RealisticBulkData; RealisticBulkData.sample_run(5, True);"
     #if you run this then lack rows for other tests, it's better if you delete db and recreate rows
     @staticmethod
-    def sample_run(max_randomness_iteration_count=1, reuse_main_users=True, use_threads=True):
+    def sample_run(max_randomness_iteration_count=1, use_threads=True):
 
         #add anything here for rows to be "earlier", beneficial for tests
 
@@ -1628,16 +1730,10 @@ class RealisticBulkData():
             db_batch_size=500,
         )
 
-        if reuse_main_users is True:
-
-            realistic_bulk_data_class.reuse_existing_users()
-
         while current_randomness_iteration_count < max_randomness_iteration_count:
 
-            if reuse_main_users is False:
-
-                #create users per while-loop for realistic non-hyperactive users
-                realistic_bulk_data_class.create_new_users(replace_instance_main_users=True)
+            #create users per while-loop for realistic non-hyperactive users
+            realistic_bulk_data_class.create_new_users()
 
             realistic_bulk_data_class.prepare_like_dislike_estimate()
 
@@ -1665,11 +1761,9 @@ class RealisticBulkData():
                 realistic_bulk_data_class.create_processing_originators(user_type='filler')
                 realistic_bulk_data_class.create_processing_responders(user_type='filler')
 
-                if reuse_main_users is False:
-
-                    #since not reusing users, create their processings now
-                    realistic_bulk_data_class.create_processing_originators(user_type='main')
-                    realistic_bulk_data_class.create_processing_responders(user_type='main')
+                #since not reusing users, create their processings now
+                realistic_bulk_data_class.create_processing_originators(user_type='main')
+                realistic_bulk_data_class.create_processing_responders(user_type='main')
 
             else:
 
@@ -1695,11 +1789,9 @@ class RealisticBulkData():
                 threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_originators,), args=('filler',))
                 threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_responders,), args=('filler',))
 
-                if reuse_main_users is False:
-
-                    #since not reusing users, create their processings now
-                    threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_originators,), args=('test',))
-                    threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_responders,), args=('test',))
+                #since not reusing users, create their processings now
+                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_originators,), args=('main',))
+                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_responders,), args=('main',))
 
                 random.shuffle(threads)
 
@@ -1741,22 +1833,8 @@ class RealisticBulkData():
 
             current_randomness_iteration_count += 1
 
-        #processings for test users, only need to call once if the users are reused for main while-loop
-        if reuse_main_users is True:
-
-            realistic_bulk_data_class.create_processing_originators(user_type='main')
-            realistic_bulk_data_class.create_processing_responders(user_type='main')
-
         #blocks, only perform after everything to ensure no new users come after
         realistic_bulk_data_class.create_user_blocks()
-
-
-
-
-
-
-
-
 
 
 
@@ -1823,10 +1901,120 @@ class RealisticBulkData_TestCase(TestCase):
         print(realistic_bulk_data_class.like_ratio)
         print(AudioClipLikesDislikes.objects.filter(is_liked=True).count())
         print(AudioClipLikesDislikes.objects.filter(is_liked=False).count())
-        for user in realistic_bulk_data_class.users:
+        for user in realistic_bulk_data_class.main_users:
             print(user.username)
             print(AudioClipLikesDislikes.objects.filter(user=user, is_liked=True).count())
             print(AudioClipLikesDislikes.objects.filter(user=user, is_liked=False).count())
+
+
+    def test_realistic_bulk_data__get_main_users_relative_to_entire_db(self):
+
+        realistic_bulk_data_class = RealisticBulkData()
+
+        #round 0
+        #do create_new_users() and get_main_users_relative_to_entire_db()
+        #expect exact match
+
+        realistic_bulk_data_class.create_new_users(user_type='main')
+
+        main_users_created_0 = realistic_bulk_data_class.main_users.copy()
+        main_user_sets_created_0 = realistic_bulk_data_class.main_user_sets.copy()
+
+        result = RealisticBulkData.get_main_users_relative_to_entire_db()
+
+        main_users_get_0 = result['main_users']
+        main_user_sets_get_0 = result['main_user_sets']
+
+        #compare lengths of full lists
+        self.assertEqual(len(main_users_created_0), realistic_bulk_data_class.minimum_main_user_quantity)
+        self.assertEqual(len(main_users_get_0), realistic_bulk_data_class.minimum_main_user_quantity)
+
+        #compare if full lists are matching via user ids
+        for x in range(len(main_users_created_0)):
+
+            self.assertEqual(main_users_created_0[x].id, main_users_get_0[x].id)
+
+        for set_name in realistic_bulk_data_class.main_user_sets:
+
+            #compare length of sets
+            self.assertEqual(len(main_user_sets_created_0[set_name]), realistic_bulk_data_class.minimum_main_users_per_set)
+            self.assertEqual(len(main_user_sets_get_0[set_name]), realistic_bulk_data_class.minimum_main_users_per_set)
+
+            #compare user ids inside sets
+            for x in range(realistic_bulk_data_class.minimum_main_users_per_set):
+
+                self.assertEqual(main_user_sets_created_0[set_name][x].id, main_user_sets_get_0[set_name][x].id)
+
+        #round 1
+        #do create_new_users() and get_main_users_relative_to_entire_db()
+        #expect earliest set to match, middle/latest to not match
+
+        realistic_bulk_data_class.create_new_users(user_type='main')
+
+        main_users_created_1 = realistic_bulk_data_class.main_users.copy()
+        main_user_sets_created_1 = realistic_bulk_data_class.main_user_sets.copy()
+
+        result = RealisticBulkData.get_main_users_relative_to_entire_db()
+
+        main_users_get_1 = result['main_users']
+        main_user_sets_get_1 = result['main_user_sets']
+
+        #compare lengths of full lists
+        self.assertEqual(len(main_users_created_0), realistic_bulk_data_class.minimum_main_user_quantity)
+        self.assertEqual(len(main_users_get_0), realistic_bulk_data_class.minimum_main_user_quantity)
+
+        for set_name in realistic_bulk_data_class.main_user_sets:
+
+            #compare length of sets
+            self.assertEqual(len(main_user_sets_created_0[set_name]), realistic_bulk_data_class.minimum_main_users_per_set)
+            self.assertEqual(len(main_user_sets_get_0[set_name]), realistic_bulk_data_class.minimum_main_users_per_set)
+
+        #check each user in full list, which for earliest, will match
+        for x in range(realistic_bulk_data_class.minimum_main_users_per_set):
+
+            self.assertEqual(main_users_get_0[x].id, main_users_get_1[x].id)
+
+        #check each user in full list, which for middle/latest, will not match
+        for x in range(realistic_bulk_data_class.minimum_main_users_per_set, len(main_users_get_0)):
+
+            self.assertLess(main_users_get_0[x].id, main_users_get_1[x].id)
+
+        #check each user in sets, which for earliest, will match everything
+        for x in range(realistic_bulk_data_class.minimum_main_users_per_set):
+
+            self.assertEqual(main_user_sets_get_0['earliest'][x].id, main_user_sets_get_1['earliest'][x].id)
+
+        #check each user in sets, which for middle/latest, will not match
+        for x in range(realistic_bulk_data_class.minimum_main_users_per_set):
+
+            #check sets within each round
+            self.assertLess(main_user_sets_get_0['earliest'][x].id, main_user_sets_get_0['middle'][x].id)
+            self.assertLess(main_user_sets_get_0['middle'][x].id, main_user_sets_get_0['latest'][x].id)
+            self.assertLess(main_user_sets_get_1['earliest'][x].id, main_user_sets_get_1['middle'][x].id)
+            self.assertLess(main_user_sets_get_1['middle'][x].id, main_user_sets_get_1['latest'][x].id)
+
+            #check sets between both rounds
+            self.assertLess(main_user_sets_get_0['middle'][x].id, main_user_sets_get_1['middle'][x].id)
+            self.assertLess(main_user_sets_get_0['latest'][x].id, main_user_sets_get_1['latest'][x].id)
+
+        #since there are more sets now, check things across entire db
+
+        all_users = realistic_bulk_data_class.main_user_group.user_set.all().order_by('id')
+        set_quantity = len(all_users) / realistic_bulk_data_class.minimum_main_users_per_set
+
+        #check if set count in db is consistent
+        self.assertEqual(len(all_users) % realistic_bulk_data_class.minimum_main_users_per_set, 0)
+        self.assertEqual(set_quantity, len(realistic_bulk_data_class.main_user_sets) * 2)
+
+        #check if true middle set is accurate
+        #use floor to adjust to 0-based index
+        middle_set_first_user = math.floor(set_quantity / 2) * realistic_bulk_data_class.minimum_main_users_per_set
+        middle_set_first_user = all_users[middle_set_first_user]
+
+        self.assertEqual(
+            middle_set_first_user.id,
+            main_user_sets_get_1['middle'][0].id
+        )
 
 
     def test_realistic_bulk_data__event_incomplete(self):
@@ -1903,9 +2091,9 @@ class RealisticBulkData_TestCase(TestCase):
             (
                 (len(realistic_bulk_data_class.audio_clip_tones) - len(realistic_bulk_data_class.excluded_audio_clip_tones_indexes))
                 * realistic_bulk_data_class.event_quantity
-                * len(realistic_bulk_data_class.users)
+                * len(realistic_bulk_data_class.main_users)
                 #-1 because we simply skip creation if originator == current_user
-                * (len(realistic_bulk_data_class.users) - 1)
+                * (len(realistic_bulk_data_class.main_users) - 1)
             )
         )
 
@@ -2287,222 +2475,349 @@ class RealisticBulkData_TestCase(TestCase):
 
     def test_realistic_bulk_data__processing_originators(self):
 
+        #for each user
+        events_per_user_per_processing_scenario = 2
+
         realistic_bulk_data_class = RealisticBulkData()
 
-        result = realistic_bulk_data_class.create_processing_originators()
+        for target_user_type in ['main', 'filler']:
 
-        self.assertGreater(len(result['events']), 0)
-        self.assertGreater(len(result['originator_audio_clips']), 0)
-        self.assertGreater(len(result['originator_audio_clip_metrics']), 0)
+            if target_user_type == 'main':
 
-        self.assertEqual(len(result['events']), len(result['originator_audio_clips']))
-        self.assertEqual(len(result['events']), len(result['originator_audio_clip_metrics']))
+                #always use fresh main users
+                realistic_bulk_data_class.create_new_users(user_type=target_user_type)
 
-        middle_row_index = math.ceil(len(result['events']) / 2)
+            #filler users are automatically created
+            result = realistic_bulk_data_class.create_processing_originators(
+                user_type=target_user_type,
+                events_per_user_per_processing_scenario=events_per_user_per_processing_scenario
+            )
 
-        self.assertEqual(result['events'][0].generic_status.generic_status_name, 'processing')
-        self.assertEqual(result['events'][middle_row_index].generic_status.generic_status_name, 'processing')
-        self.assertEqual(result['events'][-1].generic_status.generic_status_name, 'processing')
+            self.assertGreater(len(result['events']), 0)
+            self.assertGreater(len(result['originator_audio_clips']), 0)
+            self.assertGreater(len(result['originator_audio_clip_metrics']), 0)
 
-        self.assertEqual(result['originator_audio_clips'][0].generic_status.generic_status_name, 'processing_pending')
-        self.assertEqual(result['originator_audio_clips'][middle_row_index].generic_status.generic_status_name, 'processing')
-        self.assertEqual(result['originator_audio_clips'][-1].generic_status.generic_status_name, 'processing_failed')
+            self.assertEqual(len(result['events']), len(result['originator_audio_clips']))
+            self.assertEqual(len(result['events']), len(result['originator_audio_clip_metrics']))
 
-        self.assertEqual(result['originator_audio_clips'][0].audio_clip_role.audio_clip_role_name, 'originator')
-        self.assertEqual(result['originator_audio_clips'][middle_row_index].audio_clip_role.audio_clip_role_name, 'originator')
-        self.assertEqual(result['originator_audio_clips'][-1].audio_clip_role.audio_clip_role_name, 'originator')
+            #looping through self.processing_scenarios like user_0:0123 user1:0123
 
-        #processing_pending, no processing object
-        target_cache = cache.get(
-            CreateAudioClips.determine_processing_cache_key(
-                user_id=result['originator_audio_clips'][0].user.id
-            ),
-            None
-        )
-        processing_object = CreateAudioClips.get_processing_object_from_processing_cache(
-            target_cache,
-            result['originator_audio_clips'][0].id
-        )
-        self.assertIsNone(processing_object)
+            loop_index = 0
 
-        #processing, has processing object
-        target_cache = cache.get(
-            CreateAudioClips.determine_processing_cache_key(
-                user_id=result['originator_audio_clips'][middle_row_index].user.id
-            ),
-            None
-        )
-        processing_object = CreateAudioClips.get_processing_object_from_processing_cache(
-            target_cache,
-            result['originator_audio_clips'][middle_row_index].id
-        )
-        self.assertIsNotNone(processing_object)
-        self.assertEqual(
-            processing_object['status'],
-            result['originator_audio_clips'][middle_row_index].generic_status.generic_status_name
-        )
+            #lazy way to allow first row to compare with something without needing if-statement
+            compared_originator_id = result['originator_audio_clips'][0].user.id
 
-        #processing_failed, has processing object
-        target_cache = cache.get(
-            CreateAudioClips.determine_processing_cache_key(
-                user_id=result['originator_audio_clips'][-1].user.id
-            ),
-            None
-        )
-        processing_object = CreateAudioClips.get_processing_object_from_processing_cache(
-            target_cache,
-            result['originator_audio_clips'][-1].id
-        )
-        self.assertIsNotNone(processing_object)
-        self.assertEqual(
-            processing_object['status'],
-            result['originator_audio_clips'][-1].generic_status.generic_status_name
-        )
+            processing_scenario_index = 0
+            processing_scenario_index_to_skip = realistic_bulk_data_class.processing_scenarios.index(None)
 
-        self.metrics.update({
-            inspect.currentframe().f_code.co_name: {
-                'events': len(result['events']),
-                'originator_audio_clips': len(result['originator_audio_clips']),
-                'originator_audio_clip_metrics': len(result['originator_audio_clip_metrics']),
-            }
-        })
+            row_count_per_processing_scenario = 0
+
+            while loop_index < len(result['events']):
+
+                #event
+                self.assertEqual(result['events'][loop_index].generic_status.generic_status_name, 'processing')
+                self.assertEqual(
+                    result['events'][loop_index].created_by.id,
+                    result['originator_audio_clips'][loop_index].user.id,
+                )
+
+                #condition to move on to next processing_scenario
+                if row_count_per_processing_scenario == events_per_user_per_processing_scenario:
+
+                    row_count_per_processing_scenario = 0
+                    processing_scenario_index += 1
+
+                #condition to reloop processing scenario
+                if processing_scenario_index == processing_scenario_index_to_skip:
+
+                    #None marks the end of current user, since it's user*processing, so user*0123
+                    #there will be no rows when user is expected to have no processing, so reality is user_0*012, user_1*012, etc.
+
+                    try:
+
+                        #save next user for comparison
+                        compared_originator_id = result['originator_audio_clips'][loop_index+1].user.id
+
+                    except IndexError:
+
+                        #end of list
+                        break
+
+                    #reset
+                    processing_scenario_index = 0
+
+                #since there's no such thing as "AudioClips.generic_status=None", we always proceed
+
+                #originator
+                self.assertEqual(
+                    result['originator_audio_clips'][loop_index].generic_status.generic_status_name,
+                    realistic_bulk_data_class.processing_scenarios[processing_scenario_index].generic_status_name
+                )
+                self.assertEqual(result['originator_audio_clips'][loop_index].audio_clip_role.audio_clip_role_name, 'originator')
+                self.assertEqual(result['events'][loop_index].id, result['originator_audio_clips'][loop_index].event.id)
+
+                #still same user, due to user*processing
+                self.assertEqual(result['originator_audio_clips'][loop_index].user.id, compared_originator_id)
+
+                if result['originator_audio_clips'][loop_index].generic_status.generic_status_name == 'processing_pending':
+
+                    #no cache
+                    target_cache = cache.get(
+                        CreateAudioClips.determine_processing_cache_key(
+                            user_id=result['originator_audio_clips'][loop_index].user.id
+                        ),
+                        None
+                    )
+
+                    if target_cache is not None:
+
+                        processing_object = CreateAudioClips.get_processing_object_from_processing_cache(
+                            target_cache,
+                            result['originator_audio_clips'][loop_index].id
+                        )
+                        self.assertIsNone(processing_object)
+
+                else:
+
+                    #cache
+                    target_cache = cache.get(
+                        CreateAudioClips.determine_processing_cache_key(
+                            user_id=result['originator_audio_clips'][loop_index].user.id
+                        ),
+                        None
+                    )
+                    processing_object = CreateAudioClips.get_processing_object_from_processing_cache(
+                        target_cache,
+                        result['originator_audio_clips'][loop_index].id
+                    )
+                    self.assertIsNotNone(processing_object)
+                    self.assertEqual(
+                        processing_object['status'],
+                        result['originator_audio_clips'][loop_index].generic_status.generic_status_name
+                    )
+                    self.assertGreater(processing_object['attempts_left'], 0)
+
+                row_count_per_processing_scenario += 1
+
+                loop_index += 1
+
+            self.metrics.update({
+                f'{inspect.currentframe().f_code.co_name}__{target_user_type}': {
+                    'events': len(result['events']),
+                    'originator_audio_clips': len(result['originator_audio_clips']),
+                    'originator_audio_clip_metrics': len(result['originator_audio_clip_metrics']),
+                }
+            })
 
 
     def test_realistic_bulk_data__processing_responders(self):
 
         realistic_bulk_data_class = RealisticBulkData()
 
-        result = realistic_bulk_data_class.create_processing_responders()
+        for target_user_type in ['main', 'filler']:
 
-        self.assertGreater(len(result['events']), 0)
-        self.assertGreater(len(result['originator_audio_clips']), 0)
-        self.assertGreater(len(result['originator_audio_clip_metrics']), 0)
-        self.assertGreater(len(result['event_reply_queues']), 0)
-        self.assertGreater(len(result['originator_audio_clips']), 0)
-        self.assertGreater(len(result['originator_audio_clip_metrics']), 0)
+            if target_user_type == 'main':
 
-        self.assertEqual(len(result['events']), len(result['originator_audio_clips']))
-        self.assertEqual(len(result['events']), len(result['originator_audio_clip_metrics']))
-        self.assertEqual(len(result['events']), len(result['event_reply_queues']))
-        self.assertEqual(len(result['events']), len(result['responder_audio_clips']))
-        self.assertEqual(len(result['events']), len(result['responder_audio_clip_metrics']))
+                #always use fresh main users
+                realistic_bulk_data_class.create_new_users(user_type=target_user_type)
 
-        middle_row_index = math.ceil(len(result['events']) / 2)
+            #filler users are automatically created
+            result = realistic_bulk_data_class.create_processing_responders(user_type=target_user_type)
 
-        self.assertEqual(result['events'][0].generic_status.generic_status_name, 'incomplete')
-        self.assertEqual(result['events'][middle_row_index].generic_status.generic_status_name, 'incomplete')
-        self.assertEqual(result['events'][-1].generic_status.generic_status_name, 'incomplete')
+            self.assertGreater(len(result['events']), 0)
+            self.assertGreater(len(result['originator_audio_clips']), 0)
+            self.assertGreater(len(result['originator_audio_clip_metrics']), 0)
+            self.assertGreater(len(result['event_reply_queues']), 0)
+            self.assertGreater(len(result['originator_audio_clips']), 0)
+            self.assertGreater(len(result['originator_audio_clip_metrics']), 0)
 
-        self.assertEqual(result['originator_audio_clips'][0].generic_status.generic_status_name, 'ok')
-        self.assertEqual(result['originator_audio_clips'][middle_row_index].generic_status.generic_status_name, 'ok')
-        self.assertEqual(result['originator_audio_clips'][-1].generic_status.generic_status_name, 'ok')
+            self.assertEqual(len(result['events']), len(result['originator_audio_clips']))
+            self.assertEqual(len(result['events']), len(result['originator_audio_clip_metrics']))
+            self.assertGreater(len(result['events']), len(result['event_reply_queues']))
+            self.assertGreater(len(result['events']), len(result['responder_audio_clips']))
+            self.assertGreater(len(result['events']), len(result['responder_audio_clip_metrics']))
 
-        self.assertEqual(result['responder_audio_clips'][0].generic_status.generic_status_name, 'processing_pending')
-        self.assertEqual(result['responder_audio_clips'][middle_row_index].generic_status.generic_status_name, 'processing')
-        self.assertEqual(result['responder_audio_clips'][-1].generic_status.generic_status_name, 'processing_failed')
+            #every row is continuously looping through self.processing_scenarios like 0123 0123, and every responder is a different user
+            #if responder is supposed to have no processing, originator will exist but not responder
 
-        self.assertEqual(result['originator_audio_clips'][0].audio_clip_role.audio_clip_role_name, 'originator')
-        self.assertEqual(result['originator_audio_clips'][middle_row_index].audio_clip_role.audio_clip_role_name, 'originator')
-        self.assertEqual(result['originator_audio_clips'][-1].audio_clip_role.audio_clip_role_name, 'originator')
+            loop_index = 0
 
-        self.assertEqual(result['responder_audio_clips'][0].audio_clip_role.audio_clip_role_name, 'responder')
-        self.assertEqual(result['responder_audio_clips'][middle_row_index].audio_clip_role.audio_clip_role_name, 'responder')
-        self.assertEqual(result['responder_audio_clips'][-1].audio_clip_role.audio_clip_role_name, 'responder')
+            responder_index = 0
 
-        self.assertEqual(
-            result['event_reply_queues'][0].locked_for_user.id,
-            result['responder_audio_clips'][0].user.id,
-        )
-        self.assertEqual(
-            result['event_reply_queues'][middle_row_index].locked_for_user.id,
-            result['responder_audio_clips'][middle_row_index].user.id,
-        )
-        self.assertEqual(
-            result['event_reply_queues'][-1].locked_for_user.id,
-            result['responder_audio_clips'][-1].user.id,
-        )
+            #lazy way to allow first row to compare with something without needing if-statement
+            previous_responder_id = 0
 
-        self.assertEqual(result['event_reply_queues'][0].is_replying, True)
-        self.assertEqual(result['event_reply_queues'][middle_row_index].is_replying, True)
-        self.assertEqual(result['event_reply_queues'][-1].is_replying, True)
+            processing_scenario_index = 0
+            processing_scenario_index_to_skip = realistic_bulk_data_class.processing_scenarios.index(None)
 
-        #processing_pending, no cache at all because responder is used only once
-        target_cache = cache.get(
-            CreateAudioClips.determine_processing_cache_key(
-                user_id=result['responder_audio_clips'][0].user.id
-            ),
-            None
-        )
-        self.assertIsNone(target_cache)
+            while loop_index < len(result['events']):
 
-        #processing, has processing object
-        target_cache = cache.get(
-            CreateAudioClips.determine_processing_cache_key(
-                user_id=result['responder_audio_clips'][middle_row_index].user.id
-            ),
-            None
-        )
-        processing_object = CreateAudioClips.get_processing_object_from_processing_cache(
-            target_cache,
-            result['responder_audio_clips'][middle_row_index].id
-        )
-        self.assertIsNotNone(processing_object)
-        self.assertEqual(
-            processing_object['status'],
-            result['responder_audio_clips'][middle_row_index].generic_status.generic_status_name
-        )
+                #event
+                self.assertEqual(result['events'][loop_index].generic_status.generic_status_name, 'incomplete')
+                self.assertEqual(
+                    result['events'][loop_index].created_by.id,
+                    result['originator_audio_clips'][loop_index].user.id,
+                )
 
-        #processing_failed, has processing object
-        target_cache = cache.get(
-            CreateAudioClips.determine_processing_cache_key(
-                user_id=result['responder_audio_clips'][-1].user.id
-            ),
-            None
-        )
-        processing_object = CreateAudioClips.get_processing_object_from_processing_cache(
-            target_cache,
-            result['responder_audio_clips'][-1].id
-        )
-        self.assertIsNotNone(processing_object)
-        self.assertEqual(
-            processing_object['status'],
-            result['responder_audio_clips'][-1].generic_status.generic_status_name
-        )
+                #originator
+                self.assertEqual(result['originator_audio_clips'][loop_index].generic_status.generic_status_name, 'ok')
+                self.assertEqual(result['originator_audio_clips'][loop_index].audio_clip_role.audio_clip_role_name, 'originator')
 
-        self.metrics.update({
-            inspect.currentframe().f_code.co_name: {
-                'events': len(result['events']),
-                'originator_audio_clips': len(result['originator_audio_clips']),
-                'originator_audio_clip_metrics': len(result['originator_audio_clip_metrics']),
-                'event_reply_queues': len(result['event_reply_queues']),
-                'responder_audio_clips': len(result['responder_audio_clips']),
-                'responder_audio_clip_metrics': len(result['responder_audio_clip_metrics']),
-            }
-        })
+                #responder+queue
+
+                if processing_scenario_index == processing_scenario_index_to_skip:
+
+                    #no responder+queue
+
+                    self.assertFalse(
+                        EventReplyQueues.objects.filter(event=result['events'][loop_index]).exists()
+                    )
+                    self.assertFalse(
+                        AudioClips.objects.filter(
+                            event=result['events'][loop_index],
+                            audio_clip_role__audio_clip_role_name='responder',
+                        ).exists()
+                    )
+                    self.assertFalse(
+                        AudioClips.objects.filter(
+                            event=result['events'][loop_index],
+                            user=realistic_bulk_data_class.main_users[responder_index]
+                        ).exists()
+                    )
+
+                    #do not increment responder_index here
+                    #when this event has no responder, current responder is meant for next event
+
+                    processing_scenario_index = 0
+
+                else:
+
+                    #has responder+queue
+
+                    #queue
+                    self.assertEqual(
+                        result['responder_audio_clips'][responder_index].user.id,
+                        result['event_reply_queues'][responder_index].locked_for_user.id,
+                    )
+                    self.assertEqual(result['event_reply_queues'][responder_index].is_replying, True)
+                    self.assertEqual(result['event_reply_queues'][responder_index].event.id, result['events'][loop_index].id)
+
+                    #responder
+                    #every responder's user id will increment
+                    self.assertEqual(
+                        result['responder_audio_clips'][responder_index].event.id,
+                        result['events'][loop_index].id
+                    )
+                    self.assertEqual(
+                        result['responder_audio_clips'][responder_index].generic_status.generic_status_name,
+                        realistic_bulk_data_class.processing_scenarios[processing_scenario_index].generic_status_name
+                    )
+                    self.assertEqual(
+                        result['responder_audio_clips'][responder_index].audio_clip_role.audio_clip_role_name,
+                        'responder'
+                    )
+                    self.assertGreater(
+                        result['responder_audio_clips'][responder_index].user.id,
+                        previous_responder_id
+                    )
+
+                    if result['responder_audio_clips'][responder_index].generic_status.generic_status_name == 'processing_pending':
+
+                        #no cache
+
+                        target_cache = cache.get(
+                            CreateAudioClips.determine_processing_cache_key(
+                                user_id=result['responder_audio_clips'][responder_index].user.id
+                            ),
+                            None
+                        )
+
+                        if target_cache is not None:
+
+                            processing_object = CreateAudioClips.get_processing_object_from_processing_cache(
+                                target_cache,
+                                result['responder_audio_clips'][responder_index].id
+                            )
+                            self.assertIsNone(processing_object)
+
+                    else:
+
+                        #cache
+
+                        target_cache = cache.get(
+                            CreateAudioClips.determine_processing_cache_key(
+                                user_id=result['responder_audio_clips'][responder_index].user.id
+                            ),
+                            None
+                        )
+                        processing_object = CreateAudioClips.get_processing_object_from_processing_cache(
+                            target_cache,
+                            result['responder_audio_clips'][responder_index].id
+                        )
+                        self.assertIsNotNone(processing_object)
+                        self.assertEqual(
+                            processing_object['status'],
+                            result['responder_audio_clips'][responder_index].generic_status.generic_status_name
+                        )
+                        self.assertGreater(processing_object['attempts_left'], 0)
+
+                    previous_responder_id = result['responder_audio_clips'][responder_index].user.id
+
+                    processing_scenario_index += 1
+                    responder_index += 1
+
+                loop_index += 1
+
+            self.metrics.update({
+                f'{inspect.currentframe().f_code.co_name}__{target_user_type}': {
+                    'events': len(result['events']),
+                    'originator_audio_clips': len(result['originator_audio_clips']),
+                    'originator_audio_clip_metrics': len(result['originator_audio_clip_metrics']),
+                    'event_reply_queues': len(result['event_reply_queues']),
+                    'responder_audio_clips': len(result['responder_audio_clips']),
+                    'responder_audio_clip_metrics': len(result['responder_audio_clip_metrics']),
+                }
+            })
 
 
-    #run this before testing sample_run()
-    def test_realistic_bulk_data__before_testing_sample_run(self):
+    def test_realistic_bulk_data__user_blocks(self):
 
-        #False first to create users
-        for must_reuse_main_users in [False, True]:
+        realistic_bulk_data_class = RealisticBulkData()
 
-            realistic_bulk_data_class = RealisticBulkData(
-                db_batch_size=500,
-            )
+        #always use fresh main users
+        realistic_bulk_data_class.create_new_users(user_type='main')
 
-            if must_reuse_main_users is True:
+        user_blocks = realistic_bulk_data_class.create_user_blocks()
 
-                realistic_bulk_data_class.reuse_existing_users()
+        #block*processing
 
-            for x in range(2):
+        user_index = 0
 
-                if must_reuse_main_users is False:
+        for user_block_scenario in realistic_bulk_data_class.user_block_scenarios:
 
-                    #create users per while-loop for realistic non-hyperactive users
-                    realistic_bulk_data_class.create_new_users()
+            for processing_scenario in realistic_bulk_data_class.processing_scenarios:
 
-                realistic_bulk_data_class.prepare_like_dislike_estimate()
+                if user_block_scenario == 'blocking':
+
+                    self.assertTrue(UserBlocks.objects.filter(user=realistic_bulk_data_class.main_users[user_index]).exists())
+                    self.assertFalse(UserBlocks.objects.filter(blocked_user=realistic_bulk_data_class.main_users[user_index]).exists())
+
+                elif user_block_scenario == 'blocked':
+
+                    self.assertFalse(UserBlocks.objects.filter(user=realistic_bulk_data_class.main_users[user_index]).exists())
+                    self.assertTrue(UserBlocks.objects.filter(blocked_user=realistic_bulk_data_class.main_users[user_index]).exists())
+
+                elif user_block_scenario == 'mutual_block':
+
+                    self.assertTrue(UserBlocks.objects.filter(user=realistic_bulk_data_class.main_users[user_index]).exists())
+                    self.assertTrue(UserBlocks.objects.filter(blocked_user=realistic_bulk_data_class.main_users[user_index]).exists())
+
+                elif user_block_scenario == None:
+
+                    self.assertFalse(UserBlocks.objects.filter(user=realistic_bulk_data_class.main_users[user_index]).exists())
+                    self.assertFalse(UserBlocks.objects.filter(blocked_user=realistic_bulk_data_class.main_users[user_index]).exists())
+
+                user_index += 1
 
 
 
@@ -2510,51 +2825,3215 @@ class RealisticBulkData_TestCase(TestCase):
 
 
 
-#instead of using TransactionTestCase, do use_threads=False for .sample_run() then use TestCase
+
+
+
+
+
+#separate sample_run() test because doing it every time you run RealisticBulkData_TestCase is unnecessary
 @override_settings(
     
     DEBUG=True,
-    EVENT_QUANTITY_PER_PAGE=4,  #for faster tests
+    EVENT_QUANTITY_PER_PAGE=4, #for faster tests
 )
 class RealisticBulkData_SampleRun_TestCase(TestCase):
+
+    #{test_function_name: anything}
+    metrics = {}
+
+    @classmethod
+    def setUpTestData(cls):
+
+        pass
+
+
+    @classmethod
+    def tearDownClass(cls):
+
+        #print more beautifully
+        for function_name in cls.metrics:
+
+            print(function_name)
+            print(cls.metrics[function_name])
+            print('\n')
+
+        shutil.rmtree(os.path.join(settings.MEDIA_ROOT, 'audio_clips'), ignore_errors=True)
+
+        try:
+            cache.clear()
+        except:
+            pass
+
+        super().tearDownClass()
+
+
+    @classmethod
+    def tearDown(cls):
+
+        try:
+            cache.clear()
+        except:
+            pass
+
 
     def test_realistic_bulk_data__small_sample_run(self):
 
         #first run
-        RealisticBulkData.sample_run(max_randomness_iteration_count=1, reuse_main_users=False, use_threads=False,)
+        RealisticBulkData.sample_run(max_randomness_iteration_count=1, use_threads=False,)
 
         #test repeated calls
-        RealisticBulkData.sample_run(max_randomness_iteration_count=1, reuse_main_users=False, use_threads=False,)
-
-        #now reuse users
-
-        RealisticBulkData.sample_run(max_randomness_iteration_count=1, reuse_main_users=True, use_threads=False,)
-
-        #test repeated calls
-        RealisticBulkData.sample_run(max_randomness_iteration_count=1, reuse_main_users=True, use_threads=False,)
+        RealisticBulkData.sample_run(max_randomness_iteration_count=1, use_threads=False,)
 
 
-    def test_realistic_bulk_data__small_sample_run__tone_not_reduced(self):
+
+
+
+
+
+
+
+
+
+
+
+
+
+#how to test:
+    #test each test_() individually, as running all tests concurrently will have worse performance
+#this test handles full validation and performance of apis.BrowseEvents
+    #easier to do it here than to duplicate into test_apis and test_metrics
+    #uses RealisticBulkData
+#logic behaviours:
+    #since we have cursor tokens, always test (latest->back/to), (earliest->back/to)
+    #for tests that test on filtering, we iterate through list of filters in a single test case, else exponential
+        #a test case for filters then becomes unique by differentiating into latest/earliest/empty rows to test db indexing
+    #you may see a repeat queryset between audio_clip_tone_id and expected_rows
+        #this is necessary so we can do [:1] and guarantee all expected_rows later only has the same audio_clip_tone
+        #expected_rows on its own cannot guarantee that all rows have the same audio_clip_tone
+#minimum_time_elapsed_ms
+    #sometimes if db has no active caching, it will take nearly 300ms
+        #after first test run and caching is done, it will be at optimal times of 50ms-150ms
+@override_settings(
+    
+    DEBUG=True,
+)
+class BrowseEvents_TestCase(TestCase):
+
+    #{test_function_name: anything}
+    metrics = {}
+
+    @classmethod
+    def setUpTestData(cls):
+
+        cls.realistic_bulk_data_class = RealisticBulkData()
+
+        result = cls.realistic_bulk_data_class.get_main_users_relative_to_entire_db()
+        cls.main_users = result['main_users']
+        cls.main_user_sets = result['main_user_sets']
+
+
+    @classmethod
+    def tearDownClass(cls):
+
+        print('\n\n\n\n\n')
+
+        #print more beautifully
+        for function_name in cls.metrics:
+
+            print(function_name)
+            print(cls.metrics[function_name])
+            print('\n')
+
+        shutil.rmtree(os.path.join(settings.MEDIA_ROOT, 'audio_clips'), ignore_errors=True)
+
+        try:
+            cache.clear()
+        except:
+            pass
+
+        super().tearDownClass()
+
+
+    @classmethod
+    def tearDown(cls):
+
+        try:
+            cache.clear()
+        except:
+            pass
+
+
+    def login(self, user_instance):
+
+        #need this here because @classmethod does not have .client attribute
+        self.client.force_login(user_instance)
+
+
+    #response_data['data']: [{event:event,originator:[],responder:[]}]
+    def _general_row_check(self, response_data, api_kwargs, is_event_always_completed=True):
+
+        audio_clip_role_name = api_kwargs['audio_clip_role_name']
+
+        opposite_audio_clip_role_name = 'originator'
+
+        if opposite_audio_clip_role_name == audio_clip_role_name:
+
+            opposite_audio_clip_role_name = 'responder'
+
+        if is_event_always_completed is True:
+
+            #more straightforward
+
+            previous_row = response_data['data'][0]
+
+            #perform first check for precedence in the rest of the rows
+            #all following rows must have the same values
+
+            self.assertEqual(previous_row['event']['generic_status']['generic_status_name'], 'completed')
+            self.assertEqual(previous_row[audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], audio_clip_role_name)
+            self.assertEqual(previous_row[audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
+            self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=previous_row[audio_clip_role_name][0]['id']), False)
+            self.assertEqual(previous_row[audio_clip_role_name][0]['event_id'], previous_row['event']['id'])
+
+            self.assertEqual(previous_row[opposite_audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], opposite_audio_clip_role_name)
+            self.assertEqual(previous_row[opposite_audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
+            self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=previous_row[opposite_audio_clip_role_name][0]['id']), False)
+            self.assertEqual(previous_row[opposite_audio_clip_role_name][0]['event_id'], previous_row['event']['id'])
+
+            for data_index in range(1, len(response_data['data'])):
+
+                #just to occupy less space
+                current_row = response_data['data'][data_index]
+
+                #same role
+                self.assertEqual(
+                    current_row[audio_clip_role_name][0]['audio_clip_role']['id'],
+                    previous_row[audio_clip_role_name][0]['audio_clip_role']['id'],
+                )
+
+                #smaller id
+                self.assertLess(
+                    current_row[audio_clip_role_name][0]['id'],
+                    previous_row[audio_clip_role_name][0]['id'],
+                )
+
+                #smaller or equal when_created
+                self.assertLessEqual(
+                    AudioClips.objects.values_list('when_created', flat=True,).get(
+                        pk=current_row[audio_clip_role_name][0]['id']
+                    ),
+                    AudioClips.objects.values_list('when_created', flat=True,).get(
+                        pk=previous_row[audio_clip_role_name][0]['id']
+                    )
+                )
+
+                #general correctness
+
+                self.assertEqual(current_row[audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], audio_clip_role_name)
+                self.assertEqual(current_row[audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
+                self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=current_row[audio_clip_role_name][0]['id']), False)
+                self.assertEqual(current_row[audio_clip_role_name][0]['event_id'], current_row['event']['id'])
+
+                self.assertEqual(current_row[opposite_audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], opposite_audio_clip_role_name)
+                self.assertEqual(current_row[opposite_audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
+                self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=current_row[opposite_audio_clip_role_name][0]['id']), False)
+                self.assertEqual(current_row[opposite_audio_clip_role_name][0]['event_id'], current_row['event']['id'])
+
+                previous_row = current_row
+
+        else:
+
+            #perform first check for precedence in the rest of the rows
+            #all following rows must have the same values
+
+            previous_row = response_data['data'][0]
+
+            expected_is_liked = None
+
+            if 'likes_or_dislikes' in api_kwargs:
+
+                expected_is_liked = api_kwargs['likes_or_dislikes'] == 'likes'
+
+            #at user page, like dislike page
+                #incomplete/completed when originator
+                #completed/deleted when responder
+
+            if audio_clip_role_name == 'originator':
+
+                self.assertIn(previous_row['event']['generic_status']['generic_status_name'], ['incomplete', 'completed'])
+
+            else:
+
+                self.assertIn(previous_row['event']['generic_status']['generic_status_name'], ['completed', 'deleted'])
+
+            if expected_is_liked is None:
+
+                #not like/dislike page
+                self.assertEqual(previous_row[audio_clip_role_name][0]['user']['username'], api_kwargs['username'])
+
+            else:
+
+                #is like/dislike page
+                self.assertEqual(previous_row[audio_clip_role_name][0]['is_liked_by_user'], expected_is_liked)
+
+            self.assertEqual(previous_row[audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], audio_clip_role_name)
+            self.assertEqual(previous_row[audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
+            self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=previous_row[audio_clip_role_name][0]['id']), False)
+            self.assertEqual(previous_row[audio_clip_role_name][0]['event_id'], previous_row['event']['id'])
+
+            if len(previous_row[opposite_audio_clip_role_name]) > 0:
+
+                self.assertEqual(previous_row[opposite_audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], opposite_audio_clip_role_name)
+                self.assertEqual(previous_row[opposite_audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
+                self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=previous_row[opposite_audio_clip_role_name][0]['id']), False)
+                self.assertEqual(previous_row[opposite_audio_clip_role_name][0]['event_id'], previous_row['event']['id'])
+    
+            for data_index in range(1, len(response_data['data'])):
+            
+                #just to occupy less IDE space
+                current_row = response_data['data'][data_index]
+    
+                #same role
+                self.assertEqual(
+                    current_row[audio_clip_role_name][0]['audio_clip_role']['id'],
+                    previous_row[audio_clip_role_name][0]['audio_clip_role']['id'],
+                )
+    
+                #smaller id
+                self.assertLess(
+                    current_row[audio_clip_role_name][0]['id'],
+                    previous_row[audio_clip_role_name][0]['id'],
+                )
+    
+                #smaller or equal when_created
+                self.assertLessEqual(
+                    AudioClips.objects.values_list('when_created', flat=True,).get(
+                        pk=current_row[audio_clip_role_name][0]['id']
+                    ),
+                    AudioClips.objects.values_list('when_created', flat=True,).get(
+                        pk=previous_row[audio_clip_role_name][0]['id']
+                    )
+                )
+    
+                #general correctness
+
+                if audio_clip_role_name == 'originator':
+
+                    self.assertIn(current_row['event']['generic_status']['generic_status_name'], ['incomplete', 'completed'])
+
+                else:
+
+                    self.assertIn(current_row['event']['generic_status']['generic_status_name'], ['completed', 'deleted'])
+    
+                self.assertEqual(current_row[audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], audio_clip_role_name)
+                self.assertEqual(current_row[audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
+                self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=current_row[audio_clip_role_name][0]['id']), False)
+                self.assertEqual(current_row[audio_clip_role_name][0]['event_id'], current_row['event']['id'])
+
+                if expected_is_liked is None:
+
+                    #not like/dislike page
+                    self.assertEqual(current_row[audio_clip_role_name][0]['user']['username'], api_kwargs['username'])
+
+                else:
+
+                    #is like/dislike page
+                    self.assertEqual(current_row[audio_clip_role_name][0]['is_liked_by_user'], expected_is_liked)
+
+                if len(current_row[opposite_audio_clip_role_name]) > 0:
+
+                    self.assertEqual(current_row[opposite_audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], opposite_audio_clip_role_name)
+                    self.assertEqual(current_row[opposite_audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
+                    self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=current_row[opposite_audio_clip_role_name][0]['id']), False)
+                    self.assertEqual(current_row[opposite_audio_clip_role_name][0]['event_id'], current_row['event']['id'])
+    
+                previous_row = current_row
+
+
+    def _general_cursor_token_check(self, response_data, audio_clip_role_name:Literal['originator','responder']):
+
+        decoded_cursor_token = decode_cursor_token(response_data['next_token'])
+
+        self.assertEqual(
+            AudioClips.objects.values_list('when_created', flat=True,).get(
+                pk=response_data['data'][-1][audio_clip_role_name][0]['id']
+            ),
+            get_datetime_from_string(decoded_cursor_token['when_created']),
+        )
+        self.assertEqual(
+            response_data['data'][-1][audio_clip_role_name][0]['id'],
+            decoded_cursor_token['id'],
+        )
+
+        decoded_cursor_token = decode_cursor_token(response_data['back_token'])
+
+        self.assertEqual(
+            AudioClips.objects.values_list('when_created', flat=True,).get(
+                pk=response_data['data'][0][audio_clip_role_name][0]['id']
+            ),
+            get_datetime_from_string(decoded_cursor_token['when_created']),
+        )
+        self.assertEqual(
+            response_data['data'][0][audio_clip_role_name][0]['id'],
+            decoded_cursor_token['id'],
+        )
+
+
+    def _like_dislike_cursor_token_check(self, response_data, audio_clip_role_name:Literal['originator','responder'], unique_user):
+
+        decoded_cursor_token = decode_cursor_token(response_data['next_token'])
+
+        target_audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(
+            audio_clip_id=response_data['data'][-1][audio_clip_role_name][0]['id'],
+            user=unique_user,
+        )
+
+        self.assertEqual(
+            target_audio_clip_like_dislike.last_modified,
+            get_datetime_from_string(decoded_cursor_token['last_modified']),
+        )
+        self.assertEqual(
+            target_audio_clip_like_dislike.id,
+            decoded_cursor_token['id'],
+        )
+
+        decoded_cursor_token = decode_cursor_token(response_data['back_token'])
+
+        target_audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(
+            audio_clip_id=response_data['data'][0][audio_clip_role_name][0]['id'],
+            user=unique_user,
+        )
+
+        self.assertEqual(
+            target_audio_clip_like_dislike.last_modified,
+            get_datetime_from_string(decoded_cursor_token['last_modified']),
+        )
+        self.assertEqual(
+            target_audio_clip_like_dislike.id,
+            decoded_cursor_token['id'],
+        )
+
+
+    def test_browse_events__main_page(self, minimum_time_elapsed_ms=300, skip_to_loop=None):
+
+        #pre-determine audio_clip_tones
+        #since excluded tones are specified in earliest/middle/latest manner, #and will never use first and last,
+        #can just make sure we don't -1 for earliest, and +1 for latest
+
+        excluded_audio_clip_tone_ids = []
+        expected_audio_clip_tone_ids = [None]
 
         realistic_bulk_data_class = RealisticBulkData()
-        realistic_bulk_data_class.sample_run(max_randomness_iteration_count=1, reuse_main_users=False, use_threads=False,)
 
-        #test repeated calls
+        #get first tone to prevent repeated if-statements
+
+        excluded_audio_clip_tone_ids.append(
+            realistic_bulk_data_class.audio_clip_tones[
+                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0]
+            ].id
+        )
+
+        expected_audio_clip_tone_ids.append(
+            realistic_bulk_data_class.audio_clip_tones[
+                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0] + 1
+            ].id
+        )
+
+        #add excluded audio_clip_tones
+        for index in range(1, len(realistic_bulk_data_class.excluded_audio_clip_tones_indexes)):
+
+            excluded_index = realistic_bulk_data_class.excluded_audio_clip_tones_indexes[index]
+
+            excluded_audio_clip_tone_ids.append(
+                realistic_bulk_data_class.audio_clip_tones[excluded_index].id
+            )
+
+            expected_audio_clip_tone_ids.append(
+                realistic_bulk_data_class.audio_clip_tones[excluded_index - 1].id
+            )
+
+        stopwatch = Stopwatch()
+
+        #create all possible test cases
+
+        #{'api_kwargs': {}, 'test_values': {}}
+        test_cases = []
+
+        audio_clip_tone_ids = expected_audio_clip_tone_ids + excluded_audio_clip_tone_ids
+
+        for login_user in self.main_users:
+
+            for audio_clip_role_name in ['originator', 'responder']:
+
+                for audio_clip_tone_id_index, audio_clip_tone_id in enumerate(audio_clip_tone_ids):
+
+                    is_excluded_audio_clip_tone = False
+
+                    if (audio_clip_tone_id_index + 1) > len(expected_audio_clip_tone_ids):
+
+                        is_excluded_audio_clip_tone = True
+
+                    current_kwargs = {
+                        'latest_or_best': 'latest',
+                        'timeframe': 'all',
+                        'audio_clip_role_name': audio_clip_role_name,
+                        'next_or_back': 'next',
+                    }
+
+                    if audio_clip_tone_id is not None:
+
+                        current_kwargs.update({'audio_clip_tone_id': audio_clip_tone_id})
+
+                    test_cases.append({
+                        'api_kwargs': current_kwargs,
+                        'test_values': {
+                            'is_excluded_audio_clip_tone': is_excluded_audio_clip_tone,
+                            'login_user': login_user,
+                            'target_user': None,
+                        }
+                    })
+
+        #start test
+
+        for test_index, test_case in enumerate(test_cases):
+
+            #unpack test_case
+            #lazy solution for implementing this after main code has been written
+
+            current_kwargs = test_case['api_kwargs']
+            login_user = test_case['test_values']['login_user']
+            target_user = test_case['test_values']['target_user']
+            audio_clip_role_name = test_case['api_kwargs']['audio_clip_role_name']
+            is_excluded_audio_clip_tone = test_case['test_values']['is_excluded_audio_clip_tone']
+
+            self.login(login_user)
+
+            #some queries on first run will cause delay due to lack of caching at db
+            #if exceeding minimum_time_elapsed_ms, retry once
+
+            retries_left = 1
+
+            while retries_left >= 0:
+
+                try:
+
+                    loop_title = 'loop #' + str(test_index)
+
+                    print(loop_title)
+
+                    if skip_to_loop is not None and test_index != skip_to_loop:
+
+                        break
+
+                    #========================================
+                    #part 1: from latest audio_clip
+                    #========================================
+
+                    #==========
+                    #API next
+                    #==========
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                    #if using excluded audio_clip_tone, always no rows
+                    #skip to next test case
+                    if is_excluded_audio_clip_tone is True:
+
+                        self.assertEqual(len(response_data['data']), 0)
+                        break
+
+                    self.assertGreater(len(response_data['data']), 0)
+
+                    #check rows
+                    self._general_row_check(response_data, current_kwargs)
+
+                    #keep this for next->back validation later
+                    first_response_data = response_data['data'].copy()
+
+                    #check tokens
+                    self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                    #==========
+                    #API next+token
+                    #==========
+
+                    current_kwargs.update({
+                        'next_or_back': 'next',
+                        'cursor_token': response_data['next_token'],
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                    self.assertGreater(len(response_data['data']), 0)
+
+                    #check rows
+                    self._general_row_check(response_data, current_kwargs)
+
+                    #check tokens
+                    self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                    #==========
+                    #API back+token
+                    #==========
+
+                    current_kwargs.update({
+                        'next_or_back': 'back',
+                        'cursor_token': response_data['back_token'],
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                    #check rows
+                    self._general_row_check(response_data, current_kwargs)
+
+                    #check tokens
+                    self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                    #ensure everything is the same as first response
+
+                    self.assertEqual(len(response_data['data']), len(first_response_data))
+
+                    for index in range(len(response_data['data'])):
+
+                        self.assertEqual(
+                            response_data['data'][index]['originator'][0]['id'],
+                            first_response_data[index]['originator'][0]['id'],
+                        )
+                        self.assertEqual(
+                            response_data['data'][index]['responder'][0]['id'],
+                            first_response_data[index]['responder'][0]['id'],
+                        )
+
+                    #==========
+                    #API back+token again, expect no rows
+                    #==========
+
+                    cursor_token = response_data['back_token']
+
+                    current_kwargs.update({
+                        'next_or_back': 'back',
+                        'cursor_token': response_data['back_token'],
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #next_token, back_token, data
+                    response_data = get_response_data(request)
+
+                    self.assertEqual(len(response_data['data']), 0)
+                    self.assertEqual(response_data['next_token'], response_data['back_token'])
+                    self.assertEqual(response_data['next_token'], cursor_token)
+
+                    #========================================
+                    #part 2: from earliest audio_clip
+                    #========================================
+
+                    #==========
+                    #API next with last row in db, expect 0 rows
+                    #==========
+
+                    #construct our own cursor from earliest eligible audio_clip
+
+                    earliest_audio_clip = AudioClips.objects.filter(
+                        audio_clip_role__audio_clip_role_name=audio_clip_role_name,
+                        generic_status__generic_status_name='ok',
+                        is_banned=False,
+                    ).order_by('-when_created', '-id').last()
+
+                    cursor_token = encode_cursor_token({
+                        'when_created': earliest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+                        'id': earliest_audio_clip.id,
+                    })
+
+                    current_kwargs.update({
+                        'next_or_back': 'next',
+                        'cursor_token': cursor_token,
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #next_token, back_token, data
+                    response_data = get_response_data(request)
+
+                    self.assertEqual(len(response_data['data']), 0)
+                    self.assertEqual(response_data['next_token'], response_data['back_token'])
+                    self.assertEqual(response_data['next_token'], cursor_token)
+
+                    #==========
+                    #API back+token
+                    #==========
+
+                    current_kwargs.update({
+                        'next_or_back': 'back',
+                        'cursor_token': response_data['back_token'],
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                    #check rows
+                    self._general_row_check(response_data, current_kwargs)
+
+                    #check tokens
+                    self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                    first_response_data = response_data['data']
+
+                    #==========
+                    #API next+token, expect 0 rows
+                    #==========
+
+                    current_kwargs.update({
+                        'next_or_back': 'next',
+                        'cursor_token': response_data['next_token'],
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                    self.assertEqual(len(response_data['data']), 0)
+                    self.assertEqual(response_data['next_token'], response_data['back_token'])
+
+                except Exception as e:
+
+                    #show useful info
+
+                    print(current_kwargs)
+                    print(f'is_excluded_audio_clip_tone: {is_excluded_audio_clip_tone}')
+
+                    if 'cursor_token' in current_kwargs:
+
+                        print(f'cursor_token: {decode_cursor_token(current_kwargs['cursor_token'])}')
+
+                    #check if can retry
+
+                    if retries_left > 0:
+
+                        #can retry
+
+                        print('Retrying test to ensure failure is not related to db caching.')
+
+                        retries_left -= 1
+
+                        continue
+
+                    #cannot retry
+                    raise e
+
+                #success, break while-loop
+                break
+
+
+    def test_browse_events__own_page(self, minimum_time_elapsed_ms=300, skip_to_loop=None):
+
+        #pre-determine audio_clip_tones
+        #since excluded tones are specified in earliest/middle/latest manner, #and will never use first and last,
+        #can just make sure we don't -1 for earliest, and +1 for latest
+
+        excluded_audio_clip_tone_ids = []
+        expected_audio_clip_tone_ids = [None]
+
         realistic_bulk_data_class = RealisticBulkData()
-        realistic_bulk_data_class.sample_run(max_randomness_iteration_count=1, reuse_main_users=False, use_threads=False,)
 
-        #now reuse users
+        #get first tone to prevent repeated if-statements
+
+        excluded_audio_clip_tone_ids.append(
+            realistic_bulk_data_class.audio_clip_tones[
+                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0]
+            ].id
+        )
+
+        expected_audio_clip_tone_ids.append(
+            realistic_bulk_data_class.audio_clip_tones[
+                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0] + 1
+            ].id
+        )
+
+        #add excluded audio_clip_tones
+        for index in range(1, len(realistic_bulk_data_class.excluded_audio_clip_tones_indexes)):
+
+            excluded_index = realistic_bulk_data_class.excluded_audio_clip_tones_indexes[index]
+
+            excluded_audio_clip_tone_ids.append(
+                realistic_bulk_data_class.audio_clip_tones[excluded_index].id
+            )
+
+            expected_audio_clip_tone_ids.append(
+                realistic_bulk_data_class.audio_clip_tones[excluded_index - 1].id
+            )
+
+        stopwatch = Stopwatch()
+
+        #create all possible test cases
+
+        #{'api_kwargs': {}, 'test_values': {}}
+        test_cases = []
+
+        audio_clip_tone_ids = expected_audio_clip_tone_ids + excluded_audio_clip_tone_ids
+
+        for login_user in self.realistic_bulk_data_class.main_users:
+
+            for audio_clip_role_name in ['originator', 'responder']:
+
+                expected_event_generic_status_names = []
+
+                if audio_clip_role_name == 'originator':
+
+                    expected_event_generic_status_names = ['incomplete', 'completed']
+
+                else:
+
+                    expected_event_generic_status_names = ['completed', 'deleted']
+
+                for expected_event_generic_status_name in expected_event_generic_status_names:
+
+                    for audio_clip_tone_id_index, audio_clip_tone_id in enumerate(audio_clip_tone_ids):
+
+                        is_excluded_audio_clip_tone = False
+
+                        if (audio_clip_tone_id_index + 1) > len(expected_audio_clip_tone_ids):
+
+                            is_excluded_audio_clip_tone = True
+
+                        current_kwargs = {
+                            'username': login_user.username,
+                            'latest_or_best': 'latest',
+                            'timeframe': 'all',
+                            'audio_clip_role_name': audio_clip_role_name,
+                            'next_or_back': 'next',
+                        }
+
+                        if audio_clip_tone_id is not None:
+
+                            current_kwargs.update({'audio_clip_tone_id': audio_clip_tone_id})
+
+                        test_cases.append({
+                            'api_kwargs': current_kwargs,
+                            'test_values': {
+                                'is_excluded_audio_clip_tone': is_excluded_audio_clip_tone,
+                                'login_user': login_user,
+                                'target_user': login_user,
+                                'expected_event_generic_status_name': expected_event_generic_status_name,
+                            }
+                        })
+
+        #start test
+
+        for test_index, test_case in enumerate(test_cases):
+
+            #unpack test_case
+            #lazy solution for implementing this after main code has been written
+
+            current_kwargs = test_case['api_kwargs']
+            login_user = test_case['test_values']['login_user']
+            target_user = test_case['test_values']['target_user']
+            audio_clip_role_name = test_case['api_kwargs']['audio_clip_role_name']
+            is_excluded_audio_clip_tone = test_case['test_values']['is_excluded_audio_clip_tone']
+            expected_event_generic_status_name = test_case['test_values']['expected_event_generic_status_name']
+
+            self.login(login_user)
+
+            #some queries on first run will cause delay due to lack of caching at db
+            #if exceeding minimum_time_elapsed_ms, retry once
+
+            retries_left = 1
+
+            while retries_left >= 0:
+
+                try:
+
+                    loop_title = 'loop #' + str(test_index)
+
+                    print(loop_title)
+
+                    if skip_to_loop is not None and test_index != skip_to_loop:
+
+                        break
+
+                    #========================================
+                    #part 1: from latest audio_clip
+                    #========================================
+
+                    #==========
+                    #API next
+                    #==========
+
+                    #only for excluded audio_clip_tone, just to check that 0 row performance is ok
+                    #event.generic_status is more varied now too, so starting cursor is essential for normal tests
+
+                    if is_excluded_audio_clip_tone is True:
+
+                        stopwatch.start()
+
+                        request = self.client.get(
+                            reverse(
+                                'browse_events_api',
+                                kwargs=current_kwargs
+                            )
+                        )
+
+                        stopwatch.stop()
+
+                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                        else:
+
+                            print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                        #check
+
+                        self.assertEqual(request.status_code, 200)
+
+                        #response_data: next_token, back_token, data
+                        #response_data['data']: [{event:event,originator:[],responder:[]}]
+                        response_data = get_response_data(request)
+
+                        self.assertEqual(len(response_data['data']), 0)
+
+                        #skip to next test case
+                        break
+
+                    #==========
+                    #API next+token
+                    #==========
+
+                    #immediately create cursor here
+                    #guarantees at least 1 event with desired generic_status
+
+                    latest_audio_clip = AudioClips.objects.filter(
+                        user=target_user,
+                        audio_clip_role__audio_clip_role_name=audio_clip_role_name,
+                        generic_status__generic_status_name='ok',
+                        event__generic_status__generic_status_name=expected_event_generic_status_name,
+                        is_banned=False,
+                    ).order_by('-when_created', '-id').first()
+
+                    cursor_token = encode_cursor_token({
+                        'when_created': latest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+                        'id': latest_audio_clip.id,
+                    })
+
+                    current_kwargs.update({
+                        'next_or_back': 'next',
+                        'cursor_token': cursor_token,
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                    self.assertGreater(len(response_data['data']), 0)
+
+                    #check rows
+                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
+
+                    #keep this for next->back validation later
+                    first_response_data = response_data['data'].copy()
+
+                    #check tokens
+                    self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                    #==========
+                    #API next+token
+                    #==========
+
+                    current_kwargs.update({
+                        'next_or_back': 'next',
+                        'cursor_token': response_data['next_token'],
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                    self.assertGreater(len(response_data['data']), 0)
+
+                    #check rows
+                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
+
+                    #check tokens
+                    self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                    #==========
+                    #API back+token
+                    #==========
+
+                    current_kwargs.update({
+                        'next_or_back': 'back',
+                        'cursor_token': response_data['back_token'],
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                    #check rows
+                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
+
+                    #check tokens
+                    self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                    #ensure everything is the same as first response
+
+                    self.assertEqual(len(response_data['data']), len(first_response_data))
+
+                    for index in range(len(response_data['data'])):
+
+                        if len(response_data['data'][index]['originator']) > 0:
+
+                            self.assertEqual(
+                                response_data['data'][index]['originator'][0]['id'],
+                                first_response_data[index]['originator'][0]['id'],
+                            )
+
+                        if len(response_data['data'][index]['responder']) > 0:
+
+                            self.assertEqual(
+                                response_data['data'][index]['responder'][0]['id'],
+                                first_response_data[index]['responder'][0]['id'],
+                            )
+
+                    #==========
+                    #API another back+token
+                    #==========
+
+                    #our original testing cursor involves only x event__generic_status
+                    #but main query allows for multiple event__generic_status
+                    #doing this second back+token cannot guarantee that rows are 0 or > 0
+                    #no need to do
+
+                    #========================================
+                    #part 2: from earliest audio_clip
+                    #========================================
+
+                    #==========
+                    #API next with last row in db
+                    #don't test for row count because it cannot be guaranteed
+                    #==========
+
+                    #construct our own cursor from earliest eligible audio_clip
+
+                    earliest_audio_clip = AudioClips.objects.filter(
+                        user=target_user,
+                        audio_clip_role__audio_clip_role_name=audio_clip_role_name,
+                        generic_status__generic_status_name='ok',
+                        event__generic_status__generic_status_name=expected_event_generic_status_name,
+                        is_banned=False,
+                    ).order_by('-when_created', '-id').last()
+
+                    cursor_token = encode_cursor_token({
+                        'when_created': earliest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+                        'id': earliest_audio_clip.id,
+                    })
+
+                    current_kwargs.update({
+                        'next_or_back': 'next',
+                        'cursor_token': cursor_token,
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #next_token, back_token, data
+                    response_data = get_response_data(request)
+
+                    #==========
+                    #API back+token
+                    #will always have rows
+                    #==========
+
+                    current_kwargs.update({
+                        'next_or_back': 'back',
+                        'cursor_token': response_data['back_token'],
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                    self.assertGreater(len(response_data['data']), 0)
+
+                    #check rows
+                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
+
+                    #check tokens
+                    self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                    #==========
+                    #API next+token
+                    #don't test for row count because it cannot be guaranteed
+                    #==========
+
+                    current_kwargs.update({
+                        'next_or_back': 'next',
+                        'cursor_token': response_data['next_token'],
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                except Exception as e:
+
+                    #show useful info
+
+                    print(current_kwargs)
+                    print(f'is_excluded_audio_clip_tone: {is_excluded_audio_clip_tone}')
+
+                    if 'cursor_token' in current_kwargs:
+
+                        print(f'cursor_token: {decode_cursor_token(current_kwargs['cursor_token'])}')
+
+                    #check if can retry
+
+                    if retries_left > 0:
+
+                        #can retry
+
+                        print('Retrying test to ensure failure is not related to db caching.')
+
+                        retries_left -= 1
+
+                        continue
+
+                    #cannot retry
+                    raise e
+
+                #success, break while-loop
+                break
+
+
+    def test_browse_events__other_user_page(self, minimum_time_elapsed_ms=300, skip_to_loop=None):
+
+        #pre-determine audio_clip_tones
+        #since excluded tones are specified in earliest/middle/latest manner, #and will never use first and last,
+        #can just make sure we don't -1 for earliest, and +1 for latest
+
+        excluded_audio_clip_tone_ids = []
+        expected_audio_clip_tone_ids = [None]
 
         realistic_bulk_data_class = RealisticBulkData()
-        realistic_bulk_data_class.sample_run(max_randomness_iteration_count=1, reuse_main_users=True, use_threads=False,)
 
-        #test repeated calls
+        #get first tone to prevent repeated if-statements
+
+        excluded_audio_clip_tone_ids.append(
+            realistic_bulk_data_class.audio_clip_tones[
+                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0]
+            ].id
+        )
+
+        expected_audio_clip_tone_ids.append(
+            realistic_bulk_data_class.audio_clip_tones[
+                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0] + 1
+            ].id
+        )
+
+        #add excluded audio_clip_tones
+        for index in range(1, len(realistic_bulk_data_class.excluded_audio_clip_tones_indexes)):
+
+            excluded_index = realistic_bulk_data_class.excluded_audio_clip_tones_indexes[index]
+
+            excluded_audio_clip_tone_ids.append(
+                realistic_bulk_data_class.audio_clip_tones[excluded_index].id
+            )
+
+            expected_audio_clip_tone_ids.append(
+                realistic_bulk_data_class.audio_clip_tones[excluded_index - 1].id
+            )
+
+        stopwatch = Stopwatch()
+
+        #create all possible test cases
+
+        #{'api_kwargs': {}, 'test_values': {}}
+        test_cases = []
+
+        audio_clip_tone_ids = expected_audio_clip_tone_ids + excluded_audio_clip_tone_ids
+
+        for login_user in self.main_users:
+
+            for target_user in self.main_users:
+
+                if target_user.id == login_user.id:
+
+                    #save users viewing their own page for another test case
+                    continue
+
+                for audio_clip_role_name in ['originator', 'responder']:
+
+                    expected_event_generic_status_names = []
+
+                    if audio_clip_role_name == 'originator':
+
+                        expected_event_generic_status_names = ['incomplete', 'completed']
+
+                    else:
+
+                        expected_event_generic_status_names = ['completed', 'deleted']
+
+                    for expected_event_generic_status_name in expected_event_generic_status_names:
+
+                        for audio_clip_tone_id_index, audio_clip_tone_id in enumerate(audio_clip_tone_ids):
+
+                            is_excluded_audio_clip_tone = False
+
+                            if (audio_clip_tone_id_index + 1) > len(expected_audio_clip_tone_ids):
+
+                                is_excluded_audio_clip_tone = True
+
+                            current_kwargs = {
+                                'username': target_user.username,
+                                'latest_or_best': 'latest',
+                                'timeframe': 'all',
+                                'audio_clip_role_name': audio_clip_role_name,
+                                'next_or_back': 'next',
+                            }
+
+                            if audio_clip_tone_id is not None:
+
+                                current_kwargs.update({'audio_clip_tone_id': audio_clip_tone_id})
+
+                            test_cases.append({
+                                'api_kwargs': current_kwargs,
+                                'test_values': {
+                                    'is_excluded_audio_clip_tone': is_excluded_audio_clip_tone,
+                                    'login_user': login_user,
+                                    'target_user': target_user,
+                                    'expected_event_generic_status_name': expected_event_generic_status_name,
+                                }
+                            })
+
+        #start test
+
+        for test_index, test_case in enumerate(test_cases):
+
+            #unpack test_case
+            #lazy solution for implementing this after main code has been written
+
+            current_kwargs = test_case['api_kwargs']
+            login_user = test_case['test_values']['login_user']
+            target_user = test_case['test_values']['target_user']
+            audio_clip_role_name = test_case['api_kwargs']['audio_clip_role_name']
+            is_excluded_audio_clip_tone = test_case['test_values']['is_excluded_audio_clip_tone']
+            expected_event_generic_status_name = test_case['test_values']['expected_event_generic_status_name']
+
+            self.login(login_user)
+
+            #some queries on first run will cause delay due to lack of caching at db
+            #if exceeding minimum_time_elapsed_ms, retry once
+
+            retries_left = 1
+
+            while retries_left >= 0:
+
+                try:
+
+                    loop_title = 'loop #' + str(test_index)
+
+                    print(loop_title)
+
+                    if skip_to_loop is not None and test_index != skip_to_loop:
+
+                        break
+
+                    #========================================
+                    #part 1: from latest audio_clip
+                    #========================================
+
+                    #==========
+                    #API next
+                    #==========
+
+                    #only for excluded audio_clip_tone, just to check that 0 row performance is ok
+                    #event.generic_status is more varied now too, so starting cursor is essential for normal tests
+
+                    if is_excluded_audio_clip_tone is True:
+
+                        stopwatch.start()
+
+                        request = self.client.get(
+                            reverse(
+                                'browse_events_api',
+                                kwargs=current_kwargs
+                            )
+                        )
+
+                        stopwatch.stop()
+
+                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                        else:
+
+                            print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                        #check
+
+                        self.assertEqual(request.status_code, 200)
+
+                        #response_data: next_token, back_token, data
+                        #response_data['data']: [{event:event,originator:[],responder:[]}]
+                        response_data = get_response_data(request)
+
+                        self.assertEqual(len(response_data['data']), 0)
+
+                        #skip to next test case
+                        break
+
+                    #==========
+                    #API next+token
+                    #==========
+
+                    #immediately create cursor here
+                    #guarantees at least 1 event with desired generic_status
+
+                    latest_audio_clip = AudioClips.objects.filter(
+                        user=target_user,
+                        audio_clip_role__audio_clip_role_name=audio_clip_role_name,
+                        generic_status__generic_status_name='ok',
+                        event__generic_status__generic_status_name=expected_event_generic_status_name,
+                        is_banned=False,
+                    ).order_by('-when_created', '-id').first()
+
+                    cursor_token = encode_cursor_token({
+                        'when_created': latest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+                        'id': latest_audio_clip.id,
+                    })
+
+                    current_kwargs.update({
+                        'next_or_back': 'next',
+                        'cursor_token': cursor_token,
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                    self.assertGreater(len(response_data['data']), 0)
+
+                    #check rows
+                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
+
+                    #check tokens
+                    self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                    #keep this for next->back validation later
+                    first_response_data = response_data['data'].copy()
+
+                    #==========
+                    #API next+token
+                    #==========
+
+                    current_kwargs.update({
+                        'cursor_token': response_data['next_token'],
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                    self.assertGreater(len(response_data['data']), 0)
+
+                    #check rows
+                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
+
+                    #check tokens
+                    self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                    #==========
+                    #API back+token
+                    #==========
+
+                    current_kwargs.update({
+                        'next_or_back': 'back',
+                        'cursor_token': response_data['back_token'],
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                    #check rows
+                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
+
+                    #check tokens
+                    self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                    #ensure everything is the same as first response
+
+                    self.assertEqual(len(response_data['data']), len(first_response_data))
+
+                    for index in range(len(response_data['data'])):
+
+                        if len(response_data['data'][index]['originator']) > 0:
+
+                            self.assertEqual(
+                                response_data['data'][index]['originator'][0]['id'],
+                                first_response_data[index]['originator'][0]['id'],
+                            )
+
+                        if len(response_data['data'][index]['responder']) > 0:
+
+                            self.assertEqual(
+                                response_data['data'][index]['responder'][0]['id'],
+                                first_response_data[index]['responder'][0]['id'],
+                            )
+
+                    #==========
+                    #API another back+token
+                    #==========
+
+                    #no need to do, because we only fetch x event__generic_status but main query allows multiple event__generic_status
+
+                    #========================================
+                    #part 2: from earliest audio_clip
+                    #========================================
+
+                    #==========
+                    #API next
+                    #don't test for row count because it cannot be guaranteed
+                    #==========
+
+                    #construct our own cursor from earliest eligible audio_clip
+
+                    earliest_audio_clip = AudioClips.objects.filter(
+                        user=target_user,
+                        audio_clip_role__audio_clip_role_name=audio_clip_role_name,
+                        generic_status__generic_status_name='ok',
+                        event__generic_status__generic_status_name=expected_event_generic_status_name,
+                        is_banned=False,
+                    ).order_by('-when_created', '-id').last()
+
+                    cursor_token = encode_cursor_token({
+                        'when_created': earliest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+                        'id': earliest_audio_clip.id,
+                    })
+
+                    current_kwargs.update({
+                        'next_or_back': 'next',
+                        'cursor_token': cursor_token,
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #next_token, back_token, data
+                    response_data = get_response_data(request)
+
+                    #==========
+                    #API back+token
+                    #will always have rows
+                    #==========
+
+                    current_kwargs.update({
+                        'next_or_back': 'back',
+                        'cursor_token': response_data['back_token'],
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                    self.assertGreater(len(response_data['data']), 0)
+
+                    #check rows
+                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
+
+                    #check tokens
+                    self._general_cursor_token_check(response_data, audio_clip_role_name)
+
+                    #==========
+                    #API next+token
+                    #don't test for row count because it cannot be guaranteed
+                    #==========
+
+                    current_kwargs.update({
+                        'next_or_back': 'next',
+                        'cursor_token': response_data['next_token'],
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                except Exception as e:
+
+                    #show useful info
+
+                    print(current_kwargs)
+                    print(f'is_excluded_audio_clip_tone: {is_excluded_audio_clip_tone}')
+
+                    if 'cursor_token' in current_kwargs:
+
+                        print(f'cursor_token: {decode_cursor_token(current_kwargs['cursor_token'])}')
+
+                    #check if can retry
+
+                    if retries_left > 0:
+
+                        #can retry
+
+                        print('Retrying test to ensure failure is not related to db caching.')
+
+                        retries_left -= 1
+
+                        continue
+
+                    #cannot retry
+                    raise e
+
+                #success, break while-loop
+                break
+
+
+    def test_browse_events__own_like_dislike_page(self, minimum_time_elapsed_ms=300, skip_to_loop=None):
+
+        #pre-determine audio_clip_tones
+        #since excluded tones are specified in earliest/middle/latest manner, #and will never use first and last,
+        #can just make sure we don't -1 for earliest, and +1 for latest
+
+        excluded_audio_clip_tone_ids = []
+        expected_audio_clip_tone_ids = [None]
+
         realistic_bulk_data_class = RealisticBulkData()
-        realistic_bulk_data_class.sample_run(max_randomness_iteration_count=1, reuse_main_users=True, use_threads=False,)
+
+        #get first tone to prevent repeated if-statements
+
+        excluded_audio_clip_tone_ids.append(
+            realistic_bulk_data_class.audio_clip_tones[
+                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0]
+            ].id
+        )
+
+        expected_audio_clip_tone_ids.append(
+            realistic_bulk_data_class.audio_clip_tones[
+                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0] + 1
+            ].id
+        )
+
+        #add excluded audio_clip_tones
+        for index in range(1, len(realistic_bulk_data_class.excluded_audio_clip_tones_indexes)):
+
+            excluded_index = realistic_bulk_data_class.excluded_audio_clip_tones_indexes[index]
+
+            excluded_audio_clip_tone_ids.append(
+                realistic_bulk_data_class.audio_clip_tones[excluded_index].id
+            )
+
+            expected_audio_clip_tone_ids.append(
+                realistic_bulk_data_class.audio_clip_tones[excluded_index - 1].id
+            )
+
+        stopwatch = Stopwatch()
+
+        #create all possible test cases
+
+        #{'api_kwargs': {}, 'test_values': {}}
+        test_cases = []
+
+        audio_clip_tone_ids = expected_audio_clip_tone_ids + excluded_audio_clip_tone_ids
+
+        for login_user in self.realistic_bulk_data_class.main_users:
+
+            for audio_clip_role_name in ['originator', 'responder']:
+
+                expected_event_generic_status_names = []
+
+                if audio_clip_role_name == 'originator':
+
+                    expected_event_generic_status_names = ['incomplete', 'completed']
+
+                else:
+
+                    expected_event_generic_status_names = ['completed', 'deleted']
+
+                for expected_event_generic_status_name in expected_event_generic_status_names:
+
+                    for likes_or_dislikes in ['likes', 'dislikes']:
+
+                        for audio_clip_tone_id_index, audio_clip_tone_id in enumerate(audio_clip_tone_ids):
+
+                            is_excluded_audio_clip_tone = False
+
+                            if (audio_clip_tone_id_index + 1) > len(expected_audio_clip_tone_ids):
+
+                                is_excluded_audio_clip_tone = True
+
+                            current_kwargs = {
+                                'username': login_user.username,
+                                'latest_or_best': 'latest',
+                                'timeframe': 'all',
+                                'audio_clip_role_name': audio_clip_role_name,
+                                'next_or_back': 'next',
+                                'likes_or_dislikes': likes_or_dislikes,
+                            }
+
+                            if audio_clip_tone_id is not None:
+
+                                current_kwargs.update({'audio_clip_tone_id': audio_clip_tone_id})
+
+                            test_cases.append({
+                                'api_kwargs': current_kwargs,
+                                'test_values': {
+                                    'is_excluded_audio_clip_tone': is_excluded_audio_clip_tone,
+                                    'login_user': login_user,
+                                    'target_user': login_user,
+                                    'expected_event_generic_status_name': expected_event_generic_status_name,
+                                }
+                            })
+
+        #start test
+
+        for test_index, test_case in enumerate(test_cases):
+
+            #unpack test_case
+            #lazy solution for implementing this after main code has been written
+
+            current_kwargs = test_case['api_kwargs']
+            login_user = test_case['test_values']['login_user']
+            target_user = test_case['test_values']['target_user']
+            audio_clip_role_name = test_case['api_kwargs']['audio_clip_role_name']
+            is_excluded_audio_clip_tone = test_case['test_values']['is_excluded_audio_clip_tone']
+            expected_event_generic_status_name = test_case['test_values']['expected_event_generic_status_name']
+
+            self.login(login_user)
+
+            #some queries on first run will cause delay due to lack of caching at db
+            #if exceeding minimum_time_elapsed_ms, retry once
+
+            retries_left = 1
+
+            while retries_left >= 0:
+
+                try:
+
+                    loop_title = 'loop #' + str(test_index)
+
+                    print(loop_title)
+
+                    if skip_to_loop is not None and test_index != skip_to_loop:
+
+                        break
+
+                    #========================================
+                    #part 1: from latest audio_clip
+                    #========================================
+
+                    #==========
+                    #API next
+                    #==========
+
+                    #only for excluded audio_clip_tone, just to check that 0 row performance is ok
+                    #event.generic_status is more varied now too, so starting cursor is essential for normal tests
+
+                    if is_excluded_audio_clip_tone is True:
+
+                        stopwatch.start()
+
+                        request = self.client.get(
+                            reverse(
+                                'browse_events_api',
+                                kwargs=current_kwargs
+                            )
+                        )
+
+                        stopwatch.stop()
+
+                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                        else:
+
+                            print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                        #check
+
+                        self.assertEqual(request.status_code, 200)
+
+                        #response_data: next_token, back_token, data
+                        #response_data['data']: [{event:event,originator:[],responder:[]}]
+                        response_data = get_response_data(request)
+
+                        self.assertEqual(len(response_data['data']), 0)
+
+                        #skip to next test case
+                        break
+
+                    #==========
+                    #API next+token
+                    #==========
+
+                    #immediately create cursor here
+                    #guarantees at least 1 event with desired generic_status
+
+                    latest_audio_clip_like_dislike = AudioClipLikesDislikes.objects.filter(
+                        user=target_user,
+                        is_liked=(likes_or_dislikes == 'likes'),
+                        audio_clip__audio_clip_role__audio_clip_role_name=audio_clip_role_name,
+                        audio_clip__generic_status__generic_status_name='ok',
+                        audio_clip__event__generic_status__generic_status_name=expected_event_generic_status_name,
+                        audio_clip__is_banned=False,
+                    ).order_by('-last_modified', '-id').first()
+
+                    cursor_token = encode_cursor_token({
+                        'last_modified': latest_audio_clip_like_dislike.last_modified.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+                        'id': latest_audio_clip_like_dislike.id,
+                    })
+
+                    current_kwargs.update({
+                        'next_or_back': 'next',
+                        'cursor_token': cursor_token,
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                    self.assertGreater(len(response_data['data']), 0)
+
+                    #check rows
+                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
+
+                    #check tokens
+                    self._like_dislike_cursor_token_check(response_data, audio_clip_role_name, target_user)
+
+                    #keep this for next->back validation later
+                    first_response_data = response_data['data'].copy()
+
+                    #==========
+                    #API next+token
+                    #==========
+
+                    current_kwargs.update({
+                        'next_or_back': 'next',
+                        'cursor_token': response_data['next_token'],
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                    self.assertGreater(len(response_data['data']), 0)
+
+                    #check rows
+                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
+
+                    #check tokens
+                    self._like_dislike_cursor_token_check(response_data, audio_clip_role_name, target_user)
+
+                    #==========
+                    #API back+token
+                    #==========
+
+                    current_kwargs.update({
+                        'next_or_back': 'back',
+                        'cursor_token': response_data['back_token'],
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                    #check rows
+                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
+
+                    #check tokens
+                    self._like_dislike_cursor_token_check(response_data, audio_clip_role_name, target_user)
+
+                    #ensure everything is the same as first response
+
+                    self.assertEqual(len(response_data['data']), len(first_response_data))
+
+                    for index in range(len(response_data['data'])):
+
+                        if response_data['data'][index]['originator']:
+
+                            self.assertEqual(
+                                response_data['data'][index]['originator'][0]['id'],
+                                first_response_data[index]['originator'][0]['id'],
+                            )
+
+                        if response_data['data'][index]['responder']:
+
+                            self.assertEqual(
+                                response_data['data'][index]['responder'][0]['id'],
+                                first_response_data[index]['responder'][0]['id'],
+                            )
+
+                    #==========
+                    #API another back+token
+                    #==========
+
+                    #no need to do, because we only fetch x event__generic_status but main query allows multiple event__generic_status
+
+                    #========================================
+                    #part 2: from earliest audio_clip
+                    #========================================
+
+                    #==========
+                    #API next
+                    #don't test for row count because it cannot be guaranteed
+                    #==========
+
+                    #construct our own cursor from earliest eligible audio_clip
+
+                    earliest_audio_clip_like_dislike = AudioClipLikesDislikes.objects.filter(
+                        user=target_user,
+                        is_liked=(likes_or_dislikes == 'likes'),
+                        audio_clip__audio_clip_role__audio_clip_role_name=audio_clip_role_name,
+                        audio_clip__generic_status__generic_status_name='ok',
+                        audio_clip__event__generic_status__generic_status_name=expected_event_generic_status_name,
+                        audio_clip__is_banned=False,
+                    ).order_by('-last_modified', '-id').last()
+
+                    cursor_token = encode_cursor_token({
+                        'last_modified': earliest_audio_clip_like_dislike.last_modified.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+                        'id': earliest_audio_clip_like_dislike.id,
+                    })
+
+                    current_kwargs.update({
+                        'next_or_back': 'next',
+                        'cursor_token': cursor_token,
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #next_token, back_token, data
+                    response_data = get_response_data(request)
+
+                    #==========
+                    #API back+token
+                    #guaranteed to have rows
+                    #==========
+
+                    current_kwargs.update({
+                        'next_or_back': 'back',
+                        'cursor_token': response_data['back_token'],
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                    self.assertGreater(len(response_data['data']), 0)
+
+                    #check rows
+                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
+
+                    #check tokens
+                    self._like_dislike_cursor_token_check(response_data, audio_clip_role_name, target_user)
+
+                    #==========
+                    #API next+token
+                    #don't count rows because it cannot be guaranteed
+                    #==========
+
+                    current_kwargs.update({
+                        'next_or_back': 'next',
+                        'cursor_token': response_data['next_token'],
+                    })
+
+                    stopwatch.start()
+
+                    request = self.client.get(
+                        reverse(
+                            'browse_events_api',
+                            kwargs=current_kwargs
+                        )
+                    )
+
+                    stopwatch.stop()
+
+                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
+
+                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+
+                    else:
+
+                        print(f'Good: {stopwatch.diff_milliseconds()}')
+
+                    #check
+
+                    self.assertEqual(request.status_code, 200)
+
+                    #response_data: next_token, back_token, data
+                    #response_data['data']: [{event:event,originator:[],responder:[]}]
+                    response_data = get_response_data(request)
+
+                except Exception as e:
+
+                    #show useful info
+
+                    print(current_kwargs)
+                    print(f'is_excluded_audio_clip_tone: {is_excluded_audio_clip_tone}')
+                    print(f'expected_event_generic_status_name: {expected_event_generic_status_name}')
+
+                    if 'cursor_token' in current_kwargs:
+
+                        print(f'cursor_token: {decode_cursor_token(current_kwargs['cursor_token'])}')
+
+                    #check if can retry
+
+                    if retries_left > 0:
+
+                        #can retry
+
+                        print('Retrying test to ensure failure is not related to db caching.')
+
+                        retries_left -= 1
+
+                        continue
+
+                    #cannot retry
+                    raise e
+
+                #success, break while-loop
+                break
 
 
 
 
+
+
+
+
+
+
+
+
+#how to test:
+    #test each test_() individually, as running all tests concurrently will have worse performance
+#only test for basic correctness and db test data setup
+#leave API correctness at test_apis
+@override_settings(
+    
+    DEBUG=True,
+)
+class ListEventReplyChoices_TestCase(TestCase):
+
+    #{test_function_name: anything}
+    metrics = {}
+
+
+    @classmethod
+    def setUpTestData(cls):
+
+        cls.realistic_bulk_data_class = RealisticBulkData()
+
+        result = cls.realistic_bulk_data_class.get_main_users_relative_to_entire_db()
+        cls.main_users = result['main_users']
+        cls.main_user_sets = result['main_user_sets']
+
+
+    #WINNER
+    #always no tone specified
+    #has ORDER BY events.when_created
+    def _query_0(self, current_user_id:int, when_created:datetime):
+
+        stopwatch = Stopwatch()
+
+        stopwatch.start()
+
+        query = '''
+            WITH
+                excluded_events_1 AS (
+                    SELECT id FROM events
+                    WHERE created_by_id = %s
+                ),
+                excluded_events_2 AS (
+                    SELECT event_id AS id FROM user_events
+                    WHERE user_id = %s
+                    AND when_excluded_for_reply IS NOT NULL
+                ),
+                excluded_users_1 AS (
+                    SELECT blocked_user_id AS id FROM user_blocks
+                    WHERE user_id = %s
+                ),
+                excluded_users_2 AS (
+                    SELECT user_id AS id FROM user_blocks
+                    WHERE blocked_user_id = %s
+                ),
+                narrowed_events AS (
+                    SELECT events.id FROM events
+                    WHERE generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name = %s)
+                    AND when_created >= %s
+                ),
+                target_events AS (
+                    SELECT events.* FROM events
+                    INNER JOIN narrowed_events ON narrowed_events.id = events.id
+                    LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
+                    LEFT JOIN excluded_events_1 ON excluded_events_1.id = events.id
+                    LEFT JOIN excluded_events_2 ON excluded_events_2.id = events.id
+                    LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
+                    LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
+                    WHERE event_reply_queues.event_id IS NULL
+                    AND excluded_events_1.id IS NULL
+                    AND excluded_events_2.id IS NULL
+                    AND excluded_users_1.id IS NULL
+                    AND excluded_users_2.id IS NULL
+                    LIMIT 1
+                )
+                SELECT
+                    audio_clips.*,
+                    audio_clip_likes_dislikes.is_liked AS is_liked_by_user,
+                    audio_clip_metrics.like_count AS like_count,
+                    audio_clip_metrics.dislike_count AS dislike_count
+                FROM audio_clips
+                INNER JOIN target_events ON audio_clips.event_id = target_events.id
+                LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
+                    AND audio_clip_likes_dislikes.user_id = %s
+                LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
+                WHERE audio_clips.is_banned IS FALSE
+                AND audio_clips.audio_clip_role_id = (
+                    SELECT id FROM audio_clip_roles
+                    WHERE audio_clip_role_name = %s
+                )
+                AND audio_clips.generic_status_id = (
+                    SELECT id FROM generic_statuses
+                    WHERE generic_status_name = %s
+                )
+                ORDER BY target_events.when_created ASC
+                LIMIT 1
+        '''
+
+        params = [
+            current_user_id,
+            current_user_id,
+            current_user_id,
+            current_user_id,
+            'incomplete',
+            when_created,
+            current_user_id,
+            'originator',
+            'ok',
+        ]
+
+        audio_clips = AudioClips.objects.prefetch_related(
+            'audio_clip_role',
+            'event__generic_status',
+            'event',
+            'audio_clip_tone',
+            'generic_status',
+            'user',
+        ).raw(
+            query,
+            params
+        )
+
+        #immediately execute, else 0 at stopwatch
+        len(audio_clips)
+
+        stopwatch.stop()
+
+        return {
+            'query_result': audio_clips,
+            'time_elapsed_ms': stopwatch.diff_milliseconds(),
+            'raw_query': connection.cursor().mogrify(query, params),
+        }
+
+
+    #always has tone specified
+    def _query_1(self, current_user_id:int, audio_clip_tone_id:int, when_created:datetime):
+
+        stopwatch = Stopwatch()
+
+        stopwatch.start()
+
+        query = '''
+            WITH
+                excluded_events_1 AS (
+                    SELECT event_id FROM audio_clips
+                    WHERE user_id = %s
+                ),
+                excluded_events_2 AS (
+                    SELECT event_id FROM user_events
+                    WHERE user_id = %s
+                    AND when_excluded_for_reply IS NOT NULL
+                ),
+                excluded_users_1 AS (
+                    SELECT blocked_user_id AS id FROM user_blocks
+                    WHERE user_id = %s
+                ),
+                excluded_users_2 AS (
+                    SELECT user_id AS id FROM user_blocks
+                    WHERE blocked_user_id = %s
+                ),
+                narrowed_down_events AS (
+                    SELECT events.id FROM events
+                    WHERE generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name = %s)
+                    AND when_created >= %s
+                    ORDER BY when_created
+                ),
+                specific_tone_events AS (
+                    SELECT events.id FROM events
+                    INNER JOIN narrowed_down_events ON events.id = narrowed_down_events.id
+                    INNER JOIN audio_clips ON events.id = audio_clips.event_id
+                    WHERE audio_clips.audio_clip_tone_id = %s
+                    AND audio_clips.audio_clip_role_id = (SELECT id FROM audio_clip_roles WHERE audio_clip_role_name=%s)
+                    AND audio_clips.generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name=%s)
+                ),
+                target_events AS (
+                    SELECT events.* FROM events
+                    INNER JOIN specific_tone_events ON specific_tone_events.id = events.id
+                    LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
+                    LEFT JOIN excluded_events_1 ON excluded_events_1.event_id = events.id
+                    LEFT JOIN excluded_events_2 ON excluded_events_2.event_id = events.id
+                    LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
+                    LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
+                    WHERE event_reply_queues.event_id IS NULL
+                    AND excluded_events_1.event_id IS NULL
+                    AND excluded_events_2.event_id IS NULL
+                    AND excluded_users_1.id IS NULL
+                    AND excluded_users_2.id IS NULL
+                    LIMIT 1
+                )
+                SELECT
+                    audio_clips.*,
+                    audio_clip_likes_dislikes.is_liked AS is_liked_by_user,
+                    audio_clip_metrics.like_count AS like_count,
+                    audio_clip_metrics.dislike_count AS dislike_count
+                FROM audio_clips
+                INNER JOIN target_events ON audio_clips.event_id = target_events.id
+                LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
+                    AND audio_clip_likes_dislikes.user_id = 1
+                LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
+                WHERE audio_clips.is_banned IS FALSE
+                AND audio_clips.audio_clip_role_id = (
+                    SELECT id FROM audio_clip_roles
+                    WHERE audio_clip_role_name = %s
+                )
+                AND audio_clips.generic_status_id = (
+                    SELECT id FROM generic_statuses
+                    WHERE generic_status_name = %s
+                )
+                LIMIT 1
+        '''
+        
+        params = [
+            current_user_id,
+            current_user_id,
+            current_user_id,
+            current_user_id,
+            'incomplete',
+            when_created,
+            audio_clip_tone_id,
+            'originator',
+            'ok',
+            'originator',
+            'ok',
+        ]
+
+        audio_clips = AudioClips.objects.prefetch_related(
+            'audio_clip_role',
+            'event__generic_status',
+            'event',
+            'audio_clip_tone',
+            'generic_status',
+            'user',
+        ).raw(
+            query,
+            params
+        )
+
+        #immediately execute, else 0 at stopwatch
+        len(audio_clips)
+
+        stopwatch.stop()
+
+        return {
+            'query_result': audio_clips,
+            'time_elapsed_ms': stopwatch.diff_milliseconds(),
+            'raw_query': connection.cursor().mogrify(query, params),
+        }
+
+
+    #always no tone specified
+    #has no ORDER_BY events.when_created
+    #cons:
+        #cannot guarantee that every event gets an equal chance
+    def _query_2(self, current_user_id:int, when_created:datetime):
+
+        stopwatch = Stopwatch()
+
+        stopwatch.start()
+
+        query = '''
+            WITH
+                excluded_events_1 AS (
+                    SELECT id FROM events
+                    WHERE created_by_id = %s
+                ),
+                excluded_events_2 AS (
+                    SELECT event_id AS id FROM user_events
+                    WHERE user_id = %s
+                    AND when_excluded_for_reply IS NOT NULL
+                ),
+                excluded_users_1 AS (
+                    SELECT blocked_user_id AS id FROM user_blocks
+                    WHERE user_id = %s
+                ),
+                excluded_users_2 AS (
+                    SELECT user_id AS id FROM user_blocks
+                    WHERE blocked_user_id = %s
+                ),
+                narrowed_events AS (
+                    SELECT events.id FROM events
+                    WHERE generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name = %s)
+                    AND when_created >= %s
+                ),
+                target_events AS (
+                    SELECT events.* FROM events
+                    INNER JOIN narrowed_events ON narrowed_events.id = events.id
+                    LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
+                    LEFT JOIN excluded_events_1 ON excluded_events_1.id = events.id
+                    LEFT JOIN excluded_events_2 ON excluded_events_2.id = events.id
+                    LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
+                    LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
+                    WHERE event_reply_queues.event_id IS NULL
+                    AND excluded_events_1.id IS NULL
+                    AND excluded_events_2.id IS NULL
+                    AND excluded_users_1.id IS NULL
+                    AND excluded_users_2.id IS NULL
+                    LIMIT 1
+                )
+                SELECT
+                    audio_clips.*,
+                    audio_clip_likes_dislikes.is_liked AS is_liked_by_user,
+                    audio_clip_metrics.like_count AS like_count,
+                    audio_clip_metrics.dislike_count AS dislike_count
+                FROM audio_clips
+                INNER JOIN target_events ON audio_clips.event_id = target_events.id
+                LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
+                    AND audio_clip_likes_dislikes.user_id = %s
+                LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
+                WHERE audio_clips.is_banned IS FALSE
+                AND audio_clips.audio_clip_role_id = (
+                    SELECT id FROM audio_clip_roles
+                    WHERE audio_clip_role_name = %s
+                )
+                AND audio_clips.generic_status_id = (
+                    SELECT id FROM generic_statuses
+                    WHERE generic_status_name = %s
+                )
+                LIMIT 1
+        '''
+
+        params = [
+            current_user_id,
+            current_user_id,
+            current_user_id,
+            current_user_id,
+            'incomplete',
+            when_created,
+            current_user_id,
+            'originator',
+            'ok',
+        ]
+
+        audio_clips = AudioClips.objects.prefetch_related(
+            'audio_clip_role',
+            'event__generic_status',
+            'event',
+            'audio_clip_tone',
+            'generic_status',
+            'user',
+        ).raw(
+            query,
+            params
+        )
+
+        #immediately execute, else 0 at stopwatch
+        len(audio_clips)
+
+        stopwatch.stop()
+
+        return {
+            'query_result': audio_clips,
+            'time_elapsed_ms': stopwatch.diff_milliseconds(),
+            'raw_query': connection.cursor().mogrify(query, params),
+        }
+
+
+    def test_list_event_reply_choices(self, has_tone=False, minimum_time_elapsed_ms=180, show_test_failed_query=True, show_test_passed_query=False):
+
+        stopwatch = Stopwatch()
+
+        #do this for no tone so loop below can stay the same
+        audio_clip_tone_ids = {
+            'no_audio_clip_tone': [None],
+        }
+
+        if has_tone is True:
+
+            audio_clip_tone_ids = {
+                'excluded': [],
+                'expected': [],
+            }
+
+            #add excluded audio_clip_tones
+            for audio_clip_tone_index in self.realistic_bulk_data_class.excluded_audio_clip_tones_indexes:
+
+                audio_clip_tone_ids['excluded'].append(
+                    self.realistic_bulk_data_class.audio_clip_tones[audio_clip_tone_index].id
+                )
+
+                #since excluded tones are specified in earliest/middle/latest manner,
+                #and will never use first and last,
+                #can just -1 +1
+                audio_clip_tone_ids['expected'].append(
+                    self.realistic_bulk_data_class.audio_clip_tones[audio_clip_tone_index - 1].id
+                )
+                audio_clip_tone_ids['expected'].append(
+                    self.realistic_bulk_data_class.audio_clip_tones[audio_clip_tone_index + 1].id
+                )
+
+        #since main users all have their own originator/responder processings,
+        #we'll also need filler users to query this part properly
+
+        test_pass_count = 0
+        test_fail_count = 0
+
+        for target_user in self.main_users:
+
+            #check if has reply queue
+            user_has_queue = EventReplyQueues.objects.filter(locked_for_user=target_user).exists()
+
+            for audio_clip_tone_type in audio_clip_tone_ids:
+
+                for audio_clip_tone_id in audio_clip_tone_ids[audio_clip_tone_type]:
+
+                    minimum_datetimes = []
+
+                    earliest_audio_clip = None
+                    latest_audio_clip = None
+
+                    if has_tone is True:
+
+                        raise ValueError('Cannot use has_tone=True yet.')
+
+                    else:
+
+                        earliest_event = Events.objects.raw(
+                            '''
+                                WITH
+                                excluded_events_1 AS (
+                                    SELECT id FROM events
+                                    WHERE created_by_id = %s
+                                ),
+                                excluded_events_2 AS (
+                                    SELECT event_id AS id FROM user_events
+                                    WHERE user_id = %s
+                                    AND when_excluded_for_reply IS NOT NULL
+                                ),
+                                excluded_users_1 AS (
+                                    SELECT blocked_user_id AS id FROM user_blocks
+                                    WHERE user_id = %s
+                                ),
+                                excluded_users_2 AS (
+                                    SELECT user_id AS id FROM user_blocks
+                                    WHERE blocked_user_id = %s
+                                )
+                                SELECT events.* FROM events
+                                LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
+                                LEFT JOIN excluded_events_1 ON excluded_events_1.id = events.id
+                                LEFT JOIN excluded_events_2 ON excluded_events_2.id = events.id
+                                LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
+                                LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
+                                WHERE event_reply_queues.event_id IS NULL
+                                AND excluded_events_1.id IS NULL
+                                AND excluded_events_2.id IS NULL
+                                AND excluded_users_1.id IS NULL
+                                AND excluded_users_2.id IS NULL
+                                AND events.generic_status_id = (
+                                    SELECT id FROM generic_statuses WHERE generic_status_name = 'incomplete'
+                                )
+                                ORDER BY events.when_created ASC
+                                LIMIT 1
+                                ;
+                            ''',
+                            [
+                                target_user.id,
+                                target_user.id,
+                                target_user.id,
+                                target_user.id,
+                            ]
+                        )
+
+                        latest_event = Events.objects.raw(
+                            '''
+                                WITH
+                                excluded_events_1 AS (
+                                    SELECT id FROM events
+                                    WHERE created_by_id = %s
+                                ),
+                                excluded_events_2 AS (
+                                    SELECT event_id AS id FROM user_events
+                                    WHERE user_id = %s
+                                    AND when_excluded_for_reply IS NOT NULL
+                                ),
+                                excluded_users_1 AS (
+                                    SELECT blocked_user_id AS id FROM user_blocks
+                                    WHERE user_id = %s
+                                ),
+                                excluded_users_2 AS (
+                                    SELECT user_id AS id FROM user_blocks
+                                    WHERE blocked_user_id = %s
+                                )
+                                SELECT events.* FROM events
+                                LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
+                                LEFT JOIN excluded_events_1 ON excluded_events_1.id = events.id
+                                LEFT JOIN excluded_events_2 ON excluded_events_2.id = events.id
+                                LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
+                                LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
+                                WHERE event_reply_queues.event_id IS NULL
+                                AND excluded_events_1.id IS NULL
+                                AND excluded_events_2.id IS NULL
+                                AND excluded_users_1.id IS NULL
+                                AND excluded_users_2.id IS NULL
+                                AND events.generic_status_id = (
+                                    SELECT id FROM generic_statuses WHERE generic_status_name = 'incomplete'
+                                )
+                                ORDER BY events.when_created DESC
+                                LIMIT 1
+                                ;
+                            ''',
+                            [
+                                target_user.id,
+                                target_user.id,
+                                target_user.id,
+                                target_user.id,
+                            ]
+                        )
+
+                    #start
+
+                    target_events = [earliest_event[0], latest_event[0]]
+
+                    for target_event_index, target_event in enumerate(target_events):
+
+                        minimum_datetime = target_event.when_created
+
+                        result = None
+
+                        #check if user has blocks/blocked/etc.
+                        is_user_blocking = UserBlocks.objects.filter(
+                            user=target_user,
+                            blocked_user=earliest_event.created_by,
+                        )
+                        is_user_blocked = UserBlocks.objects.filter(
+                            user=earliest_event.created_by,
+                            blocked_user=target_user,
+                        )
+
+                        if has_tone is True:
+
+                            result = self._query_1(
+                                current_user_id=target_user.id,
+                                audio_clip_tone_id=audio_clip_tone_id,
+                                when_created=minimum_datetime,
+                            )
+
+                        else:
+
+                            result = self._query_0(
+                                current_user_id=target_user.id,
+                                when_created=minimum_datetime,
+                            )
+
+                        #check
+
+                        row_count = len(result['query_result'])
+
+                        #only have row if nobody is blocking anyone
+                        is_row_count_ok = (
+                            ((is_user_blocking is True or is_user_blocked is True) and row_count == 0) or
+                            ((is_user_blocking is False and is_user_blocked is False) and row_count == 1)
+                        )
+
+                        #specify minimum_time_elapsed_ms to hide/show benchmark that matters
+                        if is_row_count_ok is True and result['time_elapsed_ms'] < minimum_time_elapsed_ms:
+                        
+                            print('\n')
+
+                            if show_test_passed_query is True:
+                            
+                                print(result['raw_query'])
+
+                            print('Good')
+                            print({
+                                'target_user_username': target_user.username,
+                                'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                                'time_elapsed_ms': result['time_elapsed_ms'],
+                            })
+                            print('\n')
+
+                            test_pass_count += 1
+
+                            continue
+                        
+                        print('\n')
+
+                        if show_test_failed_query is True:
+                        
+                            print(result['raw_query'])
+
+                        #put {} if row count has issues, else None
+
+                        row_count_issues = None
+
+                        if is_row_count_ok is False:
+                        
+                            row_count_issues = {
+                                'is_expecting_rows': True,
+                                'query_row_count': len(result['query_result']),
+                            }
+
+                        print({
+                            'row_count_issues': row_count_issues,
+                            'target_user_username': target_user.username,
+                            'earliest_or_latest_datetime': 'earliest' if target_event_index == 0 else 'latest',
+                            'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                            'time_elapsed_ms': result['time_elapsed_ms'],
+                        })
+                        print('\n')
+
+                        test_fail_count += 1
+
+        print({
+            'tests_passed': test_pass_count,
+            'tests_failed': test_fail_count,
+        })
+
+
+    def test_experimental__has_tone(self, minimum_time_elapsed_ms=200, show_test_failed_query=False,):
+
+        stopwatch = Stopwatch()
+
+        excluded_audio_clip_tone_ids = []
+        expected_audio_clip_tone_ids = []
+
+        #add excluded audio_clip_tones
+        for audio_clip_tone_index in self.realistic_bulk_data_class.excluded_audio_clip_tones_indexes:
+
+            excluded_audio_clip_tone_ids.append(
+                self.realistic_bulk_data_class.audio_clip_tones[audio_clip_tone_index].id
+            )
+
+            #since excluded tones are specified in earliest/middle/latest manner,
+            #and will never use first and last,
+            #can just -1 +1
+            expected_audio_clip_tone_ids.append(
+                self.realistic_bulk_data_class.audio_clip_tones[audio_clip_tone_index - 1].id
+            )
+            expected_audio_clip_tone_ids.append(
+                self.realistic_bulk_data_class.audio_clip_tones[audio_clip_tone_index + 1].id
+            )
+
+        test_pass_count = 0
+        test_fail_count = 0
+
+        for target_user in self.main_users:
+
+            #expect rows matching tone to exist
+            for audio_clip_tone_id in expected_audio_clip_tone_ids:
+
+                minimum_datetimes = []
+
+                earliest_audio_clip = AudioClips.objects.filter(
+                    generic_status__generic_status_name='ok',
+                    audio_clip_role__audio_clip_role_name='originator',
+                    event__generic_status__generic_status_name='incomplete',
+                    audio_clip_tone_id=audio_clip_tone_id,
+                ).order_by('id').first()
+
+                latest_audio_clip = AudioClips.objects.filter(
+                    generic_status__generic_status_name='ok',
+                    audio_clip_role__audio_clip_role_name='originator',
+                    event__generic_status__generic_status_name='incomplete',
+                    audio_clip_tone_id=audio_clip_tone_id,
+                ).order_by('id').last()
+
+                if earliest_audio_clip is None or latest_audio_clip is None:
+
+                    raise ValueError('Either test rows have not been set up properly, or rules for excluding tones in RealisticBulkData has changed.')
+
+                minimum_datetimes.append(earliest_audio_clip.when_created)
+                minimum_datetimes.append(latest_audio_clip.when_created)
+
+                for minimum_datetime in minimum_datetimes:
+
+                    result = self._query_1(
+                        current_user_id=target_user.id,
+                        audio_clip_tone_id=audio_clip_tone_id,
+                        when_created=minimum_datetime,
+                    )
+
+                    is_row_count_expected = len(result['query_result']) > 0
+
+                    if is_row_count_expected is True and result['time_elapsed_ms'] < minimum_time_elapsed_ms:
+
+                        print('Good')
+                        print({
+                            'audio_clip_tone_id': audio_clip_tone_id,
+                            'target_user_username': target_user.username,
+                            'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                            'time_elapsed_ms': result['time_elapsed_ms'],
+                        })
+
+                        test_pass_count += 1
+
+                        continue
+
+                    print('\n')
+
+                    if show_test_failed_query is True:
+
+                        print(result['raw_query'])
+
+                    print({
+                        'is_row_count_expected': is_row_count_expected,
+                        'rows_fetched': len(result['query_result']),
+                        'audio_clip_tone_id': audio_clip_tone_id,
+                        'target_user_username': target_user.username,
+                        'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                        'time_elapsed_ms': result['time_elapsed_ms'],
+                    })
+                    print('\n')
+
+                    test_fail_count += 1
+
+            #expect rows matching tone to not exist
+            for audio_clip_tone_id in excluded_audio_clip_tone_ids:
+
+                #arbitrary start time, 10 years
+                minimum_datetime = get_datetime_now() - timedelta(weeks=521)
+
+                result = self._query_1(
+                    current_user_id=target_user.id,
+                    audio_clip_tone_id=audio_clip_tone_id,
+                    when_created=minimum_datetime,
+                )
+
+                is_row_count_expected = len(result['query_result']) == 0
+
+                if is_row_count_expected is True and result['time_elapsed_ms'] < minimum_time_elapsed_ms:
+
+                    print('Good')
+                    print({
+                        'audio_clip_tone_id': audio_clip_tone_id,
+                        'target_user_username': target_user.username,
+                        'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                        'time_elapsed_ms': result['time_elapsed_ms'],
+                    })
+
+                    test_pass_count += 1
+
+                    continue
+
+                print('\n')
+
+                if show_test_failed_query is True:
+
+                    print(result['raw_query'])
+
+                print({
+                    'is_row_count_expected': is_row_count_expected,
+                    'rows_fetched': len(result['query_result']),
+                    'audio_clip_tone_id': audio_clip_tone_id,
+                    'target_user_username': target_user.username,
+                    'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                    'time_elapsed_ms': result['time_elapsed_ms'],
+                })
+                print('\n')
+
+                test_fail_count += 1
+
+        print({
+            'tests_passed': test_pass_count,
+            'tests_failed': test_fail_count,
+        })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#==========================================================================
+#===========================POTENTIALLY OUTDATED===========================
+#==========================================================================
 
 
 
@@ -2580,17 +6059,15 @@ class BulkCreateOptimisation_TestCase(TestCase):
     metrics = {}
     serialized_rollback = True
 
+
     @classmethod
-    def setUp(cls):
+    def setUpTestData(cls):
 
-        cls.bulk_quantity = 5
+        cls.realistic_bulk_data_class = RealisticBulkData()
 
-        cls.low_batch_size = 100
-        cls.high_batch_size = 500
-
-        cls.user_quantity = 10 * cls.bulk_quantity
-        cls.originator_quantity_per_user = 20 * cls.bulk_quantity
-        cls.audio_clip_like_dislike_quantity = cls.user_quantity * cls.originator_quantity_per_user
+        result = cls.realistic_bulk_data_class.get_main_users_relative_to_entire_db()
+        cls.main_users = result['main_users']
+        cls.main_user_sets = result['main_user_sets']
 
 
     @classmethod
@@ -3280,3144 +6757,9 @@ class BulkCreateOptimisation_TestCase(TestCase):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#how to test:
-    #test each test_() individually, as running all tests concurrently will have worse performance
-#this test handles full validation and performance of apis.BrowseEvents
-    #easier to do it here than to duplicate into test_apis and test_metrics
-    #uses RealisticBulkData
-#logic behaviours:
-    #since we have cursor tokens, always test (latest->back/to), (earliest->back/to)
-    #for tests that test on filtering, we iterate through list of filters in a single test case, else exponential
-        #a test case for filters then becomes unique by differentiating into latest/earliest/empty rows to test db indexing
-    #you may see a repeat queryset between audio_clip_tone_id and expected_rows
-        #this is necessary so we can do [:1] and guarantee all expected_rows later only has the same audio_clip_tone
-        #expected_rows on its own cannot guarantee that all rows have the same audio_clip_tone
-#minimum_time_elapsed_ms
-    #sometimes if db has no active caching, it will take nearly 300ms
-        #after first test run and caching is done, it will be at optimal times of 50ms-150ms
-@override_settings(
-    
-    DEBUG=True,
-)
-class BrowseEvents_TestCase(TestCase):
-
-    #{test_function_name: anything}
-    metrics = {}
-
-    @classmethod
-    def setUp(cls):
-
-        cls.unique_users = []
-
-        cls.realistic_bulk_data_class = RealisticBulkData()
-
-        #get unique users
-        main_user_id_sets = cls.realistic_bulk_data_class.get_main_user_ids()
-
-        #only need 1 user from each category
-        for category_name in main_user_id_sets:
-
-            cls.unique_users.append(
-                get_user_model().objects.get(pk=main_user_id_sets[category_name][0])
-            )
-
-
-    @classmethod
-    def tearDownClass(cls):
-
-        print('\n\n\n\n\n')
-
-        #print more beautifully
-        for function_name in cls.metrics:
-
-            print(function_name)
-            print(cls.metrics[function_name])
-            print('\n')
-
-        shutil.rmtree(os.path.join(settings.MEDIA_ROOT, 'audio_clips'), ignore_errors=True)
-
-        try:
-            cache.clear()
-        except:
-            pass
-
-        super().tearDownClass()
-
-
-    @classmethod
-    def tearDown(cls):
-
-        try:
-            cache.clear()
-        except:
-            pass
-
-
-    def login(self, user_instance):
-
-        #need this here because @classmethod does not have .client attribute
-        self.client.force_login(user_instance)
-
-
-    #response_data['data']: [{event:event,originator:[],responder:[]}]
-    def _general_row_check(self, response_data, api_kwargs, is_event_always_completed=True):
-
-        audio_clip_role_name = api_kwargs['audio_clip_role_name']
-
-        opposite_audio_clip_role_name = 'originator'
-
-        if opposite_audio_clip_role_name == audio_clip_role_name:
-
-            opposite_audio_clip_role_name = 'responder'
-
-        if is_event_always_completed is True:
-
-            #more straightforward
-
-            previous_row = response_data['data'][0]
-
-            #perform first check for precedence in the rest of the rows
-            #all following rows must have the same values
-
-            self.assertEqual(previous_row['event']['generic_status']['generic_status_name'], 'completed')
-            self.assertEqual(previous_row[audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], audio_clip_role_name)
-            self.assertEqual(previous_row[audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
-            self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=previous_row[audio_clip_role_name][0]['id']), False)
-            self.assertEqual(previous_row[audio_clip_role_name][0]['event_id'], previous_row['event']['id'])
-
-            self.assertEqual(previous_row[opposite_audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], opposite_audio_clip_role_name)
-            self.assertEqual(previous_row[opposite_audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
-            self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=previous_row[opposite_audio_clip_role_name][0]['id']), False)
-            self.assertEqual(previous_row[opposite_audio_clip_role_name][0]['event_id'], previous_row['event']['id'])
-
-            for data_index in range(1, len(response_data['data'])):
-
-                #just to occupy less space
-                current_row = response_data['data'][data_index]
-
-                #same role
-                self.assertEqual(
-                    current_row[audio_clip_role_name][0]['audio_clip_role']['id'],
-                    previous_row[audio_clip_role_name][0]['audio_clip_role']['id'],
-                )
-
-                #smaller id
-                self.assertLess(
-                    current_row[audio_clip_role_name][0]['id'],
-                    previous_row[audio_clip_role_name][0]['id'],
-                )
-
-                #smaller or equal when_created
-                self.assertLessEqual(
-                    AudioClips.objects.values_list('when_created', flat=True,).get(
-                        pk=current_row[audio_clip_role_name][0]['id']
-                    ),
-                    AudioClips.objects.values_list('when_created', flat=True,).get(
-                        pk=previous_row[audio_clip_role_name][0]['id']
-                    )
-                )
-
-                #general correctness
-
-                self.assertEqual(current_row[audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], audio_clip_role_name)
-                self.assertEqual(current_row[audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
-                self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=current_row[audio_clip_role_name][0]['id']), False)
-                self.assertEqual(current_row[audio_clip_role_name][0]['event_id'], current_row['event']['id'])
-
-                self.assertEqual(current_row[opposite_audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], opposite_audio_clip_role_name)
-                self.assertEqual(current_row[opposite_audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
-                self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=current_row[opposite_audio_clip_role_name][0]['id']), False)
-                self.assertEqual(current_row[opposite_audio_clip_role_name][0]['event_id'], current_row['event']['id'])
-
-                previous_row = current_row
-
-        else:
-
-            #perform first check for precedence in the rest of the rows
-            #all following rows must have the same values
-
-            previous_row = response_data['data'][0]
-
-            expected_is_liked = None
-
-            if 'likes_or_dislikes' in api_kwargs:
-
-                expected_is_liked = api_kwargs['likes_or_dislikes'] == 'likes'
-
-            #at user page, like dislike page
-                #incomplete/completed when originator
-                #completed/deleted when responder
-
-            if audio_clip_role_name == 'originator':
-
-                self.assertIn(previous_row['event']['generic_status']['generic_status_name'], ['incomplete', 'completed'])
-
-            else:
-
-                self.assertIn(previous_row['event']['generic_status']['generic_status_name'], ['completed', 'deleted'])
-
-            if expected_is_liked is None:
-
-                #not like/dislike page
-                self.assertEqual(previous_row[audio_clip_role_name][0]['user']['username'], api_kwargs['username'])
-
-            else:
-
-                #is like/dislike page
-                self.assertEqual(previous_row[audio_clip_role_name][0]['is_liked_by_user'], expected_is_liked)
-
-            self.assertEqual(previous_row[audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], audio_clip_role_name)
-            self.assertEqual(previous_row[audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
-            self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=previous_row[audio_clip_role_name][0]['id']), False)
-            self.assertEqual(previous_row[audio_clip_role_name][0]['event_id'], previous_row['event']['id'])
-
-            if len(previous_row[opposite_audio_clip_role_name]) > 0:
-
-                self.assertEqual(previous_row[opposite_audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], opposite_audio_clip_role_name)
-                self.assertEqual(previous_row[opposite_audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
-                self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=previous_row[opposite_audio_clip_role_name][0]['id']), False)
-                self.assertEqual(previous_row[opposite_audio_clip_role_name][0]['event_id'], previous_row['event']['id'])
-    
-            for data_index in range(1, len(response_data['data'])):
-            
-                #just to occupy less IDE space
-                current_row = response_data['data'][data_index]
-    
-                #same role
-                self.assertEqual(
-                    current_row[audio_clip_role_name][0]['audio_clip_role']['id'],
-                    previous_row[audio_clip_role_name][0]['audio_clip_role']['id'],
-                )
-    
-                #smaller id
-                self.assertLess(
-                    current_row[audio_clip_role_name][0]['id'],
-                    previous_row[audio_clip_role_name][0]['id'],
-                )
-    
-                #smaller or equal when_created
-                self.assertLessEqual(
-                    AudioClips.objects.values_list('when_created', flat=True,).get(
-                        pk=current_row[audio_clip_role_name][0]['id']
-                    ),
-                    AudioClips.objects.values_list('when_created', flat=True,).get(
-                        pk=previous_row[audio_clip_role_name][0]['id']
-                    )
-                )
-    
-                #general correctness
-
-                if audio_clip_role_name == 'originator':
-
-                    self.assertIn(current_row['event']['generic_status']['generic_status_name'], ['incomplete', 'completed'])
-
-                else:
-
-                    self.assertIn(current_row['event']['generic_status']['generic_status_name'], ['completed', 'deleted'])
-    
-                self.assertEqual(current_row[audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], audio_clip_role_name)
-                self.assertEqual(current_row[audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
-                self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=current_row[audio_clip_role_name][0]['id']), False)
-                self.assertEqual(current_row[audio_clip_role_name][0]['event_id'], current_row['event']['id'])
-
-                if expected_is_liked is None:
-
-                    #not like/dislike page
-                    self.assertEqual(current_row[audio_clip_role_name][0]['user']['username'], api_kwargs['username'])
-
-                else:
-
-                    #is like/dislike page
-                    self.assertEqual(current_row[audio_clip_role_name][0]['is_liked_by_user'], expected_is_liked)
-
-                if len(current_row[opposite_audio_clip_role_name]) > 0:
-
-                    self.assertEqual(current_row[opposite_audio_clip_role_name][0]['audio_clip_role']['audio_clip_role_name'], opposite_audio_clip_role_name)
-                    self.assertEqual(current_row[opposite_audio_clip_role_name][0]['generic_status']['generic_status_name'], 'ok')
-                    self.assertEqual(AudioClips.objects.values_list('is_banned', flat=True).get(pk=current_row[opposite_audio_clip_role_name][0]['id']), False)
-                    self.assertEqual(current_row[opposite_audio_clip_role_name][0]['event_id'], current_row['event']['id'])
-    
-                previous_row = current_row
-
-
-    def _general_cursor_token_check(self, response_data, audio_clip_role_name:Literal['originator','responder']):
-
-        decoded_cursor_token = decode_cursor_token(response_data['next_token'])
-
-        self.assertEqual(
-            AudioClips.objects.values_list('when_created', flat=True,).get(
-                pk=response_data['data'][-1][audio_clip_role_name][0]['id']
-            ),
-            get_datetime_from_string(decoded_cursor_token['when_created']),
-        )
-        self.assertEqual(
-            response_data['data'][-1][audio_clip_role_name][0]['id'],
-            decoded_cursor_token['id'],
-        )
-
-        decoded_cursor_token = decode_cursor_token(response_data['back_token'])
-
-        self.assertEqual(
-            AudioClips.objects.values_list('when_created', flat=True,).get(
-                pk=response_data['data'][0][audio_clip_role_name][0]['id']
-            ),
-            get_datetime_from_string(decoded_cursor_token['when_created']),
-        )
-        self.assertEqual(
-            response_data['data'][0][audio_clip_role_name][0]['id'],
-            decoded_cursor_token['id'],
-        )
-
-
-    def _like_dislike_cursor_token_check(self, response_data, audio_clip_role_name:Literal['originator','responder'], unique_user):
-
-        decoded_cursor_token = decode_cursor_token(response_data['next_token'])
-
-        target_audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(
-            audio_clip_id=response_data['data'][-1][audio_clip_role_name][0]['id'],
-            user=unique_user,
-        )
-
-        self.assertEqual(
-            target_audio_clip_like_dislike.last_modified,
-            get_datetime_from_string(decoded_cursor_token['last_modified']),
-        )
-        self.assertEqual(
-            target_audio_clip_like_dislike.id,
-            decoded_cursor_token['id'],
-        )
-
-        decoded_cursor_token = decode_cursor_token(response_data['back_token'])
-
-        target_audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(
-            audio_clip_id=response_data['data'][0][audio_clip_role_name][0]['id'],
-            user=unique_user,
-        )
-
-        self.assertEqual(
-            target_audio_clip_like_dislike.last_modified,
-            get_datetime_from_string(decoded_cursor_token['last_modified']),
-        )
-        self.assertEqual(
-            target_audio_clip_like_dislike.id,
-            decoded_cursor_token['id'],
-        )
-
-
-    def test_browse_events__main_page(self, minimum_time_elapsed_ms=300, skip_to_loop=None):
-
-        #pre-determine audio_clip_tones
-        #since excluded tones are specified in earliest/middle/latest manner, #and will never use first and last,
-        #can just make sure we don't -1 for earliest, and +1 for latest
-
-        excluded_audio_clip_tone_ids = []
-        expected_audio_clip_tone_ids = [None]
-
-        realistic_bulk_data_class = RealisticBulkData()
-
-        #get first tone to prevent repeated if-statements
-
-        excluded_audio_clip_tone_ids.append(
-            realistic_bulk_data_class.audio_clip_tones[
-                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0]
-            ].id
-        )
-
-        expected_audio_clip_tone_ids.append(
-            realistic_bulk_data_class.audio_clip_tones[
-                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0] + 1
-            ].id
-        )
-
-        #add excluded audio_clip_tones
-        for index in range(1, len(realistic_bulk_data_class.excluded_audio_clip_tones_indexes)):
-
-            excluded_index = realistic_bulk_data_class.excluded_audio_clip_tones_indexes[index]
-
-            excluded_audio_clip_tone_ids.append(
-                realistic_bulk_data_class.audio_clip_tones[excluded_index].id
-            )
-
-            expected_audio_clip_tone_ids.append(
-                realistic_bulk_data_class.audio_clip_tones[excluded_index - 1].id
-            )
-
-        stopwatch = Stopwatch()
-
-        #create all possible test cases
-
-        #{'api_kwargs': {}, 'test_values': {}}
-        test_cases = []
-
-        audio_clip_tone_ids = expected_audio_clip_tone_ids + excluded_audio_clip_tone_ids
-
-        for login_user in self.unique_users:
-
-            for audio_clip_role_name in ['originator', 'responder']:
-
-                for audio_clip_tone_id_index, audio_clip_tone_id in enumerate(audio_clip_tone_ids):
-
-                    is_excluded_audio_clip_tone = False
-
-                    if (audio_clip_tone_id_index + 1) > len(expected_audio_clip_tone_ids):
-
-                        is_excluded_audio_clip_tone = True
-
-                    current_kwargs = {
-                        'latest_or_best': 'latest',
-                        'timeframe': 'all',
-                        'audio_clip_role_name': audio_clip_role_name,
-                        'next_or_back': 'next',
-                    }
-
-                    if audio_clip_tone_id is not None:
-
-                        current_kwargs.update({'audio_clip_tone_id': audio_clip_tone_id})
-
-                    test_cases.append({
-                        'api_kwargs': current_kwargs,
-                        'test_values': {
-                            'is_excluded_audio_clip_tone': is_excluded_audio_clip_tone,
-                            'login_user': login_user,
-                            'target_user': None,
-                        }
-                    })
-
-        #start test
-
-        for test_index, test_case in enumerate(test_cases):
-
-            #unpack test_case
-            #lazy solution for implementing this after main code has been written
-
-            current_kwargs = test_case['api_kwargs']
-            login_user = test_case['test_values']['login_user']
-            target_user = test_case['test_values']['target_user']
-            audio_clip_role_name = test_case['api_kwargs']['audio_clip_role_name']
-            is_excluded_audio_clip_tone = test_case['test_values']['is_excluded_audio_clip_tone']
-
-            self.login(login_user)
-
-            #some queries on first run will cause delay due to lack of caching at db
-            #if exceeding minimum_time_elapsed_ms, retry once
-
-            retries_left = 1
-
-            while retries_left >= 0:
-
-                try:
-
-                    loop_title = 'loop #' + str(test_index)
-
-                    print(loop_title)
-
-                    if skip_to_loop is not None and test_index != skip_to_loop:
-
-                        break
-
-                    #========================================
-                    #part 1: from latest audio_clip
-                    #========================================
-
-                    #==========
-                    #API next
-                    #==========
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    #if using excluded audio_clip_tone, always no rows
-                    #skip to next test case
-                    if is_excluded_audio_clip_tone is True:
-
-                        self.assertEqual(len(response_data['data']), 0)
-                        break
-
-                    self.assertGreater(len(response_data['data']), 0)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs)
-
-                    #keep this for next->back validation later
-                    first_response_data = response_data['data'].copy()
-
-                    #check tokens
-                    self._general_cursor_token_check(response_data, audio_clip_role_name)
-
-                    #==========
-                    #API next+token
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'next',
-                        'cursor_token': response_data['next_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    self.assertGreater(len(response_data['data']), 0)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs)
-
-                    #check tokens
-                    self._general_cursor_token_check(response_data, audio_clip_role_name)
-
-                    #==========
-                    #API back+token
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'back',
-                        'cursor_token': response_data['back_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs)
-
-                    #check tokens
-                    self._general_cursor_token_check(response_data, audio_clip_role_name)
-
-                    #ensure everything is the same as first response
-
-                    self.assertEqual(len(response_data['data']), len(first_response_data))
-
-                    for index in range(len(response_data['data'])):
-
-                        self.assertEqual(
-                            response_data['data'][index]['originator'][0]['id'],
-                            first_response_data[index]['originator'][0]['id'],
-                        )
-                        self.assertEqual(
-                            response_data['data'][index]['responder'][0]['id'],
-                            first_response_data[index]['responder'][0]['id'],
-                        )
-
-                    #==========
-                    #API back+token again, expect no rows
-                    #==========
-
-                    cursor_token = response_data['back_token']
-
-                    current_kwargs.update({
-                        'next_or_back': 'back',
-                        'cursor_token': response_data['back_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #next_token, back_token, data
-                    response_data = get_response_data(request)
-
-                    self.assertEqual(len(response_data['data']), 0)
-                    self.assertEqual(response_data['next_token'], response_data['back_token'])
-                    self.assertEqual(response_data['next_token'], cursor_token)
-
-                    #========================================
-                    #part 2: from earliest audio_clip
-                    #========================================
-
-                    #==========
-                    #API next with last row in db, expect 0 rows
-                    #==========
-
-                    #construct our own cursor from earliest eligible audio_clip
-
-                    earliest_audio_clip = AudioClips.objects.filter(
-                        audio_clip_role__audio_clip_role_name=audio_clip_role_name,
-                        generic_status__generic_status_name='ok',
-                        is_banned=False,
-                    ).order_by('-when_created', '-id').last()
-
-                    cursor_token = encode_cursor_token({
-                        'when_created': earliest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-                        'id': earliest_audio_clip.id,
-                    })
-
-                    current_kwargs.update({
-                        'next_or_back': 'next',
-                        'cursor_token': cursor_token,
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #next_token, back_token, data
-                    response_data = get_response_data(request)
-
-                    self.assertEqual(len(response_data['data']), 0)
-                    self.assertEqual(response_data['next_token'], response_data['back_token'])
-                    self.assertEqual(response_data['next_token'], cursor_token)
-
-                    #==========
-                    #API back+token
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'back',
-                        'cursor_token': response_data['back_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs)
-
-                    #check tokens
-                    self._general_cursor_token_check(response_data, audio_clip_role_name)
-
-                    first_response_data = response_data['data']
-
-                    #==========
-                    #API next+token, expect 0 rows
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'next',
-                        'cursor_token': response_data['next_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    self.assertEqual(len(response_data['data']), 0)
-                    self.assertEqual(response_data['next_token'], response_data['back_token'])
-
-                except Exception as e:
-
-                    #show useful info
-
-                    print(current_kwargs)
-                    print(f'is_excluded_audio_clip_tone: {is_excluded_audio_clip_tone}')
-
-                    if 'cursor_token' in current_kwargs:
-
-                        print(f'cursor_token: {decode_cursor_token(current_kwargs['cursor_token'])}')
-
-                    #check if can retry
-
-                    if retries_left > 0:
-
-                        #can retry
-
-                        print('Retrying test to ensure failure is not related to db caching.')
-
-                        retries_left -= 1
-
-                        continue
-
-                    #cannot retry
-                    raise e
-
-                #success, break while-loop
-                break
-
-
-    def test_browse_events__own_page(self, minimum_time_elapsed_ms=300, skip_to_loop=None):
-
-        #pre-determine audio_clip_tones
-        #since excluded tones are specified in earliest/middle/latest manner, #and will never use first and last,
-        #can just make sure we don't -1 for earliest, and +1 for latest
-
-        excluded_audio_clip_tone_ids = []
-        expected_audio_clip_tone_ids = [None]
-
-        realistic_bulk_data_class = RealisticBulkData()
-
-        #get first tone to prevent repeated if-statements
-
-        excluded_audio_clip_tone_ids.append(
-            realistic_bulk_data_class.audio_clip_tones[
-                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0]
-            ].id
-        )
-
-        expected_audio_clip_tone_ids.append(
-            realistic_bulk_data_class.audio_clip_tones[
-                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0] + 1
-            ].id
-        )
-
-        #add excluded audio_clip_tones
-        for index in range(1, len(realistic_bulk_data_class.excluded_audio_clip_tones_indexes)):
-
-            excluded_index = realistic_bulk_data_class.excluded_audio_clip_tones_indexes[index]
-
-            excluded_audio_clip_tone_ids.append(
-                realistic_bulk_data_class.audio_clip_tones[excluded_index].id
-            )
-
-            expected_audio_clip_tone_ids.append(
-                realistic_bulk_data_class.audio_clip_tones[excluded_index - 1].id
-            )
-
-        stopwatch = Stopwatch()
-
-        #create all possible test cases
-
-        #{'api_kwargs': {}, 'test_values': {}}
-        test_cases = []
-
-        audio_clip_tone_ids = expected_audio_clip_tone_ids + excluded_audio_clip_tone_ids
-
-        for login_user in self.unique_users:
-
-            for audio_clip_role_name in ['originator', 'responder']:
-
-                expected_event_generic_status_names = []
-
-                if audio_clip_role_name == 'originator':
-
-                    expected_event_generic_status_names = ['incomplete', 'completed']
-
-                else:
-
-                    expected_event_generic_status_names = ['completed', 'deleted']
-
-                for expected_event_generic_status_name in expected_event_generic_status_names:
-
-                    for audio_clip_tone_id_index, audio_clip_tone_id in enumerate(audio_clip_tone_ids):
-
-                        is_excluded_audio_clip_tone = False
-
-                        if (audio_clip_tone_id_index + 1) > len(expected_audio_clip_tone_ids):
-
-                            is_excluded_audio_clip_tone = True
-
-                        current_kwargs = {
-                            'username': login_user.username,
-                            'latest_or_best': 'latest',
-                            'timeframe': 'all',
-                            'audio_clip_role_name': audio_clip_role_name,
-                            'next_or_back': 'next',
-                        }
-
-                        if audio_clip_tone_id is not None:
-
-                            current_kwargs.update({'audio_clip_tone_id': audio_clip_tone_id})
-
-                        test_cases.append({
-                            'api_kwargs': current_kwargs,
-                            'test_values': {
-                                'is_excluded_audio_clip_tone': is_excluded_audio_clip_tone,
-                                'login_user': login_user,
-                                'target_user': login_user,
-                                'expected_event_generic_status_name': expected_event_generic_status_name,
-                            }
-                        })
-
-        #start test
-
-        for test_index, test_case in enumerate(test_cases):
-
-            #unpack test_case
-            #lazy solution for implementing this after main code has been written
-
-            current_kwargs = test_case['api_kwargs']
-            login_user = test_case['test_values']['login_user']
-            target_user = test_case['test_values']['target_user']
-            audio_clip_role_name = test_case['api_kwargs']['audio_clip_role_name']
-            is_excluded_audio_clip_tone = test_case['test_values']['is_excluded_audio_clip_tone']
-            expected_event_generic_status_name = test_case['test_values']['expected_event_generic_status_name']
-
-            self.login(login_user)
-
-            #some queries on first run will cause delay due to lack of caching at db
-            #if exceeding minimum_time_elapsed_ms, retry once
-
-            retries_left = 1
-
-            while retries_left >= 0:
-
-                try:
-
-                    loop_title = 'loop #' + str(test_index)
-
-                    print(loop_title)
-
-                    if skip_to_loop is not None and test_index != skip_to_loop:
-
-                        break
-
-                    #========================================
-                    #part 1: from latest audio_clip
-                    #========================================
-
-                    #==========
-                    #API next
-                    #==========
-
-                    #only for excluded audio_clip_tone, just to check that 0 row performance is ok
-                    #event.generic_status is more varied now too, so starting cursor is essential for normal tests
-
-                    if is_excluded_audio_clip_tone is True:
-
-                        stopwatch.start()
-
-                        request = self.client.get(
-                            reverse(
-                                'browse_events_api',
-                                kwargs=current_kwargs
-                            )
-                        )
-
-                        stopwatch.stop()
-
-                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                        else:
-
-                            print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                        #check
-
-                        self.assertEqual(request.status_code, 200)
-
-                        #response_data: next_token, back_token, data
-                        #response_data['data']: [{event:event,originator:[],responder:[]}]
-                        response_data = get_response_data(request)
-
-                        self.assertEqual(len(response_data['data']), 0)
-
-                        #skip to next test case
-                        break
-
-                    #==========
-                    #API next+token
-                    #==========
-
-                    #immediately create cursor here
-                    #guarantees at least 1 event with desired generic_status
-
-                    latest_audio_clip = AudioClips.objects.filter(
-                        user=target_user,
-                        audio_clip_role__audio_clip_role_name=audio_clip_role_name,
-                        generic_status__generic_status_name='ok',
-                        event__generic_status__generic_status_name=expected_event_generic_status_name,
-                        is_banned=False,
-                    ).order_by('-when_created', '-id').first()
-
-                    cursor_token = encode_cursor_token({
-                        'when_created': latest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-                        'id': latest_audio_clip.id,
-                    })
-
-                    current_kwargs.update({
-                        'next_or_back': 'next',
-                        'cursor_token': cursor_token,
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    self.assertGreater(len(response_data['data']), 0)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
-
-                    #keep this for next->back validation later
-                    first_response_data = response_data['data'].copy()
-
-                    #check tokens
-                    self._general_cursor_token_check(response_data, audio_clip_role_name)
-
-                    #==========
-                    #API next+token
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'next',
-                        'cursor_token': response_data['next_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    self.assertGreater(len(response_data['data']), 0)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
-
-                    #check tokens
-                    self._general_cursor_token_check(response_data, audio_clip_role_name)
-
-                    #==========
-                    #API back+token
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'back',
-                        'cursor_token': response_data['back_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
-
-                    #check tokens
-                    self._general_cursor_token_check(response_data, audio_clip_role_name)
-
-                    #ensure everything is the same as first response
-
-                    self.assertEqual(len(response_data['data']), len(first_response_data))
-
-                    for index in range(len(response_data['data'])):
-
-                        if len(response_data['data'][index]['originator']) > 0:
-
-                            self.assertEqual(
-                                response_data['data'][index]['originator'][0]['id'],
-                                first_response_data[index]['originator'][0]['id'],
-                            )
-
-                        if len(response_data['data'][index]['responder']) > 0:
-
-                            self.assertEqual(
-                                response_data['data'][index]['responder'][0]['id'],
-                                first_response_data[index]['responder'][0]['id'],
-                            )
-
-                    #==========
-                    #API another back+token
-                    #==========
-
-                    #our original testing cursor involves only x event__generic_status
-                    #but main query allows for multiple event__generic_status
-                    #doing this second back+token cannot guarantee that rows are 0 or > 0
-                    #no need to do
-
-                    #========================================
-                    #part 2: from earliest audio_clip
-                    #========================================
-
-                    #==========
-                    #API next with last row in db
-                    #don't test for row count because it cannot be guaranteed
-                    #==========
-
-                    #construct our own cursor from earliest eligible audio_clip
-
-                    earliest_audio_clip = AudioClips.objects.filter(
-                        user=target_user,
-                        audio_clip_role__audio_clip_role_name=audio_clip_role_name,
-                        generic_status__generic_status_name='ok',
-                        event__generic_status__generic_status_name=expected_event_generic_status_name,
-                        is_banned=False,
-                    ).order_by('-when_created', '-id').last()
-
-                    cursor_token = encode_cursor_token({
-                        'when_created': earliest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-                        'id': earliest_audio_clip.id,
-                    })
-
-                    current_kwargs.update({
-                        'next_or_back': 'next',
-                        'cursor_token': cursor_token,
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #next_token, back_token, data
-                    response_data = get_response_data(request)
-
-                    #==========
-                    #API back+token
-                    #will always have rows
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'back',
-                        'cursor_token': response_data['back_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    self.assertGreater(len(response_data['data']), 0)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
-
-                    #check tokens
-                    self._general_cursor_token_check(response_data, audio_clip_role_name)
-
-                    #==========
-                    #API next+token
-                    #don't test for row count because it cannot be guaranteed
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'next',
-                        'cursor_token': response_data['next_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                except Exception as e:
-
-                    #show useful info
-
-                    print(current_kwargs)
-                    print(f'is_excluded_audio_clip_tone: {is_excluded_audio_clip_tone}')
-
-                    if 'cursor_token' in current_kwargs:
-
-                        print(f'cursor_token: {decode_cursor_token(current_kwargs['cursor_token'])}')
-
-                    #check if can retry
-
-                    if retries_left > 0:
-
-                        #can retry
-
-                        print('Retrying test to ensure failure is not related to db caching.')
-
-                        retries_left -= 1
-
-                        continue
-
-                    #cannot retry
-                    raise e
-
-                #success, break while-loop
-                break
-
-
-    def test_browse_events__other_user_page(self, minimum_time_elapsed_ms=300, skip_to_loop=None):
-
-        #pre-determine audio_clip_tones
-        #since excluded tones are specified in earliest/middle/latest manner, #and will never use first and last,
-        #can just make sure we don't -1 for earliest, and +1 for latest
-
-        excluded_audio_clip_tone_ids = []
-        expected_audio_clip_tone_ids = [None]
-
-        realistic_bulk_data_class = RealisticBulkData()
-
-        #get first tone to prevent repeated if-statements
-
-        excluded_audio_clip_tone_ids.append(
-            realistic_bulk_data_class.audio_clip_tones[
-                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0]
-            ].id
-        )
-
-        expected_audio_clip_tone_ids.append(
-            realistic_bulk_data_class.audio_clip_tones[
-                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0] + 1
-            ].id
-        )
-
-        #add excluded audio_clip_tones
-        for index in range(1, len(realistic_bulk_data_class.excluded_audio_clip_tones_indexes)):
-
-            excluded_index = realistic_bulk_data_class.excluded_audio_clip_tones_indexes[index]
-
-            excluded_audio_clip_tone_ids.append(
-                realistic_bulk_data_class.audio_clip_tones[excluded_index].id
-            )
-
-            expected_audio_clip_tone_ids.append(
-                realistic_bulk_data_class.audio_clip_tones[excluded_index - 1].id
-            )
-
-        stopwatch = Stopwatch()
-
-        #create all possible test cases
-
-        #{'api_kwargs': {}, 'test_values': {}}
-        test_cases = []
-
-        audio_clip_tone_ids = expected_audio_clip_tone_ids + excluded_audio_clip_tone_ids
-
-        for login_user in self.unique_users:
-
-            for target_user in self.unique_users:
-
-                if target_user.id == login_user.id:
-
-                    #save users viewing their own page for another test case
-                    continue
-
-                for audio_clip_role_name in ['originator', 'responder']:
-
-                    expected_event_generic_status_names = []
-
-                    if audio_clip_role_name == 'originator':
-
-                        expected_event_generic_status_names = ['incomplete', 'completed']
-
-                    else:
-
-                        expected_event_generic_status_names = ['completed', 'deleted']
-
-                    for expected_event_generic_status_name in expected_event_generic_status_names:
-
-                        for audio_clip_tone_id_index, audio_clip_tone_id in enumerate(audio_clip_tone_ids):
-
-                            is_excluded_audio_clip_tone = False
-
-                            if (audio_clip_tone_id_index + 1) > len(expected_audio_clip_tone_ids):
-
-                                is_excluded_audio_clip_tone = True
-
-                            current_kwargs = {
-                                'username': target_user.username,
-                                'latest_or_best': 'latest',
-                                'timeframe': 'all',
-                                'audio_clip_role_name': audio_clip_role_name,
-                                'next_or_back': 'next',
-                            }
-
-                            if audio_clip_tone_id is not None:
-
-                                current_kwargs.update({'audio_clip_tone_id': audio_clip_tone_id})
-
-                            test_cases.append({
-                                'api_kwargs': current_kwargs,
-                                'test_values': {
-                                    'is_excluded_audio_clip_tone': is_excluded_audio_clip_tone,
-                                    'login_user': login_user,
-                                    'target_user': target_user,
-                                    'expected_event_generic_status_name': expected_event_generic_status_name,
-                                }
-                            })
-
-        #start test
-
-        for test_index, test_case in enumerate(test_cases):
-
-            #unpack test_case
-            #lazy solution for implementing this after main code has been written
-
-            current_kwargs = test_case['api_kwargs']
-            login_user = test_case['test_values']['login_user']
-            target_user = test_case['test_values']['target_user']
-            audio_clip_role_name = test_case['api_kwargs']['audio_clip_role_name']
-            is_excluded_audio_clip_tone = test_case['test_values']['is_excluded_audio_clip_tone']
-            expected_event_generic_status_name = test_case['test_values']['expected_event_generic_status_name']
-
-            self.login(login_user)
-
-            #some queries on first run will cause delay due to lack of caching at db
-            #if exceeding minimum_time_elapsed_ms, retry once
-
-            retries_left = 1
-
-            while retries_left >= 0:
-
-                try:
-
-                    loop_title = 'loop #' + str(test_index)
-
-                    print(loop_title)
-
-                    if skip_to_loop is not None and test_index != skip_to_loop:
-
-                        break
-
-                    #========================================
-                    #part 1: from latest audio_clip
-                    #========================================
-
-                    #==========
-                    #API next
-                    #==========
-
-                    #only for excluded audio_clip_tone, just to check that 0 row performance is ok
-                    #event.generic_status is more varied now too, so starting cursor is essential for normal tests
-
-                    if is_excluded_audio_clip_tone is True:
-
-                        stopwatch.start()
-
-                        request = self.client.get(
-                            reverse(
-                                'browse_events_api',
-                                kwargs=current_kwargs
-                            )
-                        )
-
-                        stopwatch.stop()
-
-                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                        else:
-
-                            print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                        #check
-
-                        self.assertEqual(request.status_code, 200)
-
-                        #response_data: next_token, back_token, data
-                        #response_data['data']: [{event:event,originator:[],responder:[]}]
-                        response_data = get_response_data(request)
-
-                        self.assertEqual(len(response_data['data']), 0)
-
-                        #skip to next test case
-                        break
-
-                    #==========
-                    #API next+token
-                    #==========
-
-                    #immediately create cursor here
-                    #guarantees at least 1 event with desired generic_status
-
-                    latest_audio_clip = AudioClips.objects.filter(
-                        user=target_user,
-                        audio_clip_role__audio_clip_role_name=audio_clip_role_name,
-                        generic_status__generic_status_name='ok',
-                        event__generic_status__generic_status_name=expected_event_generic_status_name,
-                        is_banned=False,
-                    ).order_by('-when_created', '-id').first()
-
-                    cursor_token = encode_cursor_token({
-                        'when_created': latest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-                        'id': latest_audio_clip.id,
-                    })
-
-                    current_kwargs.update({
-                        'next_or_back': 'next',
-                        'cursor_token': cursor_token,
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    self.assertGreater(len(response_data['data']), 0)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
-
-                    #check tokens
-                    self._general_cursor_token_check(response_data, audio_clip_role_name)
-
-                    #keep this for next->back validation later
-                    first_response_data = response_data['data'].copy()
-
-                    #==========
-                    #API next+token
-                    #==========
-
-                    current_kwargs.update({
-                        'cursor_token': response_data['next_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    self.assertGreater(len(response_data['data']), 0)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
-
-                    #check tokens
-                    self._general_cursor_token_check(response_data, audio_clip_role_name)
-
-                    #==========
-                    #API back+token
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'back',
-                        'cursor_token': response_data['back_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
-
-                    #check tokens
-                    self._general_cursor_token_check(response_data, audio_clip_role_name)
-
-                    #ensure everything is the same as first response
-
-                    self.assertEqual(len(response_data['data']), len(first_response_data))
-
-                    for index in range(len(response_data['data'])):
-
-                        if len(response_data['data'][index]['originator']) > 0:
-
-                            self.assertEqual(
-                                response_data['data'][index]['originator'][0]['id'],
-                                first_response_data[index]['originator'][0]['id'],
-                            )
-
-                        if len(response_data['data'][index]['responder']) > 0:
-
-                            self.assertEqual(
-                                response_data['data'][index]['responder'][0]['id'],
-                                first_response_data[index]['responder'][0]['id'],
-                            )
-
-                    #==========
-                    #API another back+token
-                    #==========
-
-                    #no need to do, because we only fetch x event__generic_status but main query allows multiple event__generic_status
-
-                    #========================================
-                    #part 2: from earliest audio_clip
-                    #========================================
-
-                    #==========
-                    #API next
-                    #don't test for row count because it cannot be guaranteed
-                    #==========
-
-                    #construct our own cursor from earliest eligible audio_clip
-
-                    earliest_audio_clip = AudioClips.objects.filter(
-                        user=target_user,
-                        audio_clip_role__audio_clip_role_name=audio_clip_role_name,
-                        generic_status__generic_status_name='ok',
-                        event__generic_status__generic_status_name=expected_event_generic_status_name,
-                        is_banned=False,
-                    ).order_by('-when_created', '-id').last()
-
-                    cursor_token = encode_cursor_token({
-                        'when_created': earliest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-                        'id': earliest_audio_clip.id,
-                    })
-
-                    current_kwargs.update({
-                        'next_or_back': 'next',
-                        'cursor_token': cursor_token,
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #next_token, back_token, data
-                    response_data = get_response_data(request)
-
-                    #==========
-                    #API back+token
-                    #will always have rows
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'back',
-                        'cursor_token': response_data['back_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    self.assertGreater(len(response_data['data']), 0)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
-
-                    #check tokens
-                    self._general_cursor_token_check(response_data, audio_clip_role_name)
-
-                    #==========
-                    #API next+token
-                    #don't test for row count because it cannot be guaranteed
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'next',
-                        'cursor_token': response_data['next_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                except Exception as e:
-
-                    #show useful info
-
-                    print(current_kwargs)
-                    print(f'is_excluded_audio_clip_tone: {is_excluded_audio_clip_tone}')
-
-                    if 'cursor_token' in current_kwargs:
-
-                        print(f'cursor_token: {decode_cursor_token(current_kwargs['cursor_token'])}')
-
-                    #check if can retry
-
-                    if retries_left > 0:
-
-                        #can retry
-
-                        print('Retrying test to ensure failure is not related to db caching.')
-
-                        retries_left -= 1
-
-                        continue
-
-                    #cannot retry
-                    raise e
-
-                #success, break while-loop
-                break
-
-
-    def test_browse_events__own_like_dislike_page(self, minimum_time_elapsed_ms=300, skip_to_loop=None):
-
-        #pre-determine audio_clip_tones
-        #since excluded tones are specified in earliest/middle/latest manner, #and will never use first and last,
-        #can just make sure we don't -1 for earliest, and +1 for latest
-
-        excluded_audio_clip_tone_ids = []
-        expected_audio_clip_tone_ids = [None]
-
-        realistic_bulk_data_class = RealisticBulkData()
-
-        #get first tone to prevent repeated if-statements
-
-        excluded_audio_clip_tone_ids.append(
-            realistic_bulk_data_class.audio_clip_tones[
-                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0]
-            ].id
-        )
-
-        expected_audio_clip_tone_ids.append(
-            realistic_bulk_data_class.audio_clip_tones[
-                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0] + 1
-            ].id
-        )
-
-        #add excluded audio_clip_tones
-        for index in range(1, len(realistic_bulk_data_class.excluded_audio_clip_tones_indexes)):
-
-            excluded_index = realistic_bulk_data_class.excluded_audio_clip_tones_indexes[index]
-
-            excluded_audio_clip_tone_ids.append(
-                realistic_bulk_data_class.audio_clip_tones[excluded_index].id
-            )
-
-            expected_audio_clip_tone_ids.append(
-                realistic_bulk_data_class.audio_clip_tones[excluded_index - 1].id
-            )
-
-        stopwatch = Stopwatch()
-
-        #create all possible test cases
-
-        #{'api_kwargs': {}, 'test_values': {}}
-        test_cases = []
-
-        audio_clip_tone_ids = expected_audio_clip_tone_ids + excluded_audio_clip_tone_ids
-
-        for login_user in self.unique_users:
-
-            for audio_clip_role_name in ['originator', 'responder']:
-
-                expected_event_generic_status_names = []
-
-                if audio_clip_role_name == 'originator':
-
-                    expected_event_generic_status_names = ['incomplete', 'completed']
-
-                else:
-
-                    expected_event_generic_status_names = ['completed', 'deleted']
-
-                for expected_event_generic_status_name in expected_event_generic_status_names:
-
-                    for likes_or_dislikes in ['likes', 'dislikes']:
-
-                        for audio_clip_tone_id_index, audio_clip_tone_id in enumerate(audio_clip_tone_ids):
-
-                            is_excluded_audio_clip_tone = False
-
-                            if (audio_clip_tone_id_index + 1) > len(expected_audio_clip_tone_ids):
-
-                                is_excluded_audio_clip_tone = True
-
-                            current_kwargs = {
-                                'username': login_user.username,
-                                'latest_or_best': 'latest',
-                                'timeframe': 'all',
-                                'audio_clip_role_name': audio_clip_role_name,
-                                'next_or_back': 'next',
-                                'likes_or_dislikes': likes_or_dislikes,
-                            }
-
-                            if audio_clip_tone_id is not None:
-
-                                current_kwargs.update({'audio_clip_tone_id': audio_clip_tone_id})
-
-                            test_cases.append({
-                                'api_kwargs': current_kwargs,
-                                'test_values': {
-                                    'is_excluded_audio_clip_tone': is_excluded_audio_clip_tone,
-                                    'login_user': login_user,
-                                    'target_user': login_user,
-                                    'expected_event_generic_status_name': expected_event_generic_status_name,
-                                }
-                            })
-
-        #start test
-
-        for test_index, test_case in enumerate(test_cases):
-
-            #unpack test_case
-            #lazy solution for implementing this after main code has been written
-
-            current_kwargs = test_case['api_kwargs']
-            login_user = test_case['test_values']['login_user']
-            target_user = test_case['test_values']['target_user']
-            audio_clip_role_name = test_case['api_kwargs']['audio_clip_role_name']
-            is_excluded_audio_clip_tone = test_case['test_values']['is_excluded_audio_clip_tone']
-            expected_event_generic_status_name = test_case['test_values']['expected_event_generic_status_name']
-
-            self.login(login_user)
-
-            #some queries on first run will cause delay due to lack of caching at db
-            #if exceeding minimum_time_elapsed_ms, retry once
-
-            retries_left = 1
-
-            while retries_left >= 0:
-
-                try:
-
-                    loop_title = 'loop #' + str(test_index)
-
-                    print(loop_title)
-
-                    if skip_to_loop is not None and test_index != skip_to_loop:
-
-                        break
-
-                    #========================================
-                    #part 1: from latest audio_clip
-                    #========================================
-
-                    #==========
-                    #API next
-                    #==========
-
-                    #only for excluded audio_clip_tone, just to check that 0 row performance is ok
-                    #event.generic_status is more varied now too, so starting cursor is essential for normal tests
-
-                    if is_excluded_audio_clip_tone is True:
-
-                        stopwatch.start()
-
-                        request = self.client.get(
-                            reverse(
-                                'browse_events_api',
-                                kwargs=current_kwargs
-                            )
-                        )
-
-                        stopwatch.stop()
-
-                        if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                        else:
-
-                            print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                        #check
-
-                        self.assertEqual(request.status_code, 200)
-
-                        #response_data: next_token, back_token, data
-                        #response_data['data']: [{event:event,originator:[],responder:[]}]
-                        response_data = get_response_data(request)
-
-                        self.assertEqual(len(response_data['data']), 0)
-
-                        #skip to next test case
-                        break
-
-                    #==========
-                    #API next+token
-                    #==========
-
-                    #immediately create cursor here
-                    #guarantees at least 1 event with desired generic_status
-
-                    latest_audio_clip_like_dislike = AudioClipLikesDislikes.objects.filter(
-                        user=target_user,
-                        is_liked=(likes_or_dislikes == 'likes'),
-                        audio_clip__audio_clip_role__audio_clip_role_name=audio_clip_role_name,
-                        audio_clip__generic_status__generic_status_name='ok',
-                        audio_clip__event__generic_status__generic_status_name=expected_event_generic_status_name,
-                        audio_clip__is_banned=False,
-                    ).order_by('-last_modified', '-id').first()
-
-                    cursor_token = encode_cursor_token({
-                        'last_modified': latest_audio_clip_like_dislike.last_modified.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-                        'id': latest_audio_clip_like_dislike.id,
-                    })
-
-                    current_kwargs.update({
-                        'next_or_back': 'next',
-                        'cursor_token': cursor_token,
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    self.assertGreater(len(response_data['data']), 0)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
-
-                    #check tokens
-                    self._like_dislike_cursor_token_check(response_data, audio_clip_role_name, target_user)
-
-                    #keep this for next->back validation later
-                    first_response_data = response_data['data'].copy()
-
-                    #==========
-                    #API next+token
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'next',
-                        'cursor_token': response_data['next_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    self.assertGreater(len(response_data['data']), 0)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
-
-                    #check tokens
-                    self._like_dislike_cursor_token_check(response_data, audio_clip_role_name, target_user)
-
-                    #==========
-                    #API back+token
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'back',
-                        'cursor_token': response_data['back_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
-
-                    #check tokens
-                    self._like_dislike_cursor_token_check(response_data, audio_clip_role_name, target_user)
-
-                    #ensure everything is the same as first response
-
-                    self.assertEqual(len(response_data['data']), len(first_response_data))
-
-                    for index in range(len(response_data['data'])):
-
-                        if response_data['data'][index]['originator']:
-
-                            self.assertEqual(
-                                response_data['data'][index]['originator'][0]['id'],
-                                first_response_data[index]['originator'][0]['id'],
-                            )
-
-                        if response_data['data'][index]['responder']:
-
-                            self.assertEqual(
-                                response_data['data'][index]['responder'][0]['id'],
-                                first_response_data[index]['responder'][0]['id'],
-                            )
-
-                    #==========
-                    #API another back+token
-                    #==========
-
-                    #no need to do, because we only fetch x event__generic_status but main query allows multiple event__generic_status
-
-                    #========================================
-                    #part 2: from earliest audio_clip
-                    #========================================
-
-                    #==========
-                    #API next
-                    #don't test for row count because it cannot be guaranteed
-                    #==========
-
-                    #construct our own cursor from earliest eligible audio_clip
-
-                    earliest_audio_clip_like_dislike = AudioClipLikesDislikes.objects.filter(
-                        user=target_user,
-                        is_liked=(likes_or_dislikes == 'likes'),
-                        audio_clip__audio_clip_role__audio_clip_role_name=audio_clip_role_name,
-                        audio_clip__generic_status__generic_status_name='ok',
-                        audio_clip__event__generic_status__generic_status_name=expected_event_generic_status_name,
-                        audio_clip__is_banned=False,
-                    ).order_by('-last_modified', '-id').last()
-
-                    cursor_token = encode_cursor_token({
-                        'last_modified': earliest_audio_clip_like_dislike.last_modified.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-                        'id': earliest_audio_clip_like_dislike.id,
-                    })
-
-                    current_kwargs.update({
-                        'next_or_back': 'next',
-                        'cursor_token': cursor_token,
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #next_token, back_token, data
-                    response_data = get_response_data(request)
-
-                    #==========
-                    #API back+token
-                    #guaranteed to have rows
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'back',
-                        'cursor_token': response_data['back_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    self.assertGreater(len(response_data['data']), 0)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
-
-                    #check tokens
-                    self._like_dislike_cursor_token_check(response_data, audio_clip_role_name, target_user)
-
-                    #==========
-                    #API next+token
-                    #don't count rows because it cannot be guaranteed
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'next',
-                        'cursor_token': response_data['next_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= minimum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                except Exception as e:
-
-                    #show useful info
-
-                    print(current_kwargs)
-                    print(f'is_excluded_audio_clip_tone: {is_excluded_audio_clip_tone}')
-                    print(f'expected_event_generic_status_name: {expected_event_generic_status_name}')
-
-                    if 'cursor_token' in current_kwargs:
-
-                        print(f'cursor_token: {decode_cursor_token(current_kwargs['cursor_token'])}')
-
-                    #check if can retry
-
-                    if retries_left > 0:
-
-                        #can retry
-
-                        print('Retrying test to ensure failure is not related to db caching.')
-
-                        retries_left -= 1
-
-                        continue
-
-                    #cannot retry
-                    raise e
-
-                #success, break while-loop
-                break
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#how to test:
-    #test each test_() individually, as running all tests concurrently will have worse performance
-#only test for basic correctness and db test data setup
-#leave API correctness at test_apis
-@override_settings(
-    
-    DEBUG=True,
-)
-class ListEventReplyChoices_TestCase(TestCase):
-
-    #{test_function_name: anything}
-    metrics = {}
-
-    #create your db indexes here
-    @classmethod
-    def setUp(cls):
-
-        pass
-
-
-    #WINNER
-    #always no tone specified
-    #has ORDER BY events.when_created
-    def _query_0(self, current_user_id:int, when_created:datetime):
-
-        stopwatch = Stopwatch()
-
-        stopwatch.start()
-
-        query = '''
-            WITH
-                excluded_events_1 AS (
-                    SELECT id FROM events
-                    WHERE created_by_id = %s
-                ),
-                excluded_events_2 AS (
-                    SELECT event_id AS id FROM user_events
-                    WHERE user_id = %s
-                    AND when_excluded_for_reply IS NOT NULL
-                ),
-                excluded_users_1 AS (
-                    SELECT blocked_user_id AS id FROM user_blocks
-                    WHERE user_id = %s
-                ),
-                excluded_users_2 AS (
-                    SELECT user_id AS id FROM user_blocks
-                    WHERE blocked_user_id = %s
-                ),
-                narrowed_events AS (
-                    SELECT events.id FROM events
-                    WHERE generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name = %s)
-                    AND when_created >= %s
-                ),
-                target_events AS (
-                    SELECT events.* FROM events
-                    INNER JOIN narrowed_events ON narrowed_events.id = events.id
-                    LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
-                    LEFT JOIN excluded_events_1 ON excluded_events_1.id = events.id
-                    LEFT JOIN excluded_events_2 ON excluded_events_2.id = events.id
-                    LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
-                    LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
-                    WHERE event_reply_queues.event_id IS NULL
-                    AND excluded_events_1.id IS NULL
-                    AND excluded_events_2.id IS NULL
-                    AND excluded_users_1.id IS NULL
-                    AND excluded_users_2.id IS NULL
-                    LIMIT 1
-                )
-                SELECT
-                    audio_clips.*,
-                    audio_clip_likes_dislikes.is_liked AS is_liked_by_user,
-                    audio_clip_metrics.like_count AS like_count,
-                    audio_clip_metrics.dislike_count AS dislike_count
-                FROM audio_clips
-                INNER JOIN target_events ON audio_clips.event_id = target_events.id
-                LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
-                    AND audio_clip_likes_dislikes.user_id = %s
-                LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
-                WHERE audio_clips.is_banned IS FALSE
-                AND audio_clips.audio_clip_role_id = (
-                    SELECT id FROM audio_clip_roles
-                    WHERE audio_clip_role_name = %s
-                )
-                AND audio_clips.generic_status_id = (
-                    SELECT id FROM generic_statuses
-                    WHERE generic_status_name = %s
-                )
-                ORDER BY target_events.when_created ASC
-                LIMIT 1
-        '''
-
-        params = [
-            current_user_id,
-            current_user_id,
-            current_user_id,
-            current_user_id,
-            'incomplete',
-            when_created,
-            current_user_id,
-            'originator',
-            'ok',
-        ]
-
-        audio_clips = AudioClips.objects.prefetch_related(
-            'audio_clip_role',
-            'event__generic_status',
-            'event',
-            'audio_clip_tone',
-            'generic_status',
-            'user',
-        ).raw(
-            query,
-            params
-        )
-
-        #immediately execute, else 0 at stopwatch
-        len(audio_clips)
-
-        stopwatch.stop()
-
-        return {
-            'query_result': audio_clips,
-            'time_elapsed_ms': stopwatch.diff_milliseconds(),
-            'raw_query': connection.cursor().mogrify(query, params),
-        }
-
-
-    #always has tone specified
-    def _query_1(self, current_user_id:int, audio_clip_tone_id:int, when_created:datetime):
-
-        stopwatch = Stopwatch()
-
-        stopwatch.start()
-
-        query = '''
-            WITH
-                excluded_events_1 AS (
-                    SELECT event_id FROM audio_clips
-                    WHERE user_id = %s
-                ),
-                excluded_events_2 AS (
-                    SELECT event_id FROM user_events
-                    WHERE user_id = %s
-                    AND when_excluded_for_reply IS NOT NULL
-                ),
-                excluded_users_1 AS (
-                    SELECT blocked_user_id AS id FROM user_blocks
-                    WHERE user_id = %s
-                ),
-                excluded_users_2 AS (
-                    SELECT user_id AS id FROM user_blocks
-                    WHERE blocked_user_id = %s
-                ),
-                narrowed_down_events AS (
-                    SELECT events.id FROM events
-                    WHERE generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name = %s)
-                    AND when_created >= %s
-                    ORDER BY when_created
-                ),
-                specific_tone_events AS (
-                    SELECT events.id FROM events
-                    INNER JOIN narrowed_down_events ON events.id = narrowed_down_events.id
-                    INNER JOIN audio_clips ON events.id = audio_clips.event_id
-                    WHERE audio_clips.audio_clip_tone_id = %s
-                    AND audio_clips.audio_clip_role_id = (SELECT id FROM audio_clip_roles WHERE audio_clip_role_name=%s)
-                    AND audio_clips.generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name=%s)
-                ),
-                target_events AS (
-                    SELECT events.* FROM events
-                    INNER JOIN specific_tone_events ON specific_tone_events.id = events.id
-                    LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
-                    LEFT JOIN excluded_events_1 ON excluded_events_1.event_id = events.id
-                    LEFT JOIN excluded_events_2 ON excluded_events_2.event_id = events.id
-                    LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
-                    LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
-                    WHERE event_reply_queues.event_id IS NULL
-                    AND excluded_events_1.event_id IS NULL
-                    AND excluded_events_2.event_id IS NULL
-                    AND excluded_users_1.id IS NULL
-                    AND excluded_users_2.id IS NULL
-                    LIMIT 1
-                )
-                SELECT
-                    audio_clips.*,
-                    audio_clip_likes_dislikes.is_liked AS is_liked_by_user,
-                    audio_clip_metrics.like_count AS like_count,
-                    audio_clip_metrics.dislike_count AS dislike_count
-                FROM audio_clips
-                INNER JOIN target_events ON audio_clips.event_id = target_events.id
-                LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
-                    AND audio_clip_likes_dislikes.user_id = 1
-                LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
-                WHERE audio_clips.is_banned IS FALSE
-                AND audio_clips.audio_clip_role_id = (
-                    SELECT id FROM audio_clip_roles
-                    WHERE audio_clip_role_name = %s
-                )
-                AND audio_clips.generic_status_id = (
-                    SELECT id FROM generic_statuses
-                    WHERE generic_status_name = %s
-                )
-                LIMIT 1
-        '''
-        
-        params = [
-            current_user_id,
-            current_user_id,
-            current_user_id,
-            current_user_id,
-            'incomplete',
-            when_created,
-            audio_clip_tone_id,
-            'originator',
-            'ok',
-            'originator',
-            'ok',
-        ]
-
-        audio_clips = AudioClips.objects.prefetch_related(
-            'audio_clip_role',
-            'event__generic_status',
-            'event',
-            'audio_clip_tone',
-            'generic_status',
-            'user',
-        ).raw(
-            query,
-            params
-        )
-
-        #immediately execute, else 0 at stopwatch
-        len(audio_clips)
-
-        stopwatch.stop()
-
-        return {
-            'query_result': audio_clips,
-            'time_elapsed_ms': stopwatch.diff_milliseconds(),
-            'raw_query': connection.cursor().mogrify(query, params),
-        }
-
-
-    #always no tone specified
-    #has no ORDER_BY events.when_created
-    #cons:
-        #cannot guarantee that every event gets an equal chance
-    def _query_2(self, current_user_id:int, when_created:datetime):
-
-        stopwatch = Stopwatch()
-
-        stopwatch.start()
-
-        query = '''
-            WITH
-                excluded_events_1 AS (
-                    SELECT id FROM events
-                    WHERE created_by_id = %s
-                ),
-                excluded_events_2 AS (
-                    SELECT event_id AS id FROM user_events
-                    WHERE user_id = %s
-                    AND when_excluded_for_reply IS NOT NULL
-                ),
-                excluded_users_1 AS (
-                    SELECT blocked_user_id AS id FROM user_blocks
-                    WHERE user_id = %s
-                ),
-                excluded_users_2 AS (
-                    SELECT user_id AS id FROM user_blocks
-                    WHERE blocked_user_id = %s
-                ),
-                narrowed_events AS (
-                    SELECT events.id FROM events
-                    WHERE generic_status_id = (SELECT id FROM generic_statuses WHERE generic_status_name = %s)
-                    AND when_created >= %s
-                ),
-                target_events AS (
-                    SELECT events.* FROM events
-                    INNER JOIN narrowed_events ON narrowed_events.id = events.id
-                    LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
-                    LEFT JOIN excluded_events_1 ON excluded_events_1.id = events.id
-                    LEFT JOIN excluded_events_2 ON excluded_events_2.id = events.id
-                    LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
-                    LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
-                    WHERE event_reply_queues.event_id IS NULL
-                    AND excluded_events_1.id IS NULL
-                    AND excluded_events_2.id IS NULL
-                    AND excluded_users_1.id IS NULL
-                    AND excluded_users_2.id IS NULL
-                    LIMIT 1
-                )
-                SELECT
-                    audio_clips.*,
-                    audio_clip_likes_dislikes.is_liked AS is_liked_by_user,
-                    audio_clip_metrics.like_count AS like_count,
-                    audio_clip_metrics.dislike_count AS dislike_count
-                FROM audio_clips
-                INNER JOIN target_events ON audio_clips.event_id = target_events.id
-                LEFT JOIN audio_clip_likes_dislikes ON audio_clips.id = audio_clip_likes_dislikes.audio_clip_id
-                    AND audio_clip_likes_dislikes.user_id = %s
-                LEFT JOIN audio_clip_metrics ON audio_clips.id = audio_clip_metrics.audio_clip_id
-                WHERE audio_clips.is_banned IS FALSE
-                AND audio_clips.audio_clip_role_id = (
-                    SELECT id FROM audio_clip_roles
-                    WHERE audio_clip_role_name = %s
-                )
-                AND audio_clips.generic_status_id = (
-                    SELECT id FROM generic_statuses
-                    WHERE generic_status_name = %s
-                )
-                LIMIT 1
-        '''
-
-        params = [
-            current_user_id,
-            current_user_id,
-            current_user_id,
-            current_user_id,
-            'incomplete',
-            when_created,
-            current_user_id,
-            'originator',
-            'ok',
-        ]
-
-        audio_clips = AudioClips.objects.prefetch_related(
-            'audio_clip_role',
-            'event__generic_status',
-            'event',
-            'audio_clip_tone',
-            'generic_status',
-            'user',
-        ).raw(
-            query,
-            params
-        )
-
-        #immediately execute, else 0 at stopwatch
-        len(audio_clips)
-
-        stopwatch.stop()
-
-        return {
-            'query_result': audio_clips,
-            'time_elapsed_ms': stopwatch.diff_milliseconds(),
-            'raw_query': connection.cursor().mogrify(query, params),
-        }
-
-
-    def test_list_event_reply_choices(self, has_tone=False, minimum_time_elapsed_ms=180, show_test_failed_query=True, show_test_passed_query=False):
-
-        stopwatch = Stopwatch()
-        realistic_bulk_data_class = RealisticBulkData()
-        main_user_id_sets = realistic_bulk_data_class.get_main_user_ids()
-
-        #do this for no tone so loop below can stay the same
-        audio_clip_tone_ids = {
-            'no_audio_clip_tone': [None],
-        }
-
-        if has_tone is True:
-
-            audio_clip_tone_ids = {
-                'excluded': [],
-                'expected': [],
-            }
-
-            #add excluded audio_clip_tones
-            for audio_clip_tone_index in realistic_bulk_data_class.excluded_audio_clip_tones_indexes:
-
-                audio_clip_tone_ids['excluded'].append(
-                    realistic_bulk_data_class.audio_clip_tones[audio_clip_tone_index].id
-                )
-
-                #since excluded tones are specified in earliest/middle/latest manner,
-                #and will never use first and last,
-                #can just -1 +1
-                audio_clip_tone_ids['expected'].append(
-                    realistic_bulk_data_class.audio_clip_tones[audio_clip_tone_index - 1].id
-                )
-                audio_clip_tone_ids['expected'].append(
-                    realistic_bulk_data_class.audio_clip_tones[audio_clip_tone_index + 1].id
-                )
-
-        test_pass_count = 0
-        test_fail_count = 0
-
-        for unique_user_key in main_user_id_sets:
-
-            for unique_user_id in main_user_id_sets[unique_user_key]:
-
-                for audio_clip_tone_type in audio_clip_tone_ids:
-
-                    for audio_clip_tone_id in audio_clip_tone_ids[audio_clip_tone_type]:
-
-                        minimum_datetimes = []
-
-                        earliest_audio_clip = None
-                        latest_audio_clip = None
-
-                        if has_tone is True:
-
-                            raise ValueError('Cannot use has_tone=True yet.')
-
-                        else:
-
-                            earliest_event = Events.objects.raw(
-                                '''
-                                    WITH
-                                    excluded_events_1 AS (
-                                        SELECT id FROM events
-                                        WHERE created_by_id = %s
-                                    ),
-                                    excluded_events_2 AS (
-                                        SELECT event_id AS id FROM user_events
-                                        WHERE user_id = %s
-                                        AND when_excluded_for_reply IS NOT NULL
-                                    ),
-                                    excluded_users_1 AS (
-                                        SELECT blocked_user_id AS id FROM user_blocks
-                                        WHERE user_id = %s
-                                    ),
-                                    excluded_users_2 AS (
-                                        SELECT user_id AS id FROM user_blocks
-                                        WHERE blocked_user_id = %s
-                                    )
-                                    SELECT events.* FROM events
-                                    LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
-                                    LEFT JOIN excluded_events_1 ON excluded_events_1.id = events.id
-                                    LEFT JOIN excluded_events_2 ON excluded_events_2.id = events.id
-                                    LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
-                                    LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
-                                    WHERE event_reply_queues.event_id IS NULL
-                                    AND excluded_events_1.id IS NULL
-                                    AND excluded_events_2.id IS NULL
-                                    AND excluded_users_1.id IS NULL
-                                    AND excluded_users_2.id IS NULL
-                                    AND events.generic_status_id = (
-                                        SELECT id FROM generic_statuses WHERE generic_status_name = 'incomplete'
-                                    )
-                                    ORDER BY events.when_created ASC
-                                    LIMIT 1
-                                    ;
-                                ''',
-                                [
-                                    unique_user_id,
-                                    unique_user_id,
-                                    unique_user_id,
-                                    unique_user_id,
-                                ]
-                            )
-
-                            latest_event = Events.objects.raw(
-                                '''
-                                    WITH
-                                    excluded_events_1 AS (
-                                        SELECT id FROM events
-                                        WHERE created_by_id = %s
-                                    ),
-                                    excluded_events_2 AS (
-                                        SELECT event_id AS id FROM user_events
-                                        WHERE user_id = %s
-                                        AND when_excluded_for_reply IS NOT NULL
-                                    ),
-                                    excluded_users_1 AS (
-                                        SELECT blocked_user_id AS id FROM user_blocks
-                                        WHERE user_id = %s
-                                    ),
-                                    excluded_users_2 AS (
-                                        SELECT user_id AS id FROM user_blocks
-                                        WHERE blocked_user_id = %s
-                                    )
-                                    SELECT events.* FROM events
-                                    LEFT JOIN event_reply_queues ON event_reply_queues.event_id = events.id
-                                    LEFT JOIN excluded_events_1 ON excluded_events_1.id = events.id
-                                    LEFT JOIN excluded_events_2 ON excluded_events_2.id = events.id
-                                    LEFT JOIN excluded_users_1 ON events.created_by_id = excluded_users_1.id
-                                    LEFT JOIN excluded_users_2 ON events.created_by_id = excluded_users_2.id
-                                    WHERE event_reply_queues.event_id IS NULL
-                                    AND excluded_events_1.id IS NULL
-                                    AND excluded_events_2.id IS NULL
-                                    AND excluded_users_1.id IS NULL
-                                    AND excluded_users_2.id IS NULL
-                                    AND events.generic_status_id = (
-                                        SELECT id FROM generic_statuses WHERE generic_status_name = 'incomplete'
-                                    )
-                                    ORDER BY events.when_created DESC
-                                    LIMIT 1
-                                    ;
-                                ''',
-                                [
-                                    unique_user_id,
-                                    unique_user_id,
-                                    unique_user_id,
-                                    unique_user_id,
-                                ]
-                            )
-
-                        earliest_event = earliest_event[0]
-                        latest_event = latest_event[0]
-
-                        minimum_datetimes.append(earliest_event.when_created)
-                        minimum_datetimes.append(latest_event.when_created)
-
-                        for minimum_datetime_index, minimum_datetime in enumerate(minimum_datetimes):
-
-                            result = None
-
-                            if has_tone is True:
-
-                                result = self._query_1(
-                                    current_user_id=unique_user_id,
-                                    audio_clip_tone_id=audio_clip_tone_id,
-                                    when_created=minimum_datetime,
-                                )
-
-                            else:
-
-                                result = self._query_0(
-                                    current_user_id=unique_user_id,
-                                    when_created=minimum_datetime,
-                                )
-
-                            #name_3 will always have row
-                            #we want to do "_3" so we don't let "33" pass
-                            current_user = get_user_model().objects.get(pk=unique_user_id)
-                            current_user_group = current_user.username[len(current_user.username)-2 : len(current_user.username)]
-
-                            #check
-
-                            is_row_count_ok = False
-
-                            if len(result['query_result']) == 1:
-
-                                #will always have 1 row, and row belonging to _3 username group
-                                #provided that user_blocks are created correctly,
-                                #and _3 users have proper incomplete events that fulfill reply choice criteria
-
-                                fetched_user = result['query_result'][0].user
-                                fetched_user_group = fetched_user.username[len(fetched_user.username)-2 : len(fetched_user.username)]
-
-                                if current_user_group == '_3' or fetched_user_group == '_3':
-
-                                    is_row_count_ok = True
-
-                            #specify minimum_time_elapsed_ms to hide/show benchmark that matters
-                            if is_row_count_ok is True and result['time_elapsed_ms'] < minimum_time_elapsed_ms:
-                            
-                                print('\n')
-
-                                if show_test_passed_query is True:
-                                
-                                    print(result['raw_query'])
-
-                                print('Good')
-                                print({
-                                    'unique_user_username': current_user.username,
-                                    'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
-                                    'time_elapsed_ms': result['time_elapsed_ms'],
-                                })
-                                print('\n')
-
-                                test_pass_count += 1
-
-                                continue
-                            
-                            print('\n')
-
-                            if show_test_failed_query is True:
-                            
-                                print(result['raw_query'])
-
-                            #put {} if row count has issues, else None
-
-                            row_count_issues = None
-
-                            if is_row_count_ok is False:
-                            
-                                row_count_issues = {
-                                    'is_expecting_rows': True,
-                                    'query_row_count': len(result['query_result']),
-                                }
-
-                            print({
-                                'row_count_issues': row_count_issues,
-                                'unique_user_username': current_user.username,
-                                'earliest_or_latest_datetime': 'earliest' if minimum_datetime_index == 0 else 'latest',
-                                'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
-                                'time_elapsed_ms': result['time_elapsed_ms'],
-                            })
-                            print('\n')
-
-                            test_fail_count += 1
-
-        print({
-            'tests_passed': test_pass_count,
-            'tests_failed': test_fail_count,
-        })
-
-
-    def test_experimental__has_tone(self, minimum_time_elapsed_ms=200, show_test_failed_query=False,):
-
-        stopwatch = Stopwatch()
-
-        excluded_audio_clip_tone_ids = []
-        expected_audio_clip_tone_ids = []
-
-        realistic_bulk_data_class = RealisticBulkData()
-
-        main_user_id_sets = realistic_bulk_data_class.get_main_user_ids()
-
-        #add excluded audio_clip_tones
-        for audio_clip_tone_index in realistic_bulk_data_class.excluded_audio_clip_tones_indexes:
-
-            excluded_audio_clip_tone_ids.append(
-                realistic_bulk_data_class.audio_clip_tones[audio_clip_tone_index].id
-            )
-
-            #since excluded tones are specified in earliest/middle/latest manner,
-            #and will never use first and last,
-            #can just -1 +1
-            expected_audio_clip_tone_ids.append(
-                realistic_bulk_data_class.audio_clip_tones[audio_clip_tone_index - 1].id
-            )
-            expected_audio_clip_tone_ids.append(
-                realistic_bulk_data_class.audio_clip_tones[audio_clip_tone_index + 1].id
-            )
-
-        test_pass_count = 0
-        test_fail_count = 0
-
-        for unique_user_key in main_user_id_sets:
-
-            for unique_user in main_user_id_sets[unique_user_key]:
-
-                #expect rows matching tone to exist
-                for audio_clip_tone_id in expected_audio_clip_tone_ids:
-
-                    minimum_datetimes = []
-
-                    earliest_audio_clip = AudioClips.objects.filter(
-                        generic_status__generic_status_name='ok',
-                        audio_clip_role__audio_clip_role_name='originator',
-                        event__generic_status__generic_status_name='incomplete',
-                        audio_clip_tone_id=audio_clip_tone_id,
-                    ).order_by('id').first()
-
-                    latest_audio_clip = AudioClips.objects.filter(
-                        generic_status__generic_status_name='ok',
-                        audio_clip_role__audio_clip_role_name='originator',
-                        event__generic_status__generic_status_name='incomplete',
-                        audio_clip_tone_id=audio_clip_tone_id,
-                    ).order_by('id').last()
-
-                    if earliest_audio_clip is None or latest_audio_clip is None:
-
-                        raise ValueError('Either test rows have not been set up properly, or rules for excluding tones in RealisticBulkData has changed.')
-
-                    minimum_datetimes.append(earliest_audio_clip.when_created)
-                    minimum_datetimes.append(latest_audio_clip.when_created)
-
-                    for minimum_datetime in minimum_datetimes:
-
-                        result = self._query_1(
-                            current_user_id=unique_user.id,
-                            audio_clip_tone_id=audio_clip_tone_id,
-                            when_created=minimum_datetime,
-                        )
-
-                        is_row_count_expected = len(result['query_result']) > 0
-
-                        if is_row_count_expected is True and result['time_elapsed_ms'] < minimum_time_elapsed_ms:
-
-                            print('Good')
-                            print({
-                                'audio_clip_tone_id': audio_clip_tone_id,
-                                'unique_user_username': unique_user.username,
-                                'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
-                                'time_elapsed_ms': result['time_elapsed_ms'],
-                            })
-
-                            test_pass_count += 1
-
-                            continue
-
-                        print('\n')
-
-                        if show_test_failed_query is True:
-
-                            print(result['raw_query'])
-
-                        print({
-                            'is_row_count_expected': is_row_count_expected,
-                            'rows_fetched': len(result['query_result']),
-                            'audio_clip_tone_id': audio_clip_tone_id,
-                            'unique_user_username': unique_user.username,
-                            'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
-                            'time_elapsed_ms': result['time_elapsed_ms'],
-                        })
-                        print('\n')
-
-                        test_fail_count += 1
-
-                #expect rows matching tone to not exist
-                for audio_clip_tone_id in excluded_audio_clip_tone_ids:
-
-                    #arbitrary start time, 10 years
-                    minimum_datetime = get_datetime_now() - timedelta(weeks=521)
-
-                    result = self._query_1(
-                        current_user_id=unique_user.id,
-                        audio_clip_tone_id=audio_clip_tone_id,
-                        when_created=minimum_datetime,
-                    )
-
-                    is_row_count_expected = len(result['query_result']) == 0
-
-                    if is_row_count_expected is True and result['time_elapsed_ms'] < minimum_time_elapsed_ms:
-
-                        print('Good')
-                        print({
-                            'audio_clip_tone_id': audio_clip_tone_id,
-                            'unique_user_username': unique_user.username,
-                            'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
-                            'time_elapsed_ms': result['time_elapsed_ms'],
-                        })
-
-                        test_pass_count += 1
-
-                        continue
-
-                    print('\n')
-
-                    if show_test_failed_query is True:
-
-                        print(result['raw_query'])
-
-                    print({
-                        'is_row_count_expected': is_row_count_expected,
-                        'rows_fetched': len(result['query_result']),
-                        'audio_clip_tone_id': audio_clip_tone_id,
-                        'unique_user_username': unique_user.username,
-                        'minimum_datetime': minimum_datetime.strftime("%Y-%m-%d %H:%M:%S"),
-                        'time_elapsed_ms': result['time_elapsed_ms'],
-                    })
-                    print('\n')
-
-                    test_fail_count += 1
-
-        print({
-            'tests_passed': test_pass_count,
-            'tests_failed': test_fail_count,
-        })
-
-
+#==========================================================================
+#===========================POTENTIALLY OUTDATED===========================
+#==========================================================================
 
 
 
