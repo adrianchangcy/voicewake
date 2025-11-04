@@ -19,5 +19,4 @@ services:
       - ../env/.env
     restart: unless-stopped
     tty: true
-    # network_mode: service:postgres  #idk if important at all
     command: sleep infinity
