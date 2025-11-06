@@ -145,23 +145,14 @@ class RealisticBulkData():
             'responder': AudioClipRoles.objects.get(audio_clip_role_name='responder'),
         }
 
-        #divide audio_clip_tones into 4 quarters, choose one per quarter to exclude when creating audio_clips
-        #this will allow for better index testing
+        #do same concept of earliest/middle/latest for tones for better index testing
+        #we take full tones --> mark 2 "excluded" tones for each earliest/middle/latest --> add "normal" ones back into the full list
+        #don't exclude "truly earliest"/"truly latest", e.g. [0], [-1]
 
-        self.audio_clip_tones = AudioClipTones.objects.all()
-
+        self.audio_clip_tones = []
         self.excluded_audio_clip_tones_indexes = []
 
-        audio_clip_tones_per_quarter = math.floor(len(self.audio_clip_tones) / 4)
-
-        #closest to start, but not first
-        self.excluded_audio_clip_tones_indexes.append(1)
-        #second quarter
-        self.excluded_audio_clip_tones_indexes.append((audio_clip_tones_per_quarter*2) - 1)
-        #third quarter
-        self.excluded_audio_clip_tones_indexes.append((audio_clip_tones_per_quarter*3) - 1)
-        #closest to end, but not last
-        self.excluded_audio_clip_tones_indexes.append(len(self.audio_clip_tones) - 2)
+        self._determine_audio_clip_tones()
 
         self.faulty_audio_file_unprocessed_object_key = 'test/text_as_fake_webm.webm'
 
@@ -172,13 +163,13 @@ class RealisticBulkData():
 
     def _check_ready(self):
 
-        if len(self.main_user_sets) == 0:
+        if len(self.audio_clip_tones) == 0:
 
-            raise ValueError('No users created. Call .prepare_users() first.')
-        
-        elif len(self.main_user_sets) < 2:
+            raise ValueError('No tones fetched. Call .determine_audio_clip_tones() first.')
 
-            raise ValueError('Minimum 2 users required.')
+        if len(self.main_users) == 0:
+
+            raise ValueError('No main users created. Call .create_new_users() first.')
 
         if self.like_count == 0 or self.dislike_count == 0 or self.like_ratio == 0:
 
@@ -246,6 +237,142 @@ class RealisticBulkData():
         if is_trigger_found is False:
 
             raise ValueError('Trigger was not found.')
+
+
+    #tones rarely change, so long-term implementation into it
+    def _determine_audio_clip_tones(self):
+
+        audio_clip_tones = AudioClipTones.objects.all().order_by('id')
+        self.excluded_audio_clip_tones_indexes = []
+
+        quantity_per_set = 5
+
+        #check
+        if len(audio_clip_tones) < (quantity_per_set * 3):
+
+            raise ValueError(f'Total {len(audio_clip_tones)} tones is not enough, minimum {quantity_per_set*3} needed')
+
+        new_full_audio_clip_tones = []
+        excluded_audio_clip_tones = []
+
+        #left 2 right 2 included, middle 1 excluded
+        #math.floor() to find middle exclusion in a set will settle the 0-index adjustment
+        quantity_per_set = 5
+
+        #2+x+2, so value is 2
+        quantity_per_included_side = int(math.floor(quantity_per_set - 1) / 2)
+
+        #earliest
+
+        excluded_index = quantity_per_included_side
+
+        #earliest left
+        for x in range(quantity_per_included_side):
+
+            new_full_audio_clip_tones.append(audio_clip_tones[x])
+
+        #earliest
+        new_full_audio_clip_tones.append(audio_clip_tones[excluded_index])
+        excluded_audio_clip_tones.append(audio_clip_tones[excluded_index])
+
+        #earliest right
+        for x in range((excluded_index + 1), quantity_per_set):
+
+            new_full_audio_clip_tones.append(audio_clip_tones[x])
+
+        #middle
+
+        excluded_index = math.floor(len(audio_clip_tones) / 2)
+
+        #middle left
+        for x in range((excluded_index - quantity_per_included_side), excluded_index):
+
+            new_full_audio_clip_tones.append(audio_clip_tones[x])
+
+        #middle
+        new_full_audio_clip_tones.append(audio_clip_tones[excluded_index])
+        excluded_audio_clip_tones.append(audio_clip_tones[excluded_index])
+
+        #middle right
+        for x in range((excluded_index + 1), (excluded_index + 1 + quantity_per_included_side)):
+
+            new_full_audio_clip_tones.append(audio_clip_tones[x])
+
+        #latest
+
+        excluded_index = len(audio_clip_tones) - 1 - quantity_per_included_side
+
+        #latest left
+        for x in range((excluded_index - quantity_per_included_side), excluded_index):
+
+            new_full_audio_clip_tones.append(audio_clip_tones[x])
+
+        #latest
+        new_full_audio_clip_tones.append(audio_clip_tones[excluded_index])
+        excluded_audio_clip_tones.append(audio_clip_tones[excluded_index])
+
+        #latest right
+        for x in range((excluded_index + 1), len(audio_clip_tones)):
+
+            new_full_audio_clip_tones.append(audio_clip_tones[x])
+
+        #from new full tones, get excluded indexes of that array
+
+        self.audio_clip_tones = new_full_audio_clip_tones
+
+        excluded_index_checkpoint = 0
+
+        for index, audio_clip_tone in enumerate(self.audio_clip_tones):
+
+            if audio_clip_tone.id == excluded_audio_clip_tones[excluded_index_checkpoint].id:
+
+                self.excluded_audio_clip_tones_indexes.append(index)
+                excluded_index_checkpoint += 1
+
+                if excluded_index_checkpoint == 3:
+
+                    break
+
+        #check
+
+        #check quantity
+        if (
+            len(self.audio_clip_tones) == (quantity_per_set * 3) and
+            len(self.excluded_audio_clip_tones_indexes) == 3
+        ) is False:
+
+            raise ValueError(f'Invalid: {len(self.audio_clip_tones)} total tones, {len(self.excluded_audio_clip_tones_indexes)} excluded')
+
+        #check order
+        for x in range(len(self.audio_clip_tones)):
+
+            try:
+
+                target_audio_clip_tone = self.audio_clip_tones[x+1]
+
+            except:
+
+                #is at last element
+                break
+
+            #current must always be smaller than next
+            if self.audio_clip_tones[x].id >= target_audio_clip_tone.id:
+
+                raise ValueError(f'Tone id out of order: {self.audio_clip_tones[x].id} and {target_audio_clip_tone.id}')
+
+        #check position of excluded indexes
+        #reminder that quantity_per_included_side is for included rows except the excluded row, e.g. 2+x+2, so value is 2
+        if self.excluded_audio_clip_tones_indexes[0] != quantity_per_included_side:
+
+            raise ValueError(f'Excluded array index mismatch: {self.excluded_audio_clip_tones_indexes[0]}')
+
+        if self.excluded_audio_clip_tones_indexes[1] != quantity_per_set + quantity_per_included_side:
+
+            raise ValueError(f'Excluded array index mismatch: {self.excluded_audio_clip_tones_indexes[1]}')
+
+        if self.excluded_audio_clip_tones_indexes[2] != (quantity_per_set * 2) + quantity_per_included_side:
+
+            raise ValueError(f'Excluded array index mismatch: {self.excluded_audio_clip_tones_indexes[2]}')
 
 
     #main users in db are in sets
@@ -420,7 +547,7 @@ class RealisticBulkData():
 
             raise ValueError('To keep things simple, please maintain a minimum of 10.')
 
-        if len(self.main_user_sets) == 0:
+        if len(self.main_users) == 0:
 
             raise ValueError('No users. Call .create_new_users() first.')
 
@@ -429,8 +556,8 @@ class RealisticBulkData():
         #len(users) must not be divisible by (like_count + dislike_count), else one user has only likes, the other dislikes, etc.
         #this is easily achieved by doing (len(users)/2)+1
         #better +1 than -1, since having too few also means some users have only likes/dislikes
-        self.like_count = math.ceil(len(self.main_user_sets) * 0.25)
-        self.dislike_count = math.ceil(len(self.main_user_sets) * 0.5) + 1
+        self.like_count = math.ceil(len(self.main_users) * 0.25)
+        self.dislike_count = math.ceil(len(self.main_users) * 0.5) + 1
 
         self.like_ratio = (self.like_count / (self.like_count + self.dislike_count))
 
@@ -1721,8 +1848,8 @@ class RealisticBulkData():
     #if you want more rows, specify max_randomness_iteration_count
         #1 is just enough for other tests
     #cmd:
-        #python manage.py shell -c "from voicewake.tests.test_metrics import RealisticBulkData; RealisticBulkData.sample_run(5, True);"
-    #if you run this then lack rows for other tests, it's better if you delete db and recreate rows
+        #python manage.py shell -c "from voicewake.tests.test_metrics import RealisticBulkData; RealisticBulkData.sample_run(1, True);"
+        #maybe best if manually do max_randomness_iteration_count=1 one at a time, else Docker will hang
     @staticmethod
     def sample_run(max_randomness_iteration_count=1, use_threads=True):
 
@@ -1914,6 +2041,11 @@ class RealisticBulkData_TestCase(TestCase):
             print(user.username)
             print(AudioClipLikesDislikes.objects.filter(user=user, is_liked=True).count())
             print(AudioClipLikesDislikes.objects.filter(user=user, is_liked=False).count())
+
+
+    def test_realistic_bulk_data__determine_audio_clip_tones(self):
+
+        realistic_bulk_data_class = RealisticBulkData()
 
 
     def test_realistic_bulk_data__create_users__mixed(self):
