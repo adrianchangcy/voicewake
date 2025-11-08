@@ -492,6 +492,10 @@ class RealisticBulkData():
 
         total_main_user_count = realistic_bulk_data_class.main_user_group.user_set.all().count()
 
+        if total_main_user_count == 0:
+
+            raise ValueError('no users found')
+
         if (total_main_user_count % realistic_bulk_data_class.minimum_main_user_quantity) != 0:
 
             raise ValueError('combination of scenarios and main_users did not match. please recreate db.')
@@ -1848,8 +1852,7 @@ class RealisticBulkData():
     #if you want more rows, specify max_randomness_iteration_count
         #1 is just enough for other tests
     #cmd:
-        #python manage.py shell -c "from voicewake.tests.test_metrics import RealisticBulkData; RealisticBulkData.sample_run(1, True);"
-        #maybe best if manually do max_randomness_iteration_count=1 one at a time, else Docker will hang
+        #python manage.py shell -c "from voicewake.tests.test_metrics import RealisticBulkData; RealisticBulkData.sample_run(5, True);"
     @staticmethod
     def sample_run(max_randomness_iteration_count=1, use_threads=True):
 
@@ -1984,7 +1987,6 @@ class RealisticBulkData():
 
 
 @override_settings(
-    
     DEBUG=True,
     EVENT_QUANTITY_PER_PAGE=4, #for faster tests
 )
@@ -2983,7 +2985,6 @@ class RealisticBulkData_TestCase(TestCase):
 
 #separate sample_run() test because doing it every time you run RealisticBulkData_TestCase is unnecessary
 @override_settings(
-    
     DEBUG=True,
     EVENT_QUANTITY_PER_PAGE=4, #for faster tests
 )
@@ -3050,6 +3051,7 @@ class RealisticBulkData_SampleRun_TestCase(TestCase):
 
 
 #how to test:
+    #build your data in local dev database (not test database), then run against it
     #test each test_() individually, as running all tests concurrently will have worse performance
 #this test handles full validation and performance of apis.BrowseEvents
     #easier to do it here than to duplicate into test_apis and test_metrics
@@ -3065,7 +3067,6 @@ class RealisticBulkData_SampleRun_TestCase(TestCase):
     #sometimes if db has no active caching, it will take nearly 300ms
         #after first test run and caching is done, it will be at optimal times of 50ms-150ms
 @override_settings(
-    
     DEBUG=True,
 )
 class BrowseEvents_TestCase(TestCase):
@@ -3162,11 +3163,9 @@ class BrowseEvents_TestCase(TestCase):
                     previous_row[audio_clip_role_name][0]['audio_clip_role']['id'],
                 )
 
-                #smaller id
-                self.assertLess(
-                    current_row[audio_clip_role_name][0]['id'],
-                    previous_row[audio_clip_role_name][0]['id'],
-                )
+                #cannot do assertLess for PK id
+                #stumbled across larger PK id with smaller when_created
+                #PK and now() are also never guaranteed, as threads can reserve ids before they're created
 
                 #smaller or equal when_created
                 self.assertLessEqual(
@@ -3250,11 +3249,9 @@ class BrowseEvents_TestCase(TestCase):
                     previous_row[audio_clip_role_name][0]['audio_clip_role']['id'],
                 )
     
-                #smaller id
-                self.assertLess(
-                    current_row[audio_clip_role_name][0]['id'],
-                    previous_row[audio_clip_role_name][0]['id'],
-                )
+                #cannot do assertLess for PK id
+                #stumbled across larger PK id with smaller when_created
+                #PK and now() are also never guaranteed, as threads can reserve ids before they're created
     
                 #smaller or equal when_created
                 self.assertLessEqual(
@@ -3367,42 +3364,6 @@ class BrowseEvents_TestCase(TestCase):
 
     def test_browse_events__main_page(self, minimum_time_elapsed_ms=300, skip_to_loop=None):
 
-        #pre-determine audio_clip_tones
-        #since excluded tones are specified in earliest/middle/latest manner, #and will never use first and last,
-        #can just make sure we don't -1 for earliest, and +1 for latest
-
-        excluded_audio_clip_tone_ids = []
-        expected_audio_clip_tone_ids = [None]
-
-        realistic_bulk_data_class = RealisticBulkData()
-
-        #get first tone to prevent repeated if-statements
-
-        excluded_audio_clip_tone_ids.append(
-            realistic_bulk_data_class.audio_clip_tones[
-                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0]
-            ].id
-        )
-
-        expected_audio_clip_tone_ids.append(
-            realistic_bulk_data_class.audio_clip_tones[
-                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0] + 1
-            ].id
-        )
-
-        #add excluded audio_clip_tones
-        for index in range(1, len(realistic_bulk_data_class.excluded_audio_clip_tones_indexes)):
-
-            excluded_index = realistic_bulk_data_class.excluded_audio_clip_tones_indexes[index]
-
-            excluded_audio_clip_tone_ids.append(
-                realistic_bulk_data_class.audio_clip_tones[excluded_index].id
-            )
-
-            expected_audio_clip_tone_ids.append(
-                realistic_bulk_data_class.audio_clip_tones[excluded_index - 1].id
-            )
-
         stopwatch = Stopwatch()
 
         #create all possible test cases
@@ -3410,30 +3371,40 @@ class BrowseEvents_TestCase(TestCase):
         #{'api_kwargs': {}, 'test_values': {}}
         test_cases = []
 
-        audio_clip_tone_ids = expected_audio_clip_tone_ids + excluded_audio_clip_tone_ids
-
+        #need to test all users, since some users can have 0 rows
         for login_user in self.main_users:
 
             for audio_clip_role_name in ['originator', 'responder']:
 
-                for audio_clip_tone_id_index, audio_clip_tone_id in enumerate(audio_clip_tone_ids):
+                #add "no audio_clip_tone selected"
+                current_kwargs = {
+                    'latest_or_best': 'latest',
+                    'timeframe': 'all',
+                    'audio_clip_role_name': audio_clip_role_name,
+                    'next_or_back': 'next',
+                }
 
-                    is_excluded_audio_clip_tone = False
+                test_cases.append({
+                    'api_kwargs': current_kwargs,
+                    'test_values': {
+                        'is_excluded_audio_clip_tone': False,
+                        'login_user': login_user,
+                        'target_user': None,
+                    }
+                })
 
-                    if (audio_clip_tone_id_index + 1) > len(expected_audio_clip_tone_ids):
+                #others
+                for audio_clip_tone_index, audio_clip_tone in enumerate(self.realistic_bulk_data_class.audio_clip_tones):
 
-                        is_excluded_audio_clip_tone = True
+                    is_excluded_audio_clip_tone = audio_clip_tone_index in self.realistic_bulk_data_class.excluded_audio_clip_tones_indexes
 
                     current_kwargs = {
                         'latest_or_best': 'latest',
                         'timeframe': 'all',
                         'audio_clip_role_name': audio_clip_role_name,
                         'next_or_back': 'next',
+                        'audio_clip_tone_id': audio_clip_tone.id,
                     }
-
-                    if audio_clip_tone_id is not None:
-
-                        current_kwargs.update({'audio_clip_tone_id': audio_clip_tone_id})
 
                     test_cases.append({
                         'api_kwargs': current_kwargs,
@@ -3446,12 +3417,19 @@ class BrowseEvents_TestCase(TestCase):
 
         #start test
 
+        #use this to skip directly to problematic test
+        skip_to_index = 0
+
         for test_index, test_case in enumerate(test_cases):
 
-            #unpack test_case
-            #lazy solution for implementing this after main code has been written
+            if test_index < skip_to_index:
 
-            current_kwargs = test_case['api_kwargs']
+                print(f'Skipping test #{test_index} towards #{skip_to_index}.')
+                continue
+
+            #some queries on first run will cause delay due to lack of caching at db
+            #if exceeding minimum_time_elapsed_ms, retry once
+
             login_user = test_case['test_values']['login_user']
             target_user = test_case['test_values']['target_user']
             audio_clip_role_name = test_case['api_kwargs']['audio_clip_role_name']
@@ -3459,12 +3437,14 @@ class BrowseEvents_TestCase(TestCase):
 
             self.login(login_user)
 
-            #some queries on first run will cause delay due to lack of caching at db
-            #if exceeding minimum_time_elapsed_ms, retry once
-
             retries_left = 1
 
             while retries_left >= 0:
+
+                #unpack test_case
+
+                #must .copy() so retrying will not reuse cursor and exceed rows available
+                current_kwargs = test_case['api_kwargs'].copy()
 
                 try:
 
@@ -3685,7 +3665,9 @@ class BrowseEvents_TestCase(TestCase):
                         audio_clip_role__audio_clip_role_name=audio_clip_role_name,
                         generic_status__generic_status_name='ok',
                         is_banned=False,
-                    ).order_by('-when_created', '-id').last()
+                    ).order_by('when_created', 'id')[:1]
+
+                    earliest_audio_clip = earliest_audio_clip[0]
 
                     cursor_token = encode_cursor_token({
                         'when_created': earliest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
@@ -3729,6 +3711,7 @@ class BrowseEvents_TestCase(TestCase):
 
                     #==========
                     #API back+token
+                    #will always have rows
                     #==========
 
                     current_kwargs.update({
@@ -3769,15 +3752,16 @@ class BrowseEvents_TestCase(TestCase):
                     #check tokens
                     self._general_cursor_token_check(response_data, audio_clip_role_name)
 
-                    first_response_data = response_data['data']
+                    self.assertEqual(len(response_data['data']), settings.EVENT_QUANTITY_PER_PAGE)
 
                     #==========
-                    #API next+token, expect 0 rows
+                    #API back+token
+                    #can guarantee to have rows but not row count
                     #==========
 
                     current_kwargs.update({
-                        'next_or_back': 'next',
-                        'cursor_token': response_data['next_token'],
+                        'next_or_back': 'back',
+                        'cursor_token': response_data['back_token'],
                     })
 
                     stopwatch.start()
@@ -3807,8 +3791,7 @@ class BrowseEvents_TestCase(TestCase):
                     #response_data['data']: [{event:event,originator:[],responder:[]}]
                     response_data = get_response_data(request)
 
-                    self.assertEqual(len(response_data['data']), 0)
-                    self.assertEqual(response_data['next_token'], response_data['back_token'])
+                    self.assertGreater(len(response_data['data']), 0)
 
                 except Exception as e:
 
@@ -3842,42 +3825,6 @@ class BrowseEvents_TestCase(TestCase):
 
     def test_browse_events__own_page(self, minimum_time_elapsed_ms=300, skip_to_loop=None):
 
-        #pre-determine audio_clip_tones
-        #since excluded tones are specified in earliest/middle/latest manner, #and will never use first and last,
-        #can just make sure we don't -1 for earliest, and +1 for latest
-
-        excluded_audio_clip_tone_ids = []
-        expected_audio_clip_tone_ids = [None]
-
-        realistic_bulk_data_class = RealisticBulkData()
-
-        #get first tone to prevent repeated if-statements
-
-        excluded_audio_clip_tone_ids.append(
-            realistic_bulk_data_class.audio_clip_tones[
-                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0]
-            ].id
-        )
-
-        expected_audio_clip_tone_ids.append(
-            realistic_bulk_data_class.audio_clip_tones[
-                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0] + 1
-            ].id
-        )
-
-        #add excluded audio_clip_tones
-        for index in range(1, len(realistic_bulk_data_class.excluded_audio_clip_tones_indexes)):
-
-            excluded_index = realistic_bulk_data_class.excluded_audio_clip_tones_indexes[index]
-
-            excluded_audio_clip_tone_ids.append(
-                realistic_bulk_data_class.audio_clip_tones[excluded_index].id
-            )
-
-            expected_audio_clip_tone_ids.append(
-                realistic_bulk_data_class.audio_clip_tones[excluded_index - 1].id
-            )
-
         stopwatch = Stopwatch()
 
         #create all possible test cases
@@ -3885,9 +3832,8 @@ class BrowseEvents_TestCase(TestCase):
         #{'api_kwargs': {}, 'test_values': {}}
         test_cases = []
 
-        audio_clip_tone_ids = expected_audio_clip_tone_ids + excluded_audio_clip_tone_ids
-
-        for login_user in self.realistic_bulk_data_class.main_users:
+        #need to test all users, since some users can have 0 rows
+        for login_user in self.main_users:
 
             for audio_clip_role_name in ['originator', 'responder']:
 
@@ -3901,60 +3847,80 @@ class BrowseEvents_TestCase(TestCase):
 
                     expected_event_generic_status_names = ['completed', 'deleted']
 
-                for expected_event_generic_status_name in expected_event_generic_status_names:
+                #add "no audio_clip_tone selected"
+                current_kwargs = {
+                    'username': login_user.username,
+                    'latest_or_best': 'latest',
+                    'timeframe': 'all',
+                    'audio_clip_role_name': audio_clip_role_name,
+                    'next_or_back': 'next',
+                }
 
-                    for audio_clip_tone_id_index, audio_clip_tone_id in enumerate(audio_clip_tone_ids):
+                test_cases.append({
+                    'api_kwargs': current_kwargs,
+                    'test_values': {
+                        'is_excluded_audio_clip_tone': False,
+                        'login_user': login_user,
+                        'target_user': login_user,
+                        'expected_event_generic_status_names': expected_event_generic_status_names,
+                    }
+                })
 
-                        is_excluded_audio_clip_tone = False
+                #others
+                for audio_clip_tone_index, audio_clip_tone in enumerate(self.realistic_bulk_data_class.audio_clip_tones):
 
-                        if (audio_clip_tone_id_index + 1) > len(expected_audio_clip_tone_ids):
+                    is_excluded_audio_clip_tone = audio_clip_tone_index in self.realistic_bulk_data_class.excluded_audio_clip_tones_indexes
 
-                            is_excluded_audio_clip_tone = True
+                    current_kwargs = {
+                        'username': login_user.username,
+                        'latest_or_best': 'latest',
+                        'timeframe': 'all',
+                        'audio_clip_role_name': audio_clip_role_name,
+                        'next_or_back': 'next',
+                        'audio_clip_tone_id': audio_clip_tone.id,
+                    }
 
-                        current_kwargs = {
-                            'username': login_user.username,
-                            'latest_or_best': 'latest',
-                            'timeframe': 'all',
-                            'audio_clip_role_name': audio_clip_role_name,
-                            'next_or_back': 'next',
+                    test_cases.append({
+                        'api_kwargs': current_kwargs,
+                        'test_values': {
+                            'is_excluded_audio_clip_tone': is_excluded_audio_clip_tone,
+                            'login_user': login_user,
+                            'target_user': login_user,
+                            'expected_event_generic_status_names': expected_event_generic_status_names,
                         }
-
-                        if audio_clip_tone_id is not None:
-
-                            current_kwargs.update({'audio_clip_tone_id': audio_clip_tone_id})
-
-                        test_cases.append({
-                            'api_kwargs': current_kwargs,
-                            'test_values': {
-                                'is_excluded_audio_clip_tone': is_excluded_audio_clip_tone,
-                                'login_user': login_user,
-                                'target_user': login_user,
-                                'expected_event_generic_status_name': expected_event_generic_status_name,
-                            }
-                        })
+                    })
 
         #start test
 
+        #use this to skip directly to problematic test
+        skip_to_index = 0
+
         for test_index, test_case in enumerate(test_cases):
 
+            if test_index < skip_to_index:
+
+                print(f'Skipping test #{test_index} towards #{skip_to_index}.')
+                continue
+
             #unpack test_case
-            #lazy solution for implementing this after main code has been written
-
-            current_kwargs = test_case['api_kwargs']
-            login_user = test_case['test_values']['login_user']
-            target_user = test_case['test_values']['target_user']
-            audio_clip_role_name = test_case['api_kwargs']['audio_clip_role_name']
-            is_excluded_audio_clip_tone = test_case['test_values']['is_excluded_audio_clip_tone']
-            expected_event_generic_status_name = test_case['test_values']['expected_event_generic_status_name']
-
-            self.login(login_user)
 
             #some queries on first run will cause delay due to lack of caching at db
             #if exceeding minimum_time_elapsed_ms, retry once
 
+            login_user = test_case['test_values']['login_user']
+            target_user = test_case['test_values']['target_user']
+            audio_clip_role_name = test_case['api_kwargs']['audio_clip_role_name']
+            is_excluded_audio_clip_tone = test_case['test_values']['is_excluded_audio_clip_tone']
+            expected_event_generic_status_names = test_case['test_values']['expected_event_generic_status_names']
+
+            self.login(login_user)
+
             retries_left = 1
 
             while retries_left >= 0:
+
+                #must .copy() so retrying will not reuse cursor and exceed rows available
+                current_kwargs = test_case['api_kwargs'].copy()
 
                 try:
 
@@ -4022,7 +3988,7 @@ class BrowseEvents_TestCase(TestCase):
                         user=target_user,
                         audio_clip_role__audio_clip_role_name=audio_clip_role_name,
                         generic_status__generic_status_name='ok',
-                        event__generic_status__generic_status_name=expected_event_generic_status_name,
+                        event__generic_status__generic_status_name__in=expected_event_generic_status_names,
                         is_banned=False,
                     ).order_by('-when_created', '-id').first()
 
@@ -4195,7 +4161,7 @@ class BrowseEvents_TestCase(TestCase):
 
                     #==========
                     #API next with last row in db
-                    #don't test for row count because it cannot be guaranteed
+                    #expect 0 rows
                     #==========
 
                     #construct our own cursor from earliest eligible audio_clip
@@ -4204,9 +4170,11 @@ class BrowseEvents_TestCase(TestCase):
                         user=target_user,
                         audio_clip_role__audio_clip_role_name=audio_clip_role_name,
                         generic_status__generic_status_name='ok',
-                        event__generic_status__generic_status_name=expected_event_generic_status_name,
+                        event__generic_status__generic_status_name__in=expected_event_generic_status_names,
                         is_banned=False,
-                    ).order_by('-when_created', '-id').last()
+                    ).order_by('when_created', 'id')[:1]
+
+                    earliest_audio_clip = earliest_audio_clip[0]
 
                     cursor_token = encode_cursor_token({
                         'when_created': earliest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
@@ -4243,6 +4211,8 @@ class BrowseEvents_TestCase(TestCase):
 
                     #next_token, back_token, data
                     response_data = get_response_data(request)
+
+                    self.assertEqual(len(response_data['data']), 0)
 
                     #==========
                     #API back+token
@@ -4358,42 +4328,6 @@ class BrowseEvents_TestCase(TestCase):
 
     def test_browse_events__other_user_page(self, minimum_time_elapsed_ms=300, skip_to_loop=None):
 
-        #pre-determine audio_clip_tones
-        #since excluded tones are specified in earliest/middle/latest manner, #and will never use first and last,
-        #can just make sure we don't -1 for earliest, and +1 for latest
-
-        excluded_audio_clip_tone_ids = []
-        expected_audio_clip_tone_ids = [None]
-
-        realistic_bulk_data_class = RealisticBulkData()
-
-        #get first tone to prevent repeated if-statements
-
-        excluded_audio_clip_tone_ids.append(
-            realistic_bulk_data_class.audio_clip_tones[
-                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0]
-            ].id
-        )
-
-        expected_audio_clip_tone_ids.append(
-            realistic_bulk_data_class.audio_clip_tones[
-                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0] + 1
-            ].id
-        )
-
-        #add excluded audio_clip_tones
-        for index in range(1, len(realistic_bulk_data_class.excluded_audio_clip_tones_indexes)):
-
-            excluded_index = realistic_bulk_data_class.excluded_audio_clip_tones_indexes[index]
-
-            excluded_audio_clip_tone_ids.append(
-                realistic_bulk_data_class.audio_clip_tones[excluded_index].id
-            )
-
-            expected_audio_clip_tone_ids.append(
-                realistic_bulk_data_class.audio_clip_tones[excluded_index - 1].id
-            )
-
         stopwatch = Stopwatch()
 
         #create all possible test cases
@@ -4401,15 +4335,14 @@ class BrowseEvents_TestCase(TestCase):
         #{'api_kwargs': {}, 'test_values': {}}
         test_cases = []
 
-        audio_clip_tone_ids = expected_audio_clip_tone_ids + excluded_audio_clip_tone_ids
-
+        #need to test all users, since some users can have 0 rows
         for login_user in self.main_users:
 
             for target_user in self.main_users:
 
-                if target_user.id == login_user.id:
+                if login_user.id == target_user.id:
 
-                    #save users viewing their own page for another test case
+                    #don't open own page
                     continue
 
                 for audio_clip_role_name in ['originator', 'responder']:
@@ -4424,60 +4357,80 @@ class BrowseEvents_TestCase(TestCase):
 
                         expected_event_generic_status_names = ['completed', 'deleted']
 
-                    for expected_event_generic_status_name in expected_event_generic_status_names:
+                    #add "no audio_clip_tone selected"
+                    current_kwargs = {
+                        'username': target_user.username,
+                        'latest_or_best': 'latest',
+                        'timeframe': 'all',
+                        'audio_clip_role_name': audio_clip_role_name,
+                        'next_or_back': 'next',
+                    }
 
-                        for audio_clip_tone_id_index, audio_clip_tone_id in enumerate(audio_clip_tone_ids):
+                    test_cases.append({
+                        'api_kwargs': current_kwargs,
+                        'test_values': {
+                            'is_excluded_audio_clip_tone': False,
+                            'login_user': login_user,
+                            'target_user': target_user,
+                            'expected_event_generic_status_names': expected_event_generic_status_names,
+                        }
+                    })
 
-                            is_excluded_audio_clip_tone = False
+                    #others
+                    for audio_clip_tone_index, audio_clip_tone in enumerate(self.realistic_bulk_data_class.audio_clip_tones):
 
-                            if (audio_clip_tone_id_index + 1) > len(expected_audio_clip_tone_ids):
+                        is_excluded_audio_clip_tone = audio_clip_tone_index in self.realistic_bulk_data_class.excluded_audio_clip_tones_indexes
 
-                                is_excluded_audio_clip_tone = True
+                        current_kwargs = {
+                            'username': target_user.username,
+                            'latest_or_best': 'latest',
+                            'timeframe': 'all',
+                            'audio_clip_role_name': audio_clip_role_name,
+                            'next_or_back': 'next',
+                            'audio_clip_tone_id': audio_clip_tone.id,
+                        }
 
-                            current_kwargs = {
-                                'username': target_user.username,
-                                'latest_or_best': 'latest',
-                                'timeframe': 'all',
-                                'audio_clip_role_name': audio_clip_role_name,
-                                'next_or_back': 'next',
+                        test_cases.append({
+                            'api_kwargs': current_kwargs,
+                            'test_values': {
+                                'is_excluded_audio_clip_tone': is_excluded_audio_clip_tone,
+                                'login_user': login_user,
+                                'target_user': login_user,
+                                'expected_event_generic_status_names': expected_event_generic_status_names,
                             }
-
-                            if audio_clip_tone_id is not None:
-
-                                current_kwargs.update({'audio_clip_tone_id': audio_clip_tone_id})
-
-                            test_cases.append({
-                                'api_kwargs': current_kwargs,
-                                'test_values': {
-                                    'is_excluded_audio_clip_tone': is_excluded_audio_clip_tone,
-                                    'login_user': login_user,
-                                    'target_user': target_user,
-                                    'expected_event_generic_status_name': expected_event_generic_status_name,
-                                }
-                            })
+                        })
 
         #start test
 
+        #use this to skip directly to problematic test
+        skip_to_index = 0
+
         for test_index, test_case in enumerate(test_cases):
 
+            if test_index < skip_to_index:
+
+                print(f'Skipping test #{test_index} towards #{skip_to_index}.')
+                continue
+
             #unpack test_case
-            #lazy solution for implementing this after main code has been written
-
-            current_kwargs = test_case['api_kwargs']
-            login_user = test_case['test_values']['login_user']
-            target_user = test_case['test_values']['target_user']
-            audio_clip_role_name = test_case['api_kwargs']['audio_clip_role_name']
-            is_excluded_audio_clip_tone = test_case['test_values']['is_excluded_audio_clip_tone']
-            expected_event_generic_status_name = test_case['test_values']['expected_event_generic_status_name']
-
-            self.login(login_user)
 
             #some queries on first run will cause delay due to lack of caching at db
             #if exceeding minimum_time_elapsed_ms, retry once
 
+            login_user = test_case['test_values']['login_user']
+            target_user = test_case['test_values']['target_user']
+            audio_clip_role_name = test_case['api_kwargs']['audio_clip_role_name']
+            is_excluded_audio_clip_tone = test_case['test_values']['is_excluded_audio_clip_tone']
+            expected_event_generic_status_names = test_case['test_values']['expected_event_generic_status_names']
+
+            self.login(login_user)
+
             retries_left = 1
 
             while retries_left >= 0:
+
+                #must .copy() so retrying will not reuse cursor and exceed rows available
+                current_kwargs = test_case['api_kwargs'].copy()
 
                 try:
 
@@ -4545,7 +4498,7 @@ class BrowseEvents_TestCase(TestCase):
                         user=target_user,
                         audio_clip_role__audio_clip_role_name=audio_clip_role_name,
                         generic_status__generic_status_name='ok',
-                        event__generic_status__generic_status_name=expected_event_generic_status_name,
+                        event__generic_status__generic_status_name__in=expected_event_generic_status_names,
                         is_banned=False,
                     ).order_by('-when_created', '-id').first()
 
@@ -4723,7 +4676,7 @@ class BrowseEvents_TestCase(TestCase):
                         user=target_user,
                         audio_clip_role__audio_clip_role_name=audio_clip_role_name,
                         generic_status__generic_status_name='ok',
-                        event__generic_status__generic_status_name=expected_event_generic_status_name,
+                        event__generic_status__generic_status_name__in=expected_event_generic_status_names,
                         is_banned=False,
                     ).order_by('-when_created', '-id').last()
 
@@ -5409,7 +5362,6 @@ class BrowseEvents_TestCase(TestCase):
 #only test for basic correctness and db test data setup
 #leave API correctness at test_apis
 @override_settings(
-    
     DEBUG=True,
 )
 class ListEventReplyChoices_TestCase(TestCase):
@@ -6201,7 +6153,6 @@ class ListEventReplyChoices_TestCase(TestCase):
             #trigger that also performs sql within itself is what slowed things down during bulk actions
 #update: trigger is no longer used in production
 @override_settings(
-    
     DEBUG=True,
 )
 class BulkCreateOptimisation_TestCase(TestCase):
