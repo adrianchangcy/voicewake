@@ -14,6 +14,7 @@ DATABASES['default'].update({
     'TEST': {
         #'NAME' does not seem to matter but must be specified
         'NAME': 'test_' + DATABASES['default']['NAME'],
+        #no 'MIRROR' key-value here, so we can use flag + custom runner and add 'MIRROR' whenever we want to use main db
     },
 })
 
