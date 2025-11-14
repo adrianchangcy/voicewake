@@ -3060,7 +3060,8 @@ class RealisticBulkData_SampleRun_TestCase(TestCase):
     #we are checking db read performance, so this is CPU-heavy
         #hence multiprocessing is chosen over threads to bypass GIL and achieve parallelism
 #how to test:
-    #build your data in local dev database (not test database), then run against it
+    #python manage.py test voicewake.tests.test_metrics.Some_TestCase.the_test --testrunner='voicewake.tests.test_metrics.TestRunnerWithMirror'
+    #build your data in local dev database (not test database), then run against it using custom test runner
     #test each test_() individually, as running all tests concurrently will have worse performance
 #this test handles full validation and performance of apis.BrowseEvents
     #easier to do it here than to duplicate into test_apis and test_metrics
@@ -3348,13 +3349,13 @@ class BrowseEvents_TestCase(TransactionTestCase):
         )
 
 
-    def _like_dislike_cursor_token_check(self, response_data, audio_clip_role_name:Literal['originator','responder'], unique_user):
+    def _like_dislike_cursor_token_check(self, response_data, audio_clip_role_name:Literal['originator','responder'], target_user):
 
         decoded_cursor_token = decode_cursor_token(response_data['next_token'])
 
         target_audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(
             audio_clip_id=response_data['data'][-1][audio_clip_role_name][0]['id'],
-            user=unique_user,
+            user=target_user,
         )
 
         self.assertEqual(
@@ -3370,7 +3371,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
         target_audio_clip_like_dislike = AudioClipLikesDislikes.objects.get(
             audio_clip_id=response_data['data'][0][audio_clip_role_name][0]['id'],
-            user=unique_user,
+            user=target_user,
         )
 
         self.assertEqual(
@@ -3386,7 +3387,14 @@ class BrowseEvents_TestCase(TransactionTestCase):
     #lore: subprocess will start a fresh python interpreter process, bypassing GIL and achieving true parallelism across subprocesses
     #practical: this function will be completely isolated, and will copy over everything in Class.self as its own
     #multiprocessing.Event() is a proxy that functions as simplest communication between subprocesses, so use .Queue()/.Pipe() if more complex
-    def subprocess_worker(self, subprocess_index:int, test_cases:list, skip_to_test_index_in_subprocess:int=None):
+    def subprocess_worker(
+        self, api_context:Literal['general','likes_dislikes'],
+        subprocess_index:int, test_cases:list, skip_to_test_index_in_subprocess:int=None
+    ):
+
+        if api_context not in ['general', 'likes_dislikes']:
+
+            raise ValueError(f'invalid api_context {api_context}')
 
         stopwatch = Stopwatch()
 
@@ -3399,7 +3407,8 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
         test_completion_per_percentage_stopwatch.start()
 
-        print('Showing test progression as it moves by 1% to avoid memory overload.')
+        print('Test progression will be shown at every 1% to avoid memory overload.')
+        print(f'Test cases for subprocess #{subprocess_index}: {test_case_count}')
 
         try:
 
@@ -3414,6 +3423,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
                     #this subprocess must stop
                     print(f'Gracefully ending subprocess #{subprocess_index}')
+                    return
 
                 if skip_to_test_index_in_subprocess is not None and test_index < skip_to_test_index_in_subprocess:
 
@@ -3433,7 +3443,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
                 subprocess_client.force_login(login_user)
 
-                retries_left = 1
+                retries_left = 2
 
                 while retries_left >= 0:
 
@@ -3470,7 +3480,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
                             stopwatch.start()
 
-                            request = self.client.get(
+                            request = subprocess_client.get(
                                 reverse(
                                     'browse_events_api',
                                     kwargs=current_kwargs
@@ -3507,18 +3517,38 @@ class BrowseEvents_TestCase(TransactionTestCase):
                         #immediately create cursor here
                         #guarantees at least 1 event with desired generic_status
 
-                        latest_audio_clip = AudioClips.objects.filter(
-                            user=target_user,
-                            audio_clip_role__audio_clip_role_name=audio_clip_role_name,
-                            generic_status__generic_status_name='ok',
-                            event__generic_status__generic_status_name__in=expected_event_generic_status_names,
-                            is_banned=False,
-                        ).order_by('-when_created', '-id').first()
+                        cursor_token = None
 
-                        cursor_token = encode_cursor_token({
-                            'when_created': latest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-                            'id': latest_audio_clip.id,
-                        })
+                        if api_context == 'general':
+
+                            latest_audio_clip = AudioClips.objects.filter(
+                                user=target_user,
+                                audio_clip_role__audio_clip_role_name=audio_clip_role_name,
+                                generic_status__generic_status_name='ok',
+                                event__generic_status__generic_status_name__in=expected_event_generic_status_names,
+                                is_banned=False,
+                            ).order_by('-when_created', '-id').first()
+
+                            cursor_token = encode_cursor_token({
+                                'when_created': latest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+                                'id': latest_audio_clip.id,
+                            })
+
+                        elif api_context == 'likes_dislikes':
+
+                            latest_audio_clip_like_dislike = AudioClipLikesDislikes.objects.filter(
+                                user=target_user,
+                                is_liked=(current_kwargs['likes_or_dislikes'] == 'likes'),
+                                audio_clip__audio_clip_role__audio_clip_role_name=audio_clip_role_name,
+                                audio_clip__generic_status__generic_status_name='ok',
+                                audio_clip__event__generic_status__generic_status_name__in=expected_event_generic_status_names,
+                                audio_clip__is_banned=False,
+                            ).order_by('-last_modified', '-id').first()
+
+                            cursor_token = encode_cursor_token({
+                                'last_modified': latest_audio_clip_like_dislike.last_modified.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+                                'id': latest_audio_clip_like_dislike.id,
+                            })
 
                         current_kwargs.update({
                             'next_or_back': 'next',
@@ -3527,7 +3557,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
                         stopwatch.start()
 
-                        request = self.client.get(
+                        request = subprocess_client.get(
                             reverse(
                                 'browse_events_api',
                                 kwargs=current_kwargs
@@ -3558,7 +3588,10 @@ class BrowseEvents_TestCase(TransactionTestCase):
                         self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
 
                         #check tokens
-                        self._general_cursor_token_check(response_data, audio_clip_role_name)
+                        if api_context == 'general':
+                            self._general_cursor_token_check(response_data, audio_clip_role_name)
+                        elif api_context == 'likes_dislikes':
+                            self._like_dislike_cursor_token_check(response_data, audio_clip_role_name, target_user)
 
                         #keep this for next->back validation later
                         first_response_data = response_data['data'].copy()
@@ -3573,7 +3606,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
                         stopwatch.start()
 
-                        request = self.client.get(
+                        request = subprocess_client.get(
                             reverse(
                                 'browse_events_api',
                                 kwargs=current_kwargs
@@ -3604,7 +3637,10 @@ class BrowseEvents_TestCase(TransactionTestCase):
                         self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
 
                         #check tokens
-                        self._general_cursor_token_check(response_data, audio_clip_role_name)
+                        if api_context == 'general':
+                            self._general_cursor_token_check(response_data, audio_clip_role_name)
+                        elif api_context == 'likes_dislikes':
+                            self._like_dislike_cursor_token_check(response_data, audio_clip_role_name, target_user)
 
                         #==========
                         #API back+token
@@ -3617,7 +3653,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
                         stopwatch.start()
 
-                        request = self.client.get(
+                        request = subprocess_client.get(
                             reverse(
                                 'browse_events_api',
                                 kwargs=current_kwargs
@@ -3646,7 +3682,10 @@ class BrowseEvents_TestCase(TransactionTestCase):
                         self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
 
                         #check tokens
-                        self._general_cursor_token_check(response_data, audio_clip_role_name)
+                        if api_context == 'general':
+                            self._general_cursor_token_check(response_data, audio_clip_role_name)
+                        elif api_context == 'likes_dislikes':
+                            self._like_dislike_cursor_token_check(response_data, audio_clip_role_name, target_user)
 
                         #ensure everything is the same as first response
 
@@ -3684,18 +3723,38 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
                         #construct our own cursor from earliest eligible audio_clip
 
-                        earliest_audio_clip = AudioClips.objects.filter(
-                            user=target_user,
-                            audio_clip_role__audio_clip_role_name=audio_clip_role_name,
-                            generic_status__generic_status_name='ok',
-                            event__generic_status__generic_status_name__in=expected_event_generic_status_names,
-                            is_banned=False,
-                        ).order_by('-when_created', '-id').last()
+                        cursor_token = None
 
-                        cursor_token = encode_cursor_token({
-                            'when_created': earliest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-                            'id': earliest_audio_clip.id,
-                        })
+                        if api_context == 'general':
+
+                            latest_audio_clip = AudioClips.objects.filter(
+                                user=target_user,
+                                audio_clip_role__audio_clip_role_name=audio_clip_role_name,
+                                generic_status__generic_status_name='ok',
+                                event__generic_status__generic_status_name__in=expected_event_generic_status_names,
+                                is_banned=False,
+                            ).order_by('-when_created', '-id').last()
+
+                            cursor_token = encode_cursor_token({
+                                'when_created': latest_audio_clip.when_created.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+                                'id': latest_audio_clip.id,
+                            })
+
+                        elif api_context == 'likes_dislikes':
+
+                            latest_audio_clip_like_dislike = AudioClipLikesDislikes.objects.filter(
+                                user=target_user,
+                                is_liked=(current_kwargs['likes_or_dislikes'] == 'likes'),
+                                audio_clip__audio_clip_role__audio_clip_role_name=audio_clip_role_name,
+                                audio_clip__generic_status__generic_status_name='ok',
+                                audio_clip__event__generic_status__generic_status_name__in=expected_event_generic_status_names,
+                                audio_clip__is_banned=False,
+                            ).order_by('-last_modified', '-id').last()
+
+                            cursor_token = encode_cursor_token({
+                                'last_modified': latest_audio_clip_like_dislike.last_modified.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
+                                'id': latest_audio_clip_like_dislike.id,
+                            })
 
                         current_kwargs.update({
                             'next_or_back': 'next',
@@ -3704,7 +3763,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
                         stopwatch.start()
 
-                        request = self.client.get(
+                        request = subprocess_client.get(
                             reverse(
                                 'browse_events_api',
                                 kwargs=current_kwargs
@@ -3742,7 +3801,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
                         stopwatch.start()
 
-                        request = self.client.get(
+                        request = subprocess_client.get(
                             reverse(
                                 'browse_events_api',
                                 kwargs=current_kwargs
@@ -3773,7 +3832,10 @@ class BrowseEvents_TestCase(TransactionTestCase):
                         self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
 
                         #check tokens
-                        self._general_cursor_token_check(response_data, audio_clip_role_name)
+                        if api_context == 'general':
+                            self._general_cursor_token_check(response_data, audio_clip_role_name)
+                        elif api_context == 'likes_dislikes':
+                            self._like_dislike_cursor_token_check(response_data, audio_clip_role_name, target_user)
 
                         #==========
                         #API next+token
@@ -3787,7 +3849,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
                         stopwatch.start()
 
-                        request = self.client.get(
+                        request = subprocess_client.get(
                             reverse(
                                 'browse_events_api',
                                 kwargs=current_kwargs
@@ -3849,7 +3911,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
                 {
                     'subprocess_index': subprocess_index,
                     'test_index_in_subprocess': test_index_in_subprocess,
-                    'error': e,
+                    'exception': e,
                     'traceback': traceback.format_exc(),
                 },
                 block=False,
@@ -4955,7 +5017,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
             #skip specific subprocess to specific test index
             subprocesses.append(multiprocessing.Process(
                 target=self.subprocess_worker,
-                args=(skip_to_subprocess_index, full_test_cases[skip_to_subprocess_index], skip_to_test_index)
+                args=('general', skip_to_subprocess_index, full_test_cases[skip_to_subprocess_index], skip_to_test_index)
             ))
 
         elif skip_to_subprocess_index is not None:
@@ -4963,7 +5025,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
             #use only specific subprocess from start
             subprocesses.append(multiprocessing.Process(
                 target=self.subprocess_worker,
-                args=(skip_to_subprocess_index, full_test_cases[skip_to_subprocess_index], None)
+                args=('general', skip_to_subprocess_index, full_test_cases[skip_to_subprocess_index], None)
             ))
 
         elif skip_to_test_index is not None:
@@ -4973,7 +5035,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
                 subprocesses.append(multiprocessing.Process(
                     target=self.subprocess_worker,
-                    args=(x, full_test_cases[x], skip_to_test_index)
+                    args=('general', x, full_test_cases[x], skip_to_test_index)
                 ))
 
         else:
@@ -4983,7 +5045,7 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
                 subprocesses.append(multiprocessing.Process(
                     target=self.subprocess_worker,
-                    args=(x, full_test_cases[x], skip_to_test_index)
+                    args=('general', x, full_test_cases[x], skip_to_test_index)
                 ))
 
         #run subprocesses
@@ -5016,55 +5078,28 @@ class BrowseEvents_TestCase(TransactionTestCase):
                 print(f'{error_key}:')
                 print(error_report[error_key])
 
+            #not useful because it doesn't preserve stack trace, but it's just to properly fail the test case here
+            raise error_report['exception']
 
-    def test_browse_events__own_like_dislike_page(self, maximum_time_elapsed_ms=300, skip_to_test_index=0):
 
-        #pre-determine audio_clip_tones
-        #since excluded tones are specified in earliest/middle/latest manner, #and will never use first and last,
-        #can just make sure we don't -1 for earliest, and +1 for latest
+    #users can only view their own likes/dislikes
+    def test_browse_events__own_like_dislike_page(self, subprocess_count=3, skip_to_subprocess_index:int|None=None, skip_to_test_index:int|None=500):
 
-        excluded_audio_clip_tone_ids = []
-        expected_audio_clip_tone_ids = [None]
+        if skip_to_subprocess_index is not None and skip_to_subprocess_index >= subprocess_count:
 
-        realistic_bulk_data_class = RealisticBulkData()
+            raise ValueError(f'skip_to_subprocess_index of {skip_to_subprocess_index} out of range. maximum index is {subprocess_count - 1}.')
 
-        #get first tone to prevent repeated if-statements
+        if subprocess_count > (multiprocessing.cpu_count() - 1):
 
-        excluded_audio_clip_tone_ids.append(
-            realistic_bulk_data_class.audio_clip_tones[
-                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0]
-            ].id
-        )
-
-        expected_audio_clip_tone_ids.append(
-            realistic_bulk_data_class.audio_clip_tones[
-                realistic_bulk_data_class.excluded_audio_clip_tones_indexes[0] + 1
-            ].id
-        )
-
-        #add excluded audio_clip_tones
-        for index in range(1, len(realistic_bulk_data_class.excluded_audio_clip_tones_indexes)):
-
-            excluded_index = realistic_bulk_data_class.excluded_audio_clip_tones_indexes[index]
-
-            excluded_audio_clip_tone_ids.append(
-                realistic_bulk_data_class.audio_clip_tones[excluded_index].id
-            )
-
-            expected_audio_clip_tone_ids.append(
-                realistic_bulk_data_class.audio_clip_tones[excluded_index - 1].id
-            )
-
-        stopwatch = Stopwatch()
+            raise ValueError(f'subprocess_count of {subprocess_count} exceeds recommended limit of {multiprocessing.cpu_count() - 1}')
 
         #create all possible test cases
 
         #{'api_kwargs': {}, 'test_values': {}}
         test_cases = []
 
-        audio_clip_tone_ids = expected_audio_clip_tone_ids + excluded_audio_clip_tone_ids
-
-        for login_user in self.realistic_bulk_data_class.main_users:
+        #need to test all users, since some users can have 0 rows
+        for login_user in self.main_users:
 
             for audio_clip_role_name in ['originator', 'responder']:
 
@@ -5078,459 +5113,162 @@ class BrowseEvents_TestCase(TransactionTestCase):
 
                     expected_event_generic_status_names = ['completed', 'deleted']
 
-                for expected_event_generic_status_name in expected_event_generic_status_names:
+                for likes_or_dislikes in ['likes', 'dislikes']:
 
-                    for likes_or_dislikes in ['likes', 'dislikes']:
+                    #add "no audio_clip_tone selected"
+                    current_kwargs = {
+                        'username': login_user.username,
+                        'latest_or_best': 'latest',
+                        'timeframe': 'all',
+                        'audio_clip_role_name': audio_clip_role_name,
+                        'next_or_back': 'next',
+                        'likes_or_dislikes': likes_or_dislikes,
+                    }
 
-                        for audio_clip_tone_id_index, audio_clip_tone_id in enumerate(audio_clip_tone_ids):
+                    test_cases.append({
+                        'api_kwargs': current_kwargs,
+                        'test_values': {
+                            'is_excluded_audio_clip_tone': False,
+                            'login_user': login_user,
+                            'target_user': login_user,
+                            'expected_event_generic_status_names': expected_event_generic_status_names,
+                        }
+                    })
 
-                            is_excluded_audio_clip_tone = False
+                    #others
+                    for audio_clip_tone_index, audio_clip_tone in enumerate(self.realistic_bulk_data_class.audio_clip_tones):
 
-                            if (audio_clip_tone_id_index + 1) > len(expected_audio_clip_tone_ids):
+                        is_excluded_audio_clip_tone = audio_clip_tone_index in self.realistic_bulk_data_class.excluded_audio_clip_tones_indexes
 
-                                is_excluded_audio_clip_tone = True
+                        current_kwargs = {
+                            'username': login_user.username,
+                            'latest_or_best': 'latest',
+                            'timeframe': 'all',
+                            'audio_clip_role_name': audio_clip_role_name,
+                            'next_or_back': 'next',
+                            'audio_clip_tone_id': audio_clip_tone.id,
+                            'likes_or_dislikes': likes_or_dislikes,
+                        }
 
-                            current_kwargs = {
-                                'username': login_user.username,
-                                'latest_or_best': 'latest',
-                                'timeframe': 'all',
-                                'audio_clip_role_name': audio_clip_role_name,
-                                'next_or_back': 'next',
-                                'likes_or_dislikes': likes_or_dislikes,
+                        test_cases.append({
+                            'api_kwargs': current_kwargs,
+                            'test_values': {
+                                'is_excluded_audio_clip_tone': is_excluded_audio_clip_tone,
+                                'login_user': login_user,
+                                'target_user': login_user,
+                                'expected_event_generic_status_names': expected_event_generic_status_names,
                             }
+                        })
 
-                            if audio_clip_tone_id is not None:
+        total_test_case_count = len(test_cases)
 
-                                current_kwargs.update({'audio_clip_tone_id': audio_clip_tone_id})
+        #split test cases into subprocesses, there's just too many
 
-                            test_cases.append({
-                                'api_kwargs': current_kwargs,
-                                'test_values': {
-                                    'is_excluded_audio_clip_tone': is_excluded_audio_clip_tone,
-                                    'login_user': login_user,
-                                    'target_user': login_user,
-                                    'expected_event_generic_status_name': expected_event_generic_status_name,
-                                }
-                            })
+        #can just math.floor and let last subprocess have a few extras
+        test_cases_per_subprocess = math.floor(total_test_case_count / subprocess_count)
 
-        #start test
+        #check
+        if skip_to_test_index is not None and skip_to_test_index >= test_cases_per_subprocess:
 
-        for test_index, test_case in enumerate(test_cases):
+            if skip_to_subprocess_index == (subprocess_count - 1) and len(full_test_cases[subprocess_count - 1]):
 
-            #unpack test_case
-            #lazy solution for implementing this after main code has been written
+                #due to math.floor(), last set of tests can have more tests
+                pass
 
-            current_kwargs = test_case['api_kwargs']
-            login_user = test_case['test_values']['login_user']
-            target_user = test_case['test_values']['target_user']
-            audio_clip_role_name = test_case['api_kwargs']['audio_clip_role_name']
-            is_excluded_audio_clip_tone = test_case['test_values']['is_excluded_audio_clip_tone']
-            expected_event_generic_status_name = test_case['test_values']['expected_event_generic_status_name']
+            else:
 
-            self.login(login_user)
+                raise ValueError(f'skip_to_test_index of {skip_to_test_index} exceeds maximum {test_cases_per_subprocess-1}')
 
-            #some queries on first run will cause delay due to lack of caching at db
-            #if exceeding maximum_time_elapsed_ms, retry once
+        test_case_indexes_to_end_set = []
+        full_test_cases = []
 
-            retries_left = 1
+        for x in range(subprocess_count):
 
-            while retries_left >= 0:
+            test_case_indexes_to_end_set.append((x+1) * test_cases_per_subprocess)
+            full_test_cases.append([])
 
-                try:
+        full_test_case_index = 0
+        test_case_index = 0
 
-                    loop_title = 'loop #' + str(test_index)
+        while test_case_index < total_test_case_count:
 
-                    print(loop_title)
+            full_test_cases[full_test_case_index].append(test_cases[test_case_index])
 
-                    #========================================
-                    #part 1: from latest audio_clip
-                    #========================================
+            test_case_index += 1
 
-                    #==========
-                    #API next
-                    #==========
+            if test_case_index == test_case_indexes_to_end_set[full_test_case_index]:
 
-                    #only for excluded audio_clip_tone, just to check that 0 row performance is ok
-                    #event.generic_status is more varied now too, so starting cursor is essential for normal tests
+                #when at second-last subprocess, proceed to last subprocess
+                if full_test_case_index <= (subprocess_count - 2):
 
-                    if is_excluded_audio_clip_tone is True:
+                    full_test_case_index += 1
 
-                        stopwatch.start()
+        #sort subprocesses out
 
-                        request = self.client.get(
-                            reverse(
-                                'browse_events_api',
-                                kwargs=current_kwargs
-                            )
-                        )
+        self.subprocess_event_to_stop_all_subprocesses = multiprocessing.Event()
 
-                        stopwatch.stop()
+        #determine subprocesses
 
-                        if stopwatch.diff_milliseconds() >= maximum_time_elapsed_ms:
+        #must have this, to guarantee that all processes will open their own db connections
+        #inheriting db connection is not guaranteed to succeed
+        connections.close_all()
 
-                            raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+        subprocesses = []
 
-                        else:
+        #run all subprocesses from start
+        for x in range(subprocess_count):
 
-                            print(f'Good: {stopwatch.diff_milliseconds()}')
+            #if skipping subprocess, fill with None so we maintain subprocess index on next error
+            if skip_to_subprocess_index is not None and x != skip_to_subprocess_index:
 
-                        #check
+                subprocesses.append(None)
+                continue
 
-                        self.assertEqual(request.status_code, 200)
+            subprocesses.append(multiprocessing.Process(
+                target=self.subprocess_worker,
+                args=('likes_dislikes', x, full_test_cases[x], skip_to_test_index)
+            ))
 
-                        #response_data: next_token, back_token, data
-                        #response_data['data']: [{event:event,originator:[],responder:[]}]
-                        response_data = get_response_data(request)
+        #run subprocesses
 
-                        self.assertEqual(len(response_data['data']), 0)
+        for x in range(subprocess_count):
 
-                        #skip to next test case
-                        break
+            if subprocesses[x] is None:
 
-                    #==========
-                    #API next+token
-                    #==========
+                continue
 
-                    #immediately create cursor here
-                    #guarantees at least 1 event with desired generic_status
+            subprocesses[x].start()
 
-                    latest_audio_clip_like_dislike = AudioClipLikesDislikes.objects.filter(
-                        user=target_user,
-                        is_liked=(likes_or_dislikes == 'likes'),
-                        audio_clip__audio_clip_role__audio_clip_role_name=audio_clip_role_name,
-                        audio_clip__generic_status__generic_status_name='ok',
-                        audio_clip__event__generic_status__generic_status_name=expected_event_generic_status_name,
-                        audio_clip__is_banned=False,
-                    ).order_by('-last_modified', '-id').first()
+        #make main thread (here) wait for completion
+        for x in range(subprocess_count):
 
-                    cursor_token = encode_cursor_token({
-                        'last_modified': latest_audio_clip_like_dislike.last_modified.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-                        'id': latest_audio_clip_like_dislike.id,
-                    })
+            if subprocesses[x] is None:
 
-                    current_kwargs.update({
-                        'next_or_back': 'next',
-                        'cursor_token': cursor_token,
-                    })
+                continue
 
-                    stopwatch.start()
+            subprocesses[x].join()
 
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
+        #show any exception
+        #call this after subprocess.join() to ensure we're not waiting for any subprocess to finish
+        if self.subprocess_queue_to_store_exceptions.empty() is False:
 
-                    stopwatch.stop()
+            #tricky Queue.get() block arg behaviour, default block=True
+            #in a Process(), use .get(block=True) to pause itself until something is inserted into queue
+            #in a parent thread, use .empty() to check first, then .get(block=True) to fetch from non-empty queue
+                #if queue is empty and .get(block=True), will pause the parent thread
+                #if queue is not empty and .get(block=False), will directly raise queue.Empty
+            error_report = self.subprocess_queue_to_store_exceptions.get()
 
-                    if stopwatch.diff_milliseconds() >= maximum_time_elapsed_ms:
+            print('\n\n\n')
+            print('ERROR')
 
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
+            for error_key in error_report:
 
-                    else:
+                print(f'{error_key}:')
+                print(error_report[error_key])
 
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    self.assertGreater(len(response_data['data']), 0)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
-
-                    #check tokens
-                    self._like_dislike_cursor_token_check(response_data, audio_clip_role_name, target_user)
-
-                    #keep this for next->back validation later
-                    first_response_data = response_data['data'].copy()
-
-                    #==========
-                    #API next+token
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'next',
-                        'cursor_token': response_data['next_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= maximum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    self.assertGreater(len(response_data['data']), 0)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
-
-                    #check tokens
-                    self._like_dislike_cursor_token_check(response_data, audio_clip_role_name, target_user)
-
-                    #==========
-                    #API back+token
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'back',
-                        'cursor_token': response_data['back_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= maximum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
-
-                    #check tokens
-                    self._like_dislike_cursor_token_check(response_data, audio_clip_role_name, target_user)
-
-                    #ensure everything is the same as first response
-
-                    self.assertEqual(len(response_data['data']), len(first_response_data))
-
-                    for index in range(len(response_data['data'])):
-
-                        if response_data['data'][index]['originator']:
-
-                            self.assertEqual(
-                                response_data['data'][index]['originator'][0]['id'],
-                                first_response_data[index]['originator'][0]['id'],
-                            )
-
-                        if response_data['data'][index]['responder']:
-
-                            self.assertEqual(
-                                response_data['data'][index]['responder'][0]['id'],
-                                first_response_data[index]['responder'][0]['id'],
-                            )
-
-                    #==========
-                    #API another back+token
-                    #==========
-
-                    #no need to do, because we only fetch x event__generic_status but main query allows multiple event__generic_status
-
-                    #========================================
-                    #part 2: from earliest audio_clip
-                    #========================================
-
-                    #==========
-                    #API next
-                    #don't test for row count because it cannot be guaranteed
-                    #==========
-
-                    #construct our own cursor from earliest eligible audio_clip
-
-                    earliest_audio_clip_like_dislike = AudioClipLikesDislikes.objects.filter(
-                        user=target_user,
-                        is_liked=(likes_or_dislikes == 'likes'),
-                        audio_clip__audio_clip_role__audio_clip_role_name=audio_clip_role_name,
-                        audio_clip__generic_status__generic_status_name='ok',
-                        audio_clip__event__generic_status__generic_status_name=expected_event_generic_status_name,
-                        audio_clip__is_banned=False,
-                    ).order_by('-last_modified', '-id').last()
-
-                    cursor_token = encode_cursor_token({
-                        'last_modified': earliest_audio_clip_like_dislike.last_modified.strftime('%Y-%m-%d %H:%M:%S.%f %z'),
-                        'id': earliest_audio_clip_like_dislike.id,
-                    })
-
-                    current_kwargs.update({
-                        'next_or_back': 'next',
-                        'cursor_token': cursor_token,
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= maximum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #next_token, back_token, data
-                    response_data = get_response_data(request)
-
-                    #==========
-                    #API back+token
-                    #guaranteed to have rows
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'back',
-                        'cursor_token': response_data['back_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= maximum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                    self.assertGreater(len(response_data['data']), 0)
-
-                    #check rows
-                    self._general_row_check(response_data, current_kwargs, is_event_always_completed=False)
-
-                    #check tokens
-                    self._like_dislike_cursor_token_check(response_data, audio_clip_role_name, target_user)
-
-                    #==========
-                    #API next+token
-                    #don't count rows because it cannot be guaranteed
-                    #==========
-
-                    current_kwargs.update({
-                        'next_or_back': 'next',
-                        'cursor_token': response_data['next_token'],
-                    })
-
-                    stopwatch.start()
-
-                    request = self.client.get(
-                        reverse(
-                            'browse_events_api',
-                            kwargs=current_kwargs
-                        )
-                    )
-
-                    stopwatch.stop()
-
-                    if stopwatch.diff_milliseconds() >= maximum_time_elapsed_ms:
-
-                        raise ValueError(f'Query time exceeded: {stopwatch.diff_milliseconds()}')
-
-                    else:
-
-                        print(f'Good: {stopwatch.diff_milliseconds()}')
-
-                    #check
-
-                    self.assertEqual(request.status_code, 200)
-
-                    #response_data: next_token, back_token, data
-                    #response_data['data']: [{event:event,originator:[],responder:[]}]
-                    response_data = get_response_data(request)
-
-                except Exception as e:
-
-                    #show useful info
-
-                    print(current_kwargs)
-                    print(f'is_excluded_audio_clip_tone: {is_excluded_audio_clip_tone}')
-                    print(f'expected_event_generic_status_name: {expected_event_generic_status_name}')
-
-                    if 'cursor_token' in current_kwargs:
-
-                        print(f'cursor_token: {decode_cursor_token(current_kwargs['cursor_token'])}')
-
-                    #check if can retry
-
-                    if retries_left > 0:
-
-                        #can retry
-
-                        print('Retrying test to ensure failure is not related to db caching.')
-
-                        retries_left -= 1
-
-                        continue
-
-                    #cannot retry
-                    raise e
-
-                #success, break while-loop
-                break
-
+            #not useful because it doesn't preserve stack trace, but it's just to properly fail the test case here
+            raise error_report['exception']
 
 
 
