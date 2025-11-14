@@ -1080,11 +1080,6 @@ class BrowseEventsAPI(generics.GenericAPIView):
                 #get audio_clips.when_created, audio_clips.id
                 decoded_cursor_token = decode_cursor_token(cursor_token)
 
-                cursor_params = [
-                    decoded_cursor_token['when_created'],
-                    decoded_cursor_token['id'], decoded_cursor_token['when_created'],
-                ]
-
             except:
 
                 raise custom_error(
@@ -1093,6 +1088,11 @@ class BrowseEventsAPI(generics.GenericAPIView):
                     user_message="Unable to fetch content due to faulty cursor token.",
                     dev_message="Token could not be decoded: " + cursor_token
                 )
+
+            cursor_params = [
+                decoded_cursor_token['when_created'],
+                decoded_cursor_token['id'], decoded_cursor_token['when_created'],
+            ]
 
         #handle whether to display all audio_clip_tones, or specific
 
@@ -1481,12 +1481,7 @@ class BrowseEventsAPI(generics.GenericAPIView):
                 #get audio_clips.when_created, audio_clips.id
                 decoded_cursor_token = decode_cursor_token(cursor_token)
 
-                cursor_params = [
-                    decoded_cursor_token['last_modified'],
-                    decoded_cursor_token['id'], decoded_cursor_token['last_modified'],
-                ]
-
-            except:
+            except Exception:
 
                 raise custom_error(
                     ValueError,
@@ -1494,6 +1489,11 @@ class BrowseEventsAPI(generics.GenericAPIView):
                     user_message="Unable to fetch content due to faulty cursor token.",
                     dev_message="Token could not be decoded: " + cursor_token
                 )
+
+            cursor_params = [
+                decoded_cursor_token['last_modified'],
+                decoded_cursor_token['id'], decoded_cursor_token['last_modified'],
+            ]
 
         #handle whether to display all audio_clip_tones, or specific
 
@@ -1524,7 +1524,7 @@ class BrowseEventsAPI(generics.GenericAPIView):
                     )
                 '''
 
-            cursor_order_sql = '''ORDER BY acld.last_modified DESC, acld.id DESC'''
+            cursor_order_sql = '''ORDER BY acld.user_id DESC, acld.last_modified DESC, acld.id DESC'''
 
         elif next_or_back == 'back':
 
@@ -1538,7 +1538,7 @@ class BrowseEventsAPI(generics.GenericAPIView):
                     )
                 '''
 
-            cursor_order_sql = '''ORDER BY acld.last_modified ASC, acld.id ASC'''
+            cursor_order_sql = '''ORDER BY acld.user_id DESC, acld.last_modified ASC, acld.id ASC'''
 
         #handle event generic_status
 
@@ -1570,7 +1570,7 @@ class BrowseEventsAPI(generics.GenericAPIView):
         full_sql = '''
             WITH target_events AS (
                 SELECT ac.id AS ac_id, ac.event_id AS ac_event_id,
-                    acld.last_modified AS acld_last_modified, acld.id AS acld_id
+                    acld.user_id AS acld_user_id, acld.last_modified AS acld_last_modified, acld.id AS acld_id
                 FROM audio_clip_likes_dislikes AS acld
                 INNER JOIN audio_clips AS ac ON acld.audio_clip_id = ac.id
                 INNER JOIN events AS e ON ac.event_id = e.id
@@ -1596,6 +1596,7 @@ class BrowseEventsAPI(generics.GenericAPIView):
             SELECT
                 ac.*,
                 acld.is_liked AS is_liked_by_user,
+                target_events.acld_user_id AS te_acld_user_id,
                 target_events.acld_last_modified AS te_acld_last_modified,
                 target_events.acld_id AS te_acld_id,
                 audio_clip_metrics.like_count AS like_count,
@@ -1611,7 +1612,7 @@ class BrowseEventsAPI(generics.GenericAPIView):
             AND ac.generic_status_id = (
                 SELECT id FROM generic_statuses WHERE generic_status_name = %s
             )
-            ORDER BY te_acld_last_modified DESC, te_acld_id DESC
+            ORDER BY te_acld_user_id DESC, te_acld_last_modified DESC, te_acld_id DESC
         '''
 
         full_params = [
