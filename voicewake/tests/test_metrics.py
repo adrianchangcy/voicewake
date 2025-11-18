@@ -67,6 +67,7 @@ class RealisticBulkData():
     def __init__(
         self,
         db_batch_size=500,
+        use_multiprocessing=False,
     ):
 
         #SCENARIOS
@@ -162,6 +163,13 @@ class RealisticBulkData():
         self.like_count = 0
         self.dislike_count = 0
         self.like_ratio = 0
+
+        self.use_multiprocessing = use_multiprocessing
+        self.create_filler_users_subprocess_lock = None
+
+        if use_multiprocessing is True:
+
+            self.create_filler_users_subprocess_lock = multiprocessing.Lock()
 
 
     def _check_ready(self):
@@ -394,40 +402,81 @@ class RealisticBulkData():
         user_count = 0
         target_user_prefix = self.main_user_prefix
 
-        if user_type == 'filler':
+        #set lock so only one subprocess can create filler users at a time
+        #else you get duplicate violation at db
+        if user_type == 'filler' and self.use_multiprocessing is True:
 
-            target_user_prefix = self.filler_user_prefix
+            #other subprocesses wanting to do the same thing will get blocked here
+            self.create_filler_users_subprocess_lock.acquire()
 
-        latest_test_user = get_user_model().objects.filter(username_lowercase__startswith=target_user_prefix).order_by('-id')[:1]
+        try:
 
-        if len(latest_test_user) == 1:
+            if user_type == 'filler':
 
-            latest_test_user = latest_test_user[0]
+                target_user_prefix = self.filler_user_prefix
 
-            print('Found latest user by username_lowercase: ' + latest_test_user.username_lowercase)
+            latest_test_user = get_user_model().objects.filter(username_lowercase__startswith=target_user_prefix).order_by('-id')[:1]
 
-            #separate "99" from "test_user99@gmail.com"
-            latest_test_user_index = latest_test_user.username_lowercase.split(target_user_prefix)
-            latest_test_user_index = int(latest_test_user_index[1])
+            if len(latest_test_user) == 1:
 
-            #if latest user is username99, we set starting count to 100 when creating new users
-            user_count = latest_test_user_index + 1
+                latest_test_user = latest_test_user[0]
 
-        #create users and add to group
+                print('Found latest user by username_lowercase: ' + latest_test_user.username_lowercase)
 
-        if user_type == 'main':
+                #separate "99" from "test_user99@gmail.com"
+                latest_test_user_index = latest_test_user.username_lowercase.split(target_user_prefix)
+                latest_test_user_index = int(latest_test_user_index[1])
 
-            #reset
-            self.main_users = []
+                #if latest user is username99, we set starting count to 100 when creating new users
+                user_count = latest_test_user_index + 1
 
-            #create by per-set basis
-            for set_name in self.main_user_sets:
+            #create users and add to group
+
+            if user_type == 'main':
+
+                #reset
+                self.main_users = []
+
+                #create by per-set basis
+                for set_name in self.main_user_sets:
+
+                    new_users = []
+
+                    for x in range(user_count, user_count+self.minimum_main_users_per_set):
+
+                        new_username = self.main_user_prefix + str(x)
+                        new_email = new_username + '@gmail.com'
+
+                        new_users.append(
+                            get_user_model().objects.create_user(
+                                username=new_username,
+                                email=new_email,
+                                is_active=True,
+                            )
+                        )
+
+                        self.main_user_group.user_set.add(new_users[-1])
+
+                        print('Created test user: ' + new_users[-1].username)
+
+                    self.main_user_sets[set_name] = new_users
+                    self.main_users.extend(new_users)
+
+                    user_count += self.minimum_main_users_per_set
+
+                self.is_newly_created_main_users = True
+
+                return self.main_users
+
+            elif user_type == 'filler':
 
                 new_users = []
 
-                for x in range(user_count, user_count+self.minimum_main_users_per_set):
+                #no need to track filler users using groups so far
 
-                    new_username = self.main_user_prefix + str(x)
+                for x in range(user_count, user_count+target_user_quantity):
+
+                    new_username = self.filler_user_prefix + str(x)
                     new_email = new_username + '@gmail.com'
 
                     new_users.append(
@@ -438,45 +487,21 @@ class RealisticBulkData():
                         )
                     )
 
-                    self.main_user_group.user_set.add(new_users[-1])
-
                     print('Created test user: ' + new_users[-1].username)
 
-                self.main_user_sets[set_name] = new_users
-                self.main_users.extend(new_users)
+                return new_users
 
-                user_count += self.minimum_main_users_per_set
+            else:
 
-            self.is_newly_created_main_users = True
+                raise ValueError(f'invalid {user_type}')
+            
+        finally:
 
-            return self.main_users
+            #let other subprocesses proceed with creating their own filler users
+            #use try-finally to guarantee .release()
+            if user_type == 'filler' and self.use_multiprocessing is True:
 
-        elif user_type == 'filler':
-
-            new_users = []
-
-            #no need to track filler users using groups so far
-
-            for x in range(user_count, user_count+target_user_quantity):
-
-                new_username = self.filler_user_prefix + str(x)
-                new_email = new_username + '@gmail.com'
-
-                new_users.append(
-                    get_user_model().objects.create_user(
-                        username=new_username,
-                        email=new_email,
-                        is_active=True,
-                    )
-                )
-
-                print('Created test user: ' + new_users[-1].username)
-
-            return new_users
-
-        else:
-
-            raise ValueError(f'invalid {user_type}')
+                self.create_filler_users_subprocess_lock.release()
 
 
     #earliest/middle/latest users implies entire db
@@ -845,8 +870,7 @@ class RealisticBulkData():
         }
 
 
-    #call only once per new set of users
-    def create_event_incomplete_and_event_reply_queue(self, is_replying:bool=False):
+    def create_event_incomplete__locked(self, is_replying:bool=False):
 
         #since 1 user can only have 1 queue for 1 event, we create queues separately from new events
 
@@ -933,36 +957,17 @@ class RealisticBulkData():
         stopwatch.start()
         print('Creating event_reply_queues...')
 
-        #add last queue first, so no if-check is needed at every iteration
-        event_reply_queues.append(
-            EventReplyQueues(
-                event=events[-1],
-                locked_for_user=self.main_users[-1],
-                is_replying=is_replying,
-            )
-        )
+        filler_users = self.create_new_users(user_type='filler')
 
-        index = 0
+        for x, event in enumerate(events):
 
-        #will reliably exit when locked_for_user raises IndexError
-        #since we already created that object above
-        try:
-
-            while index < len(events):
-
-                event_reply_queues.append(
-                    EventReplyQueues(
-                        event=events[index],
-                        locked_for_user=self.main_users[index+1],
-                        is_replying=is_replying,
-                    )
+            event_reply_queues.append(
+                EventReplyQueues(
+                    event=event,
+                    locked_for_user=filler_users[x],
+                    is_replying=is_replying,
                 )
-
-                index += 1
-
-        except IndexError:
-
-            pass
+            )
 
         event_reply_queues = EventReplyQueues.objects.bulk_create(event_reply_queues, batch_size=self.db_batch_size)
         reset_queries()
@@ -1855,9 +1860,9 @@ class RealisticBulkData():
     #if you want more rows, specify max_randomness_iteration_count
         #1 is just enough for other tests
     #cmd:
-        #python manage.py shell -c "from voicewake.tests.test_metrics import RealisticBulkData; RealisticBulkData.sample_run(5, True);"
+        #python manage.py shell -c "from voicewake.tests.test_metrics import RealisticBulkData; RealisticBulkData.sample_run(5, True, 2);"
     @staticmethod
-    def sample_run(max_randomness_iteration_count=1, use_threads=True):
+    def sample_run(max_randomness_iteration_count=1, use_multiprocessing=True, subprocess_count=2):
 
         #add anything here for rows to be "earlier", beneficial for tests
 
@@ -1869,6 +1874,7 @@ class RealisticBulkData():
 
         realistic_bulk_data_class = RealisticBulkData(
             db_batch_size=500,
+            use_multiprocessing=use_multiprocessing,
         )
 
         while current_randomness_iteration_count < max_randomness_iteration_count:
@@ -1879,7 +1885,7 @@ class RealisticBulkData():
 
             realistic_bulk_data_class.prepare_like_dislike_estimate()
 
-            if use_threads is False:
+            if use_multiprocessing is False:
 
                 #use this for TestCase to check that sample_run() is ok
 
@@ -1897,7 +1903,7 @@ class RealisticBulkData():
 
                 #call once only for every user
                 queue_is_replying = random.randint(0, 1) == 1
-                realistic_bulk_data_class.create_event_incomplete_and_event_reply_queue(queue_is_replying,)
+                realistic_bulk_data_class.create_event_incomplete__locked(queue_is_replying,)
 
                 #users are not shared in these cases
                 realistic_bulk_data_class.create_processing_originators(user_type='filler')
@@ -1909,66 +1915,77 @@ class RealisticBulkData():
 
             else:
 
-                threads = []
+                #don't test in TestCase, can't get multiprocessing to work in TestCase
 
-                threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete, args=(True,)))
-                threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete, args=(False,)))
+                connections.close_all()
 
-                threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_completed))
-                threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_completed))
+                subprocesses = []
 
-                threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted, args=(True, True, False,)))
-                threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted, args=(True, False, True,)))
-                threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted, args=(True, True, True,)))
+                subprocesses.append(multiprocessing.Process(target=realistic_bulk_data_class.create_event_incomplete, args=(True,)))
+                subprocesses.append(multiprocessing.Process(target=realistic_bulk_data_class.create_event_incomplete, args=(False,)))
 
-                threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_deleted, args=(False, True,)))
+                subprocesses.append(multiprocessing.Process(target=realistic_bulk_data_class.create_event_completed))
+                subprocesses.append(multiprocessing.Process(target=realistic_bulk_data_class.create_event_completed))
+
+                subprocesses.append(multiprocessing.Process(target=realistic_bulk_data_class.create_event_deleted, args=(True, True, False,)))
+                subprocesses.append(multiprocessing.Process(target=realistic_bulk_data_class.create_event_deleted, args=(True, False, True,)))
+                subprocesses.append(multiprocessing.Process(target=realistic_bulk_data_class.create_event_deleted, args=(True, True, True,)))
+
+                subprocesses.append(multiprocessing.Process(target=realistic_bulk_data_class.create_event_deleted, args=(False, True,)))
 
                 #call once only for every user
                 queue_is_replying = random.randint(0, 1) == 1
-                threads.append(threading.Thread(target=realistic_bulk_data_class.create_event_incomplete_and_event_reply_queue, args=(queue_is_replying,)))
+                subprocesses.append(multiprocessing.Process(
+                    target=realistic_bulk_data_class.create_event_incomplete__locked, args=(queue_is_replying,)
+                ))
 
                 #users are not shared in these cases
-                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_originators, args=('filler',)))
-                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_responders, args=('filler',)))
+                subprocesses.append(multiprocessing.Process(target=realistic_bulk_data_class.create_processing_originators, args=('filler',)))
+                subprocesses.append(multiprocessing.Process(target=realistic_bulk_data_class.create_processing_responders, args=('filler',)))
 
                 #since not reusing users, create their processings now
-                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_originators, args=('main',)))
-                threads.append(threading.Thread(target=realistic_bulk_data_class.create_processing_responders, args=('main',)))
+                subprocesses.append(multiprocessing.Process(target=realistic_bulk_data_class.create_processing_originators, args=('main',)))
+                subprocesses.append(multiprocessing.Process(target=realistic_bulk_data_class.create_processing_responders, args=('main',)))
 
-                random.shuffle(threads)
+                random.shuffle(subprocesses)
 
-                #run 2 threads at a time
+                subprocess_index = 0
 
-                thread_index = 0
-
-                while thread_index < len(threads):
+                while subprocess_index < len(subprocesses):
 
                     is_last_thread = False
 
-                    #start threads
-
-                    threads[thread_index].start()
-
+                    #start
                     try:
 
-                        threads[thread_index+1].start()
+                        for x in range(subprocess_count):
+
+                            subprocesses[subprocess_index + x].start()
 
                     except IndexError:
 
                         is_last_thread = True
 
-                    #pause main thread until done
+                    #wait to finish
+                    try:
 
-                    threads[thread_index].join()
+                        for x in range(subprocess_count):
 
-                    if is_last_thread is False:
+                            subprocesses[subprocess_index + x].join()
 
-                        threads[thread_index+1].join()
-                        thread_index += 2
+                    except IndexError:
 
-                    else:
+                        pass
 
-                        thread_index += 1
+                    #subprocesses won't close their own connections
+                    connections.close_all()
+
+                    #no more subprocesses
+                    if is_last_thread is True:
+
+                        break
+
+                    subprocess_index += subprocess_count
 
             #GMT+8 for MY time
             print((get_datetime_now() + timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') + ': Done with one while-loop.')
@@ -1977,6 +1994,7 @@ class RealisticBulkData():
 
         #blocks, only perform after everything to ensure no new users come after
         realistic_bulk_data_class.create_user_blocks()
+
 
 
 
@@ -2269,7 +2287,7 @@ class RealisticBulkData_TestCase(TestCase):
         realistic_bulk_data_class.create_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
 
-        result = realistic_bulk_data_class.create_event_incomplete_and_event_reply_queue(is_replying=False)
+        result = realistic_bulk_data_class.create_event_incomplete__locked(is_replying=False)
 
         self.assertGreater(len(result['events']), 0)
         self.assertGreater(len(result['event_reply_queues']), 0)
@@ -2309,7 +2327,7 @@ class RealisticBulkData_TestCase(TestCase):
         realistic_bulk_data_class.create_new_users()
         realistic_bulk_data_class.prepare_like_dislike_estimate()
 
-        result = realistic_bulk_data_class.create_event_incomplete_and_event_reply_queue(is_replying=True)
+        result = realistic_bulk_data_class.create_event_incomplete__locked(is_replying=True)
 
         self.assertGreater(len(result['events']), 0)
         self.assertGreater(len(result['event_reply_queues']), 0)
@@ -3034,10 +3052,23 @@ class RealisticBulkData_SampleRun_TestCase(TestCase):
     def test_realistic_bulk_data__small_sample_run(self):
 
         #first run
-        RealisticBulkData.sample_run(max_randomness_iteration_count=1, use_threads=False,)
+        RealisticBulkData.sample_run(max_randomness_iteration_count=1, use_multiprocessing=False,)
 
         #test repeated calls
-        RealisticBulkData.sample_run(max_randomness_iteration_count=1, use_threads=False,)
+        RealisticBulkData.sample_run(max_randomness_iteration_count=1, use_multiprocessing=False,)
+
+        #every main_user should have only 1 or 0 EventReplyQueue
+
+        realistic_bulk_data_class = RealisticBulkData()
+
+        all_main_users = realistic_bulk_data_class.main_user_group.user_set.all()
+
+        for main_user in all_main_users:
+
+            self.assertLessEqual(
+                EventReplyQueues.objects.filter(locked_for_user=main_user).count(),
+                1
+            )
 
 
 
@@ -5102,6 +5133,12 @@ class ListEventReplyChoices_TestCase(TransactionTestCase):
 
                 login_user_has_other_queue = EventReplyQueues.objects.filter(locked_for_user=login_user).exists()
 
+                #if has queue already, don't proceed with test
+
+                if login_user_has_other_queue is True:
+
+                    print(f'test #{test_index} user has queue, skipping test')
+
                 #get earliest and latest event
 
                 earliest_event = Events.objects.raw(
@@ -5208,13 +5245,8 @@ class ListEventReplyChoices_TestCase(TransactionTestCase):
 
                         #only have row if nobody is blocking anyone
                         is_row_count_ok = (
-                            (login_user_has_other_queue is True and row_count == 0) or
-                            (
-                                login_user_has_other_queue is False and (
-                                    ((is_user_blocking is True or is_user_blocked is True) and row_count == 0) or
-                                    ((is_user_blocking is False and is_user_blocked is False) and row_count == 1)
-                                )
-                            )
+                            ((is_user_blocking is True or is_user_blocked is True) and row_count == 0) or
+                            ((is_user_blocking is False and is_user_blocked is False) and row_count == 1)
                         )
 
                         if show_raw_query is True:
