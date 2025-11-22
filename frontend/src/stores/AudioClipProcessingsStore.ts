@@ -7,7 +7,8 @@ import { defineStore } from 'pinia';
 import { getShortenedString, setPiniaDateObject } from '@/helper_functions';
 import AudioClipTonesTypes from '@/types/AudioClipTones.interface';
 import {
-    AudioClipProcessingStatusesTypes,
+    BackendAudioClipProcessingGenericStatusNames,
+    FrontendAudioClipProcessingStates,
     AudioClipProcessingDetailsTypes,
     ProcessingCacheTypes,
     EventsTypes,
@@ -126,7 +127,7 @@ export function useAudioClipProcessingsStore(){
                         const new_processing = this.updateProcessing(
                             audio_clip_id,
                             current_processing,
-                            'processed',
+                            'ok',
                         );
 
                         this.audio_clip_processings[audio_clip_id] = new_processing;
@@ -137,7 +138,7 @@ export function useAudioClipProcessingsStore(){
 
                     if(Object.hasOwn(result.data, 'attempts_left') === true){
 
-                        //ok, added to task queue
+                        //can proceed, added to task queue
 
                         const new_processing = this.updateProcessing(
                             audio_clip_id,
@@ -253,7 +254,7 @@ export function useAudioClipProcessingsStore(){
                             audio_clip_role_name: processing['audio_clip_role_name'],
                             event: processing['event'],
                             audio_clip_tone: processing['audio_clip_tone'],
-                            status: processing['status'],
+                            frontend_processing_state: processing['frontend_processing_state'] as BackendAudioClipProcessingGenericStatusNames,
                             last_attempt: '',
                             attempts_left: processing['attempts_left'],
                             title: '',
@@ -266,7 +267,7 @@ export function useAudioClipProcessingsStore(){
                         const new_processing = this.updateProcessing(
                             audio_clip_id,
                             default_processing,
-                            processing['status'],
+                            processing['frontend_processing_state'] as BackendAudioClipProcessingGenericStatusNames,
                             processing['attempts_left'],
                         )
 
@@ -298,9 +299,7 @@ export function useAudioClipProcessingsStore(){
                         throw error;
                     }
 
-                    //don't tell user anything if this fails
-                    //because not sure what the best approach is
-
+                    //do nothing if 404 "nothing is processing", so user can manually close popups
                 });
             },
             async checkProcessingStatusAPI(audio_clip_id:number) : Promise<void> {
@@ -333,7 +332,7 @@ export function useAudioClipProcessingsStore(){
                         const new_processing = this.updateProcessing(
                             audio_clip_id,
                             current_processing,
-                            'processed',
+                            'ok',
                         );
 
                         this.audio_clip_processings[audio_clip_id] = new_processing;
@@ -342,9 +341,9 @@ export function useAudioClipProcessingsStore(){
                         return;
 
                     }else if(
-                        Object.hasOwn(result.data, 'is_processing') === true &&
+                        Object.hasOwn(result.data, 'status') === true &&
                         Object.hasOwn(result.data, 'attempts_left') === true &&
-                        result.data['is_processing'] === false
+                        result.data['status'] === 'processing_failed'
                     ){
 
                         //not processing, i.e. failed
@@ -393,9 +392,9 @@ export function useAudioClipProcessingsStore(){
                         case 409:{
 
                             if(
-                                Object.hasOwn(error.response.data, 'is_processing') === true &&
+                                Object.hasOwn(error.response.data, 'status') === true &&
                                 Object.hasOwn(error.response.data, 'attempts_left') === true &&
-                                error.response.data['is_processing'] === true
+                                error.response.data['status'] === 'processing'
                             ){
 
                                 //still processing
@@ -450,15 +449,26 @@ export function useAudioClipProcessingsStore(){
                         throw new Error('Missing audio_clip_id.');
                     }
 
-                    if(error.request.status === 404){
+                    switch(error.request.status){
 
-                        //404 is treated as success
-                        return;
+                        case 404:
+
+                            //nothing to delete
+                            //user cache deletion will happen in another function
+                            return;
+
+                        case 409:
+
+                            //still processing
+                            return;
+
+                        default:
+
+                            //unexpected
+                            this.audio_clip_processings[audio_clip_id].is_closing = false;
+
+                            throw error;
                     }
-
-                    this.audio_clip_processings[audio_clip_id].is_closing = false;
-
-                    throw error;
                 });
             },
             getStaticValuesFromTemplate(data_container_element:HTMLElement) : void {
@@ -508,7 +518,7 @@ export function useAudioClipProcessingsStore(){
                         audio_clip_role_name: passed_is_originator === true ? 'originator' : 'responder',
                         event: passed_event,
                         audio_clip_tone: passed_audio_clip_tone,
-                        status: 'processing',
+                        frontend_processing_state: 'processing',
                         last_attempt: '',
                         attempts_left: null,
                         title: '',
@@ -572,8 +582,8 @@ export function useAudioClipProcessingsStore(){
                 if(
                     target_processing !== null &&
                     (
-                        target_processing.status === 'not_found' ||
-                        target_processing.status === 'processed'
+                        target_processing.frontend_processing_state === 'not_found' ||
+                        target_processing.frontend_processing_state === 'ok'
                     )
                 ){
 
@@ -585,6 +595,7 @@ export function useAudioClipProcessingsStore(){
 
                     await this.deleteProcessingAPI(audio_clip_id).then(()=>{
 
+                        //deleted something in db
                         main_callback();
 
                     }).catch(()=>{
@@ -626,8 +637,8 @@ export function useAudioClipProcessingsStore(){
                         const audio_clip_id = Number(audio_clip_ids[x]);
 
                         if(
-                            this.audio_clip_processings[audio_clip_id].status === 'processing_failed' ||
-                            this.audio_clip_processings[audio_clip_id].status === 'processing'
+                            this.audio_clip_processings[audio_clip_id].frontend_processing_state === 'processing_failed' ||
+                            this.audio_clip_processings[audio_clip_id].frontend_processing_state === 'processing'
                         ){
 
                             all_api_calls.push(this.checkProcessingStatusAPI(audio_clip_id));
@@ -654,11 +665,11 @@ export function useAudioClipProcessingsStore(){
             updateProcessing(
                 audio_clip_id:number,
                 processing:AudioClipProcessingDetailsTypes,
-                status:AudioClipProcessingStatusesTypes,
+                frontend_processing_state:FrontendAudioClipProcessingStates,
                 attempts_left:number|null=null,
             ) : AudioClipProcessingDetailsTypes {
 
-                switch(status){
+                switch(frontend_processing_state){
 
                     case 'processing': {
 
@@ -671,7 +682,7 @@ export function useAudioClipProcessingsStore(){
                             '"'
                         );
 
-                        processing.status = 'processing';
+                        processing.frontend_processing_state = 'processing';
                         processing.title = 'Processing recording';
                         processing.main_text = main_text;
                         processing.last_attempt = setPiniaDateObject(new Date());
@@ -681,7 +692,7 @@ export function useAudioClipProcessingsStore(){
                         return processing;
                     }
 
-                    case 'processed': {
+                    case 'ok': {
 
                         const event_url = (
                             window.location.origin + '/event/' +
@@ -697,7 +708,7 @@ export function useAudioClipProcessingsStore(){
                             '"'
                         );
 
-                        processing.status = 'processed';
+                        processing.frontend_processing_state = 'ok';
                         processing.title = 'Recording processed';
                         processing.main_text = main_text;
                         processing.last_attempt = '';
@@ -725,7 +736,7 @@ export function useAudioClipProcessingsStore(){
                             '" could not be fixed.'
                         );
 
-                        processing.status = 'not_found';
+                        processing.frontend_processing_state = 'not_found';
                         processing.title = 'Recording removed';
                         processing.main_text = main_text;
                         processing.last_attempt = '';
@@ -747,7 +758,7 @@ export function useAudioClipProcessingsStore(){
                             '" has issues.'
                         );
 
-                        processing.status = 'processing_failed';
+                        processing.frontend_processing_state = 'processing_failed';
                         processing.title = 'Recording error';
                         processing.main_text = main_text;
                         processing.attempts_left = attempts_left;

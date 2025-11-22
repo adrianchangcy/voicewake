@@ -46,7 +46,7 @@
                     <!--middle panel-->
                     <div
                         :class="[
-                            processing.status === 'processing' || hasActions(processing) ? 'pb-4' : 'pb-0.5',
+                            isStatusGeneric(processing) || hasActions(processing) ? 'pb-4' : 'pb-0.5',
                             hasCloseButton(processing) ? 'pl-4' : 'px-4',
                             'flex-1'
                         ]"
@@ -76,7 +76,7 @@
 
                         <!--progress bar-->
                         <div
-                            v-if="processing.status === 'processing'"
+                            v-if="isStatusGeneric(processing)"
                             class="h-10 flex items-center"
                         >
                             <VProgressBar
@@ -198,28 +198,32 @@
     function isStatusError(processing:AudioClipProcessingDetailsTypes) : boolean {
 
         return (
-            processing.status === 'processing_failed' ||
-            processing.status === 'not_found'
+            processing.frontend_processing_state === 'processing_failed' ||
+            processing.frontend_processing_state === 'not_found'
         );
     }
 
     function isStatusOk(processing:AudioClipProcessingDetailsTypes) : boolean {
 
         return (
-            processing.status === 'processed'
+            processing.frontend_processing_state === 'ok'
         );
     }
 
     function isStatusGeneric(processing:AudioClipProcessingDetailsTypes) : boolean {
 
         return (
-            processing.status === 'processing'
+            processing.frontend_processing_state === 'processing_pending' ||
+            processing.frontend_processing_state === 'processing'
         );
     }
 
     function determineVProgressBarStep(processing:AudioClipProcessingDetailsTypes) : number|null {
 
-        if(processing.status === 'processing'){
+        if(
+            processing.frontend_processing_state === 'processing_pending' ||
+            processing.frontend_processing_state === 'processing'
+        ){
 
             return 0;
 
