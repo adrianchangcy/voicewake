@@ -249,7 +249,7 @@
 
                             <!--if processing, just make user wait-->
                             <VDialogPlain
-                                v-if="reuploadStatus === 'processing'"
+                                v-if="reuploadStatus === 'processing' || reuploadStatus === 'processing_pending'"
                                 class="w-full h-fit"
                                 :prop-has-auto-space-logo="false"
                             >
@@ -426,15 +426,9 @@
                             />
                         </keep-alive>
 
-                        <VTitle
-                            v-show="expiry_string !== ''"
-                            prop-font-size="l"
-                            class="block py-2 w-fit mx-auto"
-                        >
-                            <template #titleDescription>
-                                Choice expires in {{ expiry_string }}.
-                            </template>
-                        </VTitle>
+                        <div class="w-fit text-sm mx-auto py-2">
+                            Choice expires in {{ expiry_string }}.
+                        </div>
                     </div>
 
                     <!--searching-->
@@ -499,7 +493,7 @@
     import { usePopUpManagerStore } from '@/stores/PopUpManagerStore';
     import { useAudioClipProcessingsStore } from '@/stores/AudioClipProcessingsStore';
     import { useVPlaybackStore } from '@/stores/VPlaybackStore';
-    import { AudioClipProcessingStatusesTypes } from '@/types/AudioClipProcessingDetails.interface';
+    import { FrontendAudioClipProcessingStates } from '@/types/AudioClipProcessingDetails.interface';
     import AudioClipActionsTypes from '@/types/AudioClipActions.interface';
 
 
@@ -560,7 +554,7 @@
 
                 return this.audio_clip_processings_store.getResponderProcessing !== null;
             },
-            reuploadStatus() : ''|AudioClipProcessingStatusesTypes {
+            reuploadStatus() : ''|FrontendAudioClipProcessingStates {
 
                 const processing = this.audio_clip_processings_store.getResponderProcessing;
 
@@ -569,7 +563,7 @@
                     return '';
                 }
 
-                return processing.status;
+                return processing.frontend_processing_state;
             },
             determineReuploadURL() : string {
 
