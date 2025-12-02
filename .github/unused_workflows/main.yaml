@@ -1,8 +1,84 @@
-name: Test, collectstatic, deploy
+#for things that went wrong, refer to: project > Actions > all workflows
+
+#workflow:
+  #done with feature branch, do pull request to main: test, collectstatic, build, deploy to stage
+  #pull request successful (merged): test, collectstatic, build, deploy to prod
+
+name: test, collectstatic, build, deploy
 
 on:
-  push:
-    branches: [ "main" ]
+  pull_request:
+    #opened/reopened: when pull request is made
+    #closed: when pull request is merged
+    types: [opened, closed]
+
+jobs:
+  run_test:
+    runs-on: ubuntu-latest
+    container:
+      image: python:latest
+    #postgres, redis
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    #run django tests
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+      - name: Install Django dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          python manage.py test voicewake.tests.test_apis.Core_TestCase
+          python manage.py test voicewake.tests.test_apis.Users_TestCase
+          python manage.py test voicewake.tests.test_apis.Core_NormaliseAudioClips_TestCase
+          python manage.py test voicewake.tests.test_cronjobs.Core_TestCase
+          python manage.py test voicewake.tests.test_cronjobs.Core_TransactionTestCase
+  # collectstatic:
+  # build_frontend:
+  # deploy_stage:
+  #   if: github.event.pull_request.merged == false
+  #   #...
+  # deploy_prod:
+  #   if: github.event.pull_request.merged == true
+  #   #...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 env:
   AWS_REGION: us-east-1                   # set this to your preferred AWS region, e.g. us-west-1
