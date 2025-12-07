@@ -6,6 +6,11 @@ import boto3
 
 
 
+#DJANGO_SETTINGS_MODULE
+#Django will auto-find this in env vars to decide which to use, i.e. dev/stage/prod.py at settings
+
+
+
 #find and load .env file
 #for local, we load .env file manually
 #for AWS, we specify stage.env or prod.env from S3, and the variables will be populated in
@@ -27,19 +32,21 @@ STATIC_CACHE_BUST_PREFIX = '?version='
 STATIC_CACHE_BUST_VERSION = STATIC_CACHE_BUST_PREFIX + '1.0.0'
 
 
-MAINTENANCE_MODE = int(os.environ['MAINTENANCE_MODE']) == 1
+MAINTENANCE_MODE = int(os.environ.get('MAINTENANCE_MODE', 0)) == 1
 
 
-IS_EC2 = int(os.environ['IS_EC2']) == 1
+#this dictates if secrets should be explicit at boto3 args, since AWS services will autofill when omitted
+IS_EC2 = int(os.environ.get('IS_EC2', 0)) == 1
 
 
-# SECURITY WARNING: keep the secret key used in production secret!
+#SECURITY WARNING: keep the secret key used in production secret
 #must use fixed SECRET_KEY for Django to sign session cookies
 #else if always using new SECRET_KEY, it would kill all existing sessions
 SECRET_KEY = os.environ['SECRET_KEY']
 
 
 #assuming your env var is as so: ALLOWED_HOSTS=domain.com,anotherdomain.com
+#dev is "*", but don't use as default, in case lacking .env in prod makes this disastrous
 ALLOWED_HOSTS = os.environ['ALLOWED_HOSTS'].split(",")
 
 
@@ -382,8 +389,9 @@ CHANNEL_LAYERS = {}
 
 
 #lockdown to keep site private
-LOCKDOWN_ENABLED = int(os.environ['LOCKDOWN_ENABLED']) == 1
-LOCKDOWN_PASSWORDS = (os.environ.get('LOCKDOWN_PASSWORD', ''),)
+#if-else for LOCKDOWN_PASSWORDS is better than always '' for default, i.e. when in lockdown but accidentally no password
+LOCKDOWN_ENABLED = int(os.environ.get('LOCKDOWN_ENABLED', 0)) == 1
+LOCKDOWN_PASSWORDS = ('',) if LOCKDOWN_ENABLED == 0 else (os.environ['LOCKDOWN_PASSWORD'],)
 
 
 #REDIS CACHE
@@ -400,11 +408,15 @@ CACHES = {
 
 
 #how long the audio clip processing updates should stay on Redis
-REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S=int(os.environ['REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S'])
+REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S = int(
+    os.environ.get('REDIS_AUDIO_CLIP_PROCESSING_CACHE_EXPIRY_S', 691200)
+)
 
 
 #how long from last sync to db before new sync is needed
-REDIS_AUDIO_CLIP_PROCESSING_CACHE_LAST_SYNC_FROM_DB_MIN_S = int(os.environ['REDIS_AUDIO_CLIP_PROCESSING_CACHE_LAST_SYNC_FROM_DB_MIN_S'])
+REDIS_AUDIO_CLIP_PROCESSING_CACHE_LAST_SYNC_FROM_DB_MIN_S = int(
+    os.environ.get('REDIS_AUDIO_CLIP_PROCESSING_CACHE_LAST_SYNC_FROM_DB_MIN_S', 600)
+)
 
 
 #if file uploaded to Django server is below this, store in memory, else disk
@@ -497,8 +509,8 @@ UNREGISTERED_USERS_DELETE_LIMIT = 100
 
 
 #PERFORMANCE
-BULK_CREATE_BATCH_SIZE = int(os.environ['BULK_CREATE_BATCH_SIZE'])
-BULK_UPDATE_BATCH_SIZE = int(os.environ['BULK_UPDATE_BATCH_SIZE'])
+BULK_CREATE_BATCH_SIZE = int(os.environ.get('BULK_CREATE_BATCH_SIZE', 100))
+BULK_UPDATE_BATCH_SIZE = int(os.environ.get('BULK_UPDATE_BATCH_SIZE', 100))
 
 
 #CELERY

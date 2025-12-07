@@ -11,7 +11,7 @@
 #create session
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 981060373951.dkr.ecr.us-east-1.amazonaws.com
 
-#build all services docker-compose-stage.yaml
+#build all services docker-compose-prod.yaml
 docker-compose --env-file ./env/prod.env --file docker-compose-prod.yaml up -d --no-deps --force-recreate --no-start --build
 
 #tag freshly built images with ECR tags
