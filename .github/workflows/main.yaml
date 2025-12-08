@@ -32,6 +32,7 @@ jobs:
       postgres:
         image: postgres
         env:
+          POSTGRES_DB: voicewake
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: localhost
         options: >-
