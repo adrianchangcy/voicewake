@@ -41,6 +41,7 @@ jobs:
         ports:
           - 6379:6379    
     #run django tests
+    #always using dev
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v4
@@ -52,13 +53,22 @@ jobs:
         run: |
           python manage.py test voicewake.tests.test_apis.Users_TestCase
         env:
-          DATABASE_NAME: postgres
-          DATABASE_USER: postgres
-          DATABASE_PASS: postgres
-          DATABASE_HOST: postgres
-          DATABASE_PORT: 5432
+          GIT_PR_NUMBER: ${{ github.event.pull_request.number }}
+          DJANGO_SETTINGS_MODULE: voicewake.settings.dev
+          SECRET_KEY: abc123
+          ALLOWED_HOSTS: "*"
+          DB_HOST: postgres
+          DB_NAME: voicewake
+          DB_USER: postgres
+          DB_PASSWORD: localhost
+          DB_PORT: 5432
           REDIS_ENDPOINT: redis://redis
-          REDIS_PASSWORD:
+          #tests don't use actual email, so leave AWS_SES empty
+          AWS_SES_HOST:
+          AWS_SES_SMTP_USER_NAME:
+          AWS_SES_SMTP_PASSWORD:
+          AWS_SES_FROM_EMAIL:
+          AWS_SES_IAM_USER_NAME:
   # collectstatic:
   # build_frontend:
   # deploy_stage:

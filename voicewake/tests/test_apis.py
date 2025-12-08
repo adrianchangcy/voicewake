@@ -832,7 +832,7 @@ class AudioClips_TestCase(TestCase):
             s3_region_name=os.environ['AWS_S3_REGION_NAME'],
             s3_aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
             s3_aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
-            processed_file_extension=os.environ.get('AUDIO_CLIP_PROCESSED_FILE_EXTENSION', 'mp3'),
+            processed_file_extension=settings.AUDIO_CLIP_PROCESSED_FILE_EXTENSION,
             use_timer=True,
         )
 
@@ -1382,7 +1382,7 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_audio_file='yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
+            audio_clip_audio_file='yolofolder/yolofile.' + settings.AUDIO_CLIP_PROCESSED_FILE_EXTENSION,
             audio_clip_generic_status_generic_status_name='ok',
         )
 
@@ -1678,7 +1678,7 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_audio_file='yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
+            audio_clip_audio_file='yolofolder/yolofile.' + settings.AUDIO_CLIP_PROCESSED_FILE_EXTENSION,
             audio_clip_generic_status_generic_status_name='ok',
         )
 
@@ -2272,7 +2272,7 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_audio_file='yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
+            audio_clip_audio_file='yolofolder/yolofile.' + settings.AUDIO_CLIP_PROCESSED_FILE_EXTENSION,
             audio_clip_generic_status_generic_status_name='processing',
         )
 
@@ -2303,7 +2303,7 @@ class Core_TestCase(TestCase):
             audio_clip_user=self.users[0],
             audio_clip_audio_clip_role_audio_clip_role_name='originator',
             audio_clip_event=sample_event_0,
-            audio_clip_audio_file='yolofolder/yolofile.' + os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION'],
+            audio_clip_audio_file='yolofolder/yolofile.' + settings.AUDIO_CLIP_PROCESSED_FILE_EXTENSION,
             audio_clip_generic_status_generic_status_name='processing',
         )
 

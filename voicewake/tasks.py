@@ -180,7 +180,7 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
     determined_processed_upload_key = CreateAudioClips.determine_processed_upload_key(
         unprocessed_upload_key=target_audio_clip.audio_file,
         unprocessed_file_extensions=settings.AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS,
-        processed_file_extension=os.environ['AUDIO_CLIP_PROCESSED_FILE_EXTENSION']
+        processed_file_extension=settings.AUDIO_CLIP_PROCESSED_FILE_EXTENSION
     )
 
     if determined_processed_upload_key == '':
