@@ -29,7 +29,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 #lazy but simple and effective solution, passed via context_processors.py
 #look into ManifestStaticFileStorage to automate this by adding hash to file names
 STATIC_CACHE_BUST_PREFIX = '?version='
-STATIC_CACHE_BUST_VERSION = STATIC_CACHE_BUST_PREFIX + '1.0.0'
+STATIC_CACHE_BUST_VERSION = os.environ.get('STATIC_CACHE_BUST_VERSION', '1.0.0')
+STATIC_CACHE_BUST_URL_APPEND = STATIC_CACHE_BUST_PREFIX + STATIC_CACHE_BUST_VERSION
 
 
 MAINTENANCE_MODE = int(os.environ.get('MAINTENANCE_MODE', 0)) == 1

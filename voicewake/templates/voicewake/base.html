@@ -41,18 +41,18 @@
         <!--ensure these are loaded first before content-->
         <!--crossorigin, with default "anonymous", just means to not send user credentials unless same origin-->
 
-        <link href="{% static 'voicewake/css/output.css' %}{{STATIC_CACHE_BUST_VERSION}}" rel="stylesheet" crossorigin/>
+        <link href="{% static 'voicewake/css/output.css' %}{{STATIC_CACHE_BUST_URL_APPEND}}" rel="stylesheet" crossorigin/>
 
         <!--loading fonts here is faster than in .css, due to one less request-->
-        <link href="{% static 'voicewake/fonts/Dongle-Regular.woff2' %}{{STATIC_CACHE_BUST_VERSION}}" as="font" type="type/woff2" crossorigin/>
-        <link href="{% static 'voicewake/fonts/Dongle-Regular.woff' %}{{STATIC_CACHE_BUST_VERSION}}" as="font" type="type/woff" crossorigin/>
+        <link href="{% static 'voicewake/fonts/Dongle-Regular.woff2' %}{{STATIC_CACHE_BUST_URL_APPEND}}" as="font" type="type/woff2" crossorigin/>
+        <link href="{% static 'voicewake/fonts/Dongle-Regular.woff' %}{{STATIC_CACHE_BUST_URL_APPEND}}" as="font" type="type/woff" crossorigin/>
         
         <!--.css cannot use dependency-injected links-->
         <style>
             @font-face {
                 font-family: 'Dongle';
-                src: url("{% static 'voicewake/fonts/Dongle-Regular.woff2' %}{{STATIC_CACHE_BUST_VERSION}}") format('woff2'),
-                url("{% static 'voicewake/fonts/Dongle-Regular.woff' %}{{STATIC_CACHE_BUST_VERSION}}") format('woff');
+                src: url("{% static 'voicewake/fonts/Dongle-Regular.woff2' %}{{STATIC_CACHE_BUST_URL_APPEND}}") format('woff2'),
+                url("{% static 'voicewake/fonts/Dongle-Regular.woff' %}{{STATIC_CACHE_BUST_URL_APPEND}}") format('woff');
                 font-weight: normal;
                 font-style: normal;
                 font-display: swap;
@@ -163,7 +163,7 @@
         -->
         <script type="module" crossorigin src="http://{{HOST}}:{{VITE_PORT}}/src/main.ts"></script>
     {% else %}
-        <script type="module" crossorigin src="{% static 'frontend/js/main.js' %}{{STATIC_CACHE_BUST_VERSION}}"></script>
+        <script type="module" crossorigin src="{% static 'frontend/js/main.js' %}{{STATIC_CACHE_BUST_URL_APPEND}}"></script>
     {% endif %}
 
 </html>
