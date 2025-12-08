@@ -4,6 +4,10 @@
   #done with feature branch, do pull request to main: test, collectstatic, build, deploy to stage
   #pull request successful (merged): test, collectstatic, build, deploy to prod
 
+#notes:
+  #commit to feature branch, then when making pull request, it takes the main.yaml at HEAD of the branch for Github Actions
+    #on close and reopen pull request, it reuses that same main.yaml, without referring to newer main.yaml
+
 name: test, collectstatic, build, deploy
 
 on:
@@ -75,19 +79,19 @@ jobs:
           AWS_SES_FROM_EMAIL:
           AWS_SES_IAM_USER_NAME:
           #at github secrets
-          AWS_S3_ACCESS_KEY_ID: {{ secrets.AWS_S3_ACCESS_KEY_ID }}
-          AWS_S3_SECRET_ACCESS_KEY: {{ secrets.AWS_S3_SECRET_ACCESS_KEY }}
-          AWS_S3_REGION_NAME: {{ secrets.AWS_S3_REGION_NAME }}
-          AWS_S3_CUSTOM_DOMAIN: {{ secrets.AWS_S3_CUSTOM_DOMAIN }}
-          AWS_S3_STATIC_BUCKET_NAME: {{ secrets.AWS_S3_STATIC_BUCKET_NAME }}
-          AWS_S3_MEDIA_BUCKET_NAME: {{ secrets.AWS_S3_MEDIA_BUCKET_NAME }}
-          AWS_S3_UGC_UNPROCESSED_BUCKET_NAME: {{ secrets.AWS_S3_UGC_UNPROCESSED_BUCKET_NAME }}
-          AWS_LAMBDA_ACCESS_KEY_ID: {{ secrets.AWS_LAMBDA_ACCESS_KEY_ID }}
-          AWS_LAMBDA_SECRET_ACCESS_KEY: {{ secrets.AWS_LAMBDA_SECRET_ACCESS_KEY }}
-          AWS_LAMBDA_REGION_NAME: {{ secrets.AWS_LAMBDA_REGION_NAME }}
-          AWS_LAMBDA_NORMALISE_FUNCTION_NAME: {{ secrets.AWS_LAMBDA_NORMALISE_FUNCTION_NAME }}
-          AWS_ECR_REGION_NAME: {{ secrets.AWS_ECR_REGION_NAME }}
-          AWS_ECR_ACCOUNT_ID: {{ secrets.AWS_ECR_ACCOUNT_ID }}
+          AWS_S3_ACCESS_KEY_ID: ${{ secrets.AWS_S3_ACCESS_KEY_ID }}
+          AWS_S3_SECRET_ACCESS_KEY: ${{ secrets.AWS_S3_SECRET_ACCESS_KEY }}
+          AWS_S3_REGION_NAME: ${{ secrets.AWS_S3_REGION_NAME }}
+          AWS_S3_CUSTOM_DOMAIN: ${{ secrets.AWS_S3_CUSTOM_DOMAIN }}
+          AWS_S3_STATIC_BUCKET_NAME: ${{ secrets.AWS_S3_STATIC_BUCKET_NAME }}
+          AWS_S3_MEDIA_BUCKET_NAME: ${{ secrets.AWS_S3_MEDIA_BUCKET_NAME }}
+          AWS_S3_UGC_UNPROCESSED_BUCKET_NAME: ${{ secrets.AWS_S3_UGC_UNPROCESSED_BUCKET_NAME }}
+          AWS_LAMBDA_ACCESS_KEY_ID: ${{ secrets.AWS_LAMBDA_ACCESS_KEY_ID }}
+          AWS_LAMBDA_SECRET_ACCESS_KEY: ${{ secrets.AWS_LAMBDA_SECRET_ACCESS_KEY }}
+          AWS_LAMBDA_REGION_NAME: ${{ secrets.AWS_LAMBDA_REGION_NAME }}
+          AWS_LAMBDA_NORMALISE_FUNCTION_NAME: ${{ secrets.AWS_LAMBDA_NORMALISE_FUNCTION_NAME }}
+          AWS_ECR_REGION_NAME: ${{ secrets.AWS_ECR_REGION_NAME }}
+          AWS_ECR_ACCOUNT_ID: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
   # collectstatic:
   # build_frontend:
   # deploy_stage:
