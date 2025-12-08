@@ -408,7 +408,7 @@ class AWSConnections_FromEC2_TestCase(TestCase):
 
         lambda_wrapper_class = AWSLambdaWrapper(
             is_ec2=settings.IS_EC2,
-            timeout_s=int(os.environ['AWS_LAMBDA_NORMALISE_TIMEOUT_S']),
+            timeout_s=settings.AWS_LAMBDA_NORMALISE_TIMEOUT_S,
             region_name=os.environ['AWS_LAMBDA_REGION_NAME'],
             aws_access_key_id=os.environ['AWS_LAMBDA_ACCESS_KEY_ID'],
             aws_secret_access_key=os.environ['AWS_LAMBDA_SECRET_ACCESS_KEY'],
@@ -14551,7 +14551,7 @@ class Core_NormaliseAudioClips_TestCase(TestCase):
 
         lambda_wrapper = AWSLambdaWrapper(
             is_ec2=False,
-            timeout_s=int(os.environ['AWS_LAMBDA_NORMALISE_TIMEOUT_S']),
+            timeout_s=settings.AWS_LAMBDA_NORMALISE_TIMEOUT_S,
             region_name=os.environ['AWS_LAMBDA_REGION_NAME'],
             aws_access_key_id=os.environ['AWS_LAMBDA_ACCESS_KEY_ID'],
             aws_secret_access_key=os.environ['AWS_LAMBDA_SECRET_ACCESS_KEY'],
