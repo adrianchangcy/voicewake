@@ -7,6 +7,7 @@
 #notes:
   #commit to feature branch, then when making pull request, it takes the main.yaml at HEAD of the branch for Github Actions
     #on close and reopen pull request, it reuses that same main.yaml, without referring to newer main.yaml
+  #not having $ in ${{}} would cause github actions to fail silently
 
 name: test, collectstatic, build, deploy
 
@@ -31,7 +32,8 @@ jobs:
       postgres:
         image: postgres
         env:
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: localhost
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
