@@ -69,6 +69,20 @@ jobs:
           AWS_SES_SMTP_PASSWORD:
           AWS_SES_FROM_EMAIL:
           AWS_SES_IAM_USER_NAME:
+          #at github secrets:
+            # AWS_S3_ACCESS_KEY_ID
+            # AWS_S3_SECRET_ACCESS_KEY
+            # AWS_S3_REGION_NAME
+            # AWS_S3_CUSTOM_DOMAIN
+            # AWS_S3_STATIC_BUCKET_NAME
+            # AWS_S3_MEDIA_BUCKET_NAME
+            # AWS_S3_UGC_UNPROCESSED_BUCKET_NAME
+            # AWS_LAMBDA_ACCESS_KEY_ID
+            # AWS_LAMBDA_SECRET_ACCESS_KEY
+            # AWS_LAMBDA_REGION_NAME
+            # AWS_LAMBDA_NORMALISE_FUNCTION_NAME
+            # AWS_ECR_REGION_NAME
+            # AWS_ECR_ACCOUNT_ID
   # collectstatic:
   # build_frontend:
   # deploy_stage:
