@@ -177,7 +177,7 @@ LOGGING = {
 
 #logging specification
 #note that logging to CloudWatch is not immediate, since there seems to be around a minute of delay
-USE_CLOUDWATCH = int(os.environ['USE_CLOUDWATCH']) == 1
+USE_CLOUDWATCH = int(os.environ.get('USE_CLOUDWATCH', 0)) == 1
 AWS_LOG_CLIENT = None
 
 if USE_CLOUDWATCH is True:
@@ -434,9 +434,15 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 5000000   #4.77mb
         #however, the file type that end-user has, cannot be enforced, e.g. ".wav" uploading to ".mp3" key
 AUDIO_CLIP_UNPROCESSED_FILE_EXTENSIONS = ['webm',]
 AUDIO_CLIP_UNPROCESSED_EXPIRY_S = 3600  #1 hour
+
+
+#PROCESSING
 AUDIO_CLIP_PROCESSING_MAX_ATTEMPTS = 5
+AWS_LAMBDA_NORMALISE_TIMEOUT_S = int(os.environ.get('AWS_LAMBDA_NORMALISE_TIMEOUT_S', 60))
+AUDIO_CLIP_PROCESSED_FILE_EXTENSION = os.environ.get('AUDIO_CLIP_PROCESSED_FILE_EXTENSION', 'mp3')
 
 
+#BROWSE
 GENERAL_ROW_QUANTITY_PER_PAGE = 20
 
 
