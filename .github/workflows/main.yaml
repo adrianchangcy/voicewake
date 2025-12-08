@@ -8,6 +8,10 @@
   #commit to feature branch, then when making pull request, it takes the main.yaml at HEAD of the branch for Github Actions
     #on close and reopen pull request, it reuses that same main.yaml, without referring to newer main.yaml
   #not having $ in ${{}} would cause github actions to fail silently
+  #rerunning a github action job will just reuse the main.yaml tied to it, not latest committed version
+  #in yaml, there are "|" (pipe) and ">" in "run"
+    #"|" respects nextlines and trailing spaces, i.e. you can run multiple consecutive commands by newline separation
+    #">" will fold newlines to spaces, i.e. just makes an ultralong command easier to read and edit
 
 name: test, collectstatic, build, deploy
 
@@ -61,6 +65,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+      - name: Perform migration to db
+        run: |
+          python manage.py migrate
       - name: Run tests
         run: |
           python manage.py test voicewake.tests.test_apis.Users_TestCase
