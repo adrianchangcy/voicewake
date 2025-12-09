@@ -104,6 +104,7 @@ jobs:
           AWS_LAMBDA_NORMALISE_FUNCTION_NAME: ${{ secrets.AWS_LAMBDA_NORMALISE_FUNCTION_NAME }}
           AWS_ECR_REGION_NAME: ${{ secrets.AWS_ECR_REGION_NAME }}
           AWS_ECR_ACCOUNT_ID: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
+        #
   # collectstatic:
   # build_frontend:
   # deploy_stage:
