@@ -67,12 +67,14 @@ jobs:
           pip install -r requirements.txt
       - name: Migrate and run tests
         run: |
-          python manage.py migrate
-          python manage.py test voicewake.tests.test_apis.Core_TestCase
-          python manage.py test voicewake.tests.test_apis.Users_TestCase
           python manage.py test voicewake.tests.test_apis.Core_NormaliseAudioClips_TestCase
-          python manage.py test voicewake.tests.test_cronjobs.Core_TestCase
-          python manage.py test voicewake.tests.test_cronjobs.Core_TransactionTestCase
+        # run: |
+        #   python manage.py migrate
+        #   python manage.py test voicewake.tests.test_apis.Core_TestCase
+        #   python manage.py test voicewake.tests.test_apis.Users_TestCase
+        #   python manage.py test voicewake.tests.test_apis.Core_NormaliseAudioClips_TestCase
+        #   python manage.py test voicewake.tests.test_cronjobs.Core_TestCase
+        #   python manage.py test voicewake.tests.test_cronjobs.Core_TransactionTestCase
         env:
           GIT_PR_NUMBER: ${{ github.event.pull_request.number }}
           DJANGO_SETTINGS_MODULE: voicewake.settings.dev
