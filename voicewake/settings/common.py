@@ -132,6 +132,25 @@ INSTALLED_APPS = [
 ]
 
 
+#AWS S3
+#github actions environment -> main.yaml is causing botocore header to have unwanted newline, hence .strip()
+AWS_S3_ACCESS_KEY_ID = os.environ['AWS_S3_ACCESS_KEY_ID'].strip('\n')
+AWS_S3_SECRET_ACCESS_KEY = os.environ['AWS_S3_SECRET_ACCESS_KEY'].strip('\n')
+AWS_S3_REGION_NAME = os.environ['AWS_S3_REGION_NAME'].strip('\n')
+AWS_S3_CUSTOM_DOMAIN = os.environ['AWS_S3_CUSTOM_DOMAIN'].strip('\n')
+AWS_S3_STATIC_BUCKET_NAME = os.environ['AWS_S3_STATIC_BUCKET_NAME'].strip('\n')
+AWS_S3_MEDIA_BUCKET_NAME = os.environ['AWS_S3_MEDIA_BUCKET_NAME'].strip('\n')
+AWS_S3_UGC_UNPROCESSED_BUCKET_NAME = os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'].strip('\n')
+
+
+#AWS Lambda
+#github actions environment -> main.yaml is causing botocore header to have unwanted newline, hence .strip()
+AWS_LAMBDA_ACCESS_KEY_ID = os.environ['AWS_LAMBDA_ACCESS_KEY_ID'].strip('\n')
+AWS_LAMBDA_SECRET_ACCESS_KEY = os.environ['AWS_LAMBDA_SECRET_ACCESS_KEY'].strip('\n')
+AWS_LAMBDA_REGION_NAME = os.environ['AWS_LAMBDA_REGION_NAME'].strip('\n')
+AWS_LAMBDA_NORMALISE_FUNCTION_NAME = os.environ['AWS_LAMBDA_NORMALISE_FUNCTION_NAME'].strip('\n')
+
+
 CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_ORIGINS = [
@@ -187,16 +206,16 @@ if USE_CLOUDWATCH is True:
 
         AWS_LOG_CLIENT = boto3.client(
             service_name='logs',
-            region_name=os.environ['AWS_CLOUDWATCH_REGION_NAME'],
+            region_name=os.environ['AWS_CLOUDWATCH_REGION_NAME'].strip('\n'),
         )
 
     else:
 
         AWS_LOG_CLIENT = boto3.client(
             service_name='logs',
-            aws_access_key_id=os.environ['AWS_CLOUDWATCH_ACCESS_KEY_ID'],
-            aws_secret_access_key=os.environ['AWS_CLOUDWATCH_SECRET_ACCESS_KEY'],
-            region_name=os.environ['AWS_CLOUDWATCH_REGION_NAME'],
+            aws_access_key_id=os.environ['AWS_CLOUDWATCH_ACCESS_KEY_ID'].strip('\n'),
+            aws_secret_access_key=os.environ['AWS_CLOUDWATCH_SECRET_ACCESS_KEY'].strip('\n'),
+            region_name=os.environ['AWS_CLOUDWATCH_REGION_NAME'].strip('\n'),
         )
 
     LOGGING['handlers'].update({
@@ -204,7 +223,7 @@ if USE_CLOUDWATCH is True:
             'level': 'ERROR',
             'class': 'watchtower.CloudWatchLogHandler',
             'boto3_client': AWS_LOG_CLIENT,
-            'log_group': os.environ['AWS_CLOUDWATCH_LOG_GROUP'],
+            'log_group': os.environ['AWS_CLOUDWATCH_LOG_GROUP'].strip('\n'),
             #can use different stream_name for each environment if needed
             'stream_name': f'logs',
             'formatter': 'verbose',
@@ -462,10 +481,10 @@ EVENT_INCOMPLETE_QUEUE_MAX_AGE_S = 302400   #3 days 12 hours
 #EMAIL
 #ports 465 (SSL), 587 (TLS, recommended)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.environ['AWS_SES_HOST']
-EMAIL_HOST_USER = os.environ['AWS_SES_SMTP_USER_NAME']
-EMAIL_HOST_PASSWORD = os.environ['AWS_SES_SMTP_PASSWORD']
-DEFAULT_FROM_EMAIL = os.environ['AWS_SES_FROM_EMAIL']
+EMAIL_HOST = os.environ['AWS_SES_HOST'].strip('\n')
+EMAIL_HOST_USER = os.environ['AWS_SES_SMTP_USER_NAME'].strip('\n')
+EMAIL_HOST_PASSWORD = os.environ['AWS_SES_SMTP_PASSWORD'].strip('\n')
+DEFAULT_FROM_EMAIL = os.environ['AWS_SES_FROM_EMAIL'].strip('\n')
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
 

@@ -232,7 +232,7 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
         )
 
         lambda_response_data = lambda_wrapper.invoke_normalise_audio_clips_lambda(
-            s3_region_name=os.environ['AWS_S3_REGION_NAME'],
+            s3_region_name=settings.AWS_S3_REGION_NAME,
             unprocessed_object_key=target_audio_clip.audio_file,
             processed_object_key=determined_processed_upload_key,
             unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
