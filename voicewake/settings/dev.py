@@ -52,9 +52,6 @@ MIDDLEWARE = [
 ] + MIDDLEWARE
 
 
-AWS_S3_CUSTOM_DOMAIN = os.environ['AWS_S3_CUSTOM_DOMAIN']
-
-
 #this is the starting portion of S3 path, since there's media/dev, media/stage, media/prod, etc.
 #the API that determines paths of new files will use this
     #services.S3PostWrapper.generate_unprocessed_object_key

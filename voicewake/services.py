@@ -1672,12 +1672,12 @@ class CreateAudioClips():
         self.s3_post_wrapper = S3PostWrapper(
             is_ec2=self.is_ec2,
             allowed_unprocessed_file_extensions=self.unprocessed_file_extensions,
-            region_name=os.environ['AWS_S3_REGION_NAME'],
+            region_name=settings.AWS_S3_REGION_NAME,
             unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
             s3_audio_file_max_size_b=settings.AWS_S3_AUDIO_FILE_MAX_SIZE_B,
             url_expiry_s=settings.AWS_S3_UPLOAD_URL_EXPIRY_S,
-            aws_access_key_id=os.environ['AWS_S3_ACCESS_KEY_ID'],
-            aws_secret_access_key=os.environ['AWS_S3_SECRET_ACCESS_KEY'],
+            aws_access_key_id=settings.AWS_S3_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_S3_SECRET_ACCESS_KEY,
         )
 
 
