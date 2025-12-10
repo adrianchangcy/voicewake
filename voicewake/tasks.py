@@ -226,17 +226,17 @@ def task_normalisation(user_id:int, processing_cache_key:str, audio_clip_id:int,
         lambda_wrapper = AWSLambdaWrapper(
             is_ec2=settings.IS_EC2,
             timeout_s=settings.AWS_LAMBDA_NORMALISE_TIMEOUT_S,
-            region_name=os.environ['AWS_LAMBDA_REGION_NAME'],
-            aws_access_key_id=os.environ['AWS_LAMBDA_ACCESS_KEY_ID'],
-            aws_secret_access_key=os.environ['AWS_LAMBDA_SECRET_ACCESS_KEY'],
+            region_name=settings.AWS_LAMBDA_REGION_NAME,
+            aws_access_key_id=settings.AWS_LAMBDA_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_LAMBDA_SECRET_ACCESS_KEY,
         )
 
         lambda_response_data = lambda_wrapper.invoke_normalise_audio_clips_lambda(
             s3_region_name=settings.AWS_S3_REGION_NAME,
             unprocessed_object_key=target_audio_clip.audio_file,
             processed_object_key=determined_processed_upload_key,
-            unprocessed_bucket_name=os.environ['AWS_S3_UGC_UNPROCESSED_BUCKET_NAME'],
-            processed_bucket_name=os.environ['AWS_S3_MEDIA_BUCKET_NAME'],
+            unprocessed_bucket_name=settings.AWS_S3_UGC_UNPROCESSED_BUCKET_NAME,
+            processed_bucket_name=settings.AWS_S3_MEDIA_BUCKET_NAME,
         )
 
     except:
