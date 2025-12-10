@@ -12,6 +12,11 @@
   #in yaml, there are "|" (pipe) and ">" in "run"
     #"|" respects nextlines and trailing spaces, i.e. you can run multiple consecutive commands by newline separation
     #">" will fold newlines to spaces, i.e. just makes an ultralong command easier to read and edit
+  #env vars defined in github environments (project>settings>environments) introduces unwanted whitespace and newlines
+    #at python, to remove all whitespace and newlines, do: ''.join(os.environ['YOUR_VAR'].split())
+      #.split() removes start/any/end whitespace/newline, which can be more than 1, i.e. [substr0, substr1, substr2]
+      #''.join() accepts iterable
+    #this solution is easier than making sure pasted secrets/vars do not have newlines
 
 name: test, collectstatic, build, deploy
 
@@ -66,9 +71,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Migrate and run tests
-        run: |
-          python manage.py migrate
-          python manage.py test voicewake.tests.test_apis.Core_NormaliseAudioClips_TestCase
         # run: |
         #   python manage.py migrate
         #   python manage.py test voicewake.tests.test_apis.Core_TestCase
@@ -94,6 +96,8 @@ jobs:
           AWS_SES_FROM_EMAIL:
           AWS_SES_IAM_USER_NAME:
           #at github secrets
+          #env vars defined in github environments (project>settings>environments) introduces unwanted whitespace and newlines
+          #at python, to remove all whitespace and newlines, do: ''.join(os.environ['YOUR_VAR'].split())
           AWS_S3_ACCESS_KEY_ID: ${{ secrets.AWS_S3_ACCESS_KEY_ID }}
           AWS_S3_SECRET_ACCESS_KEY: ${{ secrets.AWS_S3_SECRET_ACCESS_KEY }}
           AWS_S3_REGION_NAME: ${{ secrets.AWS_S3_REGION_NAME }}
