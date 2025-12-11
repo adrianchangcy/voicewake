@@ -20,9 +20,19 @@
   #resources
     #***https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments
 
-#workflow:
-  #done with feature branch, do pull request to main: test, collectstatic, build, deploy to stage
-  #pull request successful (merged): test, collectstatic, build, deploy to prod
+#to skip jobs:
+  #do "if: false" inside a job
+
+#to only run a job on pull request merged:
+  #github.event.pull_request.merged == true
+
+#potential silly mistakes:
+  #if you write {{}} instead of ${{}}, github actions will fail silently
+
+#caution:
+  #you may have accidentally included an unwanted newline at github secrets input field, or github is the culprit
+    #AWS credentials are prone to catching this error
+    #at python, to remove all whitespace and newlines, do: ''.join(os.environ['YOUR_VAR'].split())
 
 #notes:
   #commit to feature branch, then when making pull request, it takes the main.yaml at HEAD of the branch for Github Actions
@@ -42,7 +52,17 @@
     #to make it sequential, use "needs: another_job_name" directly under job name, to make a job dependent on another
   #to run on pull request merged:
     #if: github.event.pull_request.merged == true
-  #pull request + reopened will always refer to latest .yaml, even when there are changes between original opened and new reopened
+  #pull request + reopened will always refer to latest .yaml, even when there are new commits between original opened and new reopened
+  #to skip a job:
+    #jobs:
+      #job_name:
+        #if: false
+  #to make a job only run when another job is successful:
+    #jobs:
+      #job_name0:
+        #...
+      #job_name1:
+        #needs: job_name0
 
 name: test, collectstatic, build, deploy
 
@@ -55,11 +75,15 @@ on:
     types: [opened, reopened, closed]
 
 jobs:
-  #run this testing on pull request open and when merged
+  #run tests on pull request open/reopen/merged
+  #"closed" alone does not guarantee merged == true
   run_tests:
-    #make this false to skip this job, while we test other things
-    if: false
-    # if: ${{ github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.pull_request.merged == true) }}
+    #using ">" instead of "|" so whitespace and newlines below are not preserved, i.e. only pretty in .yaml
+    if: >
+      ${{
+          github.event_name == 'pull_request' &&
+          (github.event.action == 'opened' || github.event.action == 'reopened' || github.event.pull_request.merged == true)
+      }}
     #specify environment to choose from git > settings > environments
     #https://stackoverflow.com/questions/66521958/how-to-access-environment-secrets-from-a-github-workflow
     environment: dev
@@ -137,9 +161,14 @@ jobs:
           python manage.py test voicewake.tests.test_apis.Core_NormaliseAudioClips_TestCase
           python manage.py test voicewake.tests.test_cronjobs.Core_TestCase
           python manage.py test voicewake.tests.test_cronjobs.Core_TransactionTestCase
+  #always push to ECR before closed
   docker_build_tag_push_to_ecr:
-    # needs: run_tests
-    if: ${{ github.event_name == 'pull_request' && github.event.action != 'closed' }}
+    needs: run_tests
+    if: >
+      ${{
+          github.event_name == 'pull_request' &&
+          (github.event.action == 'opened' || github.event.action == 'reopened')
+      }}
     environment: dev
     runs-on: ubuntu-latest
     permissions:
@@ -148,6 +177,7 @@ jobs:
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v5
+      #before starting AWS credentials, read above on prerequisite via OIDC
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502
         with:
@@ -156,57 +186,37 @@ jobs:
       - name: Login to AWS ECR
         id: login-aws-ecr
         uses: aws-actions/amazon-ecr-login@v2
-      - name: Build, tag, push to AWS ECR
+      #github action runs at root of repository, not ./.github/workflows/*
+        #i.e. no need to do ../../../docker-compose.yaml
+      - name: Build with Docker Compose, tag with AWS ECR tags, and push to AWS ECR using the tags
         env:
+          DOCKER_COMPOSE_NAME: vw
           AWS_ECR_ACCOUNT_ID: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
           AWS_ECR_REGION_NAME: ${{ secrets.AWS_ECR_REGION_NAME }}
+          #using numbered image tag instead of "latest", allows 0 conflict between server-used images and new images
           IMAGE_TAG: ${{ github.event.pull_request.number }}
-          DOCKER_COMPOSE_NAME: vw
         #github deprecated v1, so use "docker compose", not "docker-compose"
-          #https://github.com/orgs/community/discussions/116610
-        #github action runs at root of repository, not ./.github/workflows/*, i.e. no need to do ../../../
-        #if your docker compose container uses "image" option directly instead of .dockerfile, tag and push the "image" option itself
-        #1 docker image can have many tags
+        #docker tag image reference tip
+          #for docker compose images that only has "image" in .yaml to use fully prebuilt images, no .dockerfile, e.g. "redis:latest":
+            #must reference it using "redis:latest"
+          #for docker compose build images that use .dockerfile, docker has a default naming convention for it:
+            #must reference it using "COMPOSE_NAME_AT_YAML-container_name:latest"
         #1 docker tag can only point to 1 image
-        #OLD
-        # run: |
-        #   echo "REGISTRY=${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com" >> $GITHUB_ENV
-        #   docker compose --file ../../../docker-compose.yaml up -d --no-deps --force-recreate --no-start --build
-        #   docker tag "vw-django_celery_beat:${IMAGE_TAG}" "${REGISTRY}/vw-django_celery_beat:${IMAGE_TAG}"
-        #   docker tag "vw-django_celery_worker:${IMAGE_TAG}" "${REGISTRY}/vw-django_celery_worker:${IMAGE_TAG}"
-        #   docker tag "vw-django_gunicorn:${IMAGE_TAG}" "${REGISTRY}/vw-django_gunicorn:${IMAGE_TAG}"
-        #   docker tag "vw-nginx:${IMAGE_TAG}" "${REGISTRY}/vw-nginx:${IMAGE_TAG}"
-        #   docker tag "vw-redis:${IMAGE_TAG}" "${REGISTRY}/vw-redis:${IMAGE_TAG}"
-        #   docker push "${REGISTRY}/vw-django_celery_beat:${IMAGE_TAG}"
-        #   docker push "${REGISTRY}/vw-django_celery_worker:${IMAGE_TAG}"
-        #   docker push "${REGISTRY}/vw-django_gunicorn:${IMAGE_TAG}"
-        #   docker push "${REGISTRY}/vw-nginx:${IMAGE_TAG}"
-        #   docker push "${REGISTRY}/vw-redis:${IMAGE_TAG}"
-        #SUCCESS
-        # run: |
-          # export REGISTRY="${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com"
-          # docker compose --file docker-compose.yaml up -d --no-deps --force-recreate --no-start --build redis
-          # docker tag "redis:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
-          # docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
-        #TEST
         run: |
           export REGISTRY="${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com"
-          docker compose --file docker-compose.yaml up -d --no-deps --force-recreate --no-start --build django_celery_worker
+          docker compose --file docker-compose.yaml up -d --no-deps --force-recreate --no-start --build
+          docker tag "${DOCKER_COMPOSE_NAME}-django_celery_beat:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_celery_beat:${IMAGE_TAG}"
           docker tag "${DOCKER_COMPOSE_NAME}-django_celery_worker:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_celery_worker:${IMAGE_TAG}"
+          docker tag "${DOCKER_COMPOSE_NAME}-django_gunicorn:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_gunicorn:${IMAGE_TAG}"
+          docker tag "${DOCKER_COMPOSE_NAME}-nginx:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/nginx:${IMAGE_TAG}"
+          docker tag "redis:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
+          docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_celery_beat:${IMAGE_TAG}"
           docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_celery_worker:${IMAGE_TAG}"
+          docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_gunicorn:${IMAGE_TAG}"
+          docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_nginx:${IMAGE_TAG}"
+          docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_redis:${IMAGE_TAG}"
 
-  #ecr_rename_to_latest: todo?
-    # if: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true }}
-
-
-  # collectstatic:
-  # build_frontend:
-  # deploy_stage:
-  #   if: github.event.pull_request.merged == false
-  #   #...
-  # deploy_prod:
-  #   if: github.event.pull_request.merged == true
-  #   #...
+  #collectstatic + upload to S3? if use versioning, how to ensure servers refer correctly?
 
 
 
