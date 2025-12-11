@@ -1,5 +1,24 @@
 #for things that went wrong, refer to: project > Actions > all workflows
 
+#consider this to test github actions locally:
+  #https://github.com/nektos/act
+
+#to avoid using long-lived secrets, there's a recommended whole headache to setting up OpenID Connect (OIDC)
+  #at IAM > policies > add all ECR actions in it
+  #at IAM > identity providers > add >
+    #provider type: OpenID Connect
+    #provider URL: https://token.actions.githubusercontent.com
+    #audience: sts.amazonaws.com
+  #at IAM > roles > create >
+    #trusted identity type: Web identity
+    #identity provider: the one you created, should be listed as "token.actions.githubusercontent.com"
+    #audience: sts.amazonaws.com
+    #github organization: your_github_username_or_actual_github_org
+    #permission: select the ECR policy with all ECR actions
+
+  #resources
+    #***https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments
+
 #workflow:
   #done with feature branch, do pull request to main: test, collectstatic, build, deploy to stage
   #pull request successful (merged): test, collectstatic, build, deploy to prod
@@ -73,7 +92,7 @@ jobs:
     #always using dev
     steps:
       - name: Checkout repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Install Django dependencies
         run: |
           python -m pip install --upgrade pip
@@ -121,23 +140,20 @@ jobs:
     if: ${{ github.event_name == 'pull_request' && github.event.action == 'opened' }}
     environment: dev
     runs-on: ubuntu-latest
-    #permissions required by AWS login
     permissions:
-      id-token: write
-      contents: read 
+      id-token: write   # This is required for requesting the AWS JWT
+      contents: read    # This is required for actions/checkout
     steps:
       - name: Checkout repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502
         with:
-          #create IAM policy that covers ECR actions
-          #create IAM role > custom trust policy > see right side > tick AssumeRole + add Principal > select policy above > use ARN of role in secrets
           role-to-assume: ${{ secrets.AWS_ECR_ROLE_TO_ASSUME }}
           aws-region: ${{ secrets.AWS_ECR_REGION_NAME }}
-      - name: Login to AWS ECR
-        id: login-aws-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+      # - name: Login to AWS ECR
+        # id: login-aws-ecr
+        # uses: aws-actions/amazon-ecr-login@v1
       - name: Build, tag, push to AWS ECR
         env:
           AWS_ECR_ACCOUNT_ID: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
