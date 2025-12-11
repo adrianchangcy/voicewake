@@ -121,6 +121,10 @@ jobs:
     if: ${{ github.event_name == 'pull_request' && github.event.action == 'opened' }}
     environment: dev
     runs-on: ubuntu-latest
+    #permissions required by AWS login
+    permissions:
+      id-token: write
+      contents: read 
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v4
