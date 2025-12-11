@@ -178,7 +178,7 @@ jobs:
         #   docker push "${REGISTRY}/vw-nginx:${IMAGE_TAG}"
         #   docker push "${REGISTRY}/vw-redis:${IMAGE_TAG}"
         run: |
-          echo "REGISTRY=${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com" >> $GITHUB_ENV
+          export REGISTRY=${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com"
           docker compose --file docker-compose.yaml up -d --no-deps --force-recreate --no-start --build redis
           docker tag "${DOCKER_COMPOSE_NAME}/redis" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
           docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
