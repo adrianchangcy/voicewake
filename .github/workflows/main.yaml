@@ -213,8 +213,8 @@ jobs:
           docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_celery_beat:${IMAGE_TAG}"
           docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_celery_worker:${IMAGE_TAG}"
           docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_gunicorn:${IMAGE_TAG}"
-          docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_nginx:${IMAGE_TAG}"
-          docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_redis:${IMAGE_TAG}"
+          docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/nginx:${IMAGE_TAG}"
+          docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
 
   #collectstatic + upload to S3? if use versioning, how to ensure servers refer correctly?
 
