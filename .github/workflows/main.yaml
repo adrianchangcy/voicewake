@@ -140,19 +140,25 @@ jobs:
           AWS_ECR_REGION_NAME: ${{ secrets.AWS_ECR_REGION_NAME }}
           IMAGE_TAG: ${{ github.event.pull_request.number }}
         #github deprecated v1, so use "docker compose", not "docker-compose"
+        # run: |
+        #   echo "REGISTRY=${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com" >> $GITHUB_ENV
+        #   docker compose --file ../../../docker-compose-stage-prod.yaml up -d --no-deps --force-recreate --no-start --build
+        #   docker tag "vw-django_celery_beat:${IMAGE_TAG}" "${REGISTRY}/vw-django_celery_beat:${IMAGE_TAG}"
+        #   docker tag "vw-django_celery_worker:${IMAGE_TAG}" "${REGISTRY}/vw-django_celery_worker:${IMAGE_TAG}"
+        #   docker tag "vw-django_gunicorn:${IMAGE_TAG}" "${REGISTRY}/vw-django_gunicorn:${IMAGE_TAG}"
+        #   docker tag "vw-nginx:${IMAGE_TAG}" "${REGISTRY}/vw-nginx:${IMAGE_TAG}"
+        #   docker tag "vw-redis:${IMAGE_TAG}" "${REGISTRY}/vw-redis:${IMAGE_TAG}"
+        #   docker push "${REGISTRY}/vw-django_celery_beat:${IMAGE_TAG}"
+        #   docker push "${REGISTRY}/vw-django_celery_worker:${IMAGE_TAG}"
+        #   docker push "${REGISTRY}/vw-django_gunicorn:${IMAGE_TAG}"
+        #   docker push "${REGISTRY}/vw-nginx:${IMAGE_TAG}"
+        #   docker push "${REGISTRY}/vw-redis:${IMAGE_TAG}"
         run: |
           echo "REGISTRY=${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com" >> $GITHUB_ENV
-          docker compose --file ../../../docker-compose-stage-prod.yaml up -d --no-deps --force-recreate --no-start --build
-          docker tag "vw-django_celery_beat:${IMAGE_TAG}" "${REGISTRY}/vw-django_celery_beat:${IMAGE_TAG}"
-          docker tag "vw-django_celery_worker:${IMAGE_TAG}" "${REGISTRY}/vw-django_celery_worker:${IMAGE_TAG}"
-          docker tag "vw-django_gunicorn:${IMAGE_TAG}" "${REGISTRY}/vw-django_gunicorn:${IMAGE_TAG}"
-          docker tag "vw-nginx:${IMAGE_TAG}" "${REGISTRY}/vw-nginx:${IMAGE_TAG}"
+          docker compose --file ../../../docker-compose-stage-prod.yaml up -d --no-deps --force-recreate --no-start --build redis
           docker tag "vw-redis:${IMAGE_TAG}" "${REGISTRY}/vw-redis:${IMAGE_TAG}"
-          docker push "${REGISTRY}/vw-django_celery_beat:${IMAGE_TAG}"
-          docker push "${REGISTRY}/vw-django_celery_worker:${IMAGE_TAG}"
-          docker push "${REGISTRY}/vw-django_gunicorn:${IMAGE_TAG}"
-          docker push "${REGISTRY}/vw-nginx:${IMAGE_TAG}"
           docker push "${REGISTRY}/vw-redis:${IMAGE_TAG}"
+
   #ecr_rename_to_latest: todo?
     # if: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true }}
 
