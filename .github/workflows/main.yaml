@@ -17,19 +17,28 @@
       #.split() removes start/any/end whitespace/newline, which can be more than 1, i.e. [substr0, substr1, substr2]
       #''.join() accepts iterable
     #this solution is easier than making sure pasted secrets/vars do not have newlines
+  #parallel vs. sequence in jobs
+    #parallel by default, i.e. independent
+    #to make it sequential, use "needs: another_job_name" directly under job name, to make a job dependent on another
+  #to run on pull request merged:
+    #if: github.event.pull_request.merged == true
 
 name: test, collectstatic, build, deploy
 
 on:
   pull_request:
     #currently using "opened" only to run tests and nothing else
-    #"closed" is bad, as closed covers both merged and not merged
+    #"closed" alone is bad, as closed covers both merged and not merged, so also check for: github.event.pull_request.merged
     #on merge, build and deploy to ECR, refer to this (not sure where to define in .yaml):
       #https://github.com/orgs/community/discussions/26724#discussioncomment-3253096
-    types: [opened]
+    types: [opened, closed]
 
 jobs:
-  run_test:
+  #run this testing on pull request open and when merged
+  run_tests:
+    #make this false to skip this job, while we test other things
+    if: false
+    # if: ${{ github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.pull_request.merged == true) }}
     #specify environment to choose from git > settings > environments
     #https://stackoverflow.com/questions/66521958/how-to-access-environment-secrets-from-a-github-workflow
     environment: dev
@@ -51,7 +60,6 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-
       redis:
         image: redis
         options: >-
@@ -71,15 +79,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Migrate and run tests
-        # run: |
-        #   python manage.py migrate
-        #   python manage.py test voicewake.tests.test_apis.Core_TestCase
-        #   python manage.py test voicewake.tests.test_apis.Users_TestCase
-        #   python manage.py test voicewake.tests.test_apis.Core_NormaliseAudioClips_TestCase
-        #   python manage.py test voicewake.tests.test_cronjobs.Core_TestCase
-        #   python manage.py test voicewake.tests.test_cronjobs.Core_TransactionTestCase
         env:
-          GIT_PR_NUMBER: ${{ github.event.pull_request.number }}
           DJANGO_SETTINGS_MODULE: voicewake.settings.dev
           SECRET_KEY: abc123
           ALLOWED_HOSTS: "*"
@@ -109,9 +109,51 @@ jobs:
           AWS_LAMBDA_SECRET_ACCESS_KEY: ${{ secrets.AWS_LAMBDA_SECRET_ACCESS_KEY }}
           AWS_LAMBDA_REGION_NAME: ${{ secrets.AWS_LAMBDA_REGION_NAME }}
           AWS_LAMBDA_NORMALISE_FUNCTION_NAME: ${{ secrets.AWS_LAMBDA_NORMALISE_FUNCTION_NAME }}
-          AWS_ECR_REGION_NAME: ${{ secrets.AWS_ECR_REGION_NAME }}
+        run: |
+          python manage.py migrate
+          python manage.py test voicewake.tests.test_apis.Core_TestCase
+          python manage.py test voicewake.tests.test_apis.Users_TestCase
+          python manage.py test voicewake.tests.test_apis.Core_NormaliseAudioClips_TestCase
+          python manage.py test voicewake.tests.test_cronjobs.Core_TestCase
+          python manage.py test voicewake.tests.test_cronjobs.Core_TransactionTestCase
+  docker_build_tag_push_to_ecr:
+    # needs: run_tests
+    if: ${{ github.event_name == 'pull_request' && github.event.action == 'opened' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ECR_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_ECR_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_ECR_REGION_NAME }}
+      - name: Login to AWS ECR
+        id: login-aws-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      - name: Build, tag, push to AWS ECR
+        env:
           AWS_ECR_ACCOUNT_ID: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
-        #
+          AWS_ECR_REGION_NAME: ${{ secrets.AWS_ECR_REGION_NAME }}
+          IMAGE_TAG: ${{ github.event.pull_request.number }}
+        run: |
+          echo "REGISTRY=${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com" >> $GITHUB_ENV
+          docker-compose --file ../../../docker-compose-stage-prod.yaml up -d --no-deps --force-recreate --no-start --build
+          docker tag "vw-django_celery_beat:${IMAGE_TAG}" "${REGISTRY}/vw-django_celery_beat:${IMAGE_TAG}"
+          docker tag "vw-django_celery_worker:${IMAGE_TAG}" "${REGISTRY}/vw-django_celery_worker:${IMAGE_TAG}"
+          docker tag "vw-django_gunicorn:${IMAGE_TAG}" "${REGISTRY}/vw-django_gunicorn:${IMAGE_TAG}"
+          docker tag "vw-nginx:${IMAGE_TAG}" "${REGISTRY}/vw-nginx:${IMAGE_TAG}"
+          docker tag "vw-redis:${IMAGE_TAG}" "${REGISTRY}/vw-redis:${IMAGE_TAG}"
+          docker push "${REGISTRY}/vw-django_celery_beat:${IMAGE_TAG}"
+          docker push "${REGISTRY}/vw-django_celery_worker:${IMAGE_TAG}"
+          docker push "${REGISTRY}/vw-django_gunicorn:${IMAGE_TAG}"
+          docker push "${REGISTRY}/vw-nginx:${IMAGE_TAG}"
+          docker push "${REGISTRY}/vw-redis:${IMAGE_TAG}"
+  #ecr_rename_to_latest: todo?
+    # if: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true }}
+
+
   # collectstatic:
   # build_frontend:
   # deploy_stage:
