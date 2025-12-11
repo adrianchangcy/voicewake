@@ -8,6 +8,8 @@
 #at VSCode, open new Git Bash terminal
 #then type: "sh thisfile.sh"
 
+#IMAGE_TAG uses git pull request number, easily retrievable in github actions
+
 #old problem:
     #everything was labelled "latest", disallowing old & new from existing together in ECR
 #solution:
@@ -31,13 +33,15 @@ aws ecr get-login-password --region "${AWS_ECR_REGION_NAME}" | docker login --us
 docker-compose --file docker-compose-stage-prod.yaml up -d --no-deps --force-recreate --no-start --build
 
 #tag freshly built images with ECR tags
-docker tag "vw-django_celery_beat:${GIT_PR_NUMBER}" "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/vw-django_celery_beat:${GIT_PR_NUMBER}"
-docker tag "vw-django_celery_worker:${GIT_PR_NUMBER}" "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/vw-django_celery_worker:${GIT_PR_NUMBER}"
-docker tag "vw-django_gunicorn:${GIT_PR_NUMBER}" "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/vw-django_gunicorn:${GIT_PR_NUMBER}"
-docker tag "vw-nginx:${GIT_PR_NUMBER}" "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/vw-nginx:${GIT_PR_NUMBER}"
+docker tag "vw-django_celery_beat:${IMAGE_TAG}" "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/vw-django_celery_beat:${IMAGE_TAG}"
+docker tag "vw-django_celery_worker:${IMAGE_TAG}" "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/vw-django_celery_worker:${IMAGE_TAG}"
+docker tag "vw-django_gunicorn:${IMAGE_TAG}" "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/vw-django_gunicorn:${IMAGE_TAG}"
+docker tag "vw-nginx:${IMAGE_TAG}" "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/vw-nginx:${IMAGE_TAG}"
+docker tag "vw-redis:${IMAGE_TAG}" "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/vw-redis:${IMAGE_TAG}"
 
 #push to AWS ECR
-docker push "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/vw-django_celery_beat:${GIT_PR_NUMBER}"
-docker push "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/vw-django_celery_worker:${GIT_PR_NUMBER}"
-docker push "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/vw-django_gunicorn:${GIT_PR_NUMBER}"
-docker push "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/vw-nginx:${GIT_PR_NUMBER}"
+docker push "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/vw-django_celery_beat:${IMAGE_TAG}"
+docker push "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/vw-django_celery_worker:${IMAGE_TAG}"
+docker push "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/vw-django_gunicorn:${IMAGE_TAG}"
+docker push "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/vw-nginx:${IMAGE_TAG}"
+docker push "${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com/vw-redis:${IMAGE_TAG}"
