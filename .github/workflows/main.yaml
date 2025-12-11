@@ -180,9 +180,8 @@ jobs:
         #   docker push "${REGISTRY}/vw-redis:${IMAGE_TAG}"
         run: |
           export REGISTRY="${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com"
-          echo "${REGISTRY}"
           docker compose --file docker-compose.yaml up -d --no-deps --force-recreate --no-start --build redis
-          docker tag "${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
+          docker tag "${DOCKER_COMPOSE_NAME}/redis:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
           docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
 
   #ecr_rename_to_latest: todo?
