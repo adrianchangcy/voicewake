@@ -160,7 +160,8 @@ jobs:
           AWS_ECR_REGION_NAME: ${{ secrets.AWS_ECR_REGION_NAME }}
           IMAGE_TAG: ${{ github.event.pull_request.number }}
         #github deprecated v1, so use "docker compose", not "docker-compose"
-        #https://github.com/orgs/community/discussions/116610
+          #https://github.com/orgs/community/discussions/116610
+        #github action runs at root of repository, not ./.github/workflows/*, i.e. no need to do ../../../
         # run: |
         #   echo "REGISTRY=${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com" >> $GITHUB_ENV
         #   docker compose --file ../../../docker-compose-stage-prod.yaml up -d --no-deps --force-recreate --no-start --build
@@ -176,7 +177,7 @@ jobs:
         #   docker push "${REGISTRY}/vw-redis:${IMAGE_TAG}"
         run: |
           echo "REGISTRY=${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com" >> $GITHUB_ENV
-          docker compose --file ../../../docker-compose-stage-prod.yaml up -d --no-deps --force-recreate --no-start --build redis
+          docker compose --file docker-compose-stage-prod.yaml up -d --no-deps --force-recreate --no-start --build redis
           docker tag "vw-redis:${IMAGE_TAG}" "${REGISTRY}/vw-redis:${IMAGE_TAG}"
           docker push "${REGISTRY}/vw-redis:${IMAGE_TAG}"
 
