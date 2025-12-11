@@ -140,6 +140,7 @@ jobs:
           AWS_ECR_REGION_NAME: ${{ secrets.AWS_ECR_REGION_NAME }}
           IMAGE_TAG: ${{ github.event.pull_request.number }}
         #github deprecated v1, so use "docker compose", not "docker-compose"
+        #https://github.com/orgs/community/discussions/116610
         # run: |
         #   echo "REGISTRY=${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com" >> $GITHUB_ENV
         #   docker compose --file ../../../docker-compose-stage-prod.yaml up -d --no-deps --force-recreate --no-start --build
