@@ -119,6 +119,7 @@ jobs:
   docker_build_tag_push_to_ecr:
     # needs: run_tests
     if: ${{ github.event_name == 'pull_request' && github.event.action == 'opened' }}
+    environment: dev
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository code
