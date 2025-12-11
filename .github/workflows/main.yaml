@@ -168,6 +168,7 @@ jobs:
         #if your docker compose container uses "image" option directly instead of .dockerfile, tag and push the "image" option itself
         #1 docker image can have many tags
         #1 docker tag can only point to 1 image
+        #OLD
         # run: |
         #   echo "REGISTRY=${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com" >> $GITHUB_ENV
         #   docker compose --file ../../../docker-compose.yaml up -d --no-deps --force-recreate --no-start --build
@@ -181,11 +182,18 @@ jobs:
         #   docker push "${REGISTRY}/vw-django_gunicorn:${IMAGE_TAG}"
         #   docker push "${REGISTRY}/vw-nginx:${IMAGE_TAG}"
         #   docker push "${REGISTRY}/vw-redis:${IMAGE_TAG}"
+        #SUCCESS
+        # run: |
+          # export REGISTRY="${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com"
+          # docker compose --file docker-compose.yaml up -d --no-deps --force-recreate --no-start --build redis
+          # docker tag "redis:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
+          # docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
+        #TEST
         run: |
           export REGISTRY="${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com"
-          docker compose --file docker-compose.yaml up -d --no-deps --force-recreate --no-start --build redis
-          docker tag "redis:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
-          docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
+          docker compose --file docker-compose.yaml up -d --no-deps --force-recreate --no-start --build django_celery_worker
+          docker tag "${DOCKER_COMPOSE_NAME}-django_celery_worker:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_celery_worker:${IMAGE_TAG}"
+          docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/django_celery_worker:${IMAGE_TAG}"
 
   #ecr_rename_to_latest: todo?
     # if: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true }}
