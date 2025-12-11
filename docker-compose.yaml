@@ -1,7 +1,7 @@
 #in compose.yaml, things such as "command" and "entrypoint" will override things like CMD and ENTRYPOINT at .dockerfile
   #therefore, it's best to resort to .dockerfile and entrypoint.sh before placing such things here
 #.dockerignore is expected to be at root directory of build context, i.e. where you are running "docker build" from
-name: vw_stage_prod
+name: vw
 services:
   django_gunicorn:
     build:
