@@ -153,9 +153,9 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ECR_ROLE_TO_ASSUME }}
           aws-region: ${{ secrets.AWS_ECR_REGION_NAME }}
-      # - name: Login to AWS ECR
-        # id: login-aws-ecr
-        # uses: aws-actions/amazon-ecr-login@v1
+      - name: Login to AWS ECR
+        id: login-aws-ecr
+        uses: aws-actions/amazon-ecr-login@v2
       - name: Build, tag, push to AWS ECR
         env:
           AWS_ECR_ACCOUNT_ID: ${{ secrets.AWS_ECR_ACCOUNT_ID }}
@@ -165,7 +165,7 @@ jobs:
         #github deprecated v1, so use "docker compose", not "docker-compose"
           #https://github.com/orgs/community/discussions/116610
         #github action runs at root of repository, not ./.github/workflows/*, i.e. no need to do ../../../
-        #if your docker compose container uses "image" option directly instead of .dockerfile, tag and push the "image" option itself
+        #??if your docker compose container uses "image" option directly instead of .dockerfile, tag and push the "image" option itself
         # run: |
         #   echo "REGISTRY=${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com" >> $GITHUB_ENV
         #   docker compose --file ../../../docker-compose.yaml up -d --no-deps --force-recreate --no-start --build
