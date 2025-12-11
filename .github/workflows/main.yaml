@@ -165,6 +165,7 @@ jobs:
         #github deprecated v1, so use "docker compose", not "docker-compose"
           #https://github.com/orgs/community/discussions/116610
         #github action runs at root of repository, not ./.github/workflows/*, i.e. no need to do ../../../
+        #if your docker compose container uses "image" option directly instead of .dockerfile, tag and push the "image" option itself
         # run: |
         #   echo "REGISTRY=${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com" >> $GITHUB_ENV
         #   docker compose --file ../../../docker-compose.yaml up -d --no-deps --force-recreate --no-start --build
@@ -181,7 +182,7 @@ jobs:
         run: |
           export REGISTRY="${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com"
           docker compose --file docker-compose.yaml up -d --no-deps --force-recreate --no-start --build redis
-          docker tag "${DOCKER_COMPOSE_NAME}-redis:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}-redis:${IMAGE_TAG}"
+          docker tag "redis:latest" "${REGISTRY}/${DOCKER_COMPOSE_NAME}-redis:${IMAGE_TAG}"
           docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}-redis:${IMAGE_TAG}"
 
   #ecr_rename_to_latest: todo?
