@@ -51,7 +51,7 @@ on:
     #"closed" alone is bad, as closed covers both merged and not merged, so also check for: github.event.pull_request.merged
     #on merge, build and deploy to ECR, refer to this (not sure where to define in .yaml):
       #https://github.com/orgs/community/discussions/26724#discussioncomment-3253096
-    types: [opened, closed]
+    types: [opened, reopened, closed]
 
 jobs:
   #run this testing on pull request open and when merged
@@ -138,7 +138,7 @@ jobs:
           python manage.py test voicewake.tests.test_cronjobs.Core_TransactionTestCase
   docker_build_tag_push_to_ecr:
     # needs: run_tests
-    if: ${{ github.event_name == 'pull_request' && github.event.action == 'opened' }}
+    if: ${{ github.event_name == 'pull_request' && github.event.action != 'closed' }}
     environment: dev
     runs-on: ubuntu-latest
     permissions:
@@ -178,7 +178,7 @@ jobs:
         #   docker push "${REGISTRY}/vw-nginx:${IMAGE_TAG}"
         #   docker push "${REGISTRY}/vw-redis:${IMAGE_TAG}"
         run: |
-          export REGISTRY=${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com"
+          export REGISTRY="${AWS_ECR_ACCOUNT_ID}.dkr.ecr.${AWS_ECR_REGION_NAME}.amazonaws.com"
           docker compose --file docker-compose.yaml up -d --no-deps --force-recreate --no-start --build redis
           docker tag "${DOCKER_COMPOSE_NAME}/redis" "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
           docker push "${REGISTRY}/${DOCKER_COMPOSE_NAME}/redis:${IMAGE_TAG}"
