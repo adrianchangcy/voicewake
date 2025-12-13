@@ -32,6 +32,10 @@ STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{STATIC_AWS_S3_START_PATH}/'
 STATIC_ROOT = f'https://{AWS_S3_CUSTOM_DOMAIN}/{STATIC_AWS_S3_START_PATH}/'
 
 
+#how long to cache at CDN or user browser before refetching from server
+HTTP_CACHE_CONTROL_MAX_AGE = str(os.environ.get('HTTP_CACHE_CONTROL_MAX_AGE', 172800)) #2 days
+
+
 #use this for Django >= 4.2
 STORAGES = {
     "default": {
@@ -45,7 +49,7 @@ STORAGES = {
             'bucket_name': AWS_S3_STATIC_BUCKET_NAME,
             'custom_domain': AWS_S3_CUSTOM_DOMAIN,
             'region_name': AWS_S3_REGION_NAME,
-            'object_parameters': {"CacheControl": "max-age=172800"}, #2 days
+            'object_parameters': {"CacheControl": f"max-age={HTTP_CACHE_CONTROL_MAX_AGE}"},
             'file_overwrite': True, #default True
             'location': STATIC_AWS_S3_START_PATH, #folder name from S3 bucket root
         },
