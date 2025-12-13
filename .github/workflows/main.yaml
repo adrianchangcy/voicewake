@@ -249,7 +249,7 @@ jobs:
       AWS_S3_STATIC_BUCKET_NAME: ${{ secrets.AWS_S3_STATIC_BUCKET_NAME }}
       AWS_S3_REGION_NAME: ${{ secrets.AWS_S3_REGION_NAME }}
       AWS_S3_CUSTOM_DOMAIN: ${{ secrets.AWS_S3_CUSTOM_DOMAIN }}
-      HTTP_CACHE_CONTROL_MAX_AGE: ${{ env.HTTP_CACHE_CONTROL_MAX_AGE }}
+      HTTP_CACHE_CONTROL_MAX_AGE: ${{ vars.HTTP_CACHE_CONTROL_MAX_AGE }}
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v5
