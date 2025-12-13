@@ -293,7 +293,7 @@ jobs:
           fi
       - name: cd to /frontend, install frontend dependencies, run vite build
         run: |
-          cd /frontend
+          cd ./frontend
           npm install --verbose
           npm install -g vite
           vite build --emptyOutDir -- --env="${STAGE_OR_PROD}"
