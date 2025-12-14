@@ -25,7 +25,7 @@
   #to only run a job on pull request merged:
     #github.event.pull_request.merged == true
 
-name: test, collectstatic, build, deploy
+name: Run tests, build and deploy to ECR, collectstatic to S3
 
 on:
   pull_request:
@@ -256,7 +256,7 @@ jobs:
 
   #separate stage and prod because:
     #frontend is only separated by stage/prod folders
-    #between PR success and merge, you have time to prepare prod at AWS
+    #between PR success and merge, you have time to shut down ECS and prepare new prod
     #if not done this way, then old server will suddenly start fetching new frontend code
   vite_build_django_collectstatic_to_s3_prod:
     needs: run_tests
