@@ -39,13 +39,16 @@ jobs:
   #run tests on pull request open/reopen/merged
   #"closed" alone does not guarantee merged == true
   run_tests:
-    if: false
     #using ">" instead of "|" so whitespace and newlines below are not preserved, i.e. only pretty in .yaml
-    # if: >
-    #   ${{
-    #       github.event_name == 'pull_request' &&
-    #       (github.event.action == 'opened' || github.event.action == 'reopened' || github.event.pull_request.merged == true)
-    #   }}
+    if: >
+      ${{
+          github.event_name == 'pull_request' &&
+          (
+            github.event.action == 'opened' ||
+            github.event.action == 'reopened' ||
+            (github.event.action == 'closed' && github.event.pull_request.merged == true)
+          )
+      }}
     #specify environment to choose from git > settings > environments
     #https://stackoverflow.com/questions/66521958/how-to-access-environment-secrets-from-a-github-workflow
     environment: dev
@@ -124,15 +127,15 @@ jobs:
           python manage.py test voicewake.tests.test_cronjobs.Core_TestCase
           python manage.py test voicewake.tests.test_cronjobs.Core_TransactionTestCase
 
-  #do push/repush before merged, since they are versioned and no worrying about stage/prod mixup
+  #do push/repush before merged
+  #stage and prod ECS will explicitly use specific tags, i.e. no conflict
   docker_build_tag_push_to_ecr:
     needs: run_tests
-    if: false
-    # if: >
-    #   ${{
-    #       github.event_name == 'pull_request' &&
-    #       (github.event.action == 'opened' || github.event.action == 'reopened')
-    #   }}
+    if: >
+      ${{
+          github.event_name == 'pull_request' &&
+          (github.event.action == 'opened' || github.event.action == 'reopened')
+      }}
     environment: dev
     runs-on: ubuntu-latest
     permissions:
@@ -186,17 +189,17 @@ jobs:
       #separate stage/prod here
       #tell where built frontend code should go, which is locally at ./static
       #the "base" option will be used in built frontend code too, concerning accurate URLs for frontend files and web worker files
-  vite_build_django_collectstatic_to_s3:
-    # needs: run_tests
-    # if: >
-    #   ${{
-    #       github.event_name == 'pull_request' &&
-    #       (github.event.action == 'opened' || github.event.action == 'reopened') &&
-    #       (github.event.action == 'closed' || github.event.pull_request.merged == true)
-    #   }}
+  vite_build_django_collectstatic_to_s3_stage:
+    needs: docker_build_tag_push_to_ecr
+    if: >
+      ${{
+          github.event_name == 'pull_request' &&
+          (github.event.action == 'opened' || github.event.action == 'reopened')
+      }}
     environment: dev
     runs-on: ubuntu-latest
     env:
+      STAGE_OR_PROD: stage
       SECRET_KEY: abc123
       ALLOWED_HOSTS: "*"
       DB_HOST: postgres
@@ -229,21 +232,6 @@ jobs:
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v5
-      #output into $GITHUB_ENV to make env var accessible in subsequent steps
-      - name: Determine stage or production
-        run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]] && \
-              [[ "${{ github.event.action }}" == "opened" || "${{ github.event.action }}" == "reopened" ]] \
-          ;then
-            echo "STAGE_OR_PROD=stage" >> "$GITHUB_ENV"
-          elif [[ "${{ github.event_name }}" == "pull_request" ]] && \
-              [[ "${{ github.event.action }}" == "closed" && "${{ github.event.pull_request.merged }}" == "true" ]] \
-          ;then
-            echo "STAGE_OR_PROD=prod" >> "$GITHUB_ENV"
-          else
-            echo 'Github Action trigger did not meet not meet stage/prod expectations.'
-            exit 1
-          fi
       #don't cd from absolute parent, i.e. /frontend, do ./frontend instead, where cd is already pre-configured to be at repository
       #full path of shell session from absolute parent: /home/runner/work/_temp/xxxx-xxxx.sh
       - name: Install frontend dependencies
@@ -266,6 +254,74 @@ jobs:
         run: |
           python manage.py collectstatic --settings="voicewake.settings.${STAGE_OR_PROD}" --no-input
 
+  #separate stage and prod because:
+    #frontend is only separated by stage/prod folders
+    #between PR success and merge, you have time to prepare prod at AWS
+    #if not done this way, then old server will suddenly start fetching new frontend code
+  vite_build_django_collectstatic_to_s3_prod:
+    needs: run_tests
+    if: >
+      ${{
+          github.event_name == 'pull_request' &&
+          (github.event.action == 'closed' && github.event.pull_request.merged == true)
+      }}
+    environment: dev
+    runs-on: ubuntu-latest
+    env:
+      STAGE_OR_PROD: prod
+      SECRET_KEY: abc123
+      ALLOWED_HOSTS: "*"
+      DB_HOST: postgres
+      DB_NAME: voicewake
+      DB_USER: postgres
+      DB_PASSWORD: localhost
+      DB_PORT: 5432
+      REDIS_ENDPOINT: redis://redis
+      #tests don't use actual email, so leave AWS_SES empty
+      AWS_SES_HOST: ''
+      AWS_SES_SMTP_USER_NAME: ''
+      AWS_SES_SMTP_PASSWORD: ''
+      AWS_SES_FROM_EMAIL: ''
+      AWS_SES_IAM_USER_NAME: ''
+      #at github secrets
+      #env vars defined in github environments (project>settings>environments) introduces unwanted whitespace and newlines
+      #at python, to remove all whitespace and newlines, do: ''.join(os.environ['YOUR_VAR'].split())
+      AWS_S3_ACCESS_KEY_ID: ${{ secrets.AWS_S3_ACCESS_KEY_ID }}
+      AWS_S3_SECRET_ACCESS_KEY: ${{ secrets.AWS_S3_SECRET_ACCESS_KEY }}
+      AWS_S3_REGION_NAME: ${{ secrets.AWS_S3_REGION_NAME }}
+      AWS_S3_CUSTOM_DOMAIN: ${{ secrets.AWS_S3_CUSTOM_DOMAIN }}
+      AWS_S3_STATIC_BUCKET_NAME: ${{ secrets.AWS_S3_STATIC_BUCKET_NAME }}
+      AWS_S3_MEDIA_BUCKET_NAME: ${{ secrets.AWS_S3_MEDIA_BUCKET_NAME }}
+      AWS_S3_UGC_UNPROCESSED_BUCKET_NAME: ${{ secrets.AWS_S3_UGC_UNPROCESSED_BUCKET_NAME }}
+      AWS_LAMBDA_ACCESS_KEY_ID: ''
+      AWS_LAMBDA_SECRET_ACCESS_KEY: ''
+      AWS_LAMBDA_REGION_NAME: ''
+      AWS_LAMBDA_NORMALISE_FUNCTION_NAME: ''
+      HTTP_CACHE_CONTROL_MAX_AGE: ${{ vars.HTTP_CACHE_CONTROL_MAX_AGE }}
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v5
+      #don't cd from absolute parent, i.e. /frontend, do ./frontend instead, where cd is already pre-configured to be at repository
+      #full path of shell session from absolute parent: /home/runner/work/_temp/xxxx-xxxx.sh
+      - name: Install frontend dependencies
+        run: |
+          cd ./frontend
+          npm install --verbose
+      - name: Install vite globally
+        run: |
+          cd ./frontend
+          npm install -g vite
+      - name: Build frontend with Vite
+        run: |
+          cd ./frontend
+          vite build --emptyOutDir -- --env="${STAGE_OR_PROD}"
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run Django collectstatic to send built frontend + backend static files to S3
+        run: |
+          python manage.py collectstatic --settings="voicewake.settings.${STAGE_OR_PROD}" --no-input
 
 
 
