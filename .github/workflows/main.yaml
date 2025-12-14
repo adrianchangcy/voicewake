@@ -16,68 +16,15 @@
     #audience: sts.amazonaws.com
     #github organization: your_github_username_or_actual_github_org
     #permission: select the ECR policy with all ECR actions
-
   #resources
-    #***https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments
+    #https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments
 
-#to skip jobs:
-  #do "if: false" inside a job
+#testing notes:
+  #to skip jobs:
+    #do "if: false" inside a job
+  #to only run a job on pull request merged:
+    #github.event.pull_request.merged == true
 
-#to only run a job on pull request merged:
-  #github.event.pull_request.merged == true
-
-#potential silly mistakes:
-  #if you write {{}} instead of ${{}}, github actions will fail silently
-
-#caution:
-  #you may have accidentally included an unwanted newline at github secrets input field, or github is the culprit
-    #AWS credentials are prone to catching this error
-    #at python, to remove all whitespace and newlines, do: ''.join(os.environ['YOUR_VAR'].split())
-
-#notes:
-  #commit to feature branch, then when making pull request, it takes the main.yaml at HEAD of the branch for Github Actions
-    #on close and reopen pull request, it reuses that same main.yaml, without referring to newer main.yaml
-  #not having $ in ${{}} would cause github actions to fail silently
-  #rerunning a github action job will just reuse the main.yaml tied to it, not latest committed version
-  #in yaml, there are "|" (pipe) and ">" in "run"
-    #"|" respects nextlines and trailing spaces, i.e. you can run multiple consecutive commands by newline separation
-    #">" will fold newlines to spaces, i.e. just makes an ultralong command easier to read and edit
-  #env vars defined in github environments (project>settings>environments) introduces unwanted whitespace and newlines
-    #at python, to remove all whitespace and newlines, do: ''.join(os.environ['YOUR_VAR'].split())
-      #.split() removes start/any/end whitespace/newline, which can be more than 1, i.e. [substr0, substr1, substr2]
-      #''.join() accepts iterable
-    #this solution is easier than making sure pasted secrets/vars do not have newlines
-  #parallel vs. sequence in jobs
-    #parallel by default, i.e. independent
-    #to make it sequential, use "needs: another_job_name" directly under job name, to make a job dependent on another
-  #to run on pull request merged:
-    #if: github.event.pull_request.merged == true
-  #pull request + reopened will always refer to latest .yaml, even when there are new commits between original opened and new reopened
-  #to skip a job:
-    #jobs:
-      #job_name:
-        #if: false
-  #to make a job only run when another job is successful:
-    #jobs:
-      #job_name0:
-        #...
-      #job_name1:
-        #needs: job_name0
-  #for env vars inside bash:
-    #with export SOME_VAR="hmm"
-      #subsequent commands in same session can see it
-      #next steps cannot see it
-      #retrieve using "${SOME_VAR}"
-    #with echo "SOME_VAR=${SOME_VALUE}" >> $GITHUB_ENV
-      #next steps can see it
-      #retrieve using "${SOME_VAR}"
-      #jobs run at different machines, so $GITHUB_ENV isn't shared across jobs
-  #syntax errors
-    #steps:
-      #error:
-        #-name: blabla
-      #correct:
-        #- name: blabla
 name: test, collectstatic, build, deploy
 
 on:
@@ -150,11 +97,11 @@ jobs:
           DB_PORT: 5432
           REDIS_ENDPOINT: redis://redis
           #tests don't use actual email, so leave AWS_SES empty
-          AWS_SES_HOST:
-          AWS_SES_SMTP_USER_NAME:
-          AWS_SES_SMTP_PASSWORD:
-          AWS_SES_FROM_EMAIL:
-          AWS_SES_IAM_USER_NAME:
+          AWS_SES_HOST: ''
+          AWS_SES_SMTP_USER_NAME: ''
+          AWS_SES_SMTP_PASSWORD: ''
+          AWS_SES_FROM_EMAIL: ''
+          AWS_SES_IAM_USER_NAME: ''
           #at github secrets
           #env vars defined in github environments (project>settings>environments) introduces unwanted whitespace and newlines
           #at python, to remove all whitespace and newlines, do: ''.join(os.environ['YOUR_VAR'].split())
@@ -259,11 +206,11 @@ jobs:
       DB_PORT: 5432
       REDIS_ENDPOINT: redis://redis
       #tests don't use actual email, so leave AWS_SES empty
-      AWS_SES_HOST:
-      AWS_SES_SMTP_USER_NAME:
-      AWS_SES_SMTP_PASSWORD:
-      AWS_SES_FROM_EMAIL:
-      AWS_SES_IAM_USER_NAME:
+      AWS_SES_HOST: ''
+      AWS_SES_SMTP_USER_NAME: ''
+      AWS_SES_SMTP_PASSWORD: ''
+      AWS_SES_FROM_EMAIL: ''
+      AWS_SES_IAM_USER_NAME: ''
       #at github secrets
       #env vars defined in github environments (project>settings>environments) introduces unwanted whitespace and newlines
       #at python, to remove all whitespace and newlines, do: ''.join(os.environ['YOUR_VAR'].split())
@@ -274,10 +221,10 @@ jobs:
       AWS_S3_STATIC_BUCKET_NAME: ${{ secrets.AWS_S3_STATIC_BUCKET_NAME }}
       AWS_S3_MEDIA_BUCKET_NAME: ${{ secrets.AWS_S3_MEDIA_BUCKET_NAME }}
       AWS_S3_UGC_UNPROCESSED_BUCKET_NAME: ${{ secrets.AWS_S3_UGC_UNPROCESSED_BUCKET_NAME }}
-      AWS_LAMBDA_ACCESS_KEY_ID:
-      AWS_LAMBDA_SECRET_ACCESS_KEY:
-      AWS_LAMBDA_REGION_NAME:
-      AWS_LAMBDA_NORMALISE_FUNCTION_NAME:
+      AWS_LAMBDA_ACCESS_KEY_ID: ''
+      AWS_LAMBDA_SECRET_ACCESS_KEY: ''
+      AWS_LAMBDA_REGION_NAME: ''
+      AWS_LAMBDA_NORMALISE_FUNCTION_NAME: ''
       HTTP_CACHE_CONTROL_MAX_AGE: ${{ vars.HTTP_CACHE_CONTROL_MAX_AGE }}
     steps:
       - name: Checkout repository code
@@ -285,14 +232,14 @@ jobs:
       #output into $GITHUB_ENV to make env var accessible in subsequent steps
       - name: Determine stage or production
         run: |
-          if [[ ${{ github.event_name }} == 'pull_request' ]] && \
-              [[ ${{ github.event.action }} == 'opened' || ${{ github.event.action }} == 'reopened' ]] \
+          if [[ "${{ github.event_name }}" == "pull_request" ]] && \
+              [[ "${{ github.event.action }}" == "opened" || "${{ github.event.action }}" == "reopened" ]] \
           ;then
-            echo 'STAGE_OR_PROD=stage' >> $GITHUB_ENV
-          elif [[ ${{ github.event_name }} == 'pull_request' ]] && \
-              [[ ${{ github.event.action }} == 'closed' && ${{ github.event.pull_request.merged }} == true ]] \
+            echo "STAGE_OR_PROD=stage" >> "$GITHUB_ENV"
+          elif [[ "${{ github.event_name }}" == "pull_request" ]] && \
+              [[ "${{ github.event.action }}" == "closed" && "${{ github.event.pull_request.merged }}" == "true" ]] \
           ;then
-            echo 'STAGE_OR_PROD=prod' >> $GITHUB_ENV
+            echo "STAGE_OR_PROD=prod" >> "$GITHUB_ENV"
           else
             echo 'Github Action trigger did not meet not meet stage/prod expectations.'
             exit 1
